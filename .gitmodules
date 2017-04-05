@@ -1,0 +1,10 @@
+[submodule "libraries/fc"]
+    path = libraries/fc
+    url = https://github.com/bitshares/bitshares-fc.git
+    ignore = dirty
+[submodule "libraries/chainbase"]
+	path = libraries/chainbase
+	url = https://github.com/bytemaster/chainbase
+[submodule "libraries/wren"]
+	path = libraries/wren
+	url = https://github.com/bytemaster/wren.git
