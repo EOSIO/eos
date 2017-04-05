@@ -181,6 +181,128 @@ signed_transaction _push_transaction( database& db, const signed_transaction& tx
    return pt;
 } FC_CAPTURE_AND_RETHROW((tx)) }
 
-} // eos::chain::test
+}
+
+testing_fixture::testing_fixture() {
+   default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
+   default_genesis_state.initial_producer_count = EOS_DEFAULT_MIN_PRODUCER_COUNT;
+   for (int i = 0; i < default_genesis_state.initial_producer_count; ++i) {
+      auto name = std::string("init") + fc::to_string(i);
+      auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
+      public_key_type public_key = private_key.get_public_key();
+      default_genesis_state.initial_accounts.emplace_back(name, public_key, public_key);
+      key_ring[public_key] = private_key;
+
+      private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name + ".producer"));
+      public_key = private_key.get_public_key();
+      default_genesis_state.initial_producers.emplace_back(name, public_key);
+      key_ring[public_key] = private_key;
+   }
+}
+
+fc::path testing_fixture::get_temp_dir(std::string id) {
+   if (id.empty()) {
+      anonymous_temp_dirs.emplace_back();
+      return anonymous_temp_dirs.back().path();
+   }
+   if (named_temp_dirs.count(id))
+      return named_temp_dirs[id].path();
+   return named_temp_dirs.emplace(std::make_pair(id, fc::temp_directory())).first->second.path();
+}
+
+const genesis_state_type&testing_fixture::genesis_state() const {
+   return default_genesis_state;
+}
+
+genesis_state_type&testing_fixture::genesis_state() {
+   return default_genesis_state;
+}
+
+private_key_type testing_fixture::get_private_key(const public_key_type& public_key) const {
+   auto itr = key_ring.find(public_key);
+   EOS_ASSERT(itr != key_ring.end(), testing_exception,
+              "Private key corresponding to public key ${k} not known.", ("k", public_key));
+   return itr->second;
+}
+
+testing_database::testing_database(testing_fixture& fixture, std::string id,
+                                   fc::optional<genesis_state_type> override_genesis_state)
+   : genesis_state(override_genesis_state? *override_genesis_state : fixture.genesis_state()),
+     fixture(fixture) {
+   data_dir = fixture.get_temp_dir(id);
+}
+
+void testing_database::open() {
+   database::open(data_dir, TEST_DB_SIZE, [this]{return genesis_state;});
+}
+
+void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
+   if (count == 0)
+      return;
+
+   for (int i = 0; i < count; ++i) {
+      auto slot = blocks_to_miss + 1;
+      auto producer_id = get_scheduled_producer(slot);
+      const auto& producer = get(producer_id);
+      auto private_key = fixture.get_private_key(producer.signing_key);
+      generate_block(get_slot_time(slot), producer_id, private_key, 0);
+   }
+}
+
+void testing_database::sync_with(testing_database& other) {
+   // Already in sync?
+   if (head_block_id() == other.head_block_id())
+      return;
+   // If other has a longer chain than we do, sync it to us first
+   if (head_block_num() < other.head_block_num())
+      return other.sync_with(*this);
+
+   auto sync_dbs = [](testing_database& a, testing_database& b) {
+      for (int i = 1; i <= a.head_block_num(); ++i) {
+         auto block = a.fetch_block_by_number(i);
+         if (block && !b.is_known_block(block->id())) {
+            b.push_block(*block);
+         }
+      }
+   };
+
+   sync_dbs(*this, other);
+   sync_dbs(other, *this);
+}
+
+void testing_network::connect_database(testing_database& new_database) {
+   if (databases.count(&new_database))
+      return;
+
+   // If the network isn't empty, sync the new database with one of the old ones. The old ones are already in sync with
+   // eachother, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
+   // of them gets synced, it will propagate blocks to the others as well.
+   if (!databases.empty()) {
+      databases.begin()->first->sync_with(new_database);
+   }
+
+   // The new database is now in sync with any old ones; go ahead and connect the propagation signal.
+   databases[&new_database] = new_database.applied_block.connect([this](const signed_block& block) {
+      if (!currently_propagating_block)
+         propagate_block(block);
+   });
+}
+
+void testing_network::disconnect_database(testing_database& leaving_database) {
+   databases.erase(&leaving_database);
+}
+
+void testing_network::disconnect_all() {
+   databases.clear();
+}
+
+void testing_network::propagate_block(const signed_block& block) {
+   currently_propagating_block = true;
+   for (const auto& pair : databases)
+      pair.first->push_block(block);
+   currently_propagating_block = false;
+}
+
+// eos::chain::test
 
 } } // eos::chain

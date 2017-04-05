@@ -60,7 +60,6 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
 
-      db.miss_blocks(3);
       producer_id_type skipped_producers[3] = {db.get_scheduled_producer(1),
                                                db.get_scheduled_producer(2),
                                                db.get_scheduled_producer(3)};
@@ -68,7 +67,7 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       auto next_producer = db.get_scheduled_producer(4);
 
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
-      db.produce_blocks();
+      db.produce_blocks(1, 3);
       BOOST_CHECK_EQUAL(db.head_block_num(), 2);
       BOOST_CHECK_EQUAL(db.head_block_time().to_iso_string(), next_block_time.to_iso_string());
       BOOST_CHECK_EQUAL(db.head_block_producer()._id, next_producer._id);
@@ -77,6 +76,87 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       for (auto producer : skipped_producers) {
          BOOST_CHECK_EQUAL(db.get(producer).total_missed, 1);
       }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
+{ try {
+      testing_database db1(*this);
+      testing_database db2(*this);
+
+      db1.open();
+      db2.open();
+
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
+      db1.produce_blocks();
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
+      db2.produce_blocks(5);
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 5);
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
+{ try {
+      testing_database db1(*this, "a");
+      testing_database db2(*this, "b");
+      testing_network net;
+
+      db1.open();
+      db2.open();
+      net.connect_database(db1);
+      net.connect_database(db2);
+
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
+      db1.produce_blocks();
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+      db2.produce_blocks(5);
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(forked_network, testing_fixture)
+{ try {
+      testing_database db1(*this);
+      testing_database db2(*this);
+      testing_network net;
+
+      db1.open();
+      db2.open();
+
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
+      db1.produce_blocks();
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
+      BOOST_CHECK_NE(db1.head_block_id().str(), db2.head_block_id().str());
+
+      net.connect_database(db1);
+      net.connect_database(db2);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+
+      db2.produce_blocks(5);
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+
+      net.disconnect_database(db1);
+      db1.produce_blocks(1, 1);
+      db2.produce_blocks();
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 7);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 7);
+      BOOST_CHECK_NE(db1.head_block_id().str(), db2.head_block_id().str());
+
+      db2.produce_blocks(1, 1);
+      net.connect_database(db1);
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 8);
+      BOOST_CHECK_EQUAL(db2.head_block_num(), 8);
+      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
 
 /*

@@ -29,6 +29,7 @@
 #include <eos/utilities/tempdir.hpp>
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
+#include <fc/signals.hpp>
 
 #include <iostream>
 
@@ -197,25 +198,12 @@ bool _push_block( database& db, const signed_block& b, uint32_t skip_flags = 0 )
 signed_transaction _push_transaction( database& db, const signed_transaction& tx, uint32_t skip_flags = 0 );
 }
 
+/**
+ * @brief The testing_fixture class provides various services relevant to testing the database.
+ */
 class testing_fixture {
 public:
-   testing_fixture() {
-      default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-      default_genesis_state.initial_producer_count = EOS_DEFAULT_MIN_PRODUCER_COUNT;
-      for (int i = 0; i < default_genesis_state.initial_producer_count; ++i) {
-         auto name = std::string("init") + fc::to_string(i);
-         auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
-         public_key_type public_key = private_key.get_public_key();
-         default_genesis_state.initial_accounts.emplace_back(name, public_key, public_key);
-         key_ring[public_key] = private_key;
-
-         private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name + ".producer"));
-         public_key = private_key.get_public_key();
-         default_genesis_state.initial_producers.emplace_back(name, public_key);
-         idump((name)(public_key));
-         key_ring[public_key] = private_key;
-      }
-   }
+   testing_fixture();
 
    /**
     * @brief Get a temporary directory to store data in during this test
@@ -232,30 +220,15 @@ public:
     * distinct ids will not return the same path. If called with an empty id, a unique path will be returned which will
     * not be returned from any subsequent call.
     */
-   fc::path get_temp_dir(std::string id = std::string()) {
-      if (id.empty())
-         return anonymous_temp_dirs.emplace().first->path();
-      if (named_temp_dirs.count(id))
-         return named_temp_dirs[id].path();
-      return named_temp_dirs.emplace(std::make_pair(id, fc::temp_directory())).first->second.path();
-   }
+   fc::path get_temp_dir(std::string id = std::string());
 
-   const genesis_state_type& genesis_state() const {
-      return default_genesis_state;
-   }
-   genesis_state_type& genesis_state() {
-      return default_genesis_state;
-   }
+   const genesis_state_type& genesis_state() const;
+   genesis_state_type& genesis_state();
 
-   private_key_type get_private_key(const public_key_type& public_key) const {
-      auto itr = key_ring.find(public_key);
-      EOS_ASSERT(itr != key_ring.end(), testing_exception,
-                 "Private key corresponding to public key ${k} not known.", ("k", public_key));
-      return itr->second;
-   }
+   private_key_type get_private_key(const public_key_type& public_key) const;
 
 protected:
-   std::set<fc::temp_directory> anonymous_temp_dirs;
+   std::vector<fc::temp_directory> anonymous_temp_dirs;
    std::map<std::string, fc::temp_directory> named_temp_dirs;
    std::map<public_key_type, private_key_type> key_ring;
    genesis_state_type default_genesis_state;
@@ -276,60 +249,76 @@ protected:
 class testing_database : public database {
 public:
    testing_database(testing_fixture& fixture, std::string id = std::string(),
-                    fc::optional<genesis_state_type> override_genesis_state = {})
-      : genesis_state(override_genesis_state? *override_genesis_state : fixture.genesis_state()),
-        fixture(fixture) {
-      data_dir = fixture.get_temp_dir(id);
-   }
+                    fc::optional<genesis_state_type> override_genesis_state = {});
 
    /**
     * @brief Open the database using the boilerplate testing database settings
     */
-   void open() {
-      database::open(data_dir, TEST_DB_SIZE, [this]{return genesis_state;});
-   }
+   void open();
 
    /**
-    * @brief Produce new blocks, adding them to the database
+    * @brief Produce new blocks, adding them to the database, optionally following a gap of missed blocks
     * @param count Number of blocks to produce
+    * @param blocks_to_miss Number of block intervals to miss a production before producing the next block
+    *
+    * Creates and adds  @ref count new blocks to the database, after going @ref blocks_to_miss intervals without
+    * producing a block.
     */
-   void produce_blocks(uint32_t count = 1) {
-      if (count == 0)
-         return;
-
-      for (int i = 0; i < count; ++i) {
-         auto slot = get_slot_at_time(next_block_time);
-         auto producer_id = get_scheduled_producer(slot);
-         const auto& producer = get(producer_id);
-         auto private_key = fixture.get_private_key(producer.signing_key);
-         ilog("Producing block at time ${t} with producer ${p}, signing key ${k}",
-              ("t", next_block_time)("p", producer.owner_name.c_str())("k", public_key_type(private_key.get_public_key())));
-         generate_block(next_block_time, producer_id, private_key, 0);
-         next_block_time = get_slot_time(1);
-      }
-   }
+   void produce_blocks(uint32_t count = 1, uint32_t blocks_to_miss = 0);
 
    /**
-    * @brief Advance the clock so that when the next block is produced, count blocks will have been missed
-    * @param count Number of blocks to miss
+    * @brief Sync this database with other
+    * @param other Database to sync with
     *
-    * Note that this function has no effect on the database directly, as the passage of time doesn't affect the
-    * database until a block is produced, and this function does not produce blocks. Instead, the next time @ref
-    * produce_blocks is called, it will produce blocks following a gap of count missed blocks.
+    * To sync the databases, all blocks from one database which are unknown to the other are pushed to the other, then
+    * the same thing in reverse. Whichever database has more blocks will have its blocks sent to the other first.
+    *
+    * Blocks not on the main fork are ignored.
     */
-   void miss_blocks(uint32_t count = 1) {
-      auto next_slot = get_slot_at_time(next_block_time);
-      next_slot += count;
-      next_block_time = get_slot_time(next_slot);
-   }
+   void sync_with(testing_database& other);
 
 protected:
    fc::path data_dir;
    genesis_state_type genesis_state;
-   fc::time_point_sec next_block_time = genesis_state.initial_timestamp +
-                                        genesis_state.initial_parameters.block_interval;
 
    testing_fixture& fixture;
+};
+
+/**
+ * @brief The testing_network class provides a simplistic virtual P2P network connecting testing_databases together.
+ *
+ * A testing_database may be connected to zero or more testing_networks at any given time. When a new testing_database
+ * joins the network, it will be synced with all other databases already in the network (blocks known only to the new
+ * database will be pushed to the prior network members and vice versa, ignoring blocks not on the main fork). After
+ * this, whenever any database in the network gets a new block, that block will be pushed to all other databases in the
+ * network as well.
+ */
+class testing_network {
+public:
+   /**
+    * @brief Add a new database to the network
+    * @param new_database The database to add
+    */
+   void connect_database(testing_database& new_database);
+   /**
+    * @brief Remove a database from the network
+    * @param leaving_database The database to remove
+    */
+   void disconnect_database(testing_database& leaving_database);
+   /**
+    * @brief Disconnect all databases from the network
+    */
+   void disconnect_all();
+
+   /**
+    * @brief Send a block to all databases in this network
+    * @param block The block to send
+    */
+   void propagate_block(const signed_block& block);
+
+protected:
+   std::map<testing_database*, fc::scoped_connection> databases;
+   bool currently_propagating_block = false;
 };
 
 } }
