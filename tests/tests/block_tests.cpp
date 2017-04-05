@@ -37,37 +37,46 @@
 using namespace eos::chain;
 using namespace eos::chain::test;
 
-genesis_state_type make_genesis() {
-   genesis_state_type genesis_state;
-
-   genesis_state.initial_timestamp = time_point_sec( EOS_TESTING_GENESIS_TIMESTAMP );
-
-   auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("null_key")));
-   genesis_state.initial_producer_count = 10;
-   for( int i = 0; i < genesis_state.initial_producer_count; ++i )
-   {
-      auto name = "init"+fc::to_string(i);
-      genesis_state.initial_accounts.emplace_back(name,
-                                                  init_account_priv_key.get_public_key(),
-                                                  init_account_priv_key.get_public_key());
-      genesis_state.initial_producers.push_back({name, init_account_priv_key.get_public_key()});
-   }
-   return genesis_state;
-}
-
 BOOST_AUTO_TEST_SUITE(block_tests)
 
 BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 { try {
-   testing_database db(*this, "main");
-   db.open();
-   BOOST_CHECK_EQUAL(db.head_block_num(), 0);
-   db.produce_blocks();
-   BOOST_CHECK_EQUAL(db.head_block_num(), 1);
-   db.produce_blocks(5);
-   BOOST_CHECK_EQUAL(db.head_block_num(), 6);
-   db.produce_blocks(db.get_global_properties().active_producers.size());
-   BOOST_CHECK_EQUAL(db.head_block_num(), db.get_global_properties().active_producers.size() + 6);
+      testing_database db(*this);
+      db.open();
+      BOOST_CHECK_EQUAL(db.head_block_num(), 0);
+      db.produce_blocks();
+      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+      db.produce_blocks(5);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 6);
+      db.produce_blocks(db.get_global_properties().active_producers.size());
+      BOOST_CHECK_EQUAL(db.head_block_num(), db.get_global_properties().active_producers.size() + 6);
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
+{ try {
+      testing_database db(*this);
+      db.open();
+
+      db.produce_blocks();
+      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+
+      db.miss_blocks(3);
+      producer_id_type skipped_producers[3] = {db.get_scheduled_producer(1),
+                                               db.get_scheduled_producer(2),
+                                               db.get_scheduled_producer(3)};
+      auto next_block_time = db.get_slot_time(4);
+      auto next_producer = db.get_scheduled_producer(4);
+
+      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+      db.produce_blocks();
+      BOOST_CHECK_EQUAL(db.head_block_num(), 2);
+      BOOST_CHECK_EQUAL(db.head_block_time().to_iso_string(), next_block_time.to_iso_string());
+      BOOST_CHECK_EQUAL(db.head_block_producer()._id, next_producer._id);
+      BOOST_CHECK_EQUAL(db.get(next_producer).total_missed, 0);
+
+      for (auto producer : skipped_producers) {
+         BOOST_CHECK_EQUAL(db.get(producer).total_missed, 1);
+      }
 } FC_LOG_AND_RETHROW() }
 
 /*

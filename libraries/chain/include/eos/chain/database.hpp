@@ -227,7 +227,7 @@ namespace eos { namespace chain {
          time_point_sec   head_block_time()const;
          uint32_t         head_block_num()const;
          block_id_type    head_block_id()const;
-         producer_id_type  head_block_producer()const;
+         producer_id_type head_block_producer()const;
 
          decltype( chain_parameters::block_interval ) block_interval( )const;
 
