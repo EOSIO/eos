@@ -640,10 +640,9 @@ node_property_object& database::node_properties()
    return _node_property_object;
 }
 
-uint32_t database::last_non_undoable_block_num() const
+uint32_t database::last_irreversible_block_num() const
 {
-#warning TODO: Figure out how to do this
-   return 1; //head_block_num() - _undo_db.size();
+   return get_dynamic_global_properties().last_irreversible_block_num;
 }
 
 void database::initialize_indexes()
@@ -915,10 +914,10 @@ void database::update_last_irreversible_block()
    const global_property_object& gpo = get_global_properties();
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
-   vector< const producer_object* > wit_objs;
-   wit_objs.reserve( gpo.active_producers.size() );
-   for( const producer_id_type& wid : gpo.active_producers )
-      wit_objs.push_back( &(get(wid)) );
+   vector<const producer_object*> producer_objs;
+   producer_objs.reserve(gpo.active_producers.size());
+   std::transform(gpo.active_producers.begin(), gpo.active_producers.end(), std::back_inserter(producer_objs),
+                  [this](producer_id_type id) { return &get(id); });
 
    static_assert( EOS_IRREVERSIBLE_THRESHOLD > 0, "irreversible threshold must be nonzero" );
 
@@ -926,15 +925,15 @@ void database::update_last_irreversible_block()
    // 1 1 1 1 1 1 1 2 2 2 -> 1
    // 3 3 3 3 3 3 3 3 3 3 -> 3
 
-   size_t offset = ((EOS_100_PERCENT - EOS_IRREVERSIBLE_THRESHOLD) * wit_objs.size() / EOS_100_PERCENT);
+   size_t offset = ((EOS_100_PERCENT - EOS_IRREVERSIBLE_THRESHOLD) * producer_objs.size() / EOS_100_PERCENT);
 
-   std::nth_element( wit_objs.begin(), wit_objs.begin() + offset, wit_objs.end(),
+   std::nth_element( producer_objs.begin(), producer_objs.begin() + offset, producer_objs.end(),
       []( const producer_object* a, const producer_object* b )
       {
          return a->last_confirmed_block_num < b->last_confirmed_block_num;
       } );
 
-   uint32_t new_last_irreversible_block_num = wit_objs[offset]->last_confirmed_block_num;
+   uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num;
 
    if( new_last_irreversible_block_num > dpo.last_irreversible_block_num )
    {

@@ -209,7 +209,7 @@ namespace eos { namespace chain {
          node_property_object& node_properties();
 
 
-         uint32_t last_non_undoable_block_num() const;
+         uint32_t last_irreversible_block_num() const;
 
          /// Reset the object graph in-memory
          void initialize_indexes();

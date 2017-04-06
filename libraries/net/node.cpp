@@ -973,10 +973,6 @@ namespace eos { namespace net { namespace detail {
         {
           throw;
         }
-        catch (const fc::exception& e)
-        {
-          elog("${e}", ("e", e));
-        }
         FC_CAPTURE_AND_LOG( () )
       }// while(!canceled)
     }
