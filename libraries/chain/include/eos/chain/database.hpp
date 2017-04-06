@@ -51,8 +51,6 @@ namespace eos { namespace chain {
    class database : public chainbase::database
    {
       public:
-         //////////////////// db_management.cpp ////////////////////
-
          database();
          ~database();
 
@@ -106,8 +104,6 @@ namespace eos { namespace chain {
          void wipe(const fc::path& data_dir, bool include_blocks);
          void close();
 
-         //////////////////// db_block.cpp ////////////////////
-
          /**
           *  @return true if the block is in our fork DB or saved to disk as
           *  part of the official chain, otherwise return false
@@ -151,17 +147,6 @@ namespace eos { namespace chain {
          void clear_pending();
 
          /**
-          *  This method is used to track appied operations during the evaluation of a block, these
-          *  operations should include any operation actually included in a transaction as well
-          *  as any implied/virtual operations that resulted, such as filling an order.  The
-          *  applied operations is cleared after applying each block and calling the block
-          *  observers which may want to index these operations.
-          *
-          *  @return the op_id which can be used to set the result after it has finished being applied.
-          */
-         uint32_t  push_applied_operation( const operation& op );
-
-         /**
           *  This signal is emitted after all operations and virtual operation for a
           *  block have been applied but before the get_applied_operations() are cleared.
           *
@@ -169,15 +154,13 @@ namespace eos { namespace chain {
           *  the write lock and may be in an "inconstant state" until after it is
           *  released.
           */
-         fc::signal<void(const signed_block&)>           applied_block;
+         fc::signal<void(const signed_block&)> applied_block;
 
          /**
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         fc::signal<void(const signed_transaction&)>     on_pending_transaction;
-
-         //////////////////// db_producer_schedule.cpp ////////////////////
+         fc::signal<void(const signed_transaction&)> on_pending_transaction;
 
          /**
           * @brief Get the producer scheduled for block production in a slot.
@@ -217,8 +200,6 @@ namespace eos { namespace chain {
 
          void update_producer_schedule();
 
-         //////////////////// db_getter.cpp ////////////////////
-
          const chain_id_type&                   get_chain_id()const;
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
@@ -235,14 +216,11 @@ namespace eos { namespace chain {
 
 
          uint32_t last_non_undoable_block_num() const;
-         //////////////////// db_init.cpp ////////////////////
 
          void initialize_evaluators();
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_genesis(const genesis_state_type& genesis_state = genesis_state_type());
-
-         //////////////////// db_debug.cpp ////////////////////
 
          void debug_dump();
          void apply_debug_updates();
@@ -263,8 +241,6 @@ namespace eos { namespace chain {
           optional<session> _pending_tx_session;
           vector<unique_ptr<op_evaluator>> _operation_evaluators;
 
-         //////////////////// db_block.cpp ////////////////////
-
        public:
          // these were formerly private, but they have a fairly well-defined API, so let's make them public
          void               apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
@@ -281,7 +257,6 @@ namespace eos { namespace chain {
          const producer_object& _validate_block_header( const signed_block& next_block )const;
          void create_block_summary(const signed_block& next_block);
 
-         //////////////////// db_update.cpp ////////////////////
          void update_global_dynamic_data( const signed_block& b );
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
@@ -300,14 +275,6 @@ namespace eos { namespace chain {
           *  the fork tree relatively simple.
           */
          block_database   _block_id_to_block;
-
-         /**
-          * Contains the set of ops that are in the process of being applied from
-          * the current block.  It contains real and virtual operations in the
-          * order they occur and is cleared after the applied_block signal is
-          * emited.
-          */
-         vector<optional<operation_history_object> >  _applied_ops;
 
          uint32_t                          _current_block_num    = 0;
          uint16_t                          _current_trx_in_block = 0;

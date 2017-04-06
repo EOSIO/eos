@@ -107,7 +107,6 @@ namespace eos { namespace chain {
       global_property_object_type,
       dynamic_global_property_object_type,
       block_summary_object_type,
-      operation_history_object_type,
       transaction_object_type,
       producer_object_type,
       chain_property_object_type,
@@ -116,7 +115,6 @@ namespace eos { namespace chain {
 
    class account_object;
    class producer_object;
-   class operation_history_object;
 
    using account_id_type = chainbase::oid<account_object>;
    using producer_id_type = chainbase::oid<producer_object>;
@@ -220,8 +218,13 @@ FC_REFLECT(eos::chain::producer_id_type, (_id))
 
 FC_REFLECT_ENUM( eos::chain::object_type,
                  (null_object_type)
+                 (account_object_type)
                  (global_property_object_type)
                  (dynamic_global_property_object_type)
+                 (block_summary_object_type)
+                 (transaction_object_type)
+                 (producer_object_type)
+                 (chain_property_object_type)
                  (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eos::chain::void_t, )
