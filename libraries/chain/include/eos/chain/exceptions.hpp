@@ -77,6 +77,7 @@ namespace eos { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( undo_database_exception,           eos::chain::chain_exception, 3070000, "undo database exception" )
    FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        eos::chain::chain_exception, 3080000, "unlinkable block" )
    FC_DECLARE_DERIVED_EXCEPTION( black_swan_exception,              eos::chain::chain_exception, 3090000, "black swan" )
+   FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eos::chain::chain_exception, 3100000, "unknown block" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_active_auth,            eos::chain::transaction_exception, 3030001, "missing required active authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_owner_auth,             eos::chain::transaction_exception, 3030002, "missing required owner authority" )
@@ -119,7 +120,6 @@ namespace eos { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( invalid_committee_member_signee,           eos::chain::chain_exception, 30021, "invalid committee_member signee" )
    FC_DECLARE_DERIVED_EXCEPTION( failed_checkpoint_verification,    eos::chain::chain_exception, 30022, "failed checkpoint verification" )
    FC_DECLARE_DERIVED_EXCEPTION( wrong_chain_id,                    eos::chain::chain_exception, 30023, "wrong chain id" )
-   FC_DECLARE_DERIVED_EXCEPTION( unknown_block,                     eos::chain::chain_exception, 30024, "unknown block" )
    FC_DECLARE_DERIVED_EXCEPTION( block_older_than_undo_history,     eos::chain::chain_exception, 30025, "block is older than our undo history allows us to process" )
 
    FC_DECLARE_EXCEPTION( evaluation_error, 31000, "Evaluation Error" )

@@ -61,26 +61,35 @@ bool database::is_known_transaction( const transaction_id_type& id )const
    return trx_idx.find( id ) != trx_idx.end();
 }
 
-block_id_type  database::get_block_id_for_num( uint32_t block_num )const
+block_id_type database::get_block_id_for_num(uint32_t block_num)const
 { try {
-   return _block_id_to_block.fetch_block_id( block_num );
-} FC_CAPTURE_AND_RETHROW( (block_num) ) }
+   if (const auto& block = fetch_block_by_number(block_num))
+      return block->id();
 
-optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
+   FC_THROW_EXCEPTION(unknown_block_exception, "Could not find block");
+} FC_CAPTURE_AND_RETHROW((block_num)) }
+
+optional<signed_block> database::fetch_block_by_id(const block_id_type& id)const
 {
-   auto b = _fork_db.fetch_block( id );
-   if( !b )
-      return _block_id_to_block.fetch_optional(id);
-   return b->data;
+   auto b = _fork_db.fetch_block(id);
+   if(b) return b->data;
+   return _block_id_to_block.fetch_optional(id);
 }
 
 optional<signed_block> database::fetch_block_by_number( uint32_t num )const
 {
-   auto results = _fork_db.fetch_block_by_number(num);
-   if( results.size() == 1 )
-      return results[0]->data;
-   else
-      return _block_id_to_block.fetch_by_number(num);
+   if (const auto& block = _block_id_to_block.fetch_by_number(num))
+      return *block;
+
+   // Not in _block_id_to_block, so it must be since the last irreversible block. Grab it from _fork_db instead
+   if (num <= head_block_num()) {
+      auto block = _fork_db.head();
+      while (block && block->num > num)
+         block = block->prev.lock();
+      if (block && block->num == num)
+         return block->data;
+   }
+
    return optional<signed_block>();
 }
 
