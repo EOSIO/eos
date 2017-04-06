@@ -753,7 +753,6 @@ void database::reindex(fc::path data_dir, uint64_t shared_file_size, const genes
    const auto last_block_num = last_block->block_num();
 
    ilog( "Replaying blocks..." );
-//   _undo_db.disable();
    for( uint32_t i = 1; i <= last_block_num; ++i )
    {
       if( i % 5000 == 0 ) std::cerr << "   " << double(i*100)/last_block_num << "%   "<<i << " of " <<last_block_num<<"   \n";
@@ -784,9 +783,10 @@ void database::reindex(fc::path data_dir, uint64_t shared_file_size, const genes
                           skip_producer_schedule_check |
                           skip_authority_check);
    }
-//   _undo_db.enable();
    auto end = fc::time_point::now();
    ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+   set_revision(head_block_num());
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
 void database::wipe(const fc::path& data_dir, bool include_blocks)
@@ -810,14 +810,17 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
       _block_id_to_block.open(data_dir / "database" / "block_num_to_block");
 
       if( !find<global_property_object>() )
-         init_genesis(genesis_loader());
+         with_write_lock([this, genesis_loader = std::move(genesis_loader)] {
+            init_genesis(genesis_loader());
+         });
 
       fc::optional<signed_block> last_block = _block_id_to_block.last();
       if( last_block.valid() )
       {
          // Rewind the database to the last irreversible block
-         while (head_block_num() > last_block->block_num())
-            undo();
+         with_write_lock([this, &last_block] {
+            undo_all();
+         });
 
          _fork_db.start_block( *last_block );
          idump((last_block->id())(last_block->block_num()));
@@ -968,6 +971,10 @@ void database::update_last_irreversible_block()
          assert(block);
          _block_id_to_block.store(block->id(), *block);
       }
+
+   // Trim fork_database and undo histories
+   _fork_db.set_max_size(head_block_num() - new_last_irreversible_block_num + 1);
+   commit(new_last_irreversible_block_num);
 }
 
 void database::clear_expired_transactions()
