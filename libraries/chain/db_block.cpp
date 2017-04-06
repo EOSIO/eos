@@ -430,8 +430,6 @@ void database::_apply_block( const signed_block& next_block )
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
    const auto& global_props = get_global_properties();
-   const auto& dynamic_global_props = get<dynamic_global_property_object>();
-   bool maint_needed = (dynamic_global_props.next_maintenance_time <= next_block.timestamp);
 
    _current_block_num    = next_block_num;
    _current_trx_in_block = 0;
@@ -452,19 +450,12 @@ void database::_apply_block( const signed_block& next_block )
    update_signing_producer(signing_producer, next_block);
    update_last_irreversible_block();
 
-   // Are we at the maintenance interval?
-   if( maint_needed )
-      perform_chain_maintenance(next_block, global_props);
-
    create_block_summary(next_block);
    clear_expired_transactions();
 
-   // n.b., update_maintenance_flag() happens this late
-   // because get_slot_time() / get_slot_at_time() is needed above
    // TODO:  figure out if we could collapse this function into
    // update_global_dynamic_data() as perhaps these methods only need
    // to be called for header validation?
-   update_maintenance_flag( maint_needed );
    update_producer_schedule();
    if( !_node_property_object.debug_updates.empty() )
       apply_debug_updates();

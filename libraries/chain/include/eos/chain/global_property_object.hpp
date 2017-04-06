@@ -51,7 +51,7 @@ namespace eos { namespace chain {
          chain_parameters           parameters;
          optional<chain_parameters> pending_parameters;
 
-         vector<producer_id_type>    active_producers; // updated once per maintenance interval
+         vector<producer_id_type>   active_producers;
    };
 
    /**
@@ -72,7 +72,6 @@ namespace eos { namespace chain {
          block_id_type     head_block_id;
          time_point_sec    time;
          producer_id_type   current_producer;
-         time_point_sec    next_maintenance_time;
          uint32_t          accounts_registered_this_interval = 0;
          /**
           *  Every time a block is missed this increases by
@@ -104,20 +103,6 @@ namespace eos { namespace chain {
          uint32_t dynamic_flags = 0;
 
          uint32_t last_irreversible_block_num = 0;
-
-         enum dynamic_flag_bits
-         {
-            /**
-             * If maintenance_flag is set, then the head block is a
-             * maintenance block.  This means
-             * get_time_slot(1) - head_block_time() will have a gap
-             * due to maintenance duration.
-             *
-             * This flag answers the question, "Was maintenance
-             * performed in the last call to apply_block()?"
-             */
-            maintenance_flag = 0x01
-         };
    };
 
    using global_property_multi_index = chainbase::shared_multi_index_container<
@@ -148,7 +133,6 @@ FC_REFLECT(eos::chain::dynamic_global_property_object,
            (head_block_id)
            (time)
            (current_producer)
-           (next_maintenance_time)
            (accounts_registered_this_interval)
            (recently_missed_count)
            (current_aslot)

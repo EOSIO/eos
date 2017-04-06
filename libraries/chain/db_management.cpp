@@ -98,7 +98,7 @@ void database::reindex(fc::path data_dir, uint64_t shared_file_size, const genes
 void database::wipe(const fc::path& data_dir, bool include_blocks)
 {
    ilog("Wiping database", ("include_blocks", include_blocks));
-   close(false);
+   close();
    chainbase::database::wipe(data_dir);
    if( include_blocks )
       fc::remove_all( data_dir / "database" );
@@ -135,39 +135,10 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
 }
 
-void database::close(bool rewind)
+void database::close()
 {
    // TODO:  Save pending tx's on close()
    clear_pending();
-
-   // pop all of the blocks that we can given our undo history, this should
-   // throw when there is no more undo history to pop
-   if(rewind && is_open())
-   {
-      try
-      {
-         uint32_t cutoff = get_dynamic_global_properties().last_irreversible_block_num;
-
-         while( head_block_num() > cutoff )
-         {
-         //   elog("pop");
-            block_id_type popped_block_id = head_block_id();
-            pop_block();
-            _fork_db.remove(popped_block_id); // doesn't throw on missing
-            try
-            {
-               _block_id_to_block.remove(popped_block_id);
-            }
-            catch (const fc::key_not_found_exception&)
-            {
-            }
-         }
-      }
-      catch ( const fc::exception& e )
-      {
-         wlog( "Database close unexpected exception: ${e}", ("e", e) );
-      }
-   }
 
    // Since pop_block() will move tx's in the popped blocks into pending,
    // we have to clear_pending() after we're done popping to get a clean

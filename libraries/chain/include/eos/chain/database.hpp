@@ -104,7 +104,7 @@ namespace eos { namespace chain {
           * Will close the database before wiping. Database will be closed when this function returns.
           */
          void wipe(const fc::path& data_dir, bool include_blocks);
-         void close(bool rewind = true);
+         void close();
 
          //////////////////// db_block.cpp ////////////////////
 
@@ -286,25 +286,6 @@ namespace eos { namespace chain {
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
-         void update_maintenance_flag( bool new_maintenance_flag );
-
-         ///Steps performed only at maintenance intervals
-         ///@{
-
-         //////////////////// db_maint.cpp ////////////////////
-
-         void initialize_budget_record( fc::time_point_sec now, budget_record& rec )const;
-         void process_budget();
-         void pay_workers( share_type& budget );
-         void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
-         void update_active_produceres();
-         void update_active_committee_members();
-         void update_worker_votes();
-
-         template<class... Types>
-         void perform_account_maintenance(std::tuple<Types...> helpers);
-         ///@}
-         ///@}
 
          vector< signed_transaction >        _pending_tx;
          fork_database                          _fork_db;

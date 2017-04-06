@@ -271,7 +271,7 @@ BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 
       BOOST_CHECK_EQUAL(db.head_block_num(), 10);
 
-      db.close(false);
+      db.close();
       db.open();
 
       BOOST_CHECK_EQUAL(db.head_block_num(), 10);
@@ -292,7 +292,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
          BOOST_CHECK_EQUAL(sleepy.head_block_num(), 10);
 
          net.disconnect_database(sleepy);
-         sleepy.close(false);
+         sleepy.close();
       }
 
       producer.produce_blocks(5);
@@ -310,7 +310,7 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
       MKDB(db)
       db.produce_blocks(100);
-      db.close(false);
+      db.close();
       db.reindex();
       db.produce_blocks(20);
       BOOST_CHECK_EQUAL(db.head_block_num(), 120);
@@ -330,7 +330,7 @@ BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)
       BOOST_CHECK_EQUAL(db1.head_block_id().str(), db3.head_block_id().str());
 
       net.disconnect_database(db3);
-      db3.close(false);
+      db3.close();
       db3.wipe();
       db3.open();
       BOOST_CHECK_EQUAL(db3.head_block_num(), 0);

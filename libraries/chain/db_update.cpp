@@ -148,16 +148,4 @@ void database::clear_expired_transactions()
       transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
 
-void database::update_maintenance_flag( bool new_maintenance_flag )
-{
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dpo )
-   {
-      auto maintenance_flag = dynamic_global_property_object::maintenance_flag;
-      dpo.dynamic_flags =
-           (dpo.dynamic_flags & ~maintenance_flag)
-         | (new_maintenance_flag ? maintenance_flag : 0);
-   } );
-   return;
-}
-
 } }
