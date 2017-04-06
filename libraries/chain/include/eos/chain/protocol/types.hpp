@@ -90,8 +90,11 @@ namespace eos { namespace chain {
    using chainbase::allocator;
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
 
-   typedef fc::ecc::private_key        private_key_type;
-   typedef fc::sha256 chain_id_type;
+   using private_key_type = fc::ecc::private_key;
+   using chain_id_type = fc::sha256;
+
+   using account = std::string;
+   using message_type = std::string;
 
    /**
     *  List all object types from all namespaces here so they can

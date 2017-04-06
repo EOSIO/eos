@@ -23,6 +23,7 @@
  */
 #pragma once
 #include <eos/chain/protocol/types.hpp>
+#include <eos/chain/message.hpp>
 
 #include <numeric>
 
@@ -81,7 +82,8 @@ namespace eos { namespace chain {
        */
       fc::time_point_sec expiration;
 
-      vector<string> messages;
+      /// The messages in this transaction
+      vector<message> messages;
 
       /// Calculate the digest for a transaction
       digest_type         digest()const;
