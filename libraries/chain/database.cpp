@@ -426,7 +426,6 @@ void database::_apply_block( const signed_block& next_block )
    FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
-   const auto& global_props = get_global_properties();
 
    _current_block_num    = next_block_num;
    _current_trx_in_block = 0;
@@ -480,7 +479,6 @@ signed_transaction database::_apply_transaction(const signed_transaction& trx)
       trx.validate();
 
    auto& trx_idx = get_mutable_index<transaction_multi_index>();
-   const chain_id_type& chain_id = get_chain_id();
    auto trx_id = trx.id();
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
@@ -941,7 +939,6 @@ void database::update_global_dynamic_data( const signed_block& b )
 
 void database::update_signing_producer(const producer_object& signing_producer, const signed_block& new_block)
 {
-   const global_property_object& gpo = get_global_properties();
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t new_block_aslot = dpo.current_aslot + get_slot_at_time( new_block.timestamp );
 

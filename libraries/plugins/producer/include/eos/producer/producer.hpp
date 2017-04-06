@@ -79,7 +79,6 @@ private:
 
    boost::program_options::variables_map _options;
    bool _production_enabled = false;
-   bool _consecutive_production_enabled = false;
    uint32_t _required_producer_participation = 33 * EOS_1_PERCENT;
    uint32_t _production_skip_flags = eos::chain::database::skip_nothing;
 
