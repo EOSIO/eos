@@ -2,29 +2,9 @@
 file(GLOB HEADERS "include/eos/chain/*.hpp")
 file(GLOB PROTOCOL_HEADERS "include/eos/chain/protocol/*.hpp")
 
-if( EOS_DISABLE_UNITY_BUILD )
-   set( EOS_DB_FILES
-        db_block.cpp
-        db_debug.cpp
-        db_getter.cpp
-        db_init.cpp
-        db_maint.cpp
-        db_management.cpp
-        db_update.cpp
-        db_producer_schedule.cpp
-      )
-   message( STATUS "Eos database unity build disabled" )
-else( EOS_DISABLE_UNITY_BUILD )
-   set( EOS_DB_FILES
-        database.cpp )
-   message( STATUS "Eos database unity build enabled" )
-endif( EOS_DISABLE_UNITY_BUILD )
-
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
-
-             # As database takes the longest to compile, start it first
-             ${EOS_DB_FILES}
+             database.cpp
              fork_database.cpp
 
              protocol/types.cpp

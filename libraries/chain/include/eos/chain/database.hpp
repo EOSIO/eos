@@ -59,7 +59,7 @@ namespace eos { namespace chain {
          enum validation_steps
          {
             skip_nothing                = 0,
-            skip_producer_signature      = 1 << 0,  ///< used while reindexing
+            skip_producer_signature     = 1 << 0,  ///< used while reindexing
             skip_transaction_signatures = 1 << 1,  ///< used by non-producer nodes
             skip_transaction_dupe_check = 1 << 2,  ///< used while reindexing
             skip_fork_db                = 1 << 3,  ///< used while reindexing
@@ -69,7 +69,7 @@ namespace eos { namespace chain {
             skip_merkle_check           = 1 << 7,  ///< used while reindexing
             skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_producer_schedule_check = 1 << 10,  ///< used while reindexing
+            skip_producer_schedule_check= 1 << 10,  ///< used while reindexing
             skip_validate               = 1 << 11 ///< used prior to checkpoint, skips validate() call on transaction
          };
 
@@ -126,7 +126,7 @@ namespace eos { namespace chain {
           */
          uint32_t producer_participation_rate()const;
 
-         void                              add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts );
+         void                                   add_checkpoints(const flat_map<uint32_t,block_id_type>& checkpts);
          const flat_map<uint32_t,block_id_type> get_checkpoints()const { return _checkpoints; }
          bool before_last_checkpoint()const;
 
@@ -271,7 +271,7 @@ namespace eos { namespace chain {
          signed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          void               apply_operation( transaction_evaluation_state& eval_state, const operation& op );
       private:
-         void                  _apply_block( const signed_block& next_block );
+         void               _apply_block( const signed_block& next_block );
          signed_transaction _apply_transaction( const signed_transaction& trx );
 
          ///Steps involved in applying a new block
@@ -288,7 +288,7 @@ namespace eos { namespace chain {
          void clear_expired_transactions();
 
          vector< signed_transaction >        _pending_tx;
-         fork_database                          _fork_db;
+         fork_database                       _fork_db;
 
          /**
           *  Note: we can probably store blocks by block num rather than
