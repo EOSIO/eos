@@ -69,7 +69,7 @@ ENDIF()
 
 if( WIN32 )
 
-    message( STATUS "Configuring BitShares on WIN32")
+    message( STATUS "Configuring Eos on WIN32")
     set( DB_VERSION 60 )
     set( BDB_STATIC_LIBS 1 )
 
@@ -110,11 +110,11 @@ else( WIN32 ) # Apple AND Linux
 
     if( APPLE )
         # Apple Specific Options Here
-        message( STATUS "Configuring BitShares on OS X" )
+        message( STATUS "Configuring Eos on OS X" )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall" )
     else( APPLE )
         # Linux Specific Options Here
-        message( STATUS "Configuring BitShares on Linux" )
+        message( STATUS "Configuring Eos on Linux" )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall" )
         set( rt_library rt )
         set( pthread_library pthread)
@@ -144,7 +144,7 @@ else( WIN32 ) # Apple AND Linux
 
 endif( WIN32 )
 
-set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build BitShares for code coverage analysis")
+set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
     SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
@@ -173,18 +173,18 @@ set(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
 set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
-set(CPACK_PACKAGE_DESCRIPTION "A client for the BitShares network")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A client for the BitShares network")
+set(CPACK_PACKAGE_DESCRIPTION "A client for the Eos network")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A client for the Eos network")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "BitShares ${CPACK_PACKAGE_VERSION}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Eos ${CPACK_PACKAGE_VERSION}")
 
 if(WIN32)
  SET(CPACK_GENERATOR "ZIP;NSIS")
- set(CPACK_PACKAGE_NAME "BitShares") # override above
+ set(CPACK_PACKAGE_NAME "Eos") # override above
  set(CPACK_NSIS_EXECUTABLES_DIRECTORY .)
- set(CPACK_NSIS_PACKAGE_NAME "BitShares v${CPACK_PACKAGE_VERSION}")
+ set(CPACK_NSIS_PACKAGE_NAME "Eos v${CPACK_PACKAGE_VERSION}")
  set(CPACK_NSIS_DISPLAY_NAME "${CPACK_NSIS_PACKAGE_NAME}")
- set(CPACK_NSIS_DEFINES "  !define MUI_STARTMENUPAGE_DEFAULTFOLDER \\\"BitShares\\\"")
+ set(CPACK_NSIS_DEFINES "  !define MUI_STARTMENUPAGE_DEFAULTFOLDER \\\"Eos\\\"")
  # it seems like windows zip files usually don't have a single directory inside them, unix tgz frequently do
  SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
 
