@@ -31,6 +31,9 @@
 #include <fc/smart_ref_impl.hpp>
 #include <fc/signals.hpp>
 
+#include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/facilities/overload.hpp>
+
 #include <iostream>
 
 using namespace eos::chain;
@@ -42,29 +45,6 @@ FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
 } }
 
 #define TEST_DB_SIZE (1024*1024*10)
-
-#define PUSH_TX \
-   eos::chain::test::_push_transaction
-
-#define PUSH_BLOCK \
-   eos::chain::test::_push_block
-
-// See below
-#define REQUIRE_OP_VALIDATION_SUCCESS( op, field, value ) \
-{ \
-   const auto temp = op.field; \
-   op.field = value; \
-   op.validate(); \
-   op.field = temp; \
-}
-#define REQUIRE_OP_EVALUATION_SUCCESS( op, field, value ) \
-{ \
-   const auto temp = op.field; \
-   op.field = value; \
-   trx.operations.back() = op; \
-   op.field = temp; \
-   db.push_transaction( trx, ~0 ); \
-}
 
 #define EOS_REQUIRE_THROW( expr, exc_type )          \
 {                                                         \
@@ -102,101 +82,7 @@ FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
          << req_throw_info << std::endl;                  \
 }
 
-#define REQUIRE_OP_VALIDATION_FAILURE_2( op, field, value, exc_type ) \
-{ \
-   const auto temp = op.field; \
-   op.field = value; \
-   EOS_REQUIRE_THROW( op.validate(), exc_type ); \
-   op.field = temp; \
-}
-#define REQUIRE_OP_VALIDATION_FAILURE( op, field, value ) \
-   REQUIRE_OP_VALIDATION_FAILURE_2( op, field, value, fc::exception )
-
-#define REQUIRE_THROW_WITH_VALUE_2(op, field, value, exc_type) \
-{ \
-   auto bak = op.field; \
-   op.field = value; \
-   trx.operations.back() = op; \
-   op.field = bak; \
-   EOS_REQUIRE_THROW(db.push_transaction(trx, ~0), exc_type); \
-}
-
-#define REQUIRE_THROW_WITH_VALUE( op, field, value ) \
-   REQUIRE_THROW_WITH_VALUE_2( op, field, value, fc::exception )
-
-///This simply resets v back to its default-constructed value. Requires v to have a working assingment operator and
-/// default constructor.
-#define RESET(v) v = decltype(v)()
-///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
-/// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
-#define INVOKE(test) ((struct test*)this)->test_method(); trx.clear()
-
-#define PREP_ACTOR(name) \
-   fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name));   \
-   public_key_type name ## _public_key = name ## _private_key.get_public_key();
-
-#define ACTOR(name) \
-   PREP_ACTOR(name) \
-   const auto& name = create_account(BOOST_PP_STRINGIZE(name), name ## _public_key); \
-   account_id_type name ## _id = name.id; (void)name ## _id;
-
-#define GET_ACTOR(name) \
-   fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
-   const account_object& name = get_account(BOOST_PP_STRINGIZE(name)); \
-   account_id_type name ## _id = name.id; \
-   (void)name ##_id
-
-#define ACTORS_IMPL(r, data, elem) ACTOR(elem)
-#define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names)
-
 namespace eos { namespace chain {
-
-struct database_fixture {
-   // the reason we use an app is to exercise the indexes of built-in plugins
-   eos::app::application app;
-   genesis_state_type genesis_state;
-   eos::chain::database &db;
-   signed_transaction trx;
-   fc::ecc::private_key private_key = fc::ecc::private_key::generate();
-   fc::ecc::private_key init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("null_key")) );
-   public_key_type init_account_pub_key;
-
-   optional<fc::temp_directory> data_dir;
-   bool skip_key_index_test = false;
-   uint32_t anon_acct_count;
-
-   database_fixture();
-   ~database_fixture();
-
-   static fc::ecc::private_key generate_private_key(string seed);
-   string generate_anon_acct_name();
-   static void verify_asset_supplies( const database& db );
-   void verify_account_history_plugin_index( )const;
-   void open_database();
-   signed_block generate_block(uint32_t skip = ~0,
-                               const fc::ecc::private_key& key = generate_private_key("null_key"),
-                               int miss_blocks = 0);
-
-   /**
-    * @brief Generates block_count blocks
-    * @param block_count number of blocks to generate
-    */
-   void generate_blocks(uint32_t block_count);
-
-   /**
-    * @brief Generates blocks until the head block time matches or exceeds timestamp
-    * @param timestamp target time to generate blocks until
-    */
-   void generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks = true, uint32_t skip = ~0);
-};
-
-namespace test {
-/// set a reasonable expiration time for the transaction
-void set_expiration( const database& db, transaction& tx );
-
-bool _push_block( database& db, const signed_block& b, uint32_t skip_flags = 0 );
-signed_transaction _push_transaction( database& db, const signed_transaction& tx, uint32_t skip_flags = 0 );
-}
 
 /**
  * @brief The testing_fixture class provides various services relevant to testing the database.
@@ -255,6 +141,16 @@ public:
     * @brief Open the database using the boilerplate testing database settings
     */
    void open();
+   /**
+    * @brief Reindex the database using the boilerplate testing database settings
+    */
+   void reindex();
+   /**
+    * @brief Wipe the database using the boilerplate testing database settings
+    * @param include_blocks If true, the blocks will be removed as well; otherwise, only the database will be wiped and
+    * can then be rebuilt from the local blocks
+    */
+   void wipe(bool include_blocks = true);
 
    /**
     * @brief Produce new blocks, adding them to the database, optionally following a gap of missed blocks
@@ -283,6 +179,38 @@ protected:
 
    testing_fixture& fixture;
 };
+
+/// Some helpful macros to reduce boilerplate when making testing_databases @{
+#define MKDB1(name) testing_database name(*this); name.open();
+#define MKDB2(name, id) testing_database name(*this, #id); name.open();
+/**
+ * @brief Create/Open a testing_database, optionally with an ID
+ *
+ * Creates and opens a testing_database with the first argument as its name, and, if present, the second argument as
+ * its ID. The ID should be provided without quotes.
+ *
+ * Example:
+ * @code{.cpp}
+ * // Create testing_databases db1 and db2, with db2 having ID "id2"
+ * MKDB(db1)
+ * MKDB(db2, id2)
+ * @endcode
+ */
+#define MKDB(...) BOOST_PP_OVERLOAD(MKDB, __VA_ARGS__)(__VA_ARGS__)
+#define MKDBS_MACRO(x, y, name) MKDB(name)
+/**
+ * @brief Similar to @ref MKDB, but works with several databases at once
+ *
+ * Creates and opens several testing_databases
+ *
+ * Example:
+ * @code{.cpp}
+ * // Create testing_databases db1 and db2, with db2 having ID "id2"
+ * MKDBS((db1)(db2, id2))
+ * @endcode
+ */
+#define MKDBS(...) BOOST_PP_SEQ_FOR_EACH(MKDBS_MACRO, _, __VA_ARGS__)
+/// @}
 
 /**
  * @brief The testing_network class provides a simplistic virtual P2P network connecting testing_databases together.
@@ -320,5 +248,30 @@ protected:
    std::map<testing_database*, fc::scoped_connection> databases;
    bool currently_propagating_block = false;
 };
+
+/// Some helpful macros to reduce boilerplate when making a testing_network and connecting some testing_databases @{
+#define MKNET1(name) testing_network name;
+#define MKNET2_MACRO(x, name, db) name.connect_database(db);
+#define MKNET2(name, ...) MKNET1(name) BOOST_PP_SEQ_FOR_EACH(MKNET2_MACRO, name, __VA_ARGS__)
+/**
+ * @brief MKNET is a shorthand way to create a testing_network and connect some testing_databases to it.
+ *
+ * Example usage:
+ * @code{.cpp}
+ * // Create and open testing_databases named alice, bob, and charlie
+ * MKDBS((alice)(bob)(charlie))
+ * // Create a testing_network named net and connect alice and bob to it
+ * MKNET(net, (alice)(bob))
+ *
+ * // Connect charlie to net, then disconnect alice
+ * net.connect_database(charlie);
+ * net.disconnect_database(alice);
+ *
+ * // Create a testing_network named net2 with no databases connected
+ * MKNET(net2)
+ * @endcode
+ */
+#define MKNET(...) BOOST_PP_OVERLOAD(MKNET, __VA_ARGS__)(__VA_ARGS__)
+/// @}
 
 } }
