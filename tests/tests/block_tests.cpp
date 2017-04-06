@@ -270,13 +270,15 @@ BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
       db.produce_blocks(10);
 
       BOOST_CHECK_EQUAL(db.head_block_num(), 10);
+      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 3);
 
       db.close();
       db.open();
 
-      BOOST_CHECK_EQUAL(db.head_block_num(), 10);
+      // After restarting, we should have rewound to the last irreversible block.
+      BOOST_CHECK_EQUAL(db.head_block_num(), 3);
       db.produce_blocks(5);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 15);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 8);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
@@ -299,7 +301,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
       BOOST_CHECK_EQUAL(producer.head_block_num(), 15);
 
       MKDB(sleepy, sleepy)
-      BOOST_CHECK_EQUAL(sleepy.head_block_num(), 10);
+      BOOST_CHECK_EQUAL(sleepy.head_block_num(), 3);
 
       net.connect_database(sleepy);
       BOOST_CHECK_EQUAL(sleepy.head_block_num(), 15);
@@ -310,10 +312,12 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
       MKDB(db)
       db.produce_blocks(100);
+      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 93);
       db.close();
       db.reindex();
+      BOOST_CHECK_EQUAL(db.head_block_num(), 93);
       db.produce_blocks(20);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 120);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 113);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)

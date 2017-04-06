@@ -210,7 +210,6 @@ bool database::_push_block(const signed_block& new_block)
    try {
       auto session = start_undo_session(true);
       apply_block(new_block, skip);
-      _block_id_to_block.store(new_block.id(), new_block);
       session.push();
    } catch ( const fc::exception& e ) {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
@@ -390,7 +389,6 @@ void database::pop_block()
    EOS_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
 
    _fork_db.pop_block();
-   _block_id_to_block.remove( head_id );
    undo();
 
    _popped_tx.insert( _popped_tx.begin(), head_block->transactions.begin(), head_block->transactions.end() );
@@ -817,6 +815,10 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
       fc::optional<signed_block> last_block = _block_id_to_block.last();
       if( last_block.valid() )
       {
+         // Rewind the database to the last irreversible block
+         while (head_block_num() > last_block->block_num())
+            undo();
+
          _fork_db.start_block( *last_block );
          idump((last_block->id())(last_block->block_num()));
          idump((head_block_id())(head_block_num()));
@@ -951,6 +953,21 @@ void database::update_last_irreversible_block()
          _dpo.last_irreversible_block_num = new_last_irreversible_block_num;
       } );
    }
+
+   // Write newly irreversible blocks to disk. First, get the number of the last block on disk...
+   auto old_last_irreversible_block = _block_id_to_block.last();
+   int last_block_on_disk = 0;
+   // If this is null, there are no blocks on disk, so the zero is correct
+   if (old_last_irreversible_block)
+      last_block_on_disk = old_last_irreversible_block->block_num();
+   if (last_block_on_disk < new_last_irreversible_block_num)
+      for (auto block_to_write = last_block_on_disk + 1;
+           block_to_write <= new_last_irreversible_block_num;
+           ++block_to_write) {
+         auto block = fetch_block_by_number(block_to_write);
+         assert(block);
+         _block_id_to_block.store(block->id(), *block);
+      }
 }
 
 void database::clear_expired_transactions()
