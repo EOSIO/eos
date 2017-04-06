@@ -818,7 +818,7 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
       if( last_block.valid() )
       {
          // Rewind the database to the last irreversible block
-         with_write_lock([this, &last_block] {
+         with_write_lock([this] {
             undo_all();
          });
 
