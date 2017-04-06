@@ -79,7 +79,7 @@ genesis_state_type&testing_fixture::genesis_state() {
 
 private_key_type testing_fixture::get_private_key(const public_key_type& public_key) const {
    auto itr = key_ring.find(public_key);
-   EOS_ASSERT(itr != key_ring.end(), testing_exception,
+   EOS_ASSERT(itr != key_ring.end(), missing_key_exception,
               "Private key corresponding to public key ${k} not known.", ("k", public_key));
    return itr->second;
 }

@@ -27,6 +27,7 @@
 #include <eos/app/plugin.hpp>
 
 #include <eos/chain/protocol/types.hpp>
+#include <eos/chain/exceptions.hpp>
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/egenesis/egenesis.hpp>

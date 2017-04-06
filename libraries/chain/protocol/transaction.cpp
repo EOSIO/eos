@@ -46,9 +46,8 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id )const
 
 void transaction::validate() const
 {
-   FC_ASSERT( operations.size() > 0, "A transaction must have at least one operation", ("trx",*this) );
-   for( const auto& op : operations )
-      operation_validate(op); 
+   FC_ASSERT( messages.size() > 0, "A transaction must have at least one message", ("trx",*this) );
+#warning TODO: Figure out how to validate trxs
 }
 
 eos::chain::transaction_id_type eos::chain::transaction::id() const

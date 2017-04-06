@@ -27,7 +27,6 @@
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_database.hpp>
 #include <eos/chain/genesis_state.hpp>
-#include <eos/chain/evaluator.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/signals.hpp>
@@ -39,11 +38,6 @@
 #include <map>
 
 namespace eos { namespace chain {
-   class op_evaluator;
-   class transaction_evaluation_state;
-
-   struct budget_record;
-
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
@@ -217,7 +211,6 @@ namespace eos { namespace chain {
 
          uint32_t last_non_undoable_block_num() const;
 
-         void initialize_evaluators();
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_genesis(const genesis_state_type& genesis_state = genesis_state_type());
@@ -239,13 +232,11 @@ namespace eos { namespace chain {
 
        private:
           optional<session> _pending_tx_session;
-          vector<unique_ptr<op_evaluator>> _operation_evaluators;
 
        public:
          // these were formerly private, but they have a fairly well-defined API, so let's make them public
          void               apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          signed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
-         void               apply_operation( transaction_evaluation_state& eval_state, const operation& op );
       private:
          void               _apply_block( const signed_block& next_block );
          signed_transaction _apply_transaction( const signed_transaction& trx );
@@ -278,7 +269,7 @@ namespace eos { namespace chain {
 
          uint32_t                          _current_block_num    = 0;
          uint16_t                          _current_trx_in_block = 0;
-         uint16_t                          _current_op_in_trx    = 0;
+         uint16_t                          _current_message_in_trx    = 0;
          uint16_t                          _current_virtual_op   = 0;
 
          vector<uint64_t>                  _vote_tally_buffer;

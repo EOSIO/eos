@@ -26,6 +26,7 @@
 #include <eos/app/application.hpp>
 #include <eos/chain/database.hpp>
 #include <eos/chain/producer_object.hpp>
+#include <eos/chain/exceptions.hpp>
 #include <eos/utilities/tempdir.hpp>
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -39,10 +40,6 @@
 using namespace eos::chain;
 
 extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
-
-namespace eos { namespace chain {
-FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
-} }
 
 #define TEST_DB_SIZE (1024*1024*10)
 
@@ -83,6 +80,8 @@ FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
 }
 
 namespace eos { namespace chain {
+FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
+FC_DECLARE_DERIVED_EXCEPTION(missing_key_exception, eos::chain::testing_exception, 6010000, "key could not be found")
 
 /**
  * @brief The testing_fixture class provides various services relevant to testing the database.

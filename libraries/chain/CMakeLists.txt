@@ -8,14 +8,11 @@ add_library( eos_chain
              fork_database.cpp
 
              protocol/types.cpp
-             protocol/operations.cpp
              protocol/transaction.cpp
              protocol/block.cpp
 
              genesis_state.cpp
              get_config.cpp
-
-             evaluator.cpp
 
              block_database.cpp
 

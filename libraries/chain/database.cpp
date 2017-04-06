@@ -25,7 +25,6 @@
 #include <eos/chain/database.hpp>
 #include <eos/chain/db_with.hpp>
 #include <eos/chain/exceptions.hpp>
-#include <eos/chain/evaluator.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
 #include <eos/chain/chain_property_object.hpp>
@@ -482,9 +481,7 @@ signed_transaction database::_apply_transaction(const signed_transaction& trx)
    auto trx_id = trx.id();
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
-   transaction_evaluation_state eval_state(this);
    const chain_parameters& chain_parameters = get_global_properties().parameters;
-   eval_state._trx = &trx;
 
    //Skip all manner of expiration and TaPoS checking if we're on block 1; It's impossible that the transaction is
    //expired, and TaPoS makes no sense as no blocks exist.
@@ -514,31 +511,17 @@ signed_transaction database::_apply_transaction(const signed_transaction& trx)
       });
    }
 
-   //Finally process the operations
+   //Finally, process the messages
    signed_transaction ptrx(trx);
-   _current_op_in_trx = 0;
-   for( const auto& op : ptrx.operations )
+   _current_message_in_trx = 0;
+   for( const auto& msg : ptrx.messages )
    {
-      apply_operation(eval_state, op);
-      ++_current_op_in_trx;
+#warning TODO: Process messages in transaction
+      ++_current_message_in_trx;
    }
 
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
-
-void database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
-{ try {
-   int i_which = op.which();
-   uint64_t u_which = uint64_t( i_which );
-   if( i_which < 0 )
-      assert( "Negative operation tag" && false );
-   if( u_which >= _operation_evaluators.size() )
-      assert( "No registered evaluator for this operation" && false );
-   unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
-   if( !eval )
-      assert( "No registered evaluator for this operation" && false );
-   eval->evaluate( eval_state, op, true );
-} FC_CAPTURE_AND_RETHROW( (op) ) }
 
 const producer_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 {
@@ -663,21 +646,6 @@ uint32_t database::last_non_undoable_block_num() const
    return 1; //head_block_num() - _undo_db.size();
 }
 
-// C++ requires that static class variables declared and initialized
-// in headers must also have a definition in a single source file,
-// else linker errors will occur [1].
-//
-// The purpose of this source file is to collect such definitions in
-// a single place.
-//
-// [1] http://stackoverflow.com/questions/8016780/undefined-reference-to-static-constexpr-char
-
-void database::initialize_evaluators()
-{
-   _operation_evaluators.resize(255);
-   // TODO: Figure out how to do this
-}
-
 void database::initialize_indexes()
 {
    add_index<account_multi_index>();
@@ -717,7 +685,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       });
    }
    // Create initial producers
-   std::vector<producer_id_type> initialProducers;
+   std::vector<producer_id_type> initial_producers;
    for (const auto& producer : genesis_state.initial_producers) {
       auto owner = find<account_object, by_name>(producer.owner_name);
       FC_ASSERT(owner != nullptr, "Producer belongs to an unknown account: ${acct}", ("acct", producer.owner_name));
@@ -725,19 +693,18 @@ void database::init_genesis(const genesis_state_type& genesis_state)
          w.signing_key = producer.block_signing_key;
          w.owner_name = producer.owner_name.c_str();
       }).id;
-      initialProducers.push_back(id);
+      initial_producers.push_back(id);
    }
 
-   transaction_evaluation_state genesis_eval_state(this);
-
    // Initialize block summary index
+#warning TODO: Figure out how to do this
 
    chain_id_type chain_id = genesis_state.compute_chain_id();
 
    // Create global properties
    create<global_property_object>([&](global_property_object& p) {
        p.parameters = genesis_state.initial_parameters;
-       p.active_producers = initialProducers;
+       p.active_producers = initial_producers;
    });
    create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
       p.time = genesis_state.initial_timestamp;
@@ -753,11 +720,6 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       p.immutable_parameters = genesis_state.immutable_parameters;
    } );
    create<block_summary_object>([&](block_summary_object&) {});
-
-   //TODO: Figure out how to do this
-   // Create initial accounts
-   // Create initial producers
-   // Set active producers
 } FC_CAPTURE_AND_RETHROW() }
 
 database::database()
@@ -838,7 +800,6 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
       chainbase::database::open(data_dir, read_write, shared_file_size);
 
       initialize_indexes();
-      initialize_evaluators();
 
       _block_id_to_block.open(data_dir / "database" / "block_num_to_block");
 
