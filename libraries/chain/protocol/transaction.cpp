@@ -75,7 +75,7 @@ signature_type eos::chain::signed_transaction::sign(const private_key_type& key,
 
 void transaction::set_expiration( fc::time_point_sec expiration_time )
 {
-    expiration = expiration_time;
+   expiration = expiration_time;
 }
 
 void transaction::set_reference_block( const block_id_type& reference_block )
