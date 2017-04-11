@@ -111,23 +111,24 @@ namespace eos { namespace app {
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
     {
-       if( _callbacks.size() )
-       {
-          /// we need to ensure the database_api is not deleted for the life of the async operation
-          auto capture_this = shared_from_this();
-          for( uint32_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
-          {
-             const auto& trx = b.transactions[trx_num];
-             auto id = trx.id();
-             auto itr = _callbacks.find(id);
-             if( itr != _callbacks.end() )
-             {
-                auto block_num = b.block_num();
-                auto& callback = _callbacks.find(id)->second;
-                fc::async( [capture_this,this,id,block_num,trx_num,trx,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, trx}) ); } );
-             }
-          }
-       }
+#warning TODO: Figure out how to handle this
+//       if( _callbacks.size() )
+//       {
+//          /// we need to ensure the database_api is not deleted for the life of the async operation
+//          auto capture_this = shared_from_this();
+//          for( uint32_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
+//          {
+//             const auto& trx = b.transactions[trx_num];
+//             auto id = trx.id();
+//             auto itr = _callbacks.find(id);
+//             if( itr != _callbacks.end() )
+//             {
+//                auto block_num = b.block_num();
+//                auto& callback = _callbacks.find(id)->second;
+//                fc::async( [capture_this,this,id,block_num,trx_num,trx,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, trx}) ); } );
+//             }
+//          }
+//       }
     }
 
     void network_broadcast_api::broadcast_transaction(const signed_transaction& trx)

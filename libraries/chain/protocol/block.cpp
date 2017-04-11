@@ -62,31 +62,43 @@ namespace eos { namespace chain {
       return signee() == expected_signee;
    }
 
+   digest_type merkle(vector<digest_type> ids) {
+      while (ids.size() > 1) {
+         if (ids.size() % 2)
+            ids.push_back(ids.back());
+         for (int i = 0; i < ids.size() / 2; ++i)
+            ids[i/2] = digest_type::hash(std::make_pair(ids[i], ids[i+1]));
+         ids.resize(ids.size() / 2);
+      }
+
+      return ids.front();
+   }
+
    checksum_type signed_block::calculate_merkle_root()const
    {
-      if( transactions.size() == 0 )
+      if(cycles.empty())
          return checksum_type();
 
       vector<digest_type> ids;
-      ids.resize( transactions.size() );
-      for( uint32_t i = 0; i < transactions.size(); ++i )
-         ids[i] = transactions[i].merkle_digest();
+      for (const auto& cycle : cycles)
+         for (const auto& thread : cycle)
+            ids.emplace_back(thread.merkle_digest());
 
-      vector<digest_type>::size_type current_number_of_hashes = ids.size();
-      while( current_number_of_hashes > 1 )
-      {
-         // hash ID's in pairs
-         uint32_t i_max = current_number_of_hashes - (current_number_of_hashes&1);
-         uint32_t k = 0;
+      return checksum_type::hash(merkle(ids));
+   }
 
-         for( uint32_t i = 0; i < i_max; i += 2 )
-            ids[k++] = digest_type::hash( std::make_pair( ids[i], ids[i+1] ) );
+   digest_type thread::merkle_digest() const {
+      vector<digest_type> ids;
+      std::transform(input_transactions.begin(), input_transactions.end(), std::back_inserter(ids),
+                     [](const input_transaction& trx) {
+         if (trx.which() == input_transaction::tag<signed_transaction>::value)
+            return trx.get<signed_transaction>().merkle_digest();
+#warning How do I get the digest from a generated_transaction_id_type?...
+      });
+      std::transform(output_transactions.begin(), output_transactions.end(), std::back_inserter(ids),
+                     std::bind(&generated_transaction::merkle_digest, std::placeholders::_1));
 
-         if( current_number_of_hashes&1 )
-            ids[k++] = ids[i_max];
-         current_number_of_hashes = k;
-      }
-      return checksum_type::hash( ids[0] );
+      return merkle(ids);
    }
 
 } }

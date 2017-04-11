@@ -121,9 +121,9 @@ namespace eos { namespace chain {
          bool before_last_checkpoint()const;
 
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         signed_transaction push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         void push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          bool _push_block( const signed_block& b );
-         signed_transaction _push_transaction( const signed_transaction& trx );
+         void _push_transaction( const signed_transaction& trx );
 
          signed_block generate_block(
             const fc::time_point_sec when,
@@ -217,38 +217,33 @@ namespace eos { namespace chain {
 
          void debug_dump();
          void apply_debug_updates();
-         void debug_update( const fc::variant_object& update );
+         void debug_update(const fc::variant_object& update);
 
          /**
            *  This method validates transactions without adding it to the pending state.
            *  @return true if the transaction would validate
            */
-          signed_transaction validate_transaction( const signed_transaction& trx );
-
-
-          /** when popping a block, the transactions that were removed get cached here so they
-           * can be reapplied at the proper time */
-          std::deque< signed_transaction >       _popped_tx;
+          void validate_transaction(const signed_transaction& trx);
 
        private:
           optional<session> _pending_tx_session;
 
        public:
          // these were formerly private, but they have a fairly well-defined API, so let's make them public
-         void               apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
-         signed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
+         void apply_transaction(const signed_transaction& trx, uint32_t skip = skip_nothing);
       private:
-         void               _apply_block( const signed_block& next_block );
-         signed_transaction _apply_transaction( const signed_transaction& trx );
+         void _apply_block(const signed_block& next_block);
+         void _apply_transaction(const signed_transaction& trx);
 
          ///Steps involved in applying a new block
          ///@{
 
-         const producer_object& validate_block_header( uint32_t skip, const signed_block& next_block )const;
-         const producer_object& _validate_block_header( const signed_block& next_block )const;
+         const producer_object& validate_block_header(uint32_t skip, const signed_block& next_block)const;
+         const producer_object& _validate_block_header(const signed_block& next_block)const;
          void create_block_summary(const signed_block& next_block);
 
-         void update_global_dynamic_data( const signed_block& b );
+         void update_global_dynamic_data(const signed_block& b);
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();

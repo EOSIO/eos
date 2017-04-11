@@ -48,14 +48,26 @@ namespace eos { namespace chain {
       signature_type             producer_signature;
    };
 
+   struct thread {
+      using input_transaction = static_variant<signed_transaction, generated_transaction_id_type>;
+
+      vector<input_transaction> input_transactions;
+      vector<generated_transaction> output_transactions;
+
+      digest_type merkle_digest() const;
+   };
+
+   using cycle = vector<thread>;
+
    struct signed_block : public signed_block_header
    {
       checksum_type calculate_merkle_root()const;
-      vector<signed_transaction> transactions;
+      vector<cycle> cycles;
    };
 
 } } // eos::chain
 
-FC_REFLECT( eos::chain::block_header, (previous)(timestamp)(producer)(transaction_merkle_root) )
-FC_REFLECT_DERIVED( eos::chain::signed_block_header, (eos::chain::block_header), (producer_signature) )
-FC_REFLECT_DERIVED( eos::chain::signed_block, (eos::chain::signed_block_header), (transactions) )
+FC_REFLECT(eos::chain::block_header, (previous)(timestamp)(producer)(transaction_merkle_root))
+FC_REFLECT_DERIVED(eos::chain::signed_block_header, (eos::chain::block_header), (producer_signature))
+FC_REFLECT(eos::chain::thread, (input_transactions)(output_transactions))
+FC_REFLECT_DERIVED(eos::chain::signed_block, (eos::chain::signed_block_header), (cycles))

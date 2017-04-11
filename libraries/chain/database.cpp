@@ -229,35 +229,30 @@ bool database::_push_block(const signed_block& new_block)
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-signed_transaction database::push_transaction( const signed_transaction& trx, uint32_t skip )
+void database::push_transaction(const signed_transaction& trx, uint32_t skip)
 { try {
-   signed_transaction result;
-   detail::with_skip_flags( *this, skip, [&]()
+   detail::with_skip_flags(*this, skip, [&]()
    {
-      result = _push_transaction( trx );
-   } );
-   return result;
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
+      _push_transaction(trx);
+   });
+} FC_CAPTURE_AND_RETHROW((trx)) }
 
-signed_transaction database::_push_transaction( const signed_transaction& trx )
-{
+void database::_push_transaction(const signed_transaction& trx) {
    auto temp_session = start_undo_session(true);
-   auto processed_trx = _apply_transaction( trx );
-   _pending_tx.push_back(processed_trx);
+   _apply_transaction(trx);
+   _pending_tx.push_back(trx);
 
    // notify_changed_objects();
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
 
    // notify anyone listening to pending transactions
-   on_pending_transaction( trx );
-   return processed_trx;
+   on_pending_transaction(trx);
 }
 
-signed_transaction database::validate_transaction( const signed_transaction& trx )
-{
+void database::validate_transaction(const signed_transaction& trx) {
    auto session = start_undo_session(true);
-   return _apply_transaction( trx );
+   _apply_transaction(trx);
 }
 
 signed_block database::generate_block(
@@ -329,14 +324,12 @@ signed_block database::_generate_block(
       try
       {
          auto temp_session = start_undo_session(true);
-         signed_transaction ptx = _apply_transaction( tx );
+         _apply_transaction(tx);
          temp_session.squash();
 
-         // We have to recompute pack_size(ptx) because it may be different
-         // than pack_size(tx) (i.e. if one or more results increased
-         // their size)
-         total_block_size += fc::raw::pack_size( ptx );
-         pending_block.transactions.push_back( ptx );
+         total_block_size += fc::raw::pack_size(tx);
+//         pending_block.transactions.push_back(tx);
+#warning TODO: Populate generated blocks with transactions
       }
       catch ( const fc::exception& e )
       {
@@ -378,8 +371,7 @@ signed_block database::_generate_block(
 } FC_CAPTURE_AND_RETHROW( (producer_id) ) }
 
 /**
- * Removes the most recent block from the database and
- * undoes any changes it made.
+ * Removes the most recent block from the database and undoes any changes it made.
  */
 void database::pop_block()
 { try {
@@ -390,9 +382,6 @@ void database::pop_block()
 
    _fork_db.pop_block();
    undo();
-
-   _popped_tx.insert( _popped_tx.begin(), head_block->transactions.begin(), head_block->transactions.end() );
-
 } FC_CAPTURE_AND_RETHROW() }
 
 void database::clear_pending()
@@ -424,7 +413,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    return;
 }
 
-void database::_apply_block( const signed_block& next_block )
+void database::_apply_block(const signed_block& next_block)
 { try {
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = get_node_properties().skip_flags;
@@ -436,17 +425,31 @@ void database::_apply_block( const signed_block& next_block )
    _current_block_num    = next_block_num;
    _current_trx_in_block = 0;
 
-   for( const auto& trx : next_block.transactions )
-   {
-      /* We do not need to push the undo state for each transaction
-       * because they either all apply and are valid or the
-       * entire block fails to apply.  We only need an "undo" state
-       * for transactions when validating broadcast transactions or
-       * when building a block.
-       */
-      apply_transaction( trx, skip | skip_transaction_signatures );
-      ++_current_trx_in_block;
-   }
+   /* We do not need to push the undo state for each transaction
+    * because they either all apply and are valid or the
+    * entire block fails to apply.  We only need an "undo" state
+    * for transactions when validating broadcast transactions or
+    * when building a block.
+    */
+   for (const auto& cycle : next_block.cycles)
+      for (const auto& thread : cycle)
+         for(const auto& trx : thread.input_transactions)
+         {
+            struct {
+               using result_type = void;
+               void operator()(const signed_transaction& trx) {
+                  db.apply_transaction(trx);
+               }
+               void operator()(generated_transaction_id_type) {
+#warning TODO: Process generated transaction
+               }
+
+               database& db;
+            } visitor{*this};
+
+            trx.visit(visitor);
+            ++_current_trx_in_block;
+         }
 
    update_global_dynamic_data(next_block);
    update_signing_producer(signing_producer, next_block);
@@ -467,17 +470,15 @@ void database::_apply_block( const signed_block& next_block )
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-signed_transaction database::apply_transaction(const signed_transaction& trx, uint32_t skip)
+void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 {
-   signed_transaction result;
-   detail::with_skip_flags( *this, skip, [&]()
+   detail::with_skip_flags(*this, skip, [&]()
    {
-      result = _apply_transaction(trx);
+      _apply_transaction(trx);
    });
-   return result;
 }
 
-signed_transaction database::_apply_transaction(const signed_transaction& trx)
+void database::_apply_transaction(const signed_transaction& trx)
 { try {
    uint32_t skip = get_node_properties().skip_flags;
 
@@ -526,8 +527,6 @@ signed_transaction database::_apply_transaction(const signed_transaction& trx)
 #warning TODO: Process messages in transaction
       ++_current_message_in_trx;
    }
-
-   return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 const producer_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const

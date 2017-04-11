@@ -98,11 +98,11 @@ namespace eos { namespace chain {
    using privilege_class = std::string;
 
    /**
-    *  List all object types from all namespaces here so they can
-    *  be easily reflected and displayed in debug output.  If a 3rd party
-    *  wants to extend the core code then they will have to change the
-    *  packed_object::type field from enum_type to uint16 to avoid
-    *  warnings when converting packed_objects to/from json.
+    * List all object types from all namespaces here so they can
+    * be easily reflected and displayed in debug output.  If a 3rd party
+    * wants to extend the core code then they will have to change the
+    * packed_object::type field from enum_type to uint16 to avoid
+    * warnings when converting packed_objects to/from json.
     */
    enum object_type
    {
@@ -123,13 +123,14 @@ namespace eos { namespace chain {
    using account_id_type = chainbase::oid<account_object>;
    using producer_id_type = chainbase::oid<producer_object>;
 
-   typedef fc::ripemd160                                        block_id_type;
-   typedef fc::ripemd160                                        checksum_type;
-   typedef fc::ripemd160                                        transaction_id_type;
-   typedef fc::sha256                                           digest_type;
-   typedef fc::ecc::compact_signature                           signature_type;
-   typedef safe<int64_t>                                        share_type;
-   typedef uint16_t                                             weight_type;
+   using generated_transaction_id_type = uint32_t;
+   using block_id_type = fc::ripemd160;
+   using checksum_type = fc::ripemd160;
+   using transaction_id_type = fc::ripemd160;
+   using digest_type = fc::sha256;
+   using signature_type = fc::ecc::compact_signature;
+   using share_type = safe<int64_t>;
+   using weight_type = uint16_t;
 
    struct public_key_type
    {

@@ -536,12 +536,13 @@ namespace detail {
                // included in blocks before we see the free-floating transaction itself.  If that
                // happens, there's no reason to fetch the transactions, so  construct a list of the
                // transaction message ids we no longer need.
-               // during sync, it is unlikely that we'll see any old
-               for (const signed_transaction& transaction : blk_msg.block.transactions)
-               {
-                  eos::net::trx_message transaction_message(transaction);
-                  contained_transaction_message_ids.push_back(eos::net::message(transaction_message).id());
-               }
+               for (const auto& cycle : blk_msg.block.cycles)
+                  for (const auto& thread : cycle)
+                     for (const auto& transaction : thread.input_transactions)
+                        if (transaction.which() == decay_t<decltype(transaction)>::tag<signed_transaction>::value) {
+                           eos::net::trx_message transaction_message(transaction.get<signed_transaction>());
+                           contained_transaction_message_ids.push_back(eos::net::message(transaction_message).id());
+                        }
             }
 
             return result;
