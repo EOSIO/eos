@@ -33,31 +33,31 @@
 
 using namespace eos::chain;
 
+// Simple tests of undo infrastructure
 BOOST_FIXTURE_TEST_CASE(undo_test, testing_fixture)
-{
-   try {
+{ try {
       testing_database db(*this);
       db.open();
       auto ses = db.start_undo_session(true);
 
+      // Create an account
       db.create<account_object>([](account_object& a) {
           a.name = "Billy the Kid";
       });
 
+      // Make sure we can retrieve that account by name
       auto ptr = db.find<account_object, by_name, std::string>("Billy the Kid");
       BOOST_CHECK(ptr != nullptr);
 
+      // Undo creation of the account
       ses.undo();
 
+      // Make sure we can no longer find the account
       ptr = db.find<account_object, by_name, std::string>("Billy the Kid");
       BOOST_CHECK(ptr == nullptr);
-   } catch ( const fc::exception& e )
-   {
-      edump( (e.to_detail_string()) );
-      throw;
-   }
-}
+} FC_LOG_AND_RETHROW() }
 
+// Test the block fetching methods on database, get_block_id_for_num, fetch_bock_by_id, and fetch_block_by_num
 BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
 { try {
       MKDB(db)
@@ -87,6 +87,7 @@ BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
          block_id_type("0000001420541bed52c10949a82c5d0b311fb489")
       };
 
+      // Produce 20 blocks and check their IDs should match the above
       db.produce_blocks(20);
       for (int i = 0; i < 20; ++i) {
          BOOST_CHECK(db.is_known_block(block_ids[i]));
@@ -95,10 +96,14 @@ BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
          BOOST_CHECK_EQUAL(db.fetch_block_by_number(i+1)->id(), block_ids[i]);
       }
 
+      // Check the last irreversible block number is set correctly
       BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 13);
+      // Check that block 21 cannot be found (only 20 blocks exist)
       BOOST_CHECK_THROW(db.get_block_id_for_num(21), eos::chain::unknown_block_exception);
 
       db.produce_blocks();
+      // Check the last irreversible block number is updated correctly
       BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 14);
+      // Check that block 21 can now be found
       BOOST_CHECK_EQUAL(db.get_block_id_for_num(21), db.head_block_id());
 } FC_LOG_AND_RETHROW() }

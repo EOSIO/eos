@@ -38,6 +38,7 @@ using namespace eos::chain;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
+// Simple test of block production and head_block_num tracking
 BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 { try {
       MKDB(db)
@@ -51,6 +52,7 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
       BOOST_CHECK_EQUAL(db.head_block_num(), db.get_global_properties().active_producers.size() + 6);
 } FC_LOG_AND_RETHROW() }
 
+// Simple test of block production when a block is missed
 BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
 { try {
       MKDB(db)
@@ -76,6 +78,7 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       }
 } FC_LOG_AND_RETHROW() }
 
+// Simple sanity test of test network: if databases aren't connected to the network, they don't sync to eachother
 BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
 { try {
       MKDBS((db1)(db2))
@@ -90,6 +93,7 @@ BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
       BOOST_CHECK_EQUAL(db2.head_block_num(), 5);
 } FC_LOG_AND_RETHROW() }
 
+// Test that two databases on the same network do sync to eachother
 BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
 { try {
       MKDBS((db1)(db2))
@@ -107,6 +111,7 @@ BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
       BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
 
+// Test that two databases joining and leaving a network sync correctly after a fork
 BOOST_FIXTURE_TEST_CASE(forked_network, testing_fixture)
 { try {
       MKDBS((db1)(db2))
@@ -143,6 +148,7 @@ BOOST_FIXTURE_TEST_CASE(forked_network, testing_fixture)
       BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
 
+// Check that the recent_slots_filled bitmap is being updated correctly
 BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 { try {
       MKDB(db)
@@ -264,6 +270,7 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
       BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(8) );
 } FC_LOG_AND_RETHROW() }
 
+// Check that a db rewinds to the LIB after being closed and reopened
 BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
       MKDB(db)
@@ -281,13 +288,17 @@ BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
       BOOST_CHECK_EQUAL(db.head_block_num(), 8);
 } FC_LOG_AND_RETHROW() }
 
+// Check that a db which is closed and reopened successfully syncs back with the network, including retrieving blocks
+// that it missed while it was down
 BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 { try {
       MKDB(producer)
       MKNET(net, (producer))
+      // Produce 10 blocks on the chain
       producer.produce_blocks(10);
 
       {
+         // The new node, sleepy, joins, syncs, disconnects
          MKDB(sleepy, sleepy)
          net.connect_database(sleepy);
          BOOST_CHECK_EQUAL(producer.head_block_num(), 10);
@@ -297,17 +308,21 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
          sleepy.close();
       }
 
+      // 5 new blocks are produced
       producer.produce_blocks(5);
       BOOST_CHECK_EQUAL(producer.head_block_num(), 15);
 
+      // Sleepy is reborn! Check that it is now rewound to the LIB...
       MKDB(sleepy, sleepy)
       BOOST_CHECK_EQUAL(sleepy.head_block_num(), 3);
 
+      // Reconnect sleepy to the network and check that it syncs up to the present
       net.connect_database(sleepy);
       BOOST_CHECK_EQUAL(sleepy.head_block_num(), 15);
       BOOST_CHECK_EQUAL(sleepy.head_block_id().str(), producer.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
 
+// Test reindexing the blockchain
 BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
       MKDB(db)
@@ -320,6 +335,7 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
       BOOST_CHECK_EQUAL(db.head_block_num(), 113);
 } FC_LOG_AND_RETHROW() }
 
+// Test wiping a database and resyncing with an ongoing network
 BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)
 { try {
       MKDBS((db1)(db2)(db3))
