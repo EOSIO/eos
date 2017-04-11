@@ -66,16 +66,15 @@ namespace eos { namespace chain {
    struct transaction
    {
       /**
-       * Least significant 16 bits from the reference block number. If @ref relative_expiration is zero, this field
-       * must be zero as well.
+       * Least significant 16 bits from the reference block number.
        */
-      uint16_t           ref_block_num    = 0;
+      uint16_t ref_block_num = 0;
       /**
        * The first non-block-number 32-bits of the reference block ID. Recall that block IDs have 32 bits of block
        * number followed by the actual block hash, so this field should be set using the second 32 bits in the
        * @ref block_id_type
        */
-      uint32_t           ref_block_prefix = 0;
+      uint32_t ref_block_prefix = 0;
 
       /**
        * This field specifies the absolute expiration for this transaction.
@@ -97,6 +96,27 @@ namespace eos { namespace chain {
    };
 
    /**
+    * @brief A single authorization used to authorize a transaction
+    *
+    * Transactions may have several accounts that must authorize them before they may be evaluated. Each of those
+    * accounts has several different authority levels, some of which may be sufficient to authorize the transaction in
+    * question and some of which may not. This struct records an account, an the authority level on that account, that
+    * must/did authorize a transaction.
+    *
+    * Objects of this struct shall be added to a @ref signed_transaction when it is being signed, to declare that a
+    * given account/authority level has approved the transaction. These permissions will then be checked by blockchain
+    * nodes, when receiving the transaction over the network, to verify that the transaction bears signatures
+    * corresponding to all of the permissions it declares. Finally, when processing the transaction in context with
+    * blockchain state, it will be verified that the transaction declared all of the appropriate permissions.
+    */
+   struct authorization {
+      /// The account authorizing the transaction
+      account_name authorizing_account;
+      /// The privileges being invoked to authorize the transaction
+      privilege_class level;
+   };
+
+   /**
     *  @brief adds a signature to a transaction
     */
    struct signed_transaction : public transaction
@@ -112,7 +132,22 @@ namespace eos { namespace chain {
 
       flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;
 
+      /**
+       * @brief This is the list of signatures that are provided for this transaction
+       *
+       * These should roughly parallel @ref provided_authorizations below. It is possible that two authorizations may
+       * use the same key, however, in which case there would be a single signature for multiple authorizations.
+       */
       vector<signature_type> signatures;
+      /**
+       * @brief This is the list of authorizations that are provided for this transaction
+       *
+       * Note that this is NOT the set of authorizations that are <i>required</i> for the transaction! The difference
+       * is subtle since for a properly authorized transaction, the provided authorizations are the required
+       * authorizations, but in practice it must be verified that the provided_authorizations are sufficient to fully
+       * authorize the transaction.
+       */
+      vector<authorization> provided_authorizations;
 
       /// Removes all messages and signatures
       void clear() { messages.clear(); signatures.clear(); }

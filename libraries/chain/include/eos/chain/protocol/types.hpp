@@ -93,8 +93,9 @@ namespace eos { namespace chain {
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-   using account = std::string;
+   using account_name = std::string;
    using message_type = std::string;
+   using privilege_class = std::string;
 
    /**
     *  List all object types from all namespaces here so they can

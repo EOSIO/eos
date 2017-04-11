@@ -16,11 +16,11 @@ namespace eos { namespace chain {
  */
 struct message {
    /// The account which sent the message
-   account sender;
+   account_name sender;
    /// The account to receive the message
-   account recipient;
+   account_name recipient;
    /// Other accounts to notify about this message
-   vector<account> notify_accounts;
+   vector<account_name> notify_accounts;
    /// The message type -- this is defined by the contract(s) which create and/or process this message
    message_type type;
    /// The message contents
