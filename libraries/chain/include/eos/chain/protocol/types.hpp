@@ -123,13 +123,12 @@ namespace eos { namespace chain {
    using account_id_type = chainbase::oid<account_object>;
    using producer_id_type = chainbase::oid<producer_object>;
 
-   using generated_transaction_id_type = uint32_t;
    using block_id_type = fc::ripemd160;
    using checksum_type = fc::ripemd160;
    using transaction_id_type = fc::ripemd160;
    using digest_type = fc::sha256;
+   using generated_transaction_id_type = fc::sha256;
    using signature_type = fc::ecc::compact_signature;
-   using share_type = safe<int64_t>;
    using weight_type = uint16_t;
 
    struct public_key_type

@@ -91,9 +91,16 @@ namespace eos { namespace chain {
       vector<digest_type> ids;
       std::transform(input_transactions.begin(), input_transactions.end(), std::back_inserter(ids),
                      [](const input_transaction& trx) {
-         if (trx.which() == input_transaction::tag<signed_transaction>::value)
-            return trx.get<signed_transaction>().merkle_digest();
-#warning How do I get the digest from a generated_transaction_id_type?...
+         struct {
+            using result_type = digest_type;
+            result_type operator() (const signed_transaction& t) {
+               return t.merkle_digest();
+            }
+            result_type operator() (const generated_transaction_id_type& id) {
+               return id;
+            }
+         } digester;
+         return trx.visit(digester);
       });
       std::transform(output_transactions.begin(), output_transactions.end(), std::back_inserter(ids),
                      std::bind(&generated_transaction::merkle_digest, std::placeholders::_1));

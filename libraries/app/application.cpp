@@ -539,6 +539,8 @@ namespace detail {
                for (const auto& cycle : blk_msg.block.cycles)
                   for (const auto& thread : cycle)
                      for (const auto& transaction : thread.input_transactions)
+                        // In theory, we can ignore generated transactions here, since they don't ever go bare over the
+                        // network. Is this true?...
                         if (transaction.which() == decay_t<decltype(transaction)>::tag<signed_transaction>::value) {
                            eos::net::trx_message transaction_message(transaction.get<signed_transaction>());
                            contained_transaction_message_ids.push_back(eos::net::message(transaction_message).id());
