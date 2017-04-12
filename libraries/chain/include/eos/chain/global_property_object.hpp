@@ -45,13 +45,13 @@ namespace eos { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-         OBJECT_CTOR(global_property_object)
+         OBJECT_CTOR(global_property_object, (active_producers))
 
          id_type                    id;
          chain_parameters           parameters;
          optional<chain_parameters> pending_parameters;
 
-         vector<producer_id_type>   active_producers;
+         shared_vector<producer_id_type> active_producers;
    };
 
    /**

@@ -47,12 +47,21 @@
 
 #include <chainbase/chainbase.hpp>
 
-#define OBJECT_CTOR(NAME) \
+#define OBJECT_CTOR1(NAME) \
     NAME() = delete; \
     public: \
     template<typename Constructor, typename Allocator> \
     NAME(Constructor&& c, chainbase::allocator<Allocator> a) \
     { c(*this); }
+#define OBJECT_CTOR2_MACRO(x, y, field) ,field(a)
+#define OBJECT_CTOR2(NAME, FIELDS) \
+    NAME() = delete; \
+    public: \
+    template<typename Constructor, typename Allocator> \
+    NAME(Constructor&& c, chainbase::allocator<Allocator> a) \
+    : id(0) BOOST_PP_SEQ_FOR_EACH(OBJECT_CTOR2_MACRO, _, FIELDS) \
+    { c(*this); }
+#define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
 
 namespace eos { namespace chain {
    using                               std::map;
@@ -89,6 +98,8 @@ namespace eos { namespace chain {
 
    using chainbase::allocator;
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
+   template<typename T>
+   using shared_vector = boost::interprocess::vector<T, allocator<T>>;
 
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;

@@ -45,9 +45,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "flush shared memory changes to disk every N blocks")
          ;
    cli.add_options()
-         ("replay-blockchain", bpo::value<bool>()->default_value(false), 
+         ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
-         ("resync-blockchain", bpo::value<bool>()->default_value(false), 
+         ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
          ;
 }
@@ -97,17 +97,17 @@ void chain_plugin::plugin_startup() {
       //     my->db.set_flush_interval(my->flush_interval);
       my->db.add_checkpoints(my->loaded_checkpoints);
 
-      if( my->replay ) {
+      if(my->replay) {
          ilog("Replaying blockchain on user request.");
          my->db.reindex(my->shared_memory_dir, my->shared_memory_size);
       } else {
          try {
-            ilog("opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
+            ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
             my->db.open(my->shared_memory_dir,
                         my->shared_memory_size,
                         [this] { return fc::json::from_file(my->genesis_file).as<eos::chain::genesis_state_type>(); });
-         } catch (const fc::assert_exception& e) {
-            wlog("Error opening database, attempting to replay blockchain");
+         } catch (const fc::exception& e) {
+            wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
             my->db.reindex(my->shared_memory_dir, my->shared_memory_size);
          }
       }

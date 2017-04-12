@@ -10,7 +10,7 @@ if( GPERFTOOLS_FOUND )
 endif()
 
 target_link_libraries( eosd
-                       PRIVATE appbase chain_plugin net_plugin http_plugin eos_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                       PRIVATE appbase producer_plugin chain_plugin net_plugin http_plugin eos_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
    eosd

@@ -709,7 +709,8 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    // Create global properties
    create<global_property_object>([&](global_property_object& p) {
        p.parameters = genesis_state.initial_parameters;
-       p.active_producers = initial_producers;
+       p.active_producers.resize(initial_producers.size());
+       std::copy(initial_producers.begin(), initial_producers.end(), p.active_producers.begin());
    });
    create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
       p.time = genesis_state.initial_timestamp;
@@ -811,14 +812,13 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
             init_genesis(genesis_loader());
          });
 
-      fc::optional<signed_block> last_block = _block_id_to_block.last();
-      if( last_block.valid() )
-      {
-         // Rewind the database to the last irreversible block
-         with_write_lock([this] {
-            undo_all();
-         });
+      // Rewind the database to the last irreversible block
+      with_write_lock([this] {
+         undo_all();
+      });
 
+      fc::optional<signed_block> last_block = _block_id_to_block.last();
+      if(last_block.valid()) {
          _fork_db.start_block( *last_block );
          idump((last_block->id())(last_block->block_num()));
          idump((head_block_id())(head_block_num()));
@@ -989,7 +989,7 @@ producer_id_type database::get_scheduled_producer(uint32_t slot_num)const
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t current_aslot = dpo.current_aslot + slot_num;
    const auto& gpo = get<global_property_object>();
-   return gpo.active_producers[ current_aslot % gpo.active_producers.size() ];
+   return gpo.active_producers[current_aslot % gpo.active_producers.size()];
 }
 
 fc::time_point_sec database::get_slot_time(uint32_t slot_num)const

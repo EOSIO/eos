@@ -23,16 +23,17 @@
  */
 #pragma once
 
+#include <eos/chain_plugin/chain_plugin.hpp>
+
 #include <eos/chain/database.hpp>
 
 #include <appbase/application.hpp>
 
 #include <fc/thread/future.hpp>
 
-namespace eos { namespace producer_plugin {
+namespace eos {
 
-namespace block_production_condition
-{
+namespace block_production_condition {
    enum block_production_condition_enum
    {
       produced = 0,
@@ -49,43 +50,22 @@ namespace block_production_condition
 
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES()
+   APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
-   virtual ~producer_plugin() {
-      try {
-         if( _block_production_task.valid() )
-            _block_production_task.cancel_and_wait(__FUNCTION__);
-      } catch(fc::canceled_exception&) {
-         //Expected exception. Move along.
-      } catch(fc::exception& e) {
-         edump((e.to_detail_string()));
-      }
-   }
+   producer_plugin();
+   virtual ~producer_plugin();
 
    virtual void set_program_options(
       boost::program_options::options_description &command_line_options,
       boost::program_options::options_description &config_file_options
       ) override;
 
-   void set_block_production(bool allow) { _production_enabled = allow; }
-
    virtual void plugin_initialize(const boost::program_options::variables_map& options);
    virtual void plugin_startup();
    virtual void plugin_shutdown();
 
 private:
-   void schedule_production_loop();
-   block_production_condition::block_production_condition_enum block_production_loop();
-   block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
-
-   boost::program_options::variables_map _options;
-   bool _production_enabled = false;
-   uint32_t _required_producer_participation = 33 * EOS_1_PERCENT;
-   uint32_t _production_skip_flags = eos::chain::database::skip_nothing;
-
-   std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
-   std::set<chain::producer_id_type> _producers;
-   fc::future<void> _block_production_task;
+   std::unique_ptr<class producer_plugin_impl> my;
 };
 
-} } //eos::producer_plugin
+} //eos

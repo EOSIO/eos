@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <eos/producer/producer.hpp>
+#include <eos/producer_plugin/producer_plugin.hpp>
 
 #include <eos/chain/database.hpp>
 #include <eos/chain/producer_object.hpp>
@@ -32,15 +32,38 @@
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
+#include <boost/asio.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include <iostream>
 
-using namespace eos::producer_plugin;
 using std::string;
 using std::vector;
 
 namespace bpo = boost::program_options;
 
-void new_chain_banner( const eos::chain::database& db )
+namespace eos {
+
+class producer_plugin_impl {
+public:
+   producer_plugin_impl(boost::asio::io_service& io)
+      : _timer(io) {}
+
+   void schedule_production_loop();
+   block_production_condition::block_production_condition_enum block_production_loop();
+   block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
+
+   boost::program_options::variables_map _options;
+   bool _production_enabled = false;
+   uint32_t _required_producer_participation = 33 * EOS_1_PERCENT;
+   uint32_t _production_skip_flags = eos::chain::database::skip_nothing;
+
+   std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
+   std::set<chain::producer_id_type> _producers;
+   boost::asio::deadline_timer _timer;
+};
+
+void new_chain_banner(const eos::chain::database& db)
 {
    std::cerr << "\n"
       "*******************************\n"
@@ -51,7 +74,7 @@ void new_chain_banner( const eos::chain::database& db )
       "*                             *\n"
       "*******************************\n"
       "\n";
-   if( db.get_slot_at_time( fc::time_point::now() ) > 200 )
+   if(db.get_slot_at_time(fc::time_point::now()) > 200)
    {
       std::cerr << "Your genesis seems to have an old timestamp\n"
          "Please consider using the --genesis-timestamp option to give your genesis a recent timestamp\n"
@@ -60,6 +83,11 @@ void new_chain_banner( const eos::chain::database& db )
    }
    return;
 }
+
+producer_plugin::producer_plugin()
+   : my(new producer_plugin_impl(app().get_io_service())){}
+
+producer_plugin::~producer_plugin() {}
 
 void producer_plugin::set_program_options(
    boost::program_options::options_description& command_line_options,
@@ -72,8 +100,8 @@ void producer_plugin::set_program_options(
                                              eos::utilities::key_to_wif(default_priv_key));
 
    command_line_options.add_options()
-         ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("required-participation", bpo::bool_switch()->notifier([this](int e){_required_producer_participation = uint32_t(e*EOS_1_PERCENT);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
+         ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("required-participation", bpo::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*EOS_1_PERCENT);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
          ("producer-id,w", bpo::value<vector<string>>()->composing()->multitoken(),
           ("ID of producer controlled by this node (e.g. " + producer_id_example + ", quotes are required, may specify multiple times)").c_str())
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
@@ -96,9 +124,8 @@ if( options.count(name) ) { \
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   ilog("producer plugin:  plugin_initialize() begin");
-   _options = &options;
-   LOAD_VALUE_SET(options, "producer-id", _producers, chain::producer_id_type)
+   my->_options = &options;
+   LOAD_VALUE_SET(options, "producer-id", my->_producers, chain::producer_id_type)
 
    if( options.count("private-key") )
    {
@@ -110,52 +137,54 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          fc::optional<fc::ecc::private_key> private_key = eos::utilities::wif_to_key(key_id_to_wif_pair.second);
          FC_ASSERT(private_key, "Invalid WIF-format private key ${key_string}",
                    ("key_string", key_id_to_wif_pair.second));
-         _private_keys[key_id_to_wif_pair.first] = *private_key;
+         my->_private_keys[key_id_to_wif_pair.first] = *private_key;
       }
    }
-   ilog("producer plugin:  plugin_initialize() end");
 } FC_LOG_AND_RETHROW() }
 
 void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
-#warning TODO
-//   chain::database& d = database();
+   chain::database& d = app().get_plugin<chain_plugin>().db();
 
-//   if( !_producers.empty() )
-//   {
-//      ilog("Launching block production for ${n} producers.", ("n", _producers.size()));
-//      app().set_block_production(true);
-//      if( _production_enabled )
-//      {
-//         if( d.head_block_num() == 0 )
-//            new_chain_banner(d);
-//         _production_skip_flags |= eos::chain::database::skip_undo_history_check;
-//      }
-//      schedule_production_loop();
-//   } else
-//      elog("No producers configured! Please add producer IDs and private keys to configuration.");
+   if( !my->_producers.empty() )
+   {
+      ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
+      if(my->_production_enabled)
+      {
+         if(d.head_block_num() == 0)
+            new_chain_banner(d);
+         my->_production_skip_flags |= eos::chain::database::skip_undo_history_check;
+      }
+      my->schedule_production_loop();
+   } else
+      elog("No producers configured! Please add producer IDs and private keys to configuration.");
    ilog("producer plugin:  plugin_startup() end");
-} FC_CAPTURE_AND_RETHROW() }
+   } FC_CAPTURE_AND_RETHROW() }
 
-void producer_plugin::schedule_production_loop()
-{
+void producer_plugin::plugin_shutdown() {
+   try {
+      my->_timer.cancel();
+   } catch(fc::exception& e) {
+      edump((e.to_detail_string()));
+   }
+}
+
+void producer_plugin_impl::schedule_production_loop() {
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms, wait for the whole second.
    fc::time_point now = fc::time_point::now();
    int64_t time_to_next_second = 1000000 - (now.time_since_epoch().count() % 1000000);
-   if( time_to_next_second < 50000 )      // we must sleep for at least 50ms
+   if(time_to_next_second < 50000)      // we must sleep for at least 50ms
        time_to_next_second += 1000000;
 
-   fc::time_point next_wakeup( now + fc::microseconds( time_to_next_second ) );
+   fc::time_point next_wakeup(now + fc::microseconds(time_to_next_second));
 
-   //wdump( (now.time_since_epoch().count())(next_wakeup.time_since_epoch().count()) );
-   _block_production_task = fc::schedule([this]{block_production_loop();},
-                                         next_wakeup, "Producer Block Production");
+   _timer.expires_from_now(boost::posix_time::microseconds(time_to_next_second));
+   _timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
 }
 
-block_production_condition::block_production_condition_enum producer_plugin::block_production_loop()
-{
+block_production_condition::block_production_condition_enum producer_plugin_impl::block_production_loop() {
    block_production_condition::block_production_condition_enum result;
    fc::mutable_variant_object capture;
    try
@@ -173,7 +202,7 @@ block_production_condition::block_production_condition_enum producer_plugin::blo
       result = block_production_condition::exception_producing_block;
    }
 
-   switch( result )
+   switch(result)
    {
       case block_production_condition::produced:
          ilog("Generated block #${n} with timestamp ${t} at time ${c}", (capture));
@@ -182,10 +211,10 @@ block_production_condition::block_production_condition_enum producer_plugin::blo
          ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
          break;
       case block_production_condition::not_my_turn:
-         //ilog("Not producing block because it isn't my turn");
+//         ilog("Not producing block because it isn't my turn");
          break;
       case block_production_condition::not_time_yet:
-         //ilog("Not producing block because slot has not yet arrived");
+//         ilog("Not producing block because slot has not yet arrived");
          break;
       case block_production_condition::no_private_key:
          ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
@@ -208,78 +237,81 @@ block_production_condition::block_production_condition_enum producer_plugin::blo
    return result;
 }
 
-block_production_condition::block_production_condition_enum producer_plugin::maybe_produce_block(fc::mutable_variant_object& capture) {
-//   chain::database& db = database();
-//   fc::time_point now_fine = fc::time_point::now();
-//   fc::time_point_sec now = now_fine + fc::microseconds(500000);
+block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
+   chain::database& db = app().get_plugin<chain_plugin>().db();
+   fc::time_point now_fine = fc::time_point::now();
+   fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
-//   // If the next block production opportunity is in the present or future, we're synced.
-//   if( !_production_enabled )
-//   {
-//      if( db.get_slot_time(1) >= now )
-//         _production_enabled = true;
-//      else
-//         return block_production_condition::not_synced;
-//   }
+   // If the next block production opportunity is in the present or future, we're synced.
+   if( !_production_enabled )
+   {
+      if( db.get_slot_time(1) >= now )
+         _production_enabled = true;
+      else
+         return block_production_condition::not_synced;
+   }
 
-//   // is anyone scheduled to produce now or one second in the future?
-//   uint32_t slot = db.get_slot_at_time( now );
-//   if( slot == 0 )
-//   {
-//      capture("next_time", db.get_slot_time(1));
-//      return block_production_condition::not_time_yet;
-//   }
+   // is anyone scheduled to produce now or one second in the future?
+   uint32_t slot = db.get_slot_at_time( now );
+   if( slot == 0 )
+   {
+      capture("next_time", db.get_slot_time(1));
+      return block_production_condition::not_time_yet;
+   }
 
-//   //
-//   // this assert should not fail, because now <= db.head_block_time()
-//   // should have resulted in slot == 0.
-//   //
-//   // if this assert triggers, there is a serious bug in get_slot_at_time()
-//   // which would result in allowing a later block to have a timestamp
-//   // less than or equal to the previous block
-//   //
-//   assert( now > db.head_block_time() );
+   //
+   // this assert should not fail, because now <= db.head_block_time()
+   // should have resulted in slot == 0.
+   //
+   // if this assert triggers, there is a serious bug in get_slot_at_time()
+   // which would result in allowing a later block to have a timestamp
+   // less than or equal to the previous block
+   //
+   assert( now > db.head_block_time() );
 
-//   eos::chain::producer_id_type scheduled_producer = db.get_scheduled_producer( slot );
-//   // we must control the producer scheduled to produce the next block.
-//   if( _producers.find( scheduled_producer ) == _producers.end() )
-//   {
-//      capture("scheduled_producer", scheduled_producer);
-//      return block_production_condition::not_my_turn;
-//   }
+   eos::chain::producer_id_type scheduled_producer = db.get_scheduled_producer( slot );
+   // we must control the producer scheduled to produce the next block.
+   if( _producers.find( scheduled_producer ) == _producers.end() )
+   {
+      capture("scheduled_producer", scheduled_producer);
+      return block_production_condition::not_my_turn;
+   }
 
-//   fc::time_point_sec scheduled_time = db.get_slot_time( slot );
-//   eos::chain::public_key_type scheduled_key = db.get(scheduled_producer).signing_key;
-//   auto private_key_itr = _private_keys.find( scheduled_key );
+   fc::time_point_sec scheduled_time = db.get_slot_time( slot );
+   eos::chain::public_key_type scheduled_key = db.get(scheduled_producer).signing_key;
+   auto private_key_itr = _private_keys.find( scheduled_key );
 
-//   if( private_key_itr == _private_keys.end() )
-//   {
-//      capture("scheduled_key", scheduled_key);
-//      return block_production_condition::no_private_key;
-//   }
+   if( private_key_itr == _private_keys.end() )
+   {
+      capture("scheduled_key", scheduled_key);
+      return block_production_condition::no_private_key;
+   }
 
-//   uint32_t prate = db.producer_participation_rate();
-//   if( prate < _required_producer_participation )
-//   {
-//      capture("pct", uint32_t(100*uint64_t(prate) / EOS_1_PERCENT));
-//      return block_production_condition::low_participation;
-//   }
+   uint32_t prate = db.producer_participation_rate();
+   if( prate < _required_producer_participation )
+   {
+      capture("pct", uint32_t(100*uint64_t(prate) / EOS_1_PERCENT));
+      return block_production_condition::low_participation;
+   }
 
-//   if( llabs((scheduled_time - now).count()) > fc::milliseconds( 500 ).count() )
-//   {
-//      capture("scheduled_time", scheduled_time)("now", now);
-//      return block_production_condition::lag;
-//   }
+   if( llabs((scheduled_time - now).count()) > fc::milliseconds( 500 ).count() )
+   {
+      capture("scheduled_time", scheduled_time)("now", now);
+      return block_production_condition::lag;
+   }
 
-//   auto block = db.generate_block(
-//      scheduled_time,
-//      scheduled_producer,
-//      private_key_itr->second,
-//      _production_skip_flags
-//      );
-//   capture("n", block.block_num())("t", block.timestamp)("c", now);
+   auto block = db.generate_block(
+      scheduled_time,
+      scheduled_producer,
+      private_key_itr->second,
+      _production_skip_flags
+      );
+   capture("n", block.block_num())("t", block.timestamp)("c", now);
+
 //   fc::async( [this,block](){ p2p_node().broadcast(net::block_message(block)); } );
+#warning TODO: broadcast the new block
 
-#warning TODO
-   return block_production_condition::not_time_yet;
+   return block_production_condition::produced;
 }
+
+} // namespace eos

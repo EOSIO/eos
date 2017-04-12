@@ -29,21 +29,15 @@
 namespace eos { namespace chain {
    class producer_object : public chainbase::object<producer_object_type, producer_object>
    {
-         producer_object() = delete;
-   public:
-         template<typename Constructor, typename Allocator>
-         producer_object(Constructor&& c, chainbase::allocator<Allocator> a)
-            : owner_name(a), url(a) {
-            c(*this);
-         }
+      OBJECT_CTOR(producer_object, (owner_name)(url))
 
-         id_type          id;
-         shared_string    owner_name;
-         uint64_t         last_aslot = 0;
-         public_key_type  signing_key;
-         shared_string    url;
-         int64_t          total_missed = 0;
-         uint32_t         last_confirmed_block_num = 0;
+      id_type          id;
+      shared_string    owner_name;
+      uint64_t         last_aslot = 0;
+      public_key_type  signing_key;
+      shared_string    url;
+      int64_t          total_missed = 0;
+      uint32_t         last_confirmed_block_num = 0;
    };
 
    struct by_key;

@@ -11,7 +11,7 @@ namespace eos {
         net_plugin();
         ~net_plugin();
 
-        APPBASE_PLUGIN_REQUIRES((chain_plugin));
+        APPBASE_PLUGIN_REQUIRES((chain_plugin))
         virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
         void plugin_initialize(const variables_map& options);

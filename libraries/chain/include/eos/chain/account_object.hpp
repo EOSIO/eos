@@ -29,18 +29,12 @@
 namespace eos { namespace chain {
    class account_object : public chainbase::object<account_object_type, account_object>
    {
-         account_object() = delete;
-   public:
-         template<typename Constructor, typename Allocator>
-         account_object(Constructor&& c, chainbase::allocator<Allocator> a)
-            : name(a) {
-            c(*this);
-         }
+      OBJECT_CTOR(account_object, (name))
 
-         id_type           id;
-         shared_string     name;
-         public_key_type   owner_key;
-         public_key_type   active_key;
+      id_type           id;
+      shared_string     name;
+      public_key_type   owner_key;
+      public_key_type   active_key;
    };
 
    struct by_name;
