@@ -151,7 +151,6 @@ namespace eos { namespace chain {
        friend bool operator == ( const public_key_type& p1, const public_key_type& p2);
        friend bool operator != ( const public_key_type& p1, const public_key_type& p2);
        friend bool operator < ( const public_key_type& p1, const public_key_type& p2);
-       // TODO: This is temporary for testing
        bool is_valid_v1( const std::string& base58str );
    };
 
