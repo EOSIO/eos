@@ -1,0 +1,87 @@
+#// Built In Types
+#Vector[Type]
+#String
+#Bytes
+#Time
+#Signature
+#PublicKey
+#FixedString16,32  // names, types
+#FixedBytes16,28,32,64 // signatures, hashes, keys
+#UInt8,16,32,64,128,224,256,512
+#Int8,16,32,64,128,224,256,512
+
+typedef FixedString32  AccountName
+typedef FixedString16  PermissionName
+typedef FixedString16  MessageType
+typedef UInt32         AccountPermissionWeight
+typedef UInt32         GeneratedTransactionID
+
+# import account type as localtype
+
+struct Message
+  from AccountName # testing
+  to   AccountName
+  cc   AccountName[]
+  type MessageType
+  data Bytes
+
+struct AccountPermission
+  account    AccountName
+  permission PermissionName
+
+struct Transaction
+  expiration  Time
+  tapos       UInt32
+  messages    Message[]
+  permissions AccountPermission[]
+  
+struct SignedTransaction inherits Transaction
+  signatures Signature[]
+
+struct KeyPermissionWeight
+  key    PublicKey
+  weight UInt16
+
+struct Authority
+  threshold UInt32
+  keys      KeyPermissionWeight[]
+  accounts  AccountPermissionWeight[]
+
+struct CreateAccount
+  creator  AccountName
+  name     AccountName
+  owner    Authority
+  active   Authority
+  recovery Authority
+
+struct UpdatePermission
+  account     AccountName
+  permission  PermissionName
+  parent      PermissionName
+  authority   Authority
+
+struct DeletePermission
+  account AccountName
+  permission PermissionName
+
+struct Transfer
+  from    AccountName
+  to      AccountName
+  amount  UInt64
+  memo    String
+
+struct CreateProducer
+  account AccountName
+  key     PublicKey
+
+struct VoteOnProducer
+  account  AccountName
+  producer AccountName
+  weight   Int8
+
+struct SetProducerVoteProxy
+  account AccountName
+  proxy   AccountName
+
+
+
