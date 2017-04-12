@@ -487,31 +487,31 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    auto& trx_idx = get_mutable_index<transaction_multi_index>();
    auto trx_id = trx.id();
-   FC_ASSERT( (skip & skip_transaction_dupe_check) ||
-              trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
+   FC_ASSERT((skip & skip_transaction_dupe_check) ||
+             trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end());
    const chain_parameters& chain_parameters = get_global_properties().parameters;
 
    //Skip all manner of expiration and TaPoS checking if we're on block 1; It's impossible that the transaction is
    //expired, and TaPoS makes no sense as no blocks exist.
-   if( BOOST_LIKELY(head_block_num() > 0) )
+   if(BOOST_LIKELY(head_block_num() > 0))
    {
-      if( !(skip & skip_tapos_check) )
+      if(!(skip & skip_tapos_check))
       {
-         const auto& tapos_block_summary = get<block_summary_object>( trx.ref_block_num );
+         const auto& tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
 
          //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-         FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
+         FC_ASSERT(trx.ref_block_prefix == tapos_block_summary.block_id._hash[1]);
       }
 
       fc::time_point_sec now = head_block_time();
 
-      FC_ASSERT( trx.expiration <= now + chain_parameters.maximum_time_until_expiration, "",
-                 ("trx.expiration",trx.expiration)("now",now)("max_til_exp",chain_parameters.maximum_time_until_expiration));
-      FC_ASSERT( now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
+      FC_ASSERT(trx.expiration <= now + chain_parameters.maximum_time_until_expiration, "",
+                ("trx.expiration",trx.expiration)("now",now)("max_til_exp",chain_parameters.maximum_time_until_expiration));
+      FC_ASSERT(now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration));
    }
 
    //Insert transaction into unique transactions database.
-   if( !(skip & skip_transaction_dupe_check) )
+   if(!(skip & skip_transaction_dupe_check))
    {
       create<transaction_object>([&](transaction_object& transaction) {
          transaction.trx_id = trx_id;
@@ -522,33 +522,33 @@ void database::_apply_transaction(const signed_transaction& trx)
    //Finally, process the messages
    signed_transaction ptrx(trx);
    _current_message_in_trx = 0;
-   for( const auto& msg : ptrx.messages )
+   for(const auto& msg : ptrx.messages)
    {
 #warning TODO: Process messages in transaction
       ++_current_message_in_trx;
    }
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
+} FC_CAPTURE_AND_RETHROW((trx)) }
 
-const producer_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
+const producer_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)const
 {
-   FC_ASSERT( head_block_id() == next_block.previous, "", ("head_block_id",head_block_id())("next.prev",next_block.previous) );
-   FC_ASSERT( head_block_time() < next_block.timestamp, "", ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()) );
+   FC_ASSERT(head_block_id() == next_block.previous, "", ("head_block_id",head_block_id())("next.prev",next_block.previous));
+   FC_ASSERT(head_block_time() < next_block.timestamp, "", ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
    const producer_object& producer = get(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
-   if( !(skip&skip_producer_signature) )
-      FC_ASSERT( next_block.validate_signee( producer.signing_key ),
-                 "Incorrect block producer key: expected ${e} but got ${a}",
-                 ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
+   if(!(skip&skip_producer_signature))
+      FC_ASSERT(next_block.validate_signee(producer.signing_key),
+                "Incorrect block producer key: expected ${e} but got ${a}",
+                ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
 
-   if( !(skip&skip_producer_schedule_check) )
+   if(!(skip&skip_producer_schedule_check))
    {
-      uint32_t slot_num = get_slot_at_time( next_block.timestamp );
-      FC_ASSERT( slot_num > 0 );
+      uint32_t slot_num = get_slot_at_time(next_block.timestamp);
+      FC_ASSERT(slot_num > 0);
 
-      producer_id_type scheduled_producer = get_scheduled_producer( slot_num );
+      producer_id_type scheduled_producer = get_scheduled_producer(slot_num);
 
-      FC_ASSERT( next_block.producer == scheduled_producer, "Producer produced block at wrong time",
-                 ("block producer",next_block.producer)("scheduled",scheduled_producer)("slot_num",slot_num) );
+      FC_ASSERT(next_block.producer == scheduled_producer, "Producer produced block at wrong time",
+                ("block producer",next_block.producer)("scheduled",scheduled_producer)("slot_num",slot_num));
    }
 
    return producer;
@@ -799,9 +799,7 @@ void database::wipe(const fc::path& data_dir, bool include_blocks)
 
 void database::open(const fc::path& data_dir, uint64_t shared_file_size,
                     std::function<genesis_state_type()> genesis_loader)
-{
-   try
-   {
+{ try {
       chainbase::database::open(data_dir, read_write, shared_file_size);
 
       initialize_indexes();
@@ -830,9 +828,7 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
                          ("last_block->id", last_block->id())("head_block_num",head_block_num()) );
          }
       }
-   }
-   FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
-}
+} FC_CAPTURE_LOG_AND_RETHROW((data_dir)) }
 
 void database::close()
 {

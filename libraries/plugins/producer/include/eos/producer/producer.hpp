@@ -23,8 +23,9 @@
  */
 #pragma once
 
-#include <eos/app/plugin.hpp>
 #include <eos/chain/database.hpp>
+
+#include <appbase/application.hpp>
 
 #include <fc/thread/future.hpp>
 
@@ -46,9 +47,11 @@ namespace block_production_condition
    };
 }
 
-class producer_plugin : public eos::app::plugin {
+class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
-   ~producer_plugin() {
+   APPBASE_PLUGIN_REQUIRES()
+
+   virtual ~producer_plugin() {
       try {
          if( _block_production_task.valid() )
             _block_production_task.cancel_and_wait(__FUNCTION__);
@@ -59,23 +62,21 @@ public:
       }
    }
 
-   std::string plugin_name()const override;
-
-   virtual void plugin_set_program_options(
+   virtual void set_program_options(
       boost::program_options::options_description &command_line_options,
       boost::program_options::options_description &config_file_options
       ) override;
 
    void set_block_production(bool allow) { _production_enabled = allow; }
 
-   virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
-   virtual void plugin_startup() override;
-   virtual void plugin_shutdown() override;
+   virtual void plugin_initialize(const boost::program_options::variables_map& options);
+   virtual void plugin_startup();
+   virtual void plugin_shutdown();
 
 private:
    void schedule_production_loop();
    block_production_condition::block_production_condition_enum block_production_loop();
-   block_production_condition::block_production_condition_enum maybe_produce_block( fc::mutable_variant_object& capture );
+   block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
 
    boost::program_options::variables_map _options;
    bool _production_enabled = false;

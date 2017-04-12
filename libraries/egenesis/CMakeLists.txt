@@ -12,7 +12,7 @@ add_executable( embed_genesis
    embed_genesis.cpp
    )
 
-target_link_libraries( embed_genesis eos_chain eos_app eos_egenesis_none fc )
+target_link_libraries( embed_genesis eos_chain eos_egenesis_none fc )
 
 set( embed_genesis_args
    -t "${CMAKE_CURRENT_SOURCE_DIR}/egenesis_brief.cpp.tmpl---${CMAKE_CURRENT_BINARY_DIR}/egenesis_brief.cpp"

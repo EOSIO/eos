@@ -23,7 +23,6 @@
  */
 #pragma once
 
-#include <eos/app/application.hpp>
 #include <eos/chain/database.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/exceptions.hpp>
