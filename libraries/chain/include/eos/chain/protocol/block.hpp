@@ -50,6 +50,15 @@ namespace eos { namespace chain {
 
    struct thread {
       using input_transaction = static_variant<signed_transaction, generated_transaction_id_type>;
+      struct input_transaction_digest_visitor {
+         using result_type = digest_type;
+         result_type operator() (const signed_transaction& t) const {
+            return t.merkle_digest();
+         }
+         result_type operator() (const generated_transaction_id_type& id) const {
+            return id;
+         }
+      };
 
       vector<input_transaction> input_transactions;
       vector<generated_transaction> output_transactions;

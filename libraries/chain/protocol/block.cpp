@@ -39,9 +39,9 @@ namespace eos { namespace chain {
 
    block_id_type signed_block_header::id()const
    {
-      auto tmp = fc::sha224::hash( *this );
+      auto tmp = fc::sha224::hash(*this);
       tmp._hash[0] = fc::endian_reverse_u32(block_num()); // store the block num in the ID, 160 bits is plenty for the hash
-      static_assert( sizeof(tmp._hash[0]) == 4, "should be 4 bytes" );
+      static_assert(sizeof(tmp._hash[0]) == 4, "should be 4 bytes");
       block_id_type result;
       memcpy(result._hash, tmp._hash, std::min(sizeof(result), sizeof(tmp)));
       return result;
@@ -49,15 +49,15 @@ namespace eos { namespace chain {
 
    fc::ecc::public_key signed_block_header::signee()const
    {
-      return fc::ecc::public_key( producer_signature, digest(), true/*enforce canonical*/ );
+      return fc::ecc::public_key(producer_signature, digest(), true/*enforce canonical*/);
    }
 
-   void signed_block_header::sign( const fc::ecc::private_key& signer )
+   void signed_block_header::sign(const fc::ecc::private_key& signer)
    {
-      producer_signature = signer.sign_compact( digest() );
+      producer_signature = signer.sign_compact(digest());
    }
 
-   bool signed_block_header::validate_signee( const fc::ecc::public_key& expected_signee )const
+   bool signed_block_header::validate_signee(const fc::ecc::public_key& expected_signee)const
    {
       return signee() == expected_signee;
    }
@@ -89,19 +89,9 @@ namespace eos { namespace chain {
 
    digest_type thread::merkle_digest() const {
       vector<digest_type> ids;
+      input_transaction_digest_visitor v;
       std::transform(input_transactions.begin(), input_transactions.end(), std::back_inserter(ids),
-                     [](const input_transaction& trx) {
-         struct {
-            using result_type = digest_type;
-            result_type operator() (const signed_transaction& t) {
-               return t.merkle_digest();
-            }
-            result_type operator() (const generated_transaction_id_type& id) {
-               return id;
-            }
-         } digester;
-         return trx.visit(digester);
-      });
+                     [v = input_transaction_digest_visitor()](const input_transaction& t) { return t.visit(v); });
       std::transform(output_transactions.begin(), output_transactions.end(), std::back_inserter(ids),
                      std::bind(&generated_transaction::merkle_digest, std::placeholders::_1));
 
