@@ -1,7 +1,7 @@
 {
   "initial_timestamp": "2017-03-30T12:00:00",
   "initial_parameters": {
-    "block_interval": 5,
+    "block_interval": 2,
     "maintenance_interval": 86400,
     "maintenance_skip_slots": 3,
     "maximum_transaction_size": 2048,
