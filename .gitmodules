@@ -8,3 +8,6 @@
 [submodule "libraries/wren"]
 	path = libraries/wren
 	url = https://github.com/bytemaster/wren.git
+[submodule "libraries/appbase"]
+	path = libraries/appbase
+	url = https://github.com/bytemaster/appbase
