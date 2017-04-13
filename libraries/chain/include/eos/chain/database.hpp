@@ -29,6 +29,7 @@
 #include <eos/chain/genesis_state.hpp>
 
 #include <chainbase/chainbase.hpp>
+#include <fc/scoped_exit.hpp>
 #include <fc/signals.hpp>
 
 #include <eos/chain/protocol/protocol.hpp>
@@ -137,6 +138,42 @@ namespace eos { namespace chain {
             const fc::ecc::private_key& block_signing_private_key
             );
 
+
+         template<typename Function>
+         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         {
+            auto old_flags = _skip_flags;
+            auto on_exit   = fc::make_scoped_exit( [&](){ _skip_flags = old_flags; } );
+            _skip_flags = flags;
+            return f();
+         }
+
+         template<typename Function>
+         auto with_producing( Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         {
+            auto old_producing = _producing;
+            auto on_exit   = fc::make_scoped_exit( [&](){ _producing = old_producing; } );
+            _producing = true;
+            return f();
+         }
+
+
+         template<typename Function>
+         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         {
+            auto old_pending = std::move( _pending_transactions );
+            _pending_tx_session.reset();
+            auto on_exit = fc::make_scoped_exit( [&](){ 
+               for( const auto& t : old_pending ) {
+                  try {
+                     push_transaction( t );
+                  } catch ( ... ){}
+               }
+            });
+            return f();
+         }
+
+
          void pop_block();
          void clear_pending();
 
@@ -204,7 +241,7 @@ namespace eos { namespace chain {
          block_id_type    head_block_id()const;
          producer_id_type head_block_producer()const;
 
-         decltype( chain_parameters::block_interval ) block_interval( )const;
+         uint32_t  block_interval( )const { return EOS_BLOCK_INTERVAL_SEC; }
 
          node_property_object& node_properties();
 
@@ -248,7 +285,7 @@ namespace eos { namespace chain {
          void update_last_irreversible_block();
          void clear_expired_transactions();
 
-         vector< signed_transaction >        _pending_tx;
+         deque< signed_transaction >         _pending_transactions;
          fork_database                       _fork_db;
 
          /**
@@ -262,15 +299,8 @@ namespace eos { namespace chain {
           */
          block_database   _block_id_to_block;
 
-         uint32_t                          _current_block_num    = 0;
-         uint16_t                          _current_trx_in_block = 0;
-         uint16_t                          _current_message_in_trx    = 0;
-         uint16_t                          _current_virtual_op   = 0;
-
-         vector<uint64_t>                  _vote_tally_buffer;
-         vector<uint64_t>                  _producer_count_histogram_buffer;
-         vector<uint64_t>                  _committee_count_histogram_buffer;
-         uint64_t                          _total_voting_stake;
+         bool                              _producing = false;
+         uint64_t                          _skip_flags = 0;
 
          flat_map<uint32_t,block_id_type>  _checkpoints;
 

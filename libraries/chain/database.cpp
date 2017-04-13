@@ -23,7 +23,6 @@
  */
 
 #include <eos/chain/database.hpp>
-#include <eos/chain/db_with.hpp>
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
@@ -126,19 +125,13 @@ std::vector<block_id_type> database::get_block_ids_on_fork(block_id_type head_of
  * @return true if we switched forks as a result of this push.
  */
 bool database::push_block(const signed_block& new_block, uint32_t skip)
-{
-//   idump((new_block.block_num())(new_block.id())(new_block.timestamp)(new_block.previous));
-   bool result;
-   detail::with_skip_flags( *this, skip, [&]()
-   {
-      detail::without_pending_transactions( *this, std::move(_pending_tx),
-      [&]()
-      {
-         result = _push_block(new_block);
+{ try {
+   return with_skip_flags( skip, [&](){ 
+      return without_pending_transactions( [&]() {
+         return with_write_lock( [&]() { return _push_block(new_block); } );
       });
    });
-   return result;
-}
+} FC_CAPTURE_AND_RETHROW( (new_block) ) }
 
 bool database::_push_block(const signed_block& new_block)
 { try {
@@ -231,16 +224,19 @@ bool database::_push_block(const signed_block& new_block)
  */
 void database::push_transaction(const signed_transaction& trx, uint32_t skip)
 { try {
-   detail::with_skip_flags(*this, skip, [&]()
-   {
-      _push_transaction(trx);
+   with_skip_flags( skip, [&]() {
+      with_producing( [&](){
+         with_write_lock( [&]() {
+            _push_transaction(trx);
+         });
+      });
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 void database::_push_transaction(const signed_transaction& trx) {
    auto temp_session = start_undo_session(true);
    _apply_transaction(trx);
-   _pending_tx.push_back(trx);
+   _pending_transactions.push_back(trx);
 
    // notify_changed_objects();
    // The transaction applied successfully. Merge its changes into the pending block session.
@@ -262,13 +258,14 @@ signed_block database::generate_block(
    uint32_t skip /* = 0 */
    )
 { try {
-   signed_block result;
-   detail::with_skip_flags( *this, skip, [&]()
-   {
-      result = _generate_block( when, producer_id, block_signing_private_key );
-   } );
-   return result;
-} FC_CAPTURE_AND_RETHROW() }
+   return with_producing( [&]() {
+      return with_skip_flags( skip, [&](){
+         return with_write_lock( [&](){
+           return _generate_block( when, producer_id, block_signing_private_key );
+         });
+      });
+    });
+} FC_CAPTURE_AND_RETHROW( (when) ) }
 
 signed_block database::_generate_block(
    fc::time_point_sec when,
@@ -310,7 +307,7 @@ signed_block database::_generate_block(
 
    uint64_t postponed_tx_count = 0;
    // pop pending state (reset to head block state)
-   for( const signed_transaction& tx : _pending_tx )
+   for( const signed_transaction& tx : _pending_transactions )
    {
       size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
 
@@ -347,7 +344,7 @@ signed_block database::_generate_block(
 
    // We have temporarily broken the invariant that
    // _pending_tx_session is the result of applying _pending_tx, as
-   // _pending_tx now consists of the set of postponed transactions.
+   // _pending_transactions now consists of the set of postponed transactions.
    // However, the push_block() call below will re-create the
    // _pending_tx_session.
 
@@ -386,8 +383,8 @@ void database::pop_block()
 
 void database::clear_pending()
 { try {
-   assert( (_pending_tx.size() == 0) || _pending_tx_session.valid() );
-   _pending_tx.clear();
+   assert( (_pending_transactions.size() == 0) || _pending_tx_session.valid() );
+   _pending_transactions.clear();
    _pending_tx_session.reset();
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -405,13 +402,9 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       if( _checkpoints.rbegin()->first >= block_num )
          skip = ~0;// WE CAN SKIP ALMOST EVERYTHING
    }
-
-   detail::with_skip_flags( *this, skip, [&]()
-   {
-      _apply_block( next_block );
-   } );
-   return;
+   with_skip_flags( skip, [&](){ _apply_block( next_block ); } );
 }
+
 
 void database::_apply_block(const signed_block& next_block)
 { try {
@@ -421,9 +414,6 @@ void database::_apply_block(const signed_block& next_block)
    FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
-
-   _current_block_num    = next_block_num;
-   _current_trx_in_block = 0;
 
    /* We do not need to push the undo state for each transaction
     * because they either all apply and are valid or the
@@ -435,11 +425,9 @@ void database::_apply_block(const signed_block& next_block)
       for (const auto& thread : cycle) {
          for(const auto& trx : thread.generated_input ) {
 #warning TODO: Process generated transaction
-            ++_current_trx_in_block;
          }
          for(const auto& trx : thread.user_input ) {
             apply_transaction(trx);
-            ++_current_trx_in_block;
          }
       }
    }
@@ -465,10 +453,7 @@ void database::_apply_block(const signed_block& next_block)
 
 void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 {
-   detail::with_skip_flags(*this, skip, [&]()
-   {
-      _apply_transaction(trx);
-   });
+   with_skip_flags( skip, [&]() { _apply_transaction(trx); });
 }
 
 void database::_apply_transaction(const signed_transaction& trx)
@@ -514,11 +499,9 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    //Finally, process the messages
    signed_transaction ptrx(trx);
-   _current_message_in_trx = 0;
    for(const auto& msg : ptrx.messages)
    {
 #warning TODO: Process messages in transaction
-      ++_current_message_in_trx;
    }
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
@@ -619,11 +602,6 @@ producer_id_type database::head_block_producer() const
    return {};
 }
 
-decltype( chain_parameters::block_interval ) database::block_interval( )const
-{
-   return get_global_properties().parameters.block_interval;
-}
-
 const chain_id_type& database::get_chain_id( )const
 {
    return get<chain_property_object>().chain_id;
@@ -658,11 +636,8 @@ void database::initialize_indexes()
 void database::init_genesis(const genesis_state_type& genesis_state)
 { try {
    FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
-   FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % EOS_DEFAULT_BLOCK_INTERVAL == 0,
+   FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % EOS_BLOCK_INTERVAL_SEC == 0,
               "Genesis timestamp must be divisible by EOS_DEFAULT_BLOCK_INTERVAL." );
-   FC_ASSERT(genesis_state.initial_producer_count >= genesis_state.initial_producers.size(),
-             "Initial producer count is ${c} but only ${w} producers were defined.",
-             ("c", genesis_state.initial_producer_count)("w", genesis_state.initial_producers.size()));
 
    struct auth_inhibitor {
       auth_inhibitor(database& db) : db(db), old_flags(db.node_properties().skip_flags)
@@ -801,13 +776,16 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
       _block_id_to_block.open(data_dir / "database" / "block_num_to_block");
 
       if( !find<global_property_object>() )
-         with_write_lock([this, genesis_loader = std::move(genesis_loader)] {
+         with_write_lock([&] {
             init_genesis(genesis_loader());
          });
 
       // Rewind the database to the last irreversible block
-      with_write_lock([this] {
+      with_write_lock([&] {
          undo_all();
+
+         FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
+                   ("rev", revision())("head_block", head_block_num()) );
       });
 
       fc::optional<signed_block> last_block = _block_id_to_block.last();
@@ -826,11 +804,6 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
 void database::close()
 {
    // TODO:  Save pending tx's on close()
-   clear_pending();
-
-   // Since pop_block() will move tx's in the popped blocks into pending,
-   // we have to clear_pending() after we're done popping to get a clean
-   // DB state (issue #336).
    clear_pending();
 
    chainbase::database::flush();
@@ -866,17 +839,6 @@ void database::update_global_dynamic_data( const signed_block& b )
 
    // dynamic global properties updating
    modify( _dgp, [&]( dynamic_global_property_object& dgp ){
-      if( BOOST_UNLIKELY( b.block_num() == 1 ) )
-         dgp.recently_missed_count = 0;
-         else if( _checkpoints.size() && _checkpoints.rbegin()->first >= b.block_num() )
-         dgp.recently_missed_count = 0;
-      else if( missed_blocks )
-         dgp.recently_missed_count += EOS_RECENTLY_MISSED_COUNT_INCREMENT*missed_blocks;
-      else if( dgp.recently_missed_count > EOS_RECENTLY_MISSED_COUNT_INCREMENT )
-         dgp.recently_missed_count -= EOS_RECENTLY_MISSED_COUNT_DECREMENT;
-      else if( dgp.recently_missed_count > 0 )
-         dgp.recently_missed_count--;
-
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
@@ -886,15 +848,6 @@ void database::update_global_dynamic_data( const signed_block& b )
            + 1) << missed_blocks;
       dgp.current_aslot += missed_blocks+1;
    });
-
-   if( !(get_node_properties().skip_flags & skip_undo_history_check) )
-   {
-      EOS_ASSERT( _dgp.head_block_number - _dgp.last_irreversible_block_num  < EOS_MAX_UNDO_HISTORY, undo_database_exception,
-                 "The database does not have enough undo history to support a blockchain with so many missed blocks. "
-                 "Please add a checkpoint if you would like to continue applying blocks beyond this point.",
-                 ("last_irreversible_block_num",_dgp.last_irreversible_block_num)("head", _dgp.head_block_number)
-                 ("recently_missed",_dgp.recently_missed_count)("max_undo",EOS_MAX_UNDO_HISTORY) );
-   }
 
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
 }

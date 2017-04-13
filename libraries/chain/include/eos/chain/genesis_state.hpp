@@ -64,7 +64,6 @@ struct genesis_state_type {
    immutable_chain_parameters               immutable_parameters;
    vector<initial_account_type>             initial_accounts;
    vector<initial_producer_type>            initial_producers;
-   uint64_t                                 initial_producer_count = EOS_DEFAULT_MIN_PRODUCER_COUNT;
 
    /**
     * Temporary, will be moved elsewhere.
@@ -87,4 +86,4 @@ FC_REFLECT(eos::chain::genesis_state_type::initial_producer_type, (owner_name)(b
 
 FC_REFLECT(eos::chain::genesis_state_type,
            (initial_timestamp)(initial_parameters)(immutable_parameters)(initial_accounts)
-           (initial_producers)(initial_producer_count)(initial_chain_id))
+           (initial_producers)(initial_chain_id))

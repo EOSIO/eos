@@ -73,16 +73,6 @@ namespace eos { namespace chain {
          time_point_sec    time;
          producer_id_type   current_producer;
          uint32_t          accounts_registered_this_interval = 0;
-         /**
-          *  Every time a block is missed this increases by
-          *  RECENTLY_MISSED_COUNT_INCREMENT,
-          *  every time a block is found it decreases by
-          *  RECENTLY_MISSED_COUNT_DECREMENT.  It is
-          *  never less than 0.
-          *
-          *  If the recently_missed_count hits 2*UNDO_HISTORY then no new blocks may be pushed.
-          */
-         uint32_t          recently_missed_count = 0;
 
          /**
           * The current absolute slot number.  Equal to the total
@@ -134,7 +124,6 @@ FC_REFLECT(eos::chain::dynamic_global_property_object,
            (time)
            (current_producer)
            (accounts_registered_this_interval)
-           (recently_missed_count)
            (current_aslot)
            (recent_slots_filled)
            (dynamic_flags)
