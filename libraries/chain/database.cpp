@@ -431,25 +431,18 @@ void database::_apply_block(const signed_block& next_block)
     * for transactions when validating broadcast transactions or
     * when building a block.
     */
-   for (const auto& cycle : next_block.cycles)
-      for (const auto& thread : cycle)
-         for(const auto& trx : thread.input_transactions)
-         {
-            struct {
-               using result_type = void;
-               void operator()(const signed_transaction& trx) {
-                  db.apply_transaction(trx);
-               }
-               void operator()(generated_transaction_id_type) {
+   for (const auto& cycle : next_block.cycles) {
+      for (const auto& thread : cycle) {
+         for(const auto& trx : thread.generated_input ) {
 #warning TODO: Process generated transaction
-               }
-
-               database& db;
-            } visitor{*this};
-
-            trx.visit(visitor);
             ++_current_trx_in_block;
          }
+         for(const auto& trx : thread.user_input ) {
+            apply_transaction(trx);
+            ++_current_trx_in_block;
+         }
+      }
+   }
 
    update_global_dynamic_data(next_block);
    update_signing_producer(signing_producer, next_block);

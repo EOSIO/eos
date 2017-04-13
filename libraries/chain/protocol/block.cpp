@@ -88,12 +88,20 @@ namespace eos { namespace chain {
    }
 
    digest_type thread::merkle_digest() const {
-      vector<digest_type> ids;
-      input_transaction_digest_visitor v;
-      std::transform(input_transactions.begin(), input_transactions.end(), std::back_inserter(ids),
-                     [v = input_transaction_digest_visitor()](const input_transaction& t) { return t.visit(v); });
-      std::transform(output_transactions.begin(), output_transactions.end(), std::back_inserter(ids),
-                     std::bind(&generated_transaction::merkle_digest, std::placeholders::_1));
+      vector<digest_type> ids = generated_input;
+      ids.reserve( ids.size() + user_input.size() + output_transactions.size() );
+
+      for( const auto& trx : user_input )
+         ids.push_back( trx.digest() );
+
+      /**
+       *  When generating the merkle hash of an output transaction we hash it
+       *  a second time. This is because the transaction has not been confirmed as
+       *  "valid and applied" just "produced".  Later, when this transaction is included
+       *  as part of "generated input" its ID will be used without the extra hash.
+       */
+      for( const auto& trx : output_transactions )
+         ids.push_back( digest_type::hash(trx.digest()) );
 
       return merkle(ids);
    }
