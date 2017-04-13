@@ -44,8 +44,7 @@ namespace eos { namespace chain {
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-   default_genesis_state.initial_producer_count = EOS_DEFAULT_MIN_PRODUCER_COUNT;
-   for (int i = 0; i < default_genesis_state.initial_producer_count; ++i) {
+   for (int i = 0; i < default_genesis_state.initial_producers.size(); ++i) {
       auto name = std::string("init") + fc::to_string(i);
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();

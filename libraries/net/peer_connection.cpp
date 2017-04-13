@@ -498,7 +498,7 @@ namespace eos { namespace net
       // to give us some wiggle room)
       return inventory_peer_advertised_to_us.size() >
         EOS_NET_MAX_INVENTORY_SIZE_IN_MINUTES * EOS_NET_MAX_TRX_PER_SECOND * 60 +
-        (EOS_NET_MAX_INVENTORY_SIZE_IN_MINUTES + 1) * 60 / EOS_MIN_BLOCK_INTERVAL;
+        (EOS_NET_MAX_INVENTORY_SIZE_IN_MINUTES + 1) * 60 / EOS_BLOCK_INTERVAL_SEC;
     }
 
     bool peer_connection::performing_firewall_check() const
