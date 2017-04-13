@@ -84,6 +84,16 @@ namespace eos { namespace chain {
          for (const auto& thread : cycle)
             ids.emplace_back(thread.merkle_digest());
 
+/**
+ *  Suggest moving thread::merkle_digest code to return vector of ids which get added to ids above and then calculating root over all
+ */
+#warning TODO  The merkle root needs to be over all transactions, but this is currently hashing all threads merkle roots which will make proofs O(N) rather than O( LOG(N) )
+
+      /**
+       *  This may require passing 
+       */
+#warning TODO  Add global incremental block header merkle   https://github.com/EOSIO/eos/issues/8
+
       return checksum_type::hash(merkle(ids));
    }
 
@@ -102,6 +112,7 @@ namespace eos { namespace chain {
        */
       for( const auto& trx : output_transactions )
          ids.push_back( digest_type::hash(trx.digest()) );
+
 
       return merkle(ids);
    }
