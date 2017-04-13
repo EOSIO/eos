@@ -124,4 +124,27 @@ void chain_plugin::plugin_shutdown() {
    ilog("database closed successfully");
 }
 
+bool chain_plugin::accept_block(const chain::signed_block& block, bool currently_syncing) {
+   if (currently_syncing && block.block_num() % 10000 == 0) {
+      ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
+           ("t", block.timestamp)
+           ("n", block.block_num())
+           ("p", block.producer));
+   }
+
+   return db().push_block(block);
+}
+
+void chain_plugin::accept_transaction(const chain::signed_transaction& trx) {
+   db().push_transaction(trx);
+}
+
+bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block_id) {
+   // If it's not known, it's not preferred.
+   if (!db().is_known_block(block_id)) return false;
+   // Extract the block number from block_id, and fetch that block number's ID from the database.
+   // If the database's block ID matches block_id, then block_id is on the preferred chain. Otherwise, it's on a fork.
+   return db().get_block_id_for_num(chain::block_header::num_from_id(block_id)) == block_id;
+}
+
 }

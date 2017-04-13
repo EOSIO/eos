@@ -23,14 +23,12 @@
  */
 #include <eos/producer_plugin/producer_plugin.hpp>
 
-#include <eos/chain/database.hpp>
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
-#include <fc/thread/thread.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>

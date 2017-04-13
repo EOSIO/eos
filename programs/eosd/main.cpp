@@ -1,6 +1,6 @@
 #include <appbase/application.hpp>
 
-#include <eos/net_plugin/net_plugin.hpp>
+#include <eos/p2p_plugin/p2p_plugin.hpp>
 #include <eos/http_plugin/http_plugin.hpp>
 #include <eos/producer_plugin/producer_plugin.hpp>
 
@@ -15,7 +15,7 @@ using namespace eos;
 int main(int argc, char** argv)
 {
    try {
-      app().register_plugin<net_plugin>();
+      app().register_plugin<p2p_plugin>();
       app().register_plugin<http_plugin>();
       app().register_plugin<producer_plugin>();
 

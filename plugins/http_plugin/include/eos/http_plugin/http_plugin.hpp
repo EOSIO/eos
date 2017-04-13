@@ -34,7 +34,7 @@ namespace eos {
    {
       public:
         http_plugin();
-        ~http_plugin();
+        virtual ~http_plugin();
 
         APPBASE_PLUGIN_REQUIRES()
         virtual void set_program_options(options_description&, options_description& cfg) override;

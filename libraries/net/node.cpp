@@ -80,14 +80,16 @@
 
 #include <eos/chain/config.hpp>
 
+#include <appbase/application.hpp>
+
 #include <fc/git_revision.hpp>
 
 //#define ENABLE_DEBUG_ULOGS
 
-#ifdef DEFAULT_LOGGER
-# undef DEFAULT_LOGGER
-#endif
-#define DEFAULT_LOGGER "p2p"
+//#ifdef DEFAULT_LOGGER
+//# undef DEFAULT_LOGGER
+//#endif
+//#define DEFAULT_LOGGER "p2p"
 
 #define P2P_IN_DEDICATED_THREAD 1
 
@@ -2278,7 +2280,7 @@ namespace eos { namespace net { namespace detail {
 
       if (!originating_peer->peer_needs_sync_items_from_us)
       {
-        dlog("sync: peer is already in sync with us");
+        dlog("sync: peer is already in sync with us ${p}", ("p", originating_peer->we_need_sync_items_from_peer));
         // if we thought we had all the items this peer had, but now it turns out that we don't
         // have the last item it requested to send from,
         // we need to kick off another round of synchronization
@@ -5325,6 +5327,38 @@ namespace eos { namespace net { namespace detail {
       return statistics;
     }
 
+    template<typename T>
+    struct invoke_in_appbase {
+       template<typename Lambda>
+       T operator()( Lambda&& l )const {
+          typename fc::promise<T>::ptr p(new fc::promise<T>( "invoke in appbase" ));
+          appbase::app().get_io_service().post( [&](){
+             try {
+                p->set_value( l() );
+             } catch ( const fc::exception& e ) {
+                p->set_exception( e.dynamic_copy_exception() );
+             }
+           } );
+           return p->wait();
+       }
+    };
+    template<>
+    struct invoke_in_appbase<void> {
+       template<typename Lambda>
+       void operator()( Lambda&& l )const {
+          fc::promise<void>::ptr p(new fc::promise<void>( "invoke in appbase" ));
+              appbase::app().get_io_service().post( [&](){
+             try {
+                l();
+                p->set_value();
+             } catch ( const fc::exception& e ) {
+                p->set_exception( e.dynamic_copy_exception() );
+             }
+           } );
+           p->wait();
+       }
+    };
+
 // define VERBOSE_NODE_DELEGATE_LOGGING to log whenever the node delegate throws exceptions
 //#define VERBOSE_NODE_DELEGATE_LOGGING
 #ifdef VERBOSE_NODE_DELEGATE_LOGGING
@@ -5363,22 +5397,25 @@ namespace eos { namespace net { namespace detail {
     }
 #else
 #  define INVOKE_AND_COLLECT_STATISTICS(method_name, ...) \
-    call_statistics_collector statistics_collector(#method_name, \
-                                                   &_ ## method_name ## _execution_accumulator, \
-                                                   &_ ## method_name ## _delay_before_accumulator, \
-                                                   &_ ## method_name ## _delay_after_accumulator); \
-    if (_thread->is_current()) \
-    { \
-      call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
-      return _node_delegate->method_name(__VA_ARGS__); \
-    } \
-    else \
-      return _thread->async([&](){ \
-        call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
-        return _node_delegate->method_name(__VA_ARGS__); \
-      }, "invoke " BOOST_STRINGIZE(method_name)).wait()
-#endif
+   call_statistics_collector statistics_collector(#method_name, \
+                                                  &_ ## method_name ## _execution_accumulator, \
+                                                  &_ ## method_name ## _delay_before_accumulator, \
+                                                  &_ ## method_name ## _delay_after_accumulator); \
+   if (_thread->is_current()) \
+   { \
+     call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
+     return _node_delegate->method_name(__VA_ARGS__); \
+   } \
+   else \
+   { \
+      using T = decltype( _node_delegate->method_name(__VA_ARGS__) ); \
+      return invoke_in_appbase<T>()( [&]() mutable { \
+         call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
+         return _node_delegate->method_name(__VA_ARGS__); \
+      }); \
+   }
 
+#endif
     bool statistics_gathering_node_delegate_wrapper::has_item( const net::item_id& id )
     {
       INVOKE_AND_COLLECT_STATISTICS(has_item, id);
