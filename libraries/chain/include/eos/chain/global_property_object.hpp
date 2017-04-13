@@ -45,13 +45,13 @@ namespace eos { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-         OBJECT_CTOR(global_property_object, (active_producers))
+      OBJECT_CTOR(global_property_object, (active_producers))
 
-         id_type                    id;
-         chain_parameters           parameters;
-         optional<chain_parameters> pending_parameters;
+      id_type                    id;
+      chain_parameters           parameters;
+      optional<chain_parameters> pending_parameters;
 
-         shared_vector<producer_id_type> active_producers;
+      shared_vector<producer_id_type> active_producers;
    };
 
    /**
@@ -65,34 +65,44 @@ namespace eos { namespace chain {
     */
    class dynamic_global_property_object : public chainbase::object<dynamic_global_property_object_type, dynamic_global_property_object>
    {
-         OBJECT_CTOR(dynamic_global_property_object)
+      OBJECT_CTOR(dynamic_global_property_object)
 
-         id_type           id;
-         uint32_t          head_block_number = 0;
-         block_id_type     head_block_id;
-         time_point_sec    time;
-         producer_id_type   current_producer;
-         uint32_t          accounts_registered_this_interval = 0;
+      id_type           id;
+      uint32_t          head_block_number = 0;
+      block_id_type     head_block_id;
+      time_point_sec    time;
+      producer_id_type  current_producer;
+      uint32_t          accounts_registered_this_interval = 0;
+      /**
+          *  Every time a block is missed this increases by
+          *  RECENTLY_MISSED_COUNT_INCREMENT,
+          *  every time a block is found it decreases by
+          *  RECENTLY_MISSED_COUNT_DECREMENT.  It is
+          *  never less than 0.
+          *
+          *  If the recently_missed_count hits 2*UNDO_HISTORY then no new blocks may be pushed.
+          */
+      uint32_t          recently_missed_count = 0;
 
-         /**
+      /**
           * The current absolute slot number.  Equal to the total
           * number of slots since genesis.  Also equal to the total
           * number of missed slots plus head_block_number.
           */
-         uint64_t                current_aslot = 0;
+      uint64_t                current_aslot = 0;
 
-         /**
+      /**
           * used to compute producer participation.
           */
-         fc::uint128_t recent_slots_filled;
+      fc::uint128_t recent_slots_filled;
 
-         /**
+      /**
           * dynamic_flags specifies chain state properties that can be
           * expressed in one bit.
           */
-         uint32_t dynamic_flags = 0;
+      uint32_t dynamic_flags = 0;
 
-         uint32_t last_irreversible_block_num = 0;
+      uint32_t last_irreversible_block_num = 0;
    };
 
    using global_property_multi_index = chainbase::shared_multi_index_container<
