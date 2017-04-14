@@ -637,7 +637,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
 { try {
    FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
    FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % EOS_BLOCK_INTERVAL_SEC == 0,
-              "Genesis timestamp must be divisible by EOS_DEFAULT_BLOCK_INTERVAL." );
+              "Genesis timestamp must be divisible by EOS_BLOCK_INTERVAL_SEC." );
 
    struct auth_inhibitor {
       auth_inhibitor(database& db) : db(db), old_flags(db.node_properties().skip_flags)

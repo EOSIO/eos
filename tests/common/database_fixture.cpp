@@ -38,13 +38,14 @@
 
 #include "database_fixture.hpp"
 
-uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700000;
+uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
 namespace eos { namespace chain {
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-   for (int i = 0; i < default_genesis_state.initial_producers.size(); ++i) {
+   default_genesis_state.immutable_parameters.min_producer_count = 11;
+   for (int i = 0; i < default_genesis_state.immutable_parameters.min_producer_count; ++i) {
       auto name = std::string("init") + fc::to_string(i);
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
