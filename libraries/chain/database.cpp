@@ -128,7 +128,9 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 { try {
    return with_skip_flags( skip, [&](){ 
       return without_pending_transactions( [&]() {
-         return with_write_lock( [&]() { return _push_block(new_block); } );
+         //return with_write_lock( [&]() { 
+            return _push_block(new_block); 
+         //} );
       });
    });
 } FC_CAPTURE_AND_RETHROW( (new_block) ) }
@@ -775,10 +777,11 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
 
       _block_id_to_block.open(data_dir / "database" / "block_num_to_block");
 
-      if( !find<global_property_object>() )
+      if( !find<global_property_object>() ) {
          with_write_lock([&] {
             init_genesis(genesis_loader());
          });
+      }
 
       // Rewind the database to the last irreversible block
       with_write_lock([&] {
