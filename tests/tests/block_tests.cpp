@@ -244,22 +244,22 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
       BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(95-64) );
 
       db.produce_blocks(1, 64);
-      /*
       BOOST_CHECK_EQUAL( rsf(),
          "0000000000000000000000000000000000000000000000000000000000000000"
-         "1111100000000000001000000001000001000100101011111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(31) );
-      */
+      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(0) );
+
+      db.produce_blocks(1, 63);
+      BOOST_CHECK_EQUAL( rsf(),
+         "0000000000000000000000000000000000000000000000000000000000000001"
+      );
+      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(1) );
 
       db.produce_blocks(1, 32);
-      /*
       BOOST_CHECK_EQUAL( rsf(),
          "0000000000000000000000000000000010000000000000000000000000000000"
-         "0000000000000000000000000000000001111100000000000001000000001000"
       );
-      */
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(8) );
+      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(1) );
 } FC_LOG_AND_RETHROW() }
 
 // Check that a db rewinds to the LIB after being closed and reopened

@@ -49,7 +49,8 @@ namespace eos { namespace chain {
 
       id_type                           id;
       chain_parameters                  parameters;
-      std::array<producer_id_type,21>   active_producers;
+
+      std::array<producer_id_type, config::EOS_PRODUCER_COUNT>   active_producers;
    };
 
 
@@ -75,15 +76,28 @@ namespace eos { namespace chain {
         uint32_t          accounts_registered_this_interval = 0;
         
         /**
-            * The current absolute slot number.  Equal to the total
-            * number of slots since genesis.  Also equal to the total
-            * number of missed slots plus head_block_number.
-            */
-        uint64_t          current_aslot = 0;
+         * The current absolute slot number.  Equal to the total
+         * number of slots since genesis.  Also equal to the total
+         * number of missed slots plus head_block_number.
+         */
+        uint64_t          current_absolute_slot = 0;
         
         /**
-          * Used to compute producer participation.
-          */
+         * Bitmap used to compute producer participation. Stores
+         * a high bit for each generated block, a low bit for
+         * each missed block. Least significant bit is most
+         * recent block.
+         *
+         * NOTE: This bitmap always excludes the head block,
+         * which, by definition, exists. The least significant
+         * bit corresponds to the block with number
+         * head_block_num()-1
+         *
+         * e.g. if the least significant 5 bits were 10011, it
+         * would indicate that the last two blocks prior to the
+         * head block were produced, the two before them were
+         * missed, and the one before that was produced.
+         */
         uint64_t recent_slots_filled;
         
         uint32_t last_irreversible_block_num = 0;
@@ -119,7 +133,7 @@ FC_REFLECT(eos::chain::dynamic_global_property_object,
            (time)
            (current_producer)
            (accounts_registered_this_interval)
-           (current_aslot)
+           (current_absolute_slot)
            (recent_slots_filled)
            (last_irreversible_block_num)
           )

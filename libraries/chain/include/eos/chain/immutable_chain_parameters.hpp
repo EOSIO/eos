@@ -33,7 +33,7 @@ namespace eos { namespace chain {
 
 struct immutable_chain_parameters
 {
-   uint16_t min_producer_count = 21;
+   uint16_t min_producer_count = config::EOS_PRODUCER_COUNT;
 };
 
 } } // eos::chain

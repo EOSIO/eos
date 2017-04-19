@@ -31,9 +31,11 @@
 #define EOS_1_PERCENT                                 (EOS_100_PERCENT/100)
 #define EOS_DEFAULT_MAX_BLOCK_SIZE                    (256*1024)
 
-#define EOS_DEFAULT_PRODUCER_PAY_PER_BLOCK            (EOS_BLOCKCHAIN_PRECISION * int64_t( 10) )
+#define EOS_DEFAULT_PRODUCER_PAY_PER_BLOCK            (EOS_BLOCKCHAIN_PRECISION * int64_t(10))
 #define EOS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION         (60*60)
 
 #define EOS_IRREVERSIBLE_THRESHOLD                      (70 * EOS_1_PERCENT)
 
-
+namespace eos { namespace config {
+const static int EOS_PRODUCER_COUNT = 21;
+} } // namespace eos::config

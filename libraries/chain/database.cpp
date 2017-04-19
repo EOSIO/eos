@@ -683,7 +683,6 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    // Create global properties
    create<global_property_object>([&](global_property_object& p) {
        p.parameters = genesis_state.initial_parameters;
-       //p.active_producers.resize(initial_producers.size());
        std::copy(initial_producers.begin(), initial_producers.end(), p.active_producers.begin());
    });
    create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
@@ -828,6 +827,10 @@ void database::update_global_dynamic_data( const signed_block& b )
    uint32_t missed_blocks = get_slot_at_time( b.timestamp );
    assert( missed_blocks != 0 );
    missed_blocks--;
+
+   if (missed_blocks)
+      wlog("Blockchain continuing after gap of ${b} missed blocks", ("b", missed_blocks));
+
    for(uint32_t i = 0; i < missed_blocks; ++i) {
       const auto& producer_missed = get(get_scheduled_producer(i+1));
       if(producer_missed.id != b.producer) {
@@ -849,10 +852,15 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
       dgp.current_producer = b.producer;
-      dgp.recent_slots_filled = (
-           (dgp.recent_slots_filled << 1)
-           + 1) << missed_blocks;
-      dgp.current_aslot += missed_blocks+1;
+      dgp.current_absolute_slot += missed_blocks+1;
+
+      // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
+      if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
+         dgp.recent_slots_filled <<= 1;
+         dgp.recent_slots_filled += 1;
+         dgp.recent_slots_filled <<= missed_blocks;
+      } else
+         dgp.recent_slots_filled = 0;
    });
 
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
@@ -861,7 +869,7 @@ void database::update_global_dynamic_data( const signed_block& b )
 void database::update_signing_producer(const producer_object& signing_producer, const signed_block& new_block)
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
-   uint64_t new_block_aslot = dpo.current_aslot + get_slot_at_time( new_block.timestamp );
+   uint64_t new_block_aslot = dpo.current_absolute_slot + get_slot_at_time( new_block.timestamp );
 
    modify( signing_producer, [&]( producer_object& _wit )
    {
@@ -939,7 +947,7 @@ using boost::container::flat_set;
 producer_id_type database::get_scheduled_producer(uint32_t slot_num)const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
-   uint64_t current_aslot = dpo.current_aslot + slot_num;
+   uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = get<global_property_object>();
    return gpo.active_producers[current_aslot % gpo.active_producers.size()];
 }
