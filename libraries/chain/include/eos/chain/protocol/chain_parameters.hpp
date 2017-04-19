@@ -31,8 +31,8 @@ namespace eos { namespace chain {
    typedef static_variant<>  parameter_extension; 
    struct chain_parameters
    {
-      uint32_t                maximum_block_size              = EOS_DEFAULT_MAX_BLOCK_SIZE; ///< maximum allowable size in bytes for a block
-      uint32_t                maximum_time_until_expiration   = EOS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION; ///< maximum lifetime in seconds for transactions to be valid, before expiring
+      uint32_t                maximum_block_size              = config::MaxBlockSize; ///< maximum allowable size in bytes for a block
+      uint32_t                maximum_time_until_expiration   = config::MaxSecondsUntilExpiration; ///< maximum lifetime in seconds for transactions to be valid, before expiring
 
       /** defined in fee_schedule.cpp */
       void validate()const;

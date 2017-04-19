@@ -170,13 +170,13 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 
       auto pct = []( uint32_t x ) -> uint32_t
       {
-         return uint64_t( EOS_100_PERCENT ) * x / 64;
+         return uint64_t( config::Percent100 ) * x / 64;
       };
 
       BOOST_CHECK_EQUAL( rsf(),
          "1111111111111111111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), EOS_100_PERCENT );
+      BOOST_CHECK_EQUAL( db.producer_participation_rate(), config::Percent100 );
 
       db.produce_blocks(1, 1);
       BOOST_CHECK_EQUAL( rsf(),
@@ -268,7 +268,7 @@ BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
       MKDB(db)
 
-      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThreshold);
+      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
       db.produce_blocks(20);
 
       BOOST_CHECK_EQUAL(db.head_block_num(), 20);
@@ -290,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
       MKDB(producer)
       MKNET(net, (producer))
 
-      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThreshold);
+      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
       producer.produce_blocks(20);
 
       {
@@ -323,7 +323,7 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
       MKDB(db)
 
-      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThreshold);
+      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
       db.produce_blocks(100);
 
       BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 100 - lag);

@@ -643,8 +643,8 @@ void database::initialize_indexes()
 void database::init_genesis(const genesis_state_type& genesis_state)
 { try {
    FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
-   FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % EOS_BLOCK_INTERVAL_SEC == 0,
-              "Genesis timestamp must be divisible by EOS_BLOCK_INTERVAL_SEC." );
+   FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
+              "Genesis timestamp must be divisible by config::BlockIntervalSeconds." );
 
    struct auth_inhibitor {
       auth_inhibitor(database& db) : db(db), old_flags(db.node_properties().skip_flags)
@@ -888,13 +888,13 @@ void database::update_last_irreversible_block()
    std::transform(gpo.active_producers.begin(), gpo.active_producers.end(), std::back_inserter(producer_objs),
                   [this](producer_id_type id) { return &get(id); });
 
-   static_assert( EOS_IRREVERSIBLE_THRESHOLD > 0, "irreversible threshold must be nonzero" );
+   static_assert(config::IrreversibleThresholdPercent > 0, "irreversible threshold must be nonzero");
 
    // 1 1 1 2 2 2 2 2 2 2 -> 2     .7*10 = 7
    // 1 1 1 1 1 1 1 2 2 2 -> 1
    // 3 3 3 3 3 3 3 3 3 3 -> 3
 
-   size_t offset = EOS_PERCENT(producer_objs.size(), EOS_100_PERCENT - EOS_IRREVERSIBLE_THRESHOLD);
+   size_t offset = EOS_PERCENT(producer_objs.size(), config::Percent100 - config::IrreversibleThresholdPercent);
 
    std::nth_element( producer_objs.begin(), producer_objs.begin() + offset, producer_objs.end(),
       []( const producer_object* a, const producer_object* b )
@@ -984,7 +984,7 @@ uint32_t database::get_slot_at_time(fc::time_point_sec when)const
 uint32_t database::producer_participation_rate()const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
-   return uint64_t(EOS_100_PERCENT) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
+   return uint64_t(config::Percent100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
 }
 
 void database::update_producer_schedule()

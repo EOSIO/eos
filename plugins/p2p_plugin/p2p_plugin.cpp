@@ -369,7 +369,7 @@ void p2p_plugin_impl::node_delegate::error_encountered(const string& message, co
 }
 
 uint8_t p2p_plugin_impl::node_delegate::get_current_block_interval_in_seconds() const {
-   return EOS_BLOCK_INTERVAL_SEC;
+   return config::BlockIntervalSeconds;
 }
 ////////////////////////////// End node_delegate Implementation //////////////////////////////
 

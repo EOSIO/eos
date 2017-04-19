@@ -32,7 +32,12 @@ fc::variant_object get_config()
 {
    fc::mutable_variant_object result;
 
-   result[ "EOS_KEY_PREFIX" ] = EOS_KEY_PREFIX;
+   result["KeyPrefix"] = config::KeyPrefix;
+   result["BlockIntervalSeconds"] = config::BlockIntervalSeconds;
+   result["MaxBlockSize"] = config::MaxBlockSize;
+   result["MaxSecondsUntilExpiration"] = config::MaxSecondsUntilExpiration;
+   result["ProducerCount"] = config::ProducerCount;
+   result["IrreversibleThresholdPercent"] = config::IrreversibleThresholdPercent;
    return result;
 }
 

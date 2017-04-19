@@ -23,26 +23,23 @@
  */
 #pragma once
 
-#define EOS_KEY_PREFIX         "EOS"
-#define EOS_BLOCK_INTERVAL_SEC 3
+namespace eos { namespace config {
+const static char KeyPrefix[] = "EOS";
 
-/** percentage fields are fixed point with a denominator of 10,000 */
-#define EOS_100_PERCENT                               10000
-#define EOS_1_PERCENT                                 (EOS_100_PERCENT/100)
+const static int BlockIntervalSeconds = 3;
 
-#define EOS_DEFAULT_MAX_BLOCK_SIZE                    (256*1024)
+/** Percentages are fixed point with a denominator of 10,000 */
+const static int Percent100 = 10000;
+const static int Percent1 = 100;
 
-#define EOS_DEFAULT_PRODUCER_PAY_PER_BLOCK            (EOS_BLOCKCHAIN_PRECISION * int64_t(10))
-#define EOS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION         (60*60)
+const static int MaxBlockSize = 256 * 1024;
+const static int MaxSecondsUntilExpiration = 60*60;
 
-#define EOS_IRREVERSIBLE_THRESHOLD                      (70 * EOS_1_PERCENT)
+const static int ProducerCount = 21;
+const static int IrreversibleThresholdPercent = 70 * Percent1;
+} } // namespace eos::config
 
 template<typename Number>
 Number EOS_PERCENT(Number value, int percentage) {
-   return value * percentage / EOS_100_PERCENT;
+   return value * percentage / eos::config::Percent100;
 }
-
-namespace eos { namespace config {
-const static int ProducerCount = 21;
-const static int IrreversibleThreshold = 70 * EOS_1_PERCENT;
-} } // namespace eos::config

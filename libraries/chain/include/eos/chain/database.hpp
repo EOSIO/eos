@@ -241,7 +241,7 @@ namespace eos { namespace chain {
          block_id_type    head_block_id()const;
          producer_id_type head_block_producer()const;
 
-         uint32_t  block_interval( )const { return EOS_BLOCK_INTERVAL_SEC; }
+         uint32_t  block_interval( )const { return config::BlockIntervalSeconds; }
 
          node_property_object& node_properties();
 
