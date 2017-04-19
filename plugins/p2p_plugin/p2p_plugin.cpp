@@ -53,7 +53,7 @@ public:
 
       // node_delegate interface
       virtual bool has_item(const net::item_id& id) override;
-      virtual bool handle_block(const net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>& contained_transaction_message_ids) override;
+      virtual bool handle_block(const net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>&) override;
       virtual void handle_transaction(const net::trx_message& trx_msg) override;
       virtual void handle_message(const net::message& message_to_process) override;
       virtual std::vector<net::item_hash_t> get_block_ids(const std::vector<net::item_hash_t>& blockchain_synopsis, uint32_t& remaining_item_count, uint32_t limit) override;
@@ -127,8 +127,14 @@ void p2p_plugin::plugin_startup() {
 }
 
 void p2p_plugin::plugin_shutdown() {
+   ilog("Shutting down P2P Plugin");
    my->node->close();
    my->node.reset();
+}
+
+void p2p_plugin::broadcast_block(const chain::signed_block& block) {
+   ilog("Broadcasting block #${n}", ("n", block.block_num()));
+   my->node->broadcast(eos::net::block_message(block));
 }
 
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
@@ -146,8 +152,9 @@ bool p2p_plugin_impl::node_delegate::has_item(const net::item_id& id) {
 }
 
 bool p2p_plugin_impl::node_delegate::handle_block(const net::block_message& blk_msg, bool sync_mode,
-                                                  std::vector<fc::uint160_t>& contained_transaction_message_ids) {
+                                                  std::vector<fc::uint160_t>&) {
    try {
+      if (!sync_mode) ilog("Received block ${num} from peer", ("num", blk_msg.block.block_num()));
       return chain.accept_block(blk_msg.block, sync_mode);
    } catch (eos::chain::unlinkable_block_exception& e) {
       FC_THROW_EXCEPTION(net::unlinkable_block_exception, "Unlinkable block: ${e}", ("e", e.to_detail_string()));
@@ -185,8 +192,10 @@ vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_block_ids(const std
    vector<net::item_hash_t> ids;
    ids.reserve(last_block_num_to_return - last_known_block_num);
    for (unsigned num = last_known_block_num; num <= last_block_num_to_return; ++num)
-      ids.emplace_back(chain.db().get_block_id_for_num(num));
+      if (BOOST_LIKELY(num > 0))
+         ids.emplace_back(chain.db().get_block_id_for_num(num));
 
+   ilog("Exiting ${f} with ${r}", ("f", __FUNCTION__)("r", ids));
    return ids;
 } FC_CAPTURE_AND_RETHROW((blockchain_synopsis)) }
 

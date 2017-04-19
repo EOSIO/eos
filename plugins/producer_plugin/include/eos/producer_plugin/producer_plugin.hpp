@@ -24,6 +24,7 @@
 #pragma once
 
 #include <eos/chain_plugin/chain_plugin.hpp>
+#include <eos/p2p_plugin/p2p_plugin.hpp>
 
 #include <appbase/application.hpp>
 
@@ -46,7 +47,7 @@ namespace block_production_condition {
 
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin))
+   APPBASE_PLUGIN_REQUIRES((chain_plugin)(p2p_plugin))
 
    producer_plugin();
    virtual ~producer_plugin();
