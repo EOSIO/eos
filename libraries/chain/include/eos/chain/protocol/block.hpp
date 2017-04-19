@@ -29,13 +29,14 @@ namespace eos { namespace chain {
    struct block_header
    {
       digest_type                   digest()const;
-      block_id_type                 previous;
       uint32_t                      block_num()const { return num_from_id(previous) + 1; }
-      fc::time_point_sec            timestamp;
-      producer_id_type               producer;
-      checksum_type                 transaction_merkle_root;
-
       static uint32_t num_from_id(const block_id_type& id);
+
+
+      block_id_type                 previous;
+      fc::time_point_sec            timestamp;
+      checksum_type                 transaction_merkle_root;
+      uint16_t                      producer = 0;
    };
 
    struct signed_block_header : public block_header
@@ -66,7 +67,7 @@ namespace eos { namespace chain {
 
 } } // eos::chain
 
-FC_REFLECT(eos::chain::block_header, (previous)(timestamp)(producer)(transaction_merkle_root))
+FC_REFLECT(eos::chain::block_header, (previous)(timestamp)(transaction_merkle_root)(producer) )
 FC_REFLECT_DERIVED(eos::chain::signed_block_header, (eos::chain::block_header), (producer_signature))
 FC_REFLECT(eos::chain::thread, (generated_input)(user_input)(output_transactions))
 FC_REFLECT_DERIVED(eos::chain::signed_block, (eos::chain::signed_block_header), (cycles))

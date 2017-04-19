@@ -131,7 +131,7 @@ namespace eos { namespace chain {
    class account_object;
    class producer_object;
 
-   using account_id_type = chainbase::oid<account_object>;
+   using account_id_type  = chainbase::oid<account_object>;
    using producer_id_type = chainbase::oid<producer_object>;
 
    using block_id_type = fc::ripemd160;

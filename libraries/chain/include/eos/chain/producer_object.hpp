@@ -29,22 +29,23 @@
 namespace eos { namespace chain {
    class producer_object : public chainbase::object<producer_object_type, producer_object>
    {
-      OBJECT_CTOR(producer_object, (owner_name)(url))
+      OBJECT_CTOR(producer_object)
 
       id_type          id;
-      shared_string    owner_name;
+      account_id_type  owner;
       uint64_t         last_aslot = 0;
       public_key_type  signing_key;
-      shared_string    url;
       int64_t          total_missed = 0;
       uint32_t         last_confirmed_block_num = 0;
    };
 
    struct by_key;
+   struct by_owner;
    using producer_multi_index = chainbase::shared_multi_index_container<
       producer_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<producer_object, producer_object::id_type, &producer_object::id>>,
+         ordered_unique<tag<by_owner>, member<producer_object, account_id_type, &producer_object::owner>>,
          ordered_non_unique<tag<by_key>, member<producer_object, public_key_type, &producer_object::signing_key>>
       >
    >;
@@ -54,10 +55,9 @@ CHAINBASE_SET_INDEX_TYPE(eos::chain::producer_object, eos::chain::producer_multi
 
 FC_REFLECT(eos::chain::producer_object,
            (id)
-           (owner_name)
+           (owner)
            (last_aslot)
            (signing_key)
-           (url)
            (total_missed)
            (last_confirmed_block_num)
           )

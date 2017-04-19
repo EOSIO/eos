@@ -128,13 +128,13 @@ namespace eos { namespace chain {
 
          signed_block generate_block(
             const fc::time_point_sec when,
-            producer_id_type producer_id,
+            producer_id_type producer,
             const fc::ecc::private_key& block_signing_private_key,
             uint32_t skip
             );
          signed_block _generate_block(
             const fc::time_point_sec when,
-            producer_id_type producer_id,
+            producer_id_type producer,
             const fc::ecc::private_key& block_signing_private_key
             );
 
