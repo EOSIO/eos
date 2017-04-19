@@ -85,36 +85,34 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void chain_plugin::plugin_startup() {
+   auto genesis_loader = [this] {
+      return fc::json::from_file(my->genesis_file).as<eos::chain::genesis_state_type>();
+   };
+
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
       if(my->reset) {
          wlog("resync requested: deleting block log and shared memory");
          my->db.wipe(my->shared_memory_dir, true);
-      } else if(my->replay) {
-         wlog("replay requested: deleting shared memory");
-         my->db.wipe(my->shared_memory_dir, false);
       }
       //     my->db.set_flush_interval(my->flush_interval);
       my->db.add_checkpoints(my->loaded_checkpoints);
 
       if(my->replay) {
          ilog("Replaying blockchain on user request.");
-         my->db.reindex(my->shared_memory_dir, my->shared_memory_size);
+         my->db.replay(my->shared_memory_dir, my->shared_memory_size, genesis_loader());
       } else {
          try {
             ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-            my->db.open(my->shared_memory_dir,
-                        my->shared_memory_size,
-                        [this] { return fc::json::from_file(my->genesis_file).as<eos::chain::genesis_state_type>(); });
+            my->db.open(my->shared_memory_dir, my->shared_memory_size, genesis_loader);
          } catch (const fc::exception& e) {
             wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
-            my->db.reindex(my->shared_memory_dir, my->shared_memory_size);
+            my->db.replay(my->shared_memory_dir, my->shared_memory_size, genesis_loader());
          }
       }
    } else {
       ilog("Starting chain in read mode.");
-      my->db.open(my->shared_memory_dir, my->shared_memory_size,
-                  [this] { return fc::json::from_file(my->genesis_file).as<eos::chain::genesis_state_type>(); });
+      my->db.open(my->shared_memory_dir, my->shared_memory_size, genesis_loader);
    }
 }
 

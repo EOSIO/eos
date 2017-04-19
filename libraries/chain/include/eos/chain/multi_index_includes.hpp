@@ -35,5 +35,6 @@ using bmi::ordered_non_unique;
 using bmi::composite_key;
 using bmi::member;
 using bmi::tag;
+using bmi::composite_key_compare;
 
 struct by_id;

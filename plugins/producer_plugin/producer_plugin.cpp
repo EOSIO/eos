@@ -53,7 +53,7 @@ public:
 
    boost::program_options::variables_map _options;
    bool _production_enabled = false;
-   uint32_t _required_producer_participation = 33 * EOS_1_PERCENT;
+   uint32_t _required_producer_participation = 33 * config::Percent1;
    uint32_t _production_skip_flags = eos::chain::database::skip_nothing;
 
    std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
@@ -99,7 +99,7 @@ void producer_plugin::set_program_options(
 
    command_line_options.add_options()
          ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("required-participation", bpo::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*EOS_1_PERCENT);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
+         ("required-participation", bpo::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
          ("producer-id,w", bpo::value<vector<string>>()->composing()->multitoken(),
           ("ID of producer controlled by this node (e.g. " + producer_id_example + ", quotes are required, may specify multiple times)").c_str())
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
@@ -288,7 +288,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    uint32_t prate = db.producer_participation_rate();
    if( prate < _required_producer_participation )
    {
-      capture("pct", uint32_t(100*uint64_t(prate) / EOS_1_PERCENT));
+      capture("pct", uint32_t(100*uint64_t(prate) / config::Percent1));
       return block_production_condition::low_participation;
    }
 

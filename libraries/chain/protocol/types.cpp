@@ -43,7 +43,7 @@ namespace eos { namespace chain {
     {
       // TODO:  Refactor syntactic checks into static is_valid()
       //        to make public_key_type API more similar to address API
-       std::string prefix( EOS_KEY_PREFIX );
+       std::string prefix( config::KeyPrefix );
 
        const size_t prefix_len = prefix.size();
        FC_ASSERT(base58str.size() > prefix_len);
@@ -70,7 +70,7 @@ namespace eos { namespace chain {
        k.data = key_data;
        k.check = fc::ripemd160::hash( k.data.data, k.data.size() )._hash[0];
        auto data = fc::raw::pack( k );
-       return EOS_KEY_PREFIX + fc::to_base58( data.data(), data.size() );
+       return config::KeyPrefix + fc::to_base58( data.data(), data.size() );
     }
 
     bool operator == (const public_key_type& p1, const fc::ecc::public_key& p2)
@@ -92,7 +92,6 @@ namespace eos { namespace chain {
     {
         return p1.key_data < p2.key_data;
     };
-
 
 } } // eos::chain
 

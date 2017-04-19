@@ -14,7 +14,7 @@ add_library( eos_chain
              genesis_state.cpp
              get_config.cpp
 
-             block_database.cpp
+             block_log.cpp
 
              ${HEADERS}
              ${PROTOCOL_HEADERS}
@@ -25,7 +25,7 @@ target_include_directories( eos_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
 if(MSVC)
-  set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_database.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
+  set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
 
 INSTALL( TARGETS
