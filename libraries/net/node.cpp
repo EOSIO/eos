@@ -86,10 +86,10 @@
 
 //#define ENABLE_DEBUG_ULOGS
 
-//#ifdef DEFAULT_LOGGER
-//# undef DEFAULT_LOGGER
-//#endif
-//#define DEFAULT_LOGGER "p2p"
+#ifdef DEFAULT_LOGGER
+# undef DEFAULT_LOGGER
+#endif
+#define DEFAULT_LOGGER "p2p"
 
 #define P2P_IN_DEDICATED_THREAD 1
 

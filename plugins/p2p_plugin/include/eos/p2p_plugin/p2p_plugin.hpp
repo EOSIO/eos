@@ -44,6 +44,8 @@ public:
    virtual void plugin_startup();
    virtual void plugin_shutdown();
 
+   void broadcast_block(const chain::signed_block& block);
+
 private:
    std::unique_ptr<class p2p_plugin_impl> my;
 };
