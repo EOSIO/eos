@@ -1,8 +1,8 @@
 #include <appbase/application.hpp>
 
 #include <eos/p2p_plugin/p2p_plugin.hpp>
-#include <eos/http_plugin/http_plugin.hpp>
 #include <eos/producer_plugin/producer_plugin.hpp>
+#include <eos/chain_api_plugin/chain_api_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
    try {
       app().register_plugin<p2p_plugin>();
-      app().register_plugin<http_plugin>();
+      app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
 
       if(!app().initialize(argc, argv))
