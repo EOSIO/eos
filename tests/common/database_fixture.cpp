@@ -95,8 +95,8 @@ void testing_database::open() {
    database::open(data_dir, TEST_DB_SIZE, [this]{return genesis_state;});
 }
 
-void testing_database::reindex() {
-   database::reindex(data_dir, TEST_DB_SIZE, genesis_state);
+void testing_database::replay() {
+   database::replay(data_dir, TEST_DB_SIZE, genesis_state);
 }
 
 void testing_database::wipe(bool include_blocks) {

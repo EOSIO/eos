@@ -142,7 +142,7 @@ public:
    /**
     * @brief Reindex the database using the boilerplate testing database settings
     */
-   void reindex();
+   void replay();
    /**
     * @brief Wipe the database using the boilerplate testing database settings
     * @param include_blocks If true, the blocks will be removed as well; otherwise, only the database will be wiped and

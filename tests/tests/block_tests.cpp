@@ -328,7 +328,7 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 
       BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 100 - lag);
       db.close();
-      db.reindex();
+      db.replay();
       BOOST_CHECK_EQUAL(db.head_block_num(), 100 - lag);
       db.produce_blocks(20);
       BOOST_CHECK_EQUAL(db.head_block_num(), 120 - lag);

@@ -45,16 +45,16 @@
 
 namespace eos { namespace chain {
 
-bool database::is_known_block( const block_id_type& id )const
+bool database::is_known_block(const block_id_type& id)const
 {
-   return _fork_db.is_known_block(id) || _block_id_to_block.contains(id);
+   return _fork_db.is_known_block(id) || _block_log.read_block_by_id(id);
 }
 /**
  * Only return true *if* the transaction has not expired or been invalidated. If this
  * method is called with a VERY old transaction we will return false, they should
  * query things by blocks if they are that old.
  */
-bool database::is_known_transaction( const transaction_id_type& id )const
+bool database::is_known_transaction(const transaction_id_type& id)const
 {
    const auto& trx_idx = get_index<transaction_multi_index, by_trx_id>();
    return trx_idx.find( id ) != trx_idx.end();
@@ -72,12 +72,12 @@ optional<signed_block> database::fetch_block_by_id(const block_id_type& id)const
 {
    auto b = _fork_db.fetch_block(id);
    if(b) return b->data;
-   return _block_id_to_block.fetch_optional(id);
+   return _block_log.read_block_by_id(id);
 }
 
-optional<signed_block> database::fetch_block_by_number( uint32_t num )const
+optional<signed_block> database::fetch_block_by_number(uint32_t num)const
 {
-   if (const auto& block = _block_id_to_block.fetch_by_number(num))
+   if (const auto& block = _block_log.read_block_by_num(num))
       return *block;
 
    // Not in _block_id_to_block, so it must be since the last irreversible block. Grab it from _fork_db instead
@@ -133,64 +133,55 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
          //} );
       });
    });
-} FC_CAPTURE_AND_RETHROW( (new_block) ) }
+} FC_CAPTURE_AND_RETHROW((new_block)) }
 
 bool database::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = get_node_properties().skip_flags;
-   if( !(skip&skip_fork_db) )
-   {
+   if (!(skip&skip_fork_db)) {
       /// TODO: if the block is greater than the head block and before the next maitenance interval
       // verify that the block signer is in the current set of active producers.
 
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
-      if( new_head->data.previous != head_block_id() )
-      {
+      if (new_head->data.previous != head_block_id()) {
          //If the newly pushed block is the same height as head, we get head back in new_head
          //Only switch forks if new_head is actually higher than head
-         if( new_head->data.block_num() > head_block_num() )
-         {
-            wlog( "Switching to fork: ${id}", ("id",new_head->data.id()) );
+         if (new_head->data.block_num() > head_block_num()) {
+            wlog("Switching to fork: ${id}", ("id",new_head->data.id()));
             auto branches = _fork_db.fetch_branch_from(new_head->data.id(), head_block_id());
 
             // pop blocks until we hit the forked block
-            while( head_block_id() != branches.second.back()->data.previous )
+            while (head_block_id() != branches.second.back()->data.previous)
                pop_block();
 
             // push all blocks on the new fork
-            for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
-            {
-                ilog( "pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()) );
+            for (auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
+                ilog("pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()));
                 optional<fc::exception> except;
                 try {
                    auto session = start_undo_session(true);
-                   apply_block( (*ritr)->data, skip );
-                   _block_id_to_block.store( (*ritr)->id, (*ritr)->data );
+                   apply_block((*ritr)->data, skip);
                    session.push();
                 }
-                catch ( const fc::exception& e ) { except = e; }
-                if( except )
-                {
-                   wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
+                catch (const fc::exception& e) { except = e; }
+                if (except) {
+                   wlog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
-                   while( ritr != branches.first.rend() )
-                   {
-                      _fork_db.remove( (*ritr)->data.id() );
+                   while (ritr != branches.first.rend()) {
+                      _fork_db.remove((*ritr)->data.id());
                       ++ritr;
                    }
-                   _fork_db.set_head( branches.second.front() );
+                   _fork_db.set_head(branches.second.front());
 
                    // pop all blocks from the bad fork
-                   while( head_block_id() != branches.second.back()->data.previous )
+                   while (head_block_id() != branches.second.back()->data.previous)
                       pop_block();
 
                    // restore all blocks from the good fork
-                   for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
-                   {
+                   for (auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr) {
                       auto session = start_undo_session(true);
-                      apply_block( (*ritr)->data, skip );
-                      _block_id_to_block.store( new_block.id(), (*ritr)->data );
+                      apply_block((*ritr)->data, skip);
                       session.push();
                    }
                    throw *except;
@@ -213,7 +204,7 @@ bool database::_push_block(const signed_block& new_block)
    }
 
    return false;
-} FC_CAPTURE_AND_RETHROW( (new_block) ) }
+} FC_CAPTURE_AND_RETHROW((new_block)) }
 
 /**
  * Attempts to push the transaction into the pending queue
@@ -226,9 +217,9 @@ bool database::_push_block(const signed_block& new_block)
  */
 void database::push_transaction(const signed_transaction& trx, uint32_t skip)
 { try {
-   with_skip_flags( skip, [&]() {
-      with_producing( [&](){
-         with_write_lock( [&]() {
+   with_skip_flags(skip, [&]() {
+      with_producing([&](){
+         with_write_lock([&]() {
             _push_transaction(trx);
          });
       });
@@ -393,19 +384,19 @@ void database::clear_pending()
 
 //////////////////// private methods ////////////////////
 
-void database::apply_block( const signed_block& next_block, uint32_t skip )
+void database::apply_block(const signed_block& next_block, uint32_t skip)
 {
    auto block_num = next_block.block_num();
-   if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
-   {
-      auto itr = _checkpoints.find( block_num );
-      if( itr != _checkpoints.end() )
-         FC_ASSERT( next_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",next_block.id()) );
+   if (_checkpoints.size() && _checkpoints.rbegin()->second != block_id_type()) {
+      auto itr = _checkpoints.find(block_num);
+      if (itr != _checkpoints.end())
+         FC_ASSERT(next_block.id() == itr->second,
+                   "Block did not match checkpoint", ("checkpoint",*itr)("block_id",next_block.id()));
 
-      if( _checkpoints.rbegin()->first >= block_num )
+      if (_checkpoints.rbegin()->first >= block_num)
          skip = ~0;// WE CAN SKIP ALMOST EVERYTHING
    }
-   with_skip_flags( skip, [&](){ _apply_block( next_block ); } );
+   with_skip_flags(skip, [&](){ _apply_block(next_block); });
 }
 
 
@@ -414,7 +405,9 @@ void database::_apply_block(const signed_block& next_block)
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = get_node_properties().skip_flags;
 
-   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
+   FC_ASSERT((skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(),
+             "", ("next_block.transaction_merkle_root", next_block.transaction_merkle_root)
+             ("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()));
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
 
@@ -508,10 +501,11 @@ void database::_apply_transaction(const signed_transaction& trx)
    }
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-const producer_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)const
-{
-   FC_ASSERT(head_block_id() == next_block.previous, "", ("head_block_id",head_block_id())("next.prev",next_block.previous));
-   FC_ASSERT(head_block_time() < next_block.timestamp, "", ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
+const producer_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)const {
+   FC_ASSERT(head_block_id() == next_block.previous, "",
+             ("head_block_id",head_block_id())("next.prev",next_block.previous));
+   FC_ASSERT(head_block_time() < next_block.timestamp, "",
+             ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
    const producer_object& producer = get(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
@@ -519,37 +513,28 @@ const producer_object& database::validate_block_header(uint32_t skip, const sign
                 "Incorrect block producer key: expected ${e} but got ${a}",
                 ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
 
-   if(!(skip&skip_producer_schedule_check))
-   {
-      uint32_t slot_num = get_slot_at_time(next_block.timestamp);
-      FC_ASSERT(slot_num > 0);
-
-      producer_id_type scheduled_producer = get_scheduled_producer(slot_num);
-
-      FC_ASSERT(next_block.producer == scheduled_producer, "Producer produced block at wrong time",
-                ("block producer",next_block.producer)("scheduled",scheduled_producer)("slot_num",slot_num));
+   if(!(skip&skip_producer_schedule_check)) {
+      FC_ASSERT(next_block.producer == producer.id, "Producer produced block at wrong time",
+                ("block producer",next_block.producer)("scheduled producer",producer.id));
    }
 
    return producer;
 }
 
-void database::create_block_summary(const signed_block& next_block)
-{
-   //TODO: Figure out how to do this
+void database::create_block_summary(const signed_block& next_block) {
+#warning TODO: Figure out how to do this
 //   block_summary_id_type sid(next_block.block_num() & 0xffff );
 //   modify( sid(*this), [&](block_summary_object& p) {
 //         p.block_id = next_block.id();
 //   });
 }
 
-void database::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts )
-{
-   for( const auto& i : checkpts )
+void database::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
+   for (const auto& i : checkpts)
       _checkpoints[i.first] = i.second;
 }
 
-bool database::before_last_checkpoint()const
-{
+bool database::before_last_checkpoint()const {
    return (_checkpoints.size() > 0) && (_checkpoints.rbegin()->first >= head_block_num());
 }
 
@@ -557,76 +542,61 @@ bool database::before_last_checkpoint()const
  *  This method dumps the state of the blockchain in a semi-human readable form for the
  *  purpose of tracking down funds and mismatches in currency allocation
  */
-void database::debug_dump()
-{
+void database::debug_dump() {
 }
 
-void debug_apply_update( database& db, const fc::variant_object& vo )
-{
+void debug_apply_update(database& db, const fc::variant_object& vo) {
 }
 
-void database::apply_debug_updates()
-{
+void database::apply_debug_updates() {
 }
 
-void database::debug_update( const fc::variant_object& update )
-{
+void database::debug_update(const fc::variant_object& update) {
 }
 
-const global_property_object& database::get_global_properties()const
-{
+const global_property_object& database::get_global_properties()const {
    return get<global_property_object>();
 }
 
-const dynamic_global_property_object&database::get_dynamic_global_properties() const
-{
+const dynamic_global_property_object&database::get_dynamic_global_properties() const {
    return get<dynamic_global_property_object>();
 }
 
-time_point_sec database::head_block_time()const
-{
+time_point_sec database::head_block_time()const {
    return get_dynamic_global_properties().time;
 }
 
-uint32_t database::head_block_num()const
-{
+uint32_t database::head_block_num()const {
    return get_dynamic_global_properties().head_block_number;
 }
 
-block_id_type database::head_block_id()const
-{
+block_id_type database::head_block_id()const {
    return get_dynamic_global_properties().head_block_id;
 }
 
-producer_id_type database::head_block_producer() const
-{
+producer_id_type database::head_block_producer() const {
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return head_block->producer;
    return {};
 }
 
-const chain_id_type& database::get_chain_id( )const
-{
+const chain_id_type& database::get_chain_id()const {
    return get<chain_property_object>().chain_id;
 }
 
-const node_property_object& database::get_node_properties()const
-{
+const node_property_object& database::get_node_properties()const {
    return _node_property_object;
 }
 
-node_property_object& database::node_properties()
-{
+node_property_object& database::node_properties() {
    return _node_property_object;
 }
 
-uint32_t database::last_irreversible_block_num() const
-{
+uint32_t database::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
 }
 
-void database::initialize_indexes()
-{
+void database::initialize_indexes() {
    add_index<account_index>();
    add_index<permission_index>();
    add_index<action_code_index>();
@@ -708,46 +678,27 @@ database::~database()
    clear_pending();
 }
 
-void database::reindex(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation)
+void database::replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation)
 { try {
-   ilog( "reindexing blockchain" );
+   ilog("Replaying blockchain");
    wipe(data_dir, false);
    open(data_dir, shared_file_size, [&initial_allocation]{return initial_allocation;});
 
    auto start = fc::time_point::now();
-   auto last_block = _block_id_to_block.last();
-   if( !last_block ) {
-      elog( "!no last block" );
-      edump((last_block));
+   auto last_block = _block_log.read_head();
+   if (!last_block) {
+      elog("No blocks in block log; skipping replay");
       return;
    }
 
    const auto last_block_num = last_block->block_num();
 
-   ilog( "Replaying blocks..." );
-   for( uint32_t i = 1; i <= last_block_num; ++i )
-   {
-      if( i % 5000 == 0 ) std::cerr << "   " << double(i*100)/last_block_num << "%   "<<i << " of " <<last_block_num<<"   \n";
-      fc::optional< signed_block > block = _block_id_to_block.fetch_by_number(i);
-      if( !block.valid() )
-      {
-         wlog( "Reindexing terminated due to gap:  Block ${i} does not exist!", ("i", i) );
-         uint32_t dropped_count = 0;
-         while( true )
-         {
-            fc::optional< block_id_type > last_id = _block_id_to_block.last_id();
-            // this can trigger if we attempt to e.g. read a file that has block #2 but no block #1
-            if( !last_id.valid() )
-               break;
-            // we've caught up to the gap
-            if( block_header::num_from_id( *last_id ) <= i )
-               break;
-            _block_id_to_block.remove( *last_id );
-            dropped_count++;
-         }
-         wlog( "Dropped ${n} blocks from after the gap", ("n", dropped_count) );
-         break;
-      }
+   ilog("Replaying blocks...");
+   for (uint32_t i = 1; i <= last_block_num; ++i) {
+      if (i % 5000 == 0)
+         std::cerr << "   " << double(i*100)/last_block_num << "%   "<<i << " of " <<last_block_num<<"   \n";
+      fc::optional<signed_block> block = _block_log.read_block_by_num(i);
+      FC_ASSERT(block, "Could not find block #${n} in block_log!", ("n", i));
       apply_block(*block, skip_producer_signature |
                           skip_transaction_signatures |
                           skip_transaction_dupe_check |
@@ -756,18 +707,21 @@ void database::reindex(fc::path data_dir, uint64_t shared_file_size, const genes
                           skip_authority_check);
    }
    auto end = fc::time_point::now();
-   ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+   ilog("Done replaying ${n} blocks, elapsed time: ${t} sec",
+        ("n", head_block_num())("t",double((end-start).count())/1000000.0));
 
    set_revision(head_block_num());
-} FC_CAPTURE_AND_RETHROW( (data_dir) ) }
+} FC_CAPTURE_AND_RETHROW((data_dir)) }
 
 void database::wipe(const fc::path& data_dir, bool include_blocks)
 {
    ilog("Wiping database", ("include_blocks", include_blocks));
    close();
    chainbase::database::wipe(data_dir);
-   if( include_blocks )
-      fc::remove_all( data_dir / "database" );
+   if(include_blocks) {
+      fc::remove_all(data_dir / "blocks.log");
+      fc::remove_all(data_dir / "blocks.log.index");
+   }
 }
 
 void database::open(const fc::path& data_dir, uint64_t shared_file_size,
@@ -777,9 +731,9 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
 
       initialize_indexes();
 
-      _block_id_to_block.open(data_dir / "database" / "block_num_to_block");
+      _block_log.open(data_dir / "blocks.log");
 
-      if( !find<global_property_object>() ) {
+      if (!find<global_property_object>()) {
          with_write_lock([&] {
             init_genesis(genesis_loader());
          });
@@ -789,19 +743,18 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
       with_write_lock([&] {
          undo_all();
 
-         FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
-                   ("rev", revision())("head_block", head_block_num()) );
+         FC_ASSERT(revision() == head_block_num(), "Chainbase revision does not match head block num",
+                   ("rev", revision())("head_block", head_block_num()));
       });
 
-      fc::optional<signed_block> last_block = _block_id_to_block.last();
+      fc::optional<signed_block> last_block = _block_log.read_head();
       if(last_block.valid()) {
-         _fork_db.start_block( *last_block );
+         _fork_db.start_block(*last_block);
          idump((last_block->id())(last_block->block_num()));
          idump((head_block_id())(head_block_num()));
-         if( last_block->id() != head_block_id() )
-         {
-              FC_ASSERT( head_block_num() == 0, "last block ID does not match current chain state",
-                         ("last_block->id", last_block->id())("head_block_num",head_block_num()) );
+         if (last_block->id() != head_block_id()) {
+              FC_ASSERT(head_block_num() == 0, "last block ID does not match current chain state",
+                        ("last_block->id", last_block->id())("head_block_num",head_block_num()));
          }
       }
 } FC_CAPTURE_LOG_AND_RETHROW((data_dir)) }
@@ -814,18 +767,17 @@ void database::close()
    chainbase::database::flush();
    chainbase::database::close();
 
-   if( _block_id_to_block.is_open() )
-      _block_id_to_block.close();
+   if( _block_log.is_open() )
+      _block_log.close();
 
    _fork_db.reset();
 }
 
-void database::update_global_dynamic_data( const signed_block& b )
-{
+void database::update_global_dynamic_data(const signed_block& b) {
    const dynamic_global_property_object& _dgp = get<dynamic_global_property_object>();
 
-   uint32_t missed_blocks = get_slot_at_time( b.timestamp );
-   assert( missed_blocks != 0 );
+   uint32_t missed_blocks = head_block_num() == 0? 1 : get_slot_at_time(b.timestamp);
+   assert(missed_blocks != 0);
    missed_blocks--;
 
    if (missed_blocks)
@@ -890,41 +842,34 @@ void database::update_last_irreversible_block()
 
    static_assert(config::IrreversibleThresholdPercent > 0, "irreversible threshold must be nonzero");
 
-   // 1 1 1 2 2 2 2 2 2 2 -> 2     .7*10 = 7
-   // 1 1 1 1 1 1 1 2 2 2 -> 1
-   // 3 3 3 3 3 3 3 3 3 3 -> 3
-
    size_t offset = EOS_PERCENT(producer_objs.size(), config::Percent100 - config::IrreversibleThresholdPercent);
-
-   std::nth_element( producer_objs.begin(), producer_objs.begin() + offset, producer_objs.end(),
-      []( const producer_object* a, const producer_object* b )
-      {
+   std::nth_element(producer_objs.begin(), producer_objs.begin() + offset, producer_objs.end(),
+      [](const producer_object* a, const producer_object* b) {
          return a->last_confirmed_block_num < b->last_confirmed_block_num;
-      } );
+      });
 
    uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num;
 
-   if( new_last_irreversible_block_num > dpo.last_irreversible_block_num )
-   {
-      modify( dpo, [&]( dynamic_global_property_object& _dpo )
-      {
+   if (new_last_irreversible_block_num > dpo.last_irreversible_block_num) {
+      modify(dpo, [&](dynamic_global_property_object& _dpo) {
          _dpo.last_irreversible_block_num = new_last_irreversible_block_num;
-      } );
+      });
    }
 
    // Write newly irreversible blocks to disk. First, get the number of the last block on disk...
-   auto old_last_irreversible_block = _block_id_to_block.last();
+   auto old_last_irreversible_block = _block_log.head();
    int last_block_on_disk = 0;
    // If this is null, there are no blocks on disk, so the zero is correct
    if (old_last_irreversible_block)
       last_block_on_disk = old_last_irreversible_block->block_num();
+
    if (last_block_on_disk < new_last_irreversible_block_num)
       for (auto block_to_write = last_block_on_disk + 1;
            block_to_write <= new_last_irreversible_block_num;
            ++block_to_write) {
          auto block = fetch_block_by_number(block_to_write);
          assert(block);
-         _block_id_to_block.store(block->id(), *block);
+         _block_log.append(*block);
       }
 
    // Trim fork_database and undo histories

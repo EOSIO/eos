@@ -25,8 +25,8 @@
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/node_property_object.hpp>
 #include <eos/chain/fork_database.hpp>
-#include <eos/chain/block_database.hpp>
 #include <eos/chain/genesis_state.hpp>
+#include <eos/chain/block_log.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
@@ -88,7 +88,7 @@ namespace eos { namespace chain {
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
           */
-         void reindex(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation = genesis_state_type());
+         void replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation = genesis_state_type());
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -285,19 +285,10 @@ namespace eos { namespace chain {
          void update_last_irreversible_block();
          void clear_expired_transactions();
 
-         deque< signed_transaction >         _pending_transactions;
-         fork_database                       _fork_db;
+         deque< signed_transaction >       _pending_transactions;
+         fork_database                     _fork_db;
 
-         /**
-          *  Note: we can probably store blocks by block num rather than
-          *  block id because after the undo window is past the block ID
-          *  is no longer relevant and its number is irreversible.
-          *
-          *  During the "fork window" we can cache blocks in memory
-          *  until the fork is resolved.  This should make maintaining
-          *  the fork tree relatively simple.
-          */
-         block_database   _block_id_to_block;
+         block_log                         _block_log;
 
          bool                              _producing = false;
          uint64_t                          _skip_flags = 0;

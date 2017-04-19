@@ -195,7 +195,6 @@ vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_block_ids(const std
       if (BOOST_LIKELY(num > 0))
          ids.emplace_back(chain.db().get_block_id_for_num(num));
 
-   ilog("Exiting ${f} with ${r}", ("f", __FUNCTION__)("r", ids));
    return ids;
 } FC_CAPTURE_AND_RETHROW((blockchain_synopsis)) }
 
