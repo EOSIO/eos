@@ -39,15 +39,68 @@
 #include <map>
 
 namespace eos { namespace chain {
+
+   class database;
+
+   class message_validate_context {
+      public:
+         message_validate_context( const transaction& t, const message& m )
+         :trx(t),msg(m){}
+
+         const transaction& trx;
+         const message&     msg;
+   };
+
+
+   class state_validate_context : public message_validate_context {
+      public:
+         state_validate_context( const database& d, const transaction& t, const message& m )
+         :message_validate_context(t,m),db(d){}
+
+         const database&    db;
+   };
+
+   class apply_context : public state_validate_context {
+      public:
+         apply_context( database& d, const transaction& t, const message& m )
+         :state_validate_context(d,t,m),mutable_db(d){}
+
+         database&    mutable_db;
+   };
+
+   typedef std::function<void( message_validate_context& )> message_validate_handler;
+   typedef std::function<void( state_validate_context& )>   state_validate_handler;
+   typedef std::function<void( apply_context& )>            apply_handler;
+   typedef string                                           action_type;
+
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
    class database : public chainbase::database
    {
+      map< account_name, map<action_type, message_validate_handler> > message_validate_handlers;
+      map< account_name, map<action_type, state_validate_handler> >   state_validate_handlers;
+      map< account_name, map<action_type, apply_handler> >            apply_handlers;
+
       public:
          database();
          ~database();
+
+         /**
+          *  The database can override any script handler with native code.
+          */
+         ///@{
+         void set_validate_handler( const account_name& contract, const action_type& action, message_validate_handler v ) {
+            message_validate_handlers[contract][action] = v;
+         }
+         void set_state_validate_handler(  const account_name& contract, const action_type& action, state_validate_handler v ) {
+            state_validate_handlers[contract][action] = v;
+         }
+         void set_apply_handler( const account_name& contract, const action_type& action, apply_handler v ) {
+            apply_handlers[contract][action] = v;
+         }
+         //@}
 
          enum validation_steps
          {
