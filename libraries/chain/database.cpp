@@ -894,7 +894,7 @@ void database::update_last_irreversible_block()
    // 1 1 1 1 1 1 1 2 2 2 -> 1
    // 3 3 3 3 3 3 3 3 3 3 -> 3
 
-   size_t offset = ((EOS_100_PERCENT - EOS_IRREVERSIBLE_THRESHOLD) * producer_objs.size() / EOS_100_PERCENT);
+   size_t offset = EOS_PERCENT(producer_objs.size(), EOS_100_PERCENT - EOS_IRREVERSIBLE_THRESHOLD);
 
    std::nth_element( producer_objs.begin(), producer_objs.begin() + offset, producer_objs.end(),
       []( const producer_object* a, const producer_object* b )

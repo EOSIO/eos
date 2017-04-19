@@ -34,7 +34,8 @@
 
 #include "../common/database_fixture.hpp"
 
-using namespace eos::chain;
+using namespace eos;
+using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
@@ -266,18 +267,20 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
       MKDB(db)
-      db.produce_blocks(10);
 
-      BOOST_CHECK_EQUAL(db.head_block_num(), 10);
-      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 3);
+      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThreshold);
+      db.produce_blocks(20);
+
+      BOOST_CHECK_EQUAL(db.head_block_num(), 20);
+      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 20 - lag);
 
       db.close();
       db.open();
 
       // After restarting, we should have rewound to the last irreversible block.
-      BOOST_CHECK_EQUAL(db.head_block_num(), 3);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 20 - lag);
       db.produce_blocks(5);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 8);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 25 - lag);
 } FC_LOG_AND_RETHROW() }
 
 // Check that a db which is closed and reopened successfully syncs back with the network, including retrieving blocks
@@ -286,15 +289,16 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 { try {
       MKDB(producer)
       MKNET(net, (producer))
-      // Produce 10 blocks on the chain
-      producer.produce_blocks(10);
+
+      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThreshold);
+      producer.produce_blocks(20);
 
       {
          // The new node, sleepy, joins, syncs, disconnects
          MKDB(sleepy, sleepy)
          net.connect_database(sleepy);
-         BOOST_CHECK_EQUAL(producer.head_block_num(), 10);
-         BOOST_CHECK_EQUAL(sleepy.head_block_num(), 10);
+         BOOST_CHECK_EQUAL(producer.head_block_num(), 20);
+         BOOST_CHECK_EQUAL(sleepy.head_block_num(), 20);
 
          net.disconnect_database(sleepy);
          sleepy.close();
@@ -302,15 +306,15 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 
       // 5 new blocks are produced
       producer.produce_blocks(5);
-      BOOST_CHECK_EQUAL(producer.head_block_num(), 15);
+      BOOST_CHECK_EQUAL(producer.head_block_num(), 25);
 
       // Sleepy is reborn! Check that it is now rewound to the LIB...
       MKDB(sleepy, sleepy)
-      BOOST_CHECK_EQUAL(sleepy.head_block_num(), 3);
+      BOOST_CHECK_EQUAL(sleepy.head_block_num(), 20 - lag);
 
       // Reconnect sleepy to the network and check that it syncs up to the present
       net.connect_database(sleepy);
-      BOOST_CHECK_EQUAL(sleepy.head_block_num(), 15);
+      BOOST_CHECK_EQUAL(sleepy.head_block_num(), 25);
       BOOST_CHECK_EQUAL(sleepy.head_block_id().str(), producer.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
 
@@ -318,13 +322,16 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
       MKDB(db)
+
+      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThreshold);
       db.produce_blocks(100);
-      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 93);
+
+      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 100 - lag);
       db.close();
       db.reindex();
-      BOOST_CHECK_EQUAL(db.head_block_num(), 93);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 100 - lag);
       db.produce_blocks(20);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 113);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 120 - lag);
 } FC_LOG_AND_RETHROW() }
 
 // Test wiping a database and resyncing with an ongoing network

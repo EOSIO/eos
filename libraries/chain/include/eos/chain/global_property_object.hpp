@@ -50,7 +50,7 @@ namespace eos { namespace chain {
       id_type                           id;
       chain_parameters                  parameters;
 
-      std::array<producer_id_type, config::EOS_PRODUCER_COUNT>   active_producers;
+      std::array<producer_id_type, config::ProducerCount>   active_producers;
    };
 
 

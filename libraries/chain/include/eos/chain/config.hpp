@@ -29,6 +29,7 @@
 /** percentage fields are fixed point with a denominator of 10,000 */
 #define EOS_100_PERCENT                               10000
 #define EOS_1_PERCENT                                 (EOS_100_PERCENT/100)
+
 #define EOS_DEFAULT_MAX_BLOCK_SIZE                    (256*1024)
 
 #define EOS_DEFAULT_PRODUCER_PAY_PER_BLOCK            (EOS_BLOCKCHAIN_PRECISION * int64_t(10))
@@ -36,6 +37,12 @@
 
 #define EOS_IRREVERSIBLE_THRESHOLD                      (70 * EOS_1_PERCENT)
 
+template<typename Number>
+Number EOS_PERCENT(Number value, int percentage) {
+   return value * percentage / EOS_100_PERCENT;
+}
+
 namespace eos { namespace config {
-const static int EOS_PRODUCER_COUNT = 21;
+const static int ProducerCount = 21;
+const static int IrreversibleThreshold = 70 * EOS_1_PERCENT;
 } } // namespace eos::config
