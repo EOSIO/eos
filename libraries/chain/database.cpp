@@ -627,7 +627,11 @@ uint32_t database::last_irreversible_block_num() const
 
 void database::initialize_indexes()
 {
-   add_index<account_multi_index>();
+   add_index<account_index>();
+   add_index<permission_index>();
+   add_index<action_code_index>();
+   add_index<action_permission_index>();
+
    add_index<global_property_multi_index>();
    add_index<dynamic_global_property_multi_index>();
    add_index<block_summary_multi_index>();
@@ -656,8 +660,8 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    for (const auto& acct : genesis_state.initial_accounts) {
       create<account_object>([&acct](account_object& a) {
          a.name = acct.name.c_str();
-         a.active_key = acct.active_key;
-         a.owner_key = acct.owner_key;
+//         a.active_key = acct.active_key;
+//         a.owner_key = acct.owner_key;
       });
    }
    // Create initial producers

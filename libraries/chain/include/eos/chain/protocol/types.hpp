@@ -119,6 +119,9 @@ namespace eos { namespace chain {
    {
       null_object_type,
       account_object_type,
+      permission_object_type,
+      action_code_object_type,
+      action_permission_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
       block_summary_object_type,
@@ -165,67 +168,17 @@ namespace eos { namespace chain {
        bool is_valid_v1( const std::string& base58str );
    };
 
-   struct extended_public_key_type
-   {
-      struct binary_key
-      {
-         binary_key() {}
-         uint32_t                   check = 0;
-         fc::ecc::extended_key_data data;
-      };
-      
-      fc::ecc::extended_key_data key_data;
-       
-      extended_public_key_type();
-      extended_public_key_type( const fc::ecc::extended_key_data& data );
-      extended_public_key_type( const fc::ecc::extended_public_key& extpubkey );
-      explicit extended_public_key_type( const std::string& base58str );
-      operator fc::ecc::extended_public_key() const;
-      explicit operator std::string() const;
-      friend bool operator == ( const extended_public_key_type& p1, const fc::ecc::extended_public_key& p2);
-      friend bool operator == ( const extended_public_key_type& p1, const extended_public_key_type& p2);
-      friend bool operator != ( const extended_public_key_type& p1, const extended_public_key_type& p2);
-   };
    
-   struct extended_private_key_type
-   {
-      struct binary_key
-      {
-         binary_key() {}
-         uint32_t                   check = 0;
-         fc::ecc::extended_key_data data;
-      };
-      
-      fc::ecc::extended_key_data key_data;
-       
-      extended_private_key_type();
-      extended_private_key_type( const fc::ecc::extended_key_data& data );
-      extended_private_key_type( const fc::ecc::extended_private_key& extprivkey );
-      explicit extended_private_key_type( const std::string& base58str );
-      operator fc::ecc::extended_private_key() const;
-      explicit operator std::string() const;
-      friend bool operator == ( const extended_private_key_type& p1, const fc::ecc::extended_private_key& p2);
-      friend bool operator == ( const extended_private_key_type& p1, const extended_private_key_type& p2);
-      friend bool operator != ( const extended_private_key_type& p1, const extended_private_key_type& p2);
-   };
 } }  // eos::chain
 
 namespace fc
 {
     void to_variant( const eos::chain::public_key_type& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  eos::chain::public_key_type& vo );
-    void to_variant( const eos::chain::extended_public_key_type& var, fc::variant& vo );
-    void from_variant( const fc::variant& var, eos::chain::extended_public_key_type& vo );
-    void to_variant( const eos::chain::extended_private_key_type& var, fc::variant& vo );
-    void from_variant( const fc::variant& var, eos::chain::extended_private_key_type& vo );
 }
 
 FC_REFLECT( eos::chain::public_key_type, (key_data) )
 FC_REFLECT( eos::chain::public_key_type::binary_key, (data)(check) )
-FC_REFLECT( eos::chain::extended_public_key_type, (key_data) )
-FC_REFLECT( eos::chain::extended_public_key_type::binary_key, (check)(data) )
-FC_REFLECT( eos::chain::extended_private_key_type, (key_data) )
-FC_REFLECT( eos::chain::extended_private_key_type::binary_key, (check)(data) )
 
 FC_REFLECT(eos::chain::account_id_type, (_id))
 FC_REFLECT(eos::chain::producer_id_type, (_id))
@@ -233,6 +186,9 @@ FC_REFLECT(eos::chain::producer_id_type, (_id))
 FC_REFLECT_ENUM( eos::chain::object_type,
                  (null_object_type)
                  (account_object_type)
+                 (permission_object_type)
+                 (action_code_object_type)
+                 (action_permission_object_type)
                  (global_property_object_type)
                  (dynamic_global_property_object_type)
                  (block_summary_object_type)
