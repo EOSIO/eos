@@ -26,15 +26,27 @@ struct message {
    account_name         recipient;
 
    /// Other accounts to notify about this message
-   vector<account_name> notify_accounts;
+   vector<account_name> notify;
 
-   /// The message type -- this is defined by the contract(s) which create and/or process this message
+   /**
+    *  Every contract defines the set of types that it accepts, these types are
+    *  scoped according to the recipient. This means two contracts can can define 
+    *  two different types with the same name.  
+    */
    message_type         type;
 
    /// The message contents
    vector<char>         data;
+
+   template<typename T>
+   void set( const message_type& t, const T& value ) {
+      type = t;
+      data = fc::raw::pack( value );
+   }
 };
+
+
 
 } } // namespace eos::chain
 
-FC_REFLECT(eos::chain::message, (sender)(recipient)(notify_accounts)(type)(data))
+FC_REFLECT(eos::chain::message, (sender)(recipient)(notify)(type)(data))

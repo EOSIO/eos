@@ -19,11 +19,11 @@ typedef UInt32         GeneratedTransactionID
 # import account type as localtype
 
 struct Message
-  from AccountName # testing
-  to   AccountName
-  cc   AccountName[]
-  type MessageType
-  data Bytes
+  sender      AccountName # testing
+  recipient   AccountName
+  notify      AccountName[]
+  type        MessageType
+  data        Bytes
 
 struct AccountPermission
   account    AccountName

@@ -91,7 +91,6 @@ namespace eos { namespace chain {
       /// Calculate the digest for a transaction
       digest_type         digest()const;
       transaction_id_type id()const;
-      void                validate() const;
       /// Calculate the digest used for signature validation
       digest_type         sig_digest(const chain_id_type& chain_id)const;
 

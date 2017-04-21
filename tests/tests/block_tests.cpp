@@ -53,6 +53,36 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
       BOOST_CHECK_EQUAL(db.head_block_num(), db.get_global_properties().active_producers.size() + 6);
 } FC_LOG_AND_RETHROW() }
 
+// Simple test to verify a simple transfer transaction works
+BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
+{ try {
+      MKDB(db)
+
+      BOOST_CHECK_EQUAL(db.head_block_num(), 0);
+      db.produce_blocks(10);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 10);
+
+      signed_transaction trx;
+      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); /// no messages
+      trx.messages.resize(1);
+
+
+      trx.set_reference_block( db.head_block_id() );
+      trx.set_expiration( db.head_block_time() );
+      ilog(".");
+      db.push_transaction(trx);
+      ilog(".");
+
+      db.produce_blocks(1);
+      ilog(".");
+
+      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); /// no messages
+
+
+
+} FC_LOG_AND_RETHROW() }
+
+
 // Simple test of block production when a block is missed
 BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
 { try {

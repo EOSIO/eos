@@ -52,26 +52,26 @@ namespace eos { namespace chain {
    };
 
 
-   class state_validate_context : public message_validate_context {
+   class precondition_validate_context : public message_validate_context {
       public:
-         state_validate_context( const database& d, const transaction& t, const message& m )
-         :message_validate_context(t,m),db(d){}
+         precondition_validate_context( const database& d, const transaction& t, const message& m, const account_name& r )
+         :message_validate_context(t,m),receiver(r),db(d){}
 
+         const account_name& receiver;
          const database&    db;
    };
 
-   class apply_context : public state_validate_context {
+   class apply_context : public precondition_validate_context {
       public:
-         apply_context( database& d, const transaction& t, const message& m )
-         :state_validate_context(d,t,m),mutable_db(d){}
+         apply_context( database& d, const transaction& t, const message& m, const account_name& receiver )
+         :precondition_validate_context(d,t,m,receiver),mutable_db(d){}
 
          database&    mutable_db;
    };
 
    typedef std::function<void( message_validate_context& )> message_validate_handler;
-   typedef std::function<void( state_validate_context& )>   state_validate_handler;
+   typedef std::function<void( precondition_validate_context& )>   precondition_validate_handler;
    typedef std::function<void( apply_context& )>            apply_handler;
-   typedef string                                           action_type;
 
    /**
     *   @class database
@@ -79,27 +79,36 @@ namespace eos { namespace chain {
     */
    class database : public chainbase::database
    {
-      map< account_name, map<action_type, message_validate_handler> > message_validate_handlers;
-      map< account_name, map<action_type, state_validate_handler> >   state_validate_handlers;
-      map< account_name, map<action_type, apply_handler> >            apply_handlers;
 
       public:
          database();
          ~database();
 
          /**
+          *  This signal is emitted after all operations and virtual operation for a
+          *  block have been applied but before the get_applied_operations() are cleared.
+          *
+          *  You may not yield from this callback because the blockchain is holding
+          *  the write lock and may be in an "inconstant state" until after it is
+          *  released.
+          */
+         fc::signal<void(const signed_block&)> applied_block;
+
+         /**
+          * This signal is emitted any time a new transaction is added to the pending
+          * block state.
+          */
+         fc::signal<void(const signed_transaction&)> on_pending_transaction;
+
+
+
+         /**
           *  The database can override any script handler with native code.
           */
          ///@{
-         void set_validate_handler( const account_name& contract, const action_type& action, message_validate_handler v ) {
-            message_validate_handlers[contract][action] = v;
-         }
-         void set_state_validate_handler(  const account_name& contract, const action_type& action, state_validate_handler v ) {
-            state_validate_handlers[contract][action] = v;
-         }
-         void set_apply_handler( const account_name& contract, const action_type& action, apply_handler v ) {
-            apply_handlers[contract][action] = v;
-         }
+         void set_validate_handler( const account_name& contract, const message_type& action, message_validate_handler v );
+         void set_precondition_validate_handler(  const account_name& contract, const message_type& action, precondition_validate_handler v );
+         void set_apply_handler( const account_name& contract, const message_type& action, apply_handler v );
          //@}
 
          enum validation_steps
@@ -230,21 +239,8 @@ namespace eos { namespace chain {
          void pop_block();
          void clear_pending();
 
-         /**
-          *  This signal is emitted after all operations and virtual operation for a
-          *  block have been applied but before the get_applied_operations() are cleared.
-          *
-          *  You may not yield from this callback because the blockchain is holding
-          *  the write lock and may be in an "inconstant state" until after it is
-          *  released.
-          */
-         fc::signal<void(const signed_block&)> applied_block;
 
-         /**
-          * This signal is emitted any time a new transaction is added to the pending
-          * block state.
-          */
-         fc::signal<void(const signed_transaction&)> on_pending_transaction;
+
 
          /**
           * @brief Get the producer scheduled for block production in a slot.
@@ -313,7 +309,8 @@ namespace eos { namespace chain {
            *  This method validates transactions without adding it to the pending state.
            *  @return true if the transaction would validate
            */
-          void validate_transaction(const signed_transaction& trx);
+          void validate_transaction(const signed_transaction& trx)const;
+          void validate_tapos( const signed_transaction& trx )const;
 
        private:
           optional<session> _pending_tx_session;
@@ -325,6 +322,15 @@ namespace eos { namespace chain {
       private:
          void _apply_block(const signed_block& next_block);
          void _apply_transaction(const signed_transaction& trx);
+
+         void validate_uniqueness( const signed_transaction& trx )const;
+         void validate_message_precondition( precondition_validate_context& c )const;
+         void apply_message( apply_context& c );
+
+
+
+         bool check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
+         bool check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
 
          ///Steps involved in applying a new block
          ///@{
@@ -344,11 +350,16 @@ namespace eos { namespace chain {
          block_log                         _block_log;
 
          bool                              _producing = false;
+         bool                              _pushing  = false;
          uint64_t                          _skip_flags = 0;
 
          flat_map<uint32_t,block_id_type>  _checkpoints;
 
          node_property_object              _node_property_object;
+
+         map< account_name, map<message_type, message_validate_handler> > message_validate_handlers;
+         map< account_name, map<message_type, precondition_validate_handler> >   precondition_validate_handlers;
+         map< account_name, map<message_type, apply_handler> >            apply_handlers;
    };
 
 } }
