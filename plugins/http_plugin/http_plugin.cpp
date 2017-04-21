@@ -123,10 +123,8 @@ namespace eos {
                   auto handler_itr = my->url_handlers.find(resource);
                   if(handler_itr != my->url_handlers.end()) {
                      handler_itr->second(resource, body, [con,this](int code, string body) {
-                        my->http_ios.post([=]() {
-                           con->set_body(body);
-                           con->set_status(websocketpp::http::status_code::value(code));
-                        });
+                        con->set_body(body);
+                        con->set_status(websocketpp::http::status_code::value(code));
                      });
                   } else {
                      wlog("404 - not found: ${ep}", ("ep",resource));
@@ -159,8 +157,7 @@ namespace eos {
       }
    }
 
-   void http_plugin::add_handler(const string& url, const url_handler& handler)
-   {
+   void http_plugin::add_handler(const string& url, const url_handler& handler) {
       my->http_ios.post([=](){
         my->url_handlers.insert(std::make_pair(url,handler));
       });
