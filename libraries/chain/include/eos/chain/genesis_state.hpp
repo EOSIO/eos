@@ -39,13 +39,15 @@ using std::vector;
 struct genesis_state_type {
    struct initial_account_type {
       initial_account_type(const string& name = string(),
+                           uint64_t bal = 0,
                            const public_key_type& owner_key = public_key_type(),
                            const public_key_type& active_key = public_key_type())
-         : name(name),
+         : name(name), balance(bal),
            owner_key(owner_key),
            active_key(active_key == public_key_type()? owner_key : active_key)
       {}
-      string name;
+      string          name;
+      uint64_t        balance = 0;
       public_key_type owner_key;
       public_key_type active_key;
    };
@@ -80,7 +82,7 @@ struct genesis_state_type {
 
 } } // namespace eos::chain
 
-FC_REFLECT(eos::chain::genesis_state_type::initial_account_type, (name)(owner_key)(active_key))
+FC_REFLECT(eos::chain::genesis_state_type::initial_account_type, (name)(balance)(owner_key)(active_key))
 
 FC_REFLECT(eos::chain::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
 

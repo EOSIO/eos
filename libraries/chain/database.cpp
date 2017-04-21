@@ -32,6 +32,8 @@
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 
+#include <eos/chain/sys_contract.hpp>
+
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
@@ -487,18 +489,38 @@ void database::validate_uniqueness( const signed_transaction& trx )const {
    auto& trx_idx = get_index<transaction_multi_index>();
    FC_ASSERT( trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end());
 }
+
+void database::validate_referenced_accounts( const signed_transaction& trx )const {
+   for( const auto& auth : trx.provided_authorizations ) {
+      get_account( auth.authorizing_account );
+   }
+   for( const auto& msg  : trx.messages ) {
+      get_account( msg.sender );
+      get_account( msg.recipient );
+      const account_name* prev = nullptr;
+      for( const auto& acnt : msg.notify ) {
+        get_account( acnt );
+        if( prev )
+           FC_ASSERT( acnt < *prev );
+        FC_ASSERT( acnt != msg.sender );
+        FC_ASSERT( acnt != msg.recipient );
+        prev = &acnt;
+      }
+   }
+}
 void database::validate_transaction( const signed_transaction& trx )const {
 try {
   FC_ASSERT( trx.messages.size() > 0, "A transaction must have at least one message" );
 
   validate_uniqueness( trx );
   validate_tapos( trx );
+  validate_referenced_accounts( trx );
 
   for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
     message_validate_context mvc( trx, m );
     auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
     if( contract_handlers_itr != message_validate_handlers.end() ) {
-       auto message_handelr_itr = contract_handlers_itr->second.find( m.type );
+       auto message_handelr_itr = contract_handlers_itr->second.find( m.recipient + '/' + m.type );
        if( message_handelr_itr != contract_handlers_itr->second.end() ) {
           message_handelr_itr->second(mvc);
           continue;
@@ -675,6 +697,33 @@ void database::initialize_indexes() {
 
 void database::init_genesis(const genesis_state_type& genesis_state)
 { try {
+   set_validate_handler( "sys", "sys/Transfer", [&]( message_validate_context& context ) {
+       idump((context.msg));
+       auto transfer = context.msg.as<Transfer>();
+       FC_ASSERT( context.msg.has_notify( transfer.to ), "Must notify recipient of transfer" );
+   });
+
+   set_precondition_validate_handler( "sys", "sys/Transfer", [&]( precondition_validate_context& context ) {
+       idump((context.msg)(context.receiver));
+       auto transfer = context.msg.as<Transfer>();
+       const auto& from = get_account( transfer.from );
+       FC_ASSERT( from.balance > transfer.amount, "Insufficient Funds", 
+                  ("from.balance",from.balance)("transfer.amount",transfer.amount) );
+   });
+
+   set_apply_handler( "sys", "sys/Transfer", [&]( apply_context& context ) {
+       idump((context.msg)(context.receiver));
+       auto transfer = context.msg.as<Transfer>();
+       const auto& from = get_account( transfer.from );
+       const auto& to   = get_account( transfer.to   );
+       modify( from, [&]( account_object& a ) {
+          a.balance -= transfer.amount;
+       });
+       modify( to, [&]( account_object& a ) {
+          a.balance += transfer.amount;
+       });
+   });
+
    FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
    FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
               "Genesis timestamp must be divisible by config::BlockIntervalSeconds." );
@@ -689,10 +738,18 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       uint32_t old_flags;
    } inhibitor(*this);
 
+
+   /// create the system contract
+   create<account_object>([&](account_object& a) {
+      a.name = "sys";
+   });
+
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {
       create<account_object>([&acct](account_object& a) {
          a.name = acct.name.c_str();
+         a.balance = acct.balance;
+         idump((acct.name)(a.balance));
 //         a.active_key = acct.active_key;
 //         a.owner_key = acct.owner_key;
       });
@@ -1010,5 +1067,10 @@ void database::set_precondition_validate_handler(  const account_name& contract,
 void database::set_apply_handler( const account_name& contract, const message_type& action, apply_handler v ) {
    apply_handlers[contract][action] = v;
 }
+
+const account_object&   database::get_account( const account_name& name )const {
+try {
+    return get<account_object,by_name>(name);
+} FC_CAPTURE_AND_RETHROW( (name) ) }
 
 } }

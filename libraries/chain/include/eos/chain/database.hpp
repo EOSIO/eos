@@ -173,6 +173,8 @@ namespace eos { namespace chain {
          const signed_transaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
+         const account_object&      get_account( const account_name& name )const;
+
          /**
           *  Calculate the percent of block production slots that were missed in the
           *  past 128 blocks, not including the current block.
@@ -305,14 +307,17 @@ namespace eos { namespace chain {
          void apply_debug_updates();
          void debug_update(const fc::variant_object& update);
 
+
+       private:
          /**
            *  This method validates transactions without adding it to the pending state.
            *  @return true if the transaction would validate
            */
           void validate_transaction(const signed_transaction& trx)const;
           void validate_tapos( const signed_transaction& trx )const;
+          void validate_referenced_accounts( const signed_transaction& trx )const;
 
-       private:
+
           optional<session> _pending_tx_session;
 
        public:

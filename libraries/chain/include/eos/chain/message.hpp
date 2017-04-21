@@ -43,6 +43,15 @@ struct message {
       type = t;
       data = fc::raw::pack( value );
    }
+   template<typename T>
+   T as()const {
+      return fc::raw::unpack<T>(data);
+   }
+   bool has_notify( const account_name& n )const {
+      for( const auto& no : notify )
+         if( no == n ) return true;
+      return false; 
+   }
 };
 
 

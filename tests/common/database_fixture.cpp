@@ -49,7 +49,7 @@ testing_fixture::testing_fixture() {
       auto name = std::string("init") + fc::to_string(i);
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
-      default_genesis_state.initial_accounts.emplace_back(name, public_key, public_key);
+      default_genesis_state.initial_accounts.emplace_back(name, 100000, public_key, public_key);
       key_ring[public_key] = private_key;
 
       private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name + ".producer"));
