@@ -520,7 +520,7 @@ try {
     message_validate_context mvc( trx, m );
     auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
     if( contract_handlers_itr != message_validate_handlers.end() ) {
-       auto message_handelr_itr = contract_handlers_itr->second.find( m.recipient + '/' + m.type );
+       auto message_handelr_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
        if( message_handelr_itr != contract_handlers_itr->second.end() ) {
           message_handelr_itr->second(mvc);
           continue;
@@ -535,7 +535,7 @@ void database::validate_message_precondition( precondition_validate_context& con
     const auto& m = context.msg;
     auto contract_handlers_itr = precondition_validate_handlers.find( context.receiver );
     if( contract_handlers_itr != precondition_validate_handlers.end() ) {
-       auto message_handelr_itr = contract_handlers_itr->second.find( m.recipient + "/" + m.type );
+       auto message_handelr_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
        if( message_handelr_itr != contract_handlers_itr->second.end() ) {
           message_handelr_itr->second(context);
           return;
@@ -548,7 +548,7 @@ void database::apply_message( apply_context& context ) {
     const auto& m = context.msg;
     auto contract_handlers_itr = apply_handlers.find( context.receiver );
     if( contract_handlers_itr != apply_handlers.end() ) {
-       auto message_handelr_itr = contract_handlers_itr->second.find( m.recipient + "/" + m.type );
+       auto message_handelr_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
        if( message_handelr_itr != contract_handlers_itr->second.end() ) {
           message_handelr_itr->second(context);
           return;
@@ -697,32 +697,6 @@ void database::initialize_indexes() {
 
 void database::init_genesis(const genesis_state_type& genesis_state)
 { try {
-   set_validate_handler( "sys", "sys/Transfer", [&]( message_validate_context& context ) {
-       idump((context.msg));
-       auto transfer = context.msg.as<Transfer>();
-       FC_ASSERT( context.msg.has_notify( transfer.to ), "Must notify recipient of transfer" );
-   });
-
-   set_precondition_validate_handler( "sys", "sys/Transfer", [&]( precondition_validate_context& context ) {
-       idump((context.msg)(context.receiver));
-       auto transfer = context.msg.as<Transfer>();
-       const auto& from = get_account( transfer.from );
-       FC_ASSERT( from.balance > transfer.amount, "Insufficient Funds", 
-                  ("from.balance",from.balance)("transfer.amount",transfer.amount) );
-   });
-
-   set_apply_handler( "sys", "sys/Transfer", [&]( apply_context& context ) {
-       idump((context.msg)(context.receiver));
-       auto transfer = context.msg.as<Transfer>();
-       const auto& from = get_account( transfer.from );
-       const auto& to   = get_account( transfer.to   );
-       modify( from, [&]( account_object& a ) {
-          a.balance -= transfer.amount;
-       });
-       modify( to, [&]( account_object& a ) {
-          a.balance += transfer.amount;
-       });
-   });
 
    FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
    FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
@@ -743,6 +717,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    create<account_object>([&](account_object& a) {
       a.name = "sys";
    });
+   init_sys_contract();
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {
@@ -1058,14 +1033,14 @@ uint32_t database::producer_participation_rate()const
 void database::update_producer_schedule()
 {
 }
-void database::set_validate_handler( const account_name& contract, const message_type& action, message_validate_handler v ) {
-   message_validate_handlers[contract][action] = v;
+void database::set_validate_handler( const account_name& contract, const account_name& scope, const message_type& action, message_validate_handler v ) {
+   message_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void database::set_precondition_validate_handler(  const account_name& contract, const message_type& action, precondition_validate_handler v ) {
-   precondition_validate_handlers[contract][action] = v;
+void database::set_precondition_validate_handler(  const account_name& contract, const account_name& scope, const message_type& action, precondition_validate_handler v ) {
+   precondition_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void database::set_apply_handler( const account_name& contract, const message_type& action, apply_handler v ) {
-   apply_handlers[contract][action] = v;
+void database::set_apply_handler( const account_name& contract, const account_name& scope, const message_type& action, apply_handler v ) {
+   apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
 
 const account_object&   database::get_account( const account_name& name )const {

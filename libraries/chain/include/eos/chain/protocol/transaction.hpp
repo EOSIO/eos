@@ -135,7 +135,7 @@ namespace eos { namespace chain {
       /// The account authorizing the transaction
       account_name authorizing_account;
       /// The privileges being invoked to authorize the transaction
-      privilege_class privileges;
+      permission_name privileges;
    };
 
    /**

@@ -23,10 +23,22 @@
  */
 #pragma once
 #include <eos/chain/protocol/types.hpp>
+#include <eos/chain/protocol/authority.hpp>
 
 #include "multi_index_includes.hpp"
 
 namespace eos { namespace chain {
+
+   class shared_authority {
+      shared_authority( chainbase::allocator<char> alloc )
+      :accounts(alloc),keys(alloc)
+      {}
+
+      uint32_t                         threshold = 0;
+      shared_vector<PermissionLevel>   accounts;
+      shared_vector<KeyPermission>     keys;
+   };
+   
    class account_object : public chainbase::object<account_object_type, account_object>
    {
       OBJECT_CTOR(account_object, (name))

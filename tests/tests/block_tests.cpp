@@ -71,10 +71,10 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.messages[0].sender = "init1";
       trx.messages[0].recipient = "sys";
       trx.messages[0].type = "Transfer";
-      trx.messages[0].set( "Transfer", eos::chain::Transfer{ "init1", "init2", 100, "memo" } );
+      trx.messages[0].set( "Transfer", eos::chain::Transfer{ "init2", 100, "memo" } );
       BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); // "fail to notify receiver, init2"
       trx.messages[0].notify = {"init2"};
-      trx.messages[0].set( "Transfer", eos::chain::Transfer{ "init1", "init2", 100, "memo" } );
+      trx.messages[0].set( "Transfer", eos::chain::Transfer{ "init2", 100, "memo" } );
       db.push_transaction(trx);
 
       BOOST_CHECK_EQUAL( db.get_account( "init1" ).balance, 100000 - 100 );

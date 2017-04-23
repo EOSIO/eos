@@ -5,6 +5,7 @@ file(GLOB PROTOCOL_HEADERS "include/eos/chain/protocol/*.hpp")
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
              database.cpp
+             sys_contract.cpp
              fork_database.cpp
 
              protocol/types.cpp

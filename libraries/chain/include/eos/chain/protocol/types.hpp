@@ -38,6 +38,7 @@
 #include <fc/static_variant.hpp>
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
+#include <fc/fixed_string.hpp>
 
 #include <memory>
 #include <vector>
@@ -104,9 +105,12 @@ namespace eos { namespace chain {
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-   using account_name = std::string;
-   using message_type = std::string;
-   using privilege_class = std::string;
+   typedef fc::fixed_string<>      account_name;
+   typedef fc::fixed_string<>      permission_name;
+   typedef fc::fixed_string<>      message_type;
+   //using account_name    = std::string;
+   //using message_type    = std::string;
+   //using permission_name = std::string;
 
    /**
     * List all object types from all namespaces here so they can
