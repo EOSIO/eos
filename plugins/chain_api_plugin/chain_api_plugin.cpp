@@ -12,20 +12,6 @@ public:
    chain_api_plugin_impl(database& db)
       : db(db) {}
 
-   void get_info(url_response_callback& cb) {
-      fc::mutable_variant_object response;
-
-      response["head_block_num"] = db.head_block_num();
-      response["head_block_id"] = db.head_block_id();
-      response["head_block_time"] = db.head_block_time();
-      response["head_block_producer"] = db.head_block_producer();
-      response["recent_slots"] = std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string();
-      response["participation_rate"] =
-            __builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0;
-
-      cb(200, fc::json::to_string(response));
-   }
-
    database& db;
 };
 
@@ -37,9 +23,23 @@ chain_api_plugin::~chain_api_plugin(){}
 void chain_api_plugin::set_program_options(options_description&, options_description&) {}
 void chain_api_plugin::plugin_initialize(const variables_map&) {}
 
+#define CALL(api_name, api_handle, api_namespace, call_name) \
+{std::string("/v1/" #api_name "/" #call_name), [this, api_handle](string, string body, url_response_callback cb) { \
+          try { \
+             if (body.empty()) body = "{}"; \
+             auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
+             cb(200, fc::json::to_string(result)); \
+          } catch (fc::exception& e) { \
+             cb(500, e.what()); \
+             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+          } \
+       }}
+
 void chain_api_plugin::plugin_startup() {
+   auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
+
    app().get_plugin<http_plugin>().add_api({
-      {std::string("/v1/chain/get_info"), [this](string, string, url_response_callback cb) {my->get_info(cb);}}
+      CALL(chain, ro_api, chain_apis::read_only, get_info)
    });
 }
 
