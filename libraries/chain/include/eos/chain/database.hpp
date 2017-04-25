@@ -335,8 +335,8 @@ namespace eos { namespace chain {
 
 
 
-         bool check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
-         bool check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
+         bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
+         bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
 
          ///Steps involved in applying a new block
          ///@{

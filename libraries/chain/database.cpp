@@ -467,7 +467,7 @@ void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 
 void database::validate_tapos( const signed_transaction& trx )const {
 try {
-   if( !check_tapos() ) return;
+   if( !should_check_tapos() ) return;
 
    const chain_parameters& chain_parameters    = get_global_properties().parameters;
    const auto&             tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
@@ -483,7 +483,7 @@ try {
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::validate_uniqueness( const signed_transaction& trx )const {
-   if( !check_for_duplicate_transactions() ) return;
+   if( !should_check_for_duplicate_transactions() ) return;
 
    auto trx_id = trx.id();
    auto& trx_idx = get_index<transaction_multi_index>();
@@ -578,7 +578,7 @@ void database::_apply_transaction(const signed_transaction& trx)
    }
 
    //Insert transaction into unique transactions database.
-   if( check_for_duplicate_transactions() )
+   if( should_check_for_duplicate_transactions() )
    {
       create<transaction_object>([&](transaction_object& transaction) {
          transaction.trx_id = trx.id(); /// TODO: consider caching ID
