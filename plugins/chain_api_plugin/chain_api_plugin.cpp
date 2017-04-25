@@ -29,6 +29,9 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
              cb(200, fc::json::to_string(result)); \
+          } catch (fc::eof_exception) { \
+             cb(400, "Invalid arguments"); \
+             elog("Unable to parse arguments: ${args}", ("args", body)); \
           } catch (fc::exception& e) { \
              cb(500, e.what()); \
              elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
@@ -39,7 +42,8 @@ void chain_api_plugin::plugin_startup() {
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
 
    app().get_plugin<http_plugin>().add_api({
-      CALL(chain, ro_api, chain_apis::read_only, get_info)
+      CALL(chain, ro_api, chain_apis::read_only, get_info),
+      CALL(chain, ro_api, chain_apis::read_only, get_block)
    });
 }
 
