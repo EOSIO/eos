@@ -515,9 +515,9 @@ try {
     message_validate_context mvc( trx, m );
     auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
     if( contract_handlers_itr != message_validate_handlers.end() ) {
-       auto message_handelr_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handelr_itr != contract_handlers_itr->second.end() ) {
-          message_handelr_itr->second(mvc);
+       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
+       if( message_handler_itr != contract_handlers_itr->second.end() ) {
+          message_handler_itr->second(mvc);
           continue;
        }
     }
@@ -530,9 +530,9 @@ void database::validate_message_precondition( precondition_validate_context& con
     const auto& m = context.msg;
     auto contract_handlers_itr = precondition_validate_handlers.find( context.receiver );
     if( contract_handlers_itr != precondition_validate_handlers.end() ) {
-       auto message_handelr_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handelr_itr != contract_handlers_itr->second.end() ) {
-          message_handelr_itr->second(context);
+       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
+       if( message_handler_itr != contract_handlers_itr->second.end() ) {
+          message_handler_itr->second(context);
           return;
        }
     }
@@ -543,9 +543,9 @@ void database::apply_message( apply_context& context ) {
     const auto& m = context.msg;
     auto contract_handlers_itr = apply_handlers.find( context.receiver );
     if( contract_handlers_itr != apply_handlers.end() ) {
-       auto message_handelr_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handelr_itr != contract_handlers_itr->second.end() ) {
-          message_handelr_itr->second(context);
+       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
+       if( message_handler_itr != contract_handlers_itr->second.end() ) {
+          message_handler_itr->second(context);
           return;
        }
     }
