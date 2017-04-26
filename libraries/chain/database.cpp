@@ -128,11 +128,6 @@ std::vector<block_id_type> database::get_block_ids_on_fork(block_id_type head_of
  */
 bool database::push_block(const signed_block& new_block, uint32_t skip)
 { try {
-   /// TODO: the simulated network code will cause push_block to be called
-   /// recursively which in turn will cause the write lock to hang
-   if( new_block.block_num() == head_block_num() && new_block.id() == head_block_id() ) 
-      return false;
-
    return with_skip_flags( skip, [&](){ 
       return without_pending_transactions( [&]() {
          return with_write_lock( [&]() { 

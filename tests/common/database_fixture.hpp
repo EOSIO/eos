@@ -240,11 +240,10 @@ public:
     * @brief Send a block to all databases in this network
     * @param block The block to send
     */
-   void propagate_block(const signed_block& block);
+   void propagate_block(const signed_block& block, const testing_database& skip_db);
 
 protected:
    std::map<testing_database*, fc::scoped_connection> databases;
-   bool currently_propagating_block = false;
 };
 
 /// Some helpful macros to reduce boilerplate when making a testing_network and connecting some testing_databases @{

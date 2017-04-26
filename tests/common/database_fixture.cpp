@@ -23,6 +23,7 @@
  */
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
+#include <boost/signals2/shared_connection_block.hpp>
 
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/producer_object.hpp>
@@ -151,9 +152,8 @@ void testing_network::connect_database(testing_database& new_database) {
    }
 
    // The new database is now in sync with any old ones; go ahead and connect the propagation signal.
-   databases[&new_database] = new_database.applied_block.connect([this](const signed_block& block) {
-      if (!currently_propagating_block)
-         propagate_block(block);
+   databases[&new_database] = new_database.applied_block.connect([this, &new_database](const signed_block& block) {
+      propagate_block(block, new_database);
    });
 }
 
@@ -165,11 +165,12 @@ void testing_network::disconnect_all() {
    databases.clear();
 }
 
-void testing_network::propagate_block(const signed_block& block) {
-   currently_propagating_block = true;
-   for (const auto& pair : databases)
+void testing_network::propagate_block(const signed_block& block, const testing_database& skip_db) {
+   for (const auto& pair : databases) {
+      if (pair.first == &skip_db) continue;
+      boost::signals2::shared_connection_block blocker(pair.second);
       pair.first->push_block(block);
-   currently_propagating_block = false;
+   }
 }
 
 } } // eos::chain
