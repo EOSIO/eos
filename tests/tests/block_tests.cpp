@@ -70,6 +70,9 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.set_expiration( db.head_block_time() );
       trx.messages[0].sender = "init1";
       trx.messages[0].recipient = "sys";
+      trx.messages[0].type = "Undefined";
+      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); // "Type Undefined is not defined"
+
       trx.messages[0].type = "Transfer";
       trx.messages[0].set( "Transfer", eos::chain::Transfer{ "init2", 100, "memo" } );
       BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); // "fail to notify receiver, init2"
@@ -82,8 +85,6 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       db.produce_blocks(1);
 
       BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); /// no messages
-
-
 
 } FC_LOG_AND_RETHROW() }
 

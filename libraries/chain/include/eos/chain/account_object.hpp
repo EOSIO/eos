@@ -63,14 +63,13 @@ namespace eos { namespace chain {
 
    class permission_object : public chainbase::object<permission_object_type, permission_object>
    {
-      OBJECT_CTOR(permission_object, (name))
+      OBJECT_CTOR(permission_object, (auth) )
 
-      id_type         id;
-      account_id_type owner; ///< the account this permission belongs to
-      id_type         parent; ///< parent permission 
-      shared_string   name;
-#warning TODO - add shared_authority to permission object
-     // shared_authority auth; ///< TODO
+      id_type           id;
+      account_id_type   owner; ///< the account this permission belongs to
+      id_type           parent; ///< parent permission 
+      permission_name   name;
+      shared_authority  auth; ///< TODO
    };
 
 
@@ -93,7 +92,7 @@ namespace eos { namespace chain {
                member<permission_object, permission_object::id_type, &permission_object::id>
             >
          >,
-         ordered_unique<tag<by_name>, member<permission_object, shared_string, &permission_object::name>, chainbase::strcmp_less>
+         ordered_unique<tag<by_name>, member<permission_object, permission_name, &permission_object::name> >
       >
    >;
 
@@ -103,14 +102,13 @@ namespace eos { namespace chain {
     */
    class action_code_object : public chainbase::object<action_code_object_type, action_code_object>
    {
-      OBJECT_CTOR(action_code_object, (action)(validate_action)(validate_precondition)(apply) )
+      OBJECT_CTOR(action_code_object, (validate_action)(validate_precondition)(apply) )
 
       id_type                        id;
       account_id_type                scope;
       permission_object::id_type     permission;
 
-#warning TODO: convert action name to fixed with string
-      shared_string   action; ///< the name of the action (defines serialization)
+      message_type    action; ///< the name of the action (defines serialization)
       shared_string   validate_action; ///< read only access to action
       shared_string   validate_precondition; ///< read only access to state
       shared_string   apply; ///< the code that executes the state transition
@@ -125,9 +123,8 @@ namespace eos { namespace chain {
          ordered_unique<tag<by_scope_action>, 
             composite_key< action_code_object,
                member<action_code_object, account_id_type, &action_code_object::scope>,
-               member<action_code_object, shared_string, &action_code_object::action>
-            >,
-            composite_key_compare< std::less<account_id_type>, chainbase::strcmp_less >
+               member<action_code_object, message_type, &action_code_object::action>
+            >
          >
       >
    >;
@@ -180,14 +177,38 @@ namespace eos { namespace chain {
       >
    >;
 
+   struct message_object : public chainbase::object<message_object_type, message_object> {
+      public:
+         id_type         id;
+         account_name    scope;
+         message_type    name;
+   };
+
+   struct by_scope_name;
+   using message_index = chainbase::shared_multi_index_container<
+      message_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<message_object, message_object::id_type, &message_object::id>>,
+         ordered_unique<tag<by_scope_name>, 
+            composite_key< message_object,
+               member<message_object, account_name, &message_object::scope>,
+               member<message_object, message_type, &message_object::name>
+            >
+         >
+      >
+   >;
+              
+
 } } // eos::chain
 
 CHAINBASE_SET_INDEX_TYPE(eos::chain::account_object, eos::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::action_code_object, eos::chain::action_code_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::action_permission_object, eos::chain::action_permission_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::message_object, eos::chain::message_index)
 
 FC_REFLECT(eos::chain::account_object, (id)(name)(balance)(votes)(converting_votes)(last_vote_conversion) )
 FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name) )
 FC_REFLECT(eos::chain::action_code_object, (id)(scope)(permission)(action)(validate_action)(validate_precondition)(apply) )
 FC_REFLECT(eos::chain::action_permission_object, (id)(owner)(owner_permission)(scope_permission) )
+FC_REFLECT(eos::chain::message_object, (id)(scope)(name) )

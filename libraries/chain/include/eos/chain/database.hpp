@@ -317,6 +317,7 @@ namespace eos { namespace chain {
           void validate_transaction(const signed_transaction& trx)const;
           void validate_tapos( const signed_transaction& trx )const;
           void validate_referenced_accounts( const signed_transaction& trx )const;
+          void validate_message_types( const signed_transaction& trx )const;
 
 
           optional<session> _pending_tx_session;

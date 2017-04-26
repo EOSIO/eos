@@ -508,6 +508,16 @@ void database::validate_referenced_accounts( const signed_transaction& trx )cons
       }
    }
 }
+
+void database::validate_message_types( const signed_transaction& trx )const {
+try {
+   for( const auto& msg : trx.messages ) {
+      try {
+         get<message_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
+      } FC_CAPTURE_AND_RETHROW( (msg.recipient)(msg.type) ) 
+   }
+} FC_CAPTURE_AND_RETHROW( (trx) ) }
+
 void database::validate_transaction( const signed_transaction& trx )const {
 try {
   FC_ASSERT( trx.messages.size() > 0, "A transaction must have at least one message" );
@@ -515,6 +525,7 @@ try {
   validate_uniqueness( trx );
   validate_tapos( trx );
   validate_referenced_accounts( trx );
+  validate_message_types( trx );
 
   for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
     message_validate_context mvc( trx, m );
@@ -686,6 +697,7 @@ void database::initialize_indexes() {
    add_index<permission_index>();
    add_index<action_code_index>();
    add_index<action_permission_index>();
+   add_index<message_index>();
 
    add_index<global_property_multi_index>();
    add_index<dynamic_global_property_multi_index>();
