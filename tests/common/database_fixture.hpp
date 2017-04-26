@@ -26,7 +26,9 @@
 #include <eos/chain/database.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/exceptions.hpp>
+
 #include <eos/utilities/tempdir.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/signals.hpp>

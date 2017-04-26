@@ -32,8 +32,6 @@
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 
-#include <eos/chain/sys_contract.hpp>
-
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
@@ -468,13 +466,17 @@ try {
    const auto&             tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   FC_ASSERT(trx.ref_block_prefix == tapos_block_summary.block_id._hash[1]);
+   EOS_ASSERT(trx.ref_block_prefix == tapos_block_summary.block_id._hash[1], transaction_exception,
+              "Transaction's reference block did not match. Is this transaction from a different fork?");
 
    fc::time_point_sec now = head_block_time();
 
-   FC_ASSERT(trx.expiration <= now + chain_parameters.maximum_time_until_expiration, "",
-            ("trx.expiration",trx.expiration)("now",now)("max_til_exp",chain_parameters.maximum_time_until_expiration));
-   FC_ASSERT(now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration));
+   EOS_ASSERT(trx.expiration <= now + chain_parameters.maximum_time_until_expiration,
+              transaction_exception, "Transaction expiration is too far in the future",
+              ("trx.expiration",trx.expiration)("now",now)
+              ("max_til_exp",chain_parameters.maximum_time_until_expiration));
+   EOS_ASSERT(now <= trx.expiration, transaction_exception, "Transaction is expired",
+              ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::validate_uniqueness( const signed_transaction& trx )const {
@@ -482,7 +484,8 @@ void database::validate_uniqueness( const signed_transaction& trx )const {
 
    auto trx_id = trx.id();
    auto& trx_idx = get_index<transaction_multi_index>();
-   FC_ASSERT( trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end());
+   EOS_ASSERT(trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end(),
+              transaction_exception, "Transaction is not unique");
 }
 
 void database::validate_referenced_accounts( const signed_transaction& trx )const {
@@ -505,25 +508,25 @@ void database::validate_referenced_accounts( const signed_transaction& trx )cons
 }
 void database::validate_transaction( const signed_transaction& trx )const {
 try {
-  FC_ASSERT( trx.messages.size() > 0, "A transaction must have at least one message" );
+   EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
-  validate_uniqueness( trx );
-  validate_tapos( trx );
-  validate_referenced_accounts( trx );
+   validate_uniqueness( trx );
+   validate_tapos( trx );
+   validate_referenced_accounts( trx );
 
-  for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
-    message_validate_context mvc( trx, m );
-    auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
-    if( contract_handlers_itr != message_validate_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handler_itr != contract_handlers_itr->second.end() ) {
-          message_handler_itr->second(mvc);
-          continue;
-       }
-    }
+   for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
+      message_validate_context mvc( trx, m );
+      auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
+      if( contract_handlers_itr != message_validate_handlers.end() ) {
+         auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
+         if( message_handler_itr != contract_handlers_itr->second.end() ) {
+            message_handler_itr->second(mvc);
+            continue;
+         }
+      }
 
-    /// TODO: dispatch to script if not handled above
-  }
+      /// TODO: dispatch to script if not handled above
+   }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::validate_message_precondition( precondition_validate_context& context )const {
@@ -712,7 +715,6 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    create<account_object>([&](account_object& a) {
       a.name = "sys";
    });
-   init_sys_contract();
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {

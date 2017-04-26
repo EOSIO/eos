@@ -27,7 +27,8 @@
 #include <eos/chain/database.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/account_object.hpp>
-#include <eos/chain/sys_contract.hpp>
+
+#include <eos/native_system_contract_plugin/native_system_contract_plugin.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -64,24 +65,24 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       BOOST_CHECK_EQUAL(db.head_block_num(), 10);
 
       signed_transaction trx;
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); /// no messages
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // no messages
       trx.messages.resize(1);
-      trx.set_reference_block( db.head_block_id() );
-      trx.set_expiration( db.head_block_time() );
+      trx.set_reference_block(db.head_block_id());
+      trx.set_expiration(db.head_block_time() + 100);
       trx.messages[0].sender = "init1";
       trx.messages[0].recipient = "sys";
       trx.messages[0].type = "Transfer";
-      trx.messages[0].set( "Transfer", eos::chain::Transfer{ "init2", 100, "memo" } );
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); // "fail to notify receiver, init2"
+      trx.messages[0].set("Transfer", Transfer{ "init2", 100, "memo" });
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
       trx.messages[0].notify = {"init2"};
-      trx.messages[0].set( "Transfer", eos::chain::Transfer{ "init2", 100, "memo" } );
+      trx.messages[0].set("Transfer", Transfer{ "init2", 100, "memo" });
       db.push_transaction(trx);
 
-      BOOST_CHECK_EQUAL( db.get_account( "init1" ).balance, 100000 - 100 );
-      BOOST_CHECK_EQUAL( db.get_account( "init2" ).balance, 100000 + 100 );
+      BOOST_CHECK_EQUAL(db.get_account("init1").balance, 100000 - 100);
+      BOOST_CHECK_EQUAL(db.get_account("init2").balance, 100000 + 100);
       db.produce_blocks(1);
 
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::assert_exception ); /// no messages
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // not unique
 
 
 

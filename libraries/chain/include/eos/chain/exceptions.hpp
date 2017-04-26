@@ -36,13 +36,13 @@
 #define EOS_DECLARE_OP_BASE_EXCEPTIONS( op_name )                \
    FC_DECLARE_DERIVED_EXCEPTION(                                      \
       op_name ## _validate_exception,                                 \
-      eos::chain::operation_validate_exception,                  \
+      eos::chain::message_validate_exception,                  \
       3040000 + 100 * operation::tag< op_name ## _operation >::value, \
       #op_name "_operation validation exception"                      \
       )                                                               \
    FC_DECLARE_DERIVED_EXCEPTION(                                      \
       op_name ## _evaluate_exception,                                 \
-      eos::chain::operation_evaluate_exception,                  \
+      eos::chain::message_evaluate_exception,                  \
       3050000 + 100 * operation::tag< op_name ## _operation >::value, \
       #op_name "_operation evaluation exception"                      \
       )
@@ -71,13 +71,14 @@ namespace eos { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( database_query_exception,          eos::chain::chain_exception, 3010000, "database query exception" )
    FC_DECLARE_DERIVED_EXCEPTION( block_validate_exception,          eos::chain::chain_exception, 3020000, "block validation exception" )
    FC_DECLARE_DERIVED_EXCEPTION( transaction_exception,             eos::chain::chain_exception, 3030000, "transaction validation exception" )
-   FC_DECLARE_DERIVED_EXCEPTION( operation_validate_exception,      eos::chain::chain_exception, 3040000, "operation validation exception" )
-   FC_DECLARE_DERIVED_EXCEPTION( operation_evaluate_exception,      eos::chain::chain_exception, 3050000, "operation evaluation exception" )
-   FC_DECLARE_DERIVED_EXCEPTION( utility_exception,                 eos::chain::chain_exception, 3060000, "utility method exception" )
-   FC_DECLARE_DERIVED_EXCEPTION( undo_database_exception,           eos::chain::chain_exception, 3070000, "undo database exception" )
-   FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        eos::chain::chain_exception, 3080000, "unlinkable block" )
-   FC_DECLARE_DERIVED_EXCEPTION( black_swan_exception,              eos::chain::chain_exception, 3090000, "black swan" )
-   FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eos::chain::chain_exception, 3100000, "unknown block" )
+   FC_DECLARE_DERIVED_EXCEPTION( message_validate_exception,        eos::chain::chain_exception, 3040000, "message validation exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( message_precondition_exception,    eos::chain::chain_exception, 3050000, "message precondition exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( message_evaluate_exception,        eos::chain::chain_exception, 3060000, "message evaluation exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( utility_exception,                 eos::chain::chain_exception, 3070000, "utility method exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( undo_database_exception,           eos::chain::chain_exception, 3080000, "undo database exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        eos::chain::chain_exception, 3090000, "unlinkable block" )
+   FC_DECLARE_DERIVED_EXCEPTION( black_swan_exception,              eos::chain::chain_exception, 3100000, "black swan" )
+   FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eos::chain::chain_exception, 3110000, "unknown block" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_active_auth,            eos::chain::transaction_exception, 3030001, "missing required active authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_owner_auth,             eos::chain::transaction_exception, 3030002, "missing required owner authority" )

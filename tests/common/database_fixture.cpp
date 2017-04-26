@@ -30,6 +30,8 @@
 
 #include <eos/utilities/tempdir.hpp>
 
+#include <eos/native_system_contract_plugin/native_system_contract_plugin.hpp>
+
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
 
@@ -90,6 +92,8 @@ testing_database::testing_database(testing_fixture& fixture, std::string id,
    : genesis_state(override_genesis_state? *override_genesis_state : fixture.genesis_state()),
      fixture(fixture) {
    data_dir = fixture.get_temp_dir(id);
+   // Install the system contract implementation
+   native_system_contract_plugin::install(*this);
 }
 
 void testing_database::open() {
