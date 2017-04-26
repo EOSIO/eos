@@ -24,7 +24,8 @@ void chain_api_plugin::set_program_options(options_description&, options_descrip
 void chain_api_plugin::plugin_initialize(const variables_map&) {}
 
 #define CALL(api_name, api_handle, api_namespace, call_name) \
-{std::string("/v1/" #api_name "/" #call_name), [this, api_handle](string, string body, url_response_callback cb) { \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [this, api_handle](string, string body, url_response_callback cb) mutable { \
           try { \
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
@@ -39,13 +40,17 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
        }}
 
 #define CHAIN_RO_CALL(call_name) CALL(chain, ro_api, chain_apis::read_only, call_name)
+#define CHAIN_RW_CALL(call_name) CALL(chain, rw_api, chain_apis::read_write, call_name)
 
 void chain_api_plugin::plugin_startup() {
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
+   auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
    app().get_plugin<http_plugin>().add_api({
       CHAIN_RO_CALL(get_info),
-      CHAIN_RO_CALL(get_block)
+      CHAIN_RO_CALL(get_block),
+      CHAIN_RW_CALL(push_block),
+      CHAIN_RW_CALL(push_transaction)
    });
 }
 

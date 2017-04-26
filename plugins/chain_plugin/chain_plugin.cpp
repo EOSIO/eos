@@ -173,5 +173,13 @@ read_only::get_block_results read_only::get_block(const read_only::get_block_par
                       "Could not find block: ${block}", ("block", params.block_num_or_id));
 }
 
+read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
+   db.push_block(params);
+}
+
+read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
+   db.push_transaction(params);
+}
+
 } // namespace chain_apis
 } // namespace eos
