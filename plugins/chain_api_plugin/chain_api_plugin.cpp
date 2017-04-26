@@ -38,12 +38,14 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
           } \
        }}
 
+#define CHAIN_RO_CALL(call_name) CALL(chain, ro_api, chain_apis::read_only, call_name)
+
 void chain_api_plugin::plugin_startup() {
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
 
    app().get_plugin<http_plugin>().add_api({
-      CALL(chain, ro_api, chain_apis::read_only, get_info),
-      CALL(chain, ro_api, chain_apis::read_only, get_block)
+      CHAIN_RO_CALL(get_info),
+      CHAIN_RO_CALL(get_block)
    });
 }
 
