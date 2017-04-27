@@ -39,11 +39,9 @@ namespace eos { namespace chain {
 
    block_id_type signed_block_header::id()const
    {
-      auto tmp = fc::sha224::hash(*this);
-      tmp._hash[0] = fc::endian_reverse_u32(block_num()); // store the block num in the ID, 160 bits is plenty for the hash
-      static_assert(sizeof(tmp._hash[0]) == 4, "should be 4 bytes");
-      block_id_type result;
-      memcpy(result._hash, tmp._hash, std::min(sizeof(result), sizeof(tmp)));
+      block_id_type result = fc::sha256::hash(*this);
+      result._hash[0] &= 0xffffffff00000000;
+      result._hash[0] += fc::endian_reverse_u32(block_num()); // store the block num in the ID, 160 bits is plenty for the hash
       return result;
    }
 

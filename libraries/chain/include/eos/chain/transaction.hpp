@@ -96,6 +96,7 @@ namespace eos { namespace chain {
 
       void set_expiration(fc::time_point_sec expiration_time);
       void set_reference_block(const block_id_type& reference_block);
+      bool verify_reference_block(const block_id_type& reference_block)const;
    };
 
    /**

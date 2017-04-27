@@ -178,10 +178,11 @@ namespace eos { namespace chain {
    >;
 
    struct message_object : public chainbase::object<message_object_type, message_object> {
-      public:
-         id_type         id;
-         account_name    scope;
-         message_type    name;
+      OBJECT_CTOR(message_object)
+
+      id_type         id;
+      account_name    scope;
+      message_type    name;
    };
 
    struct by_scope_name;

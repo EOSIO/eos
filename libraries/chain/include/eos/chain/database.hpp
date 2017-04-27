@@ -100,7 +100,7 @@ namespace eos { namespace chain {
           */
          fc::signal<void(const signed_transaction&)> on_pending_transaction;
 
-
+         void register_message_type(account_name scope, message_type type);
 
          /**
           *  The database can override any script handler with native code.

@@ -468,12 +468,12 @@ try {
    validate_expiration(trx);
    validate_message_types(trx);
 
-   for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
-      message_validate_context mvc( trx, m );
-      auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
-      if( contract_handlers_itr != message_validate_handlers.end() ) {
-         auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-         if( message_handler_itr != contract_handlers_itr->second.end() ) {
+   for (const auto& m : trx.messages) { /// TODO: this loop can be processed in parallel
+      message_validate_context mvc(trx, m);
+      auto contract_handlers_itr = message_validate_handlers.find(m.recipient);
+      if (contract_handlers_itr != message_validate_handlers.end()) {
+         auto message_handler_itr = contract_handlers_itr->second.find({m.recipient, m.type});
+         if (message_handler_itr != contract_handlers_itr->second.end()) {
             message_handler_itr->second(mvc);
             continue;
          }
@@ -492,16 +492,16 @@ void database::validate_uniqueness( const signed_transaction& trx )const {
               transaction_exception, "Transaction is not unique");
 }
 
-void database::validate_tapos( const signed_transaction& trx )const {
-try {
-   if( !should_check_tapos() ) return;
+void database::validate_tapos(const signed_transaction& trx)const {
+   if (!should_check_tapos()) return;
 
-   const auto&             tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
+   const auto& tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   EOS_ASSERT(trx.ref_block_prefix == tapos_block_summary.block_id._hash[1], transaction_exception,
-              "Transaction's reference block did not match. Is this transaction from a different fork?");
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
+   EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), transaction_exception,
+              "Transaction's reference block did not match. Is this transaction from a different fork?",
+              ("tapos_summary", tapos_block_summary));
+}
 
 void database::validate_referenced_accounts(const signed_transaction& trx)const {
    for(const auto& auth : trx.provided_authorizations) {
@@ -543,7 +543,10 @@ try {
    for( const auto& msg : trx.messages ) {
       try {
          get<message_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
-      } FC_CAPTURE_AND_RETHROW( (msg.recipient)(msg.type) )
+      } catch(std::out_of_range) {
+         FC_THROW_EXCEPTION(message_validate_exception, "Unrecognized message recipient and type",
+                            ("recipient", msg.recipient)("type", msg.type));
+      }
    }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
@@ -734,6 +737,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    create<account_object>([&](account_object& a) {
       a.name = "sys";
    });
+   register_message_type("sys", "Transfer");
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {
@@ -791,6 +795,13 @@ database::~database()
 {
    close();
 //   clear_pending();
+}
+
+void database::register_message_type(account_name scope, message_type type) {
+   create<message_object>([&scope, &type](message_object& o) {
+      o.scope = scope;
+      o.name = type;
+   });
 }
 
 void database::replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation)
@@ -1049,6 +1060,7 @@ uint32_t database::producer_participation_rate()const
 void database::update_producer_schedule()
 {
 }
+
 void database::set_validate_handler( const account_name& contract, const account_name& scope, const message_type& action, message_validate_handler v ) {
    message_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
