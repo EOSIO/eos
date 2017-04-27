@@ -56,12 +56,9 @@ void native_system_contract_plugin::plugin_shutdown() {
 
 void native_system_contract_plugin::install(database& db) {
 #define SET_HANDLERS(name) \
-   db.set_validate_handler("sys", "sys", #name, \
-   [&db](chain::message_validate_context& c) mutable { name ## _validate(c); }); \
-   db.set_precondition_validate_handler("sys", "sys", #name, \
-   [&db](chain::precondition_validate_context& c) mutable { name ## _validate_preconditions(c); }); \
-   db.set_apply_handler("sys", "sys", #name, \
-   [&db](chain::apply_context& c) mutable { name ## _apply(c); })
+   db.set_validate_handler("sys", "sys", #name, &name ## _validate); \
+   db.set_precondition_validate_handler("sys", "sys", #name, &name ## _validate_preconditions); \
+   db.set_apply_handler("sys", "sys", #name, &name ## _apply)
 
    SET_HANDLERS(Transfer);
 }
