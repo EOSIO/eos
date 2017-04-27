@@ -502,21 +502,24 @@ try {
               "Transaction's reference block did not match. Is this transaction from a different fork?");
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::validate_referenced_accounts( const signed_transaction& trx )const {
-   for( const auto& auth : trx.provided_authorizations ) {
-      get_account( auth.authorizing_account );
+void database::validate_referenced_accounts(const signed_transaction& trx)const {
+   for(const auto& auth : trx.provided_authorizations) {
+      get_account(auth.authorizing_account);
    }
-   for( const auto& msg  : trx.messages ) {
-      get_account( msg.sender );
-      get_account( msg.recipient );
-      const account_name* prev = nullptr;
-      for( const auto& acnt : msg.notify ) {
-        get_account( acnt );
-        if( prev )
-           FC_ASSERT( acnt < *prev );
-        FC_ASSERT( acnt != msg.sender );
-        FC_ASSERT( acnt != msg.recipient );
-        prev = &acnt;
+   for(const auto& msg : trx.messages) {
+      get_account(msg.sender);
+      get_account(msg.recipient);
+      const account_name* previous_notify_account = nullptr;
+      for(const auto& current_notify_account : msg.notify) {
+         get_account(current_notify_account);
+         if(previous_notify_account)
+            EOS_ASSERT(current_notify_account < *previous_notify_account, message_validate_exception,
+                       "Message notify accounts out of order. Possibly a bug in the wallet?");
+         EOS_ASSERT(current_notify_account != msg.sender, message_validate_exception,
+                    "Message sender is listed in accounts to notify. Possibly a bug in the wallet?");
+         EOS_ASSERT(current_notify_account != msg.recipient, message_validate_exception,
+                    "Message recipient is listed in accounts to notify. Possibly a bug in the wallet?");
+         previous_notify_account = &current_notify_account;
       }
    }
 }
@@ -563,7 +566,7 @@ void database::apply_message( apply_context& context ) {
 
 void database::_apply_transaction(const signed_transaction& trx)
 { try {
-   validate_transaction( trx );
+   validate_transaction(trx);
 
    for( const auto& m : trx.messages ) {
       apply_context ac( *this, trx, m, m.recipient );
