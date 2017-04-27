@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 
 namespace eos { namespace chain {
 

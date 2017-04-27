@@ -3,8 +3,8 @@
 
 #include <eos/chain_plugin/chain_plugin.hpp>
 
-#include <eos/chain/protocol/authority.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/authority.hpp>
+#include <eos/chain/types.hpp>
 
 namespace eos {
 using namespace appbase;

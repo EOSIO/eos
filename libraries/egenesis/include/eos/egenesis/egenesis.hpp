@@ -27,7 +27,7 @@
 #include <string>
 
 #include <fc/crypto/sha256.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 #include <eos/chain/genesis_state.hpp>
 
 namespace eos { namespace egenesis {

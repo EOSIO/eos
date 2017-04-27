@@ -24,7 +24,7 @@
 
 #include <eos/chain/get_config.hpp>
 #include <eos/chain/config.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 
 namespace eos { namespace chain {
 

@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 #include <eos/chain/message.hpp>
 
 #include <numeric>

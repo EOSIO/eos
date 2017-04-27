@@ -22,4 +22,25 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/protocol/block.hpp>
+#include <eos/chain/base.hpp>
+#include <eos/chain/types.hpp>
+#include <fc/smart_ref_fwd.hpp>
+
+namespace eos { namespace chain {
+
+   typedef static_variant<>  parameter_extension; 
+   struct chain_parameters
+   {
+      uint32_t                maximum_block_size              = config::MaxBlockSize; ///< maximum allowable size in bytes for a block
+      uint32_t                maximum_time_until_expiration   = config::MaxSecondsUntilExpiration; ///< maximum lifetime in seconds for transactions to be valid, before expiring
+
+      /** defined in fee_schedule.cpp */
+      void validate()const;
+   };
+
+} }  // eos::chain
+
+FC_REFLECT( eos::chain::chain_parameters,
+            (maximum_block_size)
+            (maximum_time_until_expiration)
+          )

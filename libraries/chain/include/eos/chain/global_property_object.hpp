@@ -25,8 +25,8 @@
 #include <fc/uint128.hpp>
 #include <fc/array.hpp>
 
-#include <eos/chain/protocol/chain_parameters.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/chain_parameters.hpp>
+#include <eos/chain/types.hpp>
 #include <eos/chain/database.hpp>
 
 #include <chainbase/chainbase.hpp>

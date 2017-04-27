@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 #include <eos/chain/config.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/ripemd160.hpp>

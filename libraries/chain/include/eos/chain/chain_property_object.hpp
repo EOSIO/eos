@@ -24,7 +24,7 @@
 #pragma once
 
 #include <eos/chain/immutable_chain_parameters.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 
 #include "multi_index_includes.hpp"
 

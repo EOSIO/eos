@@ -22,4 +22,4 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/config.hpp>
+#include <eos/chain/block.hpp>

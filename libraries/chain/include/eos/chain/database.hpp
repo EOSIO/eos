@@ -32,7 +32,7 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/signals.hpp>
 
-#include <eos/chain/protocol/protocol.hpp>
+#include <eos/chain/protocol.hpp>
 
 #include <fc/log/logger.hpp>
 

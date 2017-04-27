@@ -44,7 +44,7 @@
 #include <vector>
 #include <deque>
 #include <cstdint>
-#include <eos/chain/protocol/config.hpp>
+#include <eos/chain/config.hpp>
 
 #include <chainbase/chainbase.hpp>
 

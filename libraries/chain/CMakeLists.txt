@@ -1,15 +1,13 @@
-
 file(GLOB HEADERS "include/eos/chain/*.hpp")
-file(GLOB PROTOCOL_HEADERS "include/eos/chain/protocol/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
              database.cpp
              fork_database.cpp
 
-             protocol/types.cpp
-             protocol/transaction.cpp
-             protocol/block.cpp
+             types.cpp
+             transaction.cpp
+             block.cpp
 
              genesis_state.cpp
              get_config.cpp
@@ -36,4 +34,3 @@ INSTALL( TARGETS
    ARCHIVE DESTINATION lib
 )
 INSTALL( FILES ${HEADERS} DESTINATION "include/eos/chain" )
-INSTALL( FILES ${PROTOCOL_HEADERS} DESTINATION "include/eos/chain/protocol" )

@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/protocol/types.hpp>
-#include <eos/chain/protocol/authority.hpp>
+#include <eos/chain/types.hpp>
+#include <eos/chain/authority.hpp>
 
 #include "multi_index_includes.hpp"
 

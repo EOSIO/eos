@@ -23,8 +23,8 @@
  */
 #pragma once
 
-#include <eos/chain/protocol/chain_parameters.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/chain_parameters.hpp>
+#include <eos/chain/types.hpp>
 #include <eos/chain/immutable_chain_parameters.hpp>
 
 #include <fc/crypto/sha256.hpp>
