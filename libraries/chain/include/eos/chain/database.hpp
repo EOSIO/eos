@@ -308,30 +308,28 @@ namespace eos { namespace chain {
          void apply_debug_updates();
          void debug_update(const fc::variant_object& update);
 
-
-       private:
-         /**
-           *  This method validates transactions without adding it to the pending state.
-           *  @return true if the transaction would validate
-           */
-          void validate_transaction(const signed_transaction& trx)const;
-          void validate_tapos( const signed_transaction& trx )const;
-          void validate_referenced_accounts( const signed_transaction& trx )const;
-
-
-          optional<session> _pending_tx_session;
-
-       public:
          // these were formerly private, but they have a fairly well-defined API, so let's make them public
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
          void apply_transaction(const signed_transaction& trx, uint32_t skip = skip_nothing);
-      private:
+         
+   private:
          void _apply_block(const signed_block& next_block);
          void _apply_transaction(const signed_transaction& trx);
 
-         void validate_uniqueness( const signed_transaction& trx )const;
-         void validate_message_precondition( precondition_validate_context& c )const;
-         void apply_message( apply_context& c );
+         /**
+          * This method validates transactions without adding it to the pending state.
+          * @return true if the transaction would validate
+          */
+         void validate_transaction(const signed_transaction& trx)const;
+         /// Validate transaction helpers @{
+         void validate_uniqueness(const signed_transaction& trx)const;
+         void validate_tapos(const signed_transaction& trx)const;
+         void validate_referenced_accounts(const signed_transaction& trx)const;
+         void validate_expiration(const signed_transaction& trx) const;
+         /// @}
+
+         void validate_message_precondition(precondition_validate_context& c)const;
+         void apply_message(apply_context& c);
 
 
 
@@ -350,18 +348,19 @@ namespace eos { namespace chain {
          void update_last_irreversible_block();
          void clear_expired_transactions();
 
-         deque< signed_transaction >       _pending_transactions;
-         fork_database                     _fork_db;
+         optional<session>                _pending_tx_session;
+         deque<signed_transaction>        _pending_transactions;
+         fork_database                    _fork_db;
 
-         block_log                         _block_log;
+         block_log                        _block_log;
 
-         bool                              _producing = false;
-         bool                              _pushing  = false;
-         uint64_t                          _skip_flags = 0;
+         bool                             _producing = false;
+         bool                             _pushing  = false;
+         uint64_t                         _skip_flags = 0;
 
-         flat_map<uint32_t,block_id_type>  _checkpoints;
+         flat_map<uint32_t,block_id_type> _checkpoints;
 
-         node_property_object              _node_property_object;
+         node_property_object             _node_property_object;
 
          typedef pair<account_name,message_type> handler_key;
          map< account_name, map<handler_key, message_validate_handler> >        message_validate_handlers;

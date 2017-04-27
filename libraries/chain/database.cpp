@@ -458,25 +458,28 @@ void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
    with_skip_flags( skip, [&]() { _apply_transaction(trx); });
 }
 
-void database::validate_tapos( const signed_transaction& trx )const {
+void database::validate_transaction(const signed_transaction& trx)const {
 try {
-   if( !should_check_tapos() ) return;
+   EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
-   const chain_parameters& chain_parameters    = get_global_properties().parameters;
-   const auto&             tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
+   validate_uniqueness(trx);
+   validate_tapos(trx);
+   validate_referenced_accounts(trx);
+   validate_expiration(trx);
 
-   //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   EOS_ASSERT(trx.ref_block_prefix == tapos_block_summary.block_id._hash[1], transaction_exception,
-              "Transaction's reference block did not match. Is this transaction from a different fork?");
+   for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
+      message_validate_context mvc( trx, m );
+      auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
+      if( contract_handlers_itr != message_validate_handlers.end() ) {
+         auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
+         if( message_handler_itr != contract_handlers_itr->second.end() ) {
+            message_handler_itr->second(mvc);
+            continue;
+         }
+      }
 
-   fc::time_point_sec now = head_block_time();
-
-   EOS_ASSERT(trx.expiration <= now + chain_parameters.maximum_time_until_expiration,
-              transaction_exception, "Transaction expiration is too far in the future",
-              ("trx.expiration",trx.expiration)("now",now)
-              ("max_til_exp",chain_parameters.maximum_time_until_expiration));
-   EOS_ASSERT(now <= trx.expiration, transaction_exception, "Transaction is expired",
-              ("now",now)("trx.exp",trx.expiration));
+      /// TODO: dispatch to script if not handled above
+   }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::validate_uniqueness( const signed_transaction& trx )const {
@@ -487,6 +490,17 @@ void database::validate_uniqueness( const signed_transaction& trx )const {
    EOS_ASSERT(trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end(),
               transaction_exception, "Transaction is not unique");
 }
+
+void database::validate_tapos( const signed_transaction& trx )const {
+try {
+   if( !should_check_tapos() ) return;
+
+   const auto&             tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
+
+   //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
+   EOS_ASSERT(trx.ref_block_prefix == tapos_block_summary.block_id._hash[1], transaction_exception,
+              "Transaction's reference block did not match. Is this transaction from a different fork?");
+} FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::validate_referenced_accounts( const signed_transaction& trx )const {
    for( const auto& auth : trx.provided_authorizations ) {
@@ -506,28 +520,19 @@ void database::validate_referenced_accounts( const signed_transaction& trx )cons
       }
    }
 }
-void database::validate_transaction( const signed_transaction& trx )const {
-try {
-   EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
-   validate_uniqueness( trx );
-   validate_tapos( trx );
-   validate_referenced_accounts( trx );
+void database::validate_expiration(const signed_transaction& trx) const
+{ try {
+   fc::time_point_sec now = head_block_time();
+   const chain_parameters& chain_parameters = get_global_properties().parameters;
 
-   for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
-      message_validate_context mvc( trx, m );
-      auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
-      if( contract_handlers_itr != message_validate_handlers.end() ) {
-         auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-         if( message_handler_itr != contract_handlers_itr->second.end() ) {
-            message_handler_itr->second(mvc);
-            continue;
-         }
-      }
-
-      /// TODO: dispatch to script if not handled above
-   }
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
+   EOS_ASSERT(trx.expiration <= now + chain_parameters.maximum_time_until_expiration,
+              transaction_exception, "Transaction expiration is too far in the future",
+              ("trx.expiration",trx.expiration)("now",now)
+              ("max_til_exp",chain_parameters.maximum_time_until_expiration));
+   EOS_ASSERT(now <= trx.expiration, transaction_exception, "Transaction is expired",
+              ("now",now)("trx.exp",trx.expiration));
+} FC_CAPTURE_AND_RETHROW((trx)) }
 
 void database::validate_message_precondition( precondition_validate_context& context )const {
     const auto& m = context.msg;
