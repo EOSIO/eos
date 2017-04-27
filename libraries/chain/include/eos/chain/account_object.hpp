@@ -29,10 +29,27 @@
 
 namespace eos { namespace chain {
 
-   class shared_authority {
+   struct shared_authority {
       shared_authority( chainbase::allocator<char> alloc )
       :accounts(alloc),keys(alloc)
       {}
+
+      shared_authority& operator=(const Authority& a) {
+         threshold = a.threshold;
+         accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
+         keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
+         return *this;
+      }
+      shared_authority& operator=(Authority&& a) {
+         threshold = a.threshold;
+         accounts.reserve(a.accounts.size());
+         for (auto& p : a.accounts)
+            accounts.emplace_back(std::move(p));
+         keys.reserve(a.keys.size());
+         for (auto& p : a.keys)
+            keys.emplace_back(std::move(p));
+         return *this;
+      }
 
       uint32_t                         threshold = 0;
       shared_vector<PermissionLevel>   accounts;
@@ -41,10 +58,10 @@ namespace eos { namespace chain {
    
    class account_object : public chainbase::object<account_object_type, account_object>
    {
-      OBJECT_CTOR(account_object, (name))
+      OBJECT_CTOR(account_object)
 
       id_type           id;
-      shared_string     name;
+      account_name      name;
       uint64_t          balance                = 0;
       uint64_t          votes                  = 0;
       uint64_t          converting_votes       = 0;
@@ -56,8 +73,7 @@ namespace eos { namespace chain {
       account_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<account_object, account_object::id_type, &account_object::id>>,
-         ordered_unique<tag<by_name>, member<account_object, shared_string, &account_object::name>,
-                        chainbase::strcmp_less>
+         ordered_unique<tag<by_name>, member<account_object, account_name, &account_object::name>>
       >
    >;
 

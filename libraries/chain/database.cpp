@@ -738,6 +738,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       a.name = "sys";
    });
    register_message_type("sys", "Transfer");
+   register_message_type("sys", "CreateAccount");
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {
