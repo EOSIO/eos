@@ -24,7 +24,7 @@
 #pragma once
 
 #include <eos/net/config.hpp>
-#include <eos/chain/protocol/block.hpp>
+#include <eos/chain/block.hpp>
 
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/elliptic.hpp>

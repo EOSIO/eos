@@ -34,6 +34,20 @@ public:
    using get_block_results = chain::signed_block;
    get_block_results get_block(const get_block_params& params) const;
 };
+
+class read_write {
+   database& db;
+public:
+   read_write(database& db) : db(db) {}
+
+   using push_block_params = chain::signed_block;
+   using push_block_results = empty;
+   push_block_results push_block(const push_block_params& params);
+
+   using push_transaction_params = chain::signed_transaction;
+   using push_transaction_results = empty;
+   push_transaction_results push_transaction(const push_transaction_params& params);
+};
 } // namespace chain_apis
 
 class chain_plugin : public plugin<chain_plugin> {
@@ -49,9 +63,8 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   chain_apis::read_only get_read_only_api() const {
-      return chain_apis::read_only(db());
-   }
+   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(db()); }
+   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(db()); }
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
    void accept_transaction(const chain::signed_transaction& trx);

@@ -35,7 +35,7 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 #include <eos/chain/genesis_state.hpp>
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 
 using namespace eos::chain;
 

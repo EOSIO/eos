@@ -27,7 +27,7 @@
 #include <eos/net/message.hpp>
 #include <eos/net/peer_database.hpp>
 
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 
 #include <list>
 

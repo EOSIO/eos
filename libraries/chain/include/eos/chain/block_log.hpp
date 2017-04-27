@@ -1,6 +1,6 @@
 #pragma once
 #include <fc/filesystem.hpp>
-#include <eos/chain/protocol/block.hpp>
+#include <eos/chain/block.hpp>
 
 namespace eos { namespace chain {
 

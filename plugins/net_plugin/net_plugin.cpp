@@ -1,4 +1,4 @@
-#include <eos/chain/protocol/types.hpp>
+#include <eos/chain/types.hpp>
 
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>

@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/protocol/block.hpp>
+#include <eos/chain/block.hpp>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>

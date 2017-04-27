@@ -24,7 +24,7 @@
 #pragma once
 #include <fc/io/raw.hpp>
 
-#include <eos/chain/protocol/transaction.hpp>
+#include <eos/chain/transaction.hpp>
 #include <fc/uint128.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>

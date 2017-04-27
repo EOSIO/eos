@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/protocol/transaction.hpp>
+#include <eos/chain/transaction.hpp>
 
 namespace eos { namespace chain {
 

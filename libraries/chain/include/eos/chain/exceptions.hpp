@@ -24,7 +24,7 @@
 #pragma once
 
 #include <fc/exception/exception.hpp>
-#include <eos/chain/protocol/protocol.hpp>
+#include <eos/chain/protocol.hpp>
 
 #define EOS_ASSERT( expr, exc_type, FORMAT, ... )                \
    FC_MULTILINE_MACRO_BEGIN                                           \
