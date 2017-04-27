@@ -11,7 +11,7 @@ namespace eos { namespace chain {
  * -- all events and actions which take place in the chain are
  * recorded as messages. Messages are sent from one account 
  * (@ref sender) to another account (@ref recipient), and are
- * optionally also delivered to several other accounts (@ref notify_accounts).
+ * optionally also delivered to several other accounts (@ref notify).
  *
  * A message has a header that defines who sent it and who will 
  * be processing it. The message content is a binary blob,
@@ -29,9 +29,9 @@ struct message {
    vector<account_name> notify;
 
    /**
-    *  Every contract defines the set of types that it accepts, these types are
-    *  scoped according to the recipient. This means two contracts can can define 
-    *  two different types with the same name.  
+    * Every contract defines the set of types that it accepts, these types are
+    * scoped according to the recipient. This means two contracts can can define
+    * two different types with the same name.
     */
    message_type         type;
 

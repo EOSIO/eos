@@ -80,7 +80,7 @@ optional<signed_block> database::fetch_block_by_number(uint32_t num)const
    if (const auto& block = _block_log.read_block_by_num(num))
       return *block;
 
-   // Not in _block_id_to_block, so it must be since the last irreversible block. Grab it from _fork_db instead
+   // Not in _block_log, so it must be since the last irreversible block. Grab it from _fork_db instead
    if (num <= head_block_num()) {
       auto block = _fork_db.head();
       while (block && block->num > num)
@@ -539,7 +539,7 @@ void database::validate_expiration(const signed_transaction& trx) const
 
 void database::validate_message_precondition( precondition_validate_context& context )const {
     const auto& m = context.msg;
-    auto contract_handlers_itr = precondition_validate_handlers.find( context.receiver );
+    auto contract_handlers_itr = precondition_validate_handlers.find( context.recipient );
     if( contract_handlers_itr != precondition_validate_handlers.end() ) {
        auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {
@@ -552,7 +552,7 @@ void database::validate_message_precondition( precondition_validate_context& con
 
 void database::apply_message( apply_context& context ) {
     const auto& m = context.msg;
-    auto contract_handlers_itr = apply_handlers.find( context.receiver );
+    auto contract_handlers_itr = apply_handlers.find( context.recipient );
     if( contract_handlers_itr != apply_handlers.end() ) {
        auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {

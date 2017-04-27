@@ -55,16 +55,16 @@ namespace eos { namespace chain {
    class precondition_validate_context : public message_validate_context {
       public:
          precondition_validate_context( const database& d, const transaction& t, const message& m, const account_name& r )
-         :message_validate_context(t,m),receiver(r),db(d){}
+         :message_validate_context(t,m),recipient(r),db(d){}
 
-         const account_name& receiver;
+         const account_name& recipient;
          const database&    db;
    };
 
    class apply_context : public precondition_validate_context {
       public:
-         apply_context( database& d, const transaction& t, const message& m, const account_name& receiver )
-         :precondition_validate_context(d,t,m,receiver),mutable_db(d){}
+         apply_context( database& d, const transaction& t, const message& m, const account_name& recipient )
+         :precondition_validate_context(d,t,m,recipient),mutable_db(d){}
 
          database&    mutable_db;
    };
