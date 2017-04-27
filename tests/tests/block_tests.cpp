@@ -89,6 +89,48 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 
 } FC_LOG_AND_RETHROW() }
 
+//Test account creation
+BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
+{ try {
+      MKDB(db);
+      db.produce_blocks(10);
+
+      const auto& init1_account = db.get_account("init1");
+
+      BOOST_CHECK_EQUAL(init1_account.balance, 100000);
+      
+      auto joe_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash("joe"));
+      public_key_type joe_public_key = joe_private_key.get_public_key();
+
+      signed_transaction trx;
+      trx.messages.resize(1);
+      trx.set_reference_block(db.head_block_id());
+      trx.set_expiration(db.head_block_time() + 100);
+      trx.messages[0].sender = "init1";
+      trx.messages[0].recipient = "sys";
+      trx.messages[0].type = "CreateAccount";
+      trx.messages[0].set("CreateAccount",
+                          CreateAccount{"joe", {1, {}, {{joe_public_key, 1}}}, {1, {}, {{joe_public_key, 1}}}, 1000});
+      db.push_transaction(trx);
+
+      const auto& joe_account = db.get_account("joe");
+      BOOST_CHECK_EQUAL(joe_account.balance, 1000);
+      BOOST_CHECK_EQUAL(init1_account.balance, 100000 - 1000);
+
+      const auto& joe_owner_authority = db.get<permission_object, by_owner>(boost::make_tuple(joe_account.id, "owner"));
+      BOOST_CHECK_EQUAL(joe_owner_authority.auth.threshold, 1);
+      BOOST_CHECK_EQUAL(joe_owner_authority.auth.accounts.size(), 0);
+      BOOST_CHECK_EQUAL(joe_owner_authority.auth.keys.size(), 1);
+      BOOST_CHECK_EQUAL(string(joe_owner_authority.auth.keys[0].key), string(joe_public_key));
+      BOOST_CHECK_EQUAL(joe_owner_authority.auth.keys[0].weight, 1);
+
+      const auto& joe_active_authority = db.get<permission_object, by_owner>(boost::make_tuple(joe_account.id, "active"));
+      BOOST_CHECK_EQUAL(joe_active_authority.auth.threshold, 1);
+      BOOST_CHECK_EQUAL(joe_active_authority.auth.accounts.size(), 0);
+      BOOST_CHECK_EQUAL(joe_active_authority.auth.keys.size(), 1);
+      BOOST_CHECK_EQUAL(string(joe_active_authority.auth.keys[0].key), string(joe_public_key));
+      BOOST_CHECK_EQUAL(joe_active_authority.auth.keys[0].weight, 1);
+} FC_LOG_AND_RETHROW() }
 
 // Simple test of block production when a block is missed
 BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)

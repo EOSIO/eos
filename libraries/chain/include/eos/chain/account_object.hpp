@@ -105,6 +105,7 @@ namespace eos { namespace chain {
          ordered_unique<tag<by_owner>, 
             composite_key< permission_object,
                member<permission_object, account_object::id_type, &permission_object::owner>,
+               member<permission_object, permission_name, &permission_object::name>,
                member<permission_object, permission_object::id_type, &permission_object::id>
             >
          >,
