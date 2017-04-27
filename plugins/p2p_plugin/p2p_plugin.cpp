@@ -53,7 +53,7 @@ public:
 
       // node_delegate interface
       virtual bool has_item(const net::item_id& id) override;
-      virtual bool handle_block(const net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>&) override;
+      virtual bool handle_block(const net::block_message& blk_msg, bool sync_mode, std::vector<fc::sha256>&) override;
       virtual void handle_transaction(const net::trx_message& trx_msg) override;
       virtual void handle_message(const net::message& message_to_process) override;
       virtual std::vector<net::item_hash_t> get_block_ids(const std::vector<net::item_hash_t>& blockchain_synopsis, uint32_t& remaining_item_count, uint32_t limit) override;
@@ -152,7 +152,7 @@ bool p2p_plugin_impl::node_delegate::has_item(const net::item_id& id) {
 }
 
 bool p2p_plugin_impl::node_delegate::handle_block(const net::block_message& blk_msg, bool sync_mode,
-                                                  std::vector<fc::uint160_t>&) {
+                                                  std::vector<fc::sha256>&) {
    try {
       if (!sync_mode) ilog("Received block ${num} from peer", ("num", blk_msg.block.block_num()));
       return chain.accept_block(blk_msg.block, sync_mode);

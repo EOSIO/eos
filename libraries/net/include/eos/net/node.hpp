@@ -78,7 +78,7 @@ namespace eos { namespace net {
           *          safe to broadcast on.
           */
          virtual bool handle_block( const eos::net::block_message& blk_msg, bool sync_mode, 
-                                    std::vector<fc::uint160_t>& contained_transaction_message_ids ) = 0;
+                                    std::vector<fc::sha256>& contained_transaction_message_ids ) = 0;
          
          /**
           *  @brief Called when a new transaction comes in from the network

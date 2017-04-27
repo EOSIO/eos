@@ -466,6 +466,7 @@ try {
    validate_tapos(trx);
    validate_referenced_accounts(trx);
    validate_expiration(trx);
+   validate_message_types(trx);
 
    for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
       message_validate_context mvc( trx, m );
@@ -524,36 +525,6 @@ void database::validate_referenced_accounts(const signed_transaction& trx)const 
    }
 }
 
-void database::validate_message_types( const signed_transaction& trx )const {
-try {
-   for( const auto& msg : trx.messages ) {
-      try {
-         get<message_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
-      } FC_CAPTURE_AND_RETHROW( (msg.recipient)(msg.type) ) 
-   }
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
-
-void database::validate_transaction( const signed_transaction& trx )const {
-try {
-   EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
-   
-   validate_uniqueness( trx );
-   validate_tapos( trx );
-   validate_referenced_accounts( trx );
-   validate_message_types( trx );
-   
-   for( const auto& m : trx.messages ) { /// TODO: this loop can be processed in parallel
-     message_validate_context mvc( trx, m );
-     auto contract_handlers_itr = message_validate_handlers.find( m.recipient );
-     if( contract_handlers_itr != message_validate_handlers.end() ) {
-        auto message_handelr_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-        if( message_handelr_itr != contract_handlers_itr->second.end() ) {
-           message_handelr_itr->second(mvc);
-           continue;
-        }
-     }
-   }
-}
 void database::validate_expiration(const signed_transaction& trx) const
 { try {
    fc::time_point_sec now = head_block_time();
@@ -566,6 +537,15 @@ void database::validate_expiration(const signed_transaction& trx) const
    EOS_ASSERT(now <= trx.expiration, transaction_exception, "Transaction is expired",
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
+
+void database::validate_message_types(const signed_transaction& trx)const {
+try {
+   for( const auto& msg : trx.messages ) {
+      try {
+         get<message_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
+      } FC_CAPTURE_AND_RETHROW( (msg.recipient)(msg.type) )
+   }
+} FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::validate_message_precondition( precondition_validate_context& context )const {
     const auto& m = context.msg;

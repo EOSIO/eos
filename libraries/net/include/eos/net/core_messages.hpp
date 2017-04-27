@@ -46,7 +46,7 @@ namespace eos { namespace net {
   using eos::chain::signed_block;
 
   typedef fc::ecc::public_key_data node_id_t;
-  typedef fc::ripemd160 item_hash_t;
+  typedef fc::sha256 item_hash_t;
   struct item_id
   {
       uint32_t      item_type;

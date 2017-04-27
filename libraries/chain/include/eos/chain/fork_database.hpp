@@ -102,8 +102,8 @@ namespace eos { namespace chain {
          typedef multi_index_container<
             item_ptr,
             indexed_by<
-               hashed_unique<tag<block_id>, member<fork_item, block_id_type, &fork_item::id>, std::hash<fc::ripemd160>>,
-               hashed_non_unique<tag<by_previous>, const_mem_fun<fork_item, block_id_type, &fork_item::previous_id>, std::hash<fc::ripemd160>>,
+               hashed_unique<tag<block_id>, member<fork_item, block_id_type, &fork_item::id>, std::hash<block_id_type>>,
+               hashed_non_unique<tag<by_previous>, const_mem_fun<fork_item, block_id_type, &fork_item::previous_id>, std::hash<block_id_type>>,
                ordered_non_unique<tag<block_num>, member<fork_item,uint32_t,&fork_item::num>>
             >
          > fork_multi_index_type;

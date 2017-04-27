@@ -308,21 +308,6 @@ namespace eos { namespace chain {
          void apply_debug_updates();
          void debug_update(const fc::variant_object& update);
 
-
-       private:
-         /**
-           *  This method validates transactions without adding it to the pending state.
-           *  @return true if the transaction would validate
-           */
-          void validate_transaction(const signed_transaction& trx)const;
-          void validate_tapos( const signed_transaction& trx )const;
-          void validate_referenced_accounts( const signed_transaction& trx )const;
-          void validate_message_types( const signed_transaction& trx )const;
-
-
-          optional<session> _pending_tx_session;
-
-       public:
          // these were formerly private, but they have a fairly well-defined API, so let's make them public
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
          void apply_transaction(const signed_transaction& trx, uint32_t skip = skip_nothing);
@@ -341,6 +326,7 @@ namespace eos { namespace chain {
          void validate_tapos(const signed_transaction& trx)const;
          void validate_referenced_accounts(const signed_transaction& trx)const;
          void validate_expiration(const signed_transaction& trx) const;
+         void validate_message_types( const signed_transaction& trx )const;
          /// @}
 
          void validate_message_precondition(precondition_validate_context& c)const;

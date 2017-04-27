@@ -142,9 +142,9 @@ namespace eos { namespace chain {
    using account_id_type  = chainbase::oid<account_object>;
    using producer_id_type = chainbase::oid<producer_object>;
 
-   using block_id_type = fc::ripemd160;
-   using checksum_type = fc::ripemd160;
-   using transaction_id_type = fc::ripemd160;
+   using block_id_type = fc::sha256;
+   using checksum_type = fc::sha256;
+   using transaction_id_type = fc::sha256;
    using digest_type = fc::sha256;
    using generated_transaction_id_type = fc::sha256;
    using signature_type = fc::ecc::compact_signature;
