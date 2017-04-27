@@ -30,6 +30,7 @@ chain_plugin::chain_plugin()
 chain_plugin::~chain_plugin(){}
 
 database& chain_plugin::db() { return my->db; }
+const chain::database& chain_plugin::db() const { return my->db; }
 
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
@@ -145,4 +146,32 @@ bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block
    return db().get_block_id_for_num(chain::block_header::num_from_id(block_id)) == block_id;
 }
 
+namespace chain_apis {
+
+read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+   return {
+      db.head_block_num(),
+      db.head_block_id(),
+      db.head_block_time(),
+      db.head_block_producer(),
+      std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
+      __builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
+   };
 }
+
+read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
+   try {
+      if (auto block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<chain::block_id_type>()))
+         return *block;
+   } catch (fc::bad_cast_exception) {/* do nothing */}
+   try {
+      if (auto block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id)))
+         return *block;
+   } catch (fc::bad_cast_exception) {/* do nothing */}
+
+   FC_THROW_EXCEPTION(chain::unknown_block_exception,
+                      "Could not find block: ${block}", ("block", params.block_num_or_id));
+}
+
+} // namespace chain_apis
+} // namespace eos
