@@ -8,21 +8,6 @@
 
 namespace eos {
 using namespace appbase;
-using chain::account_name;
-using chain::Authority;
-
-struct Transfer {
-   account_name to;
-   uint64_t     amount = 0;
-   string       memo;
-};
-
-struct CreateAccount {
-   account_name  new_account;
-   Authority     owner;
-   Authority     active;
-   uint64_t      initial_balance = 0;
-};
 
 /**
  * @brief This class is a native C++ implementation of the system contract.
@@ -54,5 +39,3 @@ private:
 
 }
 
-FC_REFLECT(eos::Transfer, (to)(amount)(memo))
-FC_REFLECT(eos::CreateAccount, (new_account)(owner)(active)(initial_balance))

@@ -1,8 +1,9 @@
 #include <eos/types/Asset.hpp>
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <fc/reflect/variant.hpp>
 
-namespace EOS { 
+namespace eos { 
       typedef boost::multiprecision::int128_t  int128_t;
 
       uint8_t Asset::decimals()const {
@@ -14,7 +15,7 @@ namespace EOS {
          a[0] = d;
       }
 
-      std::string Asset::symbol_name()const {
+      String Asset::symbol_name()const {
          auto a = (const char*)&symbol;
          assert( a[7] == 0 );
          return &a[1];
@@ -32,21 +33,21 @@ namespace EOS {
          return table[ decimals() ];
       }
 
-      string Asset::toString()const {
-         string result = fc::to_string(amount.value / precision());
+      String Asset::toString()const {
+         String result = fc::to_string( static_cast<int64_t>(amount) / precision());
          if( decimals() )
          {
-            auto fract = amount.value % precision();
+            auto fract = static_cast<int64_t>(amount) % precision();
             result += "." + fc::to_string(precision() + fract).erase(0,1);
          }
          return result + " " + symbol_name();
       }
 
-      Asset Asset::fromString( const string& from )
+      Asset Asset::fromString( const String& from )
       {
          try
          {
-            string s = fc::trim( from );
+            String s = fc::trim( from );
             auto space_pos = s.find( " " );
             auto dot_pos = s.find( "." );
 
@@ -57,15 +58,15 @@ namespace EOS {
 
             auto intpart = s.substr( 0, dot_pos );
             result.amount = fc::to_int64(intpart);
-            std::string fractpart;
-            if( dot_pos != std::string::npos )
+            String fractpart;
+            if( dot_pos != String::npos )
             {
                auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
                result.set_decimals( fractpart.size() - 1 );
 
-               result.amount.value *= result.precision();
-               result.amount.value += fc::to_int64(fractpart);
-               result.amount.value -= result.precision();
+               result.amount *= Int64(result.precision());
+               result.amount += Int64(fc::to_int64(fractpart));
+               result.amount -= Int64(result.precision());
             }
             auto symbol = s.substr( space_pos + 1 );
 
@@ -82,8 +83,8 @@ namespace EOS {
          if( std::tie( a.base.symbol, a.quote.symbol ) != std::tie( b.base.symbol, b.quote.symbol ) )
              return false;
 
-         const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
-         const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
+         const auto amult = UInt128( b.quote.amount ) * UInt128(a.base.amount);
+         const auto bmult = UInt128( a.quote.amount ) * UInt128(b.base.amount);
 
          return amult == bmult;
       }
@@ -95,8 +96,8 @@ namespace EOS {
          if( a.quote.symbol < b.quote.symbol ) return true;
          if( a.quote.symbol > b.quote.symbol ) return false;
 
-         const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
-         const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
+         const auto amult = UInt128( b.quote.amount ) * UInt128(a.base.amount);
+         const auto bmult = UInt128( a.quote.amount ) * UInt128(b.base.amount);
 
          return amult < bmult;
       }
@@ -125,17 +126,16 @@ namespace EOS {
       {
          if( a.symbol_name() == b.base.symbol_name() )
          {
-            FC_ASSERT( b.base.amount.value > 0 );
-            uint128_t result = (uint128_t(a.amount.value) * b.quote.amount.value)/b.base.amount.value;
-            FC_ASSERT( result.hi == 0 );
-            return Asset( result.to_uint64(), b.quote.symbol );
+            FC_ASSERT( static_cast<int64_t>(b.base.amount) > 0 );
+            auto result = (UInt128(a.amount) * UInt128(b.quote.amount))/UInt128(b.base.amount);
+            return Asset( Int64(result), b.quote.symbol );
          }
+
          else if( a.symbol_name() == b.quote.symbol_name() )
          {
-            FC_ASSERT( b.quote.amount.value > 0 );
-            uint128_t result = (uint128_t(a.amount.value) * b.base.amount.value)/b.quote.amount.value;
-            FC_ASSERT( result.hi == 0 );
-            return Asset( result.to_uint64(), b.base.symbol );
+            FC_ASSERT( static_cast<int64_t>(b.quote.amount) > 0 );
+            auto result = (UInt128(a.amount) *UInt128(b.base.amount))/UInt128(b.quote.amount);
+            return Asset( Int64(result), b.base.symbol );
          }
          FC_THROW_EXCEPTION( fc::assert_exception, "invalid Asset * Price", ("Asset",a)("Price",b) );
       }
@@ -146,8 +146,8 @@ namespace EOS {
          return Price{ base, quote };
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
-      Price Price::max( SymbolType base, SymbolType quote ) { return Asset( ShareType(EOS_MAX_SHARE_SUPPLY), base ) / Asset( ShareType(1), quote); }
-      Price Price::min( SymbolType base, SymbolType quote ) { return Asset( 1, base ) / Asset( EOS_MAX_SHARE_SUPPLY, quote); }
+      Price Price::max( AssetSymbol base, AssetSymbol quote ) { return Asset( ShareType(EOS_MAX_SHARE_SUPPLY), base ) / Asset( ShareType(1), quote); }
+      Price Price::min( AssetSymbol base, AssetSymbol quote ) { return Asset( 1, base ) / Asset( EOS_MAX_SHARE_SUPPLY, quote); }
 
       bool Price::is_null() const { return *this == Price(); }
 
@@ -159,4 +159,4 @@ namespace EOS {
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
 
-}  // EOS
+}  // eos

@@ -513,9 +513,11 @@ void database::validate_referenced_accounts(const signed_transaction& trx)const 
       const account_name* previous_notify_account = nullptr;
       for(const auto& current_notify_account : msg.notify) {
          get_account(current_notify_account);
-         if(previous_notify_account)
+         if(previous_notify_account) {
             EOS_ASSERT(current_notify_account < *previous_notify_account, message_validate_exception,
                        "Message notify accounts out of order. Possibly a bug in the wallet?");
+         }
+
          EOS_ASSERT(current_notify_account != msg.sender, message_validate_exception,
                     "Message sender is listed in accounts to notify. Possibly a bug in the wallet?");
          EOS_ASSERT(current_notify_account != msg.recipient, message_validate_exception,
@@ -745,7 +747,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       create<account_object>([&acct](account_object& a) {
          a.name = acct.name.c_str();
          a.balance = acct.balance;
-         idump((acct.name)(a.balance));
+//         idump((acct.name)(a.balance));
 //         a.active_key = acct.active_key;
 //         a.owner_key = acct.owner_key;
       });

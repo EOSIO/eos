@@ -51,9 +51,9 @@ namespace eos { namespace chain {
          return *this;
       }
 
-      uint32_t                         threshold = 0;
-      shared_vector<PermissionLevel>   accounts;
-      shared_vector<KeyPermission>     keys;
+      UInt32                                 threshold = 0;
+      shared_vector<AccountPermissionWeight> accounts;
+      shared_vector<KeyPermissionWeight>     keys;
    };
    
    class account_object : public chainbase::object<account_object_type, account_object>
@@ -61,11 +61,11 @@ namespace eos { namespace chain {
       OBJECT_CTOR(account_object)
 
       id_type           id;
-      account_name      name;
-      uint64_t          balance                = 0;
-      uint64_t          votes                  = 0;
-      uint64_t          converting_votes       = 0;
-      time_point_sec    last_vote_conversion;
+      AccountName       name;
+      Asset             balance;
+      UInt64            votes                  = 0;
+      UInt64            converting_votes       = 0;
+      Time              last_vote_conversion;
    };
 
    struct by_name;
@@ -73,7 +73,7 @@ namespace eos { namespace chain {
       account_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<account_object, account_object::id_type, &account_object::id>>,
-         ordered_unique<tag<by_name>, member<account_object, account_name, &account_object::name>>
+         ordered_unique<tag<by_name>, member<account_object, AccountName, &account_object::name>>
       >
    >;
 

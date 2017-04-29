@@ -47,7 +47,7 @@ struct genesis_state_type {
            active_key(active_key == public_key_type()? owner_key : active_key)
       {}
       string          name;
-      uint64_t        balance = 0;
+      Asset           balance;
       public_key_type owner_key;
       public_key_type active_key;
    };

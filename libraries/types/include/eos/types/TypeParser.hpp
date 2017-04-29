@@ -10,7 +10,7 @@
 
 #include <eos/types/native.hpp>
 
-namespace EOS {
+namespace eos {
    using std::map;
    using std::set;
    using std::string;
@@ -39,7 +39,7 @@ namespace EOS {
    class SimpleSymbolTable : public AbstractSymbolTable {
       public:
          SimpleSymbolTable():
-         known( { "FixedString16", "FixedString32",
+         known( { "Field", "Struct", "Asset", "FixedString16", "FixedString32",
                   "UInt8", "UInt16", "UInt32", "UInt64",
                   "UInt128", "Checksum", "UInt256", "UInt512",
                   "Int8", "Int16", "Int32", "Int64",
@@ -65,16 +65,17 @@ namespace EOS {
             order.push_back(to);
          } FC_CAPTURE_AND_RETHROW( (from)(to) ) }
 
-         virtual bool isKnownType( const TypeName& name ) override { try {
+         virtual bool isKnownType( const TypeName& n ) override { try {
+            String name(n);
             FC_ASSERT( name.size() > 0 );
             if( name.size() > 2 && name.back() == ']' ) {
                FC_ASSERT( name[name.size()-2] == '[' );
                return isKnownType( name.substr( 0, name.size()-2 ) );
             }
-            return known.find(name) != known.end() ||
-                   typedefs.find(name) != typedefs.end() ||
-                   structs.find(name) != structs.end();
-         } FC_CAPTURE_AND_RETHROW( (name) ) }
+            return known.find(n) != known.end() ||
+                   typedefs.find(n) != typedefs.end() ||
+                   structs.find(n) != structs.end();
+         } FC_CAPTURE_AND_RETHROW( (n) ) }
 
          virtual Struct getType( TypeName name )const override {
             name = resolveTypedef( name );
@@ -105,8 +106,6 @@ namespace EOS {
    };
 
 
-} // namespace EOS
+} // namespace eos
 
-FC_REFLECT( EOS::Field, (name)(type) )
-FC_REFLECT( EOS::Struct, (name)(base)(fields) )
-FC_REFLECT( EOS::SimpleSymbolTable, (typedefs)(structs) )
+FC_REFLECT( eos::SimpleSymbolTable, (typedefs)(structs) )

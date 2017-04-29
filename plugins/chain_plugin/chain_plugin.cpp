@@ -175,10 +175,12 @@ read_only::get_block_results read_only::get_block(const read_only::get_block_par
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
    db.push_block(params);
+   return read_write::push_block_results();
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
    db.push_transaction(params);
+   return read_write::push_transaction_results();
 }
 
 } // namespace chain_apis

@@ -1,87 +1,82 @@
-#// Built In Types
-#Vector[Type]
-#String
-#Bytes
-#Time
-#Signature
-#PublicKey
-#FixedString16,32  // names, types
-#FixedBytes16,28,32,64 // signatures, hashes, keys
-#UInt8,16,32,64,128,224,256,512
-#Int8,16,32,64,128,224,256,512
-
 typedef FixedString32  AccountName
 typedef FixedString16  PermissionName
-typedef FixedString16  MessageType
-typedef UInt32         AccountPermissionWeight
-typedef UInt32         GeneratedTransactionID
+typedef FixedString32  MessageName
+typedef FixedString32  TypeName
 
 # import account type as localtype
 
 struct Message
-  sender      AccountName # testing
-  recipient   AccountName
-  notify      AccountName[]
-  type        MessageType
-  data        Bytes
+   sender      AccountName # testing
+   recipient   AccountName
+   notify      AccountName[]
+   type        TypeName
+   data        Bytes
 
 struct AccountPermission
-  account    AccountName
-  permission PermissionName
+   account    AccountName
+   permission PermissionName
+
+struct AccountPermissionWeight 
+   permission   AccountPermission
+   weight       UInt16
 
 struct Transaction
-  expiration  Time
-  tapos       UInt32
-  messages    Message[]
-  permissions AccountPermission[]
-  
+   ref_block_num     UInt16
+   ref_block_prefix  UInt32
+   expiration        Time
+   tapos             UInt32
+   messages          Message[]
+   authorization     AccountPermission[]
+
 struct SignedTransaction inherits Transaction
-  signatures Signature[]
+   signatures     Signature[]
 
 struct KeyPermissionWeight
-  key    PublicKey
-  weight UInt16
+   key    PublicKey
+   weight UInt16
 
 struct Authority
-  threshold UInt32
-  keys      KeyPermissionWeight[]
-  accounts  AccountPermissionWeight[]
-
-struct CreateAccount
-  creator  AccountName
-  name     AccountName
-  owner    Authority
-  active   Authority
-  recovery Authority
-
-struct UpdatePermission
-  account     AccountName
-  permission  PermissionName
-  parent      PermissionName
-  authority   Authority
-
-struct DeletePermission
-  account AccountName
-  permission PermissionName
+   threshold UInt32
+   keys      KeyPermissionWeight[]
+   accounts  AccountPermissionWeight[]
 
 struct Transfer
-  from    AccountName
-  to      AccountName
-  amount  UInt64
-  memo    String
+   from      AccountName  # may not be the message.sender if message.sender has delegated authority by from
+   to        AccountName
+   amount    Asset
+   memo      String
+
+struct CreateAccount
+   creator   AccountName
+   name      AccountName
+   owner     Authority
+   active    Authority
+   recovery  Authority
+   deposit   Asset
 
 struct CreateProducer
-  account AccountName
-  key     PublicKey
+   name      AccountName
+   key       PublicKey
 
-struct VoteOnProducer
-  account  AccountName
-  producer AccountName
-  weight   Int8
+# implies message.sender account
+struct ApproveProducer
+   producer  AccountName
+   approve   Int8  # 0 or 1 
 
-struct SetProducerVoteProxy
-  account AccountName
-  proxy   AccountName
+# implies message.sender account 
+struct SetVoteProxy
+   proxy   AccountName
 
+struct DefineStruct
+   scope        AccountName
+   definition   Struct
 
+struct UpdatePermission
+   account     AccountName
+   permission  PermissionName
+   parent      PermissionName
+   authority   Authority
 
+struct DeletePermission
+   account AccountName
+   permission PermissionName

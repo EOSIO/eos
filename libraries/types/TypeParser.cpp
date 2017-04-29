@@ -2,7 +2,7 @@
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 
-namespace EOS {
+namespace eos {
    void AbstractSymbolTable::parse( std::istream& in ) {
       vector<string> line_tokens;
 
@@ -13,7 +13,7 @@ namespace EOS {
         FC_ASSERT( current.fields.size() > 0, "A struct must specify at least one field" );
         this->addType( current );
         current.fields.clear();
-        current.base.clear();
+        current.base = TypeName();
         in_struct = false;
       };
 
@@ -57,4 +57,4 @@ namespace EOS {
       }
    }
 
-} // namespace EOS
+} // namespace eos

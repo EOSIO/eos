@@ -10,7 +10,8 @@ set(SOURCES node.cpp
 add_library( eos_net ${SOURCES} ${HEADERS} )
 
 target_link_libraries( eos_net 
-  PUBLIC fc chainbase appbase )
+  PUBLIC fc chainbase appbase eos_types)
+
 target_include_directories( eos_net 
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
   PRIVATE "${CMAKE_SOURCE_DIR}/libraries/chain/include"

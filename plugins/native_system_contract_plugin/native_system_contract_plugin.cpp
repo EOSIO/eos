@@ -2,25 +2,39 @@
 
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/exceptions.hpp>
+#include <eos/types/native.hpp>
+#include <eos/types/generated.hpp>
 
 namespace eos {
 using namespace chain;
 
+/************************************************************
+ *
+ *    Transfer Handlers
+ *
+ ***********************************************************/
 void Transfer_validate(chain::message_validate_context& context) {
    auto transfer = context.msg.as<Transfer>();
-   EOS_ASSERT(context.msg.has_notify(transfer.to), message_validate_exception, "Must notify recipient of transfer");
+   try {
+      EOS_ASSERT(transfer.amount > Asset(0), message_validate_exception, "Must transfer a positive amount");
+      EOS_ASSERT(context.msg.has_notify(transfer.to), message_validate_exception, "Must notify recipient of transfer");
+   } FC_CAPTURE_AND_RETHROW( (transfer) ) 
 }
+
 void Transfer_validate_preconditions(chain::precondition_validate_context& context) {
    const auto& db = context.db;
    auto transfer = context.msg.as<Transfer>();
-   const auto& from = db.get_account(context.msg.sender);
-   EOS_ASSERT(from.balance >= transfer.amount, message_precondition_exception, "Insufficient Funds",
+
+   db.get_account(transfer.to); ///< make sure this exists
+   const auto& from = db.get_account(transfer.from);
+   EOS_ASSERT(from.balance >= transfer.amount.amount, message_precondition_exception, "Insufficient Funds",
               ("from.balance",from.balance)("transfer.amount",transfer.amount));
 }
 void Transfer_apply(chain::apply_context& context) {
    auto& db = context.mutable_db;
    auto transfer = context.msg.as<Transfer>();
-   const auto& from = db.get_account(context.msg.sender);
+   idump((transfer));
+   const auto& from = db.get_account(transfer.from);
    const auto& to = db.get_account(transfer.to);
    db.modify(from, [&](account_object& a) {
       a.balance -= transfer.amount;
@@ -28,39 +42,62 @@ void Transfer_apply(chain::apply_context& context) {
    db.modify(to, [&](account_object& a) {
       a.balance += transfer.amount;
    });
+   idump((from));
+   idump((to));
+}
+
+
+/************************************************************
+ *
+ *    Create Account Handlers
+ *
+ ***********************************************************/
+///@{
+
+
+void Authority_validate_preconditions( const Authority& auth, chain::precondition_validate_context& context ) {
+   for( const auto& a : auth.accounts )
+      context.db.get<account_object,by_name>( a.permission.account );
 }
 
 void CreateAccount_validate(chain::message_validate_context& context) {
    auto create = context.msg.as<CreateAccount>();
-   EOS_ASSERT(create.owner.validate(), message_validate_exception, "Invalid owner authority");
-   EOS_ASSERT(create.active.validate(), message_validate_exception, "Invalid active authority");
+
+   EOS_ASSERT( validate(create.owner), message_validate_exception, "Invalid owner authority");
+   EOS_ASSERT( validate(create.active), message_validate_exception, "Invalid active authority");
+   EOS_ASSERT( validate(create.recovery), message_validate_exception, "Invalid recovery authority");
 }
+
 void CreateAccount_validate_preconditions(chain::precondition_validate_context& context) {
    const auto& db = context.db;
    auto create = context.msg.as<CreateAccount>();
 
-   auto existing_account = db.find<account_object, by_name>(create.new_account);
+   db.get_account(create.creator); ///< make sure it exists
+
+   auto existing_account = db.find<account_object, by_name>(create.name);
    EOS_ASSERT(existing_account == nullptr, message_precondition_exception,
               "Cannot create account named ${name}, as that name is already taken",
-              ("name", create.new_account));
+              ("name", create.name));
 
    const auto& creator = db.get_account(context.msg.sender);
-   EOS_ASSERT(creator.balance >= create.initial_balance, message_precondition_exception, "Insufficient Funds");
+   EOS_ASSERT(creator.balance >= create.deposit, message_precondition_exception, "Insufficient Funds");
 
-   for (const auto& account : create.owner.referenced_accounts())
-      db.get_account(account);
-   for (const auto& account : create.active.referenced_accounts())
-      db.get_account(account);
+#warning TODO: make sure creation deposit is greater than min account balance
+
+   Authority_validate_preconditions( create.owner, context );
+   Authority_validate_preconditions( create.active, context );
+   Authority_validate_preconditions( create.recovery, context );
 }
+
 void CreateAccount_apply(chain::apply_context& context) {
    auto& db = context.mutable_db;
    auto create = context.msg.as<CreateAccount>();
    db.modify(db.get_account(context.msg.sender), [&create](account_object& a) {
-      a.balance -= create.initial_balance;
+      a.balance -= create.deposit;
    });
    const auto& new_account = db.create<account_object>([&create](account_object& a) {
-      a.name = create.new_account;
-      a.balance = create.initial_balance;
+      a.name = create.name;
+      a.balance = create.deposit;
    });
    const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
       p.name = "owner";
@@ -75,6 +112,7 @@ void CreateAccount_apply(chain::apply_context& context) {
       p.auth = std::move(create.active);
    });
 }
+///@}  Create Account Handlers
 
 class native_system_contract_plugin_impl {
 public:

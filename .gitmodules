@@ -1,6 +1,6 @@
 [submodule "libraries/fc"]
     path = libraries/fc
-    url = https://github.com/bitshares/bitshares-fc.git
+    url = https://github.com/eosio/fc.git
     ignore = dirty
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase

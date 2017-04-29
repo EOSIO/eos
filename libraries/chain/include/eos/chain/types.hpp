@@ -26,9 +26,6 @@
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/sha224.hpp>
-#include <fc/crypto/elliptic.hpp>
-#include <fc/reflect/reflect.hpp>
-#include <fc/reflect/variant.hpp>
 #include <fc/optional.hpp>
 #include <fc/safe.hpp>
 #include <fc/container/flat.hpp>
@@ -39,6 +36,10 @@
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/fixed_string.hpp>
+#include <eos/types/native.hpp>
+#include <eos/types/PublicKey.hpp>
+#include <eos/types/Asset.hpp>
+#include <eos/types/generated.hpp>
 
 #include <memory>
 #include <vector>
@@ -105,12 +106,14 @@ namespace eos { namespace chain {
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-   typedef fc::fixed_string<>      account_name;
-   typedef fc::fixed_string<>      permission_name;
-   typedef fc::fixed_string<>      message_type;
-   //using account_name    = std::string;
-   //using message_type    = std::string;
-   //using permission_name = std::string;
+
+   using eos::AccountName;
+   using account_name = eos::AccountName;
+   using eos::PermissionName;
+   using permission_name = eos::PermissionName;
+   using message_name = eos::TypeName;
+   using message_type = message_name;
+
 
    /**
     * List all object types from all namespaces here so they can
@@ -150,40 +153,11 @@ namespace eos { namespace chain {
    using signature_type = fc::ecc::compact_signature;
    using weight_type = uint16_t;
 
-   struct public_key_type
-   {
-       struct binary_key
-       {
-          binary_key() {}
-          uint32_t                 check = 0;
-          fc::ecc::public_key_data data;
-       };
-       fc::ecc::public_key_data key_data;
-       public_key_type();
-       public_key_type( const fc::ecc::public_key_data& data );
-       public_key_type( const fc::ecc::public_key& pubkey );
-       explicit public_key_type( const std::string& base58str );
-       operator fc::ecc::public_key_data() const;
-       operator fc::ecc::public_key() const;
-       explicit operator std::string() const;
-       friend bool operator == ( const public_key_type& p1, const fc::ecc::public_key& p2);
-       friend bool operator == ( const public_key_type& p1, const public_key_type& p2);
-       friend bool operator != ( const public_key_type& p1, const public_key_type& p2);
-       friend bool operator < ( const public_key_type& p1, const public_key_type& p2);
-       bool is_valid_v1( const std::string& base58str );
-   };
-
+   using public_key_type = eos::PublicKey;
    
 } }  // eos::chain
 
-namespace fc
-{
-    void to_variant( const eos::chain::public_key_type& var,  fc::variant& vo );
-    void from_variant( const fc::variant& var,  eos::chain::public_key_type& vo );
-}
 
-FC_REFLECT( eos::chain::public_key_type, (key_data) )
-FC_REFLECT( eos::chain::public_key_type::binary_key, (data)(check) )
 
 FC_REFLECT(eos::chain::account_id_type, (_id))
 FC_REFLECT(eos::chain::producer_id_type, (_id))

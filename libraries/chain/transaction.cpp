@@ -62,10 +62,6 @@ signature_type eos::chain::signed_transaction::sign(const private_key_type& key,
    return key.sign_compact(enc.result());
 }
 
-void transaction::set_expiration( fc::time_point_sec expiration_time ) {
-   expiration = expiration_time;
-}
-
 void transaction::set_reference_block(const block_id_type& reference_block) {
    ref_block_num = fc::endian_reverse_u32(reference_block._hash[0]);
    ref_block_prefix = reference_block._hash[1];

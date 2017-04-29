@@ -1,45 +1,27 @@
 #pragma once
 #include <eos/chain/types.hpp>
+#include <eos/types/generated.hpp>
 
+namespace eos {
+   inline bool operator < ( const AccountPermission& a, const AccountPermission& b ) {
+      return std::tie( a.account, a.permission ) < std::tie( b.account, b.permission );
+   }
 
-namespace eos { namespace chain {
-
-   struct PermissionLevel {
-      account_name      account;
-      permission_name   level;
-      uint16_t          weight;
-   };
-
-   struct KeyPermission {
-      public_key_type key;
-      uint16_t        weight;
-   };
-
-   struct Authority {
-      uint32_t                threshold = 0;
-      vector<PermissionLevel> accounts;
-      vector<KeyPermission>   keys;
-
-      bool validate() const {
-         if (threshold == 0)
-            return false;
-         uint32_t score = 0;
-         for (const auto& p : accounts)
-            score += p.weight;
-         for (const auto& p : keys)
-            score += p.weight;
-         return score >= threshold;
+   /**
+    *  Makes sure all keys are unique and sorted and all account permissions are unique and sorted
+    */
+   inline bool validate( eos::Authority& auth ) {
+      const KeyPermissionWeight* prev = nullptr;
+      for( const auto& k : auth.keys ) {
+         if( !prev ) prev = &k;
+         else if( prev->key < k.key ) return false;
       }
-      set<account_name> referenced_accounts() const {
-         set<account_name> results;
-         std::transform(accounts.begin(), accounts.end(), std::inserter(results, results.begin()),
-                        [](const PermissionLevel& p) { return p.account; });
-         return results;
+      const AccountPermissionWeight* pa = nullptr;
+      for( const auto& a : auth.accounts ) {
+         if( !pa ) pa = &a;
+         else if( pa->permission < a.permission ) return false;
       }
-   };
+      return true;
+   }
+}
 
-} }  // eos::chain
-
-FC_REFLECT(eos::chain::PermissionLevel, (account)(level)(weight))
-FC_REFLECT(eos::chain::KeyPermission, (key)(weight))
-FC_REFLECT(eos::chain::Authority, (threshold)(accounts)(keys))

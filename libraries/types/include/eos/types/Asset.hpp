@@ -1,23 +1,17 @@
 #pragma once
 #include <fc/exception/exception.hpp>
-#include <string>
-#include <eos/types/ints.hpp>
+#include <eos/types/native.hpp>
 
-/// EOS with 8 digits of precision
+/// eos with 8 digits of precision
 #define EOS_SYMBOL  (uint64_t(8) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24) ) 
-
-/// VOTE with 8 digits of precision
-#define VOTE_SYMBOL  (uint64_t(8) | (uint64_t('V') << 8) | (uint64_t('O') << 16) | (uint64_t('T') << 24) | (uint64_t('E') << 32) ) 
 
 /// Defined to be largest power of 10 that fits in 53 bits of precision
 #define EOS_MAX_SHARE_SUPPLY   int64_t(1000000000000000ll)
 
-namespace EOS { 
+namespace eos { 
 
-   typedef uint64_t AssetSymbol;
-   typedef Int64    ShareType;
-   using std::string;
-
+   using AssetSymbol = uint64_t;
+   using ShareType   = Int64;
 
    struct Asset
    {
@@ -27,17 +21,15 @@ namespace EOS {
       ShareType   amount;
       AssetSymbol symbol;
 
-      double to_real()const {
-         return static_cast<double>(amount) / precision();
-      }
+      double to_real()const { return static_cast<double>(amount) / precision(); }
 
       uint8_t     decimals()const;
-      std::string symbol_name()const;
+      String      symbol_name()const;
       int64_t     precision()const;
       void        set_decimals(uint8_t d);
 
-      static Asset fromString( const string& from );
-      string       toString()const;
+      static Asset fromString( const String& from );
+      String       toString()const;
 
       Asset& operator += ( const Asset& o )
       {
@@ -63,44 +55,32 @@ namespace EOS {
          FC_ASSERT( a.symbol == b.symbol );
          return std::tie(a.amount,a.symbol) < std::tie(b.amount,b.symbol);
       }
-      friend bool operator <= ( const Asset& a, const Asset& b )
-      {
-         return (a == b) || (a < b);
-      }
+      friend bool operator <= ( const Asset& a, const Asset& b ) { return (a == b) || (a < b); }
+      friend bool operator != ( const Asset& a, const Asset& b ) { return !(a == b); }
+      friend bool operator > ( const Asset& a, const Asset& b )  { return !(a <= b); }
+      friend bool operator >= ( const Asset& a, const Asset& b ) { return !(a < b);  }
 
-      friend bool operator != ( const Asset& a, const Asset& b )
-      {
-         return !(a == b);
-      }
-      friend bool operator > ( const Asset& a, const Asset& b )
-      {
-         return !(a <= b);
-      }
-      friend bool operator >= ( const Asset& a, const Asset& b )
-      {
-         return !(a < b);
-      }
-
-      friend Asset operator - ( const Asset& a, const Asset& b )
-      {
+      friend Asset operator - ( const Asset& a, const Asset& b ) {
          FC_ASSERT( a.symbol == b.symbol );
          return Asset( a.amount - b.amount, a.symbol );
       }
-      friend Asset operator + ( const Asset& a, const Asset& b )
-      {
+
+      friend Asset operator + ( const Asset& a, const Asset& b ) {
          FC_ASSERT( a.symbol == b.symbol );
          return Asset( a.amount + b.amount, a.symbol );
       }
+
+      friend std::ostream& operator << ( std::ostream& out, const Asset& a ) { return out << a.toString(); }
 
    };
 
    struct Price
    {
-      Price(const Asset& base = Asset(), const Asset quote = Asset())
-         : base(base),quote(quote){}
-
       Asset base;
       Asset quote;
+
+      Price(const Asset& base = Asset(), const Asset quote = Asset())
+      :base(base),quote(quote){}
 
       static Price max(AssetSymbol base, AssetSymbol quote );
       static Price min(AssetSymbol base, AssetSymbol quote );
@@ -127,40 +107,13 @@ namespace EOS {
    bool  operator != ( const Price& a, const Price& b );
    Asset operator *  ( const Asset& a, const Price& b );
 
-   inline fc::variant toVariant( const Asset& v ) { return v.toString(); }
-   inline void        fromVariant( Asset& v, const fc::variant& var )  { v = Asset::fromString( var.get_string() ); }
-
-    template<typename Stream>
-    void toBinary( Stream& stream, const Asset& t ) { 
-        EOS::toBinary( stream, t.amount );
-        EOS::toBinary( stream, t.symbol );
-    }
-
-    template<typename Stream>
-    void fromBinary( Stream& stream, Asset& t ) { 
-        EOS::fromBinary( stream, t.amount );
-        EOS::fromBinary( stream, t.symbol );
-    }
-
-    template<typename Stream>
-    void toBinary( Stream& stream, const Price& t ) { 
-        EOS::toBinary( stream, t.base );
-        EOS::toBinary( stream, t.quote );
-    }
-
-    template<typename Stream>
-    void fromBinary( Stream& stream, Price& t ) { 
-        EOS::fromBinary( stream, t.base );
-        EOS::fromBinary( stream, t.quote );
-    }
-
-} // namespace EOS
+} // namespace eos
 
 namespace fc {
-    inline void to_variant( const EOS::Asset& var,  fc::variant& vo )   { vo = var.toString(); }
-    inline void from_variant( const fc::variant& var,  EOS::Asset& vo ) { vo = EOS::Asset::fromString( var.get_string() ); }
+    inline void to_variant( const eos::Asset& var,  fc::variant& vo )   { vo = var.toString(); }
+    inline void from_variant( const fc::variant& var,  eos::Asset& vo ) { vo = eos::Asset::fromString( var.get_string() ); }
 }
 
-FC_REFLECT( EOS::Asset, (amount)(symbol) )
-FC_REFLECT( EOS::Price, (base)(quote) )
+FC_REFLECT( eos::Asset, (amount)(symbol) )
+FC_REFLECT( eos::Price, (base)(quote) )
 

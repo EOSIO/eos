@@ -94,7 +94,6 @@ namespace eos { namespace chain {
       /// Calculate the digest used for signature validation
       digest_type         sig_digest(const chain_id_type& chain_id)const;
 
-      void set_expiration(fc::time_point_sec expiration_time);
       void set_reference_block(const block_id_type& reference_block);
       bool verify_reference_block(const block_id_type& reference_block)const;
    };

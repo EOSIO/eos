@@ -60,7 +60,7 @@ string call_type_constructor( const string& type ) {
       return "Vector[" + getWrenType(type) + "]";
    return getWrenType(type) + ".new()";
 }
-string generate_wren( const EOS::Struct& s, EOS::SimpleSymbolTable& symbols ) {
+string generate_wren( const eos::Struct& s, eos::SimpleSymbolTable& symbols ) {
 
    std::stringstream ss;
    ss << "class " << s.name;
@@ -98,16 +98,15 @@ string generate_wren( const EOS::Struct& s, EOS::SimpleSymbolTable& symbols ) {
    return ss.str();
 }
 
-void generate_wren( EOS::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_wren( eos::SimpleSymbolTable& ss, const char* outfile ) {
   //for( const auto& s : ss.order ) 
 }
 
-void generate_hpp( EOS::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_hpp( eos::SimpleSymbolTable& ss, const char* outfile ) {
    wdump((outfile));
    std::ofstream out(outfile);
    out << "#pragma once\n";
-   out << "#include <eos/types/native.hpp>\n";
-   out << "namespace EOS { \n";
+   out << "namespace eos { \n";
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
          const auto& td = ss.typedefs[s];
@@ -123,33 +122,26 @@ void generate_hpp( EOS::SimpleSymbolTable& ss, const char* outfile ) {
       for( const auto& f : st.fields ) {
          string type = f.type;
          if( type.back() == ']' ) 
-            type = "vector<" + type.substr(0,type.size()-2) + ">";
+            type = "Vector<" + type.substr(0,type.size()-2) + ">";
          out <<"        " << std::left << std::setw(32) << type << " " << f.name<<";\n";
       }
       out << "    };\n\n";
 
-      out << "    fc::variant toVariant( const " << s << "& t ); \n";
-      out << "    void        fromVariant( " << s << "& t, const fc::variant& v ); \n";
-
-      out << "    template<typename Stream>\n";
-      out << "    void toBinary( Stream& stream, const " << s << "& t ) { \n";
-      if( st.base.size() )
-         out << "        EOS::toBinary( stream, static_cast<const " << st.base<<"&>(t) );\n"; 
+      out << "    template<> struct GetStruct<"<< s <<"> { \n";
+      out << "        static const Struct& type() { \n";
+      out << "           static Struct result = { \"" << s << " \", \"" << st.base <<"\", {\n";
       for( const auto& f : st.fields ) {
-         out << "        EOS::toBinary( stream, t."<< f.name << " );\n";
+      out << "                {\"" << f.name <<"\", \"" << f.type <<"\"},\n";               
       }
-      out << "    }\n\n";
-      out << "    template<typename Stream>\n";
-      out << "    void fromBinary( Stream& stream, " << s << "& t ) { \n";
-      if( st.base.size() )
-         out << "        EOS::fromBinary( stream, static_cast<" << st.base<<"&>(t) );\n"; 
-      for( const auto& f : st.fields ) {
-         out << "        EOS::fromBinary( stream, t."<< f.name << " );\n";
-      }
-      out << "    }\n\n";
+      out << "              }\n";
+      out << "           };\n";
+      out << "           return result;\n";
+      out << "         }\n";
+      out << "    };\n\n";
    }
 
-   out << "} // namespace EOS  \n";
+
+   out << "} // namespace eos  \n";
 
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
@@ -158,9 +150,9 @@ void generate_hpp( EOS::SimpleSymbolTable& ss, const char* outfile ) {
 
       const auto& st = ss.structs[s];
       if( st.base.size() ) {
-        out << "FC_REFLECT_DERIVED( EOS::" <<  s << ", (EOS::" << st.base <<"), ";
+        out << "FC_REFLECT_DERIVED( eos::" <<  s << ", (eos::" << st.base <<"), ";
       } else  {
-        out << "FC_REFLECT( EOS::" <<  s << ", ";
+        out << "FC_REFLECT( eos::" <<  std::setw(33) << s << ", ";
       }
       for( const auto& f : st.fields ) {
          out <<"("<<f.name<<")";
@@ -170,76 +162,27 @@ void generate_hpp( EOS::SimpleSymbolTable& ss, const char* outfile ) {
 
 }
 
-int  count_fields( EOS::SimpleSymbolTable& ss, const EOS::Struct& st ) {
+int  count_fields( eos::SimpleSymbolTable& ss, const eos::Struct& st ) {
    if( st.base.size() )
       return st.fields.size() + count_fields( ss, ss.getType( st.base ) );
    return st.fields.size();
 }
-                  
-void add_fields( EOS::SimpleSymbolTable& ss, std::ofstream& out, const EOS::Struct& st ) {
-      if( st.base.size() ) {
-        add_fields( ss, out, ss.getType( st.base ) );
-      }
-      for( const auto& f : st.fields ) {
-         out << "        mvo[\""<<f.name<<"\"] = EOS::toVariant( t."<<f.name<<" );\n";
-      }
-}
-
-void generate_cpp( EOS::SimpleSymbolTable& ss, const char* outfile, const char* hpp ) {
-   edump((hpp)(outfile));
-   std::ofstream out(outfile);
-   out << "#include <eos/types/native.hpp>\n";
-   out << "#include <eos/types/" << hpp <<">\n";
-   out << "#include <eos/types/native_impl.hpp>\n";
-   out << "namespace EOS { \n";
-   for( const auto& s : ss.order ) {
-      if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
-         continue;
-      }
-   }
-
-   for( const auto& s : ss.order ) {
-      if( ss.typedefs.find( s ) != ss.typedefs.end() ) { continue; }
-      const auto& st = ss.structs[s];
-      out << "    fc::variant toVariant( const " << s << "& t ) { \n";
-      out << "        fc::mutable_variant_object mvo; \n";
-      out << "        mvo.reserve( " << count_fields(ss, st) <<" ); \n";
-
-      add_fields( ss, out, st );
-
-      out << "       return fc::variant( std::move(mvo) );  \n";
-      out << "    }\n\n";
-
-      out << "    void fromVariant( " << s << "& t, const fc::variant& v ) { \n";
-      out << "        const fc::variant_object& mvo = v.get_object(); \n";
-      for( const auto& f : st.fields ) {
-         out << "        { auto itr = mvo.find( \"" << f.name <<"\" );\n";
-         out << "        if( itr != mvo.end() ) \n";
-         out << "           EOS::fromVariant( t." << f.name << ", itr->value() );}\n";
-      }
-      out << "    }\n\n";
-   }
-
-   out << "} // namespace EOS \n";
-
-   out.close();
-}
 
 int main( int argc, char** argv ) {
   try {
-     FC_ASSERT( argc > 4, "Usage: ${program} input out.cpp out.hpp path/to/out.hpp", ("program",string(argv[0]))  );
+     FC_ASSERT( argc > 2, "Usage: ${program} input path/to/out.hpp", ("program",string(argv[0]))  );
      std::ifstream in(argv[1]);
 
-     EOS::SimpleSymbolTable ss;
+     eos::SimpleSymbolTable ss;
      ss.parse(in);
 
      auto as_json = fc::json::to_pretty_string( ss );
      std:: cerr << as_json << "\n";
 
-     generate_hpp( ss, argv[4] );
+     generate_hpp( ss, argv[2] );
+     /*
      generate_cpp( ss, argv[2], argv[3] );
 
-     /*
      auto w = generate_wren( ss.getType( "Message" ), ss );
      std::cerr << w <<"\n";
      w = generate_wren( ss.getType( "Transfer" ), ss );
