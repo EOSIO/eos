@@ -23,6 +23,7 @@
  */
 #pragma once
 #include <eos/chain/global_property_object.hpp>
+#include <eos/chain/account_object.hpp>
 #include <eos/chain/node_property_object.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/genesis_state.hpp>
@@ -100,7 +101,20 @@ namespace eos { namespace chain {
           */
          fc::signal<void(const signed_transaction&)> on_pending_transaction;
 
-         void register_message_type(account_name scope, message_type type);
+         template<typename T>
+         void register_type( account_name scope ) {
+            auto stru = eos::GetStruct<T>::type();
+            create<type_object>([&](type_object& o) {
+               o.scope  = scope;
+               o.name   = stru.name;
+               o.scope  = scope;
+               o.base   = stru.base;
+               o.fields.reserve(stru.fields.size());
+               for( const auto& f : stru.fields )
+                  o.fields.push_back( f );
+            });
+            get<type_object,by_scope_name>( boost::make_tuple(scope, stru.name) );
+         }
 
          /**
           *  The database can override any script handler with native code.

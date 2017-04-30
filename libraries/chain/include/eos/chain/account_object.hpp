@@ -194,23 +194,26 @@ namespace eos { namespace chain {
       >
    >;
 
-   struct message_object : public chainbase::object<message_object_type, message_object> {
-      OBJECT_CTOR(message_object)
+   struct type_object : public chainbase::object<type_object_type, type_object> {
+      OBJECT_CTOR(type_object, (fields))
 
-      id_type         id;
-      account_name    scope;
-      message_type    name;
+      id_type               id;
+      account_name          scope;
+      TypeName              name;
+      account_name          base_scope;
+      TypeName              base;
+      shared_vector<Field>  fields;
    };
 
    struct by_scope_name;
-   using message_index = chainbase::shared_multi_index_container<
-      message_object,
+   using type_index = chainbase::shared_multi_index_container<
+      type_object,
       indexed_by<
-         ordered_unique<tag<by_id>, member<message_object, message_object::id_type, &message_object::id>>,
+         ordered_unique<tag<by_id>, member<type_object, type_object::id_type, &type_object::id>>,
          ordered_unique<tag<by_scope_name>, 
-            composite_key< message_object,
-               member<message_object, account_name, &message_object::scope>,
-               member<message_object, message_type, &message_object::name>
+            composite_key< type_object,
+               member<type_object, account_name, &type_object::scope>,
+               member<type_object, message_type, &type_object::name>
             >
          >
       >
@@ -223,10 +226,10 @@ CHAINBASE_SET_INDEX_TYPE(eos::chain::account_object, eos::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::action_code_object, eos::chain::action_code_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::action_permission_object, eos::chain::action_permission_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::message_object, eos::chain::message_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::type_object, eos::chain::type_index)
 
 FC_REFLECT(eos::chain::account_object, (id)(name)(balance)(votes)(converting_votes)(last_vote_conversion) )
 FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name) )
 FC_REFLECT(eos::chain::action_code_object, (id)(scope)(permission)(action)(validate_action)(validate_precondition)(apply) )
 FC_REFLECT(eos::chain::action_permission_object, (id)(owner)(owner_permission)(scope_permission) )
-FC_REFLECT(eos::chain::message_object, (id)(scope)(name) )
+FC_REFLECT(eos::chain::type_object, (id)(scope)(name)(base_scope)(base)(fields) )

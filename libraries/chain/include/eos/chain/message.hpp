@@ -33,7 +33,7 @@ struct message {
     * scoped according to the recipient. This means two contracts can can define
     * two different types with the same name.
     */
-   message_type         type;
+   TypeName             type;
 
    /// The message contents
    vector<char>         data;

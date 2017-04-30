@@ -129,7 +129,7 @@ void generate_hpp( eos::SimpleSymbolTable& ss, const char* outfile ) {
 
       out << "    template<> struct GetStruct<"<< s <<"> { \n";
       out << "        static const Struct& type() { \n";
-      out << "           static Struct result = { \"" << s << " \", \"" << st.base <<"\", {\n";
+      out << "           static Struct result = { \"" << s << "\", \"" << st.base <<"\", {\n";
       for( const auto& f : st.fields ) {
       out << "                {\"" << f.name <<"\", \"" << f.type <<"\"},\n";               
       }

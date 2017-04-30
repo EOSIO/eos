@@ -32,6 +32,9 @@
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 
+#include <eos/types/native.hpp>
+#include <eos/types/generated.hpp>
+
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
@@ -544,7 +547,7 @@ void database::validate_message_types(const signed_transaction& trx)const {
 try {
    for( const auto& msg : trx.messages ) {
       try {
-         get<message_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
+         get<type_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
       } catch(std::out_of_range) {
          FC_THROW_EXCEPTION(message_validate_exception, "Unrecognized message recipient and type",
                             ("recipient", msg.recipient)("type", msg.type));
@@ -707,7 +710,7 @@ void database::initialize_indexes() {
    add_index<permission_index>();
    add_index<action_code_index>();
    add_index<action_permission_index>();
-   add_index<message_index>();
+   add_index<type_index>();
 
    add_index<global_property_multi_index>();
    add_index<dynamic_global_property_multi_index>();
@@ -739,8 +742,8 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    create<account_object>([&](account_object& a) {
       a.name = "sys";
    });
-   register_message_type("sys", "Transfer");
-   register_message_type("sys", "CreateAccount");
+   register_type<eos::Transfer>("sys");
+   register_type<eos::CreateAccount>("sys");
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {
@@ -800,12 +803,6 @@ database::~database()
 //   clear_pending();
 }
 
-void database::register_message_type(account_name scope, message_type type) {
-   create<message_object>([&scope, &type](message_object& o) {
-      o.scope = scope;
-      o.name = type;
-   });
-}
 
 void database::replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation)
 { try {

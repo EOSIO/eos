@@ -128,7 +128,7 @@ namespace eos { namespace chain {
       account_object_type,
       permission_object_type,
       action_code_object_type,
-      message_object_type,
+      type_object_type,
       action_permission_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
@@ -167,7 +167,7 @@ FC_REFLECT_ENUM( eos::chain::object_type,
                  (account_object_type)
                  (permission_object_type)
                  (action_code_object_type)
-                 (message_object_type)
+                 (type_object_type)
                  (action_permission_object_type)
                  (global_property_object_type)
                  (dynamic_global_property_object_type)

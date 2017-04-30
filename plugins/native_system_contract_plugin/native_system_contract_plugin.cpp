@@ -33,7 +33,6 @@ void Transfer_validate_preconditions(chain::precondition_validate_context& conte
 void Transfer_apply(chain::apply_context& context) {
    auto& db = context.mutable_db;
    auto transfer = context.msg.as<Transfer>();
-   idump((transfer));
    const auto& from = db.get_account(transfer.from);
    const auto& to = db.get_account(transfer.to);
    db.modify(from, [&](account_object& a) {
@@ -42,8 +41,6 @@ void Transfer_apply(chain::apply_context& context) {
    db.modify(to, [&](account_object& a) {
       a.balance += transfer.amount;
    });
-   idump((from));
-   idump((to));
 }
 
 

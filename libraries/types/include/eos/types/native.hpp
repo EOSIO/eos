@@ -31,7 +31,7 @@ namespace eos {
    using Signature     = fc::ecc::compact_signature;
    using Checksum      = fc::sha256;
    using FieldName     = fc::fixed_string<>;
-   using FixedString32 = fc::fixed_string<std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>>; 
+   using FixedString32 = fc::fixed_string<fc::array<uint64_t,4>>;// std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>>; 
    using FixedString16 = fc::fixed_string<>; 
    using TypeName      = FixedString32;
    using Bytes         = Vector<char>;
