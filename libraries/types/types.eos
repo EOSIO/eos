@@ -54,6 +54,15 @@ struct CreateAccount
    recovery  Authority
    deposit   Asset
 
+struct SetMessageHandler
+   processor       AccountName  # the account that is handling the message
+   recipient       AccountName  # the account the message was sent to
+   type            TypeName     # the type of message being processed (relative to to account)
+   validate        String       # the script to validate
+   precondition    String       # the pre condition validation
+   apply           String       # the apply
+
+
 struct CreateProducer
    name      AccountName
    key       PublicKey

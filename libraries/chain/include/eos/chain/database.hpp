@@ -58,6 +58,7 @@ namespace eos { namespace chain {
          precondition_validate_context( const database& d, const transaction& t, const message& m, const account_name& r )
          :message_validate_context(t,m),recipient(r),db(d){}
 
+
          const account_name& recipient;
          const database&    db;
    };
@@ -66,6 +67,10 @@ namespace eos { namespace chain {
       public:
          apply_context( database& d, const transaction& t, const message& m, const account_name& recipient )
          :precondition_validate_context(d,t,m,recipient),mutable_db(d){}
+
+         String get( String key )const;
+         void   set( String key, String value );
+         void   remove( String key );
 
          database&    mutable_db;
    };

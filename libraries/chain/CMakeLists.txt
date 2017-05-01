@@ -17,7 +17,7 @@ add_library( eos_chain
              ${PROTOCOL_HEADERS}
            )
 
-target_link_libraries( eos_chain fc chainbase eos_types )
+target_link_libraries( eos_chain fc chainbase eos_types wren )
 target_include_directories( eos_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 

@@ -46,7 +46,38 @@
 #include <functional>
 #include <iostream>
 
+#include <Wren++.h>
+
 namespace eos { namespace chain {
+
+
+String apply_context::get( String key )const {
+   const auto& obj = db.get<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   return String(obj.value.begin(),obj.value.end());
+}
+void apply_context::set( String key, String value ) {
+   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   if( obj ) {
+      mutable_db.modify( *obj, [&]( auto& o ) {
+         o.value.resize( value.size() );
+        // memcpy( o.value.data(), value.data(), value.size() );
+      });
+   } else {
+      mutable_db.create<key_value_object>( [&](auto& o) {
+         o.scope = recipient;
+         o.key.insert( 0, key.data(), key.size() );
+         o.value.insert( 0, value.data(), value.size() );
+      });
+   }
+}
+void apply_context::remove( String key ) {
+   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   if( obj ) {
+      mutable_db.remove( *obj );
+   }
+}
+
+
 
 bool database::is_known_block(const block_id_type& id)const
 {
@@ -555,7 +586,8 @@ try {
    }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::validate_message_precondition( precondition_validate_context& context )const {
+void database::validate_message_precondition( precondition_validate_context& context )const 
+{ try {
     const auto& m = context.msg;
     auto contract_handlers_itr = precondition_validate_handlers.find( context.recipient );
     if( contract_handlers_itr != precondition_validate_handlers.end() ) {
@@ -566,9 +598,10 @@ void database::validate_message_precondition( precondition_validate_context& con
        }
     }
     /// TODO: dispatch to script if not handled above
-}
+} FC_CAPTURE_AND_RETHROW() }
 
-void database::apply_message( apply_context& context ) {
+void database::apply_message( apply_context& context ) 
+{ try {
     const auto& m = context.msg;
     auto contract_handlers_itr = apply_handlers.find( context.recipient );
     if( contract_handlers_itr != apply_handlers.end() ) {
@@ -578,8 +611,27 @@ void database::apply_message( apply_context& context ) {
           return;
        }
     }
+    const auto& processor = get<account_object,by_name>( context.recipient ); ///TODO: rename context.recipient to context.proecssor
+    const auto& recipient = get<account_object,by_name>( context.msg.recipient );
+
+    auto handler = find<action_code_object,by_processor_recipient_type>( boost::make_tuple(processor.id, recipient.id, context.msg.type) );
+    if( handler ) {
+       wdump((handler->apply.c_str()));
+      wrenpp::VM vm;
+      vm.executeString( R"(
+          foreign class ApplyContext {
+             foreign get(key)
+             foreign set(key,value)
+          }
+      )");
+      vm.executeString( handler->apply.c_str() );
+      auto apply_method = vm.method( "main", "Handler", "apply(_,_)" );
+      //apply_method( context, m.data );
+      //apply_method( "context", 1 );
+      apply_method( &context, 1 );
+    }
     /// TODO: dispatch to script if not handled above
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 
 void database::_apply_transaction(const signed_transaction& trx)
@@ -594,9 +646,11 @@ void database::_apply_transaction(const signed_transaction& trx)
       apply_message( ac );
 
       for( const auto& n : m.notify ) {
-         apply_context c( *this, trx, m, n );
-         validate_message_precondition( c );
-         apply_message( c );
+         try {
+            apply_context c( *this, trx, m, n );
+            validate_message_precondition( c );
+            apply_message( c );
+         } FC_CAPTURE_AND_RETHROW( (n) ) 
       }
 
    }
@@ -711,6 +765,7 @@ void database::initialize_indexes() {
    add_index<action_code_index>();
    add_index<action_permission_index>();
    add_index<type_index>();
+   add_index<key_value_index>();
 
    add_index<global_property_multi_index>();
    add_index<dynamic_global_property_multi_index>();
@@ -744,6 +799,8 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    });
    register_type<eos::Transfer>("sys");
    register_type<eos::CreateAccount>("sys");
+   register_type<eos::DefineStruct>("sys");
+   register_type<eos::SetMessageHandler>("sys");
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {
@@ -795,7 +852,17 @@ void database::init_genesis(const genesis_state_type& genesis_state)
 } FC_CAPTURE_AND_RETHROW() }
 
 database::database()
-{}
+{
+   static bool bound_apply = [](){
+      wrenpp::beginModule( "main" )
+         .bindClassReference<apply_context>( "ApplyContext" )
+            .bindFunction< decltype( &apply_context::get ), &apply_context::get >( false, "get(_)")
+            .bindFunction< decltype( &apply_context::set ), &apply_context::set >( false, "set(_,_)")
+         .endClass()
+      .endModule();
+      return true;
+   }();
+}
 
 database::~database()
 {

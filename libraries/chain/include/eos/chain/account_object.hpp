@@ -115,32 +115,40 @@ namespace eos { namespace chain {
 
 
    /**
-    * This table defines all of the event handlers for every contract
+    * This table defines all of the event handlers for every contract.  Every message is
+    * delivered TO a particular contract and also processed in parallel by several other contracts. 
+    *
+    * Each account can define a custom handler based upon the tuple { processor, recipient, type } where
+    * processor is the account that is processing the message, recipient is the account specified by
+    * message::recipient and type is messagse::type.
+    * 
+    *
     */
    class action_code_object : public chainbase::object<action_code_object_type, action_code_object>
    {
       OBJECT_CTOR(action_code_object, (validate_action)(validate_precondition)(apply) )
 
       id_type                        id;
-      account_id_type                scope;
-      permission_object::id_type     permission;
+      account_id_type                recipient;
+      account_id_type                processor; 
+      TypeName                       type; ///< the name of the action (defines serialization)
 
-      message_type    action; ///< the name of the action (defines serialization)
       shared_string   validate_action; ///< read only access to action
       shared_string   validate_precondition; ///< read only access to state
       shared_string   apply; ///< the code that executes the state transition
    };
 
    struct by_parent;
-   struct by_scope_action;
+   struct by_processor_recipient_type;
    using action_code_index = chainbase::shared_multi_index_container<
       action_code_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<action_code_object, action_code_object::id_type, &action_code_object::id>>,
-         ordered_unique<tag<by_scope_action>, 
+         ordered_unique<tag<by_processor_recipient_type>, 
             composite_key< action_code_object,
-               member<action_code_object, account_id_type, &action_code_object::scope>,
-               member<action_code_object, message_type, &action_code_object::action>
+               member<action_code_object, account_id_type, &action_code_object::processor>,
+               member<action_code_object, account_id_type, &action_code_object::recipient>,
+               member<action_code_object, TypeName, &action_code_object::type>
             >
          >
       >
@@ -218,7 +226,31 @@ namespace eos { namespace chain {
          >
       >
    >;
-              
+
+   struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {
+      OBJECT_CTOR(key_value_object, (key)(value))
+
+      id_type               id;
+      account_name          scope;
+      shared_string         key;
+      shared_string         value;
+   };
+
+   struct by_scope_key;
+   using key_value_index = chainbase::shared_multi_index_container<
+      key_value_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<key_value_object, key_value_object::id_type, &key_value_object::id>>,
+         ordered_unique<tag<by_scope_key>, 
+            composite_key< key_value_object,
+               member<key_value_object, account_name, &key_value_object::scope>,
+               member<key_value_object, shared_string, &key_value_object::key>
+            >,
+            composite_key_compare< std::less<account_name>, chainbase::strcmp_less >
+         >
+      >
+   >;
+
 
 } } // eos::chain
 
@@ -227,9 +259,11 @@ CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_i
 CHAINBASE_SET_INDEX_TYPE(eos::chain::action_code_object, eos::chain::action_code_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::action_permission_object, eos::chain::action_permission_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::type_object, eos::chain::type_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::key_value_object, eos::chain::key_value_index)
 
 FC_REFLECT(eos::chain::account_object, (id)(name)(balance)(votes)(converting_votes)(last_vote_conversion) )
 FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name) )
-FC_REFLECT(eos::chain::action_code_object, (id)(scope)(permission)(action)(validate_action)(validate_precondition)(apply) )
+FC_REFLECT(eos::chain::action_code_object, (id)(recipient)(processor)(type)(validate_action)(validate_precondition)(apply) )
 FC_REFLECT(eos::chain::action_permission_object, (id)(owner)(owner_permission)(scope_permission) )
 FC_REFLECT(eos::chain::type_object, (id)(scope)(name)(base_scope)(base)(fields) )
+FC_REFLECT(eos::chain::key_value_object, (id)(scope)(key)(value) )
