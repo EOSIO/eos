@@ -22,11 +22,12 @@ public:
    virtual ~AbstractSymbolTable(){}
    virtual void addType(const Struct& s) =0;
    virtual void addTypeDef(const TypeName& from, const TypeName& to) = 0;
-   virtual bool isKnownType(const TypeName& name) = 0;
-   virtual bool isValidTypeName(const TypeName& name, bool allowArray = false);
+   virtual bool isKnownType(const TypeName& name) const = 0;
+   virtual bool isValidTypeName(const TypeName& name, bool allowArray = false) const;
+   virtual bool isValidFieldName(const FieldName& name) const;
 
-   virtual TypeName resolveTypedef(TypeName name)const = 0;
-   virtual Struct getType(TypeName name)const = 0;
+   virtual TypeName resolveTypedef(TypeName name) const = 0;
+   virtual Struct getType(TypeName name) const = 0;
 
    /**
     * Parses the input stream and populatse the symbol table, the table may be pre-populated
@@ -51,9 +52,9 @@ public:
 
    virtual void addType(const Struct& s) override;
    virtual void addTypeDef(const TypeName& from, const TypeName& to) override;
-   virtual bool isKnownType(const TypeName& n) override;
-   virtual Struct getType(TypeName name)const override;
-   virtual TypeName resolveTypedef(TypeName name)const override;
+   virtual bool isKnownType(const TypeName& n) const override;
+   virtual Struct getType(TypeName name) const override;
+   virtual TypeName resolveTypedef(TypeName name) const override;
 
 
    //      private:

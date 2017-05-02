@@ -35,5 +35,9 @@ namespace eos { namespace types {
                                 4020000, "Requested type already exists")
    FC_DECLARE_DERIVED_EXCEPTION(invalid_type_name_exception, type_exception,
                                 4030000, "Requested type name is invalid")
+   FC_DECLARE_DERIVED_EXCEPTION(invalid_field_name_exception, type_exception,
+                                4040000, "Requested field name is invalid")
+   FC_DECLARE_DERIVED_EXCEPTION(invalid_schema_exception, type_exception,
+                                4050000, "Schema is invalid")
 
 } } // eos::chain

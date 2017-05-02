@@ -57,12 +57,16 @@ namespace eos { namespace types {
    struct Field {
       FieldName name;
       TypeName  type;
+
+      bool operator==(const Field& other) const;
    };
 
    struct Struct {
       TypeName        name;
       TypeName        base;
       Vector<Field>   fields;
+
+      bool operator==(const Struct& other) const;
    };
 
    using Fields = Vector<Field>;

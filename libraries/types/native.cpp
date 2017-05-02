@@ -43,3 +43,11 @@ namespace fc {
      }
   }
 }
+
+bool eos::types::Field::operator==(const eos::types::Field& other) const {
+   return std::tie(name, type) == std::tie(other.name, other.type);
+}
+
+bool eos::types::Struct::operator==(const eos::types::Struct& other) const {
+   return std::tie(name, base, fields) == std::tie(other.name, other.base, other.fields);
+}
