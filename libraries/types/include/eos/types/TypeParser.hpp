@@ -85,8 +85,8 @@ namespace eos {
                return itr->second;
 
             if( known.find(name) != known.end() )
-               FC_ASSERT( !"type is a built in type" );
-            FC_ASSERT( !"unknown type", "", ("n", name) );
+               FC_ASSERT( false, "type is a built in type" );
+            FC_ASSERT( false, "unknown type: ${n}", ("n", name) );
          }
          virtual TypeName resolveTypedef( TypeName name )const override {
             auto tdef = typedefs.find( name );

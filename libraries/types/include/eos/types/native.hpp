@@ -74,7 +74,7 @@ namespace eos {
         static const Struct& type() { 
            static Struct result = { "Field ", "", {
                 {"name", "FieldName"},
-                {"type", "TypeNmae"}
+                {"type", "TypeName"}
               }
            };
            return result;

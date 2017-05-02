@@ -5,6 +5,7 @@ add_library( eos_types
              PublicKey.cpp
              TypeParser.cpp
              native.cpp
+             ${HEADERS}
              )
 target_include_directories( eos_types PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 target_link_libraries( eos_types fc )

@@ -27,6 +27,7 @@
 #include <eos/chain/database.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/account_object.hpp>
+#include <eos/chain/key_value_object.hpp>
 
 #include <eos/native_system_contract_plugin/native_system_contract_plugin.hpp>
 

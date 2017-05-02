@@ -14,6 +14,8 @@ hardfork.hpp
 
 libraries/utilities/git_revision.cpp
 
+libraries/types/include/eos/types/generated.hpp
+
 libraries/wallet/Doxyfile
 libraries/wallet/api_documentation.cpp
 libraries/wallet/doxygen

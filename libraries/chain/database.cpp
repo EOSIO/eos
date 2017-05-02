@@ -28,7 +28,8 @@
 #include <eos/chain/block_summary_object.hpp>
 #include <eos/chain/chain_property_object.hpp>
 #include <eos/chain/global_property_object.hpp>
-#include <eos/chain/account_object.hpp>
+#include <eos/chain/key_value_object.hpp>
+#include <eos/chain/action_objects.hpp>
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 

@@ -24,6 +24,7 @@
 #pragma once
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/account_object.hpp>
+#include <eos/chain/type_object.hpp>
 #include <eos/chain/node_property_object.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/genesis_state.hpp>
@@ -112,8 +113,8 @@ namespace eos { namespace chain {
             create<type_object>([&](type_object& o) {
                o.scope  = scope;
                o.name   = stru.name;
-               o.scope  = scope;
                o.base   = stru.base;
+#warning QUESTION Should we be setting o.base_scope here?
                o.fields.reserve(stru.fields.size());
                for( const auto& f : stru.fields )
                   o.fields.push_back( f );
