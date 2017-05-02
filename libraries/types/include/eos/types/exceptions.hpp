@@ -22,39 +22,18 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/types.hpp>
 
-#include "multi_index_includes.hpp"
+#include <fc/exception/exception.hpp>
+#include <eos/utilities/exception_macros.hpp>
 
-namespace eos { namespace chain {
+namespace eos { namespace types {
 
-   struct type_object : public chainbase::object<type_object_type, type_object> {
-      OBJECT_CTOR(type_object, (fields))
-
-      id_type               id;
-      AccountName          scope;
-      TypeName              name;
-      AccountName          base_scope;
-      TypeName              base;
-      shared_vector<Field>  fields;
-   };
-
-   struct by_scope_name;
-   using type_index = chainbase::shared_multi_index_container<
-      type_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<type_object, type_object::id_type, &type_object::id>>,
-         ordered_unique<tag<by_scope_name>, 
-            composite_key< type_object,
-               member<type_object, AccountName, &type_object::scope>,
-               member<type_object, TypeName, &type_object::name>
-            >
-         >
-      >
-   >;
+   FC_DECLARE_EXCEPTION(type_exception, 4000000, "type exception")
+   FC_DECLARE_DERIVED_EXCEPTION(unknown_type_exception, type_exception,
+                                4010000, "Could not find requested type")
+   FC_DECLARE_DERIVED_EXCEPTION(duplicate_type_exception, type_exception,
+                                4020000, "Requested type already exists")
+   FC_DECLARE_DERIVED_EXCEPTION(invalid_type_name_exception, type_exception,
+                                4030000, "Requested type name is invalid")
 
 } } // eos::chain
-
-CHAINBASE_SET_INDEX_TYPE(eos::chain::type_object, eos::chain::type_index)
-
-FC_REFLECT(eos::chain::type_object, (id)(scope)(name)(base_scope)(base)(fields) )

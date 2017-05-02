@@ -39,6 +39,7 @@
 
 using namespace eos;
 using namespace chain;
+using namespace types;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
@@ -154,7 +155,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       const auto& processor = db.get<account_object,by_name>("init1");
       const auto& recipient = db.get<account_object,by_name>("sys");
       
-      const auto& world = db.get<key_value_object,by_scope_key>( boost::make_tuple( AccountName("init1"), eos::String("hello") ) );
+      const auto& world = db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"), String("hello")));
       BOOST_CHECK_EQUAL( string(world.value.c_str()), "world" );
 
 } FC_LOG_AND_RETHROW() }

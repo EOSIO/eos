@@ -4,6 +4,7 @@
 #include <fc/io/json.hpp>
 
 using std::string;
+namespace eos { using types::SimpleSymbolTable; }
 
 
 bool   isVector( const string& type ) {
@@ -60,7 +61,7 @@ string call_type_constructor( const string& type ) {
       return "Vector[" + getWrenType(type) + "]";
    return getWrenType(type) + ".new()";
 }
-string generate_wren( const eos::Struct& s, eos::SimpleSymbolTable& symbols ) {
+string generate_wren( const eos::types::Struct& s, eos::types::SimpleSymbolTable& symbols ) {
 
    std::stringstream ss;
    ss << "class " << s.name;
@@ -98,15 +99,15 @@ string generate_wren( const eos::Struct& s, eos::SimpleSymbolTable& symbols ) {
    return ss.str();
 }
 
-void generate_wren( eos::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_wren( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
   //for( const auto& s : ss.order ) 
 }
 
-void generate_hpp( eos::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
    wdump((outfile));
    std::ofstream out(outfile);
    out << "#pragma once\n";
-   out << "namespace eos { \n";
+   out << "namespace eos { namespace types {\n";
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
          const auto& td = ss.typedefs[s];
@@ -141,7 +142,7 @@ void generate_hpp( eos::SimpleSymbolTable& ss, const char* outfile ) {
    }
 
 
-   out << "} // namespace eos  \n";
+   out << "}} // namespace eos::types\n";
 
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
@@ -150,9 +151,9 @@ void generate_hpp( eos::SimpleSymbolTable& ss, const char* outfile ) {
 
       const auto& st = ss.structs[s];
       if( st.base.size() ) {
-        out << "FC_REFLECT_DERIVED( eos::" <<  s << ", (eos::" << st.base <<"), ";
+        out << "FC_REFLECT_DERIVED( eos::types::" << s << ", (eos::types::" << st.base <<"), ";
       } else  {
-        out << "FC_REFLECT( eos::" <<  std::setw(33) << s << ", ";
+        out << "FC_REFLECT( eos::types::" <<  std::setw(33) << s << ", ";
       }
       for( const auto& f : st.fields ) {
          out <<"("<<f.name<<")";
@@ -162,7 +163,7 @@ void generate_hpp( eos::SimpleSymbolTable& ss, const char* outfile ) {
 
 }
 
-int  count_fields( eos::SimpleSymbolTable& ss, const eos::Struct& st ) {
+int  count_fields( eos::types::SimpleSymbolTable& ss, const eos::types::Struct& st ) {
    if( st.base.size() )
       return st.fields.size() + count_fields( ss, ss.getType( st.base ) );
    return st.fields.size();
@@ -173,7 +174,7 @@ int main( int argc, char** argv ) {
      FC_ASSERT( argc > 2, "Usage: ${program} input path/to/out.hpp", ("program",string(argv[0]))  );
      std::ifstream in(argv[1]);
 
-     eos::SimpleSymbolTable ss;
+     eos::types::SimpleSymbolTable ss;
      ss.parse(in);
 
      auto as_json = fc::json::to_pretty_string( ss );

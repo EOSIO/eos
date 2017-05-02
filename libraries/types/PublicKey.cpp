@@ -6,7 +6,7 @@
 
 #define KEY_PREFIX "EOS"
 
-namespace eos { 
+namespace eos { namespace types {
 
     PublicKey::PublicKey():key_data(){};
 
@@ -70,19 +70,19 @@ namespace eos {
         return p1.key_data < p2.key_data;
     };
 
-} // eos
+}} // eos::types
 
 namespace fc
 {
     using namespace std;
-    void to_variant(const eos::PublicKey& var,  fc::variant& vo)
+    void to_variant(const eos::types::PublicKey& var, fc::variant& vo)
     {
         vo = std::string(var);
     }
 
-    void from_variant(const fc::variant& var,  eos::PublicKey& vo)
+    void from_variant(const fc::variant& var, eos::types::PublicKey& vo)
     {
-        vo = eos::PublicKey(var.as_string());
+        vo = eos::types::PublicKey(var.as_string());
     }
     
 } // fc

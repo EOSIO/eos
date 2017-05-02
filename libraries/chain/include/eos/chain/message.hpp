@@ -20,26 +20,26 @@ namespace eos { namespace chain {
  */
 struct message {
    /// The account which sent the message
-   account_name         sender;
+   AccountName         sender;
 
    /// The account to receive the message
-   account_name         recipient;
+   AccountName         recipient;
 
    /// Other accounts to notify about this message
-   vector<account_name> notify;
+   vector<AccountName> notify;
 
    /**
     * Every contract defines the set of types that it accepts, these types are
     * scoped according to the recipient. This means two contracts can can define
     * two different types with the same name.
     */
-   TypeName             type;
+   types::TypeName      type;
 
    /// The message contents
    vector<char>         data;
 
    template<typename T>
-   void set( const message_type& t, const T& value ) {
+   void set( const TypeName& t, const T& value ) {
       type = t;
       data = fc::raw::pack( value );
    }
@@ -47,7 +47,7 @@ struct message {
    T as()const {
       return fc::raw::unpack<T>(data);
    }
-   bool has_notify( const account_name& n )const {
+   bool has_notify( const AccountName& n )const {
       for( const auto& no : notify )
          if( no == n ) return true;
       return false; 

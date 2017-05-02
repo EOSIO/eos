@@ -1,7 +1,7 @@
 #pragma once
 #include <fc/io/datastream.hpp>
 
-namespace EOS {
+namespace eos { namespace types {
    using fc::datastream;
 
    struct InputDatastream {
@@ -78,4 +78,4 @@ namespace EOS {
       uint32_t tellp()const { return ds.tellp(); }
    };
 
-} // namespace EOS
+}} // namespace eos::types

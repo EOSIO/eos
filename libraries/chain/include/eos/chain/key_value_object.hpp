@@ -32,7 +32,7 @@ namespace eos { namespace chain {
       OBJECT_CTOR(key_value_object, (key)(value))
 
       id_type               id;
-      account_name          scope;
+      AccountName          scope;
       shared_string         key;
       shared_string         value;
    };
@@ -44,10 +44,10 @@ namespace eos { namespace chain {
          ordered_unique<tag<by_id>, member<key_value_object, key_value_object::id_type, &key_value_object::id>>,
          ordered_unique<tag<by_scope_key>, 
             composite_key< key_value_object,
-               member<key_value_object, account_name, &key_value_object::scope>,
+               member<key_value_object, AccountName, &key_value_object::scope>,
                member<key_value_object, shared_string, &key_value_object::key>
             >,
-            composite_key_compare< std::less<account_name>, chainbase::strcmp_less >
+            composite_key_compare< std::less<AccountName>, chainbase::strcmp_less >
          >
       >
    >;

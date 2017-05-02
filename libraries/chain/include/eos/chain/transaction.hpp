@@ -133,9 +133,9 @@ namespace eos { namespace chain {
     */
    struct authorization {
       /// The account authorizing the transaction
-      account_name authorizing_account;
+      AccountName authorizing_account;
       /// The privileges being invoked to authorize the transaction
-      permission_name privileges;
+      PermissionName privileges;
    };
 
    /**

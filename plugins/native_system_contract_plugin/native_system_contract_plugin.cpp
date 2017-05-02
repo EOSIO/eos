@@ -7,6 +7,7 @@
 
 namespace eos {
 using namespace chain;
+using namespace types;
 
 class native_system_contract_plugin_impl {
 public:

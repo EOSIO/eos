@@ -51,9 +51,9 @@ namespace eos { namespace chain {
          return *this;
       }
 
-      UInt32                                 threshold = 0;
-      shared_vector<AccountPermissionWeight> accounts;
-      shared_vector<KeyPermissionWeight>     keys;
+      UInt32                                        threshold = 0;
+      shared_vector<types::AccountPermissionWeight> accounts;
+      shared_vector<types::KeyPermissionWeight>     keys;
    };
    
    class account_object : public chainbase::object<account_object_type, account_object>
@@ -84,7 +84,7 @@ namespace eos { namespace chain {
       id_type           id;
       account_id_type   owner; ///< the account this permission belongs to
       id_type           parent; ///< parent permission 
-      permission_name   name;
+      PermissionName   name;
       shared_authority  auth; ///< TODO
    };
 
@@ -105,11 +105,11 @@ namespace eos { namespace chain {
          ordered_unique<tag<by_owner>, 
             composite_key< permission_object,
                member<permission_object, account_object::id_type, &permission_object::owner>,
-               member<permission_object, permission_name, &permission_object::name>,
+               member<permission_object, PermissionName, &permission_object::name>,
                member<permission_object, permission_object::id_type, &permission_object::id>
             >
          >,
-         ordered_unique<tag<by_name>, member<permission_object, permission_name, &permission_object::name> >
+         ordered_unique<tag<by_name>, member<permission_object, PermissionName, &permission_object::name> >
       >
    >;
 

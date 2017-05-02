@@ -11,13 +11,13 @@
 int main( int argc, char** argv ) {
 
    try {
-      eos::Message m;
-      m.sender = eos::AccountName( "ned" );
-      m.recipient = eos::AccountName( "dan" );
+      eos::types::Message m;
+      m.sender = eos::types::AccountName( "ned" );
+      m.recipient = eos::types::AccountName( "dan" );
 
       idump( (m) );
 
-      eos::Transfer t;
+      eos::types::Transfer t;
       t.from = m.sender;
       t.to = "other";
 

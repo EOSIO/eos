@@ -1,5 +1,5 @@
 #pragma once
-namespace EOS {
+namespace eos { namespace types {
    template<typename T>
    fc::variant toVariant( const vector<T>& a ) {
       vector<fc::variant> result;
@@ -41,4 +41,4 @@ namespace EOS {
      EOS::fromBinary( ds, result );
      return result;
    }
-}
+}} // namespace eos::types

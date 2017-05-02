@@ -107,13 +107,27 @@ namespace eos { namespace chain {
    using chain_id_type = fc::sha256;
 
 
-   using eos::AccountName;
-   using account_name = eos::AccountName;
-   using eos::PermissionName;
-   using permission_name = eos::PermissionName;
-   using message_name = eos::TypeName;
-   using message_type = message_name;
-
+   using eos::types::AccountName;
+   using eos::types::PermissionName;
+   using eos::types::Asset;
+   using eos::types::Authority;
+   using eos::types::PermissionName;
+   using eos::types::TypeName;
+   using eos::types::Time;
+   using eos::types::Field;
+   using eos::types::String;
+   using eos::types::UInt8;
+   using eos::types::UInt16;
+   using eos::types::UInt32;
+   using eos::types::UInt64;
+   using eos::types::UInt128;
+   using eos::types::UInt256;
+   using eos::types::Int8;
+   using eos::types::Int16;
+   using eos::types::Int32;
+   using eos::types::Int64;
+   using eos::types::Int128;
+   using eos::types::Int256;
 
    /**
     * List all object types from all namespaces here so they can
@@ -154,7 +168,7 @@ namespace eos { namespace chain {
    using signature_type = fc::ecc::compact_signature;
    using weight_type = uint16_t;
 
-   using public_key_type = eos::PublicKey;
+   using public_key_type = eos::types::PublicKey;
    
 } }  // eos::chain
 

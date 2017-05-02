@@ -545,7 +545,7 @@ void database::validate_referenced_accounts(const signed_transaction& trx)const 
    for(const auto& msg : trx.messages) {
       get_account(msg.sender);
       get_account(msg.recipient);
-      const account_name* previous_notify_account = nullptr;
+      const AccountName* previous_notify_account = nullptr;
       for(const auto& current_notify_account : msg.notify) {
          get_account(current_notify_account);
          if(previous_notify_account) {
@@ -798,10 +798,10 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    create<account_object>([&](account_object& a) {
       a.name = "sys";
    });
-   register_type<eos::Transfer>("sys");
-   register_type<eos::CreateAccount>("sys");
-   register_type<eos::DefineStruct>("sys");
-   register_type<eos::SetMessageHandler>("sys");
+   register_type<types::Transfer>("sys");
+   register_type<types::CreateAccount>("sys");
+   register_type<types::DefineStruct>("sys");
+   register_type<types::SetMessageHandler>("sys");
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {
@@ -1129,17 +1129,17 @@ void database::update_producer_schedule()
 {
 }
 
-void database::set_validate_handler( const account_name& contract, const account_name& scope, const message_type& action, message_validate_handler v ) {
+void database::set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v ) {
    message_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void database::set_precondition_validate_handler(  const account_name& contract, const account_name& scope, const message_type& action, precondition_validate_handler v ) {
+void database::set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v ) {
    precondition_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void database::set_apply_handler( const account_name& contract, const account_name& scope, const message_type& action, apply_handler v ) {
+void database::set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v ) {
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
 
-const account_object&   database::get_account( const account_name& name )const {
+const account_object&   database::get_account( const AccountName& name )const {
 try {
     return get<account_object,by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }

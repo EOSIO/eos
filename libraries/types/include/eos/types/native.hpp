@@ -17,7 +17,7 @@
 
 #include <fc/reflect/reflect.hpp>
 
-namespace eos {
+namespace eos { namespace types {
    using namespace boost::multiprecision;
 
    template<typename... T>
@@ -95,26 +95,26 @@ namespace eos {
 
    /// TODO: make sure this works with FC raw
    template<typename Stream, typename Number>
-   void fromBinary( Stream& st, boost::multiprecision::number<Number>& value ) {
+   void fromBinary(Stream& st, boost::multiprecision::number<Number>& value) {
       unsigned char data[(std::numeric_limits<decltype(value)>::digits+1)/8];
-      st.read( (char*)data, sizeof(data) );
-      boost::multiprecision::import_bits( value, data, data + sizeof(data), 1 );
+      st.read((char*)data, sizeof(data));
+      boost::multiprecision::import_bits(value, data, data + sizeof(data), 1);
    }
    template<typename Stream, typename Number>
-   void toBinary( Stream& st, const boost::multiprecision::number<Number>& value ) {
+   void toBinary(Stream& st, const boost::multiprecision::number<Number>& value) {
       unsigned char data[(std::numeric_limits<decltype(value)>::digits+1)/8];
-      boost::multiprecision::export_bits( value, data, 1 );
-      st.write( (const char*)data, sizeof(data) );
+      boost::multiprecision::export_bits(value, data, 1);
+      st.write((const char*)data, sizeof(data));
    }
    
-} // namespace eos
+}} // namespace eos::types
 
 namespace fc {
-  void to_variant( const std::vector<eos::Field>& c, fc::variant& v );
-  void from_variant( const fc::variant& v, std::vector<eos::Field>& check );
-  void to_variant( const std::map<std::string,eos::Struct>& c, fc::variant& v );
-  void from_variant( const fc::variant& v, std::map<std::string,eos::Struct>& check );
+  void to_variant(const std::vector<eos::types::Field>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, std::vector<eos::types::Field>& check);
+  void to_variant(const std::map<std::string,eos::types::Struct>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, std::map<std::string,eos::types::Struct>& check);
 }
 
-FC_REFLECT( eos::Field, (name)(type) )
-FC_REFLECT( eos::Struct, (name)(base)(fields) )
+FC_REFLECT(eos::types::Field, (name)(type))
+FC_REFLECT(eos::types::Struct, (name)(base)(fields))

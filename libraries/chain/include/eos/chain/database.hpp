@@ -56,17 +56,17 @@ namespace eos { namespace chain {
 
    class precondition_validate_context : public message_validate_context {
       public:
-         precondition_validate_context( const database& d, const transaction& t, const message& m, const account_name& r )
+         precondition_validate_context( const database& d, const transaction& t, const message& m, const AccountName& r )
          :message_validate_context(t,m),recipient(r),db(d){}
 
 
-         const account_name& recipient;
+         const AccountName& recipient;
          const database&    db;
    };
 
    class apply_context : public precondition_validate_context {
       public:
-         apply_context( database& d, const transaction& t, const message& m, const account_name& recipient )
+         apply_context( database& d, const transaction& t, const message& m, const AccountName& recipient )
          :precondition_validate_context(d,t,m,recipient),mutable_db(d){}
 
          String get( String key )const;
@@ -108,8 +108,8 @@ namespace eos { namespace chain {
          fc::signal<void(const signed_transaction&)> on_pending_transaction;
 
          template<typename T>
-         void register_type( account_name scope ) {
-            auto stru = eos::GetStruct<T>::type();
+         void register_type( AccountName scope ) {
+            auto stru = eos::types::GetStruct<T>::type();
             create<type_object>([&](type_object& o) {
                o.scope  = scope;
                o.name   = stru.name;
@@ -126,9 +126,9 @@ namespace eos { namespace chain {
           *  The database can override any script handler with native code.
           */
          ///@{
-         void set_validate_handler( const account_name& contract, const account_name& scope, const message_type& action, message_validate_handler v );
-         void set_precondition_validate_handler(  const account_name& contract, const account_name& scope, const message_type& action, precondition_validate_handler v );
-         void set_apply_handler( const account_name& contract, const account_name& scope, const message_type& action, apply_handler v );
+         void set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v );
+         void set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v );
+         void set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v );
          //@}
 
          enum validation_steps
@@ -193,7 +193,7 @@ namespace eos { namespace chain {
          const signed_transaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
-         const account_object&      get_account( const account_name& name )const;
+         const account_object&      get_account( const AccountName& name )const;
 
          /**
           *  Calculate the percent of block production slots that were missed in the
@@ -383,10 +383,10 @@ namespace eos { namespace chain {
 
          node_property_object             _node_property_object;
 
-         typedef pair<account_name,message_type> handler_key;
-         map< account_name, map<handler_key, message_validate_handler> >        message_validate_handlers;
-         map< account_name, map<handler_key, precondition_validate_handler> >   precondition_validate_handlers;
-         map< account_name, map<handler_key, apply_handler> >                   apply_handlers;
+         typedef pair<AccountName,TypeName> handler_key;
+         map< AccountName, map<handler_key, message_validate_handler> >        message_validate_handlers;
+         map< AccountName, map<handler_key, precondition_validate_handler> >   precondition_validate_handlers;
+         map< AccountName, map<handler_key, apply_handler> >                   apply_handlers;
    };
 
 } }

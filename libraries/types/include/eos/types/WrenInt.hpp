@@ -1,7 +1,7 @@
 #pragma once
 #include <eos/types/native.hpp>
 
-namespace EOS {
+namespace eos { namespace types {
    class InputDatastream;
    class OutputDatastream;
 
@@ -66,4 +66,4 @@ namespace EOS {
 
    };
 
-} /// namespace EOS
+}} /// namespace eos::types

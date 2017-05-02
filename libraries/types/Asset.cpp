@@ -3,7 +3,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <fc/reflect/variant.hpp>
 
-namespace eos { 
+namespace eos { namespace types {
       typedef boost::multiprecision::int128_t  int128_t;
 
       uint8_t Asset::decimals()const {
@@ -159,4 +159,4 @@ namespace eos {
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
 
-}  // eos
+}}  // eos::types

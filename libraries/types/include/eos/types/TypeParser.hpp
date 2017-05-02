@@ -9,103 +9,60 @@
 #include <fc/reflect/variant.hpp>
 
 #include <eos/types/native.hpp>
+#include <eos/types/exceptions.hpp>
 
-namespace eos {
-   using std::map;
-   using std::set;
-   using std::string;
-   using std::vector;
+namespace eos { namespace types {
+using std::map;
+using std::set;
+using std::string;
+using std::vector;
 
-   class AbstractSymbolTable {
-      public:
-         virtual ~AbstractSymbolTable(){};
-         virtual void addType( const Struct& s ) =0;
-         virtual void addTypeDef( const TypeName& from, const TypeName& to ) = 0;
-         virtual bool isKnownType( const TypeName& name ) = 0;
+class AbstractSymbolTable {
+public:
+   virtual ~AbstractSymbolTable(){}
+   virtual void addType(const Struct& s) =0;
+   virtual void addTypeDef(const TypeName& from, const TypeName& to) = 0;
+   virtual bool isKnownType(const TypeName& name) = 0;
+   virtual bool isValidTypeName(const TypeName& name, bool allowArray = false);
 
-         virtual TypeName resolveTypedef( TypeName name )const = 0;
-         virtual Struct getType( TypeName name )const = 0;
+   virtual TypeName resolveTypedef(TypeName name)const = 0;
+   virtual Struct getType(TypeName name)const = 0;
 
-        /**
-         *  Parses the input stream and populatse the symbol table, the table may be pre-populated
-         */
-        void   parse( std::istream& in ); 
+   /**
+    * Parses the input stream and populatse the symbol table, the table may be pre-populated
+    */
+   void parse(std::istream& in);
 
-        string binaryToJson( const TypeName& type, const Bytes& binary );
-        Bytes  jsonToBinary( const TypeName& type, const string& json );
-   };
-
-
-   class SimpleSymbolTable : public AbstractSymbolTable {
-      public:
-         SimpleSymbolTable():
-         known( { "Field", "Struct", "Asset", "FixedString16", "FixedString32",
-                  "UInt8", "UInt16", "UInt32", "UInt64",
-                  "UInt128", "Checksum", "UInt256", "UInt512",
-                  "Int8", "Int16", "Int32", "Int64",
-                  "Int128", "Int224", "Int256", "Int512",
-                  "Bytes", "PublicKey", "Signature", "String", "Time" } ) 
-         {
-         }
-
-         virtual void addType( const Struct& s ) override { try {
-            FC_ASSERT( !isKnownType( s.name ) );
-            for( const auto& f : s.fields ) {
-               FC_ASSERT( isKnownType( f.type ), "", ("type",f.type) );
-            }
-            structs[s.name] = s;
-            order.push_back(s.name);
-          //  wdump((s.name)(s.base)(s.fields));
-         } FC_CAPTURE_AND_RETHROW( (s) ) }
-
-         virtual void addTypeDef( const TypeName& from, const TypeName& to ) override { try {
-            FC_ASSERT( !isKnownType( to ) );
-            FC_ASSERT( isKnownType( from ) );
-            typedefs[to] = from;
-            order.push_back(to);
-         } FC_CAPTURE_AND_RETHROW( (from)(to) ) }
-
-         virtual bool isKnownType( const TypeName& n ) override { try {
-            String name(n);
-            FC_ASSERT( name.size() > 0 );
-            if( name.size() > 2 && name.back() == ']' ) {
-               FC_ASSERT( name[name.size()-2] == '[' );
-               return isKnownType( name.substr( 0, name.size()-2 ) );
-            }
-            return known.find(n) != known.end() ||
-                   typedefs.find(n) != typedefs.end() ||
-                   structs.find(n) != structs.end();
-         } FC_CAPTURE_AND_RETHROW( (n) ) }
-
-         virtual Struct getType( TypeName name )const override {
-            name = resolveTypedef( name );
-
-            auto itr = structs.find( name );
-            if( itr != structs.end() ) 
-               return itr->second;
-
-            if( known.find(name) != known.end() )
-               FC_ASSERT( false, "type is a built in type" );
-            FC_ASSERT( false, "unknown type: ${n}", ("n", name) );
-         }
-         virtual TypeName resolveTypedef( TypeName name )const override {
-            auto tdef = typedefs.find( name );
-            while( tdef != typedefs.end() ) {
-               name = tdef->second;
-               tdef = typedefs.find( name );
-            }
-            return name;
-         }
+   string binaryToJson(const TypeName& type, const Bytes& binary);
+   Bytes  jsonToBinary(const TypeName& type, const string& json);
+};
 
 
-//      private:
-         set<TypeName>           known;
-         vector<TypeName>        order;
-         map<TypeName, TypeName> typedefs;
-         map<TypeName, Struct>   structs;
-   };
+class SimpleSymbolTable : public AbstractSymbolTable {
+public:
+   SimpleSymbolTable():
+      known({ "Field", "Struct", "Asset", "FixedString16", "FixedString32",
+            "UInt8", "UInt16", "UInt32", "UInt64",
+            "UInt128", "Checksum", "UInt256", "UInt512",
+            "Int8", "Int16", "Int32", "Int64",
+            "Int128", "Int224", "Int256", "Int512",
+            "Bytes", "PublicKey", "Signature", "String", "Time" })
+   {}
+
+   virtual void addType(const Struct& s) override;
+   virtual void addTypeDef(const TypeName& from, const TypeName& to) override;
+   virtual bool isKnownType(const TypeName& n) override;
+   virtual Struct getType(TypeName name)const override;
+   virtual TypeName resolveTypedef(TypeName name)const override;
 
 
-} // namespace eos
+   //      private:
+   set<TypeName>           known;
+   vector<TypeName>        order;
+   map<TypeName, TypeName> typedefs;
+   map<TypeName, Struct>   structs;
+};
 
-FC_REFLECT( eos::SimpleSymbolTable, (typedefs)(structs) )
+}} // namespace eos::types
+
+FC_REFLECT(eos::types::SimpleSymbolTable, (typedefs)(structs))
