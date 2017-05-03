@@ -66,12 +66,6 @@ void DefineStruct_apply(chain::apply_context& context) {
    });
 }
 
-
-void validate_type_name(const TypeName& name) {
-   // TODO: starts with capital letter and is alphanumeric
-}
-
-
 /************************************************************
  *
  *    SetMessageHandler
@@ -115,8 +109,6 @@ void SetMessageHandler_apply(chain::apply_context& context) {
  *
  ***********************************************************/
 ///@{
-
-
 void Authority_validate_preconditions(const Authority& auth, chain::precondition_validate_context& context) {
    for(const auto& a : auth.accounts)
       context.db.get<account_object,by_name>(a.permission.account);
@@ -175,3 +167,52 @@ void CreateAccount_apply(chain::apply_context& context) {
    });
 }
 ///@}  Create Account Handlers
+
+/************************************************************
+ *
+ *    Create/Update Producer Handlers
+ *
+ ***********************************************************/
+///@{
+void CreateProducer_validate(chain::message_validate_context& context) {
+   auto create = context.msg.as<CreateProducer>();
+   EOS_ASSERT(create.name.size() > 0, message_validate_exception, "Producer owner name cannot be empty");
+}
+void CreateProducer_validate_preconditions(chain::precondition_validate_context& context) {
+   auto create = context.msg.as<CreateProducer>();
+   const auto& db = context.db;
+   const auto& owner = db.get_account(create.name);
+   auto producer = db.find<producer_object, by_owner>(owner.id);
+   EOS_ASSERT(producer == nullptr, message_precondition_exception,
+              "Account ${name} already has a block producer", ("name", create.name));
+}
+void CreateProducer_apply(chain::apply_context& context) {
+   auto create = context.msg.as<CreateProducer>();
+   auto& db = context.mutable_db;
+   const auto& owner = db.get_account(create.name);
+   db.create<producer_object>([&create, &owner](producer_object& p) {
+      p.owner = owner.id;
+      p.signing_key = create.key;
+   });
+}
+
+void UpdateProducer_validate(chain::message_validate_context& context) {
+   auto update = context.msg.as<UpdateProducer>();
+   EOS_ASSERT(update.name.size() > 0, message_validate_exception, "Producer owner name cannot be empty");
+}
+void UpdateProducer_validate_preconditions(chain::precondition_validate_context& context) {
+   const auto& db = context.db;
+   auto update = context.msg.as<UpdateProducer>();
+   const auto& producer = db.get_producer(update.name);
+   EOS_ASSERT(producer.signing_key != update.newKey, message_validate_exception,
+              "Producer's new key may not be identical to old key");
+}
+void UpdateProducer_apply(chain::apply_context& context) {
+   auto& db = context.mutable_db;
+   auto update = context.msg.as<UpdateProducer>();
+   const auto& producer = db.get_producer(update.name);
+   db.modify(producer, [&update](producer_object& p) {
+      p.signing_key = update.newKey;
+   });
+}
+///@}  Create/Update Producer Handlers

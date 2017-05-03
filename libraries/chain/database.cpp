@@ -1144,7 +1144,12 @@ void database::set_apply_handler( const AccountName& contract, const AccountName
 
 const account_object&   database::get_account( const AccountName& name )const {
 try {
-    return get<account_object,by_name>(name);
-} FC_CAPTURE_AND_RETHROW( (name) ) }
+   return get<account_object,by_name>(name);
+} FC_CAPTURE_AND_RETHROW((name)) }
+
+const producer_object&database::get_producer(const types::AccountName& name) const {
+try {
+   return get<producer_object, by_owner>(get_account(name).id);
+} FC_CAPTURE_AND_RETHROW((name)) }
 
 } }

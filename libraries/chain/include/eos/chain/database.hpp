@@ -193,7 +193,8 @@ namespace eos { namespace chain {
          const signed_transaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
-         const account_object&      get_account( const AccountName& name )const;
+         const account_object&      get_account(const AccountName& name)const;
+         const producer_object&     get_producer(const AccountName& name)const;
 
          /**
           *  Calculate the percent of block production slots that were missed in the

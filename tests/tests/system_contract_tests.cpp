@@ -82,7 +82,7 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
       }
 } FC_LOG_AND_RETHROW() }
 
-// Simple test of creating a new block producer
+// Simple test of creating/updating a new block producer
 BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 { try {
       MKDB(db)
@@ -100,24 +100,30 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
       CreateAccount ca{"init0", "producer", producer_authority, producer_authority, {}, Asset(100)};
       trx.messages.emplace_back("init0", "sys", vector<AccountName>{}, "CreateAccount", ca);
       db.push_transaction(trx);
-      trx.messages.clear();
+      trx.clear();
 
       CreateProducer cp{"producer", producer_pub_key};
       trx.messages.emplace_back("producer", "sys", vector<AccountName>{}, "CreateProducer", cp);
       db.push_transaction(trx);
 
       while (db.head_block_num() < 3) {
-         auto producer_account = db.find<account_object, by_name>("producer");
-         BOOST_REQUIRE(producer_account != nullptr);
-         auto producer = db.find<producer_object, by_owner>(producer_account->id);
-         BOOST_REQUIRE(producer != nullptr);
-         BOOST_CHECK_EQUAL(producer->owner, producer_account->id);
-         BOOST_CHECK_EQUAL(producer->signing_key, producer_pub_key);
-         BOOST_CHECK_EQUAL(producer->last_aslot, 0);
-         BOOST_CHECK_EQUAL(producer->total_missed, 0);
-         BOOST_CHECK_EQUAL(producer->last_confirmed_block_num, 0);
+         auto& producer = db.get_producer("producer");
+         BOOST_CHECK_EQUAL(db.get(producer.owner).name, "producer");
+         BOOST_CHECK_EQUAL(producer.signing_key, producer_pub_key);
+         BOOST_CHECK_EQUAL(producer.last_aslot, 0);
+         BOOST_CHECK_EQUAL(producer.total_missed, 0);
+         BOOST_CHECK_EQUAL(producer.last_confirmed_block_num, 0);
          db.produce_blocks();
       }
+
+      auto signing_key = private_key_type::regenerate(fc::digest("producer signing key"));
+      PublicKey signing_public_key = signing_key.get_public_key();
+      trx.clear();
+      trx.messages.emplace_back("producer", "sys", vector<AccountName>{}, "UpdateProducer",
+                                UpdateProducer{"producer", signing_key.get_public_key()});
+      db.push_transaction(trx);
+      auto& producer = db.get_producer("producer");
+      BOOST_CHECK_EQUAL(producer.signing_key, signing_public_key);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
