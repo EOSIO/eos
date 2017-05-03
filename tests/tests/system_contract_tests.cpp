@@ -26,19 +26,9 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
       db.produce_blocks(10);
 
       const auto& init1_account = db.get_account("init1");
-
       BOOST_CHECK_EQUAL(init1_account.balance, Asset(100000));
 
-      auto joe_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash("joe"));
-      public_key_type joe_public_key = joe_private_key.get_public_key();
-      CreateAccount ca{"init1", "joe", {1, {{joe_public_key, 1}}, {}},
-                       {1, {{joe_public_key, 1}}, {}}, {}, Asset(1000)};
-
-      signed_transaction trx;
-      trx.set_reference_block(db.head_block_id());
-      trx.expiration = db.head_block_time() + 100;
-      trx.messages.emplace_back("init1", "sys", vector<AccountName>{}, "CreateAccount", ca);
-      db.push_transaction(trx);
+      MKACCT(db, joe, init1, Asset(1000));
 
       { // test in the pending state
          const auto& joe_account = db.get_account("joe");
@@ -82,6 +72,52 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
       }
 } FC_LOG_AND_RETHROW() }
 
+// Simple test to verify a simple transfer transaction works
+BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
+{ try {
+      MKDB(db)
+
+      BOOST_CHECK_EQUAL(db.head_block_num(), 0);
+      db.produce_blocks(10);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 10);
+
+      signed_transaction trx;
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // no messages
+      trx.messages.resize(1);
+      trx.set_reference_block(db.head_block_id());
+      trx.expiration = db.head_block_time() + 100;
+      trx.messages[0].sender = "init1";
+      trx.messages[0].recipient = "sys";
+      trx.messages[0].type = "Undefined";
+      BOOST_REQUIRE_THROW( db.push_transaction(trx), message_validate_exception ); // "Type Undefined is not defined"
+
+      Transfer trans = { "init1", "init2", Asset(100), "transfer 100" };
+
+      UInt64 value(5);
+      auto packed = fc::raw::pack(value);
+      auto unpacked = fc::raw::unpack<UInt64>(packed);
+      BOOST_CHECK_EQUAL( value, unpacked );
+      trx.messages[0].type = "Transfer";
+      trx.messages[0].set("Transfer", trans );
+
+      auto unpack_trans = trx.messages[0].as<Transfer>();
+
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
+      trx.messages[0].notify = {"init2"};
+      trx.messages[0].set("Transfer", trans );
+      db.push_transaction(trx);
+
+      BOOST_CHECK_EQUAL(db.get_account("init1").balance, Asset(100000 - 100));
+      BOOST_CHECK_EQUAL(db.get_account("init2").balance, Asset(100000 + 100));
+      db.produce_blocks(1);
+
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // not unique
+
+      XFER(db, init2, init1, Asset(100));
+      BOOST_CHECK_EQUAL(db.get_account("init1").balance, Asset(100000));
+      BOOST_CHECK_EQUAL(db.get_account("init2").balance, Asset(100000));
+} FC_LOG_AND_RETHROW() }
+
 // Simple test of creating/updating a new block producer
 BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 { try {
@@ -89,39 +125,21 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
 
-      signed_transaction trx;
-      trx.set_reference_block(db.head_block_id());
-      trx.expiration = db.head_block_time() + 100;
-
-      auto producer_priv_key = private_key_type::regenerate(fc::digest("producer"));
-      PublicKey producer_pub_key = producer_priv_key.get_public_key();
-      Authority producer_authority{1, {{producer_pub_key, 1}}, {}};
-
-      CreateAccount ca{"init0", "producer", producer_authority, producer_authority, {}, Asset(100)};
-      trx.messages.emplace_back("init0", "sys", vector<AccountName>{}, "CreateAccount", ca);
-      db.push_transaction(trx);
-      trx.clear();
-
-      CreateProducer cp{"producer", producer_pub_key};
-      trx.messages.emplace_back("producer", "sys", vector<AccountName>{}, "CreateProducer", cp);
-      db.push_transaction(trx);
+      MKACCT(db, producer);
+      MKPDCR(db, producer, producer_public_key);
 
       while (db.head_block_num() < 3) {
          auto& producer = db.get_producer("producer");
          BOOST_CHECK_EQUAL(db.get(producer.owner).name, "producer");
-         BOOST_CHECK_EQUAL(producer.signing_key, producer_pub_key);
+         BOOST_CHECK_EQUAL(producer.signing_key, producer_public_key);
          BOOST_CHECK_EQUAL(producer.last_aslot, 0);
          BOOST_CHECK_EQUAL(producer.total_missed, 0);
          BOOST_CHECK_EQUAL(producer.last_confirmed_block_num, 0);
          db.produce_blocks();
       }
 
-      auto signing_key = private_key_type::regenerate(fc::digest("producer signing key"));
-      PublicKey signing_public_key = signing_key.get_public_key();
-      trx.clear();
-      trx.messages.emplace_back("producer", "sys", vector<AccountName>{}, "UpdateProducer",
-                                UpdateProducer{"producer", signing_key.get_public_key()});
-      db.push_transaction(trx);
+      MKKEY(signing);
+      UPPDCR(db, producer, signing_public_key);
       auto& producer = db.get_producer("producer");
       BOOST_CHECK_EQUAL(producer.signing_key, signing_public_key);
 } FC_LOG_AND_RETHROW() }

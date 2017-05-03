@@ -57,71 +57,16 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
       BOOST_CHECK_EQUAL(db.head_block_num(), db.get_global_properties().active_producers.size() + 6);
 } FC_LOG_AND_RETHROW() }
 
-// Simple test to verify a simple transfer transaction works
-BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
-{ try {
-      MKDB(db)
-
-      BOOST_CHECK_EQUAL(db.head_block_num(), 0);
-      db.produce_blocks(10);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 10);
-
-      signed_transaction trx;
-      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // no messages
-      trx.messages.resize(1);
-      trx.set_reference_block(db.head_block_id());
-      trx.expiration = db.head_block_time() + 100;
-      trx.messages[0].sender = "init1";
-      trx.messages[0].recipient = "sys";
-      trx.messages[0].type = "Undefined";
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), message_validate_exception ); // "Type Undefined is not defined"
-
-      Transfer trans = { "init1", "init2", Asset(100), "transfer 100" };
-
-      UInt64 value(5);
-      auto packed = fc::raw::pack(value);
-      auto unpacked = fc::raw::unpack<UInt64>(packed);
-      BOOST_CHECK_EQUAL( value, unpacked );
-      trx.messages[0].type = "Transfer";
-      trx.messages[0].set("Transfer", trans );
-
-      auto unpack_trans = trx.messages[0].as<Transfer>();
-
-      BOOST_REQUIRE_THROW(db.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
-      trx.messages[0].notify = {"init2"};
-      trx.messages[0].set("Transfer", trans );
-      db.push_transaction(trx);
-
-      BOOST_CHECK_EQUAL(db.get_account("init1").balance, Asset(100000 - 100));
-      BOOST_CHECK_EQUAL(db.get_account("init2").balance, Asset(100000 + 100));
-      db.produce_blocks(1);
-
-      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // not unique
-} FC_LOG_AND_RETHROW() }
-
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
       MKDB(db);
       db.produce_blocks(10);
 
-      signed_transaction trx;
-      trx.set_reference_block(db.head_block_id());
-      trx.expiration = db.head_block_time() + 100;
-
-      auto newguy_priv_key = private_key_type::regenerate(fc::digest("newguy"));
-      PublicKey newguy_pub_key = newguy_priv_key.get_public_key();
-      Authority newguy_auth{1, {{newguy_pub_key, 1}}, {}};
-
-      trx.messages.emplace_back("init0", "sys", vector<AccountName>{}, "CreateAccount",
-                                CreateAccount{"init0", "newguy", newguy_auth, newguy_auth, {}, Asset(100)});
-      db.push_transaction(trx);
+      MKACCT(db, newguy);
       auto newguy = db.find<account_object, by_name>("newguy");
       BOOST_CHECK(newguy != nullptr);
 
-      trx.clear();
-      trx.messages.emplace_back("newguy", "sys", vector<AccountName>{"init0"}, "Transfer",
-                                Transfer{"newguy", "init0", Asset(1), ""});
-      db.push_transaction(trx);
+      XFER(db, newguy, init0, Asset(1));
       BOOST_CHECK_EQUAL(db.get_account("newguy").balance, Asset(99));
       BOOST_CHECK_EQUAL(db.get_account("init0").balance, Asset(100000-99));
 
@@ -173,17 +118,9 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       db.push_transaction(trx);
       db.produce_blocks(1);
 
-      Transfer trans = { "init3", "init1", Asset(100), "transfer 100" };
-      trx.messages[0].notify = {"init1"};
-      trx.messages[0].sender = "init3";
-      trx.messages[0].set("Transfer", trans);
-      idump((trx));
-      db.push_transaction(trx);
+      XFER(db, init3, init1, Asset(100), "transfer 100");
       db.produce_blocks(1);
 
-      const auto& processor = db.get<account_object,by_name>("init1");
-      const auto& recipient = db.get<account_object,by_name>("sys");
-      
       const auto& world = db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"), String("hello")));
       BOOST_CHECK_EQUAL( string(world.value.c_str()), "world" );
 
