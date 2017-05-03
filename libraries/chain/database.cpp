@@ -798,10 +798,9 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    create<account_object>([&](account_object& a) {
       a.name = "sys";
    });
-   register_type<types::Transfer>("sys");
-   register_type<types::CreateAccount>("sys");
-   register_type<types::DefineStruct>("sys");
-   register_type<types::SetMessageHandler>("sys");
+#define MACRO(r, data, elem) register_type<types::elem>("sys");
+   BOOST_PP_SEQ_FOR_EACH(MACRO, x, EOS_SYSTEM_CONTRACT_FUNCTIONS)
+#undef MACRO
 
    // Create initial accounts
    for (const auto& acct : genesis_state.initial_accounts) {

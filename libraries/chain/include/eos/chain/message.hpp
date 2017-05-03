@@ -33,23 +33,33 @@ struct message {
     * scoped according to the recipient. This means two contracts can can define
     * two different types with the same name.
     */
-   types::TypeName      type;
+   types::TypeName     type;
 
    /// The message contents
-   vector<char>         data;
+   vector<char>        data;
+
+   message() = default;
+   message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify)
+      : sender(sender), recipient(recipient), notify(notify) {}
+   template<typename T>
+   message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify,
+           const TypeName& type, T&& value)
+      : message(sender, recipient, notify) {
+      set<T>(type, std::forward<T>(value));
+   }
 
    template<typename T>
-   void set( const TypeName& t, const T& value ) {
+   void set(const TypeName& t, const T& value) {
       type = t;
-      data = fc::raw::pack( value );
+      data = fc::raw::pack(value);
    }
    template<typename T>
    T as()const {
       return fc::raw::unpack<T>(data);
    }
-   bool has_notify( const AccountName& n )const {
-      for( const auto& no : notify )
-         if( no == n ) return true;
+   bool has_notify(const AccountName& n)const {
+      for(const auto& no : notify)
+         if(no == n) return true;
       return false; 
    }
 };

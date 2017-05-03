@@ -8,7 +8,7 @@ void Transfer_validate(chain::message_validate_context& context) {
    try {
       EOS_ASSERT(transfer.amount > Asset(0), message_validate_exception, "Must transfer a positive amount");
       EOS_ASSERT(context.msg.has_notify(transfer.to), message_validate_exception, "Must notify recipient of transfer");
-   } FC_CAPTURE_AND_RETHROW( (transfer) ) 
+   } FC_CAPTURE_AND_RETHROW((transfer))
 }
 
 void Transfer_validate_preconditions(chain::precondition_validate_context& context) {
@@ -40,27 +40,27 @@ void Transfer_apply(chain::apply_context& context) {
  ***********************************************************/
 void DefineStruct_validate(chain::message_validate_context& context) {
    auto  msg = context.msg.as<DefineStruct>();
-   FC_ASSERT( msg.definition.name != TypeName(), "must define a type name" );
-// TODO:  validate_type_name( msg.definition.name );
-//   validate_type_name( msg.definition.base );
+   FC_ASSERT(msg.definition.name != TypeName(), "must define a type name");
+// TODO:  validate_type_name( msg.definition.name)
+//   validate_type_name( msg.definition.base)
 }
 void DefineStruct_validate_preconditions(chain::precondition_validate_context& context) {
    auto& db = context.db;
    auto  msg = context.msg.as<DefineStruct>();
-   db.get<account_object,by_name>( msg.scope );
-#warning TODO:  db.get<account_object>(msg.base_scope ) 
+   db.get<account_object,by_name>(msg.scope);
+#warning TODO:  db.get<account_object>(sg.base_scope)
 }
 void DefineStruct_apply(chain::apply_context& context) {
    auto& db = context.mutable_db;
    auto  msg = context.msg.as<DefineStruct>();
 
-   db.create<type_object>( [&]( auto& type ) {
+   db.create<type_object>( [&](auto& type) {
       type.scope = msg.scope;
       type.name  = msg.definition.name;
-      type.fields.reserve( msg.definition.fields.size() );
+      type.fields.reserve(msg.definition.fields.size());
 #warning TODO:  type.base_scope = 
       type.base  = msg.definition.base;
-      for( const auto& f : msg.definition.fields ) {
+      for(const auto& f : msg.definition.fields) {
         type.fields.push_back(f);
       }
    });
@@ -85,7 +85,7 @@ void SetMessageHandler_validate_preconditions(chain::precondition_validate_conte
    auto& db = context.db;
    auto  msg = context.msg.as<SetMessageHandler>();
    idump((msg.recipient)(msg.processor)(msg.type));
-   // db.get<type_object,by_scope_name>( boost::make_tuple(msg.account, msg.type) );
+   // db.get<type_object,by_scope_name>( boost::make_tuple(msg.account, msg.type))
 
    // TODO: verify code compiles
 } FC_CAPTURE_AND_RETHROW() }
@@ -93,9 +93,9 @@ void SetMessageHandler_validate_preconditions(chain::precondition_validate_conte
 void SetMessageHandler_apply(chain::apply_context& context) {
    auto& db = context.mutable_db;
    auto  msg = context.msg.as<SetMessageHandler>();
-   const auto& processor_acnt = db.get<account_object,by_name>( msg.processor );
-   const auto& recipient_acnt = db.get<account_object,by_name>( msg.recipient );
-   db.create<action_code_object>( [&]( auto& action ){
+   const auto& processor_acnt = db.get<account_object,by_name>(msg.processor);
+   const auto& recipient_acnt = db.get<account_object,by_name>(msg.recipient);
+   db.create<action_code_object>( [&](auto& action){
        action.processor                   = processor_acnt.id;
        action.recipient                   = recipient_acnt.id;
        action.type                        = msg.type;
@@ -118,8 +118,8 @@ void SetMessageHandler_apply(chain::apply_context& context) {
 
 
 void Authority_validate_preconditions(const Authority& auth, chain::precondition_validate_context& context) {
-   for( const auto& a : auth.accounts )
-      context.db.get<account_object,by_name>( a.permission.account );
+   for(const auto& a : auth.accounts)
+      context.db.get<account_object,by_name>(a.permission.account);
 }
 
 void CreateAccount_validate(chain::message_validate_context& context) {
@@ -146,9 +146,9 @@ void CreateAccount_validate_preconditions(chain::precondition_validate_context& 
 
 #warning TODO: make sure creation deposit is greater than min account balance
 
-   Authority_validate_preconditions( create.owner, context );
-   Authority_validate_preconditions( create.active, context );
-   Authority_validate_preconditions( create.recovery, context );
+   Authority_validate_preconditions(create.owner, context);
+   Authority_validate_preconditions(create.active, context);
+   Authority_validate_preconditions(create.recovery, context);
 }
 
 void CreateAccount_apply(chain::apply_context& context) {

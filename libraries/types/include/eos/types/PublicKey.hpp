@@ -24,6 +24,7 @@ namespace eos { namespace types {
        friend bool operator == ( const PublicKey& p1, const PublicKey& p2);
        friend bool operator != ( const PublicKey& p1, const PublicKey& p2);
        friend bool operator < ( const PublicKey& p1, const PublicKey& p2);
+       friend std::ostream& operator<< (std::ostream& s, const PublicKey& k);
        bool is_valid_v1(const std::string& base58str);
    };
 }} // namespace eos::types

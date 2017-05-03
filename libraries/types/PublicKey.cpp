@@ -70,6 +70,11 @@ namespace eos { namespace types {
         return p1.key_data < p2.key_data;
     };
 
+    std::ostream& operator<<(std::ostream& s, const PublicKey& k) {
+       s << "PublicKey(" << std::string(k) << ')';
+       return s;
+    }
+
 }} // eos::types
 
 namespace fc
