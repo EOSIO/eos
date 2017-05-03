@@ -357,8 +357,12 @@ signed_block database::_generate_block(
          temp_session.squash();
 
          total_block_size += fc::raw::pack_size(tx);
-//         pending_block.transactions.push_back(tx);
-#warning TODO: Populate generated blocks with transactions
+         if (pending_block.cycles.empty()) {
+            pending_block.cycles.resize(1);
+            pending_block.cycles.back().resize(1);
+         }
+         pending_block.cycles.back().back().user_input.emplace_back(tx);
+#warning TODO: Populate generated blocks with generated transactions
       }
       catch ( const fc::exception& e )
       {

@@ -77,7 +77,6 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       BOOST_REQUIRE_THROW( db.push_transaction(trx), message_validate_exception ); // "Type Undefined is not defined"
 
       Transfer trans = { "init1", "init2", Asset(100), "transfer 100" };
-      edump((trans));
 
       UInt64 value(5);
       auto packed = fc::raw::pack(value);
@@ -87,23 +86,53 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.messages[0].set("Transfer", trans );
 
       auto unpack_trans = trx.messages[0].as<Transfer>();
-      edump((unpack_trans));
 
-      wlog( "." );
       BOOST_REQUIRE_THROW(db.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
-      wlog( "." );
       trx.messages[0].notify = {"init2"};
       trx.messages[0].set("Transfer", trans );
-      wlog( "." );
       db.push_transaction(trx);
-      wlog( "." );
 
       BOOST_CHECK_EQUAL(db.get_account("init1").balance, Asset(100000 - 100));
       BOOST_CHECK_EQUAL(db.get_account("init2").balance, Asset(100000 + 100));
       db.produce_blocks(1);
 
       BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // not unique
+} FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
+{ try {
+      MKDB(db);
+      db.produce_blocks(10);
+
+      signed_transaction trx;
+      trx.set_reference_block(db.head_block_id());
+      trx.expiration = db.head_block_time() + 100;
+
+      auto newguy_priv_key = private_key_type::regenerate(fc::digest("newguy"));
+      PublicKey newguy_pub_key = newguy_priv_key.get_public_key();
+      Authority newguy_auth{1, {{newguy_pub_key, 1}}, {}};
+
+      trx.messages.emplace_back("init0", "sys", vector<AccountName>{}, "CreateAccount",
+                                CreateAccount{"init0", "newguy", newguy_auth, newguy_auth, {}, Asset(100)});
+      db.push_transaction(trx);
+      auto newguy = db.find<account_object, by_name>("newguy");
+      BOOST_CHECK(newguy != nullptr);
+
+      trx.clear();
+      trx.messages.emplace_back("newguy", "sys", vector<AccountName>{"init0"}, "Transfer",
+                                Transfer{"newguy", "init0", Asset(1), ""});
+      db.push_transaction(trx);
+      BOOST_CHECK_EQUAL(db.get_account("newguy").balance, Asset(99));
+      BOOST_CHECK_EQUAL(db.get_account("init0").balance, Asset(100000-99));
+
+      db.produce_blocks();
+      BOOST_CHECK_EQUAL(db.head_block_num(), 11);
+      BOOST_CHECK(db.fetch_block_by_number(11).valid());
+      BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.empty());
+      BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.front().empty());
+      BOOST_CHECK_EQUAL(db.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
+      BOOST_CHECK_EQUAL(db.get_account("newguy").balance, Asset(99));
+      BOOST_CHECK_EQUAL(db.get_account("init0").balance, Asset(100000-99));
 } FC_LOG_AND_RETHROW() }
 
 //Test account script processing
