@@ -21,8 +21,8 @@ struct AccountPermissionWeight
    weight       UInt16
 
 struct Transaction
-   ref_block_num     UInt16
-   ref_block_prefix  UInt32
+   refBlockNum       UInt16
+   refBlockPrefix    UInt32
    expiration        Time
    tapos             UInt32
    messages          Message[]
@@ -66,6 +66,10 @@ struct SetMessageHandler
 struct CreateProducer
    name      AccountName
    key       PublicKey
+
+struct UpdateProducer
+   name      AccountName
+   newKey    PublicKey
 
 # implies message.sender account
 struct ApproveProducer
