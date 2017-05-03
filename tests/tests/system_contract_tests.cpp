@@ -100,19 +100,18 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
       CreateAccount ca{"init0", "producer", producer_authority, producer_authority, {}, Asset(100)};
       trx.messages.emplace_back("init0", "sys", vector<AccountName>{}, "CreateAccount", ca);
       db.push_transaction(trx);
-      db.produce_blocks();
       trx.messages.clear();
-
-      const auto& producer_owner = db.get_account("producer");
 
       CreateProducer cp{"producer", producer_pub_key};
       trx.messages.emplace_back("producer", "sys", vector<AccountName>{}, "CreateProducer", cp);
       db.push_transaction(trx);
 
       while (db.head_block_num() < 3) {
-         auto producer = db.find<producer_object, by_owner>(producer_owner.id);
+         auto producer_account = db.find<account_object, by_name>("producer");
+         BOOST_REQUIRE(producer_account != nullptr);
+         auto producer = db.find<producer_object, by_owner>(producer_account->id);
          BOOST_REQUIRE(producer != nullptr);
-         BOOST_CHECK_EQUAL(producer->owner, producer_owner.id);
+         BOOST_CHECK_EQUAL(producer->owner, producer_account->id);
          BOOST_CHECK_EQUAL(producer->signing_key, producer_pub_key);
          BOOST_CHECK_EQUAL(producer->last_aslot, 0);
          BOOST_CHECK_EQUAL(producer->total_missed, 0);
