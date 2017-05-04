@@ -60,13 +60,9 @@ void AbstractSymbolTable::parse(std::istream& in) {
          FC_ASSERT(line_tokens.size() >= 2, "Expected a struct name");
          current.name = line_tokens[1];
          if(line_tokens.size() > 2) {
-            FC_ASSERT(line_tokens.size() == 4 || line_tokens.size() == 5, "Expected a struct name");
-            FC_ASSERT(line_tokens[2] == "inherits" || (line_tokens[2] == "virtually" && line_tokens[3] == "inherits"));
-            if (line_tokens[2] == "virtually") {
-               current.virtualInheritance = true;
-               current.base = line_tokens[4];
-            } else
-               current.base = line_tokens[3];
+            FC_ASSERT(line_tokens.size() == 4, "Expected a struct name");
+            FC_ASSERT(line_tokens[2] == "inherits");
+            current.base = line_tokens[3];
          }
       } else if(line_tokens[0] == "typedef") {
          if(in_struct) finishStruct();

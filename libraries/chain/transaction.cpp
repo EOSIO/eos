@@ -29,20 +29,20 @@
 
 namespace eos { namespace chain {
 
-digest_type Transaction::digest()const {
+digest_type SignedTransaction::digest()const {
    digest_type::encoder enc;
-   fc::raw::pack( enc, *this );
+   fc::raw::pack( enc, static_cast<const types::Transaction&>(*this) );
    return enc.result();
 }
 
-digest_type Transaction::sig_digest( const chain_id_type& chain_id )const {
+digest_type SignedTransaction::sig_digest( const chain_id_type& chain_id )const {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
-   fc::raw::pack( enc, *this );
+   fc::raw::pack( enc, static_cast<const types::Transaction&>(*this) );
    return enc.result();
 }
 
-eos::chain::transaction_id_type eos::chain::Transaction::id() const {
+eos::chain::transaction_id_type SignedTransaction::id() const {
    auto h = digest();
    transaction_id_type result;
    memcpy(result._hash, h._hash, std::min(sizeof(result), sizeof(h)));
@@ -58,16 +58,16 @@ const signature_type& eos::chain::SignedTransaction::sign(const private_key_type
 signature_type eos::chain::SignedTransaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
-   fc::raw::pack( enc, *this );
+   fc::raw::pack( enc, static_cast<const types::Transaction&>(*this) );
    return key.sign_compact(enc.result());
 }
 
-void Transaction::set_reference_block(const block_id_type& reference_block) {
+void SignedTransaction::set_reference_block(const block_id_type& reference_block) {
    refBlockNum = fc::endian_reverse_u32(reference_block._hash[0]);
    refBlockPrefix = reference_block._hash[1];
 }
 
-bool Transaction::verify_reference_block(const block_id_type& reference_block) const {
+bool SignedTransaction::verify_reference_block(const block_id_type& reference_block) const {
    return refBlockNum == fc::endian_reverse_u32(reference_block._hash[0]) &&
          refBlockPrefix == (decltype(refBlockPrefix))reference_block._hash[1];
 }
@@ -86,9 +86,9 @@ flat_set<public_key_type> SignedTransaction::get_signature_keys( const chain_id_
    return result;
 } FC_CAPTURE_AND_RETHROW() }
 
-eos::chain::digest_type eos::chain::SignedTransaction::merkle_digest() const {
+eos::chain::digest_type SignedTransaction::merkle_digest() const {
    digest_type::encoder enc;
-   fc::raw::pack(enc, *this);
+   fc::raw::pack(enc, static_cast<const types::Transaction&>(*this));
    return enc.result();
 }
 

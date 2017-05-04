@@ -65,7 +65,6 @@ namespace eos { namespace types {
       TypeName        name;
       TypeName        base;
       Vector<Field>   fields;
-      bool            virtualInheritance = false;
 
       bool operator==(const Struct& other) const;
    };

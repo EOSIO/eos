@@ -129,12 +129,8 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
       }
       out << "    struct " << s ;
       const auto& st = ss.structs[s];
-      if( st.base.size() ) {
-         out << " : public ";
-         if (st.virtualInheritance)
-            out << "virtual ";
-         out << st.base;
-      }
+      if( st.base.size() )
+         out << " : public " << st.base;
       out << " { \n";
 
       out << "        " << s << "() = default;\n        " << s << "(";

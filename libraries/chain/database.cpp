@@ -544,8 +544,8 @@ void database::validate_tapos(const SignedTransaction& trx)const {
 }
 
 void database::validate_referenced_accounts(const SignedTransaction& trx)const {
-   for(const auto& auth : trx.provided_authorizations) {
-      get_account(auth.authorizingAccount);
+   for(const auto& auth : trx.authorizations) {
+      get_account(auth.account);
    }
    for(const auto& msg : trx.messages) {
       get_account(msg.sender);

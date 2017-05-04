@@ -16,7 +16,7 @@ struct AccountPermission
    account    AccountName
    permission PermissionName
 
-struct AccountPermissionWeight 
+struct AccountPermissionWeight
    permission   AccountPermission
    weight       UInt16
 
@@ -27,8 +27,9 @@ struct Transaction
    messages          Message[]
    authorization     AccountPermission[]
 
-struct SignedTransaction virtually inherits Transaction
+struct SignedTransaction inherits Transaction
    signatures     Signature[]
+   authorizations AccountPermission[]
 
 struct KeyPermissionWeight
    key    PublicKey
