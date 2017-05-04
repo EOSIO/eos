@@ -64,29 +64,8 @@ namespace eos { namespace chain {
     * In practice, unrelated transactions and messages may be evaluated in parallel, but it is guaranteed that this
     * will not be done with transactions which interact with eachother or the same accounts.
     */
-   struct transaction
-   {
-      /**
-       * Least significant 16 bits from the reference block's number
-       */
-      uint16_t ref_block_num = 0;
-      /**
-       * The first non-block-number 32-bits of the reference block's ID
-       *
-       * Recall that block IDs have 32 bits of block
-       * number followed by the actual block hash, so this field should be set using the second 32 bits in the
-       * @ref block_id_type
-       */
-      uint32_t ref_block_prefix = 0;
-      /**
-       * This field specifies the absolute expiration time for this transaction
-       */
-      fc::time_point_sec expiration;
-
-      /**
-       * The messages in this transaction
-       */
-      vector<message> messages;
+   struct Transaction : public virtual types::Transaction {
+      using types::Transaction::Transaction;
 
       /// Calculate the digest for a transaction
       digest_type         digest()const;
@@ -111,7 +90,7 @@ namespace eos { namespace chain {
     * sequential ID, then stored in the block that generated them. These generated transactions can then be included in
     * subsequent blocks by referencing this ID.
     */
-   struct generated_transaction : public transaction {
+   struct generated_transaction : public Transaction {
       generated_transaction_id_type id;
 
       digest_type merkle_digest() const;
@@ -131,9 +110,9 @@ namespace eos { namespace chain {
     * corresponding to all of the permissions it declares. Finally, when processing the transaction in context with
     * blockchain state, it will be verified that the transaction declared all of the appropriate permissions.
     */
-   struct authorization {
+   struct Authorization {
       /// The account authorizing the transaction
-      AccountName authorizing_account;
+      AccountName authorizingAccount;
       /// The privileges being invoked to authorize the transaction
       PermissionName privileges;
    };
@@ -144,10 +123,10 @@ namespace eos { namespace chain {
     * signed_transaction is a transaction with an additional manifest of authorizations included with the transaction,
     * and the signatures backing those authorizations.
     */
-   struct signed_transaction : public transaction
+   struct SignedTransaction : public Transaction, public types::SignedTransaction
    {
-      signed_transaction(const transaction& trx = transaction())
-         : transaction(trx){}
+      SignedTransaction(const Transaction& trx = Transaction())
+         : Transaction(trx){}
 
       /** signs and appends to signatures */
       const signature_type& sign(const private_key_type& key, const chain_id_type& chain_id);
@@ -172,7 +151,24 @@ namespace eos { namespace chain {
        * authorizations, but in practice it must be verified that the provided_authorizations are sufficient to fully
        * authorize the transaction.
        */
-      vector<authorization> provided_authorizations;
+      vector<Authorization> provided_authorizations;
+
+      template <typename T>
+      void setMessage(int messageIndex, const TypeName& type, T&& value) {
+         Message m(messages[messageIndex]);
+         m.set(type, std::forward<T>(value));
+         messages[messageIndex] = m;
+      }
+      template <typename T>
+      T messageAs(int messageIndex) {
+         Message m(messages[messageIndex]);
+         return m.as<T>();
+      }
+      template <typename... Args>
+      void emplaceMessage(Args&&... a) {
+         Message m(std::forward<Args>(a)...);
+         messages.emplace_back(m);
+      }
 
       /**
        * Removes all messages, signatures, and authorizations
@@ -186,7 +182,8 @@ namespace eos { namespace chain {
 
 } } // eos::chain
 
-FC_REFLECT(eos::chain::transaction, (ref_block_num)(ref_block_prefix)(expiration)(messages))
+FC_REFLECT_DERIVED(eos::chain::Transaction, (eos::types::Transaction), )
 FC_REFLECT(eos::chain::generated_transaction, (id))
-FC_REFLECT(eos::chain::authorization, (authorizing_account)(privileges))
-FC_REFLECT_DERIVED(eos::chain::signed_transaction, (eos::chain::transaction), (signatures))
+FC_REFLECT(eos::chain::Authorization, (authorizingAccount)(privileges))
+FC_REFLECT_DERIVED(eos::chain::SignedTransaction, (eos::chain::Transaction)(eos::types::SignedTransaction),
+                   (signatures))

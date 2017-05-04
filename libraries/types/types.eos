@@ -24,11 +24,10 @@ struct Transaction
    refBlockNum       UInt16
    refBlockPrefix    UInt32
    expiration        Time
-   tapos             UInt32
    messages          Message[]
    authorization     AccountPermission[]
 
-struct SignedTransaction inherits Transaction
+struct SignedTransaction virtually inherits Transaction
    signatures     Signature[]
 
 struct KeyPermissionWeight

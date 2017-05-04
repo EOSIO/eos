@@ -39,7 +39,6 @@
 
 using namespace eos;
 using namespace chain;
-using namespace types;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
@@ -86,14 +85,14 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       MKDB(db);
       db.produce_blocks(10);
 
-      signed_transaction trx;
+      SignedTransaction trx;
       trx.messages.resize(1);
       trx.set_reference_block(db.head_block_id());
       trx.expiration = db.head_block_time() + 100;
       trx.messages[0].sender = "init1";
       trx.messages[0].recipient = "sys";
 
-      SetMessageHandler handler;
+      types::SetMessageHandler handler;
       handler.processor = "init1";
       handler.recipient = "sys";
       handler.type      = "Transfer";
@@ -112,7 +111,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          }
       )";
 
-      trx.messages[0].set("SetMessageHandler", handler);
+      trx.setMessage(0, "SetMessageHandler", handler);
                           
       idump((trx));
       db.push_transaction(trx);

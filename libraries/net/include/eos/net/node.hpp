@@ -257,7 +257,7 @@ namespace eos { namespace net {
          *  I have a message ready.
          */
         virtual void  broadcast( const message& item_to_broadcast );
-        virtual void  broadcast_transaction( const signed_transaction& trx )
+        virtual void  broadcast_transaction( const SignedTransaction& trx )
         {
            broadcast( trx_message(trx) );
         }

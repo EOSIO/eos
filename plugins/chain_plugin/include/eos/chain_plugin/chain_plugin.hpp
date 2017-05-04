@@ -44,7 +44,7 @@ public:
    using push_block_results = empty;
    push_block_results push_block(const push_block_params& params);
 
-   using push_transaction_params = chain::signed_transaction;
+   using push_transaction_params = chain::SignedTransaction;
    using push_transaction_results = empty;
    push_transaction_results push_transaction(const push_transaction_params& params);
 };
@@ -67,7 +67,7 @@ public:
    chain_apis::read_write get_read_write_api() { return chain_apis::read_write(db()); }
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
-   void accept_transaction(const chain::signed_transaction& trx);
+   void accept_transaction(const chain::SignedTransaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 

@@ -46,17 +46,17 @@ namespace eos { namespace chain {
 
    class message_validate_context {
       public:
-         message_validate_context( const transaction& t, const message& m )
+         message_validate_context( const Transaction& t, const Message& m )
          :trx(t),msg(m){}
 
-         const transaction& trx;
-         const message&     msg;
+         const Transaction& trx;
+         const Message&     msg;
    };
 
 
    class precondition_validate_context : public message_validate_context {
       public:
-         precondition_validate_context( const database& d, const transaction& t, const message& m, const AccountName& r )
+         precondition_validate_context( const database& d, const Transaction& t, const Message& m, const AccountName& r )
          :message_validate_context(t,m),recipient(r),db(d){}
 
 
@@ -66,7 +66,7 @@ namespace eos { namespace chain {
 
    class apply_context : public precondition_validate_context {
       public:
-         apply_context( database& d, const transaction& t, const message& m, const AccountName& recipient )
+         apply_context( database& d, const Transaction& t, const Message& m, const AccountName& recipient )
          :precondition_validate_context(d,t,m,recipient),mutable_db(d){}
 
          String get( String key )const;
@@ -105,7 +105,7 @@ namespace eos { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         fc::signal<void(const signed_transaction&)> on_pending_transaction;
+         fc::signal<void(const SignedTransaction&)> on_pending_transaction;
 
          template<typename T>
          void register_type( AccountName scope ) {
@@ -190,7 +190,7 @@ namespace eos { namespace chain {
          block_id_type              get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
-         const signed_transaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
+         const SignedTransaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
          const account_object&      get_account(const AccountName& name)const;
@@ -207,9 +207,9 @@ namespace eos { namespace chain {
          bool before_last_checkpoint()const;
 
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         void push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         void push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
          bool _push_block( const signed_block& b );
-         void _push_transaction( const signed_transaction& trx );
+         void _push_transaction( const SignedTransaction& trx );
 
          signed_block generate_block(
             const fc::time_point_sec when,
@@ -331,23 +331,23 @@ namespace eos { namespace chain {
 
          // these were formerly private, but they have a fairly well-defined API, so let's make them public
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
-         void apply_transaction(const signed_transaction& trx, uint32_t skip = skip_nothing);
+         void apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
          
    private:
          void _apply_block(const signed_block& next_block);
-         void _apply_transaction(const signed_transaction& trx);
+         void _apply_transaction(const SignedTransaction& trx);
 
          /**
           * This method validates transactions without adding it to the pending state.
           * @return true if the transaction would validate
           */
-         void validate_transaction(const signed_transaction& trx)const;
+         void validate_transaction(const SignedTransaction& trx)const;
          /// Validate transaction helpers @{
-         void validate_uniqueness(const signed_transaction& trx)const;
-         void validate_tapos(const signed_transaction& trx)const;
-         void validate_referenced_accounts(const signed_transaction& trx)const;
-         void validate_expiration(const signed_transaction& trx) const;
-         void validate_message_types( const signed_transaction& trx )const;
+         void validate_uniqueness(const SignedTransaction& trx)const;
+         void validate_tapos(const SignedTransaction& trx)const;
+         void validate_referenced_accounts(const SignedTransaction& trx)const;
+         void validate_expiration(const SignedTransaction& trx) const;
+         void validate_message_types( const SignedTransaction& trx )const;
          /// @}
 
          void validate_message_precondition(precondition_validate_context& c)const;
@@ -371,7 +371,7 @@ namespace eos { namespace chain {
          void clear_expired_transactions();
 
          optional<session>                _pending_tx_session;
-         deque<signed_transaction>        _pending_transactions;
+         deque<SignedTransaction>        _pending_transactions;
          fork_database                    _fork_db;
 
          block_log                        _block_log;

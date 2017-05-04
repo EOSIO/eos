@@ -18,35 +18,17 @@ namespace eos { namespace chain {
  * @ref data, whose type is determined by @ref type, which is 
  * dynamic and defined by the scripting language.
  */
-struct message {
-   /// The account which sent the message
-   AccountName         sender;
-
-   /// The account to receive the message
-   AccountName         recipient;
-
-   /// Other accounts to notify about this message
-   vector<AccountName> notify;
-
-   /**
-    * Every contract defines the set of types that it accepts, these types are
-    * scoped according to the recipient. This means two contracts can can define
-    * two different types with the same name.
-    */
-   types::TypeName     type;
-
-   /// The message contents
-   vector<char>        data;
-
-   message() = default;
-   message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify)
-      : sender(sender), recipient(recipient), notify(notify) {}
+struct Message : public types::Message {
+   Message() = default;
+   Message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify)
+      : types::Message(sender, recipient, notify, "", {}) {}
    template<typename T>
-   message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify,
+   Message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify,
            const TypeName& type, T&& value)
-      : message(sender, recipient, notify) {
+      : Message(sender, recipient, notify) {
       set<T>(type, std::forward<T>(value));
    }
+   Message(const types::Message& m) : types::Message(m) {}
 
    template<typename T>
    void set(const TypeName& t, const T& value) {
@@ -68,4 +50,4 @@ struct message {
 
 } } // namespace eos::chain
 
-FC_REFLECT(eos::chain::message, (sender)(recipient)(notify)(type)(data))
+FC_REFLECT(eos::chain::Message, (sender)(recipient)(notify)(type)(data))

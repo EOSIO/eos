@@ -29,50 +29,50 @@
 
 namespace eos { namespace chain {
 
-digest_type transaction::digest()const {
+digest_type Transaction::digest()const {
    digest_type::encoder enc;
    fc::raw::pack( enc, *this );
    return enc.result();
 }
 
-digest_type transaction::sig_digest( const chain_id_type& chain_id )const {
+digest_type Transaction::sig_digest( const chain_id_type& chain_id )const {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
    fc::raw::pack( enc, *this );
    return enc.result();
 }
 
-eos::chain::transaction_id_type eos::chain::transaction::id() const {
+eos::chain::transaction_id_type eos::chain::Transaction::id() const {
    auto h = digest();
    transaction_id_type result;
    memcpy(result._hash, h._hash, std::min(sizeof(result), sizeof(h)));
    return result;
 }
 
-const signature_type& eos::chain::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id) {
+const signature_type& eos::chain::SignedTransaction::sign(const private_key_type& key, const chain_id_type& chain_id) {
    digest_type h = sig_digest( chain_id );
    signatures.push_back(key.sign_compact(h));
    return signatures.back();
 }
 
-signature_type eos::chain::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
+signature_type eos::chain::SignedTransaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
    fc::raw::pack( enc, *this );
    return key.sign_compact(enc.result());
 }
 
-void transaction::set_reference_block(const block_id_type& reference_block) {
-   ref_block_num = fc::endian_reverse_u32(reference_block._hash[0]);
-   ref_block_prefix = reference_block._hash[1];
+void Transaction::set_reference_block(const block_id_type& reference_block) {
+   refBlockNum = fc::endian_reverse_u32(reference_block._hash[0]);
+   refBlockPrefix = reference_block._hash[1];
 }
 
-bool transaction::verify_reference_block(const block_id_type& reference_block) const {
-   return ref_block_num == fc::endian_reverse_u32(reference_block._hash[0]) &&
-         ref_block_prefix == (decltype(ref_block_prefix))reference_block._hash[1];
+bool Transaction::verify_reference_block(const block_id_type& reference_block) const {
+   return refBlockNum == fc::endian_reverse_u32(reference_block._hash[0]) &&
+         refBlockPrefix == (decltype(refBlockPrefix))reference_block._hash[1];
 }
 
-flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
+flat_set<public_key_type> SignedTransaction::get_signature_keys( const chain_id_type& chain_id )const
 { try {
    auto d = sig_digest( chain_id );
    flat_set<public_key_type> result;
@@ -86,7 +86,7 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    return result;
 } FC_CAPTURE_AND_RETHROW() }
 
-eos::chain::digest_type eos::chain::signed_transaction::merkle_digest() const {
+eos::chain::digest_type eos::chain::SignedTransaction::merkle_digest() const {
    digest_type::encoder enc;
    fc::raw::pack(enc, *this);
    return enc.result();
