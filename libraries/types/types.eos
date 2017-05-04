@@ -16,7 +16,7 @@ struct AccountPermission
    account    AccountName
    permission PermissionName
 
-struct AccountPermissionWeight 
+struct AccountPermissionWeight
    permission   AccountPermission
    weight       UInt16
 
@@ -24,12 +24,12 @@ struct Transaction
    refBlockNum       UInt16
    refBlockPrefix    UInt32
    expiration        Time
-   tapos             UInt32
    messages          Message[]
    authorization     AccountPermission[]
 
 struct SignedTransaction inherits Transaction
    signatures     Signature[]
+   authorizations AccountPermission[]
 
 struct KeyPermissionWeight
    key    PublicKey

@@ -40,7 +40,7 @@
 #include <vector>
 
 namespace eos { namespace net {
-  using eos::chain::signed_transaction;
+  using eos::chain::SignedTransaction;
   using eos::chain::block_id_type;
   using eos::chain::transaction_id_type;
   using eos::chain::signed_block;
@@ -95,9 +95,9 @@ namespace eos { namespace net {
    {
       static const core_message_type_enum type;
 
-      signed_transaction trx;
+      SignedTransaction trx;
       trx_message() {}
-      trx_message(signed_transaction transaction) :
+      trx_message(SignedTransaction transaction) :
         trx(std::move(transaction))
       {}
    };

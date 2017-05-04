@@ -306,9 +306,9 @@ protected:
 
 #define MKACCT_IMPL(db, name, creator, active, owner, recovery, deposit) \
    { \
-      signed_transaction trx; \
-      trx.messages.emplace_back(#creator, "sys", vector<AccountName>{}, "CreateAccount", \
-                                CreateAccount{#creator, #name, owner, active, recovery, deposit}); \
+      chain::SignedTransaction trx; \
+      trx.emplaceMessage(#creator, "sys", vector<AccountName>{}, "CreateAccount", \
+                         types::CreateAccount{#creator, #name, owner, active, recovery, deposit}); \
       trx.expiration = db.head_block_time() + 100; \
       trx.set_reference_block(db.head_block_id()); \
       db.push_transaction(trx); \
@@ -368,9 +368,9 @@ protected:
 
 #define XFER5(db, sender, recipient, amount, memo) \
    { \
-      signed_transaction trx; \
-      trx.messages.emplace_back(#sender, "sys", vector<AccountName>{#recipient}, "Transfer", \
-                                Transfer{#sender, #recipient, amount, memo}); \
+      chain::SignedTransaction trx; \
+      trx.emplaceMessage(#sender, "sys", vector<AccountName>{#recipient}, "Transfer", \
+                                types::Transfer{#sender, #recipient, amount, memo}); \
       trx.expiration = db.head_block_time() + 100; \
       trx.set_reference_block(db.head_block_id()); \
       db.push_transaction(trx); \
@@ -395,9 +395,9 @@ protected:
 
 #define MKPDCR3(db, owner, key) \
    { \
-      signed_transaction trx; \
-      trx.messages.emplace_back(#owner, "sys", vector<AccountName>{}, "CreateProducer", \
-                                CreateProducer{#owner, key}); \
+      chain::SignedTransaction trx; \
+      trx.emplaceMessage(#owner, "sys", vector<AccountName>{}, "CreateProducer", \
+                                types::CreateProducer{#owner, key}); \
       trx.expiration = db.head_block_time() + 100; \
       trx.set_reference_block(db.head_block_id()); \
       db.push_transaction(trx); \
@@ -433,9 +433,9 @@ protected:
  */
 #define UPPDCR(db, owner, key) \
    { \
-      signed_transaction trx; \
-      trx.messages.emplace_back(#owner, "sys", vector<AccountName>{}, "UpdateProducer", \
-                                UpdateProducer{#owner, key}); \
+      chain::SignedTransaction trx; \
+      trx.emplaceMessage(#owner, "sys", vector<AccountName>{}, "UpdateProducer", \
+                                types::UpdateProducer{#owner, key}); \
       trx.expiration = db.head_block_time() + 100; \
       trx.set_reference_block(db.head_block_id()); \
       db.push_transaction(trx); \

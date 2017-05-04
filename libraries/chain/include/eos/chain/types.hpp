@@ -115,6 +115,8 @@ namespace eos { namespace chain {
    using eos::types::Asset;
    using eos::types::ShareType;
    using eos::types::Authority;
+   using eos::types::PublicKey;
+   using eos::types::Transaction;
    using eos::types::PermissionName;
    using eos::types::TypeName;
    using eos::types::Time;

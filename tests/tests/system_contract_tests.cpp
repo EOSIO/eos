@@ -15,7 +15,6 @@
 
 using namespace eos;
 using namespace chain;
-using namespace types;
 
 BOOST_AUTO_TEST_SUITE(system_contract_tests)
 
@@ -81,7 +80,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       db.produce_blocks(10);
       BOOST_CHECK_EQUAL(db.head_block_num(), 10);
 
-      signed_transaction trx;
+      SignedTransaction trx;
       BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // no messages
       trx.messages.resize(1);
       trx.set_reference_block(db.head_block_id());
@@ -91,20 +90,20 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.messages[0].type = "Undefined";
       BOOST_REQUIRE_THROW( db.push_transaction(trx), message_validate_exception ); // "Type Undefined is not defined"
 
-      Transfer trans = { "init1", "init2", Asset(100), "transfer 100" };
+      types::Transfer trans = { "init1", "init2", Asset(100), "transfer 100" };
 
       UInt64 value(5);
       auto packed = fc::raw::pack(value);
       auto unpacked = fc::raw::unpack<UInt64>(packed);
       BOOST_CHECK_EQUAL( value, unpacked );
       trx.messages[0].type = "Transfer";
-      trx.messages[0].set("Transfer", trans );
+      trx.setMessage(0, "Transfer", trans);
 
-      auto unpack_trans = trx.messages[0].as<Transfer>();
+      auto unpack_trans = trx.messageAs<types::Transfer>(0);
 
       BOOST_REQUIRE_THROW(db.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
       trx.messages[0].notify = {"init2"};
-      trx.messages[0].set("Transfer", trans );
+      trx.setMessage(0, "Transfer", trans);
       db.push_transaction(trx);
 
       BOOST_CHECK_EQUAL(db.get_account("init1").balance, Asset(100000 - 100));

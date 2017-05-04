@@ -40,7 +40,7 @@ namespace eos {
                                       notice_message,
                                       sync_request_message,
                                       block_summary_message,
-                                      signed_transaction,
+                                      SignedTransaction,
                                       signed_block>;
 
 } // namespace eos

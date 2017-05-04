@@ -127,7 +127,7 @@ optional<signed_block> database::fetch_block_by_number(uint32_t num)const
    return optional<signed_block>();
 }
 
-const signed_transaction& database::get_recent_transaction(const transaction_id_type& trx_id) const
+const SignedTransaction& database::get_recent_transaction(const transaction_id_type& trx_id) const
 {
    auto& index = get_index<transaction_multi_index, by_trx_id>();
    auto itr = index.find(trx_id);
@@ -250,7 +250,7 @@ bool database::_push_block(const signed_block& new_block)
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-void database::push_transaction(const signed_transaction& trx, uint32_t skip)
+void database::push_transaction(const SignedTransaction& trx, uint32_t skip)
 { try {
    with_skip_flags(skip, [&]() {
       with_producing([&](){
@@ -261,7 +261,7 @@ void database::push_transaction(const signed_transaction& trx, uint32_t skip)
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void database::_push_transaction(const signed_transaction& trx) {
+void database::_push_transaction(const SignedTransaction& trx) {
 
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
@@ -339,7 +339,7 @@ signed_block database::_generate_block(
 
    uint64_t postponed_tx_count = 0;
    // pop pending state (reset to head block state)
-   for( const signed_transaction& tx : _pending_transactions )
+   for( const SignedTransaction& tx : _pending_transactions )
    {
       size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
 
@@ -492,12 +492,12 @@ void database::_apply_block(const signed_block& next_block)
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
+void database::apply_transaction(const SignedTransaction& trx, uint32_t skip)
 {
    with_skip_flags( skip, [&]() { _apply_transaction(trx); });
 }
 
-void database::validate_transaction(const signed_transaction& trx)const {
+void database::validate_transaction(const SignedTransaction& trx)const {
 try {
    EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
@@ -507,7 +507,8 @@ try {
    validate_expiration(trx);
    validate_message_types(trx);
 
-   for (const auto& m : trx.messages) { /// TODO: this loop can be processed in parallel
+   for (const auto& tm : trx.messages) { /// TODO: this loop can be processed in parallel
+      Message m(tm);
       message_validate_context mvc(trx, m);
       auto contract_handlers_itr = message_validate_handlers.find(m.recipient);
       if (contract_handlers_itr != message_validate_handlers.end()) {
@@ -522,7 +523,7 @@ try {
    }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::validate_uniqueness( const signed_transaction& trx )const {
+void database::validate_uniqueness( const SignedTransaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
    auto trx_id = trx.id();
@@ -531,10 +532,10 @@ void database::validate_uniqueness( const signed_transaction& trx )const {
               transaction_exception, "Transaction is not unique");
 }
 
-void database::validate_tapos(const signed_transaction& trx)const {
+void database::validate_tapos(const SignedTransaction& trx)const {
    if (!should_check_tapos()) return;
 
-   const auto& tapos_block_summary = get<block_summary_object>(trx.ref_block_num);
+   const auto& tapos_block_summary = get<block_summary_object>((uint16_t)trx.refBlockNum);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
    EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), transaction_exception,
@@ -542,9 +543,9 @@ void database::validate_tapos(const signed_transaction& trx)const {
               ("tapos_summary", tapos_block_summary));
 }
 
-void database::validate_referenced_accounts(const signed_transaction& trx)const {
-   for(const auto& auth : trx.provided_authorizations) {
-      get_account(auth.authorizing_account);
+void database::validate_referenced_accounts(const SignedTransaction& trx)const {
+   for(const auto& auth : trx.authorizations) {
+      get_account(auth.account);
    }
    for(const auto& msg : trx.messages) {
       get_account(msg.sender);
@@ -566,7 +567,7 @@ void database::validate_referenced_accounts(const signed_transaction& trx)const 
    }
 }
 
-void database::validate_expiration(const signed_transaction& trx) const
+void database::validate_expiration(const SignedTransaction& trx) const
 { try {
    fc::time_point_sec now = head_block_time();
    const chain_parameters& chain_parameters = get_global_properties().parameters;
@@ -579,7 +580,7 @@ void database::validate_expiration(const signed_transaction& trx) const
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void database::validate_message_types(const signed_transaction& trx)const {
+void database::validate_message_types(const SignedTransaction& trx)const {
 try {
    for( const auto& msg : trx.messages ) {
       try {
@@ -639,11 +640,15 @@ void database::apply_message( apply_context& context )
 } FC_CAPTURE_AND_RETHROW() }
 
 
-void database::_apply_transaction(const signed_transaction& trx)
+void database::_apply_transaction(const SignedTransaction& trx)
 { try {
    validate_transaction(trx);
 
-   for( const auto& m : trx.messages ) {
+   // trx.messages is a vector<types::Message>, but we want a chain::Message, so go ahead and copy it into one.
+   for( Message m : trx.messages ) {
+      // apply_context will store a reference to the chain::Message argument. m must *not* be a types::Message here, or
+      // the compiler will create a temporary chain::Message out of the types::Message and pass a reference to that to
+      // ac. ac will keep the temporary reference, which will be invalid as soon as this next line finishes running.
       apply_context ac( *this, trx, m, m.recipient );
 
       /** TODO: pre condition validation and application can occur in parallel */

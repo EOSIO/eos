@@ -109,7 +109,7 @@ namespace eos { namespace chain {
        *  as part of "generated input" its ID will be used without the extra hash.
        */
       for( const auto& trx : output_transactions )
-         ids.push_back( digest_type::hash(trx.digest()) );
+         ids.push_back( digest_type::hash(trx.merkle_digest()) );
 
 
       return merkle(ids);

@@ -134,7 +134,7 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
    return db().push_block(block);
 }
 
-void chain_plugin::accept_transaction(const chain::signed_transaction& trx) {
+void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
    db().push_transaction(trx);
 }
 
