@@ -40,6 +40,14 @@ struct Authority
    keys      KeyPermissionWeight[]
    accounts  AccountPermissionWeight[]
 
+struct BlockchainConfiguration
+   maxBlockSize      UInt32
+   targetBlockSize   UInt32
+   maxStorageSize    UInt64
+   electedPay        ShareType
+   runnerUpPay       ShareType
+   minAccountBalance ShareType
+
 struct Transfer
    from      AccountName  # may not be the message.sender if message.sender has delegated authority by from
    to        AccountName

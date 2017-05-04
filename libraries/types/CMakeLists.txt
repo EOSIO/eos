@@ -7,6 +7,7 @@ add_library( eos_types
              native.cpp
              ${HEADERS}
              "${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp"
+             types.eos
              )
 target_include_directories( eos_types PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 target_link_libraries( eos_types eos_utilities fc )

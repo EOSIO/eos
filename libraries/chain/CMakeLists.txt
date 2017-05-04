@@ -12,9 +12,9 @@ add_library( eos_chain
              get_config.cpp
 
              block_log.cpp
+             BlockchainConfiguration.cpp
 
              ${HEADERS}
-             ${PROTOCOL_HEADERS}
            )
 
 target_link_libraries( eos_chain fc chainbase eos_types wren )

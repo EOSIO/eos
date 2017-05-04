@@ -113,6 +113,7 @@ namespace eos { namespace chain {
    using eos::types::AccountName;
    using eos::types::PermissionName;
    using eos::types::Asset;
+   using eos::types::ShareType;
    using eos::types::Authority;
    using eos::types::PermissionName;
    using eos::types::TypeName;
