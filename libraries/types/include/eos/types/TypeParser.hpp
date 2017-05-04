@@ -42,7 +42,7 @@ public:
 class SimpleSymbolTable : public AbstractSymbolTable {
 public:
    SimpleSymbolTable():
-      known({ "Field", "Struct", "Asset", "FixedString16", "FixedString32",
+      known({ "Field", "Struct", "Asset", "ShareType", "FixedString16", "FixedString32",
             "UInt8", "UInt16", "UInt32", "UInt64",
             "UInt128", "Checksum", "UInt256", "UInt512",
             "Int8", "Int16", "Int32", "Int64",

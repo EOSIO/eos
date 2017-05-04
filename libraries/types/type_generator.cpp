@@ -3,6 +3,9 @@
 #include <iomanip>
 #include <fc/io/json.hpp>
 
+#include <boost/range/adaptor/transformed.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 using std::string;
 namespace eos { using types::SimpleSymbolTable; }
 
@@ -104,6 +107,16 @@ void generate_wren( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
 }
 
 void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
+   struct FakeField { std::string type; std::string name; };
+   auto arrays_to_vectors = [](eos::types::Field f) {
+      if (boost::ends_with<std::string>(f.type, "[]")) {
+         std::string type = f.type;
+         type.resize(type.size() - 2);
+         return FakeField{"Vector<" + type + ">", f.name};
+      }
+      return FakeField{f.type, f.name};
+   };
+
    wdump((outfile));
    std::ofstream out(outfile);
    out << "#pragma once\n";
@@ -120,11 +133,28 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
          out << " : public " << st.base;
       out << " { \n";
 
-      for( const auto& f : st.fields ) {
-         string type = f.type;
-         if( type.back() == ']' ) 
-            type = "Vector<" + type.substr(0,type.size()-2) + ">";
-         out <<"        " << std::left << std::setw(32) << type << " " << f.name<<";\n";
+      out << "        " << s << "() = default;\n        " << s << "(";
+      {
+         bool first = true;
+         for (const auto& f : st.fields | boost::adaptors::transformed(arrays_to_vectors)) {
+            if (first) first = false;
+            else out << ", ";
+            out << "const " << f.type << "& " << f.name;
+         }
+      }
+      out << ")\n           : ";
+      {
+         bool first = true;
+         for (const auto& f : st.fields | boost::adaptors::transformed(arrays_to_vectors)) {
+            if (first) first = false;
+            else out << ", ";
+            out << f.name << "(" << f.name << ")";
+         }
+      }
+      out << " {}\n\n";
+
+      for(const auto& f : st.fields | boost::adaptors::transformed(arrays_to_vectors)) {
+         out <<"        " << std::left << std::setw(32) << f.type << " " << f.name<<";\n";
       }
       out << "    };\n\n";
 
