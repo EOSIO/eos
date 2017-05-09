@@ -60,7 +60,7 @@ BOOST_FIXTURE_TEST_CASE(undo_test, testing_fixture)
 // Test the block fetching methods on database, get_block_id_for_num, fetch_bock_by_id, and fetch_block_by_num
 BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
 { try {
-      MKDB(db)
+      Make_Database(db)
 #if 0
       // I apologize if this proves fragile in the future. Any changes to how block IDs are calculated, or producer
       // scheduling, etc. will break this, but hopefully it should be pretty easy to just swap in the new IDs... :]

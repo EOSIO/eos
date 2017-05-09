@@ -21,13 +21,13 @@ BOOST_AUTO_TEST_SUITE(system_contract_tests)
 //Simple test of account creation
 BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
 { try {
-      MKDB(db);
+      Make_Database(db);
       db.produce_blocks(10);
 
       const auto& init1_account = db.get_account("init1");
       BOOST_CHECK_EQUAL(init1_account.balance, Asset(100000));
 
-      MKACCT(db, joe, init1, Asset(1000));
+      Make_Account(db, joe, init1, Asset(1000));
 
       { // test in the pending state
          const auto& joe_account = db.get_account("joe");
@@ -74,7 +74,7 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
 // Simple test to verify a simple transfer transaction works
 BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 { try {
-      MKDB(db)
+      Make_Database(db)
 
       BOOST_CHECK_EQUAL(db.head_block_num(), 0);
       db.produce_blocks(10);
@@ -112,7 +112,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 
       BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // not unique
 
-      XFER(db, init2, init1, Asset(100));
+      Transfer_Asset(db, init2, init1, Asset(100));
       BOOST_CHECK_EQUAL(db.get_account("init1").balance, Asset(100000));
       BOOST_CHECK_EQUAL(db.get_account("init2").balance, Asset(100000));
 } FC_LOG_AND_RETHROW() }
@@ -120,12 +120,12 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 // Simple test of creating/updating a new block producer
 BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 { try {
-      MKDB(db)
+      Make_Database(db)
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
 
-      MKACCT(db, producer);
-      MKPDCR(db, producer, producer_public_key);
+      Make_Account(db, producer);
+      Make_Producer(db, producer, producer_public_key);
 
       while (db.head_block_num() < 3) {
          auto& producer = db.get_producer("producer");
@@ -137,8 +137,8 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
          db.produce_blocks();
       }
 
-      MKKEY(signing);
-      UPPDCR(db, producer, signing_public_key);
+      Make_Key(signing);
+      Update_Producer(db, producer, signing_public_key);
       auto& producer = db.get_producer("producer");
       BOOST_CHECK_EQUAL(producer.signing_key, signing_public_key);
 } FC_LOG_AND_RETHROW() }

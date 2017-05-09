@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 // Simple test of block production and head_block_num tracking
 BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 { try {
-      MKDB(db)
+      Make_Database(db)
 
       BOOST_CHECK_EQUAL(db.head_block_num(), 0);
       db.produce_blocks();
@@ -58,14 +58,14 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
-      MKDB(db);
+      Make_Database(db);
       db.produce_blocks(10);
 
-      MKACCT(db, newguy);
+      Make_Account(db, newguy);
       auto newguy = db.find<account_object, by_name>("newguy");
       BOOST_CHECK(newguy != nullptr);
 
-      XFER(db, newguy, init0, Asset(1));
+      Transfer_Asset(db, newguy, init0, Asset(1));
       BOOST_CHECK_EQUAL(db.get_account("newguy").balance, Asset(99));
       BOOST_CHECK_EQUAL(db.get_account("init0").balance, Asset(100000-99));
 
@@ -82,7 +82,7 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture) 
 { try {
-      MKDB(db);
+      Make_Database(db);
       db.produce_blocks(10);
 
       SignedTransaction trx;
@@ -117,7 +117,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       db.push_transaction(trx);
       db.produce_blocks(1);
 
-      XFER(db, init3, init1, Asset(100), "transfer 100");
+      Transfer_Asset(db, init3, init1, Asset(100), "transfer 100");
       db.produce_blocks(1);
 
       const auto& world = db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"), String("hello")));
@@ -128,7 +128,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 // Simple test of block production when a block is missed
 BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
 { try {
-      MKDB(db)
+      Make_Database(db)
 
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
@@ -154,7 +154,7 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
 // Simple sanity test of test network: if databases aren't connected to the network, they don't sync to eachother
 BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
 { try {
-      MKDBS((db1)(db2))
+      Make_Databases((db1)(db2))
 
       BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
       BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
@@ -169,8 +169,8 @@ BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
 // Test that two databases on the same network do sync to eachother
 BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
 { try {
-      MKDBS((db1)(db2))
-      MKNET(net, (db1)(db2))
+      Make_Databases((db1)(db2))
+      Make_Network(net, (db1)(db2))
 
       BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
       BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
@@ -187,8 +187,8 @@ BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
 // Test that two databases joining and leaving a network sync correctly after a fork
 BOOST_FIXTURE_TEST_CASE(forked_network, testing_fixture)
 { try {
-      MKDBS((db1)(db2))
-      MKNET(net)
+      Make_Databases((db1)(db2))
+      Make_Network(net)
 
       BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
       BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
@@ -224,7 +224,7 @@ BOOST_FIXTURE_TEST_CASE(forked_network, testing_fixture)
 // Check that the recent_slots_filled bitmap is being updated correctly
 BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 { try {
-      MKDB(db)
+      Make_Database(db)
       db.produce_blocks();
 
       auto rsf = [&]() -> string
@@ -338,7 +338,7 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 // Check that a db rewinds to the LIB after being closed and reopened
 BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
-      MKDB(db)
+      Make_Database(db)
 
       auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
       db.produce_blocks(20);
@@ -359,15 +359,15 @@ BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 // that it missed while it was down
 BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 { try {
-      MKDB(producer)
-      MKNET(net, (producer))
+      Make_Database(producer)
+      Make_Network(net, (producer))
 
       auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
       producer.produce_blocks(20);
 
       {
          // The new node, sleepy, joins, syncs, disconnects
-         MKDB(sleepy, sleepy)
+         Make_Database(sleepy, sleepy)
          net.connect_database(sleepy);
          BOOST_CHECK_EQUAL(producer.head_block_num(), 20);
          BOOST_CHECK_EQUAL(sleepy.head_block_num(), 20);
@@ -381,7 +381,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
       BOOST_CHECK_EQUAL(producer.head_block_num(), 25);
 
       // Sleepy is reborn! Check that it is now rewound to the LIB...
-      MKDB(sleepy, sleepy)
+      Make_Database(sleepy, sleepy)
       BOOST_CHECK_EQUAL(sleepy.head_block_num(), 20 - lag);
 
       // Reconnect sleepy to the network and check that it syncs up to the present
@@ -393,7 +393,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 // Test reindexing the blockchain
 BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
-      MKDB(db)
+      Make_Database(db)
 
       auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
       db.produce_blocks(100);
@@ -409,8 +409,8 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 // Test wiping a database and resyncing with an ongoing network
 BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)
 { try {
-      MKDBS((db1)(db2)(db3))
-      MKNET(net, (db1)(db2)(db3))
+      Make_Databases((db1)(db2)(db3))
+      Make_Network(net, (db1)(db2)(db3))
 
       db1.produce_blocks(3);
       db2.produce_blocks(3);
