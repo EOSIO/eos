@@ -359,6 +359,10 @@ protected:
  *
  * Use Make_Producer to create a block producer:
  * @code{.cpp}
+ * // Create a block producer belonging to joe using signing_key as the block signing key and config as the producer's
+ * // vote for a @ref BlockchainConfiguration:
+ * Make_Producer(db, joe, signing_key, config);
+ *
  * // Create a block producer belonging to joe using signing_key as the block signing key:
  * Make_Producer(db, joe, signing_key);
  *
@@ -374,20 +378,23 @@ protected:
 /**
  * @brief Shorthand way to update a block producer
  *
+ * @note Unlike with the Make_* macros, the Update_* macros take an expression as the owner/name field, so be sure to
+ * wrap names like this in quotes. You may also pass a normal C++ expression to be evaulated here instead. The reason
+ * for this discrepancy is that the Make_* macros add identifiers to the current scope based on the owner/name field;
+ * moreover, which can't be done with C++ expressions; however, the Update_* macros do not add anything to the scope,
+ * and it's more likely that these will be used in a loop or other context where it is inconvenient to know the
+ * owner/name at compile time.
+ *
  * Use Update_Producer to update a block producer:
  * @code{.cpp}
+ * // Update a block producer belonging to joe using signing_key as the new block signing key, and config as the
+ * // producer's new vote for a @ref BlockchainConfiguration:
+ * Update_Producer(db, "joe", signing_key, config)
+ *
  * // Update a block producer belonging to joe using signing_key as the new block signing key:
- * Update_Producer(db, joe, signing_key)
+ * Update_Producer(db, "joe", signing_key)
  * @endcode
  */
-#define Update_Producer(db, owner, key) \
-   { \
-      chain::SignedTransaction trx; \
-      trx.emplaceMessage(#owner, "sys", vector<AccountName>{}, "UpdateProducer", \
-                                types::UpdateProducer{#owner, key}); \
-      trx.expiration = db.head_block_time() + 100; \
-      trx.set_reference_block(db.head_block_id()); \
-      db.push_transaction(trx); \
-   }
+#define Update_Producer(...) BOOST_PP_OVERLOAD(UPPDCR, __VA_ARGS__)(__VA_ARGS__)
 /// @}
 } }

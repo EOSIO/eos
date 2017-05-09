@@ -46,7 +46,8 @@ struct BlockchainConfiguration
    maxStorageSize    UInt64
    electedPay        ShareType
    runnerUpPay       ShareType
-   minAccountBalance ShareType
+   minEosBalance     ShareType
+   maxTrxLifetime    UInt32
 
 struct Transfer
    from      AccountName  # may not be the message.sender if message.sender has delegated authority by from
@@ -70,14 +71,15 @@ struct SetMessageHandler
    precondition    String       # the pre condition validation
    apply           String       # the apply
 
-
 struct CreateProducer
-   name      AccountName
-   key       PublicKey
+   name           AccountName
+   key            PublicKey
+   configuration  BlockchainConfiguration
 
 struct UpdateProducer
-   name      AccountName
-   newKey    PublicKey
+   name           AccountName
+   newKey         PublicKey
+   configuration  BlockchainConfiguration
 
 # implies message.sender account
 struct ApproveProducer

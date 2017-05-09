@@ -353,14 +353,11 @@ namespace eos { namespace chain {
          void validate_message_precondition(precondition_validate_context& c)const;
          void apply_message(apply_context& c);
 
-
-
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
 
          ///Steps involved in applying a new block
          ///@{
-
          const producer_object& validate_block_header(uint32_t skip, const signed_block& next_block)const;
          const producer_object& _validate_block_header(const signed_block& next_block)const;
          void create_block_summary(const signed_block& next_block);
@@ -369,6 +366,16 @@ namespace eos { namespace chain {
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
+         /// @}
+
+         /**
+          * @brief Update the blockchain configuration based on the medians of producer votes
+          *
+          * Called any time the set of active producers changes or an active producer updates his votes, this method
+          * will calculate the medians of the active producers' votes on the blockchain configuration values and will
+          * set the current configuration according to those medians.
+          */
+         void update_blockchain_configuration();
 
          optional<session>                _pending_tx_session;
          deque<SignedTransaction>        _pending_transactions;

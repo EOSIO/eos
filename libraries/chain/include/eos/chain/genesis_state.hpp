@@ -23,7 +23,7 @@
  */
 #pragma once
 
-#include <eos/chain/chain_parameters.hpp>
+#include <eos/chain/BlockchainConfiguration.hpp>
 #include <eos/chain/types.hpp>
 #include <eos/chain/immutable_chain_parameters.hpp>
 
@@ -62,7 +62,16 @@ struct genesis_state_type {
    };
 
    time_point_sec                           initial_timestamp;
-   chain_parameters                         initial_parameters;
+   BlockchainConfiguration                  initial_configuration =
+   {
+      config::DefaultMaxBlockSize,
+      config::DefaultTargetBlockSize,
+      config::DefaultMaxStorageSize,
+      config::DefaultElectedPay,
+      config::DefaultRunnerUpPay,
+      config::DefaultMinEosBalance,
+      config::DefaultMaxTrxLifetime
+   };
    immutable_chain_parameters               immutable_parameters;
    vector<initial_account_type>             initial_accounts;
    vector<initial_producer_type>            initial_producers;
@@ -87,5 +96,5 @@ FC_REFLECT(eos::chain::genesis_state_type::initial_account_type, (name)(balance)
 FC_REFLECT(eos::chain::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
 
 FC_REFLECT(eos::chain::genesis_state_type,
-           (initial_timestamp)(initial_parameters)(immutable_parameters)(initial_accounts)
+           (initial_timestamp)(initial_configuration)(immutable_parameters)(initial_accounts)
            (initial_producers)(initial_chain_id))

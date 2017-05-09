@@ -42,6 +42,7 @@
 #include <fc/io/fstream.hpp>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/range/adaptor/transformed.hpp>
 
 #include <fstream>
 #include <functional>
@@ -262,11 +263,10 @@ void database::push_transaction(const SignedTransaction& trx, uint32_t skip)
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 void database::_push_transaction(const SignedTransaction& trx) {
-
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
-   if( !_pending_tx_session.valid() )
-      _pending_tx_session = start_undo_session( true );
+   if (!_pending_tx_session.valid())
+      _pending_tx_session = start_undo_session(true);
 
    auto temp_session = start_undo_session(true);
    _apply_transaction(trx);
@@ -318,7 +318,7 @@ signed_block database::_generate_block(
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
 
    static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = get_global_properties().parameters.maximum_block_size;
+   auto maximum_block_size = get_global_properties().configuration.maxBlockSize;
    size_t total_block_size = max_block_header_size;
 
    signed_block pending_block;
@@ -570,12 +570,12 @@ void database::validate_referenced_accounts(const SignedTransaction& trx)const {
 void database::validate_expiration(const SignedTransaction& trx) const
 { try {
    fc::time_point_sec now = head_block_time();
-   const chain_parameters& chain_parameters = get_global_properties().parameters;
+   const BlockchainConfiguration& chain_configuration = get_global_properties().configuration;
 
-   EOS_ASSERT(trx.expiration <= now + chain_parameters.maximum_time_until_expiration,
+   EOS_ASSERT(trx.expiration <= now + int32_t(chain_configuration.maxTrxLifetime),
               transaction_exception, "Transaction expiration is too far in the future",
               ("trx.expiration",trx.expiration)("now",now)
-              ("max_til_exp",chain_parameters.maximum_time_until_expiration));
+              ("max_til_exp",chain_configuration.maxTrxLifetime));
    EOS_ASSERT(now <= trx.expiration, transaction_exception, "Transaction is expired",
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
@@ -839,7 +839,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
 
    // Create global properties
    create<global_property_object>([&](global_property_object& p) {
-       p.parameters = genesis_state.initial_parameters;
+       p.configuration = genesis_state.initial_configuration;
        std::copy(initial_producers.begin(), initial_producers.end(), p.active_producers.begin());
    });
    create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
@@ -1087,6 +1087,19 @@ void database::clear_expired_transactions()
    while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.rbegin()->trx.expiration) )
       transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
+
+void database::update_blockchain_configuration() {
+   auto get_producer = [this](producer_id_type id) { return get(id); };
+   auto get_votes = [](const producer_object& p) { return p.configuration; };
+   using boost::adaptors::transformed;
+
+   auto votes_range = get_global_properties().active_producers | transformed(get_producer) | transformed(get_votes);
+
+   auto medians = BlockchainConfiguration::get_median_values({votes_range.begin(), votes_range.end()});
+   modify(get_global_properties(), [&medians](global_property_object& p) {
+      p.configuration = std::move(medians);
+   });
+}
 
 using boost::container::flat_set;
 

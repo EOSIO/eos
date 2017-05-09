@@ -22,8 +22,15 @@
  * THE SOFTWARE.
  */
 #pragma once
+#include <eos/types/native.hpp>
+#include <eos/types/Asset.hpp>
 
 namespace eos { namespace config {
+using types::UInt32;
+using types::UInt64;
+using types::ShareType;
+using types::Asset;
+
 const static char KeyPrefix[] = "EOS";
 
 const static int BlockIntervalSeconds = 3;
@@ -32,8 +39,13 @@ const static int BlockIntervalSeconds = 3;
 const static int Percent100 = 10000;
 const static int Percent1 = 100;
 
-const static int MaxBlockSize = 256 * 1024;
-const static int MaxSecondsUntilExpiration = 60*60;
+const static UInt32 DefaultMaxBlockSize = 256 * 1024;
+const static UInt32 DefaultTargetBlockSize = 128 * 1024;
+const static UInt64 DefaultMaxStorageSize = 10 * 1024;
+const static ShareType DefaultElectedPay = Asset(100).amount;
+const static ShareType DefaultRunnerUpPay = Asset(75).amount;
+const static ShareType DefaultMinEosBalance = Asset(100).amount;
+const static UInt32 DefaultMaxTrxLifetime = 60*60;
 
 const static int ProducerCount = 21;
 const static int IrreversibleThresholdPercent = 70 * Percent1;

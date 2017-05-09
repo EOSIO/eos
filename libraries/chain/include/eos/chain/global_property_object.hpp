@@ -25,9 +25,9 @@
 #include <fc/uint128.hpp>
 #include <fc/array.hpp>
 
-#include <eos/chain/chain_parameters.hpp>
 #include <eos/chain/types.hpp>
 #include <eos/chain/database.hpp>
+#include <eos/chain/BlockchainConfiguration.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -48,7 +48,7 @@ namespace eos { namespace chain {
       OBJECT_CTOR(global_property_object)
 
       id_type                           id;
-      chain_parameters                  parameters;
+      BlockchainConfiguration           configuration;
 
       std::array<producer_id_type, config::ProducerCount>   active_producers;
    };
@@ -139,6 +139,6 @@ FC_REFLECT(eos::chain::dynamic_global_property_object,
           )
 
 FC_REFLECT(eos::chain::global_property_object,
-           (parameters)
+           (configuration)
            (active_producers)
           )

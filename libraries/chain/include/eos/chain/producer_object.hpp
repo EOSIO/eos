@@ -39,7 +39,7 @@ namespace eos { namespace chain {
       int64_t          total_missed = 0;
       uint32_t         last_confirmed_block_num = 0;
       
-      BlockchainConfiguration properties;
+      BlockchainConfiguration configuration;
    };
 
    struct by_key;
@@ -63,5 +63,5 @@ FC_REFLECT(eos::chain::producer_object,
            (signing_key)
            (total_missed)
            (last_confirmed_block_num)
-           (properties)
+           (configuration)
           )

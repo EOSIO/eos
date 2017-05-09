@@ -204,15 +204,17 @@ void UpdateProducer_validate_preconditions(chain::precondition_validate_context&
    const auto& db = context.db;
    auto update = context.msg.as<UpdateProducer>();
    const auto& producer = db.get_producer(update.name);
-   EOS_ASSERT(producer.signing_key != update.newKey, message_validate_exception,
-              "Producer's new key may not be identical to old key");
+   EOS_ASSERT(producer.signing_key != update.newKey || producer.configuration != update.configuration,
+              message_validate_exception, "Producer's new settings may not be identical to old settings");
 }
 void UpdateProducer_apply(chain::apply_context& context) {
    auto& db = context.mutable_db;
    auto update = context.msg.as<UpdateProducer>();
    const auto& producer = db.get_producer(update.name);
+
    db.modify(producer, [&update](producer_object& p) {
       p.signing_key = update.newKey;
+      p.configuration = update.configuration;
    });
 }
 ///@}  Create/Update Producer Handlers

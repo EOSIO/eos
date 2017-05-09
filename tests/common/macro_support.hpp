@@ -13,7 +13,7 @@
 
 #define MKACCT_IMPL(db, name, creator, active, owner, recovery, deposit) \
    { \
-      chain::SignedTransaction trx; \
+      eos::chain::SignedTransaction trx; \
       trx.emplaceMessage(#creator, "sys", vector<AccountName>{}, "CreateAccount", \
                          types::CreateAccount{#creator, #name, owner, active, recovery, deposit}); \
       trx.expiration = db.head_block_time() + 100; \
@@ -39,7 +39,7 @@
 
 #define XFER5(db, sender, recipient, amount, memo) \
    { \
-      chain::SignedTransaction trx; \
+      eos::chain::SignedTransaction trx; \
       trx.emplaceMessage(#sender, "sys", vector<AccountName>{#recipient}, "Transfer", \
                                 types::Transfer{#sender, #recipient, amount, memo}); \
       trx.expiration = db.head_block_time() + 100; \
@@ -48,15 +48,27 @@
    }
 #define XFER4(db, sender, recipient, amount) XFER5(db, sender, recipient, amount, "")
 
-#define MKPDCR3(db, owner, key) \
+#define MKPDCR4(db, owner, key, config) \
    { \
-      chain::SignedTransaction trx; \
+      eos::chain::SignedTransaction trx; \
       trx.emplaceMessage(#owner, "sys", vector<AccountName>{}, "CreateProducer", \
-                                types::CreateProducer{#owner, key}); \
+                                types::CreateProducer{#owner, key, config}); \
       trx.expiration = db.head_block_time() + 100; \
       trx.set_reference_block(db.head_block_id()); \
       db.push_transaction(trx); \
    }
+#define MKPDCR3(db, owner, key) MKPDCR4(db, owner, key, BlockchainConfiguration{});
 #define MKPDCR2(db, owner) \
    Make_Key(owner ## _producer); \
-   MKPDCR3(db, owner, owner ## _producer_public_key);
+   MKPDCR4(db, owner, owner ## _producer_public_key, BlockchainConfiguration{});
+
+#define UPPDCR4(db, owner, key, config) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.emplaceMessage(owner, "sys", vector<AccountName>{}, "UpdateProducer", \
+                                types::UpdateProducer{owner, key, config}); \
+      trx.expiration = db.head_block_time() + 100; \
+      trx.set_reference_block(db.head_block_id()); \
+      db.push_transaction(trx); \
+   }
+#define UPPDCR3(db, owner, key) UPPDCR4(db, owner, key, db.get_producer(owner).configuration)

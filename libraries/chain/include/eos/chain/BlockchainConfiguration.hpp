@@ -17,11 +17,17 @@ namespace chain {
 struct BlockchainConfiguration : public types::BlockchainConfiguration {
    using types::BlockchainConfiguration::BlockchainConfiguration;
 
+   BlockchainConfiguration& operator= (const types::BlockchainConfiguration& other);
+
    static BlockchainConfiguration get_median_values(std::vector<BlockchainConfiguration> votes);
 
-   bool operator==(const BlockchainConfiguration& other) const;
    friend std::ostream& operator<< (std::ostream& s, const BlockchainConfiguration& p);
 };
+
+bool operator==(const types::BlockchainConfiguration& a, const types::BlockchainConfiguration& b);
+inline bool operator!=(const types::BlockchainConfiguration& a, const types::BlockchainConfiguration& b) {
+   return !(a == b);
+}
 
 }
 } // namespace eos::chain

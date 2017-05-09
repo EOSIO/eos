@@ -138,7 +138,7 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
       }
 
       Make_Key(signing);
-      Update_Producer(db, producer, signing_public_key);
+      Update_Producer(db, "producer", signing_public_key);
       auto& producer = db.get_producer("producer");
       BOOST_CHECK_EQUAL(producer.signing_key, signing_public_key);
 } FC_LOG_AND_RETHROW() }
