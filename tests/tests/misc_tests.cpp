@@ -29,6 +29,11 @@ BOOST_AUTO_TEST_CASE(median_properties_test)
 
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values({medians}), medians);
+
+      votes.erase(votes.begin() + 2);
+      votes.erase(votes.end() - 1);
+      medians = {1024, 100, 1024, Asset(3333).amount, Asset(50).amount, Asset(100).amount};
+      BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
