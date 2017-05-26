@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include <eos/chain/database.hpp>
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/key_value_object.hpp>

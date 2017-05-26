@@ -54,14 +54,14 @@ public:
    boost::program_options::variables_map _options;
    bool _production_enabled = false;
    uint32_t _required_producer_participation = 33 * config::Percent1;
-   uint32_t _production_skip_flags = eos::chain::database::skip_nothing;
+   uint32_t _production_skip_flags = eos::chain::chain_controller::skip_nothing;
 
    std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
    std::set<chain::producer_id_type> _producers;
    boost::asio::deadline_timer _timer;
 };
 
-void new_chain_banner(const eos::chain::database& db)
+void new_chain_banner(const eos::chain::chain_controller& db)
 {
    std::cerr << "\n"
       "*******************************\n"
@@ -143,7 +143,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
-   chain::database& d = app().get_plugin<chain_plugin>().db();
+   chain::chain_controller& d = app().get_plugin<chain_plugin>().db();
 
    if( !my->_producers.empty() )
    {
@@ -152,7 +152,7 @@ void producer_plugin::plugin_startup()
       {
          if(d.head_block_num() == 0)
             new_chain_banner(d);
-         my->_production_skip_flags |= eos::chain::database::skip_undo_history_check;
+         my->_production_skip_flags |= eos::chain::chain_controller::skip_undo_history_check;
       }
       my->schedule_production_loop();
    } else
@@ -236,7 +236,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 }
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
-   chain::database& db = app().get_plugin<chain_plugin>().db();
+   chain::chain_controller& db = app().get_plugin<chain_plugin>().db();
    fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds(500000);
 

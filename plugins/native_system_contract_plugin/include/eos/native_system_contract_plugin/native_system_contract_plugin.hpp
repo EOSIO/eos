@@ -31,7 +31,7 @@ public:
     * native_system_contract_plugin or even AppBase. All that is required is a database to install the implementation
     * on.
     */
-   static void install(chain::database& db);
+   static void install(chain::chain_controller& db);
 
 private:
    std::unique_ptr<class native_system_contract_plugin_impl> my;

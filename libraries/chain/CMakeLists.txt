@@ -2,7 +2,7 @@ file(GLOB HEADERS "include/eos/chain/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
-             database.cpp
+             chain_controller.cpp
              fork_database.cpp
 
              transaction.cpp

@@ -3,10 +3,10 @@
 #include <eos/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <eos/chain/database.hpp>
+#include <eos/chain/chain_controller.hpp>
 
 namespace eos {
-   using eos::chain::database;
+   using eos::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
 

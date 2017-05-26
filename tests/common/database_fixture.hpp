@@ -23,7 +23,7 @@
  */
 #pragma once
 
-#include <eos/chain/database.hpp>
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/exceptions.hpp>
 
@@ -132,7 +132,7 @@ protected:
  * methods. To produce N blocks, simply call produce_blocks(N); to miss N blocks, call miss_blocks(N). Note that missing
  * blocks has no effect on the database until the next block, following the missed blocks, is produced.
  */
-class testing_database : public database {
+class testing_database : public chain_controller {
 public:
    testing_database(testing_fixture& fixture, std::string id = std::string(),
                     fc::optional<genesis_state_type> override_genesis_state = {});

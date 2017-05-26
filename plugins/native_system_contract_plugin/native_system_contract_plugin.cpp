@@ -14,10 +14,10 @@ using namespace types;
 
 class native_system_contract_plugin_impl {
 public:
-   native_system_contract_plugin_impl(database& db)
+   native_system_contract_plugin_impl(chain_controller& db)
       : db(db) {}
 
-   database& db;
+   chain_controller& db;
 };
 
 native_system_contract_plugin::native_system_contract_plugin()
@@ -35,7 +35,7 @@ void native_system_contract_plugin::plugin_shutdown() {
 }
 
 #include "system_contract_impl.hpp"
-void native_system_contract_plugin::install(database& db) {
+void native_system_contract_plugin::install(chain_controller& db) {
 #define SET_HANDLERS(name) \
    db.set_validate_handler("sys", "sys", #name, &name ## _validate); \
    db.set_precondition_validate_handler("sys", "sys", #name, &name ## _validate_preconditions); \

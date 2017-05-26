@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-#include <eos/chain/database.hpp>
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
@@ -54,18 +54,18 @@ namespace eos { namespace chain {
 
 
 String apply_context::get( String key )const {
-   const auto& obj = db.get<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   const auto& obj = chain.get<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
    return String(obj.value.begin(),obj.value.end());
 }
 void apply_context::set( String key, String value ) {
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   const auto* obj = chain.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
    if( obj ) {
-      mutable_db.modify( *obj, [&]( auto& o ) {
+      mutable_chain.modify( *obj, [&]( auto& o ) {
          o.value.resize( value.size() );
         // memcpy( o.value.data(), value.data(), value.size() );
       });
    } else {
-      mutable_db.create<key_value_object>( [&](auto& o) {
+      mutable_chain.create<key_value_object>( [&](auto& o) {
          o.scope = recipient;
          o.key.insert( 0, key.data(), key.size() );
          o.value.insert( 0, value.data(), value.size() );
@@ -73,15 +73,15 @@ void apply_context::set( String key, String value ) {
    }
 }
 void apply_context::remove( String key ) {
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   const auto* obj = chain.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
    if( obj ) {
-      mutable_db.remove( *obj );
+      mutable_chain.remove( *obj );
    }
 }
 
 
 
-bool database::is_known_block(const block_id_type& id)const
+bool chain_controller::is_known_block(const block_id_type& id)const
 {
    return _fork_db.is_known_block(id) || _block_log.read_block_by_id(id);
 }
@@ -90,13 +90,13 @@ bool database::is_known_block(const block_id_type& id)const
  * method is called with a VERY old transaction we will return false, they should
  * query things by blocks if they are that old.
  */
-bool database::is_known_transaction(const transaction_id_type& id)const
+bool chain_controller::is_known_transaction(const transaction_id_type& id)const
 {
    const auto& trx_idx = get_index<transaction_multi_index, by_trx_id>();
    return trx_idx.find( id ) != trx_idx.end();
 }
 
-block_id_type database::get_block_id_for_num(uint32_t block_num)const
+block_id_type chain_controller::get_block_id_for_num(uint32_t block_num)const
 { try {
    if (const auto& block = fetch_block_by_number(block_num))
       return block->id();
@@ -104,14 +104,14 @@ block_id_type database::get_block_id_for_num(uint32_t block_num)const
    FC_THROW_EXCEPTION(unknown_block_exception, "Could not find block");
 } FC_CAPTURE_AND_RETHROW((block_num)) }
 
-optional<signed_block> database::fetch_block_by_id(const block_id_type& id)const
+optional<signed_block> chain_controller::fetch_block_by_id(const block_id_type& id)const
 {
    auto b = _fork_db.fetch_block(id);
    if(b) return b->data;
    return _block_log.read_block_by_id(id);
 }
 
-optional<signed_block> database::fetch_block_by_number(uint32_t num)const
+optional<signed_block> chain_controller::fetch_block_by_number(uint32_t num)const
 {
    if (const auto& block = _block_log.read_block_by_num(num))
       return *block;
@@ -128,7 +128,7 @@ optional<signed_block> database::fetch_block_by_number(uint32_t num)const
    return optional<signed_block>();
 }
 
-const SignedTransaction& database::get_recent_transaction(const transaction_id_type& trx_id) const
+const SignedTransaction& chain_controller::get_recent_transaction(const transaction_id_type& trx_id) const
 {
    auto& index = get_index<transaction_multi_index, by_trx_id>();
    auto itr = index.find(trx_id);
@@ -136,7 +136,7 @@ const SignedTransaction& database::get_recent_transaction(const transaction_id_t
    return itr->trx;
 }
 
-std::vector<block_id_type> database::get_block_ids_on_fork(block_id_type head_of_fork) const
+std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type head_of_fork) const
 {
   pair<fork_database::branch_type, fork_database::branch_type> branches = _fork_db.fetch_branch_from(head_block_id(), head_of_fork);
   if( !((branches.first.back()->previous_id() == branches.second.back()->previous_id())) )
@@ -160,7 +160,7 @@ std::vector<block_id_type> database::get_block_ids_on_fork(block_id_type head_of
  *
  * @return true if we switched forks as a result of this push.
  */
-bool database::push_block(const signed_block& new_block, uint32_t skip)
+bool chain_controller::push_block(const signed_block& new_block, uint32_t skip)
 { try {
    return with_skip_flags( skip, [&](){ 
       return without_pending_transactions( [&]() {
@@ -171,7 +171,7 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
    });
 } FC_CAPTURE_AND_RETHROW((new_block)) }
 
-bool database::_push_block(const signed_block& new_block)
+bool chain_controller::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = get_node_properties().skip_flags;
    if (!(skip&skip_fork_db)) {
@@ -251,7 +251,7 @@ bool database::_push_block(const signed_block& new_block)
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-void database::push_transaction(const SignedTransaction& trx, uint32_t skip)
+void chain_controller::push_transaction(const SignedTransaction& trx, uint32_t skip)
 { try {
    with_skip_flags(skip, [&]() {
       with_producing([&](){
@@ -262,7 +262,7 @@ void database::push_transaction(const SignedTransaction& trx, uint32_t skip)
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void database::_push_transaction(const SignedTransaction& trx) {
+void chain_controller::_push_transaction(const SignedTransaction& trx) {
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if (!_pending_tx_session.valid())
@@ -281,7 +281,7 @@ void database::_push_transaction(const SignedTransaction& trx) {
 }
 
 
-signed_block database::generate_block(
+signed_block chain_controller::generate_block(
    fc::time_point_sec when,
    producer_id_type producer_id,
    const fc::ecc::private_key& block_signing_private_key,
@@ -299,7 +299,7 @@ signed_block database::generate_block(
     });
 } FC_CAPTURE_AND_RETHROW( (when) ) }
 
-signed_block database::_generate_block(
+signed_block chain_controller::_generate_block(
    fc::time_point_sec when,
    producer_id_type producer_id,
    const fc::ecc::private_key& block_signing_private_key
@@ -409,7 +409,7 @@ signed_block database::_generate_block(
 /**
  * Removes the most recent block from the database and undoes any changes it made.
  */
-void database::pop_block()
+void chain_controller::pop_block()
 { try {
    _pending_tx_session.reset();
    auto head_id = head_block_id();
@@ -420,7 +420,7 @@ void database::pop_block()
    undo();
 } FC_CAPTURE_AND_RETHROW() }
 
-void database::clear_pending()
+void chain_controller::clear_pending()
 { try {
    _pending_transactions.clear();
    _pending_tx_session.reset();
@@ -428,7 +428,7 @@ void database::clear_pending()
 
 //////////////////// private methods ////////////////////
 
-void database::apply_block(const signed_block& next_block, uint32_t skip)
+void chain_controller::apply_block(const signed_block& next_block, uint32_t skip)
 {
    auto block_num = next_block.block_num();
    if (_checkpoints.size() && _checkpoints.rbegin()->second != block_id_type()) {
@@ -444,7 +444,7 @@ void database::apply_block(const signed_block& next_block, uint32_t skip)
 }
 
 
-void database::_apply_block(const signed_block& next_block)
+void chain_controller::_apply_block(const signed_block& next_block)
 { try {
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = get_node_properties().skip_flags;
@@ -492,12 +492,12 @@ void database::_apply_block(const signed_block& next_block)
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-void database::apply_transaction(const SignedTransaction& trx, uint32_t skip)
+void chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
 {
    with_skip_flags( skip, [&]() { _apply_transaction(trx); });
 }
 
-void database::validate_transaction(const SignedTransaction& trx)const {
+void chain_controller::validate_transaction(const SignedTransaction& trx)const {
 try {
    EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
@@ -523,7 +523,7 @@ try {
    }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::validate_uniqueness( const SignedTransaction& trx )const {
+void chain_controller::validate_uniqueness( const SignedTransaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
    auto trx_id = trx.id();
@@ -532,7 +532,7 @@ void database::validate_uniqueness( const SignedTransaction& trx )const {
               transaction_exception, "Transaction is not unique");
 }
 
-void database::validate_tapos(const SignedTransaction& trx)const {
+void chain_controller::validate_tapos(const SignedTransaction& trx)const {
    if (!should_check_tapos()) return;
 
    const auto& tapos_block_summary = get<block_summary_object>((uint16_t)trx.refBlockNum);
@@ -543,7 +543,7 @@ void database::validate_tapos(const SignedTransaction& trx)const {
               ("tapos_summary", tapos_block_summary));
 }
 
-void database::validate_referenced_accounts(const SignedTransaction& trx)const {
+void chain_controller::validate_referenced_accounts(const SignedTransaction& trx)const {
    for(const auto& auth : trx.authorizations) {
       get_account(auth.account);
    }
@@ -567,7 +567,7 @@ void database::validate_referenced_accounts(const SignedTransaction& trx)const {
    }
 }
 
-void database::validate_expiration(const SignedTransaction& trx) const
+void chain_controller::validate_expiration(const SignedTransaction& trx) const
 { try {
    fc::time_point_sec now = head_block_time();
    const BlockchainConfiguration& chain_configuration = get_global_properties().configuration;
@@ -580,7 +580,7 @@ void database::validate_expiration(const SignedTransaction& trx) const
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void database::validate_message_types(const SignedTransaction& trx)const {
+void chain_controller::validate_message_types(const SignedTransaction& trx)const {
 try {
    for( const auto& msg : trx.messages ) {
       try {
@@ -592,7 +592,7 @@ try {
    }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::validate_message_precondition( precondition_validate_context& context )const 
+void chain_controller::validate_message_precondition( precondition_validate_context& context )const 
 { try {
     const auto& m = context.msg;
     auto contract_handlers_itr = precondition_validate_handlers.find( context.recipient );
@@ -606,7 +606,7 @@ void database::validate_message_precondition( precondition_validate_context& con
     /// TODO: dispatch to script if not handled above
 } FC_CAPTURE_AND_RETHROW() }
 
-void database::apply_message( apply_context& context ) 
+void chain_controller::apply_message( apply_context& context ) 
 { try {
     const auto& m = context.msg;
     auto contract_handlers_itr = apply_handlers.find( context.recipient );
@@ -640,7 +640,7 @@ void database::apply_message( apply_context& context )
 } FC_CAPTURE_AND_RETHROW() }
 
 
-void database::_apply_transaction(const SignedTransaction& trx)
+void chain_controller::_apply_transaction(const SignedTransaction& trx)
 { try {
    validate_transaction(trx);
 
@@ -675,7 +675,7 @@ void database::_apply_transaction(const SignedTransaction& trx)
    }
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-const producer_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)const {
+const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
    FC_ASSERT(head_block_id() == next_block.previous, "",
              ("head_block_id",head_block_id())("next.prev",next_block.previous));
    FC_ASSERT(head_block_time() < next_block.timestamp, "",
@@ -695,19 +695,19 @@ const producer_object& database::validate_block_header(uint32_t skip, const sign
    return producer;
 }
 
-void database::create_block_summary(const signed_block& next_block) {
+void chain_controller::create_block_summary(const signed_block& next_block) {
    auto sid = next_block.block_num() & 0xffff;
    modify( get<block_summary_object,by_id>(sid), [&](block_summary_object& p) {
          p.block_id = next_block.id();
    });
 }
 
-void database::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
+void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
    for (const auto& i : checkpts)
       _checkpoints[i.first] = i.second;
 }
 
-bool database::before_last_checkpoint()const {
+bool chain_controller::before_last_checkpoint()const {
    return (_checkpoints.size() > 0) && (_checkpoints.rbegin()->first >= head_block_num());
 }
 
@@ -715,61 +715,61 @@ bool database::before_last_checkpoint()const {
  *  This method dumps the state of the blockchain in a semi-human readable form for the
  *  purpose of tracking down funds and mismatches in currency allocation
  */
-void database::debug_dump() {
+void chain_controller::debug_dump() {
 }
 
-void debug_apply_update(database& db, const fc::variant_object& vo) {
+void debug_apply_update(chain_controller& db, const fc::variant_object& vo) {
 }
 
-void database::apply_debug_updates() {
+void chain_controller::apply_debug_updates() {
 }
 
-void database::debug_update(const fc::variant_object& update) {
+void chain_controller::debug_update(const fc::variant_object& update) {
 }
 
-const global_property_object& database::get_global_properties()const {
+const global_property_object& chain_controller::get_global_properties()const {
    return get<global_property_object>();
 }
 
-const dynamic_global_property_object&database::get_dynamic_global_properties() const {
+const dynamic_global_property_object&chain_controller::get_dynamic_global_properties() const {
    return get<dynamic_global_property_object>();
 }
 
-time_point_sec database::head_block_time()const {
+time_point_sec chain_controller::head_block_time()const {
    return get_dynamic_global_properties().time;
 }
 
-uint32_t database::head_block_num()const {
+uint32_t chain_controller::head_block_num()const {
    return get_dynamic_global_properties().head_block_number;
 }
 
-block_id_type database::head_block_id()const {
+block_id_type chain_controller::head_block_id()const {
    return get_dynamic_global_properties().head_block_id;
 }
 
-producer_id_type database::head_block_producer() const {
+producer_id_type chain_controller::head_block_producer() const {
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return head_block->producer;
    return {};
 }
 
-const chain_id_type& database::get_chain_id()const {
+const chain_id_type& chain_controller::get_chain_id()const {
    return get<chain_property_object>().chain_id;
 }
 
-const node_property_object& database::get_node_properties()const {
+const node_property_object& chain_controller::get_node_properties()const {
    return _node_property_object;
 }
 
-node_property_object& database::node_properties() {
+node_property_object& chain_controller::node_properties() {
    return _node_property_object;
 }
 
-uint32_t database::last_irreversible_block_num() const {
+uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
 }
 
-void database::initialize_indexes() {
+void chain_controller::initialize_indexes() {
    add_index<account_index>();
    add_index<permission_index>();
    add_index<action_code_index>();
@@ -785,7 +785,7 @@ void database::initialize_indexes() {
    add_index<chain_property_multi_index>();
 }
 
-void database::init_genesis(const genesis_state_type& genesis_state)
+void chain_controller::init_genesis(const genesis_state_type& genesis_state)
 { try {
 
    FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
@@ -793,12 +793,12 @@ void database::init_genesis(const genesis_state_type& genesis_state)
               "Genesis timestamp must be divisible by config::BlockIntervalSeconds." );
 
    struct auth_inhibitor {
-      auth_inhibitor(database& db) : db(db), old_flags(db.node_properties().skip_flags)
+      auth_inhibitor(chain_controller& db) : db(db), old_flags(db.node_properties().skip_flags)
       { db.node_properties().skip_flags |= skip_authority_check; }
       ~auth_inhibitor()
       { db.node_properties().skip_flags = old_flags; }
    private:
-      database& db;
+      chain_controller& db;
       uint32_t old_flags;
    } inhibitor(*this);
 
@@ -860,7 +860,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
 
 } FC_CAPTURE_AND_RETHROW() }
 
-database::database()
+chain_controller::chain_controller()
 {
    static bool bound_apply = [](){
       wrenpp::beginModule( "main" )
@@ -873,14 +873,14 @@ database::database()
    }();
 }
 
-database::~database()
+chain_controller::~chain_controller()
 {
    close();
 //   clear_pending();
 }
 
 
-void database::replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation)
+void chain_controller::replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation)
 { try {
    ilog("Replaying blockchain");
    wipe(data_dir, false);
@@ -915,7 +915,7 @@ void database::replay(fc::path data_dir, uint64_t shared_file_size, const genesi
    set_revision(head_block_num());
 } FC_CAPTURE_AND_RETHROW((data_dir)) }
 
-void database::wipe(const fc::path& data_dir, bool include_blocks)
+void chain_controller::wipe(const fc::path& data_dir, bool include_blocks)
 {
    ilog("Wiping database", ("include_blocks", include_blocks));
    close();
@@ -926,7 +926,7 @@ void database::wipe(const fc::path& data_dir, bool include_blocks)
    }
 }
 
-void database::open(const fc::path& data_dir, uint64_t shared_file_size,
+void chain_controller::open(const fc::path& data_dir, uint64_t shared_file_size,
                     std::function<genesis_state_type()> genesis_loader)
 { try {
       chainbase::database::open(data_dir, read_write, shared_file_size);
@@ -961,7 +961,7 @@ void database::open(const fc::path& data_dir, uint64_t shared_file_size,
       }
 } FC_CAPTURE_LOG_AND_RETHROW((data_dir)) }
 
-void database::close()
+void chain_controller::close()
 {
    clear_pending();
 
@@ -974,7 +974,7 @@ void database::close()
    _fork_db.reset();
 }
 
-void database::update_global_dynamic_data(const signed_block& b) {
+void chain_controller::update_global_dynamic_data(const signed_block& b) {
    const dynamic_global_property_object& _dgp = get<dynamic_global_property_object>();
 
    uint32_t missed_blocks = head_block_num() == 0? 1 : get_slot_at_time(b.timestamp);
@@ -1019,7 +1019,7 @@ void database::update_global_dynamic_data(const signed_block& b) {
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
 }
 
-void database::update_signing_producer(const producer_object& signing_producer, const signed_block& new_block)
+void chain_controller::update_signing_producer(const producer_object& signing_producer, const signed_block& new_block)
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t new_block_aslot = dpo.current_absolute_slot + get_slot_at_time( new_block.timestamp );
@@ -1031,7 +1031,7 @@ void database::update_signing_producer(const producer_object& signing_producer, 
    } );
 }
 
-void database::update_last_irreversible_block()
+void chain_controller::update_last_irreversible_block()
 {
    const global_property_object& gpo = get_global_properties();
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
@@ -1078,7 +1078,7 @@ void database::update_last_irreversible_block()
    commit(new_last_irreversible_block_num);
 }
 
-void database::clear_expired_transactions()
+void chain_controller::clear_expired_transactions()
 { try {
    //Look for expired transactions in the deduplication list, and remove them.
    //Transactions must have expired by at least two forking windows in order to be removed.
@@ -1088,7 +1088,7 @@ void database::clear_expired_transactions()
       transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
 
-void database::update_blockchain_configuration() {
+void chain_controller::update_blockchain_configuration() {
    auto get_producer = [this](producer_id_type id) { return get(id); };
    auto get_votes = [](const producer_object& p) { return p.configuration; };
    using boost::adaptors::transformed;
@@ -1103,7 +1103,7 @@ void database::update_blockchain_configuration() {
 
 using boost::container::flat_set;
 
-producer_id_type database::get_scheduled_producer(uint32_t slot_num)const
+producer_id_type chain_controller::get_scheduled_producer(uint32_t slot_num)const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
@@ -1111,7 +1111,7 @@ producer_id_type database::get_scheduled_producer(uint32_t slot_num)const
    return gpo.active_producers[current_aslot % gpo.active_producers.size()];
 }
 
-fc::time_point_sec database::get_slot_time(uint32_t slot_num)const
+fc::time_point_sec chain_controller::get_slot_time(uint32_t slot_num)const
 {
    if( slot_num == 0 )
       return fc::time_point_sec();
@@ -1132,7 +1132,7 @@ fc::time_point_sec database::get_slot_time(uint32_t slot_num)const
    return head_slot_time + (slot_num * interval);
 }
 
-uint32_t database::get_slot_at_time(fc::time_point_sec when)const
+uint32_t chain_controller::get_slot_at_time(fc::time_point_sec when)const
 {
    fc::time_point_sec first_slot_time = get_slot_time( 1 );
    if( when < first_slot_time )
@@ -1140,32 +1140,32 @@ uint32_t database::get_slot_at_time(fc::time_point_sec when)const
    return (when - first_slot_time).to_seconds() / block_interval() + 1;
 }
 
-uint32_t database::producer_participation_rate()const
+uint32_t chain_controller::producer_participation_rate()const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    return uint64_t(config::Percent100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
 }
 
-void database::update_producer_schedule()
+void chain_controller::update_producer_schedule()
 {
 }
 
-void database::set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v ) {
+void chain_controller::set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v ) {
    message_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void database::set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v ) {
+void chain_controller::set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v ) {
    precondition_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void database::set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v ) {
+void chain_controller::set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v ) {
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
 
-const account_object&   database::get_account( const AccountName& name )const {
+const account_object&   chain_controller::get_account( const AccountName& name )const {
 try {
    return get<account_object,by_name>(name);
 } FC_CAPTURE_AND_RETHROW((name)) }
 
-const producer_object&database::get_producer(const types::AccountName& name) const {
+const producer_object&chain_controller::get_producer(const types::AccountName& name) const {
 try {
    return get<producer_object, by_owner>(get_account(name).id);
 } FC_CAPTURE_AND_RETHROW((name)) }

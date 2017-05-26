@@ -42,7 +42,7 @@
 
 namespace eos { namespace chain {
 
-   class database;
+   class chain_controller;
 
    class message_validate_context {
       public:
@@ -56,24 +56,24 @@ namespace eos { namespace chain {
 
    class precondition_validate_context : public message_validate_context {
       public:
-         precondition_validate_context( const database& d, const Transaction& t, const Message& m, const AccountName& r )
-         :message_validate_context(t,m),recipient(r),db(d){}
+         precondition_validate_context( const chain_controller& c, const Transaction& t, const Message& m, const AccountName& r )
+         :message_validate_context(t,m),recipient(r),chain(c){}
 
 
          const AccountName& recipient;
-         const database&    db;
+         const chain_controller&    chain;
    };
 
    class apply_context : public precondition_validate_context {
       public:
-         apply_context( database& d, const Transaction& t, const Message& m, const AccountName& recipient )
-         :precondition_validate_context(d,t,m,recipient),mutable_db(d){}
+         apply_context( chain_controller& c, const Transaction& t, const Message& m, const AccountName& recipient )
+         :precondition_validate_context(c,t,m,recipient),mutable_chain(c){}
 
          String get( String key )const;
          void   set( String key, String value );
          void   remove( String key );
 
-         database&    mutable_db;
+         chain_controller&    mutable_chain;
    };
 
    typedef std::function<void( message_validate_context& )> message_validate_handler;
@@ -84,12 +84,12 @@ namespace eos { namespace chain {
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class database : public chainbase::database
+   class chain_controller : public chainbase::database
    {
 
       public:
-         database();
-         ~database();
+         chain_controller();
+         ~chain_controller();
 
          /**
           *  This signal is emitted after all operations and virtual operation for a

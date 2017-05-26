@@ -19,7 +19,7 @@ class chain_plugin_impl {
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
-      database  db;
+      chain_controller  db;
 };
 
 
@@ -29,8 +29,8 @@ chain_plugin::chain_plugin()
 
 chain_plugin::~chain_plugin(){}
 
-database& chain_plugin::db() { return my->db; }
-const chain::database& chain_plugin::db() const { return my->db; }
+chain_controller& chain_plugin::db() { return my->db; }
+const chain::chain_controller& chain_plugin::db() const { return my->db; }
 
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {

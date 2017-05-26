@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-#include <eos/chain/database.hpp>
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/account_object.hpp>
 
 #include <fc/crypto/digest.hpp>

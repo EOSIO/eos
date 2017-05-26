@@ -26,7 +26,7 @@
 #include <fc/array.hpp>
 
 #include <eos/chain/types.hpp>
-#include <eos/chain/database.hpp>
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/BlockchainConfiguration.hpp>
 
 #include <chainbase/chainbase.hpp>

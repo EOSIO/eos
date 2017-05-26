@@ -9,10 +9,10 @@ using namespace eos;
 
 class chain_api_plugin_impl {
 public:
-   chain_api_plugin_impl(database& db)
+   chain_api_plugin_impl(chain_controller& db)
       : db(db) {}
 
-   database& db;
+   chain_controller& db;
 };
 
 

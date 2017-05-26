@@ -1,9 +1,9 @@
 #pragma once
 #include <appbase/application.hpp>
-#include <eos/chain/database.hpp>
+#include <eos/chain/chain_controller.hpp>
 
 namespace eos {
-   using eos::chain::database;
+   using eos::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
 
@@ -11,10 +11,10 @@ namespace chain_apis {
 struct empty{};
 
 class read_only {
-   const database& db;
+   const chain_controller& db;
 
 public:
-   read_only(const database& db)
+   read_only(const chain_controller& db)
       : db(db) {}
 
    using get_info_params = empty;
@@ -36,9 +36,9 @@ public:
 };
 
 class read_write {
-   database& db;
+   chain_controller& db;
 public:
-   read_write(database& db) : db(db) {}
+   read_write(chain_controller& db) : db(db) {}
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -71,8 +71,8 @@ public:
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
-   database& db();
-   const database& db() const;
+   chain_controller& db();
+   const chain_controller& db() const;
 
 private:
    unique_ptr<class chain_plugin_impl> my;

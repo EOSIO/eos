@@ -97,15 +97,15 @@ testing_database::testing_database(testing_fixture& fixture, std::string id,
 }
 
 void testing_database::open() {
-   database::open(data_dir, TEST_DB_SIZE, [this]{return genesis_state;});
+   chain_controller::open(data_dir, TEST_DB_SIZE, [this]{return genesis_state;});
 }
 
 void testing_database::replay() {
-   database::replay(data_dir, TEST_DB_SIZE, genesis_state);
+   chain_controller::replay(data_dir, TEST_DB_SIZE, genesis_state);
 }
 
 void testing_database::wipe(bool include_blocks) {
-   database::wipe(data_dir, include_blocks);
+   chain_controller::wipe(data_dir, include_blocks);
 }
 
 void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
