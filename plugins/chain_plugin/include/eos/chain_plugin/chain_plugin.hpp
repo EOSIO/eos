@@ -2,6 +2,8 @@
 #include <appbase/application.hpp>
 #include <eos/chain/chain_controller.hpp>
 
+#include <eos/database_plugin/database_plugin.hpp>
+
 namespace eos {
    using eos::chain::chain_controller;
    using std::unique_ptr;
@@ -52,7 +54,7 @@ public:
 
 class chain_plugin : public plugin<chain_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES()
+   APPBASE_PLUGIN_REQUIRES((database_plugin))
 
    chain_plugin();
    virtual ~chain_plugin();
@@ -63,16 +65,18 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(db()); }
-   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(db()); }
+   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain()); }
+   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain()); }
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
    void accept_transaction(const chain::SignedTransaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
-   chain_controller& db();
-   const chain_controller& db() const;
+   // Only call this after plugin_startup()!
+   chain_controller& chain();
+   // Only call this after plugin_startup()!
+   const chain_controller& chain() const;
 
 private:
    unique_ptr<class chain_plugin_impl> my;

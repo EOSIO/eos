@@ -143,15 +143,15 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
-   chain::chain_controller& d = app().get_plugin<chain_plugin>().db();
+   chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
 
    if( !my->_producers.empty() )
    {
       ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
       if(my->_production_enabled)
       {
-         if(d.head_block_num() == 0)
-            new_chain_banner(d);
+         if(chain.head_block_num() == 0)
+            new_chain_banner(chain);
          my->_production_skip_flags |= eos::chain::chain_controller::skip_undo_history_check;
       }
       my->schedule_production_loop();
@@ -236,24 +236,25 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 }
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
-   chain::chain_controller& db = app().get_plugin<chain_plugin>().db();
+   chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
+   const auto& db = app().get_plugin<database_plugin>().db();
    fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {
-      if( db.get_slot_time(1) >= now )
+      if( chain.get_slot_time(1) >= now )
          _production_enabled = true;
       else
          return block_production_condition::not_synced;
    }
 
    // is anyone scheduled to produce now or one second in the future?
-   uint32_t slot = db.get_slot_at_time( now );
+   uint32_t slot = chain.get_slot_at_time( now );
    if( slot == 0 )
    {
-      capture("next_time", db.get_slot_time(1));
+      capture("next_time", chain.get_slot_time(1));
       return block_production_condition::not_time_yet;
    }
 
@@ -265,9 +266,9 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    // which would result in allowing a later block to have a timestamp
    // less than or equal to the previous block
    //
-   assert( now > db.head_block_time() );
+   assert( now > chain.head_block_time() );
 
-   eos::chain::producer_id_type scheduled_producer = db.get_scheduled_producer( slot );
+   eos::chain::producer_id_type scheduled_producer = chain.get_scheduled_producer( slot );
    // we must control the producer scheduled to produce the next block.
    if( _producers.find( scheduled_producer ) == _producers.end() )
    {
@@ -275,7 +276,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::not_my_turn;
    }
 
-   fc::time_point_sec scheduled_time = db.get_slot_time( slot );
+   fc::time_point_sec scheduled_time = chain.get_slot_time( slot );
    eos::chain::public_key_type scheduled_key = db.get(scheduled_producer).signing_key;
    auto private_key_itr = _private_keys.find( scheduled_key );
 
@@ -285,7 +286,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::no_private_key;
    }
 
-   uint32_t prate = db.producer_participation_rate();
+   uint32_t prate = chain.producer_participation_rate();
    if( prate < _required_producer_participation )
    {
       capture("pct", uint32_t(100*uint64_t(prate) / config::Percent1));
@@ -298,7 +299,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::lag;
    }
 
-   auto block = db.generate_block(
+   auto block = chain.generate_block(
       scheduled_time,
       scheduled_producer,
       private_key_itr->second,

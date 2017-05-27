@@ -122,7 +122,7 @@ void p2p_plugin::plugin_startup() {
 
    my->node->listen_to_p2p_network();
    my->node->connect_to_p2p_network();
-   my->node->sync_from(net::item_id(net::block_message_type, chain.db().head_block_id()), {});
+   my->node->sync_from(net::item_id(net::block_message_type, chain.chain().head_block_id()), {});
    ilog("P2P node listening at ${ep}", ("ep", my->node->get_actual_listening_endpoint()));
 }
 
@@ -141,9 +141,9 @@ void p2p_plugin::broadcast_block(const chain::signed_block& block) {
 bool p2p_plugin_impl::node_delegate::has_item(const net::item_id& id) {
    switch (id.item_type) {
    case net::block_message_type:
-      return chain.db().is_known_block(id.item_hash);
+      return chain.chain().is_known_block(id.item_hash);
    case net::trx_message_type:
-      return chain.db().is_known_transaction(id.item_hash);
+      return chain.chain().is_known_transaction(id.item_hash);
    default:
       elog("P2P asked us if we have an item, but it's of unknown type: ${item}", ("item", id));
       // Whatever it is, I'm assuming we don't want it.
@@ -172,7 +172,7 @@ void p2p_plugin_impl::node_delegate::handle_message(const net::message& message_
 vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_block_ids(const std::vector<net::item_hash_t>& blockchain_synopsis,
                                                                             uint32_t& remaining_item_count, uint32_t limit)
 { try {
-   if (chain.db().head_block_num() == 0) {
+   if (chain.chain().head_block_num() == 0) {
       remaining_item_count = 0;
       return {};
    }
@@ -185,7 +185,7 @@ vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_block_ids(const std
 
    unsigned last_known_block_num = (itr != blockchain_synopsis.rend())? chain::block_header::num_from_id(*itr) : 0;
 
-   auto head_block_num = chain.db().head_block_num();
+   auto head_block_num = chain.chain().head_block_num();
    auto last_block_num_to_return = std::min(head_block_num, last_known_block_num + limit - 1);
    remaining_item_count = head_block_num - last_block_num_to_return;
 
@@ -193,7 +193,7 @@ vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_block_ids(const std
    ids.reserve(last_block_num_to_return - last_known_block_num);
    for (unsigned num = last_known_block_num; num <= last_block_num_to_return; ++num)
       if (BOOST_LIKELY(num > 0))
-         ids.emplace_back(chain.db().get_block_id_for_num(num));
+         ids.emplace_back(chain.chain().get_block_id_for_num(num));
 
    return ids;
 } FC_CAPTURE_AND_RETHROW((blockchain_synopsis)) }
@@ -201,19 +201,19 @@ vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_block_ids(const std
 net::message p2p_plugin_impl::node_delegate::get_item(const net::item_id& id) {
    switch (id.item_type) {
    case net::block_message_type: {
-      auto opt = chain.db().fetch_block_by_id(id.item_hash);
+      auto opt = chain.chain().fetch_block_by_id(id.item_hash);
       EOS_ASSERT(opt, chain::unknown_block_exception, "No block found with id ${id}", ("id", id.item_hash));
       return net::block_message(std::move(*opt));
    }
    case net::trx_message_type:
-      return net::trx_message(chain.db().get_recent_transaction(id.item_hash));
+      return net::trx_message(chain.chain().get_recent_transaction(id.item_hash));
    default:
       FC_THROW("P2P asked for an item, but type of item is unknown. Item: ${item}", ("item", id));
    }
 }
 
 chain::chain_id_type p2p_plugin_impl::node_delegate::get_chain_id() const {
-   return chain.db().get_chain_id();
+   return chain.chain().get_chain_id();
 }
 
 std::vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_blockchain_synopsis(const net::item_hash_t& reference_point,
@@ -226,7 +226,7 @@ std::vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_blockchain_syn
    synopsis.reserve(30);
    uint32_t high_block_num;
    uint32_t non_fork_high_block_num;
-   uint32_t low_block_num = chain.db().last_irreversible_block_num();
+   uint32_t low_block_num = chain.chain().last_irreversible_block_num();
    std::vector<block_id_type> fork_history;
 
    if (reference_point != item_hash_t())
@@ -262,7 +262,7 @@ std::vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_blockchain_syn
          // block is a block we know about, but it is on a fork
          try
          {
-            fork_history = chain.db().get_block_ids_on_fork(reference_point);
+            fork_history = chain.chain().get_block_ids_on_fork(reference_point);
             // returns a vector where the last element is the common ancestor with the preferred chain,
             // and the first element is the reference point you passed in
             assert(fork_history.size() >= 2);
@@ -304,7 +304,7 @@ std::vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_blockchain_syn
    else
    {
       // no reference point specified, summarize the whole block chain
-      high_block_num = chain.db().head_block_num();
+      high_block_num = chain.chain().head_block_num();
       non_fork_high_block_num = high_block_num;
       if (high_block_num == 0)
          return synopsis; // we have no blocks
@@ -324,7 +324,7 @@ std::vector<net::item_hash_t> p2p_plugin_impl::node_delegate::get_blockchain_syn
       // if it's <= non_fork_high_block_num, we grab it from the main blockchain;
       // if it's not, we pull it from the fork history
       if (low_block_num <= non_fork_high_block_num)
-         synopsis.push_back(chain.db().get_block_id_for_num(low_block_num));
+         synopsis.push_back(chain.chain().get_block_id_for_num(low_block_num));
       else
          synopsis.push_back(fork_history[low_block_num - non_fork_high_block_num - 1]);
       low_block_num += (true_high_block_num - low_block_num + 2) / 2;
@@ -348,13 +348,13 @@ uint32_t p2p_plugin_impl::node_delegate::get_block_number(const net::item_hash_t
 }
 
 fc::time_point_sec p2p_plugin_impl::node_delegate::get_block_time(const net::item_hash_t& block_id) {
-   if (auto block = chain.db().fetch_block_by_id(block_id))
+   if (auto block = chain.chain().fetch_block_by_id(block_id))
       return block->timestamp;
    return fc::time_point_sec::min();
 }
 
 net::item_hash_t p2p_plugin_impl::node_delegate::get_head_block_id() const {
-   return chain.db().head_block_id();
+   return chain.chain().head_block_id();
 }
 
 uint32_t p2p_plugin_impl::node_delegate::estimate_last_known_fork_from_git_revision_timestamp(uint32_t) const {

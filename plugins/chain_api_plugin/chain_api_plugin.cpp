@@ -17,7 +17,7 @@ public:
 
 
 chain_api_plugin::chain_api_plugin()
-   :my(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().db())) {}
+   :my(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().chain())) {}
 chain_api_plugin::~chain_api_plugin(){}
 
 void chain_api_plugin::set_program_options(options_description&, options_description&) {}

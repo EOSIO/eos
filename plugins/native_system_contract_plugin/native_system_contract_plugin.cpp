@@ -14,18 +14,18 @@ using namespace types;
 
 class native_system_contract_plugin_impl {
 public:
-   native_system_contract_plugin_impl(chain_controller& db)
-      : db(db) {}
+   native_system_contract_plugin_impl(chain_controller& chain)
+      : chain(chain) {}
 
-   chain_controller& db;
+   chain_controller& chain;
 };
 
 native_system_contract_plugin::native_system_contract_plugin()
-   : my(new native_system_contract_plugin_impl(app().get_plugin<chain_plugin>().db())){}
+   : my(new native_system_contract_plugin_impl(app().get_plugin<chain_plugin>().chain())){}
 native_system_contract_plugin::~native_system_contract_plugin(){}
 
 void native_system_contract_plugin::plugin_initialize(const variables_map&) {
-   install(my->db);
+   install(my->chain);
 }
 
 void native_system_contract_plugin::plugin_startup() {

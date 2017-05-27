@@ -56,13 +56,19 @@ namespace eos { namespace chain {
       };
    }
 
-   block_log::block_log()
+   block_log::block_log(const fc::path& file)
    :my(new detail::block_log_impl()) {
       my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
       my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
+      open(file);
+   }
+
+   block_log::block_log(block_log&& other) {
+      my = std::move(other.my);
    }
 
    block_log::~block_log() {
+      my.reset();
       flush();
    }
 
@@ -138,14 +144,6 @@ namespace eos { namespace chain {
          my->index_stream.open(my->index_file.generic_string().c_str(), LOG_WRITE);
          my->index_write = true;
       }
-   }
-
-   void block_log::close() {
-      my.reset(new detail::block_log_impl());
-   }
-
-   bool block_log::is_open()const {
-      return my->block_stream.is_open();
    }
 
    uint64_t block_log::append(const signed_block& b) {

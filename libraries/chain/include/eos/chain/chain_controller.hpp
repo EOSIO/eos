@@ -43,6 +43,7 @@
 namespace eos { namespace chain {
 
    class chain_controller;
+   using database = chainbase::database;
 
    class message_validate_context {
       public:
@@ -56,24 +57,24 @@ namespace eos { namespace chain {
 
    class precondition_validate_context : public message_validate_context {
       public:
-         precondition_validate_context( const chain_controller& c, const Transaction& t, const Message& m, const AccountName& r )
-         :message_validate_context(t,m),recipient(r),chain(c){}
+         precondition_validate_context( const database& db, const Transaction& t, const Message& m, const AccountName& r )
+         :message_validate_context(t,m),recipient(r),db(db){}
 
 
          const AccountName& recipient;
-         const chain_controller&    chain;
+         const database&    db;
    };
 
    class apply_context : public precondition_validate_context {
       public:
-         apply_context( chain_controller& c, const Transaction& t, const Message& m, const AccountName& recipient )
-         :precondition_validate_context(c,t,m,recipient),mutable_chain(c){}
+         apply_context( database& db, const Transaction& t, const Message& m, const AccountName& recipient )
+         :precondition_validate_context(db,t,m,recipient),mutable_db(db){}
 
          String get( String key )const;
          void   set( String key, String value );
          void   remove( String key );
 
-         chain_controller&    mutable_chain;
+         database&    mutable_db;
    };
 
    typedef std::function<void( message_validate_context& )> message_validate_handler;
@@ -84,11 +85,12 @@ namespace eos { namespace chain {
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class chain_controller : public chainbase::database
+   class chain_controller
    {
-
       public:
-         chain_controller();
+         chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
+                          std::function<genesis_state_type()> genesis_loader);
+         chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
          /**
@@ -110,7 +112,7 @@ namespace eos { namespace chain {
          template<typename T>
          void register_type( AccountName scope ) {
             auto stru = eos::types::GetStruct<T>::type();
-            create<type_object>([&](type_object& o) {
+            _db.create<type_object>([&](type_object& o) {
                o.scope  = scope;
                o.name   = stru.name;
                o.base   = stru.base;
@@ -119,7 +121,7 @@ namespace eos { namespace chain {
                for( const auto& f : stru.fields )
                   o.fields.push_back( f );
             });
-            get<type_object,by_scope_name>( boost::make_tuple(scope, stru.name) );
+            _db.get<type_object,by_scope_name>( boost::make_tuple(scope, stru.name) );
          }
 
          /**
@@ -149,37 +151,12 @@ namespace eos { namespace chain {
          };
 
          /**
-          * @brief Open a database, creating a new one if necessary
-          *
-          * Opens a database in the specified directory. If no initialized database is found, genesis_loader is called
-          * and its return value is used as the genesis state when initializing the new database
-          *
-          * genesis_loader will not be called if an existing database is found.
-          *
-          * @param data_dir Path to open or create database in
-          * @param shared_file_size Size of the database memory mapped file
-          * @param genesis_loader A callable object which returns the genesis state to initialize new databases on
-          */
-          void open(const fc::path& data_dir,
-                    uint64_t shared_file_size,
-                    std::function<genesis_state_type()> genesis_loader );
-
-         /**
           * @brief Rebuild object graph from block history and open detabase
           *
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
           */
          void replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation = genesis_state_type());
-
-         /**
-          * @brief wipe Delete database from disk, and potentially the raw chain as well.
-          * @param include_blocks If true, delete the raw chain as well as the database.
-          *
-          * Will close the database before wiping. Database will be closed when this function returns.
-          */
-         void wipe(const fc::path& data_dir, bool include_blocks);
-         void close();
 
          /**
           *  @return true if the block is in our fork DB or saved to disk as
@@ -190,7 +167,7 @@ namespace eos { namespace chain {
          block_id_type              get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
-         const SignedTransaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
+         const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
          const account_object&      get_account(const AccountName& name)const;
@@ -313,17 +290,11 @@ namespace eos { namespace chain {
          block_id_type    head_block_id()const;
          producer_id_type head_block_producer()const;
 
-         uint32_t  block_interval( )const { return config::BlockIntervalSeconds; }
+         uint32_t block_interval()const { return config::BlockIntervalSeconds; }
 
          node_property_object& node_properties();
 
-
          uint32_t last_irreversible_block_num() const;
-
-         /// Reset the object graph in-memory
-         void initialize_indexes();
-         void init_genesis(const genesis_state_type& genesis_state = genesis_state_type());
-         void init_sys_contract(); ///< defined insys_contract.cpp
 
          void debug_dump();
          void apply_debug_updates();
@@ -334,6 +305,10 @@ namespace eos { namespace chain {
          void apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
          
    private:
+         /// Reset the object graph in-memory
+         void initialize_indexes();
+         void initialize_genesis(std::function<genesis_state_type()> genesis_loader);
+
          void _apply_block(const signed_block& next_block);
          void _apply_transaction(const SignedTransaction& trx);
 
@@ -377,11 +352,15 @@ namespace eos { namespace chain {
           */
          void update_blockchain_configuration();
 
-         optional<session>                _pending_tx_session;
-         deque<SignedTransaction>        _pending_transactions;
-         fork_database                    _fork_db;
+         void spinup_db();
+         void spinup_fork_db();
 
-         block_log                        _block_log;
+         database&                        _db;
+         fork_database&                   _fork_db;
+         block_log&                       _block_log;
+
+         optional<database::session>      _pending_tx_session;
+         deque<SignedTransaction>         _pending_transactions;
 
          bool                             _producing = false;
          bool                             _pushing  = false;

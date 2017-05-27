@@ -33,12 +33,9 @@ namespace eos { namespace chain {
 
    class block_log {
       public:
-         block_log();
+         block_log(const fc::path& file);
+         block_log(block_log&& other);
          ~block_log();
-
-         void open(const fc::path& file);
-         void close();
-         bool is_open()const;
 
          uint64_t append(const signed_block& b);
          void flush();
@@ -58,6 +55,7 @@ namespace eos { namespace chain {
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
       private:
+         void open(const fc::path& file);
          void construct_index();
 
          std::unique_ptr<detail::block_log_impl> my;
