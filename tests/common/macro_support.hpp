@@ -3,8 +3,16 @@
  * should not be used directly. Use their frontends instead.
  */
 
-#define MKDB1(name) testing_database name(*this); name.open();
-#define MKDB2(name, id) testing_database name(*this, #id); name.open();
+#define MKDB1(name) \
+   chainbase::database name ## _db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE); \
+   block_log name ## _log(get_temp_dir() / "blocklog"); \
+   fork_database name ## _fdb; \
+   testing_database name(name ## _db, name ## _fdb, name ## _log, *this);
+#define MKDB2(name, id) \
+   chainbase::database name ## _db(get_temp_dir(#id), chainbase::database::read_write, TEST_DB_SIZE); \
+   block_log name ## _log(get_temp_dir(#id) / "blocklog"); \
+   fork_database name ## _fdb; \
+   testing_database name(name ## _db, name ## _fdb, name ## _log, *this);
 #define MKDBS_MACRO(x, y, name) Make_Database(name)
 
 #define MKNET1(name) testing_network name;
@@ -71,4 +79,4 @@
       trx.set_reference_block(db.head_block_id()); \
       db.push_transaction(trx); \
    }
-#define UPPDCR3(db, owner, key) UPPDCR4(db, owner, key, db.get_producer(owner).configuration)
+#define UPPDCR3(db, owner, key) UPPDCR4(db, owner, key, db.get_model().get_producer(owner).configuration)

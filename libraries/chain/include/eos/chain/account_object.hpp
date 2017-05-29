@@ -84,7 +84,7 @@ namespace eos { namespace chain {
       id_type           id;
       account_id_type   owner; ///< the account this permission belongs to
       id_type           parent; ///< parent permission 
-      PermissionName   name;
+      PermissionName    name;
       shared_authority  auth; ///< TODO
    };
 

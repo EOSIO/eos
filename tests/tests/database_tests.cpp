@@ -24,6 +24,7 @@
 
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/account_object.hpp>
+#include <chainbase/chainbase.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -33,12 +34,13 @@
 
 namespace eos {
 using namespace chain;
+namespace bfs = boost::filesystem;
 
 // Simple tests of undo infrastructure
 BOOST_FIXTURE_TEST_CASE(undo_test, testing_fixture)
 { try {
-      testing_database db(*this);
-      db.open();
+      auto db = database(get_temp_dir(), database::read_write, 8*1024*1024);
+      db.add_index<account_index>();
       auto ses = db.start_undo_session(true);
 
       // Create an account
@@ -121,7 +123,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture, * boost::un
 
       for (int i = 0; i < votes.size(); ++i) {
          auto name = std::string("init") + fc::to_string(i);
-         Update_Producer(db, name, db.get_producer(name).signing_key, votes[i]);
+         Update_Producer(db, name, db.get_model().get_producer(name).signing_key, votes[i]);
       }
 
       BOOST_CHECK_NE(db.get_global_properties().configuration, medians);

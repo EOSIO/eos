@@ -134,23 +134,8 @@ protected:
  */
 class testing_database : public chain_controller {
 public:
-   testing_database(testing_fixture& fixture, std::string id = std::string(),
+   testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog, testing_fixture& fixture,
                     fc::optional<genesis_state_type> override_genesis_state = {});
-
-   /**
-    * @brief Open the database using the boilerplate testing database settings
-    */
-   void open();
-   /**
-    * @brief Reindex the database using the boilerplate testing database settings
-    */
-   void replay();
-   /**
-    * @brief Wipe the database using the boilerplate testing database settings
-    * @param include_blocks If true, the blocks will be removed as well; otherwise, only the database will be wiped and
-    * can then be rebuilt from the local blocks
-    */
-   void wipe(bool include_blocks = true);
 
    /**
     * @brief Produce new blocks, adding them to the database, optionally following a gap of missed blocks
@@ -174,9 +159,6 @@ public:
    void sync_with(testing_database& other);
 
 protected:
-   fc::path data_dir;
-   genesis_state_type genesis_state;
-
    testing_fixture& fixture;
 };
 

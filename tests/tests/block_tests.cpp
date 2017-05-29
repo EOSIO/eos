@@ -59,15 +59,16 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
       Make_Database(db);
+      auto model = db.get_model();
       db.produce_blocks(10);
 
       Make_Account(db, newguy);
-      auto newguy = db.find<account_object, by_name>("newguy");
+      auto newguy = model.find<account_object, by_name>("newguy");
       BOOST_CHECK(newguy != nullptr);
 
       Transfer_Asset(db, newguy, init0, Asset(1));
-      BOOST_CHECK_EQUAL(db.get_account("newguy").balance, Asset(99));
-      BOOST_CHECK_EQUAL(db.get_account("init0").balance, Asset(100000-99));
+      BOOST_CHECK_EQUAL(model.get_account("newguy").balance, Asset(99));
+      BOOST_CHECK_EQUAL(model.get_account("init0").balance, Asset(100000-99));
 
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 11);
@@ -75,14 +76,15 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.empty());
       BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.front().empty());
       BOOST_CHECK_EQUAL(db.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
-      BOOST_CHECK_EQUAL(db.get_account("newguy").balance, Asset(99));
-      BOOST_CHECK_EQUAL(db.get_account("init0").balance, Asset(100000-99));
+      BOOST_CHECK_EQUAL(model.get_account("newguy").balance, Asset(99));
+      BOOST_CHECK_EQUAL(model.get_account("init0").balance, Asset(100000-99));
 } FC_LOG_AND_RETHROW() }
 
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture) 
 { try {
       Make_Database(db);
+      auto model = db.get_model();
       db.produce_blocks(10);
 
       SignedTransaction trx;
@@ -120,7 +122,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       Transfer_Asset(db, init3, init1, Asset(100), "transfer 100");
       db.produce_blocks(1);
 
-      const auto& world = db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"), String("hello")));
+      const auto& world = model.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"), String("hello")));
       BOOST_CHECK_EQUAL( string(world.value.c_str()), "world" );
 
 } FC_LOG_AND_RETHROW() }
@@ -129,6 +131,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
 { try {
       Make_Database(db)
+      auto model = db.get_model();
 
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
@@ -144,10 +147,10 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       BOOST_CHECK_EQUAL(db.head_block_num(), 2);
       BOOST_CHECK_EQUAL(db.head_block_time().to_iso_string(), next_block_time.to_iso_string());
       BOOST_CHECK_EQUAL(db.head_block_producer()._id, next_producer._id);
-      BOOST_CHECK_EQUAL(db.get(next_producer).total_missed, 0);
+      BOOST_CHECK_EQUAL(model.get(next_producer).total_missed, 0);
 
       for (auto producer : skipped_producers) {
-         BOOST_CHECK_EQUAL(db.get(producer).total_missed, 1);
+         BOOST_CHECK_EQUAL(model.get(producer).total_missed, 1);
       }
 } FC_LOG_AND_RETHROW() }
 
@@ -338,21 +341,24 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 // Check that a db rewinds to the LIB after being closed and reopened
 BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
-      Make_Database(db)
-
       auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
-      db.produce_blocks(20);
+      {
+         Make_Database(db, x);
 
-      BOOST_CHECK_EQUAL(db.head_block_num(), 20);
-      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 20 - lag);
+         db.produce_blocks(20);
 
-      db.close();
-      db.open();
+         BOOST_CHECK_EQUAL(db.head_block_num(), 20);
+         BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 20 - lag);
+      }
 
-      // After restarting, we should have rewound to the last irreversible block.
-      BOOST_CHECK_EQUAL(db.head_block_num(), 20 - lag);
-      db.produce_blocks(5);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 25 - lag);
+      {
+         Make_Database(db, x);
+
+         // After restarting, we should have rewound to the last irreversible block.
+         BOOST_CHECK_EQUAL(db.head_block_num(), 20 - lag);
+         db.produce_blocks(5);
+         BOOST_CHECK_EQUAL(db.head_block_num(), 25 - lag);
+      }
 } FC_LOG_AND_RETHROW() }
 
 // Check that a db which is closed and reopened successfully syncs back with the network, including retrieving blocks
@@ -373,7 +379,6 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
          BOOST_CHECK_EQUAL(sleepy.head_block_num(), 20);
 
          net.disconnect_database(sleepy);
-         sleepy.close();
       }
 
       // 5 new blocks are produced
@@ -393,49 +398,67 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 // Test reindexing the blockchain
 BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
-      Make_Database(db)
-
       auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
-      db.produce_blocks(100);
+      {
+         chainbase::database db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE);
+         block_log log(get_temp_dir("log"));
+         fork_database fdb;
+         testing_database chain(db, fdb, log, *this);
 
-      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 100 - lag);
-      db.close();
-      db.replay();
-      BOOST_CHECK_EQUAL(db.head_block_num(), 100 - lag);
-      db.produce_blocks(20);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 120 - lag);
+         chain.produce_blocks(100);
+
+         BOOST_CHECK_EQUAL(chain.last_irreversible_block_num(), 100 - lag);
+      }
+
+      {
+         chainbase::database db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE);
+         block_log log(get_temp_dir("log"));
+         fork_database fdb;
+         testing_database chain(db, fdb, log, *this);
+
+         BOOST_CHECK_EQUAL(chain.head_block_num(), 100 - lag);
+         chain.produce_blocks(20);
+         BOOST_CHECK_EQUAL(chain.head_block_num(), 120 - lag);
+      }
 } FC_LOG_AND_RETHROW() }
 
 // Test wiping a database and resyncing with an ongoing network
 BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)
 { try {
-      Make_Databases((db1)(db2)(db3))
-      Make_Network(net, (db1)(db2)(db3))
+      Make_Databases((db1)(db2))
+      Make_Network(net, (db1)(db2))
+      {
+         // Create db3 with a temporary data dir
+         Make_Database(db3)
+         net.connect_database(db3);
 
-      db1.produce_blocks(3);
-      db2.produce_blocks(3);
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 6);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 6);
-      BOOST_CHECK_EQUAL(db3.head_block_num(), 6);
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db3.head_block_id().str());
+         db1.produce_blocks(3);
+         db2.produce_blocks(3);
+         BOOST_CHECK_EQUAL(db1.head_block_num(), 6);
+         BOOST_CHECK_EQUAL(db2.head_block_num(), 6);
+         BOOST_CHECK_EQUAL(db3.head_block_num(), 6);
+         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db3.head_block_id().str());
 
-      net.disconnect_database(db3);
-      db3.close();
-      db3.wipe();
-      db3.open();
-      BOOST_CHECK_EQUAL(db3.head_block_num(), 0);
+         net.disconnect_database(db3);
+      }
 
-      net.connect_database(db3);
-      BOOST_CHECK_EQUAL(db3.head_block_num(), 6);
+      {
+         // Create new db3 with a new temporary data dir
+         Make_Database(db3)
+         BOOST_CHECK_EQUAL(db3.head_block_num(), 0);
 
-      db1.produce_blocks(3);
-      db2.produce_blocks(3);
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 12);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 12);
-      BOOST_CHECK_EQUAL(db3.head_block_num(), 12);
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db3.head_block_id().str());
+         net.connect_database(db3);
+         BOOST_CHECK_EQUAL(db3.head_block_num(), 6);
+
+         db1.produce_blocks(3);
+         db2.produce_blocks(3);
+         BOOST_CHECK_EQUAL(db1.head_block_num(), 12);
+         BOOST_CHECK_EQUAL(db2.head_block_num(), 12);
+         BOOST_CHECK_EQUAL(db3.head_block_num(), 12);
+         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db3.head_block_id().str());
+      }
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

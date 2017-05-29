@@ -154,6 +154,10 @@ std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type
   return result;
 }
 
+chain_model chain_controller::get_model() const {
+   return chain_model(_db);
+}
+
 /**
  * Push block "may fail" in which case every partial change is unwound.  After
  * push block is successful the block is appended to the chain database on disk.
@@ -544,15 +548,16 @@ void chain_controller::validate_tapos(const SignedTransaction& trx)const {
 }
 
 void chain_controller::validate_referenced_accounts(const SignedTransaction& trx)const {
+   auto model = get_model();
    for(const auto& auth : trx.authorizations) {
-      get_account(auth.account);
+      model.get_account(auth.account);
    }
    for(const auto& msg : trx.messages) {
-      get_account(msg.sender);
-      get_account(msg.recipient);
+      model.get_account(msg.sender);
+      model.get_account(msg.recipient);
       const AccountName* previous_notify_account = nullptr;
       for(const auto& current_notify_account : msg.notify) {
-         get_account(current_notify_account);
+         model.get_account(current_notify_account);
          if(previous_notify_account) {
             EOS_ASSERT(current_notify_account < *previous_notify_account, message_validate_exception,
                        "Message notify accounts out of order. Possibly a bug in the wallet?");
@@ -875,9 +880,9 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
    }();
 
    initialize_indexes();
+   initialize_genesis(genesis_loader);
    spinup_db();
    spinup_fork_db();
-   initialize_genesis(genesis_loader);
 }
 
 chain_controller::~chain_controller() {
@@ -1128,15 +1133,5 @@ void chain_controller::set_precondition_validate_handler(  const AccountName& co
 void chain_controller::set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v ) {
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
-
-const account_object&   chain_controller::get_account( const AccountName& name )const {
-try {
-   return _db.get<account_object,by_name>(name);
-} FC_CAPTURE_AND_RETHROW((name)) }
-
-const producer_object&chain_controller::get_producer(const types::AccountName& name) const {
-try {
-   return _db.get<producer_object, by_owner>(get_account(name).id);
-} FC_CAPTURE_AND_RETHROW((name)) }
 
 } }

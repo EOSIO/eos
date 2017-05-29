@@ -29,6 +29,7 @@
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/genesis_state.hpp>
 #include <eos/chain/block_log.hpp>
+#include <eos/chain/chain_model.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
@@ -170,8 +171,7 @@ namespace eos { namespace chain {
          const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
-         const account_object&      get_account(const AccountName& name)const;
-         const producer_object&     get_producer(const AccountName& name)const;
+         chain_model get_model()const;
 
          /**
           *  Calculate the percent of block production slots that were missed in the

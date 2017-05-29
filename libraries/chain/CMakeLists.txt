@@ -13,6 +13,7 @@ add_library( eos_chain
 
              block_log.cpp
              BlockchainConfiguration.cpp
+             chain_model.cpp
 
              ${HEADERS}
            )

@@ -68,8 +68,8 @@ namespace eos { namespace chain {
    }
 
    block_log::~block_log() {
-      my.reset();
       flush();
+      my.reset();
    }
 
    void block_log::open(const fc::path& file) {

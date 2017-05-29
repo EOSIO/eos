@@ -87,37 +87,25 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
    return itr->second;
 }
 
-testing_database::testing_database(testing_fixture& fixture, std::string id,
-                                   fc::optional<genesis_state_type> override_genesis_state)
-   : genesis_state(override_genesis_state? *override_genesis_state : fixture.genesis_state()),
+testing_database::testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                   testing_fixture& fixture, fc::optional<genesis_state_type> override_genesis_state)
+   : chain_controller(db, fork_db, blocklog, [&override_genesis_state, &fixture] {
+        if (override_genesis_state) return *override_genesis_state;
+        return fixture.genesis_state();
+     }),
      fixture(fixture) {
-   data_dir = fixture.get_temp_dir(id);
    // Install the system contract implementation
    native_system_contract_plugin::install(*this);
-}
-
-void testing_database::open() {
-   chain_controller::open(data_dir, TEST_DB_SIZE, [this]{return genesis_state;});
-}
-
-void testing_database::replay() {
-   chain_controller::replay(data_dir, TEST_DB_SIZE, genesis_state);
-}
-
-void testing_database::wipe(bool include_blocks) {
-   chain_controller::wipe(data_dir, include_blocks);
 }
 
 void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
    if (count == 0)
       return;
 
-   BOOST_REQUIRE_MESSAGE(is_open(), "Producing blocks on closed db... Did you forget to open it?");
-
    for (int i = 0; i < count; ++i) {
       auto slot = blocks_to_miss + 1;
       auto producer_id = get_scheduled_producer(slot);
-      const auto& producer = get(producer_id);
+      const auto& producer = get_model().get(producer_id);
       auto private_key = fixture.get_private_key(producer.signing_key);
       generate_block(get_slot_time(slot), producer_id, private_key, 0);
    }
