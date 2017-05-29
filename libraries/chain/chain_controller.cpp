@@ -939,8 +939,6 @@ void chain_controller::spinup_fork_db()
    fc::optional<signed_block> last_block = _block_log.read_head();
    if(last_block.valid()) {
       _fork_db.start_block(*last_block);
-      idump((last_block->id())(last_block->block_num()));
-      idump((head_block_id())(head_block_num()));
       if (last_block->id() != head_block_id()) {
            FC_ASSERT(head_block_num() == 0, "last block ID does not match current chain state",
                      ("last_block->id", last_block->id())("head_block_num",head_block_num()));

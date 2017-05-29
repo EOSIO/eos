@@ -19,7 +19,7 @@ int main(int argc, char** argv)
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
 
-      if(!app().initialize(argc, argv))
+      if(!app().initialize<chain_plugin, p2p_plugin>(argc, argv))
          return -1;
 
       app().startup();

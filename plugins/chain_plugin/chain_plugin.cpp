@@ -67,6 +67,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
    if (options.at("resync-blockchain").as<bool>()) {
       ilog("Resync requested: wiping blocks");
+      app().get_plugin<database_plugin>().wipe_database();
       fc::remove_all(my->block_log_file);
    }
 
@@ -84,6 +85,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup() {
    auto genesis_loader = [this] {
+      if (my->genesis_file.empty())
+         return eos::chain::genesis_state_type();
       return fc::json::from_file(my->genesis_file).as<eos::chain::genesis_state_type>();
    };
    auto& db = app().get_plugin<database_plugin>().db();
@@ -96,6 +99,8 @@ void chain_plugin::plugin_startup() {
       ilog("starting chain in read/write mode");
       my->chain->add_checkpoints(my->loaded_checkpoints);
    }
+
+   ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
 }
 
 void chain_plugin::plugin_shutdown() {

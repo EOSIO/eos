@@ -16,8 +16,7 @@ public:
 };
 
 
-chain_api_plugin::chain_api_plugin()
-   :my(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().chain())) {}
+chain_api_plugin::chain_api_plugin(){}
 chain_api_plugin::~chain_api_plugin(){}
 
 void chain_api_plugin::set_program_options(options_description&, options_description&) {}
@@ -43,6 +42,7 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
 #define CHAIN_RW_CALL(call_name) CALL(chain, rw_api, chain_apis::read_write, call_name)
 
 void chain_api_plugin::plugin_startup() {
+   my.reset(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
    auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
