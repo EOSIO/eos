@@ -883,6 +883,9 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
    initialize_genesis(genesis_loader);
    spinup_db();
    spinup_fork_db();
+
+   if (_block_log.read_head() && head_block_num() < _block_log.read_head()->block_num())
+      replay();
 }
 
 chain_controller::~chain_controller() {
@@ -891,9 +894,7 @@ chain_controller::~chain_controller() {
    _fork_db.reset();
 }
 
-void chain_controller::replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation)
-{ try {
-#warning TODO Replay should be handled automatically from constructor call stack now
+void chain_controller::replay() {
    ilog("Replaying blockchain");
    auto start = fc::time_point::now();
    auto last_block = _block_log.read_head();
@@ -922,7 +923,7 @@ void chain_controller::replay(fc::path data_dir, uint64_t shared_file_size, cons
         ("n", head_block_num())("t",double((end-start).count())/1000000.0));
 
    _db.set_revision(head_block_num());
-} FC_CAPTURE_AND_RETHROW((data_dir)) }
+}
 
 void chain_controller::spinup_db() {
    // Rewind the database to the last irreversible block

@@ -33,7 +33,7 @@ namespace eos { namespace chain {
 
    class block_log {
       public:
-         block_log(const fc::path& file);
+         block_log(const fc::path& data_dir);
          block_log(block_log&& other);
          ~block_log();
 
@@ -55,7 +55,7 @@ namespace eos { namespace chain {
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
       private:
-         void open(const fc::path& file);
+         void open(const fc::path& data_dir);
          void construct_index();
 
          std::unique_ptr<detail::block_log_impl> my;

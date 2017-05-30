@@ -14,7 +14,7 @@ using chain::block_log;
 
 class chain_plugin_impl {
 public:
-   bfs::path                        block_log_file;
+   bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
@@ -35,7 +35,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 {
    cfg.add_options()
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
-         ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks.log"),
+         ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ;
@@ -56,9 +56,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if (options.count("block-log-dir")) {
       auto bld = options.at("block-log-dir").as<bfs::path>();
       if(bld.is_relative())
-         my->block_log_file = app().data_dir() / bld;
+         my->block_log_dir = app().data_dir() / bld;
       else
-         my->block_log_file = bld;
+         my->block_log_dir = bld;
    }
 
    if (options.at("replay-blockchain").as<bool>()) {
@@ -68,7 +68,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if (options.at("resync-blockchain").as<bool>()) {
       ilog("Resync requested: wiping blocks");
       app().get_plugin<database_plugin>().wipe_database();
-      fc::remove_all(my->block_log_file);
+      fc::remove_all(my->block_log_dir);
    }
 
    if(options.count("checkpoint"))
@@ -92,7 +92,7 @@ void chain_plugin::plugin_startup() {
    auto& db = app().get_plugin<database_plugin>().db();
 
    my->fork_db = fork_database();
-   my->block_logger = block_log(my->block_log_file);
+   my->block_logger = block_log(my->block_log_dir);
    my->chain = chain_controller(db, *my->fork_db, *my->block_logger, genesis_loader);
 
    if(!my->readonly) {

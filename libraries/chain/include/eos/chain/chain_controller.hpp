@@ -152,14 +152,6 @@ namespace eos { namespace chain {
          };
 
          /**
-          * @brief Rebuild object graph from block history and open detabase
-          *
-          * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
-          * replaying blockchain history. When this method exits successfully, the database will be open.
-          */
-         void replay(fc::path data_dir, uint64_t shared_file_size, const genesis_state_type& initial_allocation = genesis_state_type());
-
-         /**
           *  @return true if the block is in our fork DB or saved to disk as
           *  part of the official chain, otherwise return false
           */
@@ -308,6 +300,8 @@ namespace eos { namespace chain {
          /// Reset the object graph in-memory
          void initialize_indexes();
          void initialize_genesis(std::function<genesis_state_type()> genesis_loader);
+
+         void replay();
 
          void _apply_block(const signed_block& next_block);
          void _apply_transaction(const SignedTransaction& trx);

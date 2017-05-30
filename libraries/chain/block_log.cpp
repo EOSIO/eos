@@ -56,11 +56,11 @@ namespace eos { namespace chain {
       };
    }
 
-   block_log::block_log(const fc::path& file)
+   block_log::block_log(const fc::path& data_dir)
    :my(new detail::block_log_impl()) {
       my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
       my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
-      open(file);
+      open(data_dir);
    }
 
    block_log::block_log(block_log&& other) {
@@ -74,14 +74,16 @@ namespace eos { namespace chain {
       }
    }
 
-   void block_log::open(const fc::path& file) {
+   void block_log::open(const fc::path& data_dir) {
       if (my->block_stream.is_open())
          my->block_stream.close();
       if (my->index_stream.is_open())
          my->index_stream.close();
 
-      my->block_file = file;
-      my->index_file = fc::path(file.generic_string() + ".index");
+      if (!fc::is_directory(data_dir))
+         fc::create_directories(data_dir);
+      my->block_file = data_dir / "blocks.log";
+      my->index_file = data_dir / "blocks.index";
 
       ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
       my->block_stream.open(my->block_file.generic_string().c_str(), LOG_WRITE);
