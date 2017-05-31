@@ -24,11 +24,9 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/time.hpp>
-#include <fc/thread/thread.hpp>
 #include <iostream>
 #include <algorithm>
 #include <fc/crypto/sha512.hpp>
-//#include <eos/blockchain/config.hpp>
 
 #include <cstdio>
 #include <cstdlib>

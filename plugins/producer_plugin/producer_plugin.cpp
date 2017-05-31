@@ -307,7 +307,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       );
    capture("n", block.block_num())("t", block.timestamp)("c", now);
 
-   app().get_plugin<p2p_plugin>().broadcast_block(block);
+//   app().get_plugin<p2p_plugin>().broadcast_block(block);
    return block_production_condition::produced;
 }
 

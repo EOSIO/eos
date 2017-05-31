@@ -31,7 +31,6 @@
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
-#include <fc/signals.hpp>
 
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/facilities/overload.hpp>
@@ -162,6 +161,8 @@ protected:
    testing_fixture& fixture;
 };
 
+using boost::signals2::scoped_connection;
+
 /**
  * @brief The testing_network class provides a simplistic virtual P2P network connecting testing_databases together.
  *
@@ -195,7 +196,7 @@ public:
    void propagate_block(const signed_block& block, const testing_database& skip_db);
 
 protected:
-   std::map<testing_database*, fc::scoped_connection> databases;
+   std::map<testing_database*, scoped_connection> databases;
 };
 
 

@@ -1,7 +1,3 @@
-[submodule "libraries/fc"]
-    path = libraries/fc
-    url = https://github.com/eosio/fc.git
-    ignore = dirty
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
 	url = https://github.com/eosio/chainbase

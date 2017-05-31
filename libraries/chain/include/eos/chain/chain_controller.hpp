@@ -33,7 +33,8 @@
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
-#include <fc/signals.hpp>
+
+#include <boost/signals2/signal.hpp>
 
 #include <eos/chain/protocol.hpp>
 
@@ -45,6 +46,7 @@ namespace eos { namespace chain {
 
    class chain_controller;
    using database = chainbase::database;
+   using boost::signals2::signal;
 
    class message_validate_context {
       public:
@@ -102,13 +104,13 @@ namespace eos { namespace chain {
           *  the write lock and may be in an "inconstant state" until after it is
           *  released.
           */
-         fc::signal<void(const signed_block&)> applied_block;
+         signal<void(const signed_block&)> applied_block;
 
          /**
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         fc::signal<void(const SignedTransaction&)> on_pending_transaction;
+         signal<void(const SignedTransaction&)> on_pending_transaction;
 
          template<typename T>
          void register_type( AccountName scope ) {

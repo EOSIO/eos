@@ -1,6 +1,5 @@
 #include <appbase/application.hpp>
 
-#include <eos/p2p_plugin/p2p_plugin.hpp>
 #include <eos/producer_plugin/producer_plugin.hpp>
 #include <eos/chain_api_plugin/chain_api_plugin.hpp>
 
@@ -15,11 +14,10 @@ using namespace eos;
 int main(int argc, char** argv)
 {
    try {
-      app().register_plugin<p2p_plugin>();
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
 
-      if(!app().initialize<chain_plugin, p2p_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin>(argc, argv))
          return -1;
 
       app().startup();

@@ -30,9 +30,9 @@
 #include <boost/algorithm/string.hpp>
 
 #include <fc/filesystem.hpp>
+#include <fc/io/fstream.hpp>
 #include <fc/smart_ref_impl.hpp>   // required for gcc in release mode
 #include <fc/string.hpp>
-#include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 #include <eos/chain/genesis_state.hpp>
 #include <eos/chain/types.hpp>
@@ -276,7 +276,7 @@ int main( int argc, char** argv )
       read_file_contents( fc::path( src ), tmpl );
       std::string out_str = fc::format_string( tmpl, template_context );
       fc::path dest_filename = fc::path( dest );
-      fc::ofstream outfile( dest_filename );
+      std::ofstream outfile( dest_filename.generic_string().c_str() );
       outfile.write( out_str.c_str(), out_str.size() );
       outfile.close();
    }

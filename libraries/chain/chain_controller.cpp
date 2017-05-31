@@ -39,7 +39,6 @@
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
-#include <fc/io/fstream.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/transformed.hpp>
