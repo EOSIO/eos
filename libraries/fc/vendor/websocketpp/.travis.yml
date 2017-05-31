@@ -1,0 +1,21 @@
+language: cpp
+compiler:
+  - gcc
+before_install:
+ #- sudo apt-get install libboost-chrono1.48-dev libboost-regex1.48-dev libboost-system1.48-dev libboost-thread1.48-dev libboost-test1.48-dev libboost-random1.48-dev -y
+ - sudo add-apt-repository -y ppa:boost-latest/ppa && sudo apt-get update -q && sudo apt-get install -y libboost-chrono1.55-dev libboost-random1.55-dev libboost-regex1.55-dev libboost-system1.55-dev libboost-thread1.55-dev libboost-test1.55-dev
+env:
+  global:
+    - BOOST_INCLUDES=/usr/include
+    - BOOST_LIBS=/usr/lib/x86_64-linux-gnu
+script: scons -j 2 && scons test
+branches:
+  only:
+    - master
+    - develop
+notifications:
+  recipients:
+    - travis@zaphoyd.com
+  email:
+    on_success: change
+    on_failure: always

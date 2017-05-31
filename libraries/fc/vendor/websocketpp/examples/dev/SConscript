@@ -1,0 +1,18 @@
+## Main development example
+##
+
+Import('env')
+Import('env_cpp11')
+Import('boostlibs')
+Import('platform_libs')
+Import('polyfill_libs')
+
+env_cpp11 = env_cpp11.Clone ()
+
+prgs = []
+
+if env_cpp11.has_key('WSPP_CPP11_ENABLED'):
+   BOOST_LIBS_CPP11 = boostlibs(['unit_test_framework','system','timer','chrono'],env_cpp11) + [platform_libs] + [polyfill_libs]
+   prgs += env_cpp11.Program('main', ["main.cpp"], LIBS = BOOST_LIBS_CPP11)
+
+Return('prgs')

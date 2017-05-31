@@ -1,0 +1,21 @@
+/** \mainpage
+
+WebSocket++ is a C++ library that can be used to implement WebSocket functionality. The goals of the project are to provide a WebSocket implementation that is portable, flexible, lightweight, low level, and high performance.
+
+WebSocket++ does not intend to be used alone as a web application framework or full featured web services platform. As such the components, examples, and performance tuning are geared towards operation as a WebSocket client or server. There are some minimal convenience features that stray from this (for example the ability to respond to HTTP requests other than WebSocket Upgrades) but these are not the focus of the project. In particular WebSocket++ does not intend to implement any non-WebSocket related fallback options (ajax / long polling / comet / etc).
+
+In order to remain compact and improve portability, the WebSocket++ project strives to reduce or eliminate external dependencies where possible and appropriate. WebSocket++ core has no dependencies other than the C++11 standard library. For non-C++11 compilers the Boost libraries provide drop in polyfills for the C++11 functionality used.
+
+WebSocket++ implements a pluggable data transport component. The default component allows reduced functionality by using STL iostream or raw byte shuffling via reading and writing char buffers. This component has no non-STL dependencies and can be used in a C++11 environment without Boost. Also included is an Asio based transport component that provides full featured network client/server functionality. This component requires either Boost Asio or a C++11 compiler and standalone Asio. As an advanced option, WebSocket++ supports custom transport layers if you want to provide your own using another library.
+
+In order to accommodate the wide variety of use cases WebSocket++ has collected, the library is built in a way that most of the major components are loosely coupled and can be swapped out and replaced. WebSocket++ will attempt to track the future development of the WebSocket protocol and any extensions as they are developed.
+
+- \subpage getting_started "Getting Started"
+- \subpage faq "FAQ"
+- \subpage tutorials "Tutorials"
+- \subpage md_changelog "Change Log / Version History"
+- Reference
+ - \subpage reference.handlers "Handler Reference"
+
+*/
+
