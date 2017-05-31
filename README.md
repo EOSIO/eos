@@ -13,11 +13,13 @@ This project also depends on Boost version 1.60 and OpenSSL 1.0.2. Ensure that t
 ### Installing Dependencies
 EOS depends upon a version of secp256k1-skp that it expects to be installed.
 
-`git clone https://github.com/cryptonomex/secp256k1-zkp.git`
-`./autogen.sh`
-`./configure`
-`make`
-`sudo make install`
+```
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+./autogen.sh
+./configure
+make
+sudo make install
+```
 
 ### Getting the code
 To download all of the code, download Eos and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
