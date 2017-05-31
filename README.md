@@ -10,6 +10,15 @@ This project is written primarily in C++14 and uses CMake as its build system. A
 
 This project also depends on Boost version 1.60 and OpenSSL 1.0.2. Ensure that these libraries, and their development headers, are available with the correct versions.
 
+### Installing Dependencies
+EOS depends upon a version of secp256k1-skp that it expects to be installed.
+
+`git clone https://github.com/cryptonomex/secp256k1-zkp.git`
+`./autogen.sh`
+`./configure`
+`make`
+`sudo make install`
+
 ### Getting the code
 To download all of the code, download Eos and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
 
@@ -21,8 +30,6 @@ If a repo is cloned without the `--recursive` flag, the submodules can be retrie
 
 ### Configuring and building
 To do an in-source build, simply run `cmake .` from the top level directory. Out-of-source builds are also supported. When running CMake, it may be necessary to point to the correct versions of these libraries using environment variables, i.e:
-
-`BOOST_ROOT=/opt/boost-1.60`
 
 `PKG_CONFIG_PATH=/opt/openssl-1.0/pkgconfig`
 
