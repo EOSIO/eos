@@ -66,4 +66,4 @@ producer-id = {"_id":10}
 plugin = eos::producer_plugin
 ```
 
-Now you should be able to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, this instructions will be updated to show how to create an example multi-node testnet.
+Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, this instructions will be updated to show how to create an example multi-node testnet.
