@@ -1,7 +1,7 @@
 *.a
 *.sw*
 
-*.cmake
+cmake*
 CMakeCache.txt
 CMakeFiles
 Makefile
@@ -13,7 +13,11 @@ genesis.json
 hardfork.hpp
 
 libraries/utilities/git_revision.cpp
-
+libraries/egenesis/egenesis_brief.cpp
+libraries/egenesis/egenesis_full.cpp
+libraries/egenesis/embed_genesis
+libraries/types/type_generator
+libraries/types/types_test
 libraries/types/include/eos/types/generated.hpp
 
 libraries/wallet/Doxyfile
@@ -23,6 +27,8 @@ libraries/wallet/doxygen
 programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
 programs/witness_node/witness_node
+programs/data-dir
+programs/eosd/eosd
 
 tests/app_test
 tests/chain_bench
