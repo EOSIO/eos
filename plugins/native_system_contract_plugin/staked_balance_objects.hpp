@@ -5,9 +5,25 @@
 
 #include <eos/types/types.hpp>
 
+#include <chainbase/chainbase.hpp>
+
 #include <boost/multi_index/mem_fun.hpp>
 
 namespace eos {
+
+/**
+ * @brief The StakedBalanceObject class tracks the staked balance (voting balance) for accounts
+ */
+class StakedBalanceObject : public chainbase::object<chain::staked_balance_object_type, StakedBalanceObject> {
+   OBJECT_CTOR(StakedBalanceObject)
+
+   id_type id;
+   types::AccountName ownerName;
+
+   types::ShareType stakedBalance = 0;
+   types::ShareType unstakingBalance = 0;
+   types::Time lastUnstakingTime = types::Time::maximum();
+};
 
 /**
  * @brief The ProducerVotesObject class tracks all votes for and by the block producers
@@ -76,15 +92,26 @@ class ProducerVotesObject : public chainbase::object<chain::producer_votes_objec
 };
 
 using boost::multi_index::const_mem_fun;
-
-/// Index producers by their owner account's name
 struct byOwnerName;
+
+using StakedBalanceMultiIndex = chainbase::shared_multi_index_container<
+   StakedBalanceObject,
+   indexed_by<
+      ordered_unique<tag<by_id>,
+         member<StakedBalanceObject, StakedBalanceObject::id_type, &StakedBalanceObject::id>
+      >,
+      ordered_unique<tag<byOwnerName>,
+         member<StakedBalanceObject, types::AccountName, &StakedBalanceObject::ownerName>
+      >
+   >
+>;
+
 /// Index producers by projected race finishing time, from soonest to latest
 struct byProjectedRaceFinishTime;
 /// Index producers by votes, from greatest to least
 struct byVotes;
 
-using ProducerMultiIndex = chainbase::shared_multi_index_container<
+using ProducerVotesMultiIndex = chainbase::shared_multi_index_container<
    ProducerVotesObject,
    indexed_by<
       ordered_unique<tag<by_id>,
@@ -104,3 +131,6 @@ using ProducerMultiIndex = chainbase::shared_multi_index_container<
 >;
 
 } // namespace eos
+
+CHAINBASE_SET_INDEX_TYPE(eos::StakedBalanceObject, eos::StakedBalanceMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(eos::ProducerVotesObject, eos::ProducerVotesMultiIndex)

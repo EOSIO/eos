@@ -157,6 +157,7 @@ namespace eos { namespace chain {
       transaction_object_type,
       producer_object_type,
       chain_property_object_type,
+      staked_balance_object_type, ///< Defined by native_system_contract_plugin
       producer_votes_object_type, ///< Defined by native_system_contract_plugin
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
@@ -196,6 +197,7 @@ FC_REFLECT_ENUM( eos::chain::object_type,
                  (transaction_object_type)
                  (producer_object_type)
                  (chain_property_object_type)
+                 (staked_balance_object_type)
                  (producer_votes_object_type)
                  (OBJECT_TYPE_COUNT)
                )

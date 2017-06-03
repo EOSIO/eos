@@ -52,6 +52,8 @@ const static int ProducerCount = 21;
 const static int IrreversibleThresholdPercent = 70 * Percent1;
 
 const static UInt128 ProducerRaceLapLength = std::numeric_limits<UInt128>::max();
+
+const static auto StakedBalanceCooldownSeconds = fc::days(3).to_seconds();
 } } // namespace eos::config
 
 template<typename Number>
