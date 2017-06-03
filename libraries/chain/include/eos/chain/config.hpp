@@ -28,6 +28,7 @@
 namespace eos { namespace config {
 using types::UInt32;
 using types::UInt64;
+using types::UInt128;
 using types::ShareType;
 using types::Asset;
 
@@ -49,6 +50,8 @@ const static UInt32 DefaultMaxTrxLifetime = 60*60;
 
 const static int ProducerCount = 21;
 const static int IrreversibleThresholdPercent = 70 * Percent1;
+
+const static UInt128 ProducerScheduleLapLength = std::numeric_limits<UInt128>::max();
 } } // namespace eos::config
 
 template<typename Number>

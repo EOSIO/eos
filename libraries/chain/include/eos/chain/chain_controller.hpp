@@ -37,6 +37,7 @@
 #include <boost/signals2/signal.hpp>
 
 #include <eos/chain/protocol.hpp>
+#include <eos/chain/message_handling_contexts.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -47,42 +48,6 @@ namespace eos { namespace chain {
    class chain_controller;
    using database = chainbase::database;
    using boost::signals2::signal;
-
-   class message_validate_context {
-      public:
-         message_validate_context( const Transaction& t, const Message& m )
-         :trx(t),msg(m){}
-
-         const Transaction& trx;
-         const Message&     msg;
-   };
-
-
-   class precondition_validate_context : public message_validate_context {
-      public:
-         precondition_validate_context( const database& db, const Transaction& t, const Message& m, const AccountName& r )
-         :message_validate_context(t,m),recipient(r),db(db){}
-
-
-         const AccountName& recipient;
-         const database&    db;
-   };
-
-   class apply_context : public precondition_validate_context {
-      public:
-         apply_context( database& db, const Transaction& t, const Message& m, const AccountName& recipient )
-         :precondition_validate_context(db,t,m,recipient),mutable_db(db){}
-
-         String get( String key )const;
-         void   set( String key, String value );
-         void   remove( String key );
-
-         database&    mutable_db;
-   };
-
-   typedef std::function<void( message_validate_context& )> message_validate_handler;
-   typedef std::function<void( precondition_validate_context& )>   precondition_validate_handler;
-   typedef std::function<void( apply_context& )>            apply_handler;
 
    /**
     *   @class database

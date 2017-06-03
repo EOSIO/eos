@@ -1,6 +1,9 @@
 file(GLOB HEADERS "include/eos/native_system_contract_plugin/*.hpp")
 add_library( native_system_contract_plugin
              native_system_contract_plugin.cpp
+             staked_balance_contract.cpp
+             system_contract.cpp
+             eos_contract.cpp
              ${HEADERS} )
 
 target_link_libraries( native_system_contract_plugin chain_plugin appbase fc )
