@@ -5,7 +5,6 @@ add_library( eos_chain
              chain_controller.cpp
              fork_database.cpp
 
-             producer_object.cpp
              transaction.cpp
              block.cpp
 

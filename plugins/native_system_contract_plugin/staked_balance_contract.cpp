@@ -4,6 +4,7 @@
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/exceptions.hpp>
 
+
 namespace eos {
 using namespace chain;
 
@@ -53,6 +54,18 @@ void UpdateProducer::apply(apply_context& context) {
       p.signing_key = update.newKey;
       p.configuration = update.configuration;
    });
+}
+
+void ApproveProducer::validate(message_validate_context& context) {
+
+}
+
+void ApproveProducer::validate_preconditions(precondition_validate_context& context) {
+
+}
+
+void ApproveProducer::apply(apply_context& context) {
+
 }
 
 } // namespace eos

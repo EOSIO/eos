@@ -51,7 +51,7 @@ const static UInt32 DefaultMaxTrxLifetime = 60*60;
 const static int ProducerCount = 21;
 const static int IrreversibleThresholdPercent = 70 * Percent1;
 
-const static UInt128 ProducerScheduleLapLength = std::numeric_limits<UInt128>::max();
+const static UInt128 ProducerRaceLapLength = std::numeric_limits<UInt128>::max();
 } } // namespace eos::config
 
 template<typename Number>
