@@ -608,7 +608,7 @@ namespace fc
       v = std::string(n);
    }
    template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n ) {
-      n = decltype(n)(v.get_string());
+      n = boost::multiprecision::number<T>(v.get_string());
    }
 
    variant operator + ( const variant& a, const variant& b );
