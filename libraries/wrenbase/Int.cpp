@@ -29,6 +29,7 @@ namespace wrenbase {
             .bindFunction< decltype( &UInt256::toBinary ), &UInt256::toBinary >( false, "toBinary()")
             .bindFunction< decltype( &UInt256::toString ), &UInt256::toString >( false, "toString()")
             .bindFunction< decltype( &UInt256::toDouble ), &UInt256::toDouble >( false, "toDouble()")
+            .bindFunction< decltype( &UInt256::test ), &UInt256::test >( false, "test()")
          .endClass()
       .endModule();
    }
@@ -37,6 +38,7 @@ namespace wrenbase {
       return  R"(
       foreign class UInt256 {
          construct new(v) {}
+         foreign test()
          foreign ~
          foreign !
          foreign &(v)

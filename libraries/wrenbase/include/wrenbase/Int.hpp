@@ -4,6 +4,8 @@
 #include <sstream>
 
 
+struct WrenVM;
+
 namespace wrenbase {
    using namespace boost::multiprecision;
    using std::string;
@@ -15,6 +17,10 @@ namespace wrenbase {
       public:
         explicit UInt256(double v):value(v){}
         UInt256(uint256 v=0):value(v){}
+
+        void test( WrenVM& vm ) {
+           std::cerr << "WrenVM* => " << &vm <<"\n";
+        }
 
         UInt256 operator & ( const UInt256& other )const  { return value & other.value;  }
         UInt256 operator | ( const UInt256& other )const  { return value | other.value;  }
