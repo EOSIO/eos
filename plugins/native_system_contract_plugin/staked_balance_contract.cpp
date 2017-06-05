@@ -16,6 +16,7 @@ void TransferToLocked_Notify_Staked(apply_context& context) {
    context.mutable_db.modify(balance, [&lock](StakedBalanceObject& sbo) {
       sbo.stakedBalance += lock.amount;
    });
+#warning TODO: Update producer votes
 }
 
 void StartUnlockEos::validate(message_validate_context& context) {
@@ -74,7 +75,7 @@ void ClaimUnlockedEos::apply(apply_context& context) {
                              [&claim](StakedBalanceObject& sbo) {
       sbo.unstakingBalance -= claim.amount;
    });
-#warning TODO: Credit amount to account balance (but this contract doesn't do that...)
+#warning TODO: Update producer votes
 }
 
 void CreateProducer::validate(message_validate_context& context) {
