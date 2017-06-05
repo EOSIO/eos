@@ -30,11 +30,49 @@ void Transfer::apply(apply_context& context) {
    auto transfer = context.msg.as<types::Transfer>();
    const auto& from = db.get<account_object,by_name>(transfer.from);
    const auto& to = db.get<account_object,by_name>(transfer.to);
+#warning TODO: move balance from account_object to an EOS-constract-specific object
    db.modify(from, [&](account_object& a) {
       a.balance -= transfer.amount;
    });
    db.modify(to, [&](account_object& a) {
       a.balance += transfer.amount;
+   });
+}
+
+void TransferToLocked::validate(message_validate_context& context) {
+   auto lock = context.msg.as<types::TransferToLocked>();
+   EOS_ASSERT(lock.amount > 0, message_validate_exception, "Locked amount must be positive");
+   EOS_ASSERT(lock.to == lock.from || context.msg.has_notify(lock.to),
+              message_validate_exception, "Recipient account must be notified");
+   EOS_ASSERT(context.msg.has_notify(config::StakedBalanceContractName), message_validate_exception,
+              "Staked Balance Contract (${name}) must be notified", ("name", config::StakedBalanceContractName));
+}
+
+void TransferToLocked::validate_preconditions(precondition_validate_context& context) {
+   auto lock = context.msg.as<types::TransferToLocked>();
+   ShareType balance;
+   try {
+      const auto& sender = context.db.get<account_object, by_name>(lock.from);
+      context.db.get<account_object, by_name>(lock.to);
+      balance = sender.balance.amount;
+   } EOS_RECODE_EXC(fc::exception, message_precondition_exception)
+   EOS_ASSERT(balance >= lock.amount, message_precondition_exception,
+              "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount));
+}
+
+void TransferToLocked::apply(apply_context& context) {
+   auto lock = context.msg.as<types::TransferToLocked>();
+   const auto& locker = context.db.get<account_object, by_name>(lock.from);
+   context.mutable_db.modify(locker, [&lock](account_object& a) {
+      a.balance.amount -= lock.amount;
+   });
+}
+
+void ClaimUnlockedEos_Notify_Eos(apply_context& context) {
+   auto claim = context.msg.as<types::ClaimUnlockedEos>();
+   const auto& claimant = context.db.get<account_object, by_name>(claim.account);
+   context.mutable_db.modify(claimant, [&claim](account_object& a) {
+      a.balance.amount += claim.amount;
    });
 }
 

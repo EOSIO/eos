@@ -10,34 +10,12 @@
 namespace eos {
 using namespace chain;
 
-void TransferToLocked::validate(message_validate_context& context) {
+void TransferToLocked_Notify_Staked(apply_context& context) {
    auto lock = context.msg.as<types::TransferToLocked>();
-   EOS_ASSERT(lock.amount > 0, message_validate_exception, "Locked amount must be positive");
-   EOS_ASSERT(lock.to == lock.from || context.msg.has_notify(lock.to),
-              message_validate_exception, "Recipient account must be notified");
-#warning TODO: check that staked balance contract is notified (what's that contract's name?...)
-}
-
-void TransferToLocked::validate_preconditions(precondition_validate_context& context) {
-   auto lock = context.msg.as<types::TransferToLocked>();
-   ShareType balance;
-   try {
-      const auto& sender = context.db.get<account_object, by_name>(lock.from);
-      context.db.get<account_object, by_name>(lock.to);
-      balance = sender.balance.amount;
-   } EOS_RECODE_EXC(fc::exception, message_precondition_exception)
-   EOS_ASSERT(balance >= lock.amount, message_precondition_exception,
-              "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount));
-#warning TODO: check that account still has minimum balance?... Eww, that's gonna get complicated
-}
-
-void TransferToLocked::apply(apply_context& context) {
-   auto lock = context.msg.as<types::TransferToLocked>();
-   const auto& locker = context.db.get<account_object, by_name>(lock.from);
-   context.mutable_db.modify(locker, [&lock](account_object& a) {
-      a.balance.amount -= lock.amount;
+   const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(lock.to);
+   context.mutable_db.modify(balance, [&lock](StakedBalanceObject& sbo) {
+      sbo.stakedBalance += lock.amount;
    });
-#warning TODO: Credit amount to staked balance (but this contract doesn't do that...)
 }
 
 void StartUnlockEos::validate(message_validate_context& context) {
@@ -72,6 +50,8 @@ void StartUnlockEos::apply(apply_context& context) {
 void ClaimUnlockedEos::validate(message_validate_context& context) {
    auto claim = context.msg.as<types::ClaimUnlockedEos>();
    EOS_ASSERT(claim.amount > 0, message_validate_exception, "Claim amount must be positive");
+   EOS_ASSERT(context.msg.has_notify(config::EosContractName), message_validate_exception,
+              "EOS Contract (${name}) must be notified", ("name", config::EosContractName));
 }
 
 void ClaimUnlockedEos::validate_preconditions(precondition_validate_context& context) {

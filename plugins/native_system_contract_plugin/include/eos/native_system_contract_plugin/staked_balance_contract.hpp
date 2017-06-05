@@ -6,11 +6,7 @@
 
 namespace eos {
 
-struct TransferToLocked {
-   static void validate(chain::message_validate_context& context);
-   static void validate_preconditions(chain::precondition_validate_context& context);
-   static void apply(chain::apply_context& context);
-};
+void TransferToLocked_Notify_Staked(chain::apply_context& context);
 
 struct StartUnlockEos {
    static void validate(chain::message_validate_context& context);

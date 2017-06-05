@@ -43,9 +43,17 @@ void native_system_contract_plugin::install(chain_controller& db) {
    db.set_apply_handler(contractname, contractname, #handlername, &handlername::apply);
 #define FWD_SET_HANDLERS(r, data, elem) SET_HANDLERS(data, elem)
 
+   // Set message handlers
    BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::SystemContractName, EOS_SYSTEM_CONTRACT_FUNCTIONS)
    BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::EosContractName, EOS_CONTRACT_FUNCTIONS)
    BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::StakedBalanceContractName, EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS)
+
+   // Set notify handlers
+   db.set_apply_handler(config::EosContractName, config::StakedBalanceContractName,
+                        "TransferToLocked", &TransferToLocked_Notify_Staked);
+   db.set_apply_handler(config::StakedBalanceContractName, config::EosContractName,
+                        "ClaimUnlockedEos", &ClaimUnlockedEos_Notify_Eos);
+#warning TODO: Notify eos and sbc when an account is created
 }
 
 }
