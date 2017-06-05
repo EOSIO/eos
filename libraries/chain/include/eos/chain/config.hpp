@@ -34,6 +34,10 @@ using types::Asset;
 
 const static char KeyPrefix[] = "EOS";
 
+const static char SystemContractName[] = "sys";
+const static char EosContractName[] = "eos";
+const static char StakedBalanceContractName[] = "sbc";
+
 const static int BlockIntervalSeconds = 3;
 
 /** Percentages are fixed point with a denominator of 10,000 */

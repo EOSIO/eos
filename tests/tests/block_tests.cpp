@@ -96,7 +96,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 
       types::SetMessageHandler handler;
       handler.processor = "init1";
-      handler.recipient = "sys";
+      handler.recipient = config::EosContractName;
       handler.type      = "Transfer";
 
       handler.apply   = R"(
@@ -114,7 +114,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       )";
 
       trx.setMessage(0, "SetMessageHandler", handler);
-                          
+
       idump((trx));
       db.push_transaction(trx);
       db.produce_blocks(1);

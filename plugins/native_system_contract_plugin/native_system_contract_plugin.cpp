@@ -37,13 +37,15 @@ void native_system_contract_plugin::plugin_shutdown() {
 }
 
 void native_system_contract_plugin::install(chain_controller& db) {
-#define SET_HANDLERS(name) \
-   db.set_validate_handler("sys", "sys", #name, &name::validate); \
-   db.set_precondition_validate_handler("sys", "sys", #name, &name::validate_preconditions); \
-   db.set_apply_handler("sys", "sys", #name, &name::apply);
-#define FWD_SET_HANDLERS(r, data, elem) SET_HANDLERS(elem)
+#define SET_HANDLERS(contractname, handlername) \
+   db.set_validate_handler(contractname, contractname, #handlername, &handlername::validate); \
+   db.set_precondition_validate_handler(contractname, contractname, #handlername, &handlername::validate_preconditions); \
+   db.set_apply_handler(contractname, contractname, #handlername, &handlername::apply);
+#define FWD_SET_HANDLERS(r, data, elem) SET_HANDLERS(data, elem)
 
-   BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, x, EOS_SYSTEM_CONTRACT_FUNCTIONS)
+   BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::SystemContractName, EOS_SYSTEM_CONTRACT_FUNCTIONS)
+   BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::EosContractName, EOS_CONTRACT_FUNCTIONS)
+   BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::StakedBalanceContractName, EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS)
 }
 
 }

@@ -808,16 +808,26 @@ void chain_controller::initialize_genesis(std::function<genesis_state_type()> ge
          } inhibitor(*this);
 
 
-         /// create the system contract
+         /// create the native contract accounts
          _db.create<account_object>([&](account_object& a) {
-            a.name = "sys";
+            a.name = config::SystemContractName;
          });
-#define MACRO(r, data, elem) register_type<types::elem>("sys");
-         BOOST_PP_SEQ_FOR_EACH(MACRO, x, EOS_SYSTEM_CONTRACT_FUNCTIONS)
+         _db.create<account_object>([&](account_object& a) {
+            a.name = config::EosContractName;
+         });
+         _db.create<account_object>([&](account_object& a) {
+            a.name = config::StakedBalanceContractName;
+         });
+
+         // Register native contract message types
+#define MACRO(r, data, elem) register_type<types::elem>(data);
+         BOOST_PP_SEQ_FOR_EACH(MACRO, config::SystemContractName, EOS_SYSTEM_CONTRACT_FUNCTIONS)
+         BOOST_PP_SEQ_FOR_EACH(MACRO, config::EosContractName, EOS_CONTRACT_FUNCTIONS)
+         BOOST_PP_SEQ_FOR_EACH(MACRO, config::StakedBalanceContractName, EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS)
 #undef MACRO
 
-               // Create initial accounts
-               for (const auto& acct : genesis_state.initial_accounts) {
+         // Create initial accounts
+         for (const auto& acct : genesis_state.initial_accounts) {
             _db.create<account_object>([&acct](account_object& a) {
                a.name = acct.name.c_str();
                a.balance = acct.balance;

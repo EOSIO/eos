@@ -65,8 +65,9 @@
     { c(*this); }
 #define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
 
-#define EOS_SYSTEM_CONTRACT_FUNCTIONS (Transfer)(CreateAccount)(CreateProducer)(UpdateProducer) \
-   (DefineStruct)(SetMessageHandler)
+#define EOS_SYSTEM_CONTRACT_FUNCTIONS (CreateAccount)(DefineStruct)(SetMessageHandler)
+#define EOS_CONTRACT_FUNCTIONS (Transfer)
+#define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS (CreateProducer)(UpdateProducer)
 
 namespace eos { namespace chain {
    using                               std::map;

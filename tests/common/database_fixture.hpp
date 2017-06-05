@@ -289,6 +289,8 @@ protected:
  * Use Make_Account to create an account, including keys. The changes will be applied via a transaction applied to the
  * provided database object. The changes will not be incorporated into a block; they will be left in the pending state.
  *
+ * Unless overridden, new accounts are created with a balance of Asset(100)
+ *
  * Example:
  * @code{.cpp}
  * Make_Account(db, joe)
