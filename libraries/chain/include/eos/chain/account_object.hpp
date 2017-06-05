@@ -63,9 +63,6 @@ namespace eos { namespace chain {
       id_type           id;
       AccountName       name;
       Asset             balance;
-      UInt64            votes                  = 0;
-      UInt64            converting_votes       = 0;
-      Time              last_vote_conversion;
    };
 
    struct by_name;
@@ -118,5 +115,5 @@ namespace eos { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eos::chain::account_object, eos::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_index)
 
-FC_REFLECT(eos::chain::account_object, (id)(name)(balance)(votes)(converting_votes)(last_vote_conversion) )
-FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name) )
+FC_REFLECT(eos::chain::account_object, (id)(name)(balance))
+FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name))

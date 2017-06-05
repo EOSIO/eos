@@ -55,6 +55,19 @@ struct Transfer
    amount    Asset
    memo      String
 
+struct TransferToLocked
+   from      AccountName
+   to        AccountName
+   amount    ShareType
+
+struct StartUnlockEos
+   account   AccountName
+   amount    ShareType
+
+struct ClaimUnlockedEos
+   account   AccountName
+   amount    ShareType
+
 struct CreateAccount
    creator   AccountName
    name      AccountName
