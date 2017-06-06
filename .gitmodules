@@ -7,3 +7,6 @@
 [submodule "libraries/appbase"]
 	path = libraries/appbase
 	url = https://github.com/eosio/appbase
+[submodule "libraries/binaryen"]
+	path = libraries/binaryen
+	url = https://github.com/WebAssembly/binaryen.git
