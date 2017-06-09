@@ -52,11 +52,11 @@ namespace eos { namespace chain {
 
 
 String apply_context::get( String key )const {
-   const auto& obj = db.get<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   const auto& obj = db.get<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
    return String(obj.value.begin(),obj.value.end());
 }
 void apply_context::set( String key, String value ) {
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
    if( obj ) {
       mutable_db.modify( *obj, [&]( auto& o ) {
          o.value.resize( value.size() );
@@ -64,14 +64,14 @@ void apply_context::set( String key, String value ) {
       });
    } else {
       mutable_db.create<key_value_object>( [&](auto& o) {
-         o.scope = recipient;
+         o.scope = scope;
          o.key.insert( 0, key.data(), key.size() );
          o.value.insert( 0, value.data(), value.size() );
       });
    }
 }
 void apply_context::remove( String key ) {
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
+   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
    if( obj ) {
       mutable_db.remove( *obj );
    }
@@ -595,7 +595,7 @@ void chain_controller::validate_message_precondition( precondition_validate_cont
     const auto& m = context.msg;
     auto contract_handlers_itr = precondition_validate_handlers.find( m.recipient );
     if( contract_handlers_itr != precondition_validate_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {context.recipient, m.type} );
+       auto message_handler_itr = contract_handlers_itr->second.find( {context.scope, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {
           message_handler_itr->second(context);
           return;
@@ -627,16 +627,16 @@ void chain_controller::apply_message( apply_context& context )
     const auto& m = context.msg;
     auto contract_handlers_itr = apply_handlers.find( m.recipient );
     if( contract_handlers_itr != apply_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {context.recipient, m.type} );
+       auto message_handler_itr = contract_handlers_itr->second.find( {context.scope, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {
           message_handler_itr->second(context);
           return;
        }
     }
-    const auto& processor = _db.get<account_object,by_name>( context.recipient ); ///TODO: rename context.recipient to context.proecssor
+    const auto& scope = _db.get<account_object,by_name>( context.scope );
     const auto& recipient = _db.get<account_object,by_name>( context.msg.recipient );
 
-    auto handler = _db.find<action_code_object,by_processor_recipient_type>( boost::make_tuple(processor.id, recipient.id, context.msg.type) );
+    auto handler = _db.find<action_code_object,by_processor_recipient_type>( boost::make_tuple(scope.id, recipient.id, context.msg.type) );
     if( handler ) {
        wdump((handler->apply.c_str()));
       wrenpp::VM vm;
