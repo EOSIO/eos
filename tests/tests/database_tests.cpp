@@ -123,7 +123,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture, * boost::un
 
       for (int i = 0; i < votes.size(); ++i) {
          auto name = std::string("init") + fc::to_string(i);
-         Update_Producer(db, name, db.get_model().get_producer(name).signing_key, votes[i]);
+         Update_Producer(db, name, db.get_producer(name).signing_key, votes[i]);
       }
 
       BOOST_CHECK_NE(db.get_global_properties().configuration, medians);

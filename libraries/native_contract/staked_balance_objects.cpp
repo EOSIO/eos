@@ -1,4 +1,4 @@
-#include "staked_balance_objects.hpp"
+#include <eos/native_contract/staked_balance_objects.hpp>
 
 namespace eos {
 using namespace chain;

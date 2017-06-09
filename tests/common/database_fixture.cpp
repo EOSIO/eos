@@ -30,7 +30,8 @@
 
 #include <eos/utilities/tempdir.hpp>
 
-#include <eos/native_system_contract_plugin/native_system_contract_plugin.hpp>
+#include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -47,12 +48,11 @@ namespace eos { namespace chain {
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-   default_genesis_state.immutable_parameters.min_producer_count = config::ProducerCount;
-   for (int i = 0; i < default_genesis_state.immutable_parameters.min_producer_count; ++i) {
+   for (int i = 0; i < config::ProducerCount; ++i) {
       auto name = std::string("init") + fc::to_string(i);
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
-      default_genesis_state.initial_accounts.emplace_back(name, 100000, public_key, public_key);
+      default_genesis_state.initial_accounts.emplace_back(name, 0, 100000, public_key, public_key);
       key_ring[public_key] = private_key;
 
       private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name + ".producer"));
@@ -87,16 +87,10 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
    return itr->second;
 }
 
-testing_database::testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                                   testing_fixture& fixture, fc::optional<genesis_state_type> override_genesis_state)
-   : chain_controller(db, fork_db, blocklog, [&override_genesis_state, &fixture] {
-        if (override_genesis_state) return *override_genesis_state;
-        return fixture.genesis_state();
-     }),
-     fixture(fixture) {
-   // Install the system contract implementation
-   native_system_contract_plugin::install(*this);
-}
+testing_database::testing_database(chainbase::database& db, fork_database& fork_db,
+                                   block_log& blocklog, chain_initializer& initializer, testing_fixture& fixture)
+   : chain_controller(db, fork_db, blocklog, initializer),
+     fixture(fixture) {}
 
 void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
    if (count == 0)
@@ -104,10 +98,9 @@ void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
 
    for (int i = 0; i < count; ++i) {
       auto slot = blocks_to_miss + 1;
-      auto producer_id = get_scheduled_producer(slot);
-      const auto& producer = get_model().get(producer_id);
+      auto producer = get_producer(get_scheduled_producer(slot));
       auto private_key = fixture.get_private_key(producer.signing_key);
-      generate_block(get_slot_time(slot), producer_id, private_key, 0);
+      generate_block(get_slot_time(slot), producer.owner, private_key, 0);
    }
 }
 
@@ -130,6 +123,18 @@ void testing_database::sync_with(testing_database& other) {
 
    sync_dbs(*this, other);
    sync_dbs(other, *this);
+}
+
+types::Asset testing_database::get_liquid_balance(const types::AccountName& account) {
+   return get_database().get<BalanceObject, byOwnerName>(account).balance;
+}
+
+types::Asset testing_database::get_staked_balance(const types::AccountName& account) {
+   return get_database().get<StakedBalanceObject, byOwnerName>(account).stakedBalance;
+}
+
+types::Asset testing_database::get_unstaking_balance(const types::AccountName& account) {
+   return get_database().get<StakedBalanceObject, byOwnerName>(account).unstakingBalance;
 }
 
 void testing_network::connect_database(testing_database& new_database) {

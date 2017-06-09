@@ -26,7 +26,6 @@
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
-#include <eos/chain/chain_property_object.hpp>
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/action_objects.hpp>
@@ -151,10 +150,6 @@ std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type
     result.emplace_back(fork_block->id);
   result.emplace_back(branches.first.back()->previous_id());
   return result;
-}
-
-chain_model chain_controller::get_model() const {
-   return chain_model(_db);
 }
 
 /**
@@ -286,7 +281,7 @@ void chain_controller::_push_transaction(const SignedTransaction& trx) {
 
 signed_block chain_controller::generate_block(
    fc::time_point_sec when,
-   producer_id_type producer_id,
+   const AccountName& producer,
    const fc::ecc::private_key& block_signing_private_key,
    uint32_t skip /* = 0 */
    )
@@ -294,7 +289,7 @@ signed_block chain_controller::generate_block(
    return with_producing( [&]() {
       return with_skip_flags( skip, [&](){
          auto b = _db.with_write_lock( [&](){
-           return _generate_block( when, producer_id, block_signing_private_key );
+           return _generate_block( when, producer, block_signing_private_key );
          });
          push_block(b);
          return b;
@@ -304,7 +299,7 @@ signed_block chain_controller::generate_block(
 
 signed_block chain_controller::_generate_block(
    fc::time_point_sec when,
-   producer_id_type producer_id,
+   const AccountName& producer,
    const fc::ecc::private_key& block_signing_private_key
    )
 {
@@ -312,10 +307,10 @@ signed_block chain_controller::_generate_block(
    uint32_t skip = get_node_properties().skip_flags;
    uint32_t slot_num = get_slot_at_time( when );
    FC_ASSERT( slot_num > 0 );
-   producer_id_type scheduled_producer = get_scheduled_producer( slot_num );
-   FC_ASSERT( scheduled_producer == producer_id );
+   AccountName scheduled_producer = get_scheduled_producer( slot_num );
+   FC_ASSERT( scheduled_producer == producer );
 
-   const auto& producer_obj = _db.get(scheduled_producer);
+   const auto& producer_obj = get_producer(scheduled_producer);
 
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
@@ -391,7 +386,7 @@ signed_block chain_controller::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
 
-   pending_block.producer = static_cast<uint16_t>(producer_id._id); //pa.name.c_str(); //producer_id;
+   pending_block.producer = static_cast<uint16_t>(producer_obj.id._id);
 
    if( !(skip & skip_producer_signature) )
       pending_block.sign( block_signing_private_key );
@@ -407,7 +402,7 @@ signed_block chain_controller::_generate_block(
    // push_block( pending_block, skip );
 
    return pending_block;
-} FC_CAPTURE_AND_RETHROW( (producer_id) ) }
+} FC_CAPTURE_AND_RETHROW( (producer) ) }
 
 /**
  * Removes the most recent block from the database and undoes any changes it made.
@@ -512,7 +507,7 @@ try {
 
    for (const auto& tm : trx.messages) { /// TODO: this loop can be processed in parallel
       Message m(tm);
-      message_validate_context mvc(trx, m);
+      message_validate_context mvc(m);
       auto contract_handlers_itr = message_validate_handlers.find(m.recipient);
       if (contract_handlers_itr != message_validate_handlers.end()) {
          auto message_handler_itr = contract_handlers_itr->second.find({m.recipient, m.type});
@@ -547,16 +542,15 @@ void chain_controller::validate_tapos(const SignedTransaction& trx)const {
 }
 
 void chain_controller::validate_referenced_accounts(const SignedTransaction& trx)const {
-   auto model = get_model();
    for(const auto& auth : trx.authorizations) {
-      model.get_account(auth.account);
+      require_account(auth.account);
    }
    for(const auto& msg : trx.messages) {
-      model.get_account(msg.sender);
-      model.get_account(msg.recipient);
+      require_account(msg.sender);
+      require_account(msg.recipient);
       const AccountName* previous_notify_account = nullptr;
       for(const auto& current_notify_account : msg.notify) {
-         model.get_account(current_notify_account);
+         require_account(current_notify_account);
          if(previous_notify_account) {
             EOS_ASSERT(current_notify_account < *previous_notify_account, message_validate_exception,
                        "Message notify accounts out of order. Possibly a bug in the wallet?");
@@ -599,23 +593,41 @@ try {
 void chain_controller::validate_message_precondition( precondition_validate_context& context )const 
 { try {
     const auto& m = context.msg;
-    auto contract_handlers_itr = precondition_validate_handlers.find( context.recipient );
+    auto contract_handlers_itr = precondition_validate_handlers.find( m.recipient );
     if( contract_handlers_itr != precondition_validate_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
+       auto message_handler_itr = contract_handlers_itr->second.find( {context.recipient, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {
           message_handler_itr->second(context);
           return;
        }
     }
     /// TODO: dispatch to script if not handled above
-} FC_CAPTURE_AND_RETHROW() }
+   } FC_CAPTURE_AND_RETHROW() }
+
+void chain_controller::process_message(Message message) {
+   apply_context apply_ctx(_db, message, message.recipient);
+
+   /** TODO: pre condition validation and application can occur in parallel */
+   /** TODO: verify that message is fully authorized
+          (check that @ref SignedTransaction::authorizations are all present) */
+   validate_message_precondition(apply_ctx);
+   apply_message(apply_ctx);
+
+   for (const auto& notify_account : message.notify) {
+      try {
+         apply_context notify_ctx(_db, message, notify_account);
+         validate_message_precondition(notify_ctx);
+         apply_message(notify_ctx);
+      } FC_CAPTURE_AND_RETHROW((notify_account)(message))
+   }
+}
 
 void chain_controller::apply_message( apply_context& context ) 
 { try {
     const auto& m = context.msg;
-    auto contract_handlers_itr = apply_handlers.find( context.recipient );
+    auto contract_handlers_itr = apply_handlers.find( m.recipient );
     if( contract_handlers_itr != apply_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
+       auto message_handler_itr = contract_handlers_itr->second.find( {context.recipient, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {
           message_handler_itr->second(context);
           return;
@@ -641,50 +653,38 @@ void chain_controller::apply_message( apply_context& context )
       apply_method( &context, 1 );
     }
     /// TODO: dispatch to script if not handled above
-} FC_CAPTURE_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW((context.msg)) }
 
 
 void chain_controller::_apply_transaction(const SignedTransaction& trx)
 { try {
    validate_transaction(trx);
 
-   // trx.messages is a vector<types::Message>, but we want a chain::Message, so go ahead and copy it into one.
-   for( Message m : trx.messages ) {
-      // apply_context will store a reference to the chain::Message argument. m must *not* be a types::Message here, or
-      // the compiler will create a temporary chain::Message out of the types::Message and pass a reference to that to
-      // ac. ac will keep the temporary reference, which will be invalid as soon as this next line finishes running.
-      apply_context ac( _db, trx, m, m.recipient );
-
-      /** TODO: pre condition validation and application can occur in parallel */
-      validate_message_precondition( ac );
-      apply_message( ac );
-
-      for( const auto& n : m.notify ) {
-         try {
-            apply_context c( _db, trx, m, n );
-            validate_message_precondition( c );
-            apply_message( c );
-         } FC_CAPTURE_AND_RETHROW( (n) ) 
-      }
-
+   for (const auto& message : trx.messages) {
+      process_message(message);
    }
 
    //Insert transaction into unique transactions database.
-   if( should_check_for_duplicate_transactions() )
+   if (should_check_for_duplicate_transactions())
    {
       _db.create<transaction_object>([&](transaction_object& transaction) {
          transaction.trx_id = trx.id(); /// TODO: consider caching ID
          transaction.trx = trx;
       });
    }
-} FC_CAPTURE_AND_RETHROW((trx)) }
+   } FC_CAPTURE_AND_RETHROW((trx)) }
+
+void chain_controller::require_account(const types::AccountName& name) const {
+   auto account = _db.find<account_object, by_name>(name);
+   FC_ASSERT(account != nullptr, "Account not found: ${name}", ("name", name));
+}
 
 const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
    FC_ASSERT(head_block_id() == next_block.previous, "",
              ("head_block_id",head_block_id())("next.prev",next_block.previous));
    FC_ASSERT(head_block_time() < next_block.timestamp, "",
              ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
-   const producer_object& producer = _db.get(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
+   const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
       FC_ASSERT(next_block.validate_signee(producer.signing_key),
@@ -693,7 +693,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
 
    if(!(skip&skip_producer_schedule_check)) {
       FC_ASSERT(next_block.producer == producer.id, "Producer produced block at wrong time",
-                ("block producer",next_block.producer)("scheduled producer",producer.id));
+                ("block producer",next_block.producer)("scheduled producer",producer.id._id));
    }
 
    return producer;
@@ -751,18 +751,18 @@ block_id_type chain_controller::head_block_id()const {
    return get_dynamic_global_properties().head_block_id;
 }
 
-producer_id_type chain_controller::head_block_producer() const {
+types::AccountName chain_controller::head_block_producer() const {
    if (auto head_block = fetch_block_by_id(head_block_id()))
-      return head_block->producer;
+      return _db.get((producer_object::id_type)head_block->producer).owner;
    return {};
-}
-
-const chain_id_type& chain_controller::get_chain_id()const {
-   return _db.get<chain_property_object>().chain_id;
 }
 
 const node_property_object& chain_controller::get_node_properties()const {
    return _node_property_object;
+}
+
+const producer_object& chain_controller::get_producer(const types::AccountName& ownerName) const {
+   return _db.get<producer_object, by_owner>(ownerName);
 }
 
 node_property_object& chain_controller::node_properties() {
@@ -786,17 +786,12 @@ void chain_controller::initialize_indexes() {
    _db.add_index<block_summary_multi_index>();
    _db.add_index<transaction_multi_index>();
    _db.add_index<producer_multi_index>();
-   _db.add_index<chain_property_multi_index>();
 }
 
-void chain_controller::initialize_genesis(std::function<genesis_state_type()> genesis_loader)
+void chain_controller::initialize_chain(chain_initializer& starter)
 { try {
    if (!_db.find<global_property_object>()) {
-      _db.with_write_lock([this, genesis_state = genesis_loader()] {
-         FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
-         FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
-                    "Genesis timestamp must be divisible by config::BlockIntervalSeconds." );
-
+      _db.with_write_lock([this, &starter] {
          struct auth_inhibitor {
             auth_inhibitor(chain_controller& db) : db(db), old_flags(db.node_properties().skip_flags)
             { db.node_properties().skip_flags |= skip_authority_check; }
@@ -807,76 +802,34 @@ void chain_controller::initialize_genesis(std::function<genesis_state_type()> ge
             uint32_t old_flags;
          } inhibitor(*this);
 
+         auto messages = starter.prepare_database(*this, _db);
 
-         /// create the native contract accounts
-         _db.create<account_object>([&](account_object& a) {
-            a.name = config::SystemContractName;
-         });
-         _db.create<account_object>([&](account_object& a) {
-            a.name = config::EosContractName;
-         });
-         _db.create<account_object>([&](account_object& a) {
-            a.name = config::StakedBalanceContractName;
-         });
-
-         // Register native contract message types
-#define MACRO(r, data, elem) register_type<types::elem>(data);
-         BOOST_PP_SEQ_FOR_EACH(MACRO, config::SystemContractName, EOS_SYSTEM_CONTRACT_FUNCTIONS)
-         BOOST_PP_SEQ_FOR_EACH(MACRO, config::EosContractName, EOS_CONTRACT_FUNCTIONS)
-         BOOST_PP_SEQ_FOR_EACH(MACRO, config::StakedBalanceContractName, EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS)
-#undef MACRO
-
-         // Create initial accounts
-         for (const auto& acct : genesis_state.initial_accounts) {
-            _db.create<account_object>([&acct](account_object& a) {
-               a.name = acct.name.c_str();
-               a.balance = acct.balance;
-               //         idump((acct.name)(a.balance));
-               //         a.active_key = acct.active_key;
-               //         a.owner_key = acct.owner_key;
-            });
-         }
-         // Create initial producers
-         std::vector<producer_id_type> initial_producers;
-         for (const auto& producer : genesis_state.initial_producers) {
-            const auto& owner = _db.get<account_object, by_name>(producer.owner_name);
-            auto id = _db.create<producer_object>([&](producer_object& w) {
-                      w.signing_key = producer.block_signing_key;
-                      w.owner = owner.id;
-         }).id;
-            initial_producers.push_back(id);
-         }
-
-         // Initialize block summary index
-#warning TODO: Figure out how to do this
-
-         chain_id_type chain_id = genesis_state.compute_chain_id();
+         auto initial_timestamp = starter.get_chain_start_time();
+         FC_ASSERT(initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
+         FC_ASSERT(initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
+                    "Genesis timestamp must be divisible by config::BlockIntervalSeconds." );
 
          // Create global properties
-         _db.create<global_property_object>([&](global_property_object& p) {
-            p.configuration = genesis_state.initial_configuration;
-            std::copy(initial_producers.begin(), initial_producers.end(), p.active_producers.begin());
+         _db.create<global_property_object>([&starter](global_property_object& p) {
+            p.configuration = starter.get_chain_start_configuration();
+            p.active_producers = starter.get_chain_start_producers();
          });
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
-            p.time = genesis_state.initial_timestamp;
+            p.time = initial_timestamp;
             p.recent_slots_filled = uint64_t(-1);
          });
 
-         FC_ASSERT((genesis_state.immutable_parameters.min_producer_count & 1) == 1, "min_producer_count must be odd");
-
-         _db.create<chain_property_object>([&](chain_property_object& p) {
-            p.chain_id = chain_id;
-            p.immutable_parameters = genesis_state.immutable_parameters;
-         });
-
+         // Initialize block summary index
          for (int i = 0; i < 0x10000; i++)
             _db.create<block_summary_object>([&](block_summary_object&) {});
+
+         std::for_each(messages.begin(), messages.end(), [this](const auto& m) { process_message(m); });
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
 
-chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                                   std::function<genesis_state_type()> genesis_loader)
+chain_controller::chain_controller(database& database, fork_database& fork_db,
+                                   block_log& blocklog, chain_initializer& starter)
    : _db(database), _fork_db(fork_db), _block_log(blocklog) {
    static bool bound_apply = [](){
       wrenpp::beginModule( "main" )
@@ -889,7 +842,7 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
    }();
 
    initialize_indexes();
-   initialize_genesis(genesis_loader);
+   initialize_chain(starter);
    spinup_db();
    spinup_fork_db();
 
@@ -967,7 +920,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
 //      wlog("Blockchain continuing after gap of ${b} missed blocks", ("b", missed_blocks));
 
    for(uint32_t i = 0; i < missed_blocks; ++i) {
-      const auto& producer_missed = _db.get(get_scheduled_producer(i+1));
+      const auto& producer_missed = get_producer(get_scheduled_producer(i+1));
       if(producer_missed.id != b.producer) {
          /*
          const auto& producer_account = producer_missed.producer_account(*this);
@@ -986,7 +939,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.current_producer = b.producer;
+      dgp.current_producer = _db.get(producer_object::id_type(b.producer)).owner;
       dgp.current_absolute_slot += missed_blocks+1;
 
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
@@ -1021,7 +974,7 @@ void chain_controller::update_last_irreversible_block()
    vector<const producer_object*> producer_objs;
    producer_objs.reserve(gpo.active_producers.size());
    std::transform(gpo.active_producers.begin(), gpo.active_producers.end(), std::back_inserter(producer_objs),
-                  [this](producer_id_type id) { return &_db.get(id); });
+                  [this](const AccountName& owner) { return &get_producer(owner); });
 
    static_assert(config::IrreversibleThresholdPercent > 0, "irreversible threshold must be nonzero");
 
@@ -1071,7 +1024,7 @@ void chain_controller::clear_expired_transactions()
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_controller::update_blockchain_configuration() {
-   auto get_producer = [this](producer_id_type id) { return _db.get(id); };
+   auto get_producer = [this](const AccountName& owner) { return this->get_producer(owner); };
    auto get_votes = [](const producer_object& p) { return p.configuration; };
    using boost::adaptors::transformed;
 
@@ -1085,7 +1038,7 @@ void chain_controller::update_blockchain_configuration() {
 
 using boost::container::flat_set;
 
-producer_id_type chain_controller::get_scheduled_producer(uint32_t slot_num)const
+types::AccountName chain_controller::get_scheduled_producer(uint32_t slot_num)const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
@@ -1141,5 +1094,7 @@ void chain_controller::set_precondition_validate_handler(  const AccountName& co
 void chain_controller::set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v ) {
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
+
+chain_initializer::~chain_initializer() {}
 
 } }

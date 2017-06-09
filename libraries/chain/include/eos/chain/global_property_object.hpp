@@ -49,7 +49,7 @@ namespace eos { namespace chain {
       id_type                           id;
       BlockchainConfiguration           configuration;
 
-      std::array<producer_id_type, config::ProducerCount>   active_producers;
+      std::array<AccountName, config::ProducerCount>   active_producers;
    };
 
 
@@ -71,7 +71,7 @@ namespace eos { namespace chain {
         uint32_t          head_block_number = 0;
         block_id_type     head_block_id;
         time_point_sec    time;
-        producer_id_type  current_producer;
+        AccountName       current_producer;
         uint32_t          accounts_registered_this_interval = 0;
         
         /**

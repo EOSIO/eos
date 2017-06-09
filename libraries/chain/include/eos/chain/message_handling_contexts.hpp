@@ -10,18 +10,16 @@ namespace eos { namespace chain {
 
 class message_validate_context {
 public:
-   message_validate_context(const types::Transaction& t, const chain::Message& m)
-      :trx(t),msg(m){}
+   explicit message_validate_context(const chain::Message& m)
+      :msg(m){}
 
-   const types::Transaction& trx;
    const chain::Message& msg;
 };
 
 class precondition_validate_context : public message_validate_context {
 public:
-   precondition_validate_context(const chainbase::database& db, const types::Transaction& t,
-                                 const chain::Message& m, const types::AccountName& r)
-      :message_validate_context(t,m),recipient(r),db(db){}
+   precondition_validate_context(const chainbase::database& db, const chain::Message& m, const types::AccountName& r)
+      :message_validate_context(m),recipient(r),db(db){}
 
 
    const types::AccountName& recipient;
@@ -30,9 +28,8 @@ public:
 
 class apply_context : public precondition_validate_context {
 public:
-   apply_context(chainbase::database& db, const types::Transaction& t,
-                 const chain::Message& m, const types::AccountName& recipient)
-      :precondition_validate_context(db,t,m,recipient),mutable_db(db){}
+   apply_context(chainbase::database& db, const chain::Message& m, const types::AccountName& recipient)
+      :precondition_validate_context(db,m,recipient),mutable_db(db){}
 
    types::String get(types::String key)const;
    void set(types::String key, types::String value);

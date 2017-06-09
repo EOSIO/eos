@@ -57,7 +57,7 @@ public:
    uint32_t _production_skip_flags = eos::chain::chain_controller::skip_nothing;
 
    std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
-   std::set<chain::producer_id_type> _producers;
+   std::set<types::AccountName> _producers;
    boost::asio::deadline_timer _timer;
 };
 
@@ -92,7 +92,7 @@ void producer_plugin::set_program_options(
    boost::program_options::options_description& config_file_options)
 {
    auto default_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("nathan")));
-   string producer_id_example = fc::json::to_string(chain::producer_id_type(5));
+   string producer_id_example = fc::json::to_string("init0");
 
    auto private_key_default = std::make_pair(chain::public_key_type(default_priv_key.get_public_key()),
                                              eos::utilities::key_to_wif(default_priv_key));
@@ -100,7 +100,7 @@ void producer_plugin::set_program_options(
    command_line_options.add_options()
          ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("required-participation", bpo::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
-         ("producer-id,w", bpo::value<vector<string>>()->composing()->multitoken(),
+         ("producer-name,p", bpo::value<vector<string>>()->composing()->multitoken(),
           ("ID of producer controlled by this node (e.g. " + producer_id_example + ", quotes are required, may specify multiple times)").c_str())
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
                                                                                                 fc::json::to_string(private_key_default)),
@@ -117,13 +117,13 @@ T dejsonify(const string& s) {
 #define LOAD_VALUE_SET(options, name, container, type) \
 if( options.count(name) ) { \
    const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
-   std::transform(ops.begin(), ops.end(), std::inserter(container, container.end()), &dejsonify<type>); \
+   std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
 }
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->_options = &options;
-   LOAD_VALUE_SET(options, "producer-id", my->_producers, chain::producer_id_type)
+   LOAD_VALUE_SET(options, "producer-name", my->_producers, types::AccountName)
 
    if( options.count("private-key") )
    {
@@ -237,7 +237,6 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
    chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
-   const auto& db = app().get_plugin<database_plugin>().db();
    fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
@@ -268,7 +267,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    //
    assert( now > chain.head_block_time() );
 
-   eos::chain::producer_id_type scheduled_producer = chain.get_scheduled_producer( slot );
+   eos::types::AccountName scheduled_producer = chain.get_scheduled_producer( slot );
    // we must control the producer scheduled to produce the next block.
    if( _producers.find( scheduled_producer ) == _producers.end() )
    {
@@ -277,7 +276,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    }
 
    fc::time_point_sec scheduled_time = chain.get_slot_time( slot );
-   eos::chain::public_key_type scheduled_key = db.get(scheduled_producer).signing_key;
+   eos::chain::public_key_type scheduled_key = chain.get_producer(scheduled_producer).signing_key;
    auto private_key_itr = _private_keys.find( scheduled_key );
 
    if( private_key_itr == _private_keys.end() )

@@ -1,17 +1,18 @@
-#include <eos/native_system_contract_plugin/system_contract.hpp>
+#include <eos/native_contract/system_contract.hpp>
 
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/action_objects.hpp>
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/type_object.hpp>
 #include <eos/chain/exceptions.hpp>
+#include <eos/chain/global_property_object.hpp>
 
 namespace eos {
 using namespace chain;
 
 void DefineStruct::validate(message_validate_context& context) {
    auto  msg = context.msg.as<types::DefineStruct>();
-   FC_ASSERT(msg.definition.name != TypeName(), "must define a type name");
+   EOS_ASSERT(msg.definition.name != TypeName(), message_validate_exception, "must define a type name");
    // TODO:  validate_type_name( msg.definition.name)
    //   validate_type_name( msg.definition.base)
 }
@@ -72,6 +73,11 @@ void SetMessageHandler::apply(apply_context& context) {
 void CreateAccount::validate(message_validate_context& context) {
    auto create = context.msg.as<types::CreateAccount>();
 
+   EOS_ASSERT(context.msg.has_notify(config::EosContractName), message_validate_exception,
+              "Must notify EOS Contract (${name})", ("name", config::EosContractName));
+   EOS_ASSERT(context.msg.has_notify(config::StakedBalanceContractName), message_validate_exception,
+              "Must notify Staked Balance Contract (${name})", ("name", config::StakedBalanceContractName));
+
    EOS_ASSERT( eos::validate(create.owner), message_validate_exception, "Invalid owner authority");
    EOS_ASSERT( eos::validate(create.active), message_validate_exception, "Invalid active authority");
    EOS_ASSERT( eos::validate(create.recovery), message_validate_exception, "Invalid recovery authority");
@@ -88,9 +94,6 @@ void CreateAccount::validate_preconditions(precondition_validate_context& contex
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   const auto& creator = db.get<account_object,by_name>(context.msg.sender);
-   EOS_ASSERT(creator.balance >= create.deposit, message_precondition_exception, "Insufficient Funds");
-
 #warning TODO: make sure creation deposit is greater than min account balance
 
    auto validate_authority_preconditions = [&context](const auto& auth) {
@@ -105,17 +108,14 @@ void CreateAccount::validate_preconditions(precondition_validate_context& contex
 void CreateAccount::apply(apply_context& context) {
    auto& db = context.mutable_db;
    auto create = context.msg.as<types::CreateAccount>();
-   db.modify(db.get<account_object,by_name>(context.msg.sender), [&create](account_object& a) {
-      a.balance -= create.deposit;
+   const auto& new_account = db.create<account_object>([&create, &db](account_object& a) {
+      a.name = create.name;
+      a.creation_date = db.get(dynamic_global_property_object::id_type()).time;
    });
-   const auto& new_account = db.create<account_object>([&create](account_object& a) {
-                             a.name = create.name;
-                             a.balance = create.deposit;
-});
    const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
       p.name = "owner";
       p.parent = 0;
-      p.owner = new_account.id;
+      p.owner = new_account.name;
       p.auth = std::move(create.owner);
    });
    db.create<permission_object>([&create, &owner_permission](permission_object& p) {

@@ -29,8 +29,6 @@
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 
-#include <eos/native_system_contract_plugin/native_system_contract_plugin.hpp>
-
 #include <eos/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -59,16 +57,13 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
       Make_Database(db);
-      auto model = db.get_model();
       db.produce_blocks(10);
 
       Make_Account(db, newguy);
-      auto newguy = model.find<account_object, by_name>("newguy");
-      BOOST_CHECK(newguy != nullptr);
 
       Transfer_Asset(db, newguy, init0, Asset(1));
-      BOOST_CHECK_EQUAL(model.get_account("newguy").balance, Asset(99));
-      BOOST_CHECK_EQUAL(model.get_account("init0").balance, Asset(100000-99));
+      BOOST_CHECK_EQUAL(db.get_liquid_balance("newguy"), Asset(99));
+      BOOST_CHECK_EQUAL(db.get_liquid_balance("init0"), Asset(100000-99));
 
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 11);
@@ -76,15 +71,14 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.empty());
       BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.front().empty());
       BOOST_CHECK_EQUAL(db.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
-      BOOST_CHECK_EQUAL(model.get_account("newguy").balance, Asset(99));
-      BOOST_CHECK_EQUAL(model.get_account("init0").balance, Asset(100000-99));
+      BOOST_CHECK_EQUAL(db.get_liquid_balance("newguy"), Asset(99));
+      BOOST_CHECK_EQUAL(db.get_liquid_balance("init0"), Asset(100000-99));
 } FC_LOG_AND_RETHROW() }
 
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture) 
 { try {
       Make_Database(db);
-      auto model = db.get_model();
       db.produce_blocks(10);
 
       SignedTransaction trx;
@@ -115,14 +109,14 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 
       trx.setMessage(0, "SetMessageHandler", handler);
 
-      idump((trx));
       db.push_transaction(trx);
       db.produce_blocks(1);
 
       Transfer_Asset(db, init3, init1, Asset(100), "transfer 100");
       db.produce_blocks(1);
 
-      const auto& world = model.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"), String("hello")));
+      const auto& world = db_db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"),
+                                                                                     String("hello")));
       BOOST_CHECK_EQUAL( string(world.value.c_str()), "world" );
 
 } FC_LOG_AND_RETHROW() }
@@ -131,14 +125,13 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
 { try {
       Make_Database(db)
-      auto model = db.get_model();
 
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
 
-      producer_id_type skipped_producers[3] = {db.get_scheduled_producer(1),
-                                               db.get_scheduled_producer(2),
-                                               db.get_scheduled_producer(3)};
+      AccountName skipped_producers[3] = {db.get_scheduled_producer(1),
+                                          db.get_scheduled_producer(2),
+                                          db.get_scheduled_producer(3)};
       auto next_block_time = db.get_slot_time(4);
       auto next_producer = db.get_scheduled_producer(4);
 
@@ -146,11 +139,11 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       db.produce_blocks(1, 3);
       BOOST_CHECK_EQUAL(db.head_block_num(), 2);
       BOOST_CHECK_EQUAL(db.head_block_time().to_iso_string(), next_block_time.to_iso_string());
-      BOOST_CHECK_EQUAL(db.head_block_producer()._id, next_producer._id);
-      BOOST_CHECK_EQUAL(model.get(next_producer).total_missed, 0);
+      BOOST_CHECK_EQUAL(db.head_block_producer(), next_producer);
+      BOOST_CHECK_EQUAL(db.get_producer(next_producer).total_missed, 0);
 
       for (auto producer : skipped_producers) {
-         BOOST_CHECK_EQUAL(model.get(producer).total_missed, 1);
+         BOOST_CHECK_EQUAL(db.get_producer(producer).total_missed, 1);
       }
 } FC_LOG_AND_RETHROW() }
 
@@ -403,7 +396,8 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
          chainbase::database db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE);
          block_log log(get_temp_dir("log"));
          fork_database fdb;
-         testing_database chain(db, fdb, log, *this);
+         native_contract::native_contract_chain_initializer initr(genesis_state());
+         testing_database chain(db, fdb, log, initr, *this);
 
          chain.produce_blocks(100);
 
@@ -414,7 +408,8 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
          chainbase::database db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE);
          block_log log(get_temp_dir("log"));
          fork_database fdb;
-         testing_database chain(db, fdb, log, *this);
+         native_contract::native_contract_chain_initializer initr(genesis_state());
+         testing_database chain(db, fdb, log, initr, *this);
 
          BOOST_CHECK_EQUAL(chain.head_block_num(), 100 - lag);
          chain.produce_blocks(20);
