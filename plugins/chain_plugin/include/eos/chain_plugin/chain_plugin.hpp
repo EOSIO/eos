@@ -24,7 +24,7 @@ public:
       uint32_t head_block_num;
       chain::block_id_type head_block_id;
       fc::time_point_sec head_block_time;
-      chain::producer_id_type head_block_producer;
+      types::AccountName head_block_producer;
       string recent_slots;
       double participation_rate;
    };

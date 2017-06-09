@@ -38,6 +38,8 @@ const static char SystemContractName[] = "sys";
 const static char EosContractName[] = "eos";
 const static char StakedBalanceContractName[] = "sbc";
 
+const static ShareType InitialTokenSupply = Asset(90'000'000).amount;
+
 const static int BlockIntervalSeconds = 3;
 
 /** Percentages are fixed point with a denominator of 10,000 */

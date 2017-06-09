@@ -2,6 +2,11 @@
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
 #include <eos/chain/exceptions.hpp>
+#include <eos/chain/genesis_state.hpp>
+#include <eos/chain/producer_object.hpp>
+
+#include <eos/native_contract/native_contract_chain_initializer.hpp>
+
 #include <fc/io/json.hpp>
 
 namespace eos {
@@ -84,16 +89,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void chain_plugin::plugin_startup() {
-   auto genesis_loader = [this] {
-      if (my->genesis_file.empty())
-         return eos::chain::genesis_state_type();
-      return fc::json::from_file(my->genesis_file).as<eos::chain::genesis_state_type>();
-   };
    auto& db = app().get_plugin<database_plugin>().db();
+
+   auto genesis = fc::json::from_file(my->genesis_file).as<chain::genesis_state_type>();
+   native_contract::native_contract_chain_initializer initializer(genesis);
 
    my->fork_db = fork_database();
    my->block_logger = block_log(my->block_log_dir);
-   my->chain = chain_controller(db, *my->fork_db, *my->block_logger, genesis_loader);
+   my->chain = chain_controller(db, *my->fork_db, *my->block_logger, initializer);
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");

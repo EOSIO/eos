@@ -32,7 +32,7 @@ class producer_object : public chainbase::object<producer_object_type, producer_
    OBJECT_CTOR(producer_object)
 
    id_type          id;
-   account_id_type  owner;
+   AccountName      owner;
    uint64_t         last_aslot = 0;
    public_key_type  signing_key;
    int64_t          total_missed = 0;
@@ -48,7 +48,7 @@ using producer_multi_index = chainbase::shared_multi_index_container<
    producer_object,
    indexed_by<
       ordered_unique<tag<by_id>, member<producer_object, producer_object::id_type, &producer_object::id>>,
-      ordered_unique<tag<by_owner>, member<producer_object, account_id_type, &producer_object::owner>>,
+      ordered_unique<tag<by_owner>, member<producer_object, AccountName, &producer_object::owner>>,
       ordered_non_unique<tag<by_key>, member<producer_object, public_key_type, &producer_object::signing_key>>
    >
 >;

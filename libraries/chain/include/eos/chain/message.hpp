@@ -50,4 +50,4 @@ struct Message : public types::Message {
 
 } } // namespace eos::chain
 
-FC_REFLECT(eos::chain::Message, (sender)(recipient)(notify)(type)(data))
+FC_REFLECT_DERIVED(eos::chain::Message, (eos::types::Message), )

@@ -55,15 +55,15 @@ namespace eos { namespace chain {
       shared_vector<types::AccountPermissionWeight> accounts;
       shared_vector<types::KeyPermissionWeight>     keys;
    };
-   
-   class account_object : public chainbase::object<account_object_type, account_object>
-   {
+
+   class account_object : public chainbase::object<account_object_type, account_object> {
       OBJECT_CTOR(account_object)
 
       id_type           id;
       AccountName       name;
-      Asset             balance;
+      Time              creation_date;
    };
+   using account_id_type = account_object::id_type;
 
    struct by_name;
    using account_index = chainbase::shared_multi_index_container<
@@ -74,18 +74,15 @@ namespace eos { namespace chain {
       >
    >;
 
-   class permission_object : public chainbase::object<permission_object_type, permission_object>
-   {
+   class permission_object : public chainbase::object<permission_object_type, permission_object> {
       OBJECT_CTOR(permission_object, (auth) )
 
       id_type           id;
-      account_id_type   owner; ///< the account this permission belongs to
+      AccountName       owner; ///< the account this permission belongs to
       id_type           parent; ///< parent permission 
       PermissionName    name;
       shared_authority  auth; ///< TODO
    };
-
-
 
    struct by_parent;
    struct by_owner;
@@ -93,20 +90,25 @@ namespace eos { namespace chain {
       permission_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<permission_object, permission_object::id_type, &permission_object::id>>,
-         ordered_unique<tag<by_parent>, 
-            composite_key< permission_object,
+         ordered_unique<tag<by_parent>,
+            composite_key<permission_object,
                member<permission_object, permission_object::id_type, &permission_object::parent>,
                member<permission_object, permission_object::id_type, &permission_object::id>
             >
          >,
-         ordered_unique<tag<by_owner>, 
-            composite_key< permission_object,
-               member<permission_object, account_object::id_type, &permission_object::owner>,
+         ordered_unique<tag<by_owner>,
+            composite_key<permission_object,
+               member<permission_object, AccountName, &permission_object::owner>,
                member<permission_object, PermissionName, &permission_object::name>,
                member<permission_object, permission_object::id_type, &permission_object::id>
             >
          >,
-         ordered_unique<tag<by_name>, member<permission_object, PermissionName, &permission_object::name> >
+         ordered_unique<tag<by_name>,
+            composite_key<permission_object,
+               member<permission_object, PermissionName, &permission_object::name>,
+               member<permission_object, permission_object::id_type, &permission_object::id>
+            >
+         >
       >
    >;
 
@@ -115,5 +117,9 @@ namespace eos { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eos::chain::account_object, eos::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_index)
 
-FC_REFLECT(eos::chain::account_object, (id)(name)(balance))
+FC_REFLECT(chainbase::oid<eos::chain::permission_object>, (_id))
+FC_REFLECT(chainbase::oid<eos::chain::account_object>, (_id))
+
+FC_REFLECT(eos::chain::account_object, (id)(name)(creation_date))
+// TODO: Reflect permission_object::auth
 FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name))

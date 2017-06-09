@@ -1,16 +1,26 @@
-#include <eos/native_system_contract_plugin/staked_balance_contract.hpp>
+#include <eos/native_contract/staked_balance_contract.hpp>
+#include <eos/native_contract/staked_balance_objects.hpp>
 
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/exceptions.hpp>
 
-#include "staked_balance_objects.hpp"
-
 namespace eos {
 using namespace chain;
 
-void TransferToLocked_Notify_Staked(apply_context& context) {
+void CreateAccount_Notify_Staked::validate_preconditions(precondition_validate_context& context) {
+
+}
+
+void CreateAccount_Notify_Staked::apply(apply_context& context) {
+   auto create = context.msg.as<types::CreateAccount>();
+   context.mutable_db.create<StakedBalanceObject>([&create](StakedBalanceObject& sbo) {
+      sbo.ownerName = create.name;
+   });
+}
+
+void TransferToLocked_Notify_Staked::apply(apply_context& context) {
    auto lock = context.msg.as<types::TransferToLocked>();
    const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(lock.to);
    context.mutable_db.modify(balance, [&lock](StakedBalanceObject& sbo) {
@@ -86,8 +96,7 @@ void CreateProducer::validate(message_validate_context& context) {
 void CreateProducer::validate_preconditions(precondition_validate_context& context) {
    auto create = context.msg.as<types::CreateProducer>();
    const auto& db = context.db;
-   const auto& owner = db.get<account_object,by_name>(create.name);
-   auto producer = db.find<producer_object, by_owner>(owner.id);
+   auto producer = db.find<producer_object, by_owner>(create.name);
    EOS_ASSERT(producer == nullptr, message_precondition_exception,
               "Account ${name} already has a block producer", ("name", create.name));
 }
@@ -95,9 +104,8 @@ void CreateProducer::validate_preconditions(precondition_validate_context& conte
 void CreateProducer::apply(apply_context& context) {
    auto create = context.msg.as<types::CreateProducer>();
    auto& db = context.mutable_db;
-   const auto& owner = db.get<account_object,by_name>(create.name);
-   db.create<producer_object>([&create, &owner](producer_object& p) {
-      p.owner = owner.id;
+   db.create<producer_object>([&create](producer_object& p) {
+      p.owner = create.name;
       p.signing_key = create.key;
    });
 }
@@ -110,7 +118,7 @@ void UpdateProducer::validate(message_validate_context& context) {
 void UpdateProducer::validate_preconditions(precondition_validate_context& context) {
    const auto& db = context.db;
    auto update = context.msg.as<types::UpdateProducer>();
-   const auto& producer = db.get<producer_object, by_owner>(db.get<account_object, by_name>(update.name).id);
+   const auto& producer = db.get<producer_object, by_owner>(update.name);
    EOS_ASSERT(producer.signing_key != update.newKey || producer.configuration != update.configuration,
               message_validate_exception, "Producer's new settings may not be identical to old settings");
 }
@@ -118,7 +126,7 @@ void UpdateProducer::validate_preconditions(precondition_validate_context& conte
 void UpdateProducer::apply(apply_context& context) {
    auto& db = context.mutable_db;
    auto update = context.msg.as<types::UpdateProducer>();
-   const auto& producer = db.get<producer_object, by_owner>(db.get<account_object, by_name>(update.name).id);
+   const auto& producer = db.get<producer_object, by_owner>(update.name);
 
    db.modify(producer, [&update](producer_object& p) {
       p.signing_key = update.newKey;

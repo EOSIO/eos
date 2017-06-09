@@ -27,6 +27,8 @@
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/exceptions.hpp>
 
+#include <eos/native_contract/native_contract_chain_initializer.hpp>
+
 #include <eos/utilities/tempdir.hpp>
 
 #include <fc/io/json.hpp>
@@ -133,8 +135,8 @@ protected:
  */
 class testing_database : public chain_controller {
 public:
-   testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog, testing_fixture& fixture,
-                    fc::optional<genesis_state_type> override_genesis_state = {});
+   testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                    chain_initializer& initializer, testing_fixture& fixture);
 
    /**
     * @brief Produce new blocks, adding them to the database, optionally following a gap of missed blocks
@@ -156,6 +158,13 @@ public:
     * Blocks not on the main fork are ignored.
     */
    void sync_with(testing_database& other);
+
+   /// @brief Get the liquid balance belonging to the named account
+   Asset get_liquid_balance(const types::AccountName& account);
+   /// @brief Get the staked balance belonging to the named account
+   Asset get_staked_balance(const types::AccountName& account);
+   /// @brief Get the unstaking balance belonging to the named account
+   Asset get_unstaking_balance(const types::AccountName& account);
 
 protected:
    testing_fixture& fixture;
@@ -198,8 +207,6 @@ public:
 protected:
    std::map<testing_database*, scoped_connection> databases;
 };
-
-
 
 /// Some helpful macros to reduce boilerplate when making testcases
 /// @{

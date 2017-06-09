@@ -29,7 +29,6 @@
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/genesis_state.hpp>
 #include <eos/chain/block_log.hpp>
-#include <eos/chain/chain_model.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
@@ -50,14 +49,46 @@ namespace eos { namespace chain {
    using boost::signals2::signal;
 
    /**
+    * @brief This class defines an interface allowing
+    */
+   class chain_initializer {
+   public:
+      virtual ~chain_initializer();
+      /**
+       * @brief Prepare the database, creating objects and defining state which should exist before the first block
+       * @param chain A reference to the @ref chain_controller
+       * @param db A reference to the @ref chainbase::database
+       * @param A list of @ref Message "Messages" to be applied before the first block
+       *
+       * This method creates the @ref account_object "account_objects" and @ref producer_object "producer_objects" for
+       * at least the initial block producers.
+       *
+       * This method also provides an opportunity to create objects and setup the database to the state it should be in
+       * prior to the first block. This method should only initialize state that the @ref chain_controller itself does
+       * not understand. The other methods will be called to retrieve the data necessary to initialize chain state the
+       * controller does understand.
+       *
+       * Finally, this method may perform any necessary initializations on the chain and/or database, such as
+       * installing indexes and message handlers that should be defined before the first block is processed. This may
+       * be necessary in order for the returned list of messages to be processed successfully.
+       */
+      virtual vector<Message> prepare_database(chain_controller& chain, database& db) = 0;
+      /// Retrieve the timestamp to use as the blockchain start time
+      virtual types::Time get_chain_start_time() = 0;
+      /// Retrieve the BlockchainConfiguration to use at blockchain start
+      virtual BlockchainConfiguration get_chain_start_configuration() = 0;
+      /// Retrieve the first round of block producers
+      virtual std::array<AccountName, config::ProducerCount> get_chain_start_producers() = 0;
+   };
+
+   /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
    class chain_controller
    {
       public:
-         chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          std::function<genesis_state_type()> genesis_loader);
+         chain_controller(database& database, fork_database& fork_db, block_log& blocklog, chain_initializer& starter);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -130,8 +161,6 @@ namespace eos { namespace chain {
          const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
-         chain_model get_model()const;
-
          /**
           *  Calculate the percent of block production slots that were missed in the
           *  past 128 blocks, not including the current block.
@@ -148,14 +177,14 @@ namespace eos { namespace chain {
          void _push_transaction( const SignedTransaction& trx );
 
          signed_block generate_block(
-            const fc::time_point_sec when,
-            producer_id_type producer,
+            fc::time_point_sec when,
+            const AccountName& producer,
             const fc::ecc::private_key& block_signing_private_key,
             uint32_t skip
             );
          signed_block _generate_block(
-            const fc::time_point_sec when,
-            producer_id_type producer,
+            fc::time_point_sec when,
+            const AccountName& producer,
             const fc::ecc::private_key& block_signing_private_key
             );
 
@@ -215,7 +244,7 @@ namespace eos { namespace chain {
           *
           * Passing slot_num == 0 returns EOS_NULL_PRODUCER
           */
-         producer_id_type get_scheduled_producer(uint32_t slot_num)const;
+         AccountName get_scheduled_producer(uint32_t slot_num)const;
 
          /**
           * Get the time at which the given slot occurs.
@@ -239,15 +268,15 @@ namespace eos { namespace chain {
 
          void update_producer_schedule();
 
-         const chain_id_type&                   get_chain_id()const;
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const node_property_object&            get_node_properties()const;
+         const producer_object&                 get_producer(const AccountName& ownerName)const;
 
          time_point_sec   head_block_time()const;
          uint32_t         head_block_num()const;
          block_id_type    head_block_id()const;
-         producer_id_type head_block_producer()const;
+         AccountName      head_block_producer()const;
 
          uint32_t block_interval()const { return config::BlockIntervalSeconds; }
 
@@ -262,16 +291,21 @@ namespace eos { namespace chain {
          // these were formerly private, but they have a fairly well-defined API, so let's make them public
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
          void apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
+
+   protected:
+         const chainbase::database& get_database() const { return _db; }
          
    private:
          /// Reset the object graph in-memory
          void initialize_indexes();
-         void initialize_genesis(std::function<genesis_state_type()> genesis_loader);
+         void initialize_chain(chain_initializer& starter);
 
          void replay();
 
          void _apply_block(const signed_block& next_block);
          void _apply_transaction(const SignedTransaction& trx);
+
+         void require_account(const AccountName& name) const;
 
          /**
           * This method validates transactions without adding it to the pending state.
@@ -287,6 +321,7 @@ namespace eos { namespace chain {
          /// @}
 
          void validate_message_precondition(precondition_validate_context& c)const;
+         void process_message(Message message);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
