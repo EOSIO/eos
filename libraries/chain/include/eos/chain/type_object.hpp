@@ -38,6 +38,7 @@ namespace eos { namespace chain {
       TypeName              base;
       shared_vector<Field>  fields;
    };
+   using type_id_type = type_object::id_type;
 
    struct by_scope_name;
    using type_index = chainbase::shared_multi_index_container<
@@ -56,5 +57,7 @@ namespace eos { namespace chain {
 } } // eos::chain
 
 CHAINBASE_SET_INDEX_TYPE(eos::chain::type_object, eos::chain::type_index)
+
+FC_REFLECT(chainbase::oid<eos::chain::type_object>, (_id))
 
 FC_REFLECT(eos::chain::type_object, (id)(scope)(name)(base_scope)(base)(fields) )
