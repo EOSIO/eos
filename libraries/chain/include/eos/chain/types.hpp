@@ -180,8 +180,8 @@ namespace eos { namespace chain {
 } }  // eos::chain
 
 namespace fc {
-  void to_variant(const shared_vector<eos::types::Field>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, shared_vector<eos::types::Field>& fields);
+  void to_variant(const eos::chain::shared_vector<eos::types::Field>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eos::chain::shared_vector<eos::types::Field>& fields);
 }
 
 FC_REFLECT_ENUM(eos::chain::object_type,
