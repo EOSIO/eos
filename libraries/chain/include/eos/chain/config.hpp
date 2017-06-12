@@ -38,7 +38,7 @@ const static char SystemContractName[] = "sys";
 const static char EosContractName[] = "eos";
 const static char StakedBalanceContractName[] = "sbc";
 
-const static ShareType InitialTokenSupply = Asset(90'000'000).amount;
+const static ShareType InitialTokenSupply = Asset::fromString("90000000.00000000 EOS").amount;
 
 const static int BlockIntervalSeconds = 3;
 
