@@ -14,6 +14,7 @@ add_library( eos_chain
              BlockchainConfiguration.cpp
 
              types.cpp
+             chain_administration_interface.cpp
 
              ${HEADERS}
            )

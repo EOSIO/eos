@@ -31,6 +31,7 @@
 #include <eos/utilities/tempdir.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/native_contract_chain_administrator.hpp>
 #include <eos/native_contract/objects.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -87,9 +88,9 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
    return itr->second;
 }
 
-testing_database::testing_database(chainbase::database& db, fork_database& fork_db,
-                                   block_log& blocklog, chain_initializer_interface& initializer, testing_fixture& fixture)
-   : chain_controller(db, fork_db, blocklog, initializer),
+testing_database::testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                   chain_initializer_interface& initializer, testing_fixture& fixture)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator()),
      fixture(fixture) {}
 
 void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {

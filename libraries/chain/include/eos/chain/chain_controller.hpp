@@ -37,6 +37,7 @@
 #include <eos/chain/protocol.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/chain_initializer_interface.hpp>
+#include <eos/chain/chain_administration_interface.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -50,10 +51,10 @@ namespace eos { namespace chain {
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class chain_controller
-   {
+   class chain_controller {
       public:
-         chain_controller(database& database, fork_database& fork_db, block_log& blocklog, chain_initializer_interface& starter);
+         chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
+                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -319,6 +320,8 @@ namespace eos { namespace chain {
          database&                        _db;
          fork_database&                   _fork_db;
          block_log&                       _block_log;
+
+         unique_ptr<chain_administration_interface> _admin;
 
          optional<database::session>      _pending_tx_session;
          deque<SignedTransaction>         _pending_transactions;

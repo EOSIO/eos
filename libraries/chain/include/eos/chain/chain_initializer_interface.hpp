@@ -28,7 +28,7 @@ public:
     * @brief Prepare the database, creating objects and defining state which should exist before the first block
     * @param chain A reference to the @ref chain_controller
     * @param db A reference to the @ref chainbase::database
-    * @param A list of @ref Message "Messages" to be applied before the first block
+    * @return A list of @ref Message "Messages" to be applied before the first block
     *
     * This method creates the @ref account_object "account_objects" and @ref producer_object "producer_objects" for
     * at least the initial block producers returned by @ref get_chain_start_producers

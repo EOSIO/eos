@@ -28,6 +28,7 @@
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/native_contract_chain_administrator.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 

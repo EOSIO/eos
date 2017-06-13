@@ -827,9 +827,9 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
    }
 } FC_CAPTURE_AND_RETHROW() }
 
-chain_controller::chain_controller(database& database, fork_database& fork_db,
-                                   block_log& blocklog, chain_initializer_interface& starter)
-   : _db(database), _fork_db(fork_db), _block_log(blocklog) {
+chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
+                                   chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
+   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
    static bool bound_apply = [](){
       wrenpp::beginModule( "main" )
          .bindClassReference<apply_context>( "ApplyContext" )
@@ -1023,16 +1023,13 @@ void chain_controller::clear_expired_transactions()
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_controller::update_blockchain_configuration() {
-   auto get_producer = [this](const AccountName& owner) { return this->get_producer(owner); };
-   auto get_votes = [](const producer_object& p) { return p.configuration; };
-   using boost::adaptors::transformed;
+   auto config = _admin->get_blockchain_configuration(_db);
+   const auto& gpo = get_global_properties();
 
-   auto votes_range = get_global_properties().active_producers | transformed(get_producer) | transformed(get_votes);
-
-   auto medians = BlockchainConfiguration::get_median_values({votes_range.begin(), votes_range.end()});
-   _db.modify(get_global_properties(), [&medians](global_property_object& p) {
-      p.configuration = std::move(medians);
-   });
+   if (config != gpo.configuration)
+      _db.modify(gpo, [config = std::move(config)](global_property_object& gpo) {
+         gpo.configuration = std::move(config);
+      });
 }
 
 using boost::container::flat_set;
