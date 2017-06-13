@@ -88,7 +88,7 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
 }
 
 testing_database::testing_database(chainbase::database& db, fork_database& fork_db,
-                                   block_log& blocklog, chain_initializer& initializer, testing_fixture& fixture)
+                                   block_log& blocklog, chain_initializer_interface& initializer, testing_fixture& fixture)
    : chain_controller(db, fork_db, blocklog, initializer),
      fixture(fixture) {}
 

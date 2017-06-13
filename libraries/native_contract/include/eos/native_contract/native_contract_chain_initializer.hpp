@@ -6,7 +6,7 @@
 
 namespace eos { namespace native_contract {
 
-class native_contract_chain_initializer : public chain::chain_initializer {
+class native_contract_chain_initializer : public chain::chain_initializer_interface {
    genesis_state_type genesis;
 public:
    native_contract_chain_initializer(const genesis_state_type& genesis) : genesis(genesis) {}

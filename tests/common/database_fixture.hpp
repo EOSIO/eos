@@ -136,7 +136,7 @@ protected:
 class testing_database : public chain_controller {
 public:
    testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                    chain_initializer& initializer, testing_fixture& fixture);
+                     chain_initializer_interface& initializer, testing_fixture& fixture);
 
    /**
     * @brief Produce new blocks, adding them to the database, optionally following a gap of missed blocks

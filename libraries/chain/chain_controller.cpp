@@ -788,7 +788,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<producer_multi_index>();
 }
 
-void chain_controller::initialize_chain(chain_initializer& starter)
+void chain_controller::initialize_chain(chain_initializer_interface& starter)
 { try {
    if (!_db.find<global_property_object>()) {
       _db.with_write_lock([this, &starter] {
@@ -828,7 +828,7 @@ void chain_controller::initialize_chain(chain_initializer& starter)
 } FC_CAPTURE_AND_RETHROW() }
 
 chain_controller::chain_controller(database& database, fork_database& fork_db,
-                                   block_log& blocklog, chain_initializer& starter)
+                                   block_log& blocklog, chain_initializer_interface& starter)
    : _db(database), _fork_db(fork_db), _block_log(blocklog) {
    static bool bound_apply = [](){
       wrenpp::beginModule( "main" )
@@ -1094,6 +1094,6 @@ void chain_controller::set_apply_handler( const AccountName& contract, const Acc
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
 
-chain_initializer::~chain_initializer() {}
+chain_initializer_interface::~chain_initializer_interface() {}
 
 } }
