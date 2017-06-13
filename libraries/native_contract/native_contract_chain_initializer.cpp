@@ -6,6 +6,9 @@
 
 #include <eos/chain/producer_object.hpp>
 
+#include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/algorithm/copy.hpp>
+
 namespace eos { namespace native_contract {
 using namespace chain;
 
@@ -90,14 +93,11 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    }
 
    // Create initial producers
-   std::vector<types::AccountName> initial_producers;
-   for (const auto& producer : genesis.initial_producers) {
-      db.create<producer_object>([&](producer_object& p) {
-         p.signing_key = producer.block_signing_key;
-         p.owner = producer.owner_name;
-      });
-      initial_producers.push_back(producer.owner_name);
-   }
+   auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
+      return chain::Message(config::SystemContractName, config::StakedBalanceContractName, vector<AccountName>{},
+                            "CreateProducer", types::CreateProducer(p.owner_name, p.block_signing_key, config));
+   });
+   boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));
 
    return messages_to_process;
 }

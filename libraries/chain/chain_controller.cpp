@@ -802,8 +802,6 @@ void chain_controller::initialize_chain(chain_initializer& starter)
             uint32_t old_flags;
          } inhibitor(*this);
 
-         auto messages = starter.prepare_database(*this, _db);
-
          auto initial_timestamp = starter.get_chain_start_time();
          FC_ASSERT(initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
          FC_ASSERT(initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
@@ -823,6 +821,7 @@ void chain_controller::initialize_chain(chain_initializer& starter)
          for (int i = 0; i < 0x10000; i++)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
+         auto messages = starter.prepare_database(*this, _db);
          std::for_each(messages.begin(), messages.end(), [this](const auto& m) { process_message(m); });
       });
    }
