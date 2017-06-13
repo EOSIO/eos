@@ -2,10 +2,10 @@
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
 #include <eos/chain/exceptions.hpp>
-#include <eos/chain/genesis_state.hpp>
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/genesis_state.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -94,7 +94,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup() {
    auto& db = app().get_plugin<database_plugin>().db();
 
-   auto genesis = fc::json::from_file(my->genesis_file).as<chain::genesis_state_type>();
+   auto genesis = fc::json::from_file(my->genesis_file).as<native_contract::genesis_state_type>();
    native_contract::native_contract_chain_initializer initializer(genesis);
 
    my->fork_db = fork_database();

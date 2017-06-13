@@ -55,11 +55,11 @@ extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
       ("exc_type", #exc_type)                             \
       );                                                  \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "EOS_REQUIRE_THROW begin "        \
+      std::cout << "EOS_REQUIRE_THROW begin "             \
          << req_throw_info << std::endl;                  \
    BOOST_REQUIRE_THROW( expr, exc_type );                 \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "EOS_REQUIRE_THROW end "          \
+      std::cout << "EOS_REQUIRE_THROW end "               \
          << req_throw_info << std::endl;                  \
 }
 
@@ -73,11 +73,11 @@ extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
       ("exc_type", #exc_type)                             \
       );                                                  \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "EOS_CHECK_THROW begin "          \
+      std::cout << "EOS_CHECK_THROW begin "               \
          << req_throw_info << std::endl;                  \
    BOOST_CHECK_THROW( expr, exc_type );                   \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "EOS_CHECK_THROW end "            \
+      std::cout << "EOS_CHECK_THROW end "                 \
          << req_throw_info << std::endl;                  \
 }
 
@@ -109,8 +109,8 @@ public:
     */
    fc::path get_temp_dir(std::string id = std::string());
 
-   const genesis_state_type& genesis_state() const;
-   genesis_state_type& genesis_state();
+   const native_contract::genesis_state_type& genesis_state() const;
+   native_contract::genesis_state_type& genesis_state();
 
    private_key_type get_private_key(const public_key_type& public_key) const;
 
@@ -118,7 +118,7 @@ protected:
    std::vector<fc::temp_directory> anonymous_temp_dirs;
    std::map<std::string, fc::temp_directory> named_temp_dirs;
    std::map<public_key_type, private_key_type> key_ring;
-   genesis_state_type default_genesis_state;
+   native_contract::genesis_state_type default_genesis_state;
 };
 
 /**

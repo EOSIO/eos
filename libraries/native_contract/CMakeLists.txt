@@ -7,6 +7,7 @@ add_library( eos_native_contract
              staked_balance_objects.cpp
              system_contract.cpp
              native_contract_chain_initializer.cpp
+             genesis_state.cpp
 
              ${HEADERS}
            )

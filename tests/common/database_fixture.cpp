@@ -72,11 +72,11 @@ fc::path testing_fixture::get_temp_dir(std::string id) {
    return named_temp_dirs.emplace(std::make_pair(id, fc::temp_directory())).first->second.path();
 }
 
-const genesis_state_type&testing_fixture::genesis_state() const {
+const native_contract::genesis_state_type& testing_fixture::genesis_state() const {
    return default_genesis_state;
 }
 
-genesis_state_type&testing_fixture::genesis_state() {
+native_contract::genesis_state_type& testing_fixture::genesis_state() {
    return default_genesis_state;
 }
 
