@@ -35,11 +35,14 @@
 #include <eos/types/native.hpp>
 #include <eos/types/generated.hpp>
 
+#include <eos/utilities/randutils.hpp>
+#include <eos/utilities/pcg-random/pcg_random.hpp>
+
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
 
-#include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm/copy.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <fstream>
@@ -677,20 +680,24 @@ void chain_controller::require_account(const types::AccountName& name) const {
 }
 
 const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
-   FC_ASSERT(head_block_id() == next_block.previous, "",
-             ("head_block_id",head_block_id())("next.prev",next_block.previous));
-   FC_ASSERT(head_block_time() < next_block.timestamp, "",
-             ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
+   EOS_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
+              ("head_block_id",head_block_id())("next.prev",next_block.previous));
+   EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
+              ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
+   if (next_block.block_num() % config::ProducerCount != 0)
+      EOS_ASSERT(next_block.producer_changes.empty(), block_validate_exception,
+                 "Producer changes may only occur at the end of a round.");
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
-      FC_ASSERT(next_block.validate_signee(producer.signing_key),
-                "Incorrect block producer key: expected ${e} but got ${a}",
-                ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
+      EOS_ASSERT(next_block.validate_signee(producer.signing_key), block_validate_exception,
+                 "Incorrect block producer key: expected ${e} but got ${a}",
+                 ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
 
    if(!(skip&skip_producer_schedule_check)) {
-      FC_ASSERT(next_block.producer == producer.owner, "Producer produced block at wrong time",
-                ("block producer",next_block.producer)("scheduled producer",producer.owner));
+      EOS_ASSERT(next_block.producer == producer.owner, block_validate_exception,
+                 "Producer produced block at wrong time",
+                 ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
    return producer;
@@ -704,14 +711,13 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
 }
 
 void chain_controller::update_global_properties(const signed_block& b) {
-   // If we're at the end of a round...
+   // If we're at the end of a round, update the BlockchainConfiguration and producer schedule
    if (b.block_num() % config::ProducerCount == 0) {
-      // Get the new schedule and blockchain configuration
-      auto schedule = _admin->get_next_round(_db);
+      auto schedule = calculate_next_round(b);
       auto config = _admin->get_blockchain_configuration(_db, schedule);
 
-      _db.modify(get_global_properties(),
-                 [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
+      const auto& gpo = get_global_properties();
+      _db.modify(gpo, [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
          gpo.active_producers = std::move(schedule);
          gpo.configuration = std::move(config);
       });
@@ -918,6 +924,30 @@ void chain_controller::spinup_fork_db()
                      ("last_block->id", last_block->id())("head_block_num",head_block_num()));
       }
    }
+}
+
+ProducerRound chain_controller::calculate_next_round(const signed_block& next_block) {
+   auto schedule = _admin->get_next_round(_db);
+   std::sort(schedule.begin(), schedule.end());
+
+   auto ReplaceOldProducers =
+         boost::adaptors::transformed([changes = next_block.producer_changes] (AccountName producer) {
+      auto itr = changes.find(producer);
+      if (itr != changes.end())
+         return itr->second;
+      return producer;
+   });
+
+   ProducerRound round;
+   boost::copy(get_global_properties().active_producers | ReplaceOldProducers, round.begin());
+   std::sort(round.begin(), round.end());
+   EOS_ASSERT(boost::range::equal(schedule, round), block_validate_exception,
+              "Unexpected round changes in new block header");
+
+   randutils::seed_seq_fe<1> seed{next_block.timestamp.sec_since_epoch()};
+   randutils::random_generator<pcg32_fast> rng(seed);
+   rng.shuffle(schedule);
+   return schedule;
 }
 
 void chain_controller::update_global_dynamic_data(const signed_block& b) {

@@ -11,7 +11,7 @@ namespace eos { namespace native_contract {
 
 using administrator = native_contract_chain_administrator;
 
-administrator::ProducerRound administrator::get_next_round(const chainbase::database& db) {
+ProducerRound administrator::get_next_round(const chainbase::database& db) {
 #warning TODO: Implement me
    return db.get(chain::global_property_object::id_type()).active_producers;
 }

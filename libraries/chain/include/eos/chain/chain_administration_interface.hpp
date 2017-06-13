@@ -20,8 +20,6 @@ class chain_controller;
  */
 class chain_administration_interface {
 public:
-   using ProducerRound = std::array<AccountName, config::ProducerCount>;
-
    virtual ~chain_administration_interface();
 
    virtual ProducerRound get_next_round(const chainbase::database& db) = 0;

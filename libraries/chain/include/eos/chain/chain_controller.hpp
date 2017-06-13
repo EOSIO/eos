@@ -307,6 +307,8 @@ namespace eos { namespace chain {
          void spinup_db();
          void spinup_fork_db();
 
+         ProducerRound calculate_next_round(const signed_block& next_block);
+
          database&                        _db;
          fork_database&                   _fork_db;
          block_log&                       _block_log;

@@ -3,6 +3,7 @@
 #include <eos/chain/chain_administration_interface.hpp>
 
 namespace eos { namespace native_contract {
+using chain::ProducerRound;
 
 class native_contract_chain_administrator : public chain::chain_administration_interface {
    ProducerRound get_next_round(const chainbase::database& db);

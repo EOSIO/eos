@@ -110,7 +110,6 @@ namespace eos { namespace chain {
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-
    using eos::types::AccountName;
    using eos::types::PermissionName;
    using eos::types::Asset;
@@ -135,6 +134,8 @@ namespace eos { namespace chain {
    using eos::types::Int64;
    using eos::types::Int128;
    using eos::types::Int256;
+
+   using ProducerRound = std::array<AccountName, config::ProducerCount>;
 
    /**
     * List all object types from all namespaces here so they can
