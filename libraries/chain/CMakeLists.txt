@@ -8,11 +8,12 @@ add_library( eos_chain
              transaction.cpp
              block.cpp
 
-             genesis_state.cpp
              get_config.cpp
 
              block_log.cpp
              BlockchainConfiguration.cpp
+
+             types.cpp
 
              ${HEADERS}
            )

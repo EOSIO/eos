@@ -27,7 +27,6 @@
 #include <eos/chain/type_object.hpp>
 #include <eos/chain/node_property_object.hpp>
 #include <eos/chain/fork_database.hpp>
-#include <eos/chain/genesis_state.hpp>
 #include <eos/chain/block_log.hpp>
 
 #include <chainbase/chainbase.hpp>

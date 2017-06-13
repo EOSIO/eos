@@ -2,12 +2,13 @@
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
 #include <eos/chain/exceptions.hpp>
-#include <eos/chain/genesis_state.hpp>
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/genesis_state.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/variant.hpp>
 
 namespace eos {
 
@@ -16,6 +17,8 @@ using fc::flat_map;
 using chain::block_id_type;
 using chain::fork_database;
 using chain::block_log;
+using chain::type_index;
+using chain::by_scope_name;
 
 class chain_plugin_impl {
 public:
@@ -91,7 +94,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup() {
    auto& db = app().get_plugin<database_plugin>().db();
 
-   auto genesis = fc::json::from_file(my->genesis_file).as<chain::genesis_state_type>();
+   auto genesis = fc::json::from_file(my->genesis_file).as<native_contract::genesis_state_type>();
    native_contract::native_contract_chain_initializer initializer(genesis);
 
    my->fork_db = fork_database();
@@ -160,6 +163,23 @@ read_only::get_block_results read_only::get_block(const read_only::get_block_par
 
    FC_THROW_EXCEPTION(chain::unknown_block_exception,
                       "Could not find block: ${block}", ("block", params.block_num_or_id));
+}
+
+read_only::get_types_results read_only::get_types(const get_types_params& params) const {
+
+   auto& _db = app().get_plugin<database_plugin>().db();
+   auto& index = _db.get_index<type_index, by_scope_name>();
+   auto range = index.equal_range( boost::make_tuple( params.account_name ) );
+
+   get_types_results res;
+
+   for( const auto& to : boost::make_iterator_range( range.first, range.second ) ) {
+      fc::variant v;
+      fc::to_variant(to, v);
+      res.emplace_back(v);
+   }
+
+   return res;
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {

@@ -21,17 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <eos/chain/types.hpp>
 
-#include <eos/chain/genesis_state.hpp>
-
-// these are required to serialize a genesis_state
-#include <fc/smart_ref_impl.hpp>   // required for gcc in release mode
-
-namespace eos { namespace chain {
-
-chain_id_type genesis_state_type::compute_chain_id() const
-{
-   return initial_chain_id;
+namespace fc {
+  using eos::chain::shared_vector;
+  void to_variant(const shared_vector<eos::types::Field>& c, fc::variant& v) {
+     fc::mutable_variant_object mvo; mvo.reserve(c.size());
+     for(const auto& f : c) {
+        mvo.set(f.name, eos::types::String(f.type));
+     }
+     v = std::move(mvo);
+  }
+  void from_variant(const fc::variant& v, shared_vector<eos::types::Field>& fields) {
+     const auto& obj = v.get_object();
+     fields.reserve(obj.size());
+     for(const auto& f : obj)
+        fields.emplace_back(eos::types::Field{ f.key(), f.value().get_string() });
+  }
 }
-
-} } // eos::chain

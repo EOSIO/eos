@@ -32,40 +32,43 @@
 #include <string>
 #include <vector>
 
-namespace eos { namespace chain {
+namespace eos { namespace native_contract {
 using std::string;
 using std::vector;
+using chain::PublicKey;
+using chain::Asset;
+using chain::Time;
+using chain::BlockchainConfiguration;
 
 struct genesis_state_type {
    struct initial_account_type {
       initial_account_type(const string& name = string(),
                            uint64_t staking_bal = 0,
                            uint64_t liquid_bal = 0,
-                           const public_key_type& owner_key = public_key_type(),
-                           const public_key_type& active_key = public_key_type())
+                           const PublicKey& owner_key = PublicKey(),
+                           const PublicKey& active_key = PublicKey())
          : name(name), staking_balance(staking_bal), liquid_balance(liquid_bal),
            owner_key(owner_key),
-           active_key(active_key == public_key_type()? owner_key : active_key)
+           active_key(active_key == PublicKey()? owner_key : active_key)
       {}
       string          name;
       Asset           staking_balance;
       Asset           liquid_balance;
-      public_key_type owner_key;
-      public_key_type active_key;
+      PublicKey owner_key;
+      PublicKey active_key;
    };
    struct initial_producer_type {
       initial_producer_type(const string& name = string(),
-                            const public_key_type& signing_key = public_key_type())
+                            const PublicKey& signing_key = PublicKey())
          : owner_name(name), block_signing_key(signing_key)
       {}
       /// Must correspond to one of the initial accounts
       string owner_name;
-      public_key_type block_signing_key;
+      PublicKey block_signing_key;
    };
 
-   time_point_sec                           initial_timestamp;
-   BlockchainConfiguration                  initial_configuration =
-   {
+   Time                                     initial_timestamp;
+   BlockchainConfiguration                  initial_configuration = {
       config::DefaultMaxBlockSize,
       config::DefaultTargetBlockSize,
       config::DefaultMaxStorageSize,
@@ -80,23 +83,23 @@ struct genesis_state_type {
    /**
     * Temporary, will be moved elsewhere.
     */
-   chain_id_type                            initial_chain_id;
+   chain::chain_id_type initial_chain_id;
 
    /**
     * Get the chain_id corresponding to this genesis state.
     *
     * This is the SHA256 serialization of the genesis_state.
     */
-   chain_id_type compute_chain_id() const;
+   chain::chain_id_type compute_chain_id() const;
 };
 
-} } // namespace eos::chain
+} } // namespace eos::native_contract
 
-FC_REFLECT(eos::chain::genesis_state_type::initial_account_type,
+FC_REFLECT(eos::native_contract::genesis_state_type::initial_account_type,
            (name)(staking_balance)(liquid_balance)(owner_key)(active_key))
 
-FC_REFLECT(eos::chain::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
+FC_REFLECT(eos::native_contract::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
 
-FC_REFLECT(eos::chain::genesis_state_type,
+FC_REFLECT(eos::native_contract::genesis_state_type,
            (initial_timestamp)(initial_configuration)(initial_accounts)
            (initial_producers)(initial_chain_id))

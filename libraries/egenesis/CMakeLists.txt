@@ -4,7 +4,7 @@ add_library( eos_egenesis_none
    include/eos/egenesis/egenesis.hpp
    )
 
-target_link_libraries( eos_egenesis_none eos_chain fc )
+target_link_libraries( eos_egenesis_none eos_chain eos_native_contract fc )
 target_include_directories( eos_egenesis_none
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
@@ -42,8 +42,8 @@ add_custom_command(
 add_library( eos_egenesis_brief "${CMAKE_CURRENT_BINARY_DIR}/egenesis_brief.cpp" include/eos/egenesis/egenesis.hpp )
 add_library( eos_egenesis_full  "${CMAKE_CURRENT_BINARY_DIR}/egenesis_full.cpp" include/eos/egenesis/egenesis.hpp )
 
-target_link_libraries( eos_egenesis_brief eos_chain fc )
-target_link_libraries( eos_egenesis_full eos_chain fc )
+target_link_libraries( eos_egenesis_brief eos_chain eos_native_contract fc )
+target_link_libraries( eos_egenesis_full eos_chain eos_native_contract fc )
 
 target_include_directories( eos_egenesis_brief
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
