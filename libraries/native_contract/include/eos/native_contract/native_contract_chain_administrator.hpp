@@ -5,9 +5,9 @@
 namespace eos { namespace native_contract {
 
 class native_contract_chain_administrator : public chain::chain_administration_interface {
-
    ProducerRound get_next_round(const chainbase::database& db);
-   chain::BlockchainConfiguration get_blockchain_configuration(const chainbase::database& db);
+   chain::BlockchainConfiguration get_blockchain_configuration(const chainbase::database& db,
+                                                               const ProducerRound& round);
 };
 
 inline std::unique_ptr<chain::chain_administration_interface> make_administrator() {

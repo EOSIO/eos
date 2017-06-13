@@ -12,10 +12,12 @@ namespace eos { namespace native_contract {
 using administrator = native_contract_chain_administrator;
 
 administrator::ProducerRound administrator::get_next_round(const chainbase::database& db) {
-
+#warning TODO: Implement me
+   return db.get(chain::global_property_object::id_type()).active_producers;
 }
 
-chain::BlockchainConfiguration administrator::get_blockchain_configuration(const chainbase::database& db) {
+chain::BlockchainConfiguration administrator::get_blockchain_configuration(const chainbase::database& db,
+                                                                           const ProducerRound& round) {
    using boost::adaptors::transformed;
    using types::AccountName;
    using chain::producer_object;
@@ -24,8 +26,7 @@ chain::BlockchainConfiguration administrator::get_blockchain_configuration(const
       return db.get<producer_object, chain::by_owner>(owner).configuration;
    });
 
-   const auto& gpo = db.get(chain::global_property_object::id_type());
-   auto votes_range = gpo.active_producers | get_producer_votes;
+   auto votes_range = round | get_producer_votes;
 
    return chain::BlockchainConfiguration::get_median_values({votes_range.begin(), votes_range.end()});
 }

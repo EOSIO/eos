@@ -232,8 +232,6 @@ namespace eos { namespace chain {
           */
          uint32_t get_slot_at_time(fc::time_point_sec when)const;
 
-         void update_producer_schedule();
-
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const node_property_object&            get_node_properties()const;
@@ -299,20 +297,12 @@ namespace eos { namespace chain {
          const producer_object& _validate_block_header(const signed_block& next_block)const;
          void create_block_summary(const signed_block& next_block);
 
+         void update_global_properties(const signed_block& b);
          void update_global_dynamic_data(const signed_block& b);
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
          /// @}
-
-         /**
-          * @brief Update the blockchain configuration based on the medians of producer votes
-          *
-          * Called any time the set of active producers changes or an active producer updates his votes, this method
-          * will calculate the medians of the active producers' votes on the blockchain configuration values and will
-          * set the current configuration according to those medians.
-          */
-         void update_blockchain_configuration();
 
          void spinup_db();
          void spinup_fork_db();

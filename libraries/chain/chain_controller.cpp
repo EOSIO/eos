@@ -470,6 +470,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
       }
    }
 
+   update_global_properties(next_block);
    update_global_dynamic_data(next_block);
    update_signing_producer(signing_producer, next_block);
    update_last_irreversible_block();
@@ -477,10 +478,6 @@ void chain_controller::_apply_block(const signed_block& next_block)
    create_block_summary(next_block);
    clear_expired_transactions();
 
-   // TODO:  figure out if we could collapse this function into
-   // update_global_dynamic_data() as perhaps these methods only need
-   // to be called for header validation?
-   update_producer_schedule();
    if( !_node_property_object.debug_updates.empty() )
       apply_debug_updates();
 
@@ -704,6 +701,21 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
    _db.modify( _db.get<block_summary_object,by_id>(sid), [&](block_summary_object& p) {
          p.block_id = next_block.id();
    });
+}
+
+void chain_controller::update_global_properties(const signed_block& b) {
+   // If we're at the end of a round...
+   if (b.block_num() % config::ProducerCount == 0) {
+      // Get the new schedule and blockchain configuration
+      auto schedule = _admin->get_next_round(_db);
+      auto config = _admin->get_blockchain_configuration(_db, schedule);
+
+      _db.modify(get_global_properties(),
+                 [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
+         gpo.active_producers = std::move(schedule);
+         gpo.configuration = std::move(config);
+      });
+   }
 }
 
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
@@ -1022,16 +1034,6 @@ void chain_controller::clear_expired_transactions()
       transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
 
-void chain_controller::update_blockchain_configuration() {
-   auto config = _admin->get_blockchain_configuration(_db);
-   const auto& gpo = get_global_properties();
-
-   if (config != gpo.configuration)
-      _db.modify(gpo, [config = std::move(config)](global_property_object& gpo) {
-         gpo.configuration = std::move(config);
-      });
-}
-
 using boost::container::flat_set;
 
 types::AccountName chain_controller::get_scheduled_producer(uint32_t slot_num)const
@@ -1075,10 +1077,6 @@ uint32_t chain_controller::producer_participation_rate()const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    return uint64_t(config::Percent100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
-}
-
-void chain_controller::update_producer_schedule()
-{
 }
 
 void chain_controller::set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v ) {

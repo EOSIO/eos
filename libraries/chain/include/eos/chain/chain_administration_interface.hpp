@@ -25,7 +25,8 @@ public:
    virtual ~chain_administration_interface();
 
    virtual ProducerRound get_next_round(const chainbase::database& db) = 0;
-   virtual BlockchainConfiguration get_blockchain_configuration(const chainbase::database& db) = 0;
+   virtual BlockchainConfiguration get_blockchain_configuration(const chainbase::database& db,
+                                                                const ProducerRound& round) = 0;
 };
 
 } } // namespace eos::chain

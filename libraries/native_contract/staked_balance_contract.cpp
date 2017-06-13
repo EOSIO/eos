@@ -107,6 +107,7 @@ void CreateProducer::apply(apply_context& context) {
    db.create<producer_object>([&create](producer_object& p) {
       p.owner = create.name;
       p.signing_key = create.key;
+      p.configuration = create.configuration;
    });
 }
 
