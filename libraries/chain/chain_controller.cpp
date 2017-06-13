@@ -386,7 +386,7 @@ signed_block chain_controller::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
 
-   pending_block.producer = static_cast<uint16_t>(producer_obj.id._id);
+   pending_block.producer = producer_obj.owner;
 
    if( !(skip & skip_producer_signature) )
       pending_block.sign( block_signing_private_key );
@@ -689,8 +689,8 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                 ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
 
    if(!(skip&skip_producer_schedule_check)) {
-      FC_ASSERT(next_block.producer == producer.id, "Producer produced block at wrong time",
-                ("block producer",next_block.producer)("scheduled producer",producer.id._id));
+      FC_ASSERT(next_block.producer == producer.owner, "Producer produced block at wrong time",
+                ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
    return producer;
@@ -765,7 +765,7 @@ block_id_type chain_controller::head_block_id()const {
 
 types::AccountName chain_controller::head_block_producer() const {
    if (auto head_block = fetch_block_by_id(head_block_id()))
-      return _db.get((producer_object::id_type)head_block->producer).owner;
+      return head_block->producer;
    return {};
 }
 
@@ -932,7 +932,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
 
    for(uint32_t i = 0; i < missed_blocks; ++i) {
       const auto& producer_missed = get_producer(get_scheduled_producer(i+1));
-      if(producer_missed.id != b.producer) {
+      if(producer_missed.owner != b.producer) {
          /*
          const auto& producer_account = producer_missed.producer_account(*this);
          if( (fc::time_point::now() - b.timestamp) < fc::seconds(30) )
@@ -950,7 +950,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.current_producer = _db.get(producer_object::id_type(b.producer)).owner;
+      dgp.current_producer = b.producer;
       dgp.current_absolute_slot += missed_blocks+1;
 
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap

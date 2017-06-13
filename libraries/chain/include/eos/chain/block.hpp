@@ -36,7 +36,7 @@ namespace eos { namespace chain {
       block_id_type                 previous;
       fc::time_point_sec            timestamp;
       checksum_type                 transaction_merkle_root;
-      uint16_t                      producer = 0;
+      AccountName                   producer;
    };
 
    struct signed_block_header : public block_header
