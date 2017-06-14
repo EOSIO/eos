@@ -1,5 +1,6 @@
 add_subdirectory( fc )
 add_subdirectory( chainbase )
+add_subdirectory( wasm-jit )
 add_subdirectory( binaryen )
 add_subdirectory( wasmos )
 add_subdirectory( wren )

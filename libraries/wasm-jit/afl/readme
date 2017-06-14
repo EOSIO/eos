@@ -1,0 +1,5 @@
+Scripts for helping to run the AFL (http://lcamtuf.coredump.cx/afl/) fuzzer against wavm
+
+1) Add the directory containing the AFL binaries to your path
+2) Make a directory to contain the AFL build
+3) From the new directory, run <path to WAVM>/afl/run-afl-fuzz <path to WAVM> <number of slave processes> (to run a n more slave instances if the machine can handle it)

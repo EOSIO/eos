@@ -1,0 +1,32 @@
+sudo: false
+
+language: c++
+compiler:
+ - clang
+ - gcc
+
+install:
+ - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
+ - if [ "$CXX" = "clang++" ] && [ "$TRAVIS_OS_NAME" != "osx" ]; then export CXX="clang++-3.8" CC="clang-3.8"; fi
+
+script: ./travis-build.sh
+
+os:
+ - linux
+ - osx
+
+matrix:
+  exclude:
+    - os: osx
+      compiler: gcc
+
+addons:
+ apt:
+  sources:
+   - llvm-toolchain-precise-3.8
+   - ubuntu-toolchain-r-test
+  packages:
+   - gcc-5
+   - g++-5
+   - libedit-dev
+   - clang-3.8
