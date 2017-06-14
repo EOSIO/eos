@@ -110,8 +110,8 @@ chain::BlockchainConfiguration native_contract_chain_initializer::get_chain_star
    return genesis.initial_configuration;
 }
 
-std::array<types::AccountName, config::ProducerCount> native_contract_chain_initializer::get_chain_start_producers() {
-   std::array<types::AccountName, config::ProducerCount> result;
+std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_initializer::get_chain_start_producers() {
+   std::array<types::AccountName, config::BlocksPerRound> result;
    std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
                   [](const auto& p) { return p.owner_name; });
    return result;

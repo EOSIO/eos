@@ -22,7 +22,7 @@ public:
    /// Retrieve the BlockchainConfiguration to use at blockchain start
    virtual BlockchainConfiguration get_chain_start_configuration() = 0;
    /// Retrieve the first round of block producers
-   virtual std::array<AccountName, config::ProducerCount> get_chain_start_producers() = 0;
+   virtual std::array<AccountName, config::BlocksPerRound> get_chain_start_producers() = 0;
 
    /**
     * @brief Prepare the database, creating objects and defining state which should exist before the first block

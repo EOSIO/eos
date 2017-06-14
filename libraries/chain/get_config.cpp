@@ -36,7 +36,7 @@ fc::variant_object get_config()
    result["BlockIntervalSeconds"] = config::BlockIntervalSeconds;
    result["MaxBlockSize"] = config::DefaultMaxBlockSize;
    result["MaxSecondsUntilExpiration"] = config::DefaultMaxTrxLifetime;
-   result["ProducerCount"] = config::ProducerCount;
+   result["ProducerCount"] = config::BlocksPerRound;
    result["IrreversibleThresholdPercent"] = config::IrreversibleThresholdPercent;
    return result;
 }

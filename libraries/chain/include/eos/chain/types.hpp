@@ -22,6 +22,12 @@
  * THE SOFTWARE.
  */
 #pragma once
+
+#include <eos/chain/config.hpp>
+#include <eos/types/types.hpp>
+
+#include <chainbase/chainbase.hpp>
+
 #include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
@@ -36,18 +42,11 @@
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/fixed_string.hpp>
-#include <eos/types/native.hpp>
-#include <eos/types/PublicKey.hpp>
-#include <eos/types/Asset.hpp>
-#include <eos/types/generated.hpp>
 
 #include <memory>
 #include <vector>
 #include <deque>
 #include <cstdint>
-#include <eos/chain/config.hpp>
-
-#include <chainbase/chainbase.hpp>
 
 #define OBJECT_CTOR1(NAME) \
     NAME() = delete; \
@@ -135,7 +134,7 @@ namespace eos { namespace chain {
    using eos::types::Int128;
    using eos::types::Int256;
 
-   using ProducerRound = std::array<AccountName, config::ProducerCount>;
+   using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
 
    /**
     * List all object types from all namespaces here so they can

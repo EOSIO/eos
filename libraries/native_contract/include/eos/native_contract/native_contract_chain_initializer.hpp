@@ -15,7 +15,7 @@ public:
    virtual std::vector<chain::Message> prepare_database(chain::chain_controller& chain, chainbase::database& db);
    virtual types::Time get_chain_start_time();
    virtual chain::BlockchainConfiguration get_chain_start_configuration();
-   virtual std::array<types::AccountName, config::ProducerCount> get_chain_start_producers();
+   virtual std::array<types::AccountName, config::BlocksPerRound> get_chain_start_producers();
 };
 
 } } // namespace eos::native_contract
