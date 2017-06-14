@@ -28,30 +28,31 @@ namespace eos { namespace chain {
 
    struct block_header
    {
-      digest_type                   digest()const;
-      uint32_t                      block_num()const { return num_from_id(previous) + 1; }
+      digest_type                   digest() const;
+      uint32_t                      block_num() const { return num_from_id(previous) + 1; }
       static uint32_t num_from_id(const block_id_type& id);
 
 
       block_id_type                 previous;
       fc::time_point_sec            timestamp;
       checksum_type                 transaction_merkle_root;
-      uint16_t                      producer = 0;
+      AccountName                   producer;
+      map<AccountName, AccountName> producer_changes;
    };
 
    struct signed_block_header : public block_header
    {
-      block_id_type              id()const;
-      fc::ecc::public_key        signee()const;
-      void                       sign( const fc::ecc::private_key& signer );
-      bool                       validate_signee( const fc::ecc::public_key& expected_signee )const;
+      block_id_type              id() const;
+      fc::ecc::public_key        signee() const;
+      void                       sign(const fc::ecc::private_key& signer);
+      bool                       validate_signee(const fc::ecc::public_key& expected_signee) const;
 
       signature_type             producer_signature;
    };
 
    struct thread {
       vector<generated_transaction_id_type> generated_input;
-      vector<SignedTransaction>            user_input; 
+      vector<SignedTransaction>             user_input;
       vector<generated_transaction>         output_transactions;
 
       digest_type merkle_digest() const;
@@ -61,13 +62,13 @@ namespace eos { namespace chain {
 
    struct signed_block : public signed_block_header
    {
-      checksum_type calculate_merkle_root()const;
+      checksum_type calculate_merkle_root() const;
       vector<cycle> cycles;
    };
 
 } } // eos::chain
 
-FC_REFLECT(eos::chain::block_header, (previous)(timestamp)(transaction_merkle_root)(producer) )
+FC_REFLECT(eos::chain::block_header, (previous)(timestamp)(transaction_merkle_root)(producer)(producer_changes))
 FC_REFLECT_DERIVED(eos::chain::signed_block_header, (eos::chain::block_header), (producer_signature))
 FC_REFLECT(eos::chain::thread, (generated_input)(user_input)(output_transactions))
 FC_REFLECT_DERIVED(eos::chain::signed_block, (eos::chain::signed_block_header), (cycles))

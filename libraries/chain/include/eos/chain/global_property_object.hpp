@@ -46,10 +46,9 @@ namespace eos { namespace chain {
    {
       OBJECT_CTOR(global_property_object)
 
-      id_type                           id;
-      BlockchainConfiguration           configuration;
-
-      std::array<AccountName, config::ProducerCount>   active_producers;
+      id_type id;
+      BlockchainConfiguration configuration;
+      std::array<AccountName, config::ProducerCount> active_producers;
    };
 
 

@@ -36,58 +36,25 @@
 
 #include <eos/chain/protocol.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
+#include <eos/chain/chain_initializer_interface.hpp>
+#include <eos/chain/chain_administration_interface.hpp>
 
 #include <fc/log/logger.hpp>
 
 #include <map>
 
 namespace eos { namespace chain {
-
-   class chain_controller;
    using database = chainbase::database;
    using boost::signals2::signal;
-
-   /**
-    * @brief This class defines an interface allowing
-    */
-   class chain_initializer {
-   public:
-      virtual ~chain_initializer();
-      /**
-       * @brief Prepare the database, creating objects and defining state which should exist before the first block
-       * @param chain A reference to the @ref chain_controller
-       * @param db A reference to the @ref chainbase::database
-       * @param A list of @ref Message "Messages" to be applied before the first block
-       *
-       * This method creates the @ref account_object "account_objects" and @ref producer_object "producer_objects" for
-       * at least the initial block producers.
-       *
-       * This method also provides an opportunity to create objects and setup the database to the state it should be in
-       * prior to the first block. This method should only initialize state that the @ref chain_controller itself does
-       * not understand. The other methods will be called to retrieve the data necessary to initialize chain state the
-       * controller does understand.
-       *
-       * Finally, this method may perform any necessary initializations on the chain and/or database, such as
-       * installing indexes and message handlers that should be defined before the first block is processed. This may
-       * be necessary in order for the returned list of messages to be processed successfully.
-       */
-      virtual vector<Message> prepare_database(chain_controller& chain, database& db) = 0;
-      /// Retrieve the timestamp to use as the blockchain start time
-      virtual types::Time get_chain_start_time() = 0;
-      /// Retrieve the BlockchainConfiguration to use at blockchain start
-      virtual BlockchainConfiguration get_chain_start_configuration() = 0;
-      /// Retrieve the first round of block producers
-      virtual std::array<AccountName, config::ProducerCount> get_chain_start_producers() = 0;
-   };
 
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class chain_controller
-   {
+   class chain_controller {
       public:
-         chain_controller(database& database, fork_database& fork_db, block_log& blocklog, chain_initializer& starter);
+         chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
+                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -265,8 +232,6 @@ namespace eos { namespace chain {
           */
          uint32_t get_slot_at_time(fc::time_point_sec when)const;
 
-         void update_producer_schedule();
-
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const node_property_object&            get_node_properties()const;
@@ -297,7 +262,7 @@ namespace eos { namespace chain {
    private:
          /// Reset the object graph in-memory
          void initialize_indexes();
-         void initialize_chain(chain_initializer& starter);
+         void initialize_chain(chain_initializer_interface& starter);
 
          void replay();
 
@@ -332,27 +297,23 @@ namespace eos { namespace chain {
          const producer_object& _validate_block_header(const signed_block& next_block)const;
          void create_block_summary(const signed_block& next_block);
 
+         void update_global_properties(const signed_block& b);
          void update_global_dynamic_data(const signed_block& b);
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
          /// @}
 
-         /**
-          * @brief Update the blockchain configuration based on the medians of producer votes
-          *
-          * Called any time the set of active producers changes or an active producer updates his votes, this method
-          * will calculate the medians of the active producers' votes on the blockchain configuration values and will
-          * set the current configuration according to those medians.
-          */
-         void update_blockchain_configuration();
-
          void spinup_db();
          void spinup_fork_db();
+
+         ProducerRound calculate_next_round(const signed_block& next_block);
 
          database&                        _db;
          fork_database&                   _fork_db;
          block_log&                       _block_log;
+
+         unique_ptr<chain_administration_interface> _admin;
 
          optional<database::session>      _pending_tx_session;
          deque<SignedTransaction>         _pending_transactions;

@@ -5,6 +5,7 @@
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/native_contract_chain_administrator.hpp>
 #include <eos/native_contract/genesis_state.hpp>
 
 #include <fc/io/json.hpp>
@@ -99,7 +100,8 @@ void chain_plugin::plugin_startup() {
 
    my->fork_db = fork_database();
    my->block_logger = block_log(my->block_log_dir);
-   my->chain = chain_controller(db, *my->fork_db, *my->block_logger, initializer);
+   my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
+                                initializer, native_contract::make_administrator());
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");

@@ -1,5 +1,10 @@
 #include <eos/chain/BlockchainConfiguration.hpp>
 
+#include <eos/utilities/randutils.hpp>
+#include <eos/utilities/pcg-random/pcg_random.hpp>
+
+#include <fc/io/json.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 namespace eos {
@@ -34,6 +39,20 @@ BOOST_AUTO_TEST_CASE(median_properties_test)
       votes.erase(votes.end() - 1);
       medians = {1024, 100, 1024, Asset(3333).amount, Asset(50).amount, Asset(100).amount, 100};
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
+} FC_LOG_AND_RETHROW() }
+
+/// Test that our deterministic random shuffle algorithm gives the same results in all environments
+BOOST_AUTO_TEST_CASE(deterministic_randomness)
+{ try {
+   randutils::seed_seq_fe<1> seed({123454321});
+   randutils::random_generator<pcg32_fast> rng(seed);
+   vector<string> words = {"infamy", "invests", "estimated", "potters", "memorizes", "hal9000"};
+   rng.shuffle(words);
+   BOOST_CHECK_EQUAL(fc::json::to_string(words),
+                     fc::json::to_string(vector<string>{"potters","hal9000","memorizes","infamy","invests","estimated"}));
+   rng.shuffle(words);
+   BOOST_CHECK_EQUAL(fc::json::to_string(words),
+                     fc::json::to_string(vector<string>{"memorizes","hal9000","infamy","invests","estimated","potters"}));
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

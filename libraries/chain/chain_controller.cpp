@@ -35,11 +35,14 @@
 #include <eos/types/native.hpp>
 #include <eos/types/generated.hpp>
 
+#include <eos/utilities/randutils.hpp>
+#include <eos/utilities/pcg-random/pcg_random.hpp>
+
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
 
-#include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm/copy.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <fstream>
@@ -386,7 +389,7 @@ signed_block chain_controller::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
 
-   pending_block.producer = static_cast<uint16_t>(producer_obj.id._id);
+   pending_block.producer = producer_obj.owner;
 
    if( !(skip & skip_producer_signature) )
       pending_block.sign( block_signing_private_key );
@@ -470,6 +473,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
       }
    }
 
+   update_global_properties(next_block);
    update_global_dynamic_data(next_block);
    update_signing_producer(signing_producer, next_block);
    update_last_irreversible_block();
@@ -477,10 +481,6 @@ void chain_controller::_apply_block(const signed_block& next_block)
    create_block_summary(next_block);
    clear_expired_transactions();
 
-   // TODO:  figure out if we could collapse this function into
-   // update_global_dynamic_data() as perhaps these methods only need
-   // to be called for header validation?
-   update_producer_schedule();
    if( !_node_property_object.debug_updates.empty() )
       apply_debug_updates();
 
@@ -680,20 +680,24 @@ void chain_controller::require_account(const types::AccountName& name) const {
 }
 
 const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
-   FC_ASSERT(head_block_id() == next_block.previous, "",
-             ("head_block_id",head_block_id())("next.prev",next_block.previous));
-   FC_ASSERT(head_block_time() < next_block.timestamp, "",
-             ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
+   EOS_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
+              ("head_block_id",head_block_id())("next.prev",next_block.previous));
+   EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
+              ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
+   if (next_block.block_num() % config::ProducerCount != 0)
+      EOS_ASSERT(next_block.producer_changes.empty(), block_validate_exception,
+                 "Producer changes may only occur at the end of a round.");
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
-      FC_ASSERT(next_block.validate_signee(producer.signing_key),
-                "Incorrect block producer key: expected ${e} but got ${a}",
-                ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
+      EOS_ASSERT(next_block.validate_signee(producer.signing_key), block_validate_exception,
+                 "Incorrect block producer key: expected ${e} but got ${a}",
+                 ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
 
    if(!(skip&skip_producer_schedule_check)) {
-      FC_ASSERT(next_block.producer == producer.id, "Producer produced block at wrong time",
-                ("block producer",next_block.producer)("scheduled producer",producer.id._id));
+      EOS_ASSERT(next_block.producer == producer.owner, block_validate_exception,
+                 "Producer produced block at wrong time",
+                 ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
    return producer;
@@ -704,6 +708,20 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
    _db.modify( _db.get<block_summary_object,by_id>(sid), [&](block_summary_object& p) {
          p.block_id = next_block.id();
    });
+}
+
+void chain_controller::update_global_properties(const signed_block& b) {
+   // If we're at the end of a round, update the BlockchainConfiguration and producer schedule
+   if (b.block_num() % config::ProducerCount == 0) {
+      auto schedule = calculate_next_round(b);
+      auto config = _admin->get_blockchain_configuration(_db, schedule);
+
+      const auto& gpo = get_global_properties();
+      _db.modify(gpo, [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
+         gpo.active_producers = std::move(schedule);
+         gpo.configuration = std::move(config);
+      });
+   }
 }
 
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
@@ -753,7 +771,7 @@ block_id_type chain_controller::head_block_id()const {
 
 types::AccountName chain_controller::head_block_producer() const {
    if (auto head_block = fetch_block_by_id(head_block_id()))
-      return _db.get((producer_object::id_type)head_block->producer).owner;
+      return head_block->producer;
    return {};
 }
 
@@ -788,7 +806,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<producer_multi_index>();
 }
 
-void chain_controller::initialize_chain(chain_initializer& starter)
+void chain_controller::initialize_chain(chain_initializer_interface& starter)
 { try {
    if (!_db.find<global_property_object>()) {
       _db.with_write_lock([this, &starter] {
@@ -801,8 +819,6 @@ void chain_controller::initialize_chain(chain_initializer& starter)
             chain_controller& db;
             uint32_t old_flags;
          } inhibitor(*this);
-
-         auto messages = starter.prepare_database(*this, _db);
 
          auto initial_timestamp = starter.get_chain_start_time();
          FC_ASSERT(initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
@@ -823,14 +839,15 @@ void chain_controller::initialize_chain(chain_initializer& starter)
          for (int i = 0; i < 0x10000; i++)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
+         auto messages = starter.prepare_database(*this, _db);
          std::for_each(messages.begin(), messages.end(), [this](const auto& m) { process_message(m); });
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
 
-chain_controller::chain_controller(database& database, fork_database& fork_db,
-                                   block_log& blocklog, chain_initializer& starter)
-   : _db(database), _fork_db(fork_db), _block_log(blocklog) {
+chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
+                                   chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
+   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
    static bool bound_apply = [](){
       wrenpp::beginModule( "main" )
          .bindClassReference<apply_context>( "ApplyContext" )
@@ -909,6 +926,30 @@ void chain_controller::spinup_fork_db()
    }
 }
 
+ProducerRound chain_controller::calculate_next_round(const signed_block& next_block) {
+   auto schedule = _admin->get_next_round(_db);
+   std::sort(schedule.begin(), schedule.end());
+
+   auto ReplaceOldProducers =
+         boost::adaptors::transformed([changes = next_block.producer_changes] (AccountName producer) {
+      auto itr = changes.find(producer);
+      if (itr != changes.end())
+         return itr->second;
+      return producer;
+   });
+
+   ProducerRound round;
+   boost::copy(get_global_properties().active_producers | ReplaceOldProducers, round.begin());
+   std::sort(round.begin(), round.end());
+   EOS_ASSERT(boost::range::equal(schedule, round), block_validate_exception,
+              "Unexpected round changes in new block header");
+
+   randutils::seed_seq_fe<1> seed{next_block.timestamp.sec_since_epoch()};
+   randutils::random_generator<pcg32_fast> rng(seed);
+   rng.shuffle(schedule);
+   return schedule;
+}
+
 void chain_controller::update_global_dynamic_data(const signed_block& b) {
    const dynamic_global_property_object& _dgp = _db.get<dynamic_global_property_object>();
 
@@ -921,7 +962,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
 
    for(uint32_t i = 0; i < missed_blocks; ++i) {
       const auto& producer_missed = get_producer(get_scheduled_producer(i+1));
-      if(producer_missed.id != b.producer) {
+      if(producer_missed.owner != b.producer) {
          /*
          const auto& producer_account = producer_missed.producer_account(*this);
          if( (fc::time_point::now() - b.timestamp) < fc::seconds(30) )
@@ -939,7 +980,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.current_producer = _db.get(producer_object::id_type(b.producer)).owner;
+      dgp.current_producer = b.producer;
       dgp.current_absolute_slot += missed_blocks+1;
 
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
@@ -1023,19 +1064,6 @@ void chain_controller::clear_expired_transactions()
       transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
 
-void chain_controller::update_blockchain_configuration() {
-   auto get_producer = [this](const AccountName& owner) { return this->get_producer(owner); };
-   auto get_votes = [](const producer_object& p) { return p.configuration; };
-   using boost::adaptors::transformed;
-
-   auto votes_range = get_global_properties().active_producers | transformed(get_producer) | transformed(get_votes);
-
-   auto medians = BlockchainConfiguration::get_median_values({votes_range.begin(), votes_range.end()});
-   _db.modify(get_global_properties(), [&medians](global_property_object& p) {
-      p.configuration = std::move(medians);
-   });
-}
-
 using boost::container::flat_set;
 
 types::AccountName chain_controller::get_scheduled_producer(uint32_t slot_num)const
@@ -1081,10 +1109,6 @@ uint32_t chain_controller::producer_participation_rate()const
    return uint64_t(config::Percent100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
 }
 
-void chain_controller::update_producer_schedule()
-{
-}
-
 void chain_controller::set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v ) {
    message_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
@@ -1095,6 +1119,6 @@ void chain_controller::set_apply_handler( const AccountName& contract, const Acc
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
 
-chain_initializer::~chain_initializer() {}
+chain_initializer_interface::~chain_initializer_interface() {}
 
 } }
