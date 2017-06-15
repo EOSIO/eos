@@ -12,30 +12,27 @@
 namespace eos { namespace native_contract {
 using namespace chain;
 
-std::vector<chain::Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
-                                                                                chainbase::database& db) {
-   std::vector<chain::Message> messages_to_process;
+types::Time native_contract_chain_initializer::get_chain_start_time() {
+   return genesis.initial_timestamp;
+}
 
+chain::BlockchainConfiguration native_contract_chain_initializer::get_chain_start_configuration() {
+   return genesis.initial_configuration;
+}
+
+std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_initializer::get_chain_start_producers() {
+   std::array<types::AccountName, config::BlocksPerRound> result;
+   std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
+                  [](const auto& p) { return p.owner_name; });
+   return result;
+}
+
+void native_contract_chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
    // Install the native contract's indexes; we can't do anything until our objects are recognized
    db.add_index<StakedBalanceMultiIndex>();
    db.add_index<BalanceMultiIndex>();
    db.add_index<ProducerVotesMultiIndex>();
-
-   /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto CreateNativeAccount = [this, &db](auto name, auto liquidBalance) {
-      db.create<account_object>([this, &name](account_object& a) {
-         a.name = name;
-         a.creation_date = genesis.initial_timestamp;
-      });
-      db.create<BalanceObject>([&name, liquidBalance](BalanceObject& b) {
-         b.ownerName = name;
-         b.balance = liquidBalance;
-      });
-      db.create<StakedBalanceObject>([&name](StakedBalanceObject& sb) { sb.ownerName = name; });
-   };
-   CreateNativeAccount(config::SystemContractName, config::InitialTokenSupply);
-   CreateNativeAccount(config::EosContractName, 0);
-   CreateNativeAccount(config::StakedBalanceContractName, 0);
+   db.add_index<ProducerScheduleMultiIndex>();
 
    // Install the native contract's message handlers
    // First, set message handlers
@@ -63,6 +60,11 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
                      &CreateAccount_Notify_Eos::validate_preconditions, &CreateAccount_Notify_Eos::apply);
    SetNotifyHandlers(config::SystemContractName, config::StakedBalanceContractName, "CreateAccount",
                      &CreateAccount_Notify_Staked::validate_preconditions, &CreateAccount_Notify_Staked::apply);
+}
+
+std::vector<chain::Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
+                                                                                chainbase::database& db) {
+   std::vector<chain::Message> messages_to_process;
 
    // Register native contract message types
 #define MACRO(r, data, elem) chain.register_type<types::elem>(data);
@@ -70,6 +72,25 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    BOOST_PP_SEQ_FOR_EACH(MACRO, config::EosContractName, EOS_CONTRACT_FUNCTIONS)
    BOOST_PP_SEQ_FOR_EACH(MACRO, config::StakedBalanceContractName, EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS)
 #undef MACRO
+
+   // Create the singleton object, ProducerScheduleObject
+   db.create<ProducerScheduleObject>([](const auto&){});
+
+   /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
+   auto CreateNativeAccount = [this, &db](auto name, auto liquidBalance) {
+      db.create<account_object>([this, &name](account_object& a) {
+         a.name = name;
+         a.creation_date = genesis.initial_timestamp;
+      });
+      db.create<BalanceObject>([&name, liquidBalance](BalanceObject& b) {
+         b.ownerName = name;
+         b.balance = liquidBalance;
+      });
+      db.create<StakedBalanceObject>([&name](StakedBalanceObject& sb) { sb.ownerName = name; });
+   };
+   CreateNativeAccount(config::SystemContractName, config::InitialTokenSupply);
+   CreateNativeAccount(config::EosContractName, 0);
+   CreateNativeAccount(config::StakedBalanceContractName, 0);
 
    // Queue up messages which will run contracts to create the initial accounts
    auto KeyAuthority = [](PublicKey k) {
@@ -100,21 +121,6 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));
 
    return messages_to_process;
-}
-
-types::Time native_contract_chain_initializer::get_chain_start_time() {
-   return genesis.initial_timestamp;
-}
-
-chain::BlockchainConfiguration native_contract_chain_initializer::get_chain_start_configuration() {
-   return genesis.initial_configuration;
-}
-
-std::array<types::AccountName, config::ProducerCount> native_contract_chain_initializer::get_chain_start_producers() {
-   std::array<types::AccountName, config::ProducerCount> result;
-   std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
-                  [](const auto& p) { return p.owner_name; });
-   return result;
 }
 
 } } // namespace eos::native_contract

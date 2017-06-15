@@ -54,7 +54,8 @@ const static ShareType DefaultRunnerUpPay = Asset(75).amount;
 const static ShareType DefaultMinEosBalance = Asset(100).amount;
 const static UInt32 DefaultMaxTrxLifetime = 60*60;
 
-const static int ProducerCount = 21;
+const static int BlocksPerRound = 21;
+const static int VotedProducersPerRound = 20;
 const static int IrreversibleThresholdPercent = 70 * Percent1;
 
 const static UInt128 ProducerRaceLapLength = std::numeric_limits<UInt128>::max();

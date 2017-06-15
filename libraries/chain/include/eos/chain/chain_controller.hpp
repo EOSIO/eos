@@ -252,10 +252,6 @@ namespace eos { namespace chain {
          void apply_debug_updates();
          void debug_update(const fc::variant_object& update);
 
-         // these were formerly private, but they have a fairly well-defined API, so let's make them public
-         void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
-         void apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
-
    protected:
          const chainbase::database& get_database() const { return _db; }
          
@@ -266,6 +262,8 @@ namespace eos { namespace chain {
 
          void replay();
 
+         void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
+         void apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
          void _apply_block(const signed_block& next_block);
          void _apply_transaction(const SignedTransaction& trx);
 

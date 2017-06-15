@@ -690,7 +690,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
    EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
-   if (next_block.block_num() % config::ProducerCount != 0)
+   if (next_block.block_num() % config::BlocksPerRound != 0)
       EOS_ASSERT(next_block.producer_changes.empty(), block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
@@ -718,7 +718,7 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
 
 void chain_controller::update_global_properties(const signed_block& b) {
    // If we're at the end of a round, update the BlockchainConfiguration and producer schedule
-   if (b.block_num() % config::ProducerCount == 0) {
+   if (b.block_num() % config::BlocksPerRound == 0) {
       auto schedule = calculate_next_round(b);
       auto config = _admin->get_blockchain_configuration(_db, schedule);
 
@@ -865,6 +865,7 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
    }();
 
    initialize_indexes();
+   starter.register_types(*this, _db);
    initialize_chain(starter);
    spinup_db();
    spinup_fork_db();

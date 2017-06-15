@@ -1,5 +1,5 @@
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
-#include <eos/native_contract/staked_balance_objects.hpp>
+#include <eos/native_contract/producer_objects.hpp>
 
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/producer_object.hpp>
@@ -11,9 +11,8 @@ namespace eos { namespace native_contract {
 
 using administrator = native_contract_chain_administrator;
 
-ProducerRound administrator::get_next_round(const chainbase::database& db) {
-#warning TODO: Implement me
-   return db.get(chain::global_property_object::id_type()).active_producers;
+ProducerRound administrator::get_next_round(chainbase::database& db) {
+   return ProducerScheduleObject::get(db).calculateNextRound(db);
 }
 
 chain::BlockchainConfiguration administrator::get_blockchain_configuration(const chainbase::database& db,
@@ -22,11 +21,11 @@ chain::BlockchainConfiguration administrator::get_blockchain_configuration(const
    using types::AccountName;
    using chain::producer_object;
 
-   auto get_producer_votes = transformed([&db](const AccountName& owner) {
+   auto ProducerNameToConfiguration = transformed([&db](const AccountName& owner) {
       return db.get<producer_object, chain::by_owner>(owner).configuration;
    });
 
-   auto votes_range = round | get_producer_votes;
+   auto votes_range = round | ProducerNameToConfiguration;
 
    return chain::BlockchainConfiguration::get_median_values({votes_range.begin(), votes_range.end()});
 }

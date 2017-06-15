@@ -6,7 +6,7 @@ namespace eos { namespace native_contract {
 using chain::ProducerRound;
 
 class native_contract_chain_administrator : public chain::chain_administration_interface {
-   ProducerRound get_next_round(const chainbase::database& db);
+   ProducerRound get_next_round(chainbase::database& db);
    chain::BlockchainConfiguration get_blockchain_configuration(const chainbase::database& db,
                                                                const ProducerRound& round);
 };

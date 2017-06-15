@@ -221,9 +221,15 @@ protected:
  *
  * Example:
  * @code{.cpp}
- * // Create testing_databases db1 and db2, with db2 having ID "id2"
+ * // Create testing_database db1
  * Make_Database(db1)
- * Make_Database(db2, id2)
+ *
+ * // The above creates the following objects:
+ * chainbase::database db1_db;
+ * block_log db1_log;
+ * fork_database db1_fdb;
+ * native_contract::native_contract_chain_initializer db1_initializer;
+ * testing_database db1;
  * @endcode
  */
 #define Make_Database(...) BOOST_PP_OVERLOAD(MKDB, __VA_ARGS__)(__VA_ARGS__)
@@ -367,6 +373,19 @@ protected:
  * @endcode
  */
 #define Make_Producer(...) BOOST_PP_OVERLOAD(MKPDCR, __VA_ARGS__)(__VA_ARGS__)
+
+/**
+ * @brief Shorthand way to set approval of a block producer
+ *
+ * Use Approve_Producer to change an account's approval of a block producer:
+ * @code{.cpp}
+ * // Set joe's approval for pete's block producer to Approve
+ * Approve_Producer(db, joe, pete, true);
+ * // Set joe's approval for pete's block producer to Disapprove
+ * Approve_Producer(db, joe, pete, false);
+ * @endcode
+ */
+#define Approve_Producer(...) BOOST_PP_OVERLOAD(APPDCR, __VA_ARGS__)(__VA_ARGS__)
 
 /**
  * @brief Shorthand way to update a block producer

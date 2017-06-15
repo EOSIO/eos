@@ -48,7 +48,7 @@ namespace eos { namespace chain {
 
       id_type id;
       BlockchainConfiguration configuration;
-      std::array<AccountName, config::ProducerCount> active_producers;
+      std::array<AccountName, config::BlocksPerRound> active_producers;
    };
 
 

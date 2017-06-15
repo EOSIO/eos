@@ -542,7 +542,7 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 // Check that a db rewinds to the LIB after being closed and reopened
 BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
-      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
+      auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
       {
          Make_Database(db, x);
 
@@ -569,7 +569,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
       Make_Database(producer)
       Make_Network(net, (producer))
 
-      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
+      auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
       producer.produce_blocks(20);
 
       {
@@ -599,7 +599,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 // Test reindexing the blockchain
 BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
-      auto lag = EOS_PERCENT(config::ProducerCount, config::IrreversibleThresholdPercent);
+      auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
       {
          chainbase::database db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE);
          block_log log(get_temp_dir("log"));

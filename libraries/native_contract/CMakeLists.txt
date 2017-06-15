@@ -4,8 +4,8 @@ file(GLOB HEADERS "include/eos/native_contract/*.hpp")
 add_library( eos_native_contract
              eos_contract.cpp
              staked_balance_contract.cpp
-             staked_balance_objects.cpp
              system_contract.cpp
+             producer_objects.cpp
              native_contract_chain_initializer.cpp
              native_contract_chain_administrator.cpp
              genesis_state.cpp
