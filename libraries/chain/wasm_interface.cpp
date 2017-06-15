@@ -262,7 +262,10 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
    void wasm_interface::load(const char* bytes, size_t len)
    { try {
+     static vector<char> memory_backup;
      if( module ) {
+       char* memstart = &memoryRef<char>( current_memory, 0 );
+       memcpy( memstart, memory_backup.data(), memory_backup.size() );
        return;	
 			 auto start = fc::time_point::now();
 
@@ -271,6 +274,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
        current_module = instantiateModule( *module, std::move(linkResult.resolvedImports) );
        FC_ASSERT( current_module );
 			 current_memory = Runtime::getDefaultMemory(current_module);
+       
 
 			 auto end = fc::time_point::now();
 			 idump((  1000000.0 / (end-start).count() ) );
@@ -294,6 +298,10 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
        FC_ASSERT( current_module );
 			 current_memory = Runtime::getDefaultMemory(current_module);
 			 auto end = fc::time_point::now();
+
+       char* memstart = &memoryRef<char>( current_memory, 0 );
+       memory_backup.resize(1<<16);
+       memcpy( memstart, memory_backup.data(), memory_backup.size() );
 			idump((  1000000.0 / (end-start).count() ) );
      }
      catch(Serialization::FatalSerializationException exception)

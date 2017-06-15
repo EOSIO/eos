@@ -311,14 +311,14 @@ R"(
       db.push_transaction(trx);
       db.produce_blocks(1);
 
-      Transfer_Asset(db, init3, init1, Asset(99), "transfer 100");
+      Transfer_Asset(db, init3, init1, Asset(1), "transfer 100");
 
 			auto start = fc::time_point::now();
-		  for( uint32_t i = 0; i < 5; ++i ) {
-         Transfer_Asset(db, init3, init1, Asset(100+i), "transfer 100");
+		  for( uint32_t i = 0; i < 200; ++i ) {
+         Transfer_Asset(db, init3, init1, Asset(2+i), "transfer 100");
       }
 			auto end = fc::time_point::now();
-			idump((  10*1000000.0 / (end-start).count() ) );
+			idump((  200*1000000.0 / (end-start).count() ) );
 		  db.produce_blocks(1);
 /*
 
