@@ -5,11 +5,15 @@
 
 #include <eos/types/types.hpp>
 
+#include <eos/utilities/exception_macros.hpp>
+
 #include <chainbase/chainbase.hpp>
 
 #include <boost/multi_index/mem_fun.hpp>
 
 namespace eos {
+
+FC_DECLARE_EXCEPTION(ProducerRaceOverflowException, 10000000, "Producer Virtual Race time has overflowed");
 
 /**
  * @brief The ProducerVotesObject class tracks all votes for and by the block producers
@@ -65,16 +69,65 @@ class ProducerVotesObject : public chainbase::object<chain::producer_votes_objec
     */
    struct {
       /// The current speed for this producer (which is actually the total votes for the producer)
-      types::ShareType speed;
+      types::ShareType speed = 0;
       /// The position of this producer when we last updated the records
-      types::UInt128 position;
+      types::UInt128 position = 0;
       /// The "race time" when we last updated the records
-      types::UInt128 positionUpdateTime;
+      types::UInt128 positionUpdateTime = 0;
       /// The projected "race time" at which this producer will finish the race
       types::UInt128 projectedFinishTime = std::numeric_limits<types::UInt128>::max();
+
+      /// Set all fields on race, given the current speed, position, and time
+      void update(types::ShareType currentSpeed, types::UInt128 currentPosition, types::UInt128 currentRaceTime) {
+         speed = currentSpeed;
+         position = currentPosition;
+         positionUpdateTime = currentRaceTime;
+         auto distanceRemaining = config::ProducerRaceLapLength - position;
+         auto projectedTimeToFinish = speed > 0? distanceRemaining / speed
+                                               : std::numeric_limits<types::UInt128>::max();
+         EOS_ASSERT(currentRaceTime <= std::numeric_limits<types::UInt128>::max() - projectedTimeToFinish,
+                    ProducerRaceOverflowException, "Producer race time has overflowed",
+                    ("currentTime", currentRaceTime)("timeToFinish", projectedTimeToFinish)("limit", std::numeric_limits<types::UInt128>::max()));
+         projectedFinishTime = currentRaceTime + projectedTimeToFinish;
+      }
    } race;
 
+   void startNewRaceLap(types::UInt128 currentRaceTime) { race.update(race.speed, 0, currentRaceTime); }
    types::UInt128 projectedRaceFinishTime() const { return race.projectedFinishTime; }
+};
+
+/**
+ * @brief The ProducerScheduleObject class schedules producers into rounds
+ *
+ * This class stores the state of the virtual race to select runner-up producers, and provides the logic for selecting
+ * a round of producers.
+ *
+ * This is a singleton object within the database; there will only be one stored.
+ */
+class ProducerScheduleObject : public chainbase::object<chain::producer_schedule_object_type, ProducerScheduleObject> {
+   OBJECT_CTOR(ProducerScheduleObject)
+
+   id_type id;
+   types::UInt128 currentRaceTime = 0;
+
+   /// Retrieve a reference to the ProducerScheduleObject stored in the provided database
+   static const ProducerScheduleObject& get(const chainbase::database& db) { return db.get(id_type()); }
+
+   /**
+    * @brief Calculate the next round of block producers
+    * @param db The blockchain database
+    * @return The next round of block producers, sorted by owner name
+    *
+    * This method calculates the next round of block producers according to votes and the virtual race for runner-up
+    * producers. Although it is a const method, it will use its non-const db parameter to update its own records, as
+    * well as the race records stored in the @ref ProducerVotesObjects
+    */
+   chain::ProducerRound calculateNextRound(chainbase::database& db) const;
+
+   /**
+    * @brief Reset all producers in the virtual race to the starting line, and reset virtual time to zero
+    */
+   void resetProducerRace(chainbase::database& db) const;
 };
 
 using boost::multi_index::const_mem_fun;
@@ -104,6 +157,16 @@ using ProducerVotesMultiIndex = chainbase::shared_multi_index_container<
    >
 >;
 
+using ProducerScheduleMultiIndex = chainbase::shared_multi_index_container<
+   ProducerScheduleObject,
+   indexed_by<
+      ordered_unique<tag<by_id>,
+         member<ProducerScheduleObject, ProducerScheduleObject::id_type, &ProducerScheduleObject::id>
+      >
+   >
+>;
+
 } // namespace eos
 
 CHAINBASE_SET_INDEX_TYPE(eos::ProducerVotesObject, eos::ProducerVotesMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(eos::ProducerScheduleObject, eos::ProducerScheduleMultiIndex)

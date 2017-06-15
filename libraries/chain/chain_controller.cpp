@@ -859,6 +859,7 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
    }();
 
    initialize_indexes();
+   starter.register_types(*this, _db);
    initialize_chain(starter);
    spinup_db();
    spinup_fork_db();

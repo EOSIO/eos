@@ -1,5 +1,6 @@
 #include <eos/native_contract/staked_balance_contract.hpp>
 #include <eos/native_contract/staked_balance_objects.hpp>
+#include <eos/native_contract/producer_objects.hpp>
 
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/producer_object.hpp>
@@ -108,6 +109,11 @@ void CreateProducer::apply(apply_context& context) {
       p.owner = create.name;
       p.signing_key = create.key;
       p.configuration = create.configuration;
+   });
+   auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
+   db.create<ProducerVotesObject>([&create, &raceTime](ProducerVotesObject& pvo) {
+      pvo.ownerName = create.name;
+      pvo.startNewRaceLap(raceTime);
    });
 }
 
