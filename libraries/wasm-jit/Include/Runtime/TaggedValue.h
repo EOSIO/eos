@@ -5,6 +5,8 @@
 
 #include <string.h>
 
+#undef ENABLE_SIMD_PROTOTYPE
+
 namespace Runtime
 {
 	// A runtime value of any type.

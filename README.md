@@ -1,6 +1,6 @@
 # Eos
 
-Welcome to the Eos source code repository!
+Welcome to the EOS source code repository!
 
 ## Getting Started
 The following instructions overview the process of getting the software, building it, and running a simple test network that produces blocks.
@@ -12,6 +12,7 @@ This project is written primarily in C++14 and uses CMake as its build system. A
 Eos has the following external dependencies, which must be installed on your system:
  - Boost
  - OpenSSL
+ - LLVM 4.0
  - [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 
 ```

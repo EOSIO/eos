@@ -4,6 +4,8 @@
 #include "Runtime.h"
 #include "RuntimePrivate.h"
 
+#include <iostream>
+
 namespace Runtime
 {
 	void init()
@@ -54,6 +56,7 @@ namespace Runtime
 
 	[[noreturn]] void handleHardwareTrap(Platform::HardwareTrapType trapType,Platform::CallStack&& trapCallStack,Uptr trapOperand)
 	{
+    std::cerr << "handle hadrware trap \n";
 		std::vector<std::string> callStackDescription = describeCallStack(trapCallStack);
 
 		switch(trapType)
@@ -79,13 +82,16 @@ namespace Runtime
 		};
 	}
 
+
 	Result invokeFunction(FunctionInstance* function,const std::vector<Value>& parameters)
 	{
 		const FunctionType* functionType = function->type;
 		
 		// Check that the parameter types match the function, and copy them into a memory block that stores each as a 64-bit value.
 		if(parameters.size() != functionType->parameters.size())
-		{ throw Exception {Exception::Cause::invokeSignatureMismatch}; }
+		{ 
+       throw Exception {Exception::Cause::invokeSignatureMismatch}; 
+    }
 
 		U64* thunkMemory = (U64*)alloca((functionType->parameters.size() + getArity(functionType->ret)) * sizeof(U64));
 		for(Uptr parameterIndex = 0;parameterIndex < functionType->parameters.size();++parameterIndex)

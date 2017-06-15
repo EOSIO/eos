@@ -35,6 +35,13 @@
 
 #include "../common/database_fixture.hpp"
 
+#include <Inline/BasicTypes.h>
+#include <IR/Module.h>
+#include <IR/Validate.h>
+#include <WAST/WAST.h>
+#include <WASM/WASM.h>
+#include <Runtime/Runtime.h>
+
 using namespace eos;
 using namespace chain;
 
@@ -75,6 +82,40 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK_EQUAL(db.get_liquid_balance("init0"), Asset(100000-99));
 } FC_LOG_AND_RETHROW() }
 
+
+vector<uint8_t> assemble_wast( const std::string& wast ) {
+   std::cout << "\n" << wast << "\n";
+  IR::Module module;
+	std::vector<WAST::Error> parseErrors;
+	WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
+	if(parseErrors.size()) 
+	{
+		// Print any parse errors;
+		std::cerr << "Error parsing WebAssembly text file:" << std::endl;
+		for(auto& error : parseErrors)
+		{
+			std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
+			std::cerr << error.locus.sourceLine << std::endl;
+			std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
+		}
+		FC_ASSERT( !"error parsing wast" );
+	}
+
+	try
+	{
+		// Serialize the WebAssembly module.
+		Serialization::ArrayOutputStream stream;
+		WASM::serialize(stream,module);
+		return stream.getBytes();
+	}
+	catch(Serialization::FatalSerializationException exception)
+	{
+		std::cerr << "Error serializing WebAssembly binary file:" << std::endl;
+		std::cerr << exception.message << std::endl;
+    throw;
+	}
+}
+
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture) 
 { try {
@@ -93,6 +134,163 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       handler.recipient = config::EosContractName;
       handler.type      = "Transfer";
 
+/*
+      auto c_apply = R"(
+void print( char* string, int length );
+void printi( int );
+void assert( int test, char* message );
+void store( const char* key, int keylength, const char* value, int valuelen );
+int load( const char* key, int keylength, char* value, int maxlen );
+
+
+
+char* alloc( int size ) {
+    static char dynamic_memory[1024];
+    static int  start = 0;
+    int old_start = start;
+    start +=  8*((size+7)/8);
+    assert( start < sizeof(dynamic_memory), "out of memory" );
+    return &dynamic_memory[old_start];
+}
+
+
+char buffer[100];
+void apply(char* message, int length ) {
+   store( "last", 4, message, length );
+   load( "last", 4, buffer, 100 );
+   for( int i = 0; i < length; ++i ) {
+      assert( buffer[i] == message[i], "restore failed");
+   }
+}
+      )";
+*/
+      std::string wast_apply = 
+R"(
+(module
+  (type $FUNCSIG$vii (func (param i32 i32)))
+  (type $FUNCSIG$viiii (func (param i32 i32 i32 i32)))
+  (type $FUNCSIG$iiiii (func (param i32 i32 i32 i32) (result i32)))
+  (import "env" "assert" (func $assert (param i32 i32)))
+  (import "env" "load" (func $load (param i32 i32 i32 i32) (result i32)))
+  (import "env" "store" (func $store (param i32 i32 i32 i32)))
+  (table 0 anyfunc)
+  (memory $0 1)
+  (data (i32.const 1056) "out of memory\00")
+  (data (i32.const 1072) "last\00")
+  (data (i32.const 1200) "restore failed\00")
+  (export "memory" (memory $0))
+  (export "alloc" (func $alloc))
+  (export "apply" (func $apply))
+  (func $alloc (param $0 i32) (result i32)
+    (local $1 i32)
+    (i32.store offset=1040
+      (i32.const 0)
+      (tee_local $0
+        (i32.add
+          (tee_local $1
+            (i32.load offset=1040
+              (i32.const 0)
+            )
+          )
+          (i32.shl
+            (i32.div_s
+              (i32.add
+                (get_local $0)
+                (i32.const 7)
+              )
+              (i32.const 8)
+            )
+            (i32.const 3)
+          )
+        )
+      )
+    )
+    (call $assert
+      (i32.lt_u
+        (get_local $0)
+        (i32.const 1024)
+      )
+      (i32.const 1056)
+    )
+    (i32.add
+      (get_local $1)
+      (i32.const 16)
+    )
+  )
+  (func $apply (param $0 i32) (param $1 i32)
+    (local $2 i32)
+    (call $store
+      (i32.const 1072)
+      (i32.const 4)
+      (get_local $0)
+      (get_local $1)
+    )
+    (drop
+      (call $load
+        (i32.const 1072)
+        (i32.const 4)
+        (i32.const 1088)
+        (i32.const 100)
+      )
+    )
+    (block $label$0
+      (br_if $label$0
+        (i32.lt_s
+          (get_local $1)
+          (i32.const 1)
+        )
+      )
+      (set_local $2
+        (i32.const 0)
+      )
+      (loop $label$1
+        (call $assert
+          (i32.eq
+            (i32.load8_u
+              (i32.add
+                (get_local $2)
+                (i32.const 1088)
+              )
+            )
+            (i32.load8_u
+              (i32.add
+                (get_local $0)
+                (get_local $2)
+              )
+            )
+          )
+          (i32.const 1200)
+        )
+        (br_if $label$1
+          (i32.ne
+            (get_local $1)
+            (tee_local $2
+              (i32.add
+                (get_local $2)
+                (i32.const 1)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+
+
+)";
+
+
+
+      auto wasm = assemble_wast( wast_apply );
+      handler.apply.resize(wasm.size());
+      memcpy( handler.apply.data(), wasm.data(), wasm.size() );
+
+      edump((handler.apply.size()));
+      edump((handler.apply));
+
+      /*
       handler.apply   = R"(
          System.print( "Loading Handler" )
          class Handler {
@@ -106,18 +304,28 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
              }
          }
       )";
+      */
 
       trx.setMessage(0, "SetMessageHandler", handler);
 
       db.push_transaction(trx);
       db.produce_blocks(1);
 
-      Transfer_Asset(db, init3, init1, Asset(100), "transfer 100");
-      db.produce_blocks(1);
+      Transfer_Asset(db, init3, init1, Asset(99), "transfer 100");
+
+			auto start = fc::time_point::now();
+		  for( uint32_t i = 0; i < 5; ++i ) {
+         Transfer_Asset(db, init3, init1, Asset(100+i), "transfer 100");
+      }
+			auto end = fc::time_point::now();
+			idump((  10*1000000.0 / (end-start).count() ) );
+		  db.produce_blocks(1);
+/*
 
       const auto& world = db_db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"),
                                                                                      String("hello")));
       BOOST_CHECK_EQUAL( string(world.value.c_str()), "world" );
+*/
 
 } FC_LOG_AND_RETHROW() }
 

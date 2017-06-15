@@ -63,9 +63,12 @@ void SetMessageHandler::apply(apply_context& context) {
       action.processor                   = processor_acnt.id;
       action.recipient                   = recipient_acnt.id;
       action.type                        = msg.type;
-      action.validate_action             = msg.validate.c_str();
-      action.validate_precondition       = msg.precondition.c_str();
-      action.apply                       = msg.apply.c_str();
+      action.validate_action             = msg.validate.c_str(); ///TODO: fix this
+      action.validate_precondition       = msg.precondition.c_str(); ///TODO: fix this
+
+
+      action.apply.resize(msg.apply.size());
+      memcpy( action.apply.data(), msg.apply.data(), msg.apply.size() );
    });
    idump((msg.apply));
 }

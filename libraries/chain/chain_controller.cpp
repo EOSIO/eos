@@ -32,6 +32,8 @@
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 
+#include <eos/chain/wasm_interface.hpp>
+
 #include <eos/types/native.hpp>
 #include <eos/types/generated.hpp>
 
@@ -638,6 +640,9 @@ void chain_controller::apply_message( apply_context& context )
 
     auto handler = _db.find<action_code_object,by_processor_recipient_type>( boost::make_tuple(scope.id, recipient.id, context.msg.type) );
     if( handler ) {
+      wasm_interface::get().load( handler->apply.data(), handler->apply.size() );
+      wasm_interface::get().apply( context );
+      /*
        wdump((handler->apply.c_str()));
       wrenpp::VM vm;
       vm.executeString( R"(
@@ -651,6 +656,7 @@ void chain_controller::apply_message( apply_context& context )
       //apply_method( context, m.data );
       //apply_method( "context", 1 );
       apply_method( &context, 1 );
+      */
     }
     /// TODO: dispatch to script if not handled above
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
