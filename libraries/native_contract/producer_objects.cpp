@@ -30,7 +30,7 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
 
    FC_ASSERT(boost::distance(ActiveProducersByVotes) >= config::BlocksPerRound,
              "Not enough active producers registered to schedule a round!",
-             ("ActiveProducers", boost::distance(ActiveProducersByVotes))("AllProducers", AllProducersByVotes.size()));
+             ("ActiveProducers", (int64_t)boost::distance(ActiveProducersByVotes))("AllProducers", (int64_t)AllProducersByVotes.size()));
 
    // Copy the top voted active producer's names into the round
    auto runnerUpStorage =
@@ -54,7 +54,7 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
 
    FC_ASSERT(roundEnd == round.end(),
              "Round scheduling yielded an unexpected number of producers: got ${actual}, but expected ${expected}",
-             ("actual", std::distance(round.begin(), roundEnd))("expected", round.size()));
+             ("actual", (int64_t)std::distance(round.begin(), roundEnd))("expected", (int64_t)round.size()));
    auto lastRunnerUpName = *(roundEnd - 1);
    // Sort the runner-up producers into the voted ones
    boost::inplace_merge(round, runnerUpStorage);
@@ -74,7 +74,7 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
       if (boost::distance(LapCompleters) < AllProducersByFinishTime.size()
              && newRaceTime < std::numeric_limits<UInt128>::max()) {
          ilog("Processed producer race. ${count} producers completed a lap at virtual time ${time}",
-              ("count", boost::distance(LapCompleters))("time", newRaceTime));
+              ("count", (int64_t)boost::distance(LapCompleters))("time", newRaceTime));
          boost::for_each(LapCompleters, StartNewLap);
          db.modify(*this, [newRaceTime](ProducerScheduleObject& pso) {
             pso.currentRaceTime = newRaceTime;

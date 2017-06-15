@@ -51,7 +51,7 @@
 #include <functional>
 #include <iostream>
 
-#include <Wren++.h>
+//#include <Wren++.h>
 
 namespace eos { namespace chain {
 
@@ -854,6 +854,7 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
+      /*
    static bool bound_apply = [](){
       wrenpp::beginModule( "main" )
          .bindClassReference<apply_context>( "ApplyContext" )
@@ -863,6 +864,7 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
       .endModule();
       return true;
    }();
+   */
 
    initialize_indexes();
    starter.register_types(*this, _db);
