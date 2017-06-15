@@ -24,11 +24,15 @@
 
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/account_object.hpp>
+
+#include <eos/native_contract/objects.hpp>
+
 #include <chainbase/chainbase.hpp>
 
 #include <fc/crypto/digest.hpp>
 
 #include <boost/test/unit_test.hpp>
+#include <boost/range/algorithm/find.hpp>
 
 #include "../common/database_fixture.hpp"
 
@@ -179,5 +183,43 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
       db.produce_blocks();
       BOOST_CHECK_EQUAL(db.get_global_properties().configuration, medians);
 } FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(producer_voting, testing_fixture, *boost::unit_test::expected_failures(1)) {
+   try {
+      Make_Database(db)
+      db.produce_blocks();
+
+      Make_Account(db, joe);
+      Make_Account(db, bob);
+      Make_Producer(db, joe);
+      Approve_Producer(db, bob, joe, true);
+
+      db.produce_blocks();
+
+      {
+         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
+         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 1);
+         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), bobBalance.stakedBalance);
+      }
+
+      db.produce_blocks(config::BlocksPerRound);
+
+      const auto& gpo = db.get_global_properties();
+#warning FIXME: Expected test failure: Should start working when updating producer schedule based on votes works
+      BOOST_CHECK(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
+
+      Approve_Producer(db, bob, joe, false);
+
+      db.produce_blocks();
+
+      {
+         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
+         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 0);
+         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
+      }
+   } FC_LOG_AND_RETHROW()
+}
 
 } // namespace eos

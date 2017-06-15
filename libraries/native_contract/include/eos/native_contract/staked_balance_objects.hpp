@@ -13,7 +13,7 @@ namespace eos {
  * @brief The StakedBalanceObject class tracks the staked balance (voting balance) for accounts
  */
 class StakedBalanceObject : public chainbase::object<chain::staked_balance_object_type, StakedBalanceObject> {
-   OBJECT_CTOR(StakedBalanceObject)
+   OBJECT_CTOR(StakedBalanceObject, (approvedProducers))
 
    id_type id;
    types::AccountName ownerName;
@@ -21,6 +21,8 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
    types::ShareType stakedBalance = 0;
    types::ShareType unstakingBalance = 0;
    types::Time lastUnstakingTime = types::Time::maximum();
+
+   chain::shared_set<types::AccountName> approvedProducers;
 };
 
 struct byOwnerName;

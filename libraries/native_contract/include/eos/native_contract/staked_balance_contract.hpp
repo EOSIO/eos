@@ -7,7 +7,7 @@
 namespace eos {
 
 struct CreateAccount_Notify_Staked {
-   static void validate_preconditions(chain::precondition_validate_context& context);
+   static void validate_preconditions(chain::precondition_validate_context&) {}
    static void apply(chain::apply_context& context);
 };
 

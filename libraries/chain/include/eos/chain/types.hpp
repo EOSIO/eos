@@ -66,7 +66,7 @@
 
 #define EOS_SYSTEM_CONTRACT_FUNCTIONS (CreateAccount)(DefineStruct)(SetMessageHandler)
 #define EOS_CONTRACT_FUNCTIONS (Transfer)(TransferToLocked)
-#define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS (CreateProducer)(UpdateProducer)
+#define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS (CreateProducer)(UpdateProducer)(ApproveProducer)
 
 namespace eos { namespace chain {
    using                               std::map;
@@ -105,6 +105,8 @@ namespace eos { namespace chain {
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
    template<typename T>
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
+   template<typename T>
+   using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
