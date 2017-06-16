@@ -1,0 +1,4 @@
+#!/bin/sh -x
+for f in crashes/id* ; do
+ afl-tmin -i $f -o $f.min -m 9999999999999999999 -e -- ./bin/wavm --text @@
+done

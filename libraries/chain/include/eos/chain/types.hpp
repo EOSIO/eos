@@ -22,6 +22,12 @@
  * THE SOFTWARE.
  */
 #pragma once
+
+#include <eos/chain/config.hpp>
+#include <eos/types/types.hpp>
+
+#include <chainbase/chainbase.hpp>
+
 #include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
@@ -36,18 +42,11 @@
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/fixed_string.hpp>
-#include <eos/types/native.hpp>
-#include <eos/types/PublicKey.hpp>
-#include <eos/types/Asset.hpp>
-#include <eos/types/generated.hpp>
 
 #include <memory>
 #include <vector>
 #include <deque>
 #include <cstdint>
-#include <eos/chain/config.hpp>
-
-#include <chainbase/chainbase.hpp>
 
 #define OBJECT_CTOR1(NAME) \
     NAME() = delete; \
@@ -67,7 +66,7 @@
 
 #define EOS_SYSTEM_CONTRACT_FUNCTIONS (CreateAccount)(DefineStruct)(SetMessageHandler)
 #define EOS_CONTRACT_FUNCTIONS (Transfer)(TransferToLocked)
-#define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS (CreateProducer)(UpdateProducer)
+#define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS (CreateProducer)(UpdateProducer)(ApproveProducer)
 
 namespace eos { namespace chain {
    using                               std::map;
@@ -106,6 +105,8 @@ namespace eos { namespace chain {
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
    template<typename T>
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
+   template<typename T>
+   using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
@@ -135,7 +136,7 @@ namespace eos { namespace chain {
    using eos::types::Int128;
    using eos::types::Int256;
 
-   using ProducerRound = std::array<AccountName, config::ProducerCount>;
+   using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
 
    /**
     * List all object types from all namespaces here so they can
@@ -162,6 +163,7 @@ namespace eos { namespace chain {
       balance_object_type, ///< Defined by native_system_contract_plugin
       staked_balance_object_type, ///< Defined by native_system_contract_plugin
       producer_votes_object_type, ///< Defined by native_system_contract_plugin
+      producer_schedule_object_type, ///< Defined by native_system_contract_plugin
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -202,6 +204,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (balance_object_type)
                 (staked_balance_object_type)
                 (producer_votes_object_type)
+                (producer_schedule_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eos::chain::void_t, )

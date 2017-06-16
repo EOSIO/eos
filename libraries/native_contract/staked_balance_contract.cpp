@@ -1,5 +1,6 @@
 #include <eos/native_contract/staked_balance_contract.hpp>
 #include <eos/native_contract/staked_balance_objects.hpp>
+#include <eos/native_contract/producer_objects.hpp>
 
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/producer_object.hpp>
@@ -8,10 +9,6 @@
 
 namespace eos {
 using namespace chain;
-
-void CreateAccount_Notify_Staked::validate_preconditions(precondition_validate_context& context) {
-
-}
 
 void CreateAccount_Notify_Staked::apply(apply_context& context) {
    auto create = context.msg.as<types::CreateAccount>();
@@ -109,6 +106,11 @@ void CreateProducer::apply(apply_context& context) {
       p.signing_key = create.key;
       p.configuration = create.configuration;
    });
+   auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
+   db.create<ProducerVotesObject>([&create, &raceTime](ProducerVotesObject& pvo) {
+      pvo.ownerName = create.name;
+      pvo.startNewRaceLap(raceTime);
+   });
 }
 
 void UpdateProducer::validate(message_validate_context& context) {
@@ -136,12 +138,55 @@ void UpdateProducer::apply(apply_context& context) {
 }
 
 void ApproveProducer::validate(message_validate_context& context) {
+   auto approve = context.msg.as<types::ApproveProducer>();
+   EOS_ASSERT(approve.approve == 0 || approve.approve == 1, message_validate_exception,
+              "Unknown approval value: ${val}; must be either 0 or 1", ("val", approve.approve));
+   EOS_ASSERT(approve.producer.size() != 0, message_validate_exception,
+              "Approved producer's name cannot be empty");
 }
 
 void ApproveProducer::validate_preconditions(precondition_validate_context& context) {
+   const auto& db = context.db;
+   auto approve = context.msg.as<types::ApproveProducer>();
+   auto producer = db.find<ProducerVotesObject, byOwnerName>(approve.producer);
+   auto voter = db.find<StakedBalanceObject, byOwnerName>(context.msg.sender);
+
+   EOS_ASSERT(producer != nullptr, message_precondition_exception,
+              "Could not approve producer '${name}'; no such producer found", ("name", approve.producer));
+   EOS_ASSERT(voter != nullptr, message_precondition_exception,
+              "Could not find balance for '${name}'", ("name", context.msg.sender));
+   if (approve.approve)
+      EOS_ASSERT(voter->approvedProducers.count(approve.producer) == 0, message_precondition_exception,
+                 "Cannot add approval to producer '${name}'; producer is already approved",
+                 ("name", approve.producer));
+   else
+      EOS_ASSERT(voter->approvedProducers.count(approve.producer) == 1, message_precondition_exception,
+                 "Cannot remove approval from producer '${name}'; producer is not approved",
+                 ("name", approve.producer));
 }
 
 void ApproveProducer::apply(apply_context& context) {
+   auto& db = context.mutable_db;
+   auto approve = context.msg.as<types::ApproveProducer>();
+   auto producer = db.find<ProducerVotesObject, byOwnerName>(approve.producer);
+   auto voter = db.find<StakedBalanceObject, byOwnerName>(context.msg.sender);
+   auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
+
+   // Add/remove votes from producer
+   db.modify(*producer,
+             [approve = approve.approve, amount = voter->stakedBalance, &raceTime](ProducerVotesObject& pvo) {
+      if (approve)
+         pvo.updateVotes(amount, raceTime);
+      else
+         pvo.updateVotes(-amount, raceTime);
+   });
+   // Add/remove producer from voter's approved producer list
+   db.modify(*voter, [&approve](StakedBalanceObject& sbo) {
+      if (approve.approve)
+         sbo.approvedProducers.insert(approve.producer);
+      else
+         sbo.approvedProducers.erase(approve.producer);
+   });
 }
 
 } // namespace eos

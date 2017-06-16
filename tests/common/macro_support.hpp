@@ -64,7 +64,7 @@
    { \
       eos::chain::SignedTransaction trx; \
       trx.emplaceMessage(#owner, config::StakedBalanceContractName, vector<AccountName>{}, "CreateProducer", \
-                                types::CreateProducer{#owner, key, cfg}); \
+                         types::CreateProducer{#owner, key, cfg}); \
       trx.expiration = db.head_block_time() + 100; \
       trx.set_reference_block(db.head_block_id()); \
       db.push_transaction(trx); \
@@ -73,6 +73,16 @@
 #define MKPDCR2(db, owner) \
    Make_Key(owner ## _producer); \
    MKPDCR4(db, owner, owner ## _producer_public_key, BlockchainConfiguration{});
+
+#define APPDCR4(db, voter, producer, approved) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.emplaceMessage(#voter, config::StakedBalanceContractName, vector<AccountName>{}, "ApproveProducer", \
+                         types::ApproveProducer{#producer, approved? 1 : 0}); \
+      trx.expiration = db.head_block_time() + 100; \
+      trx.set_reference_block(db.head_block_id()); \
+      db.push_transaction(trx); \
+   }
 
 #define UPPDCR4(db, owner, key, cfg) \
    { \

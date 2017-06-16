@@ -82,7 +82,7 @@ struct SetMessageHandler
    type            TypeName     # the type of message being processed (relative to to account)
    validate        String       # the script to validate
    precondition    String       # the pre condition validation
-   apply           String       # the apply
+   apply           Bytes        # the apply
 
 struct CreateProducer
    name           AccountName

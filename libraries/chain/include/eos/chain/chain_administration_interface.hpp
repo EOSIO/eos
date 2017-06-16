@@ -22,7 +22,12 @@ class chain_administration_interface {
 public:
    virtual ~chain_administration_interface();
 
-   virtual ProducerRound get_next_round(const chainbase::database& db) = 0;
+   /**
+    * @brief Calculate the next round of block producers and return it
+    * @param db The current blockchain database state. Private state or block producer scheduling may be modiied.
+    * @return The next round of block producers, sorted by owner name
+    */
+   virtual ProducerRound get_next_round(chainbase::database& db) = 0;
    virtual BlockchainConfiguration get_blockchain_configuration(const chainbase::database& db,
                                                                 const ProducerRound& round) = 0;
 };

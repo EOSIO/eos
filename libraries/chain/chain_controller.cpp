@@ -32,6 +32,8 @@
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 
+#include <eos/chain/wasm_interface.hpp>
+
 #include <eos/types/native.hpp>
 #include <eos/types/generated.hpp>
 
@@ -49,7 +51,7 @@
 #include <functional>
 #include <iostream>
 
-#include <Wren++.h>
+//#include <Wren++.h>
 
 namespace eos { namespace chain {
 
@@ -638,6 +640,9 @@ void chain_controller::apply_message( apply_context& context )
 
     auto handler = _db.find<action_code_object,by_processor_recipient_type>( boost::make_tuple(scope.id, recipient.id, context.msg.type) );
     if( handler ) {
+      wasm_interface::get().load( handler->apply.data(), handler->apply.size() );
+      wasm_interface::get().apply( context );
+      /*
        wdump((handler->apply.c_str()));
       wrenpp::VM vm;
       vm.executeString( R"(
@@ -651,6 +656,7 @@ void chain_controller::apply_message( apply_context& context )
       //apply_method( context, m.data );
       //apply_method( "context", 1 );
       apply_method( &context, 1 );
+      */
     }
     /// TODO: dispatch to script if not handled above
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
@@ -684,7 +690,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
    EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
-   if (next_block.block_num() % config::ProducerCount != 0)
+   if (next_block.block_num() % config::BlocksPerRound != 0)
       EOS_ASSERT(next_block.producer_changes.empty(), block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
@@ -712,7 +718,7 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
 
 void chain_controller::update_global_properties(const signed_block& b) {
    // If we're at the end of a round, update the BlockchainConfiguration and producer schedule
-   if (b.block_num() % config::ProducerCount == 0) {
+   if (b.block_num() % config::BlocksPerRound == 0) {
       auto schedule = calculate_next_round(b);
       auto config = _admin->get_blockchain_configuration(_db, schedule);
 
@@ -848,6 +854,7 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
+      /*
    static bool bound_apply = [](){
       wrenpp::beginModule( "main" )
          .bindClassReference<apply_context>( "ApplyContext" )
@@ -857,8 +864,10 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
       .endModule();
       return true;
    }();
+   */
 
    initialize_indexes();
+   starter.register_types(*this, _db);
    initialize_chain(starter);
    spinup_db();
    spinup_fork_db();
