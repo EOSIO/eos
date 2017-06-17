@@ -8,6 +8,7 @@
 #include "IR/Operators.h"
 #include "IR/Validate.h"
 #include <eos/chain/key_value_object.hpp>
+#include <eos/chain/account_object.hpp>
 
 namespace eos { namespace chain {
    using namespace IR;
@@ -17,6 +18,7 @@ namespace eos { namespace chain {
    }
 
 DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
+   ilog( "store" );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -30,6 +32,9 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    char* key   = &memoryRef<char>( mem, keyptr   );
    char* value = &memoryRef<char>( mem, valueptr );
    string keystr( key, key+keylen);
+
+   idump((keystr));
+   if( valuelen == 8 ) idump(( *((int64_t*)value)));
 
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
@@ -47,7 +52,84 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    }
 } 
 
+DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
+   FC_ASSERT( keylen > 0 );
+
+   auto& wasm  = wasm_interface::get();
+
+   FC_ASSERT( wasm.current_apply_context, "no apply context found" );
+
+   auto& db    = wasm.current_apply_context->mutable_db;
+   auto& scope = wasm.current_apply_context->scope;
+   auto  mem   = wasm.current_memory;
+   char* key   = &memoryRef<char>( mem, keyptr   );
+   string keystr( key, key+keylen);
+
+   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
+   if( obj ) {
+			db.remove( *obj );
+      return true;
+   }
+   return false;
+}
+
+DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
+   auto& wasm          = wasm_interface::get();
+   auto  mem           = wasm.current_memory;
+   char* dst           = &memoryRef<char>( mem, dstp);
+   const char* src     = &memoryRef<const char>( mem, srcp );
+   char* dst_end       = &memoryRef<char>( mem, dstp+uint32_t(len));
+   const char* src_end = &memoryRef<const char>( mem, srcp+uint32_t(len) );
+
+#warning TODO: wasm memcpy has undefined behavior if memory ranges overlap
+/*
+   if( dst > src )
+			FC_ASSERT( dst < src_end && src < dst_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
+   else
+			FC_ASSERT( src < dst_end && dst < src_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
+*/
+   memcpy( dst, src, uint32_t(len) );
+   return dstp;
+}
+
+
+DEFINE_INTRINSIC_FUNCTION2(env,Varint_unpack,Varint_unpack,none,i32,streamptr,i32,valueptr) {
+   auto& wasm  = wasm_interface::get();
+   auto  mem   = wasm.current_memory;
+
+   uint32_t* stream = &memoryRef<uint32_t>( mem, streamptr );
+   const char* pos = &memoryRef<const char>( mem, stream[1] );
+   const char* end = &memoryRef<const char>( mem, stream[2] );
+   uint32_t& value = memoryRef<uint32_t>( mem, valueptr );
+
+   fc::unsigned_int vi;
+   fc::datastream<const char*> ds(pos,end-pos);
+   fc::raw::unpack( ds, vi );
+   value = vi.value;
+
+   stream[1] += ds.pos() - pos;
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,AccountName_unpack,AccountName_unpack,none,i32,streamptr,i32,accountptr) {
+   auto& wasm  = wasm_interface::get();
+   auto  mem   = wasm.current_memory;
+
+
+   uint32_t* stream = &memoryRef<uint32_t>( mem, streamptr );
+   const char* pos = &memoryRef<const char>( mem, stream[1] );
+   const char* end = &memoryRef<const char>( mem, stream[2] );
+   AccountName* name = &memoryRef<AccountName>( mem, accountptr );
+
+   fc::datastream<const char*> ds( pos, end - pos );
+   fc::raw::unpack( ds, *name );
+
+   stream[1] += ds.pos() - pos;
+}
+
+
+
 DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
+   ilog( "load" );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -61,21 +143,39 @@ DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,
    char* key   = &memoryRef<char>( mem, keyptr   );
    char* value = &memoryRef<char>( mem, valueptr );
    string keystr( key, key+keylen);
+   idump((keystr));
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
    if( obj == nullptr ) return -1;
 	 auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
    if( copylen ) {
 			memcpy( value, obj->value.data(), copylen );
+      if( copylen == 8 ) idump(( *((int64_t*)value)));
    }
 	 return copylen;
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
+   FC_ASSERT( destsize > 0 );
+   wasm_interface& wasm = wasm_interface::get();
+   auto  mem   = wasm.current_memory;
+   char* begin = &Runtime::memoryRef<char>( mem, destptr );
+   Runtime::memoryRef<char>( mem, destptr + destsize );
+
+   int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
+   memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
+   return minlen;
 }
 
 DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
   std::string message = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
   if( !test ) edump((message));
-  FC_ASSERT( test, "assertion failed: ${s}", ("s",message) );
+  FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
 } 
+
+DEFINE_INTRINSIC_FUNCTION0(env,messageSize,messageSize,i32) {
+   return wasm_interface::get().current_validate_context->msg.data.size();
+}
 
 DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) { 
    FC_ASSERT( size > 0 );
@@ -89,13 +189,16 @@ DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) {
 DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i32,val) {
   idump((val));
 }
+DEFINE_INTRINSIC_FUNCTION1(env,printi64,printi64,none,i64,val) {
+  idump((val));
+}
 
 DEFINE_INTRINSIC_FUNCTION2(env,print,print,none,i32,charptr,i32,size) {
   FC_ASSERT( size > 0 );
-  char* str = &Runtime::memoryRef<char>( Runtime::getDefaultMemory(wasm_interface::get().current_module), charptr);
-  char* end = &Runtime::memoryRef<char>( Runtime::getDefaultMemory(wasm_interface::get().current_module), charptr+size);
+  const char* str = &Runtime::memoryRef<const char>( Runtime::getDefaultMemory(wasm_interface::get().current_module), charptr);
+  const char* end = &Runtime::memoryRef<const char>( Runtime::getDefaultMemory(wasm_interface::get().current_module), charptr+size);
   edump((charptr)(size));
-	wlog( std::string( str, end ) );
+	wlog( std::string( str, size ) );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) { 
@@ -132,62 +235,10 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
      bool resolve(const std::string& moduleName,const std::string& exportName,ObjectType type,ObjectInstance*& outObject) override
      {
-       // Try to resolve an intrinsic first.
-       if(IntrinsicResolver::singleton.resolve(moduleName,exportName,type,outObject)) { return true; }
-       FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",moduleName)("export",exportName) );
-
-       // Then look for a named module.
-       auto namedResolverIt = moduleNameToResolverMap.find(moduleName);
-       if(namedResolverIt != moduleNameToResolverMap.end())
-       {
-         return namedResolverIt->second->resolve(moduleName,exportName,type,outObject);
-       }
-
-       // Finally, stub in missing function imports.
-       if(type.kind == ObjectKind::function)
-       {
-         // Generate a function body that just uses the unreachable op to fault if called.
-         Serialization::ArrayOutputStream codeStream;
-         OperatorEncoderStream encoder(codeStream);
-         encoder.unreachable();
-         encoder.end();
-
-         // Generate a module for the stub function.
-         Module stubModule;
-         DisassemblyNames stubModuleNames;
-         stubModule.types.push_back(asFunctionType(type));
-         stubModule.functions.defs.push_back({{0},{},std::move(codeStream.getBytes()),{}});
-         stubModule.exports.push_back({"importStub",ObjectKind::function,0});
-         stubModuleNames.functions.push_back({std::string(moduleName) + "." + exportName,{}});
-         IR::setDisassemblyNames(stubModule,stubModuleNames);
-         IR::validateDefinitions(stubModule);
-
-         // Instantiate the module and return the stub function instance.
-         auto stubModuleInstance = instantiateModule(stubModule,{});
-         outObject = getInstanceExport(stubModuleInstance,"importStub");
-         //Log::printf(Log::Category::error,"Generated stub for missing function import %s.%s : %s\n",moduleName.c_str(),exportName.c_str(),asString(type).c_str());
-         return true;
-       }
-       else if(type.kind == ObjectKind::memory)
-       {
-         outObject = asObject(Runtime::createMemory(asMemoryType(type)));
-         //Log::printf(Log::Category::error,"Generated stub for missing memory import %s.%s : %s\n",moduleName.c_str(),exportName.c_str(),asString(type).c_str());
-         return true;
-       }
-       else if(type.kind == ObjectKind::table)
-       {
-         outObject = asObject(Runtime::createTable(asTableType(type)));
-         //Log::printf(Log::Category::error,"Generated stub for missing table import %s.%s : %s\n",moduleName.c_str(),exportName.c_str(),asString(type).c_str());
-         return true;
-       }
-       else if(type.kind == ObjectKind::global)
-       {
-         outObject = asObject(Runtime::createGlobal(asGlobalType(type),Runtime::Value(asGlobalType(type).valueType,Runtime::UntaggedValue())));
-         //Log::printf(Log::Category::error,"Generated stub for missing global import %s.%s : %s\n",moduleName.c_str(),exportName.c_str(),asString(type).c_str());
-         return true;
-       }
-
-       return false;
+         // Try to resolve an intrinsic first.
+         if(IntrinsicResolver::singleton.resolve(moduleName,exportName,type,outObject)) { return true; }
+         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",moduleName)("export",exportName) );
+         return false;
      }
    };
 
@@ -221,19 +272,21 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       return U32(ptr - &memoryRef<char>(current_memory,0));
    }
 
-   void  wasm_interface::vm_apply( const vector<char>& message ) 
+   void  wasm_interface::vm_apply() 
    { try {
       try {
-				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"apply"));
+         std::string mangledapply("onApply_");
+         mangledapply += std::string( current_validate_context->msg.type ) + "_";
+         mangledapply += std::string( current_validate_context->msg.recipient );
+         idump((mangledapply));
+
+				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,mangledapply.c_str()));
+		 		 if( !apply ) return; /// if not found then it is a no-op
+
 				 const FunctionType* functionType = getFunctionType(apply);
-				 FC_ASSERT( functionType->parameters.size() == 2 );
+				 FC_ASSERT( functionType->parameters.size() == 0 );
 
-				 auto buffer = vm_allocate( message.size() );
-				 memcpy( buffer, message.data(), message.size() );
-
-				 std::vector<Value> args(2);
-				 args[0] = vm_pointer_to_offset(buffer);
-				 args[1] = U32(message.size());
+				 std::vector<Value> args(0);
 
 				 Runtime::invokeFunction(apply,args);
       } catch( const Runtime::Exception& e ) {
@@ -241,25 +294,120 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 					edump((e.callStack));
 					throw;
       }
-   } FC_CAPTURE_AND_RETHROW( (message) ) }
+   } FC_CAPTURE_AND_RETHROW() }
+
+   void  wasm_interface::vm_onInit() 
+   { try {
+      try {
+          wlog( "onInit" );
+				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"onInit"));
+		 		 if( !apply ) {
+           wlog( "no onInit method found" );
+					 return; /// if not found then it is a no-op
+         }
+
+				 const FunctionType* functionType = getFunctionType(apply);
+				 FC_ASSERT( functionType->parameters.size() == 0 );
+
+				 std::vector<Value> args(0);
+
+				 Runtime::invokeFunction(apply,args);
+      } catch( const Runtime::Exception& e ) {
+          edump((std::string(describeExceptionCause(e.cause))));
+					edump((e.callStack));
+					throw;
+      }
+   } FC_CAPTURE_AND_RETHROW() }
 
    void wasm_interface::apply( apply_context& c ) {
     try {
+      load( c.scope, c.db );
+
       current_validate_context       = &c;
       current_precondition_context   = &c;
       current_apply_context          = &c;
 
-      vm_apply( current_validate_context->msg.data );
+      vm_apply();
 
-      current_validate_context     = nullptr;
-      current_precondition_context = nullptr;
-      current_apply_context        = nullptr;
+   } FC_CAPTURE_AND_RETHROW() }
+
+   void wasm_interface::init( apply_context& c ) {
+    try {
+      ilog( "WASM INTERFACE INIT" );
+      load( c.scope, c.db );
+
+      current_validate_context       = &c;
+      current_precondition_context   = &c;
+      current_apply_context          = &c;
+
+      vm_onInit();
+
    } FC_CAPTURE_AND_RETHROW() }
 
 
+   void wasm_interface::load( const AccountName& name, const chainbase::database& db ) {
+      const auto& recipient = db.get<account_object,by_name>( name );
+
+      auto& state = instances[name];
+      if( state.code_version != recipient.code_version ) {
+         if( state.instance ) {
+            /// TODO: free existing instance and module
+#warning TODO: free existing module if the code has been updated, currently leak memory
+            state.instance     = nullptr;
+            state.module       = nullptr;
+            state.code_version = -1;
+         }
+         state.module = new IR::Module();
+
+        try
+        {
+          Serialization::MemoryInputStream stream((const U8*)recipient.code.data(),recipient.code.size());
+          WASM::serialize(stream,*state.module);
+
+          RootResolver rootResolver;
+          LinkResult linkResult = linkModule(*state.module,rootResolver);
+          state.instance = instantiateModule( *state.module, std::move(linkResult.resolvedImports) );
+          FC_ASSERT( state.instance );
+          current_memory = Runtime::getDefaultMemory(state.instance);
+
+          char* memstart = &memoryRef<char>( current_memory, 0 );
+          state.init_memory.resize(1<<16); /// TODO: actually get memory size
+          memcpy( state.init_memory.data(), memstart, state.init_memory.size() );
+          std::cerr <<"INIT MEMORY: \n";
+          for( uint32_t i = 0; i < 10000; ++i )  
+              if( memstart[i] )
+								 std::cerr << (char)memstart[i];
+          std::cerr <<"\n";
+          state.code_version = recipient.code_version;
+        }
+        catch(Serialization::FatalSerializationException exception)
+        {
+          std::cerr << "Error deserializing WebAssembly binary file:" << std::endl;
+          std::cerr << exception.message << std::endl;
+          throw;
+        }
+        catch(IR::ValidationException exception)
+        {
+          std::cerr << "Error validating WebAssembly binary file:" << std::endl;
+          std::cerr << exception.message << std::endl;
+          throw;
+        }
+        catch(std::bad_alloc)
+        {
+          std::cerr << "Memory allocation failed: input is likely malformed" << std::endl;
+          throw;
+        }
+      }
+
+      current_module = state.instance;
+      current_memory = getDefaultMemory( current_module );
+      char* memstart = &memoryRef<char>( current_memory, 0 );
+      memcpy( memstart, state.init_memory.data(), state.init_memory.size() );
+   }
 
 
 
+/*
    void wasm_interface::load(const char* bytes, size_t len)
    { try {
      static vector<char> memory_backup;
@@ -322,5 +470,6 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
        throw;
      }
    } FC_CAPTURE_AND_RETHROW() }
+   */
 
 } }

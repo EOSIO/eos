@@ -1,11 +1,12 @@
 #include <eos/native_contract/system_contract.hpp>
 
 #include <eos/chain/message_handling_contexts.hpp>
-#include <eos/chain/action_objects.hpp>
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/type_object.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/global_property_object.hpp>
+
+#include <eos/chain/wasm_interface.hpp>
 
 namespace eos {
 using namespace chain;
@@ -40,37 +41,34 @@ void DefineStruct::apply(apply_context& context) {
    });
 }
 
-void SetMessageHandler::validate(message_validate_context& context) {
-   auto  msg = context.msg.as<types::SetMessageHandler>();
+void SetCode::validate(message_validate_context& context) {
+   auto  msg = context.msg.as<types::SetCode>();
+   FC_ASSERT( msg.vmtype == 0 );
+   FC_ASSERT( msg.vmversion == 0 );
+   // TODO: verify code compiles and is properly sanitized
 }
 
-void SetMessageHandler::validate_preconditions(precondition_validate_context& context)
+void SetCode::validate_preconditions(precondition_validate_context& context)
 { try {
-      auto& db = context.db;
-      auto  msg = context.msg.as<types::SetMessageHandler>();
-      idump((msg.recipient)(msg.processor)(msg.type));
-      // db.get<type_object,by_scope_name>( boost::make_tuple(msg.account, msg.type))
+   auto& db = context.db;
+   auto  msg = context.msg.as<types::SetCode>();
+   // db.get<type_object,by_scope_name>( boost::make_tuple(msg.account, msg.type))
 
-      // TODO: verify code compiles
 } FC_CAPTURE_AND_RETHROW() }
 
-void SetMessageHandler::apply(apply_context& context) {
+void SetCode::apply(apply_context& context) {
    auto& db = context.mutable_db;
-   auto  msg = context.msg.as<types::SetMessageHandler>();
-   const auto& processor_acnt = db.get<account_object,by_name>(msg.processor);
-   const auto& recipient_acnt = db.get<account_object,by_name>(msg.recipient);
-   db.create<action_code_object>( [&](auto& action){
-      action.processor                   = processor_acnt.id;
-      action.recipient                   = recipient_acnt.id;
-      action.type                        = msg.type;
-      action.validate_action             = msg.validate.c_str(); ///TODO: fix this
-      action.validate_precondition       = msg.precondition.c_str(); ///TODO: fix this
-
-
-      action.apply.resize(msg.apply.size());
-      memcpy( action.apply.data(), msg.apply.data(), msg.apply.size() );
+   auto  msg = context.msg.as<types::SetCode>();
+   const auto& account = db.get<account_object,by_name>(msg.account);
+   wlog( "set code: ${size}", ("size",msg.code.size()));
+   db.modify( account, [&]( auto& a ) {
+      a.code_version++;
+      a.code.resize( msg.code.size() );
+      memcpy( a.code.data(), msg.code.data(), msg.code.size() );
    });
-   idump((msg.apply));
+
+   apply_context init_context( context.mutable_db, chain::Message(), msg.account );
+   wasm_interface::get().init( init_context );
 }
 
 void CreateAccount::validate(message_validate_context& context) {

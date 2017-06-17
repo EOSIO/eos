@@ -635,30 +635,11 @@ void chain_controller::apply_message( apply_context& context )
           return;
        }
     }
-    const auto& scope = _db.get<account_object,by_name>( context.scope );
-    const auto& recipient = _db.get<account_object,by_name>( context.msg.recipient );
-
-    auto handler = _db.find<action_code_object,by_processor_recipient_type>( boost::make_tuple(scope.id, recipient.id, context.msg.type) );
-    if( handler ) {
-      wasm_interface::get().load( handler->apply.data(), handler->apply.size() );
-      wasm_interface::get().apply( context );
-      /*
-       wdump((handler->apply.c_str()));
-      wrenpp::VM vm;
-      vm.executeString( R"(
-          foreign class ApplyContext {
-             foreign get(key)
-             foreign set(key,value)
-          }
-      )");
-      vm.executeString( handler->apply.c_str() );
-      auto apply_method = vm.method( "main", "Handler", "apply(_,_)" );
-      //apply_method( context, m.data );
-      //apply_method( "context", 1 );
-      apply_method( &context, 1 );
-      */
+    const auto& recipient = _db.get<account_object,by_name>( context.scope );
+    if( recipient.code.size() ) {
+       wasm_interface::get().apply( context );
     }
-    /// TODO: dispatch to script if not handled above
+
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
 
 
@@ -800,7 +781,6 @@ uint32_t chain_controller::last_irreversible_block_num() const {
 void chain_controller::initialize_indexes() {
    _db.add_index<account_index>();
    _db.add_index<permission_index>();
-   _db.add_index<action_code_index>();
    _db.add_index<action_permission_index>();
    _db.add_index<type_index>();
    _db.add_index<key_value_index>();

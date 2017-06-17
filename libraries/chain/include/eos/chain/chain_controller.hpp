@@ -90,7 +90,7 @@ namespace eos { namespace chain {
          }
 
          /**
-          *  The database can override any script handler with native code.
+          *  The controller can override any script endpoint with native code.
           */
          ///@{
          void set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v );

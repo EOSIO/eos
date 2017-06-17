@@ -121,31 +121,28 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
       Make_Database(db);
       db.produce_blocks(10);
+      Make_Account(db, simplecoin);
+      db.produce_blocks(1);
 
-      SignedTransaction trx;
-      trx.messages.resize(1);
-      trx.set_reference_block(db.head_block_id());
-      trx.expiration = db.head_block_time() + 100;
-      trx.messages[0].sender = "init1";
-      trx.messages[0].recipient = "sys";
 
-      types::SetMessageHandler handler;
-      handler.processor = "init1";
-      handler.recipient = config::EosContractName;
-      handler.type      = "Transfer";
 
 /*
       auto c_apply = R"(
+/// Start the EOS Built In Library HERE
+typedef long long    uint64_t;
+typedef unsigned int uint32_t;
+
 void print( char* string, int length );
 void printi( int );
+void printi64( uint64_t );
 void assert( int test, char* message );
 void store( const char* key, int keylength, const char* value, int valuelen );
 int load( const char* key, int keylength, char* value, int maxlen );
+void* memcpy( void* dest, const void* src, uint32_t size );
+int readMessage( char* dest, int destsize );
 
-
-
-char* alloc( int size ) {
-    static char dynamic_memory[1024];
+void* malloc( unsigned int size ) {
+    static char dynamic_memory[1024*8];
     static int  start = 0;
     int old_start = start;
     start +=  8*((size+7)/8);
@@ -154,53 +151,171 @@ char* alloc( int size ) {
 }
 
 
-char buffer[100];
-void apply(char* message, int length ) {
-   store( "last", 4, message, length );
-   load( "last", 4, buffer, 100 );
-   for( int i = 0; i < length; ++i ) {
-      assert( buffer[i] == message[i], "restore failed");
-   }
+typedef struct {
+  uint64_t   name[4];
+} AccountName;
+
+typedef struct {
+  uint32_t  length;
+  char      data[];
+} String;
+
+
+typedef struct {
+   char* start;
+   char* pos;
+   char* end;
+} DataStream;
+
+void DataStream_init( DataStream* ds, char* start, int length ) {
+  ds->start = start;
+  ds->end   = start + length;
+  ds->pos   = start;
+}
+void AccountName_initString( AccountName* a, String* s ) {
+  assert( s->length <= sizeof(AccountName), "String is longer than account name allows" );
+  memcpy( a, s->data, s->length );
+}
+void AccountName_initCString( AccountName* a, const char* s, uint32_t len ) {
+  assert( len <= sizeof(AccountName), "String is longer than account name allows" );
+  memcpy( a, s, len );
+}
+
+void AccountName_unpack( DataStream* ds, AccountName* account );
+void uint64_unpack( DataStream* ds, uint64_t* value ) {
+  assert( ds->pos + sizeof(uint64_t) <= ds->end, "read past end of stream" );
+  memcpy( (char*)value, ds->pos, 8 );
+  ds->pos += sizeof(uint64_t);
+}
+void Varint_unpack( DataStream* ds, uint32_t* value );
+void String_unpack( DataStream* ds, String** value ) {
+   static uint32_t size;
+   Varint_unpack( ds, &size );
+   assert( ds->pos + size <= ds->end, "read past end of stream");
+   String* str = (String*)malloc( size + sizeof(String) );
+   memcpy( str->data, ds->pos, size );
+   *value = str;
+}
+
+/// END BUILT IN LIBRARY.... everything below this is "user contract"
+
+
+typedef struct  {
+  AccountName from;
+  AccountName to;
+  uint64_t    amount;
+  String*     memo;
+} Transfer;
+
+void Transfer_unpack( DataStream* ds, Transfer* transfer )
+{
+   AccountName_unpack( ds, &transfer->from );
+   AccountName_unpack( ds, &transfer->to   );
+   uint64_unpack( ds, &transfer->amount );
+   String_unpack( ds, &transfer->memo );
+}
+
+typedef struct {
+  uint64_t    balance;
+} Balance;
+
+void onInit() {
+  static Balance initial;
+  static AccountName simplecoin;
+  AccountName_initCString( &simplecoin, "simplecoin", 10 );
+  initial.balance = 1000*1000;
+  
+  store( &simplecoin, sizeof(AccountName), &initial, sizeof(Balance));
+}
+
+
+void onApply_Transfer_simplecoin() {
+   static char buffer[100];
+
+   int read   = readMessage( buffer, 100  );
+   static Transfer message;
+   static DataStream ds;
+   DataStream_init( &ds, buffer, read );
+   Transfer_unpack( &ds, &message );
+
+   static Balance from_balance;
+   static Balance to_balance;
+   to_balance.balance = 0;
+   
+   read = load( (char*)&message.from, sizeof(message.from), (char*)&from_balance.balance, sizeof(from_balance.balance) );
+   assert( read == sizeof(Balance), "no existing balance" );
+   assert( from_balance.balance >= message.amount, "insufficient funds" );
+   read = load( (char*)&message.to, sizeof(message.to), (char*)&from_balance.balance, sizeof(from_balance.balance) );
+   
+   to_balance.balance   += message.amount;
+   from_balance.balance -= message.amount;
+
+   if( from_balance.balance )
+      store( (char*)&message.from, sizeof(message.from), (char*)&from_balance.balance, sizeof(from_balance.balance) );
+   else
+      remove( (char*)&message.from, sizeof(message.from) );
+ 
+   store( (char*)&message.to, sizeof(message.to), (char*)&to_balance.balance, sizeof(to_balance.balance) );
 }
       )";
 */
-      std::string wast_apply = 
+std::string wast_apply = 
 R"(
 (module
   (type $FUNCSIG$vii (func (param i32 i32)))
   (type $FUNCSIG$viiii (func (param i32 i32 i32 i32)))
+  (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
+  (type $FUNCSIG$vj (func (param i64)))
   (type $FUNCSIG$iiiii (func (param i32 i32 i32 i32) (result i32)))
+  (type $FUNCSIG$i (func (result i32)))
+  (type $FUNCSIG$iiii (func (param i32 i32 i32) (result i32)))
+  (import "env" "AccountName_unpack" (func $AccountName_unpack (param i32 i32)))
+  (import "env" "Varint_unpack" (func $Varint_unpack (param i32 i32)))
   (import "env" "assert" (func $assert (param i32 i32)))
   (import "env" "load" (func $load (param i32 i32 i32 i32) (result i32)))
+  (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+  (import "env" "print" (func $print (param i32 i32)))
+  (import "env" "printi64" (func $printi64 (param i64)))
+  (import "env" "readMessage" (func $readMessage (param i32 i32) (result i32)))
+  (import "env" "remove" (func $remove (param i32 i32) (result i32)))
   (import "env" "store" (func $store (param i32 i32 i32 i32)))
   (table 0 anyfunc)
   (memory $0 1)
-  (data (i32.const 1056) "out of memory\00")
-  (data (i32.const 1072) "last\00")
-  (data (i32.const 1200) "restore failed\00")
+  (data (i32.const 8224) "out of memory\00")
+  (data (i32.const 8240) "String is longer than account name allows\00")
+  (data (i32.const 8288) "read past end of stream\00")
+  (data (i32.const 8368) "simplecoin\00")
+  (data (i32.const 8384) "onInit simiplecoin\00")
+  (data (i32.const 8416) "onApply_Transfer_simplecoin\00")
+  (data (i32.const 8672) "no existing balance\00")
+  (data (i32.const 8704) "insufficient funds\00")
   (export "memory" (memory $0))
-  (export "alloc" (func $alloc))
-  (export "apply" (func $apply))
-  (func $alloc (param $0 i32) (result i32)
+  (export "malloc" (func $malloc))
+  (export "DataStream_init" (func $DataStream_init))
+  (export "AccountName_initString" (func $AccountName_initString))
+  (export "AccountName_initCString" (func $AccountName_initCString))
+  (export "uint64_unpack" (func $uint64_unpack))
+  (export "String_unpack" (func $String_unpack))
+  (export "Transfer_unpack" (func $Transfer_unpack))
+  (export "onInit" (func $onInit))
+  (export "onApply_Transfer_simplecoin" (func $onApply_Transfer_simplecoin))
+  (func $malloc (param $0 i32) (result i32)
     (local $1 i32)
-    (i32.store offset=1040
+    (i32.store offset=8208
       (i32.const 0)
       (tee_local $0
         (i32.add
           (tee_local $1
-            (i32.load offset=1040
+            (i32.load offset=8208
               (i32.const 0)
             )
           )
-          (i32.shl
-            (i32.div_s
-              (i32.add
-                (get_local $0)
-                (i32.const 7)
-              )
-              (i32.const 8)
+          (i32.and
+            (i32.add
+              (get_local $0)
+              (i32.const 7)
             )
-            (i32.const 3)
+            (i32.const -8)
           )
         )
       )
@@ -208,117 +323,620 @@ R"(
     (call $assert
       (i32.lt_u
         (get_local $0)
-        (i32.const 1024)
+        (i32.const 8192)
       )
-      (i32.const 1056)
+      (i32.const 8224)
     )
     (i32.add
       (get_local $1)
       (i32.const 16)
     )
   )
-  (func $apply (param $0 i32) (param $1 i32)
-    (local $2 i32)
-    (call $store
-      (i32.const 1072)
-      (i32.const 4)
+  (func $DataStream_init (param $0 i32) (param $1 i32) (param $2 i32)
+    (i32.store
       (get_local $0)
       (get_local $1)
     )
-    (drop
-      (call $load
-        (i32.const 1072)
-        (i32.const 4)
-        (i32.const 1088)
-        (i32.const 100)
+    (i32.store offset=4
+      (get_local $0)
+      (get_local $1)
+    )
+    (i32.store offset=8
+      (get_local $0)
+      (i32.add
+        (get_local $1)
+        (get_local $2)
       )
     )
-    (block $label$0
-      (br_if $label$0
-        (i32.lt_s
+  )
+  (func $AccountName_initString (param $0 i32) (param $1 i32)
+    (call $assert
+      (i32.lt_u
+        (i32.load
           (get_local $1)
-          (i32.const 1)
         )
+        (i32.const 33)
       )
-      (set_local $2
-        (i32.const 0)
-      )
-      (loop $label$1
-        (call $assert
-          (i32.eq
-            (i32.load8_u
-              (i32.add
-                (get_local $2)
-                (i32.const 1088)
-              )
-            )
-            (i32.load8_u
-              (i32.add
-                (get_local $0)
-                (get_local $2)
-              )
-            )
-          )
-          (i32.const 1200)
+      (i32.const 8240)
+    )
+    (drop
+      (call $memcpy
+        (get_local $0)
+        (i32.add
+          (get_local $1)
+          (i32.const 4)
         )
-        (br_if $label$1
-          (i32.ne
-            (get_local $1)
-            (tee_local $2
-              (i32.add
-                (get_local $2)
-                (i32.const 1)
-              )
-            )
-          )
+        (i32.load
+          (get_local $1)
         )
       )
     )
   )
+  (func $AccountName_initCString (param $0 i32) (param $1 i32) (param $2 i32)
+    (call $assert
+      (i32.lt_u
+        (get_local $2)
+        (i32.const 33)
+      )
+      (i32.const 8240)
+    )
+    (drop
+      (call $memcpy
+        (get_local $0)
+        (get_local $1)
+        (get_local $2)
+      )
+    )
+  )
+  (func $uint64_unpack (param $0 i32) (param $1 i32)
+    (call $assert
+      (i32.le_u
+        (i32.add
+          (i32.load offset=4
+            (get_local $0)
+          )
+          (i32.const 8)
+        )
+        (i32.load offset=8
+          (get_local $0)
+        )
+      )
+      (i32.const 8288)
+    )
+    (i64.store align=1
+      (get_local $1)
+      (i64.load align=1
+        (i32.load offset=4
+          (get_local $0)
+        )
+      )
+    )
+    (i32.store offset=4
+      (get_local $0)
+      (i32.add
+        (i32.load offset=4
+          (get_local $0)
+        )
+        (i32.const 8)
+      )
+    )
+  )
+  (func $String_unpack (param $0 i32) (param $1 i32)
+    (local $2 i32)
+    (local $3 i32)
+    (call $Varint_unpack
+      (get_local $0)
+      (i32.const 8312)
+    )
+    (call $assert
+      (i32.le_u
+        (i32.add
+          (i32.load offset=4
+            (get_local $0)
+          )
+          (i32.load offset=8312
+            (i32.const 0)
+          )
+        )
+        (i32.load offset=8
+          (get_local $0)
+        )
+      )
+      (i32.const 8288)
+    )
+    (i32.store offset=8208
+      (i32.const 0)
+      (tee_local $3
+        (i32.add
+          (i32.and
+            (i32.add
+              (i32.load offset=8312
+                (i32.const 0)
+              )
+              (i32.const 11)
+            )
+            (i32.const -8)
+          )
+          (tee_local $2
+            (i32.load offset=8208
+              (i32.const 0)
+            )
+          )
+        )
+      )
+    )
+    (call $assert
+      (i32.lt_u
+        (get_local $3)
+        (i32.const 8192)
+      )
+      (i32.const 8224)
+    )
+    (drop
+      (call $memcpy
+        (i32.add
+          (get_local $2)
+          (i32.const 20)
+        )
+        (i32.load offset=4
+          (get_local $0)
+        )
+        (i32.load offset=8312
+          (i32.const 0)
+        )
+      )
+    )
+    (i32.store
+      (get_local $1)
+      (i32.add
+        (get_local $2)
+        (i32.const 16)
+      )
+    )
+  )
+  (func $Transfer_unpack (param $0 i32) (param $1 i32)
+    (local $2 i32)
+    (local $3 i32)
+    (call $AccountName_unpack
+      (get_local $0)
+      (get_local $1)
+    )
+    (call $AccountName_unpack
+      (get_local $0)
+      (i32.add
+        (get_local $1)
+        (i32.const 32)
+      )
+    )
+    (call $assert
+      (i32.le_u
+        (i32.add
+          (i32.load offset=4
+            (get_local $0)
+          )
+          (i32.const 8)
+        )
+        (i32.load offset=8
+          (get_local $0)
+        )
+      )
+      (i32.const 8288)
+    )
+    (i64.store offset=64 align=1
+      (get_local $1)
+      (i64.load align=1
+        (i32.load offset=4
+          (get_local $0)
+        )
+      )
+    )
+    (i32.store offset=4
+      (get_local $0)
+      (i32.add
+        (i32.load offset=4
+          (get_local $0)
+        )
+        (i32.const 8)
+      )
+    )
+    (call $Varint_unpack
+      (get_local $0)
+      (i32.const 8312)
+    )
+    (call $assert
+      (i32.le_u
+        (i32.add
+          (i32.load offset=4
+            (get_local $0)
+          )
+          (i32.load offset=8312
+            (i32.const 0)
+          )
+        )
+        (i32.load offset=8
+          (get_local $0)
+        )
+      )
+      (i32.const 8288)
+    )
+    (i32.store offset=8208
+      (i32.const 0)
+      (tee_local $3
+        (i32.add
+          (i32.and
+            (i32.add
+              (i32.load offset=8312
+                (i32.const 0)
+              )
+              (i32.const 11)
+            )
+            (i32.const -8)
+          )
+          (tee_local $2
+            (i32.load offset=8208
+              (i32.const 0)
+            )
+          )
+        )
+      )
+    )
+    (call $assert
+      (i32.lt_u
+        (get_local $3)
+        (i32.const 8192)
+      )
+      (i32.const 8224)
+    )
+    (drop
+      (call $memcpy
+        (i32.add
+          (get_local $2)
+          (i32.const 20)
+        )
+        (i32.load offset=4
+          (get_local $0)
+        )
+        (i32.load offset=8312
+          (i32.const 0)
+        )
+      )
+    )
+    (i32.store offset=72
+      (get_local $1)
+      (i32.add
+        (get_local $2)
+        (i32.const 16)
+      )
+    )
+  )
+  (func $onInit
+    (call $assert
+      (i32.const 1)
+      (i32.const 8240)
+    )
+    (i64.store offset=8320
+      (i32.const 0)
+      (i64.const 1000000)
+    )
+    (i32.store16 offset=8336
+      (i32.const 0)
+      (i32.load16_u offset=8376 align=1
+        (i32.const 0)
+      )
+    )
+    (i64.store offset=8328
+      (i32.const 0)
+      (i64.load offset=8368 align=1
+        (i32.const 0)
+      )
+    )
+    (call $store
+      (i32.const 8328)
+      (i32.const 32)
+      (i32.const 8320)
+      (i32.const 8)
+    )
+    (call $print
+      (i32.const 8384)
+      (i32.const 15)
+    )
+  )
+  (func $onApply_Transfer_simplecoin
+    (local $0 i32)
+    (local $1 i32)
+    (local $2 i64)
+    (call $print
+      (i32.const 8416)
+      (i32.const 20)
+    )
+    (set_local $0
+      (call $readMessage
+        (i32.const 8448)
+        (i32.const 100)
+      )
+    )
+    (i32.store offset=8632
+      (i32.const 0)
+      (i32.const 8448)
+    )
+    (i32.store offset=8636
+      (i32.const 0)
+      (i32.const 8448)
+    )
+    (i32.store offset=8640
+      (i32.const 0)
+      (i32.add
+        (get_local $0)
+        (i32.const 8448)
+      )
+    )
+    (call $AccountName_unpack
+      (i32.const 8632)
+      (i32.const 8552)
+    )
+    (call $AccountName_unpack
+      (i32.const 8632)
+      (i32.const 8584)
+    )
+    (call $assert
+      (i32.le_u
+        (i32.add
+          (i32.load offset=8636
+            (i32.const 0)
+          )
+          (i32.const 8)
+        )
+        (i32.load offset=8640
+          (i32.const 0)
+        )
+      )
+      (i32.const 8288)
+    )
+    (i64.store offset=8616
+      (i32.const 0)
+      (i64.load align=1
+        (tee_local $0
+          (i32.load offset=8636
+            (i32.const 0)
+          )
+        )
+      )
+    )
+    (i32.store offset=8636
+      (i32.const 0)
+      (i32.add
+        (get_local $0)
+        (i32.const 8)
+      )
+    )
+    (call $Varint_unpack
+      (i32.const 8632)
+      (i32.const 8312)
+    )
+    (call $assert
+      (i32.le_u
+        (i32.add
+          (i32.load offset=8636
+            (i32.const 0)
+          )
+          (i32.load offset=8312
+            (i32.const 0)
+          )
+        )
+        (i32.load offset=8640
+          (i32.const 0)
+        )
+      )
+      (i32.const 8288)
+    )
+    (i32.store offset=8208
+      (i32.const 0)
+      (tee_local $1
+        (i32.add
+          (i32.and
+            (i32.add
+              (i32.load offset=8312
+                (i32.const 0)
+              )
+              (i32.const 11)
+            )
+            (i32.const -8)
+          )
+          (tee_local $0
+            (i32.load offset=8208
+              (i32.const 0)
+            )
+          )
+        )
+      )
+    )
+    (call $assert
+      (i32.lt_u
+        (get_local $1)
+        (i32.const 8192)
+      )
+      (i32.const 8224)
+    )
+    (drop
+      (call $memcpy
+        (i32.add
+          (get_local $0)
+          (i32.const 20)
+        )
+        (i32.load offset=8636
+          (i32.const 0)
+        )
+        (i32.load offset=8312
+          (i32.const 0)
+        )
+      )
+    )
+    (i32.store offset=8624
+      (i32.const 0)
+      (i32.add
+        (get_local $0)
+        (i32.const 16)
+      )
+    )
+    (call $print
+      (i32.const 8552)
+      (i32.const 32)
+    )
+    (call $print
+      (i32.const 8584)
+      (i32.const 32)
+    )
+    (call $printi64
+      (i64.load offset=8616
+        (i32.const 0)
+      )
+    )
+    (i64.store offset=8656
+      (i32.const 0)
+      (i64.const 0)
+    )
+    (call $assert
+      (i32.eq
+        (call $load
+          (i32.const 8552)
+          (i32.const 32)
+          (i32.const 8648)
+          (i32.const 8)
+        )
+        (i32.const 8)
+      )
+      (i32.const 8672)
+    )
+    (call $assert
+      (i64.ge_s
+        (i64.load offset=8648
+          (i32.const 0)
+        )
+        (i64.load offset=8616
+          (i32.const 0)
+        )
+      )
+      (i32.const 8704)
+    )
+    (drop
+      (call $load
+        (i32.const 8584)
+        (i32.const 32)
+        (i32.const 8648)
+        (i32.const 8)
+      )
+    )
+    (i64.store offset=8656
+      (i32.const 0)
+      (i64.add
+        (i64.load offset=8656
+          (i32.const 0)
+        )
+        (tee_local $2
+          (i64.load offset=8616
+            (i32.const 0)
+          )
+        )
+      )
+    )
+    (i64.store offset=8648
+      (i32.const 0)
+      (tee_local $2
+        (i64.sub
+          (i64.load offset=8648
+            (i32.const 0)
+          )
+          (get_local $2)
+        )
+      )
+    )
+    (block $label$0
+      (block $label$1
+        (br_if $label$1
+          (i64.eqz
+            (get_local $2)
+          )
+        )
+        (call $store
+          (i32.const 8552)
+          (i32.const 32)
+          (i32.const 8648)
+          (i32.const 8)
+        )
+        (br $label$0)
+      )
+      (drop
+        (call $remove
+          (i32.const 8552)
+          (i32.const 32)
+        )
+      )
+    )
+    (call $store
+      (i32.const 8584)
+      (i32.const 32)
+      (i32.const 8656)
+      (i32.const 8)
+    )
+  )
 )
-
-
 
 )";
 
-
+      types::SetCode handler;
+      handler.account = "simplecoin";
+      types::DefineStruct interface;
+      interface.scope = "simplecoin";
+      interface.definition = types::GetStruct<types::Transfer>::type();
 
       auto wasm = assemble_wast( wast_apply );
-      handler.apply.resize(wasm.size());
-      memcpy( handler.apply.data(), wasm.data(), wasm.size() );
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
-      edump((handler.apply.size()));
-      edump((handler.apply));
+      {
+				 eos::chain::SignedTransaction trx; 
+         trx.messages.resize(2);
+         trx.messages[0].sender = "simplecoin";
+         trx.messages[0].recipient = "sys";
+				 trx.setMessage(0, "DefineStruct",interface);
+         trx.messages[1].sender = "simplecoin";
+         trx.messages[1].recipient = "sys";
+				 trx.setMessage(1, "SetCode", handler);
+         trx.expiration = db.head_block_time() + 100; 
+         trx.set_reference_block(db.head_block_id()); 
+				 db.push_transaction(trx);
+				 db.produce_blocks(1);
+      }
 
-      /*
-      handler.apply   = R"(
-         System.print( "Loading Handler" )
-         class Handler {
-             static apply( context, msg ) {
-                System.print( "On Apply Transfer to init1" )
-                System.print( context )
-                context.set( "hello", "world" )
-                System.print( "set it, now get it" )
-                System.print( context.get("hello") )
-                System.print( "got it" )
-             }
-         }
-      )";
-      */
 
-      trx.setMessage(0, "SetMessageHandler", handler);
+     { 
+        eos::chain::SignedTransaction trx; 
+        trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "Transfer", 
+                           types::Transfer{"simplecoin", "init1", 101, "hello"} ); 
+        trx.expiration = db.head_block_time() + 100; 
+        trx.set_reference_block(db.head_block_id()); 
+        db.push_transaction(trx); 
+     }
+     { 
+        wlog( "transfer 102 from init1 to init2" );
+        eos::chain::SignedTransaction trx; 
+        trx.emplaceMessage("init1", "simplecoin", vector<AccountName>{"init2"}, "Transfer", 
+                           types::Transfer{"init1", "init2", 102, "hello again"} ); 
+        trx.expiration = db.head_block_time() + 100; 
+        trx.set_reference_block(db.head_block_id()); 
+        db.push_transaction(trx); 
+     }
 
-      db.push_transaction(trx);
-      db.produce_blocks(1);
 
-      Transfer_Asset(db, init3, init1, Asset(1), "transfer 100");
 
+/*
 			auto start = fc::time_point::now();
 		  for( uint32_t i = 0; i < 200; ++i ) {
          Transfer_Asset(db, init3, init1, Asset(2+i), "transfer 100");
       }
 			auto end = fc::time_point::now();
 			idump((  200*1000000.0 / (end-start).count() ) );
+*/
 		  db.produce_blocks(1);
 /*
 

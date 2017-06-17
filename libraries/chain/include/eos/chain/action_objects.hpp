@@ -30,46 +30,6 @@
 namespace eos { namespace chain {
 
    /**
-    * This table defines all of the event handlers for every contract.  Every message is
-    * delivered TO a particular contract and also processed in parallel by several other contracts. 
-    *
-    * Each account can define a custom handler based upon the tuple { processor, recipient, type } where
-    * processor is the account that is processing the message, recipient is the account specified by
-    * message::recipient and type is messagse::type.
-    * 
-    *
-    */
-   class action_code_object : public chainbase::object<action_code_object_type, action_code_object>
-   {
-      OBJECT_CTOR(action_code_object, (validate_action)(validate_precondition)(apply) )
-
-      id_type                        id;
-      account_id_type                recipient;
-      account_id_type                processor; 
-      TypeName                       type; ///< the name of the action (defines serialization)
-
-      shared_string   validate_action; ///< read only access to action
-      shared_string   validate_precondition; ///< read only access to state
-      shared_string   apply; ///< the code that executes the state transition
-   };
-
-   struct by_parent;
-   struct by_processor_recipient_type;
-   using action_code_index = chainbase::shared_multi_index_container<
-      action_code_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<action_code_object, action_code_object::id_type, &action_code_object::id>>,
-         ordered_unique<tag<by_processor_recipient_type>, 
-            composite_key< action_code_object,
-               member<action_code_object, account_id_type, &action_code_object::processor>,
-               member<action_code_object, account_id_type, &action_code_object::recipient>,
-               member<action_code_object, TypeName, &action_code_object::type>
-            >
-         >
-      >
-   >;
-
-   /**
     *  Maps the permission level on the code to the permission level specififed by owner, when specifying a contract the
     *  contract will specify 1 permission_object per action, and by default the parent of that permission object will be
     *  the active permission of the contract; however, the contract owner could group their actions any way they like.
@@ -118,8 +78,6 @@ namespace eos { namespace chain {
 
 } } // eos::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::action_code_object, eos::chain::action_code_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::action_permission_object, eos::chain::action_permission_index)
 
-FC_REFLECT(eos::chain::action_code_object, (id)(recipient)(processor)(type)(validate_action)(validate_precondition)(apply) )
 FC_REFLECT(eos::chain::action_permission_object, (id)(owner)(owner_permission)(scope_permission) )

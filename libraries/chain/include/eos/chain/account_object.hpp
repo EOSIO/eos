@@ -57,11 +57,15 @@ namespace eos { namespace chain {
    };
 
    class account_object : public chainbase::object<account_object_type, account_object> {
-      OBJECT_CTOR(account_object)
+      OBJECT_CTOR(account_object,(code))
 
-      id_type           id;
-      AccountName       name;
-      Time              creation_date;
+      id_type             id;
+      AccountName         name;
+      uint8_t             vm_type      = 0;
+      uint8_t             vm_version   = 0;
+      uint16_t            code_version = 0;
+      shared_vector<char> code;
+      Time                creation_date;
    };
    using account_id_type = account_object::id_type;
 
@@ -120,6 +124,6 @@ CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_i
 FC_REFLECT(chainbase::oid<eos::chain::permission_object>, (_id))
 FC_REFLECT(chainbase::oid<eos::chain::account_object>, (_id))
 
-FC_REFLECT(eos::chain::account_object, (id)(name)(creation_date))
+FC_REFLECT(eos::chain::account_object, (id)(name)(vm_type)(vm_version)(code_version)(code)(creation_date))
 // TODO: Reflect permission_object::auth
 FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name))

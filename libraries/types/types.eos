@@ -76,13 +76,11 @@ struct CreateAccount
    recovery  Authority
    deposit   Asset
 
-struct SetMessageHandler
-   processor       AccountName  # the account that is handling the message
-   recipient       AccountName  # the account the message was sent to
-   type            TypeName     # the type of message being processed (relative to to account)
-   validate        String       # the script to validate
-   precondition    String       # the pre condition validation
-   apply           Bytes        # the apply
+struct SetCode
+   account         AccountName  # the account that is handling the message
+   vmtype          UInt8        # the virtual machine type
+   vmversion       UInt8        # the virtual machine version
+   code            Bytes        # the apply
 
 struct CreateProducer
    name           AccountName
