@@ -128,7 +128,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 
 /*
       auto c_apply = R"(
-/// Start the EOS Built In Library HERE
+/// Start the EOS Builtin Library Here 
 typedef long long    uint64_t;
 typedef unsigned int uint32_t;
 
@@ -242,22 +242,22 @@ void onApply_Transfer_simplecoin() {
    static Balance to_balance;
    to_balance.balance = 0;
    
-   read = load( (char*)&message.from, sizeof(message.from), (char*)&from_balance.balance, sizeof(from_balance.balance) );
+   read = load( &message.from, sizeof(message.from), &from_balance.balance, sizeof(from_balance.balance) );
    assert( read == sizeof(Balance), "no existing balance" );
    assert( from_balance.balance >= message.amount, "insufficient funds" );
-   read = load( (char*)&message.to, sizeof(message.to), (char*)&from_balance.balance, sizeof(from_balance.balance) );
+   read = load( &message.to, sizeof(message.to), &to_balance.balance, sizeof(to_balance.balance) );
    
    to_balance.balance   += message.amount;
    from_balance.balance -= message.amount;
 
    if( from_balance.balance )
-      store( (char*)&message.from, sizeof(message.from), (char*)&from_balance.balance, sizeof(from_balance.balance) );
+      store( &message.from, sizeof(AccountName), &from_balance.balance, sizeof(from_balance.balance) );
    else
-      remove( (char*)&message.from, sizeof(message.from) );
+      remove( &message.from, sizeof(AccountName) );
  
-   store( (char*)&message.to, sizeof(message.to), (char*)&to_balance.balance, sizeof(to_balance.balance) );
+   store( &message.to, sizeof(message.to), &to_balance.balance, sizeof(to_balance.balance) );
 }
-      )";
+");
 */
 std::string wast_apply = 
 R"(
@@ -265,7 +265,6 @@ R"(
   (type $FUNCSIG$vii (func (param i32 i32)))
   (type $FUNCSIG$viiii (func (param i32 i32 i32 i32)))
   (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
-  (type $FUNCSIG$vj (func (param i64)))
   (type $FUNCSIG$iiiii (func (param i32 i32 i32 i32) (result i32)))
   (type $FUNCSIG$i (func (result i32)))
   (type $FUNCSIG$iiii (func (param i32 i32 i32) (result i32)))
@@ -274,8 +273,6 @@ R"(
   (import "env" "assert" (func $assert (param i32 i32)))
   (import "env" "load" (func $load (param i32 i32 i32 i32) (result i32)))
   (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
-  (import "env" "print" (func $print (param i32 i32)))
-  (import "env" "printi64" (func $printi64 (param i64)))
   (import "env" "readMessage" (func $readMessage (param i32 i32) (result i32)))
   (import "env" "remove" (func $remove (param i32 i32) (result i32)))
   (import "env" "store" (func $store (param i32 i32 i32 i32)))
@@ -285,10 +282,8 @@ R"(
   (data (i32.const 8240) "String is longer than account name allows\00")
   (data (i32.const 8288) "read past end of stream\00")
   (data (i32.const 8368) "simplecoin\00")
-  (data (i32.const 8384) "onInit simiplecoin\00")
-  (data (i32.const 8416) "onApply_Transfer_simplecoin\00")
-  (data (i32.const 8672) "no existing balance\00")
-  (data (i32.const 8704) "insufficient funds\00")
+  (data (i32.const 8608) "no existing balance\00")
+  (data (i32.const 8640) "insufficient funds\00")
   (export "memory" (memory $0))
   (export "malloc" (func $malloc))
   (export "DataStream_init" (func $DataStream_init))
@@ -636,73 +631,65 @@ R"(
       (i32.const 8320)
       (i32.const 8)
     )
-    (call $print
-      (i32.const 8384)
-      (i32.const 15)
-    )
   )
   (func $onApply_Transfer_simplecoin
     (local $0 i32)
     (local $1 i32)
     (local $2 i64)
-    (call $print
-      (i32.const 8416)
-      (i32.const 20)
-    )
     (set_local $0
       (call $readMessage
-        (i32.const 8448)
+        (i32.const 8384)
         (i32.const 100)
       )
     )
-    (i32.store offset=8632
+    (i32.store offset=8568
       (i32.const 0)
-      (i32.const 8448)
+      (i32.const 8384)
     )
-    (i32.store offset=8636
+    (i32.store offset=8572
       (i32.const 0)
-      (i32.const 8448)
+      (i32.const 8384)
     )
-    (i32.store offset=8640
+    (i32.store offset=8576
       (i32.const 0)
       (i32.add
         (get_local $0)
-        (i32.const 8448)
+        (i32.const 8384)
       )
     )
     (call $AccountName_unpack
-      (i32.const 8632)
-      (i32.const 8552)
+      (i32.const 8568)
+      (i32.const 8488)
     )
     (call $AccountName_unpack
-      (i32.const 8632)
-      (i32.const 8584)
+      (i32.const 8568)
+      (i32.const 8520)
     )
     (call $assert
       (i32.le_u
         (i32.add
-          (i32.load offset=8636
+          (i32.load offset=8572
             (i32.const 0)
           )
           (i32.const 8)
         )
-        (i32.load offset=8640
+        (i32.load offset=8576
           (i32.const 0)
         )
       )
       (i32.const 8288)
     )
-    (i64.store offset=8616
+    (i64.store offset=8552
       (i32.const 0)
       (i64.load align=1
         (tee_local $0
-          (i32.load offset=8636
+          (i32.load offset=8572
             (i32.const 0)
           )
         )
       )
     )
-    (i32.store offset=8636
+    (i32.store offset=8572
       (i32.const 0)
       (i32.add
         (get_local $0)
@@ -710,20 +697,20 @@ R"(
       )
     )
     (call $Varint_unpack
-      (i32.const 8632)
+      (i32.const 8568)
       (i32.const 8312)
     )
     (call $assert
       (i32.le_u
         (i32.add
-          (i32.load offset=8636
+          (i32.load offset=8572
             (i32.const 0)
           )
           (i32.load offset=8312
             (i32.const 0)
           )
         )
-        (i32.load offset=8640
+        (i32.load offset=8576
           (i32.const 0)
         )
       )
@@ -763,7 +750,7 @@ R"(
           (get_local $0)
           (i32.const 20)
         )
-        (i32.load offset=8636
+        (i32.load offset=8572
           (i32.const 0)
         )
         (i32.load offset=8312
@@ -771,79 +758,66 @@ R"(
         )
       )
     )
-    (i32.store offset=8624
+    (i64.store offset=8592
+      (i32.const 0)
+      (i64.const 0)
+    )
+    (i32.store offset=8560
       (i32.const 0)
       (i32.add
         (get_local $0)
         (i32.const 16)
       )
     )
-    (call $print
-      (i32.const 8552)
-      (i32.const 32)
-    )
-    (call $print
-      (i32.const 8584)
-      (i32.const 32)
-    )
-    (call $printi64
-      (i64.load offset=8616
-        (i32.const 0)
-      )
-    )
-    (i64.store offset=8656
-      (i32.const 0)
-      (i64.const 0)
-    )
     (call $assert
       (i32.eq
         (call $load
-          (i32.const 8552)
+          (i32.const 8488)
           (i32.const 32)
-          (i32.const 8648)
+          (i32.const 8584)
           (i32.const 8)
         )
         (i32.const 8)
       )
-      (i32.const 8672)
+      (i32.const 8608)
     )
     (call $assert
       (i64.ge_s
-        (i64.load offset=8648
+        (i64.load offset=8584
           (i32.const 0)
         )
-        (i64.load offset=8616
+        (i64.load offset=8552
           (i32.const 0)
         )
       )
-      (i32.const 8704)
+      (i32.const 8640)
     )
     (drop
       (call $load
-        (i32.const 8584)
+        (i32.const 8520)
         (i32.const 32)
-        (i32.const 8648)
+        (i32.const 8592)
         (i32.const 8)
       )
     )
-    (i64.store offset=8656
+    (i64.store offset=8592
       (i32.const 0)
       (i64.add
-        (i64.load offset=8656
+        (i64.load offset=8592
           (i32.const 0)
         )
         (tee_local $2
-          (i64.load offset=8616
+          (i64.load offset=8552
             (i32.const 0)
           )
         )
       )
     )
-    (i64.store offset=8648
+    (i64.store offset=8584
       (i32.const 0)
       (tee_local $2
         (i64.sub
-          (i64.load offset=8648
+          (i64.load offset=8584
             (i32.const 0)
           )
           (get_local $2)
@@ -858,28 +832,29 @@ R"(
           )
         )
         (call $store
-          (i32.const 8552)
+          (i32.const 8488)
           (i32.const 32)
-          (i32.const 8648)
+          (i32.const 8584)
           (i32.const 8)
         )
         (br $label$0)
       )
       (drop
         (call $remove
-          (i32.const 8552)
+          (i32.const 8488)
           (i32.const 32)
         )
       )
     )
     (call $store
-      (i32.const 8584)
+      (i32.const 8520)
       (i32.const 32)
-      (i32.const 8656)
+      (i32.const 8592)
       (i32.const 8)
     )
   )
 )
+
 
 )";
 
@@ -909,14 +884,19 @@ R"(
       }
 
 
+			auto start = fc::time_point::now();
+     for( uint32_t i = 0; i < 1000; ++i ) 
      { 
         eos::chain::SignedTransaction trx; 
         trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "Transfer", 
-                           types::Transfer{"simplecoin", "init1", 101, "hello"} ); 
+                           types::Transfer{"simplecoin", "init1", 1+i, "hello"} ); 
         trx.expiration = db.head_block_time() + 100; 
         trx.set_reference_block(db.head_block_id()); 
         db.push_transaction(trx); 
      }
+			auto end = fc::time_point::now();
+			idump((  1000*1000000.0 / (end-start).count() ) );
+
      { 
         wlog( "transfer 102 from init1 to init2" );
         eos::chain::SignedTransaction trx; 

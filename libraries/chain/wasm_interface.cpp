@@ -18,7 +18,7 @@ namespace eos { namespace chain {
    }
 
 DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-   ilog( "store" );
+//   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -33,8 +33,8 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    char* value = &memoryRef<char>( mem, valueptr );
    string keystr( key, key+keylen);
 
-   idump((keystr));
-   if( valuelen == 8 ) idump(( *((int64_t*)value)));
+   //idump((keystr));
+//   if( valuelen == 8 ) idump(( *((int64_t*)value)));
 
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
@@ -119,6 +119,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,AccountName_unpack,AccountName_unpack,none,i32,st
    const char* pos = &memoryRef<const char>( mem, stream[1] );
    const char* end = &memoryRef<const char>( mem, stream[2] );
    AccountName* name = &memoryRef<AccountName>( mem, accountptr );
+   memset( name, 0, 32 );
 
    fc::datastream<const char*> ds( pos, end - pos );
    fc::raw::unpack( ds, *name );
@@ -129,7 +130,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,AccountName_unpack,AccountName_unpack,none,i32,st
 
 
 DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-   ilog( "load" );
+   //ilog( "load" );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -143,14 +144,14 @@ DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,
    char* key   = &memoryRef<char>( mem, keyptr   );
    char* value = &memoryRef<char>( mem, valueptr );
    string keystr( key, key+keylen);
-   idump((keystr));
+   //idump((keystr));
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
    if( obj == nullptr ) return -1;
 	 auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
    if( copylen ) {
 			memcpy( value, obj->value.data(), copylen );
-      if( copylen == 8 ) idump(( *((int64_t*)value)));
+  //    if( copylen == 8 ) idump(( *((int64_t*)value)));
    }
 	 return copylen;
 }
@@ -278,7 +279,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
          std::string mangledapply("onApply_");
          mangledapply += std::string( current_validate_context->msg.type ) + "_";
          mangledapply += std::string( current_validate_context->msg.recipient );
-         idump((mangledapply));
+//         idump((mangledapply));
 
 				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,mangledapply.c_str()));
 		 		 if( !apply ) return; /// if not found then it is a no-op
@@ -333,7 +334,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
    void wasm_interface::init( apply_context& c ) {
     try {
-      ilog( "WASM INTERFACE INIT" );
+//      ilog( "WASM INTERFACE INIT" );
       load( c.scope, c.db );
 
       current_validate_context       = &c;
