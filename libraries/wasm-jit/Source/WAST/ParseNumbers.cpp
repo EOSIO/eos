@@ -191,7 +191,7 @@ Float parseHexFloat(const char*& nextChar,ParseState& state)
 	nextChar += 2;
 
 	// Parse hexits into a 64-bit fixed point number, keeping track of where the point is in exponent.
-	U64 fixedPoI64 = 0;
+	U64 fixedPoint64 = 0;
 	bool hasSeenPoint = false;
 	I64 exponent = 0;
 	while(true)
@@ -201,10 +201,10 @@ Float parseHexFloat(const char*& nextChar,ParseState& state)
 		{
 			// Once there are too many hexits to accumulate in the 64-bit fixed point number, ignore
 			// the hexits, but continue to update exponent so we get an accurate but imprecise number.
-			if(fixedPoI64 <= (UINT64_MAX - 15) / 16)
+			if(fixedPoint64 <= (UINT64_MAX - 15) / 16)
 			{
-				assert(fixedPoI64 * 16 + hexit >= fixedPoI64);
-				fixedPoI64 = fixedPoI64 * 16 + hexit;
+				assert(fixedPoint64 * 16 + hexit >= fixedPoint64);
+				fixedPoint64 = fixedPoint64 * 16 + hexit;
 				exponent -= hasSeenPoint ? 4 : 0;
 			}
 			else
@@ -230,7 +230,7 @@ Float parseHexFloat(const char*& nextChar,ParseState& state)
 		exponent = isExponentNegative ? exponent - userExponent : exponent + userExponent;
 	}
 
-	if(!fixedPoI64)
+	if(!fixedPoint64)
 	{
 		// If both the integer and fractional part are zero, just return zero.
 		resultComponents.bits.exponent = 0;
@@ -239,8 +239,8 @@ Float parseHexFloat(const char*& nextChar,ParseState& state)
 	else
 	{
 		// Shift the fixed point number's most significant set bit into the MSB.
-		const Uptr leadingZeroes = Platform::countLeadingZeroes(fixedPoI64);
-		fixedPoI64 <<= leadingZeroes;
+		const Uptr leadingZeroes = Platform::countLeadingZeroes(fixedPoint64);
+		fixedPoint64 <<= leadingZeroes;
 		exponent += 64;
 		exponent -= leadingZeroes;
 		
@@ -258,9 +258,9 @@ Float parseHexFloat(const char*& nextChar,ParseState& state)
 			// with the significand shifted down to include the leading 1 that is implicit for
 			// normal numbers, and with the encoded exponent = 0.
 			const Uptr denormalShift = FloatComponents::minNormalExponent - exponent;
-			fixedPoI64 = denormalShift >= 64 ? 0 : (fixedPoI64 >> denormalShift);
+			fixedPoint64 = denormalShift >= 64 ? 0 : (fixedPoint64 >> denormalShift);
 			resultComponents.bits.exponent = 0;
-			resultComponents.bits.significand = FloatBits(fixedPoI64 >> (64 - FloatComponents::numSignificandBits));
+			resultComponents.bits.significand = FloatBits(fixedPoint64 >> (64 - FloatComponents::numSignificandBits));
 		}
 		else
 		{
@@ -268,7 +268,7 @@ Float parseHexFloat(const char*& nextChar,ParseState& state)
 			assert(exponentWithImplicitLeadingOne >= FloatComponents::minNormalExponent);
 			assert(exponentWithImplicitLeadingOne <= FloatComponents::maxNormalExponent);
 			resultComponents.bits.exponent = FloatBits(exponentWithImplicitLeadingOne + FloatComponents::exponentBias);
-			resultComponents.bits.significand = FloatBits(fixedPoI64 >> (63 - FloatComponents::numSignificandBits));
+			resultComponents.bits.significand = FloatBits(fixedPoint64 >> (63 - FloatComponents::numSignificandBits));
 		}
 	}
 
