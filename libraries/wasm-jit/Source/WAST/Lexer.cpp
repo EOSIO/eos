@@ -75,7 +75,7 @@ namespace WAST
 			{t_hexFloat,"[+\\-]?0[xX][\\da-fA-F]+[pP][+\\-]?\\d+"},
 
 			{t_floatNaN,"[+\\-]?nan(:0[xX][\\da-fA-F]+)?"},
-			{t_floatInf,"[+\\-]?inf(inity)?"},
+			{t_floatInf,"[+\\-]?inf"},
 
 			{t_string,"\"([^\"\n\\\\]*(\\\\([^0-9a-fA-Fu]|[0-9a-fA-F][0-9a-fA-F]|u\\{[0-9a-fA-F]+})))*\""},
 
