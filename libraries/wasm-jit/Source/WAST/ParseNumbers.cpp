@@ -168,7 +168,7 @@ Float parseDecimalFloat(const char*& nextChar,ParseState& state)
 		++nextChar;
 		Errors::fatalf("strtod failed to parse number accepted by lexer");
 	}
-	if(f64 < std::numeric_limits<Float>::lowest() || f64 > std::numeric_limits<Float>::max())
+	if(Float(f64) < std::numeric_limits<Float>::lowest() || Float(f64) > std::numeric_limits<Float>::max())
 	{
 		parseErrorf(state,firstChar,"float literal is too large");
 	}
