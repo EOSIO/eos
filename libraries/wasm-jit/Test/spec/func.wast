@@ -34,7 +34,7 @@
 
   (func $complex
     (param i32 f32) (param $x i64) (param) (param i32)
-    (result i32)
+    (result) (result i32) (result)
     (local f32) (local $y i32) (local i64 i32) (local) (local f64 i32)
     (unreachable) (unreachable)
   )

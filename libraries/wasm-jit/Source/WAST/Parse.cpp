@@ -146,11 +146,23 @@ namespace WAST
 			}
 		}));
 
-		// Parse an optional result type.
-		tryParseParenthesizedTagged(state,t_result,[&]
+		// Parse <= 1 result type: (result <value type>*)*
+		while(state.nextToken[0].type == t_leftParenthesis
+		&& state.nextToken[1].type == t_result)
 		{
-			tryParseResultType(state,ret);
-		});
+			parseParenthesized(state,[&]
+			{
+				require(state,t_result);
+
+				ResultType resultElementType;
+				const Token* elementToken = state.nextToken;
+				while(tryParseResultType(state,resultElementType))
+				{
+					if(ret != ResultType::none) { parseErrorf(state,elementToken,"function type cannot have more than 1 result element"); }
+					ret = resultElementType;
+				};
+			});
+		};
 
 		return FunctionType::get(ret,parameters);
 	}
