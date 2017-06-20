@@ -13,7 +13,7 @@
 namespace eos { namespace chain {
    using namespace IR;
    using namespace Runtime;
-  
+
    wasm_interface::wasm_interface() {
    }
 
@@ -41,7 +41,7 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    if( obj ) {
       db.modify( *obj, [&]( auto& o ) {
          o.value.resize( valuelen );
-         memcpy( o.value.data(), value, valuelen );
+         o.value.replace (0, valuelen, value);
       });
    } else {
       db.create<key_value_object>( [&](auto& o) {
@@ -50,7 +50,7 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
          o.value.insert( 0, value, valuelen );
       });
    }
-} 
+}
 
 DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
    FC_ASSERT( keylen > 0 );
@@ -172,13 +172,13 @@ DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
   std::string message = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
   if( !test ) edump((message));
   FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
-} 
+}
 
 DEFINE_INTRINSIC_FUNCTION0(env,messageSize,messageSize,i32) {
    return wasm_interface::get().current_validate_context->msg.data.size();
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) { 
+DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) {
    FC_ASSERT( size > 0 );
    int32_t& end = Runtime::memoryRef<int32_t>( Runtime::getDefaultMemory(wasm_interface::get().current_module), 0);
    int32_t old_end = end;
@@ -202,10 +202,10 @@ DEFINE_INTRINSIC_FUNCTION2(env,print,print,none,i32,charptr,i32,size) {
 	wlog( std::string( str, size ) );
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) { 
+DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) { 
+DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    std::cerr << "TO UPPER CALLED\n";// << charptr << "\n";
 //   std::cerr << "moduleInstance: " << moduleInstance << "\n";
   // /*U8* base = */Runtime::getMemoryBaseAddress( Runtime::getDefaultMemory(moduleInstance) );
@@ -219,7 +219,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
    wasm_interface& wasm_interface::get() {
       static wasm_interface*  wasm = nullptr;
-      if( !wasm ) 
+      if( !wasm )
       {
          wlog( "Runtime::init" );
 	       Runtime::init();
@@ -273,7 +273,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       return U32(ptr - &memoryRef<char>(current_memory,0));
    }
 
-   void  wasm_interface::vm_apply() 
+   void  wasm_interface::vm_apply()
    { try {
       try {
          std::string mangledapply("onApply_");
@@ -297,7 +297,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       }
    } FC_CAPTURE_AND_RETHROW() }
 
-   void  wasm_interface::vm_onInit() 
+   void  wasm_interface::vm_onInit()
    { try {
       try {
           wlog( "onInit" );
@@ -375,7 +375,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
           state.init_memory.resize(1<<16); /// TODO: actually get memory size
           memcpy( state.init_memory.data(), memstart, state.init_memory.size() );
           std::cerr <<"INIT MEMORY: \n";
-          for( uint32_t i = 0; i < 10000; ++i )  
+          for( uint32_t i = 0; i < 10000; ++i )
               if( memstart[i] )
 								 std::cerr << (char)memstart[i];
           std::cerr <<"\n";
@@ -415,7 +415,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
      if( module ) {
        char* memstart = &memoryRef<char>( current_memory, 0 );
        memcpy( memstart, memory_backup.data(), memory_backup.size() );
-       return;	
+       return;
 			 auto start = fc::time_point::now();
 
        RootResolver rootResolver;
@@ -423,7 +423,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
        current_module = instantiateModule( *module, std::move(linkResult.resolvedImports) );
        FC_ASSERT( current_module );
 			 current_memory = Runtime::getDefaultMemory(current_module);
-       
+
 
 			 auto end = fc::time_point::now();
 			 idump((  1000000.0 / (end-start).count() ) );
