@@ -8,6 +8,11 @@
 #include <cerrno>
 
 // Include the David Gay's dtoa code.
+// #define strtod and dtoa to avoid conflicting with the C standard library versions
+// This is complicated by dtoa.c including stdlib.h, so we need to also include stdlib.h
+// here to ensure that it isn't included with the strtod and dtoa #define.
+#include <stdlib.h>
+
 #define IEEE_8087
 #define NO_HEX_FP
 #define NO_INFNAN_CHECK
