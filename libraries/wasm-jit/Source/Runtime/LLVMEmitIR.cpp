@@ -242,7 +242,21 @@ namespace LLVMJIT
 		{
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpEQ(divisor,typedZeroConstants[(Uptr)type]),
-				"wavmIntrinsics.divideByZeroTrap",FunctionType::get(),{});
+				"wavmIntrinsics.divideByZeroOrIntegerOverflowTrap",FunctionType::get(),{});
+		}
+
+		// Traps on (x / 0) or (INT_MIN / -1).
+		void trapDivideByZeroOrIntegerOverflow(ValueType type,llvm::Value* left,llvm::Value* right)
+		{
+			emitConditionalTrapIntrinsic(
+				irBuilder.CreateOr(
+					irBuilder.CreateAnd(
+						irBuilder.CreateICmpEQ(left,type == ValueType::i32 ? emitLiteral((U32)INT32_MIN) : emitLiteral((U64)INT64_MIN)),
+						irBuilder.CreateICmpEQ(right,type == ValueType::i32 ? emitLiteral((U32)-1) : emitLiteral((U64)-1))
+						),
+					irBuilder.CreateICmpEQ(right,typedZeroConstants[(Uptr)type])
+					),
+				"wavmIntrinsics.divideByZeroOrIntegerOverflowTrap",FunctionType::get(),{});
 		}
 
 		llvm::Value* getLLVMIntrinsic(const std::initializer_list<llvm::Type*>& argTypes,llvm::Intrinsic::ID id)
@@ -867,10 +881,10 @@ namespace LLVMJIT
 		EMIT_INT_BINARY_OP(rotl,emitRotl(type,left,right))
 			
 		// Divides use trapDivideByZero to avoid the undefined behavior in LLVM's division instructions.
-		EMIT_INT_BINARY_OP(div_s, (trapDivideByZero(type,right), irBuilder.CreateSDiv(left,right)) )
+		EMIT_INT_BINARY_OP(div_s, (trapDivideByZeroOrIntegerOverflow(type,left,right), irBuilder.CreateSDiv(left,right)) )
+		EMIT_INT_BINARY_OP(rem_s, emitSRem(type,left,right) )
 		EMIT_INT_BINARY_OP(div_u, (trapDivideByZero(type,right), irBuilder.CreateUDiv(left,right)) )
 		EMIT_INT_BINARY_OP(rem_u, (trapDivideByZero(type,right), irBuilder.CreateURem(left,right)) )
-		EMIT_INT_BINARY_OP(rem_s,emitSRem(type,left,right))
 
 		// Explicitly mask the shift amount operand to the word size to avoid LLVM's undefined behavior.
 		EMIT_INT_BINARY_OP(shl,irBuilder.CreateShl(left,emitShiftCountMask(type,right)))

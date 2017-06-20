@@ -123,7 +123,7 @@ namespace Runtime
 	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,floatToUnsignedInt,floatToUnsignedInt,i64,f32,source) { return floatToInt<U64,F32,true>(source,-1.0f,-2.0f * INT64_MIN); }
 	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,floatToUnsignedInt,floatToUnsignedInt,i64,f64,source) { return floatToInt<U64,F64,true>(source,-1.0,-2.0 * INT64_MIN); }
 
-	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,divideByZeroTrap,divideByZeroTrap,none)
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,divideByZeroOrIntegerOverflowTrap,divideByZeroOrIntegerOverflowTrap,none)
 	{
 		causeException(Exception::Cause::integerDivideByZeroOrIntegerOverflow);
 	}
