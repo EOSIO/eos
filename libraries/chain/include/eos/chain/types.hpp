@@ -137,6 +137,18 @@ namespace eos { namespace chain {
    using eos::types::Int256;
 
    using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
+   using RoundChanges = std::map<AccountName, AccountName>;
+
+   /**
+    * @brief Calculates the difference between two @ref ProducerRound objects
+    * @param a The first round of producers
+    * @param b The second round of producers
+    * @return The properly sorted RoundChanges expressing the difference between a and b
+    *
+    * Calculates the difference between two rounds of producers, returning a @ref RoundChanges object. The returned
+    * changes are sorted in the order defined by @ref block_header
+    */
+   RoundChanges operator-(ProducerRound a, ProducerRound b);
 
    /**
     * List all object types from all namespaces here so they can
@@ -185,6 +197,8 @@ namespace eos { namespace chain {
 namespace fc {
   void to_variant(const eos::chain::shared_vector<eos::types::Field>& c, fc::variant& v);
   void from_variant(const fc::variant& v, eos::chain::shared_vector<eos::types::Field>& fields);
+  void to_variant(const eos::chain::ProducerRound& r, fc::variant& v);
+  void from_variant(const fc::variant& v, eos::chain::ProducerRound& r);
 }
 
 FC_REFLECT_ENUM(eos::chain::object_type,

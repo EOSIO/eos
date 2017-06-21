@@ -60,6 +60,41 @@
    }
 #define XFER4(db, sender, recipient, amount) XFER5(db, sender, recipient, amount, "")
 
+#define STAKE4(db, sender, recipient, amount) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.emplaceMessage(#sender, config::EosContractName, vector<AccountName>{config::StakedBalanceContractName}, \
+                         "TransferToLocked", types::TransferToLocked{#sender, #recipient, amount}); \
+      if (std::string(#sender) != std::string(#recipient)) { \
+         trx.messages.front().notify.emplace_back(#recipient); \
+         boost::sort(trx.messages.front().notify); \
+      } \
+      trx.expiration = db.head_block_time() + 100; \
+      trx.set_reference_block(db.head_block_id()); \
+      db.push_transaction(trx); \
+   }
+#define STAKE3(db, account, amount) STAKE4(db, account, account, amount)
+
+#define BEGIN_UNSTAKE3(db, account, amount) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.emplaceMessage(#account, config::StakedBalanceContractName, vector<AccountName>{}, \
+                         "StartUnlockEos", types::StartUnlockEos{#account, amount}); \
+      trx.expiration = db.head_block_time() + 100; \
+      trx.set_reference_block(db.head_block_id()); \
+      db.push_transaction(trx); \
+   }
+
+#define FINISH_UNSTAKE3(db, account, amount) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.emplaceMessage(#account, config::StakedBalanceContractName, vector<AccountName>{config::EosContractName}, \
+                         "ClaimUnlockedEos", types::ClaimUnlockedEos{#account, amount}); \
+      trx.expiration = db.head_block_time() + 100; \
+      trx.set_reference_block(db.head_block_id()); \
+      db.push_transaction(trx); \
+   }
+
 #define MKPDCR4(db, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \

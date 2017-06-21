@@ -1,0 +1,39 @@
+#include <eos/native_contract/staked_balance_objects.hpp>
+#include <eos/native_contract/producer_objects.hpp>
+
+#include <eos/chain/global_property_object.hpp>
+
+#include <boost/range/algorithm/for_each.hpp>
+
+namespace eos {
+using namespace chain;
+using namespace types;
+
+void StakedBalanceObject::stakeTokens(ShareType newStake, chainbase::database& db) const {
+   // Update the staked balance
+   db.modify(*this, [&newStake](StakedBalanceObject& sbo) {
+      sbo.stakedBalance += newStake;
+   });
+
+   // Update votes for approved producers
+   boost::for_each(approvedProducers, [&db, &newStake](const AccountName& name) {
+      db.modify(db.get<ProducerVotesObject, byOwnerName>(name), [&db, &newStake](ProducerVotesObject& pvo) {
+         pvo.updateVotes(newStake, ProducerScheduleObject::get(db).currentRaceTime);
+      });
+   });
+}
+
+void StakedBalanceObject::beginUnstakingTokens(ShareType amount, chainbase::database& db) const {
+   // Remember there might be stake left over from a previous, uncompleted unstaking in unstakingBalance
+   auto deltaStake = unstakingBalance - amount;
+
+   // Update actual stake balance and invariants around it
+   stakeTokens(deltaStake, db);
+   // Update stats for unstaking process
+   db.modify(*this, [&amount, &db](StakedBalanceObject& sbo) {
+      sbo.unstakingBalance = amount;
+      sbo.lastUnstakingTime = db.get(dynamic_global_property_object::id_type()).time;
+   });
+}
+
+} // namespace eos

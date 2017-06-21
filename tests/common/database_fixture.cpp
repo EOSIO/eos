@@ -138,6 +138,11 @@ types::Asset testing_database::get_unstaking_balance(const types::AccountName& a
    return get_database().get<StakedBalanceObject, byOwnerName>(account).unstakingBalance;
 }
 
+std::set<types::AccountName> testing_database::get_approved_producers(const types::AccountName& account) {
+   auto set = get_database().get<StakedBalanceObject, byOwnerName>(account).approvedProducers;
+   return {set.begin(), set.end()};
+}
+
 void testing_network::connect_database(testing_database& new_database) {
    if (databases.count(&new_database))
       return;

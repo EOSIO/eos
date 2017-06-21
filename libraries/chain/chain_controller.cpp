@@ -45,7 +45,9 @@
 #include <fc/crypto/digest.hpp>
 
 #include <boost/range/algorithm/copy.hpp>
+#include <boost/range/algorithm_ext/is_sorted.hpp>
 #include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/adaptor/map.hpp>
 
 #include <fstream>
 #include <functional>
@@ -659,7 +661,7 @@ void chain_controller::_apply_transaction(const SignedTransaction& trx)
          transaction.trx = trx;
       });
    }
-   } FC_CAPTURE_AND_RETHROW((trx)) }
+} FC_CAPTURE_AND_RETHROW((trx)) }
 
 void chain_controller::require_account(const types::AccountName& name) const {
    auto account = _db.find<account_object, by_name>(name);
@@ -671,9 +673,16 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
    EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
-   if (next_block.block_num() % config::BlocksPerRound != 0)
+   if (next_block.block_num() % config::BlocksPerRound != 0) {
       EOS_ASSERT(next_block.producer_changes.empty(), block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
+   } else {
+      using boost::is_sorted;
+      using namespace boost::adaptors;
+      EOS_ASSERT(is_sorted(keys(next_block.producer_changes)) && is_sorted(values(next_block.producer_changes)),
+                 block_validate_exception, "Producer changes are not sorted correctly",
+                 ("changes", next_block.producer_changes));
+   }
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
@@ -917,21 +926,10 @@ void chain_controller::spinup_fork_db()
 
 ProducerRound chain_controller::calculate_next_round(const signed_block& next_block) {
    auto schedule = _admin->get_next_round(_db);
-   std::sort(schedule.begin(), schedule.end());
-
-   auto ReplaceOldProducers =
-         boost::adaptors::transformed([changes = next_block.producer_changes] (AccountName producer) {
-      auto itr = changes.find(producer);
-      if (itr != changes.end())
-         return itr->second;
-      return producer;
-   });
-
-   ProducerRound round;
-   boost::copy(get_global_properties().active_producers | ReplaceOldProducers, round.begin());
-   std::sort(round.begin(), round.end());
-   EOS_ASSERT(boost::range::equal(schedule, round), block_validate_exception,
-              "Unexpected round changes in new block header");
+   auto changes = get_global_properties().active_producers - schedule;
+   EOS_ASSERT(boost::range::equal(next_block.producer_changes, changes), block_validate_exception,
+              "Unexpected round changes in new block header",
+              ("expected changes", changes)("block changes", next_block.producer_changes));
 
    randutils::seed_seq_fe<1> seed{next_block.timestamp.sec_since_epoch()};
    randutils::random_generator<pcg32_fast> rng(seed);

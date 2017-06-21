@@ -184,33 +184,36 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
       BOOST_CHECK_EQUAL(db.get_global_properties().configuration, medians);
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(producer_voting, testing_fixture, *boost::unit_test::expected_failures(1)) {
+// Test that if I create a producer and vote for him, he gets in on the next round (but not before)
+BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture, *boost::unit_test::expected_failures(1)) {
    try {
       Make_Database(db)
       db.produce_blocks();
 
       Make_Account(db, joe);
       Make_Account(db, bob);
+      Stake_Asset(db, bob, Asset(100).amount);
       Make_Producer(db, joe);
       Approve_Producer(db, bob, joe, true);
-
-      db.produce_blocks();
+      // Produce blocks up to, but not including, the last block in the round
+      db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
 
       {
          const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
          BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 1);
+         BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(100));
          const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), bobBalance.stakedBalance);
       }
 
-      db.produce_blocks(config::BlocksPerRound);
+      // OK, let's go to the next round
+      db.produce_blocks();
 
       const auto& gpo = db.get_global_properties();
-#warning FIXME: Expected test failure: Should start working when updating producer schedule based on votes works
-      BOOST_CHECK(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
+#warning TODO: expected failure because chain_controller::generate_block does not update round
+      BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
 
       Approve_Producer(db, bob, joe, false);
-
       db.produce_blocks();
 
       {
@@ -222,4 +225,54 @@ BOOST_FIXTURE_TEST_CASE(producer_voting, testing_fixture, *boost::unit_test::exp
    } FC_LOG_AND_RETHROW()
 }
 
+// Same as producer_voting_1, except we first cast the vote for the producer, _then_ get a stake
+BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture, *boost::unit_test::expected_failures(1)) {
+   try {
+      Make_Database(db)
+      db.produce_blocks();
+
+      Make_Account(db, joe);
+      Make_Account(db, bob);
+      Make_Producer(db, joe);
+      Approve_Producer(db, bob, joe, true);
+      db.produce_blocks();
+
+      {
+         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
+         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 1);
+         BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(0));
+         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), bobBalance.stakedBalance);
+      }
+
+      Stake_Asset(db, bob, Asset(100).amount);
+      // Produce blocks up to, but not including, the last block in the round
+      db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
+
+      {
+         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
+         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 1);
+         BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(100));
+         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), bobBalance.stakedBalance);
+      }
+
+      // OK, let's go to the next round
+      db.produce_blocks();
+
+      const auto& gpo = db.get_global_properties();
+#warning TODO: expected failure because chain_controller::generate_block does not update round
+      BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
+
+      Approve_Producer(db, bob, joe, false);
+      db.produce_blocks();
+
+      {
+         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
+         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 0);
+         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
+      }
+   } FC_LOG_AND_RETHROW()
+}
 } // namespace eos

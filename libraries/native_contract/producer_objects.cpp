@@ -30,7 +30,8 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
 
    FC_ASSERT(boost::distance(ActiveProducersByVotes) >= config::BlocksPerRound,
              "Not enough active producers registered to schedule a round!",
-             ("ActiveProducers", (int64_t)boost::distance(ActiveProducersByVotes))("AllProducers", (int64_t)AllProducersByVotes.size()));
+             ("ActiveProducers", (int64_t)boost::distance(ActiveProducersByVotes))
+             ("AllProducers", (int64_t)AllProducersByVotes.size()));
 
    // Copy the top voted active producer's names into the round
    auto runnerUpStorage =

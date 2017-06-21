@@ -23,6 +23,25 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
    types::Time lastUnstakingTime = types::Time::maximum();
 
    chain::shared_set<types::AccountName> approvedProducers;
+
+   /**
+    * @brief Add the provided stake to this balance, maintaining invariants
+    * @param newStake The new stake to add to the balance
+    * @param db Read-write reference to the database
+    *
+    * This method will update this object with the new stake, while maintaining invariants around the stake balance,
+    * such as by updating vote tallies
+    */
+   void stakeTokens(types::ShareType newStake, chainbase::database& db) const;
+   /**
+    * @brief Begin unstaking the specified amount of stake, maintaining invariants
+    * @param amount The amount of stake to begin unstaking
+    * @param db Read-write reference to the database
+    *
+    * This method will update this object's balances while maintaining invariants around the stake balances, such as by
+    * updating vote tallies
+    */
+   void beginUnstakingTokens(types::ShareType amount, chainbase::database& db) const;
 };
 
 struct byOwnerName;

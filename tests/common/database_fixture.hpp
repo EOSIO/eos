@@ -35,6 +35,7 @@
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 
+#include <boost/range/algorithm/sort.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/facilities/overload.hpp>
 
@@ -166,6 +167,9 @@ public:
    Asset get_staked_balance(const types::AccountName& account);
    /// @brief Get the unstaking balance belonging to the named account
    Asset get_unstaking_balance(const types::AccountName& account);
+
+   /// @brief Get the set of producers approved by the named account
+   std::set<AccountName> get_approved_producers(const AccountName& account);
 
 protected:
    testing_fixture& fixture;
@@ -323,7 +327,7 @@ protected:
  *
  * You may specify a fourth argument for the amount to transfer in account creation:
  * @code{.cpp}
- * // Same as MKACCT(db, joe, sam) except that sam will send joe ASSET(500) during creation
+ * // Same as MKACCT(db, joe, sam) except that sam will send joe ASSET(100) during creation
  * Make_Account(db, joe, sam, Asset(100))
  * @endcode
  *
@@ -352,6 +356,44 @@ protected:
  * incorporated into a block; they will be left in the pending state.
  */
 #define Transfer_Asset(...) BOOST_PP_OVERLOAD(XFER, __VA_ARGS__)(__VA_ARGS__)
+
+/**
+ * @brief Shorthand way to convert liquid funds to staked funds
+ *
+ * Use Stake_Asset to stake liquid funds:
+ * @code{.cpp}
+ * // Convert 10 of bob's EOS from liquid to staked
+ * Stake_Asset(db, bob, Asset(10).amount);
+ *
+ * // Stake and transfer 10 EOS from alice to bob (alice pays liquid EOS and bob receives stake)
+ * Stake_Asset(db, alice, bob, Asset(10).amount);
+ * @endcode
+ */
+#define Stake_Asset(...) BOOST_PP_OVERLOAD(STAKE, __VA_ARGS__)(__VA_ARGS__)
+
+/**
+ * @brief Shorthand way to begin conversion from staked funds to liquid funds
+ *
+ * Use Unstake_Asset to begin unstaking funds:
+ * @code{.cpp}
+ * // Begin unstaking 10 of bob's EOS
+ * Unstake_Asset(db, bob, Asset(10).amount);
+ * @endcode
+ *
+ * This can also be used to cancel an unstaking in progress, by passing Asset(0) as the amount.
+ */
+#define Begin_Unstake_Asset(...) BOOST_PP_OVERLOAD(BEGIN_UNSTAKE, __VA_ARGS__)(__VA_ARGS__)
+
+/**
+ * @brief Shorthand way to claim unstaked EOS as liquid
+ *
+ * Use Finish_Unstake_Asset to liquidate unstaked funds:
+ * @code{.cpp}
+ * // Reclaim as liquid 10 of bob's unstaked EOS
+ * Unstake_Asset(db, bob, Asset(10).amount);
+ * @endcode
+ */
+#define Finish_Unstake_Asset(...) BOOST_PP_OVERLOAD(FINISH_UNSTAKE, __VA_ARGS__)(__VA_ARGS__)
 
 /**
  * @brief Shorthand way to create a block producer

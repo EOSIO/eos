@@ -37,7 +37,19 @@ namespace eos { namespace chain {
       fc::time_point_sec            timestamp;
       checksum_type                 transaction_merkle_root;
       AccountName                   producer;
-      map<AccountName, AccountName> producer_changes;
+      /**
+       * The changes in the round of producers after this block
+       *
+       * Must be stored with keys *and* values sorted, thus this is a valid RoundChanges:
+       * [["A", "X"],
+       *  ["B", "Y"]]
+       * ... whereas this is not:
+       * [["A", "Y"],
+       *  ["B", "X"]]
+       * Even though the above examples are semantically equivalent (replace A and B with X and Y), only the first is
+       * legal.
+       */
+      RoundChanges                  producer_changes;
    };
 
    struct signed_block_header : public block_header
