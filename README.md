@@ -52,17 +52,27 @@ genesis-json = /path/to/eos/source/genesis.json
 # Enable production on a stale chain, since a single-node test chain is pretty much always stale
 enable-stale-production = true
 # Enable block production with the testnet producers
-producer-id = {"_id":0}
-producer-id = {"_id":1}
-producer-id = {"_id":2}
-producer-id = {"_id":3}
-producer-id = {"_id":4}
-producer-id = {"_id":5}
-producer-id = {"_id":6}
-producer-id = {"_id":7}
-producer-id = {"_id":8}
-producer-id = {"_id":9}
-producer-id = {"_id":10}
+producer-name = init0
+producer-name = init1
+producer-name = init2
+producer-name = init3
+producer-name = init4
+producer-name = init5
+producer-name = init6
+producer-name = init7
+producer-name = init8
+producer-name = init9
+producer-name = init10
+producer-name = init11
+producer-name = init12
+producer-name = init13
+producer-name = init14
+producer-name = init15
+producer-name = init16
+producer-name = init17
+producer-name = init18
+producer-name = init19
+producer-name = init20
 # Load the block producer plugin, so we can produce blocks
 plugin = eos::producer_plugin
 ```
