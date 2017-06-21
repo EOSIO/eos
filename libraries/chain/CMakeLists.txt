@@ -21,7 +21,7 @@ add_library( eos_chain
              ${HEADERS}
            )
 
-target_link_libraries( eos_chain fc chainbase eos_types wren Logging IR WAST WASM Runtime )
+target_link_libraries( eos_chain fc chainbase eos_types Logging IR WAST WASM Runtime )
 target_include_directories( eos_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" 
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
