@@ -8,44 +8,46 @@
 #include <cerrno>
 
 // Include the David Gay's dtoa code.
-namespace DavidGay
-{
-	#define IEEE_8087
-	#define NO_HEX_FP
-	#define NO_INFNAN_CHECK
-	#define strtod parseDecimalF64
-	#define dtoa printDecimalF64
+// #define strtod and dtoa to avoid conflicting with the C standard library versions
+// This is complicated by dtoa.c including stdlib.h, so we need to also include stdlib.h
+// here to ensure that it isn't included with the strtod and dtoa #define.
+#include <stdlib.h>
 
-	#ifdef _MSC_VER
-		#pragma warning(push)
-		#pragma warning(disable : 4244 4083 4706 4701 4703)
-	#elif defined(__GNUC__) && !defined(__clang__)
-		#pragma GCC diagnostic push
-		#pragma GCC diagnostic ignored "-Wsign-compare"
-		#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-		#define Long int
-	#else
-		#pragma GCC diagnostic push
-		#pragma GCC diagnostic ignored "-Wsign-compare"
-		#define Long int
-	#endif
+#define IEEE_8087
+#define NO_HEX_FP
+#define NO_INFNAN_CHECK
+#define strtod parseDecimalF64
+#define dtoa printDecimalF64
 
-	#include "../ThirdParty/dtoa.c"
+#ifdef _MSC_VER
+	#pragma warning(push)
+	#pragma warning(disable : 4244 4083 4706 4701 4703)
+#elif defined(__GNUC__) && !defined(__clang__)
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wsign-compare"
+	#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+	#define Long int
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wsign-compare"
+	#define Long int
+#endif
 
-	#ifdef _MSC_VER
-		#pragma warning(pop)
-	#else
-		#pragma GCC diagnostic pop
-		#undef Long
-	#endif
+#include "../ThirdParty/dtoa.c"
 
-	#undef IEEE_8087
-	#undef NO_HEX_FP
-	#undef NO_STRTOD_BIGCOMP
-	#undef NO_INFNAN_CHECK
-	#undef strtod
-	#undef dtoa
-};
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
+	#undef Long
+#endif
+
+#undef IEEE_8087
+#undef NO_HEX_FP
+#undef NO_STRTOD_BIGCOMP
+#undef NO_INFNAN_CHECK
+#undef strtod
+#undef dtoa
 
 using namespace WAST;
 
@@ -160,7 +162,7 @@ Float parseDecimalFloat(const char*& nextChar,ParseState& state)
 {
 	// Use David Gay's strtod to parse a floating point number.
 	const char* firstChar = nextChar;
-	F64 f64 = DavidGay::parseDecimalF64(nextChar,const_cast<char**>(&nextChar));
+	F64 f64 = parseDecimalF64(nextChar,const_cast<char**>(&nextChar));
 	if(nextChar == firstChar)
 	{
 		++nextChar;
