@@ -54,12 +54,12 @@ testing_fixture::testing_fixture() {
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
       default_genesis_state.initial_accounts.emplace_back(name, 0, 100000, public_key, public_key);
-      key_ring[public_key] = private_key;
+      store_private_key(private_key);
 
       private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name + ".producer"));
       public_key = private_key.get_public_key();
       default_genesis_state.initial_producers.emplace_back(name, public_key);
-      key_ring[public_key] = private_key;
+      store_private_key(private_key);
    }
 }
 
@@ -79,6 +79,10 @@ const native_contract::genesis_state_type& testing_fixture::genesis_state() cons
 
 native_contract::genesis_state_type& testing_fixture::genesis_state() {
    return default_genesis_state;
+}
+
+void testing_fixture::store_private_key(const private_key_type& key) {
+   key_ring[key.get_public_key()] = key;
 }
 
 private_key_type testing_fixture::get_private_key(const public_key_type& public_key) const {
@@ -141,6 +145,10 @@ types::Asset testing_database::get_unstaking_balance(const types::AccountName& a
 std::set<types::AccountName> testing_database::get_approved_producers(const types::AccountName& account) {
    auto set = get_database().get<StakedBalanceObject, byOwnerName>(account).approvedProducers;
    return {set.begin(), set.end()};
+}
+
+types::PublicKey testing_database::get_block_signing_key(const types::AccountName& producerName) {
+   return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
 void testing_network::connect_database(testing_database& new_database) {

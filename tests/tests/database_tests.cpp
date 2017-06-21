@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
 } FC_LOG_AND_RETHROW() }
 
 // Test that if I create a producer and vote for him, he gets in on the next round (but not before)
-BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture, *boost::unit_test::expected_failures(1)) {
+BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
    try {
       Make_Database(db)
       db.produce_blocks();
@@ -210,7 +210,6 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture, *boost::unit_test::e
       db.produce_blocks();
 
       const auto& gpo = db.get_global_properties();
-#warning TODO: expected failure because chain_controller::generate_block does not update round
       BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
 
       Approve_Producer(db, bob, joe, false);
@@ -226,7 +225,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture, *boost::unit_test::e
 }
 
 // Same as producer_voting_1, except we first cast the vote for the producer, _then_ get a stake
-BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture, *boost::unit_test::expected_failures(1)) {
+BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
    try {
       Make_Database(db)
       db.produce_blocks();
@@ -261,7 +260,6 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture, *boost::unit_test::e
       db.produce_blocks();
 
       const auto& gpo = db.get_global_properties();
-#warning TODO: expected failure because chain_controller::generate_block does not update round
       BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
 
       Approve_Producer(db, bob, joe, false);

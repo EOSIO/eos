@@ -114,6 +114,7 @@ public:
    const native_contract::genesis_state_type& genesis_state() const;
    native_contract::genesis_state_type& genesis_state();
 
+   void store_private_key(const private_key_type& key);
    private_key_type get_private_key(const public_key_type& public_key) const;
 
 protected:
@@ -170,6 +171,8 @@ public:
 
    /// @brief Get the set of producers approved by the named account
    std::set<AccountName> get_approved_producers(const AccountName& account);
+   /// @brief Get the specified block producer's signing key
+   PublicKey get_block_signing_key(const AccountName& producerName);
 
 protected:
    testing_fixture& fixture;
@@ -284,6 +287,7 @@ protected:
  * @endcode
  */
 #define Make_Key(name) auto name ## _private_key = private_key_type::regenerate(fc::digest(#name "_private_key")); \
+   store_private_key(name ## _private_key); \
    PublicKey name ## _public_key = name ## _private_key.get_public_key();
 
 /**

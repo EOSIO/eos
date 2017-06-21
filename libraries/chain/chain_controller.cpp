@@ -395,6 +395,12 @@ signed_block chain_controller::_generate_block(
 
    pending_block.producer = producer_obj.owner;
 
+   // If this block is last in a round, calculate the schedule for the new round
+   if (pending_block.block_num() % config::BlocksPerRound == 0) {
+      auto new_schedule = _admin->get_next_round(_db);
+      pending_block.producer_changes = get_global_properties().active_producers - new_schedule;
+   }
+
    if( !(skip & skip_producer_signature) )
       pending_block.sign( block_signing_private_key );
 
