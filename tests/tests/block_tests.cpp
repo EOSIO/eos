@@ -266,7 +266,6 @@ R"(
   (type $FUNCSIG$viiii (func (param i32 i32 i32 i32)))
   (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
   (type $FUNCSIG$iiiii (func (param i32 i32 i32 i32) (result i32)))
-  (type $FUNCSIG$i (func (result i32)))
   (type $FUNCSIG$iiii (func (param i32 i32 i32) (result i32)))
   (import "env" "AccountName_unpack" (func $AccountName_unpack (param i32 i32)))
   (import "env" "Varint_unpack" (func $Varint_unpack (param i32 i32)))
@@ -854,7 +853,6 @@ R"(
     )
   )
 )
-
 
 )";
 

@@ -33,7 +33,6 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    char* value = &memoryRef<char>( mem, valueptr );
    string keystr( key, key+keylen);
 
-   //idump((keystr));
 //   if( valuelen == 8 ) idump(( *((int64_t*)value)));
 
 
@@ -41,7 +40,7 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    if( obj ) {
       db.modify( *obj, [&]( auto& o ) {
          o.value.resize( valuelen );
-         o.value.replace (0, valuelen, value);
+         memcpy( o.value.data(), value, valuelen );
       });
    } else {
       db.create<key_value_object>( [&](auto& o) {
@@ -144,14 +143,15 @@ DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,
    char* key   = &memoryRef<char>( mem, keyptr   );
    char* value = &memoryRef<char>( mem, valueptr );
    string keystr( key, key+keylen);
-   //idump((keystr));
+ //  idump((keystr));
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
    if( obj == nullptr ) return -1;
 	 auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
+  // idump((copylen)(valuelen)(obj->value.size()));
    if( copylen ) {
 			memcpy( value, obj->value.data(), copylen );
-  //    if( copylen == 8 ) idump(( *((int64_t*)value)));
+//      if( copylen == 8 ) idump(( *((int64_t*)value)));
    }
 	 return copylen;
 }
@@ -300,7 +300,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    void  wasm_interface::vm_onInit()
    { try {
       try {
-          wlog( "onInit" );
+         // wlog( "onInit" );
 				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"onInit"));
 		 		 if( !apply ) {
            wlog( "no onInit method found" );
