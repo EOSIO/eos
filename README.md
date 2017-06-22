@@ -10,7 +10,7 @@ This project is written primarily in C++14 and uses CMake as its build system. A
 
 ### Installing Dependencies
 Eos has the following external dependencies, which must be installed on your system:
- - Boost
+ - Boost 1.64
  - OpenSSL
  - LLVM 4.0
  - [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
