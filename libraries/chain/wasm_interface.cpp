@@ -39,8 +39,7 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
    if( obj ) {
       db.modify( *obj, [&]( auto& o ) {
-         o.value.resize( valuelen );
-         memcpy( o.value.data(), value, valuelen );
+         o.value.assign(value, valuelen);
       });
    } else {
       db.create<key_value_object>( [&](auto& o) {
