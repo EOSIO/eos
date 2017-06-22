@@ -867,57 +867,53 @@ R"(
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-				 eos::chain::SignedTransaction trx; 
+         eos::chain::SignedTransaction trx;
          trx.messages.resize(2);
          trx.messages[0].sender = "simplecoin";
-         trx.messages[0].recipient = "sys";
-				 trx.setMessage(0, "DefineStruct",interface);
+         trx.messages[0].recipient = config::SystemContractName;
+         trx.setMessage(0, "DefineStruct",interface);
          trx.messages[1].sender = "simplecoin";
-         trx.messages[1].recipient = "sys";
-				 trx.setMessage(1, "SetCode", handler);
+         trx.messages[1].recipient = config::SystemContractName;
+         trx.setMessage(1, "SetCode", handler);
          trx.expiration = db.head_block_time() + 100; 
          trx.set_reference_block(db.head_block_id()); 
-				 db.push_transaction(trx);
-				 db.produce_blocks(1);
+         db.push_transaction(trx);
+         db.produce_blocks(1);
       }
 
 
-			auto start = fc::time_point::now();
-     for( uint32_t i = 0; i < 1000; ++i ) 
-     { 
-        eos::chain::SignedTransaction trx; 
-        trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "Transfer", 
-                           types::Transfer{"simplecoin", "init1", 1+i, "hello"} ); 
-        trx.expiration = db.head_block_time() + 100; 
-        trx.set_reference_block(db.head_block_id()); 
-        db.push_transaction(trx); 
-     }
-			auto end = fc::time_point::now();
-			idump((  1000*1000000.0 / (end-start).count() ) );
+      auto start = fc::time_point::now();
+      for (uint32_t i = 0; i < 1000; ++i)
+      {
+         eos::chain::SignedTransaction trx;
+         trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "Transfer",
+                            types::Transfer{"simplecoin", "init1", 1+i, "hello"} );
+         trx.expiration = db.head_block_time() + 100;
+         trx.set_reference_block(db.head_block_id());
+         db.push_transaction(trx);
+      }
+      auto end = fc::time_point::now();
+      idump((1000*1000000.0 / (end-start).count()));
 
-     { 
-        wlog( "transfer 102 from init1 to init2" );
-        eos::chain::SignedTransaction trx; 
-        trx.emplaceMessage("init1", "simplecoin", vector<AccountName>{"init2"}, "Transfer", 
-                           types::Transfer{"init1", "init2", 102, "hello again"} ); 
-        trx.expiration = db.head_block_time() + 100; 
-        trx.set_reference_block(db.head_block_id()); 
-        db.push_transaction(trx); 
-     }
-
-
-
+      {
+         wlog( "transfer 102 from init1 to init2" );
+         eos::chain::SignedTransaction trx;
+         trx.emplaceMessage("init1", "simplecoin", vector<AccountName>{"init2"}, "Transfer",
+                            types::Transfer{"init1", "init2", 102, "hello again"});
+         trx.expiration = db.head_block_time() + 100;
+         trx.set_reference_block(db.head_block_id());
+         db.push_transaction(trx);
+      }
 /*
-			auto start = fc::time_point::now();
-		  for( uint32_t i = 0; i < 200; ++i ) {
+      auto start = fc::time_point::now();
+      for( uint32_t i = 0; i < 200; ++i ) {
          Transfer_Asset(db, init3, init1, Asset(2+i), "transfer 100");
       }
-			auto end = fc::time_point::now();
-			idump((  200*1000000.0 / (end-start).count() ) );
+      auto end = fc::time_point::now();
+      idump((  200*1000000.0 / (end-start).count() ) );
 */
-		  db.produce_blocks(1);
+      db.produce_blocks(1);
 /*
-
       const auto& world = db_db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"),
                                                                                      String("hello")));
       BOOST_CHECK_EQUAL( string(world.value.c_str()), "world" );
