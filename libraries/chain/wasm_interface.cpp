@@ -142,17 +142,14 @@ DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,
    char* key   = &memoryRef<char>( mem, keyptr   );
    char* value = &memoryRef<char>( mem, valueptr );
    string keystr( key, key+keylen);
- //  idump((keystr));
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
    if( obj == nullptr ) return -1;
-	 auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
-  // idump((copylen)(valuelen)(obj->value.size()));
+   auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
    if( copylen ) {
-			memcpy( value, obj->value.data(), copylen );
-//      if( copylen == 8 ) idump(( *((int64_t*)value)));
+      obj->value.copy(value, copylen);
    }
-	 return copylen;
+   return copylen;
 }
 
 DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
