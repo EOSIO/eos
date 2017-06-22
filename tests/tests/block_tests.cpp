@@ -117,7 +117,7 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
 }
 
 //Test account script processing
-BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture, *boost::unit_test::expected_failures(1))
+BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
       Make_Database(db);
       db.produce_blocks(10);
