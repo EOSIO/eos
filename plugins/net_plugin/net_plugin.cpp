@@ -2,6 +2,7 @@
 
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
+//#include <appbase/application.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>
@@ -35,7 +36,7 @@ struct node_transaction_state {
  *  Index by is_known, block_num, validated_time, this is the order we will broadcast
  *  to peer.
  *  Index by is_noticed, validated_time
- *  
+ *
  */
 struct transaction_state {
    transaction_id_type id;
@@ -54,7 +55,7 @@ typedef multi_index_container<
 > transaction_state_index;
 
 /**
- * 
+ *
  */
 struct block_state {
    block_id_type id;
@@ -90,7 +91,10 @@ typedef multi_index_container<
 
 class connection {
    public:
-      connection( socket_ptr s ):socket(s){
+  connection( socket_ptr s, const fc::sha256 &node_id )
+    : socket(s),
+      local_node_id (node_id)
+  {
          wlog( "created connection" );
          pending_message_buffer.resize( 1024*1024*4 );
       }
@@ -108,7 +112,7 @@ class connection {
       vector<char>                   pending_message_buffer;
 
       handshake_message              last_handshake;
-
+  const fc::sha256& local_node_id;
       std::deque<net_message>            out_queue;
 
       void send( const net_message& m ) {
@@ -118,7 +122,7 @@ class connection {
       }
 
       void send_next_message() {
-         if( !out_queue.size() ) 
+         if( !out_queue.size() )
             return;
 
          auto& m = out_queue.front();
@@ -141,7 +145,7 @@ class connection {
                }
          });
       }
-};
+}; // class connection
 
 
 
@@ -158,14 +162,16 @@ class net_plugin_impl {
    std::set< connection* >       connections;
    bool                          done = false;
 
+  fc::sha256                     node_id;
+
    void connect( const string& ep ) {
      auto host = ep.substr( 0, ep.find(':') );
      auto port = ep.substr( host.size()+1, host.size() );
      idump((host)(port));
-     auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) ); 
+     auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
      tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
 
-     resolver->async_resolve( query, 
+     resolver->async_resolve( query,
        [resolver,ep,this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ){
          if( !err ) {
            connect( resolver, endpoint_itr );
@@ -185,7 +191,7 @@ class net_plugin_impl {
         [sock,resolver,endpoint_itr,this]( const boost::system::error_code& err ) {
            if( !err ) {
               pending_connections.erase( sock );
-              start_session( new connection( sock ) );
+              start_session( new connection( sock, node_id ) );
            } else {
               if( endpoint_itr != tcp::resolver::iterator() ) {
                 connect( resolver, endpoint_itr );
@@ -216,10 +222,26 @@ class net_plugin_impl {
       ilog("network loop done");
    } FC_CAPTURE_AND_RETHROW() }
 
+  void init_handshake (handshake_message &hm) {
+    hm.network_version = 0;
+    database_plugin* dbp = application::instance().find_plugin<database_plugin>();
+    //hm.chain_id = dbp->db().get_chain_id();
+    //    hm.node_id = fc::sha256;
+    hm.last_irreversible_block_num = 0;
+    //   block_id_type   last_irreversible_block_id;
+    //   string          os;
+    //   string          agent;
+
+  }
+
    void start_session( connection* con ) {
      connections.insert( con );
      start_read_message( *con );
-     con->send( handshake_message{} );
+
+     handshake_message hello;
+     init_handshake (hello);
+     con->send( hello );
+
      // con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
      // con->writeloop_complete = bf::async( [=](){ write_loop( con ); } );
    }
@@ -228,7 +250,7 @@ class net_plugin_impl {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
          if( !ec ) {
-            start_session( new connection( socket ) );
+           start_session( new connection( socket, node_id ) );
             start_listen_loop();
          } else {
             elog( "Error accepting connection: ${m}", ("m", ec.message() ) );
@@ -238,7 +260,7 @@ class net_plugin_impl {
 
    void start_read_message( connection& c ) {
       c.pending_message_size = 0;
-      boost::asio::async_read( *c.socket, boost::asio::buffer((char*)&c.pending_message_size,sizeof(c.pending_message_size)), 
+      boost::asio::async_read( *c.socket, boost::asio::buffer((char*)&c.pending_message_size,sizeof(c.pending_message_size)),
         [&]( boost::system::error_code ec, std::size_t bytes_transferred ) {
            ilog( "read size handler..." );
            if( !ec ) {
@@ -255,8 +277,39 @@ class net_plugin_impl {
         }
       );
    }
-   void start_reading_pending_buffer( connection& c ) {
-      boost::asio::async_read( *c.socket, boost::asio::buffer(c.pending_message_buffer.data(), c.pending_message_size ), 
+
+  void handle_message (connection &c, handshake_message &msg) {
+    ilog ("got a handshake message");
+    c.last_handshake = msg;
+  }
+
+
+  void handle_message (connection &c, peer_message &msg) {
+    ilog ("got a peer message");
+  }
+
+  void handle_message (connection &c, notice_message &msg) {
+    ilog ("got a notice message");
+  }
+
+  void handle_message (connection &c, sync_request_message &msg) {
+    ilog ("got a sync request message");
+  }
+
+  void handle_message (connection &c, block_summary_message &msg) {
+    ilog ("got a block summary message");
+  }
+
+  void handle_message (connection &c, SignedTransaction &msg) {
+    ilog ("got a SignedTransacton");
+  }
+
+  void handle_message (connection &c, signed_block &msg) {
+    ilog ("got a signed_block");
+  }
+
+  void start_reading_pending_buffer( connection& c ) {
+      boost::asio::async_read( *c.socket, boost::asio::buffer(c.pending_message_buffer.data(), c.pending_message_size ),
         [&]( boost::system::error_code ec, std::size_t bytes_transferred ) {
            ilog( "read buffer handler..." );
            if( !ec ) {
@@ -264,6 +317,37 @@ class net_plugin_impl {
                auto msg = fc::raw::unpack<net_message>( c.pending_message_buffer );
                ilog( "received message of size: ${s}", ("s",bytes_transferred) );
                start_read_message( c );
+               switch (msg.which()) {
+               case 0: {
+                 handle_message (c, msg.get<handshake_message> ());
+                 break;
+               }
+               case 1: {
+                 handle_message (c, msg.get<peer_message> ());
+                 break;
+               }
+               case 2: {
+                 break;
+                 handle_message (c, msg.get<notice_message> ());
+                 break;
+               }
+               case 3: {
+                 handle_message (c, msg.get<sync_request_message> ());
+                 break;
+               }
+               case 4: {
+                 handle_message (c, msg.get<block_summary_message>());
+                 break;
+               }
+               case 5: {
+                 handle_message (c, msg.get<SignedTransaction>());
+                 break;
+               }
+               case 6: {
+                 handle_message (c, msg.get<signed_block>());
+                 break;
+               }
+               }
                return;
             } catch ( const fc::exception& e ) {
               edump((e.to_detail_string() ));
@@ -293,7 +377,7 @@ class net_plugin_impl {
       delete c;
    }
 
-};
+}; // class net_plugin_impl
 
 net_plugin::net_plugin()
 :my( new net_plugin_impl ) {
@@ -302,7 +386,7 @@ net_plugin::net_plugin()
 net_plugin::~net_plugin() {
 }
 
-void net_plugin::set_program_options( options_description& cli, options_description& cfg ) 
+void net_plugin::set_program_options( options_description& cli, options_description& cfg )
 {
    cfg.add_options()
          ("listen-endpoint", bpo::value<string>()->default_value( "127.0.0.1:9876" ), "The local IP address and port to listen for incoming connections.")
@@ -317,7 +401,7 @@ void net_plugin::plugin_initialize( const variables_map& options ) {
       auto lipstr = options.at("listen-endpoint").as< string >();
       auto fcep   = fc::ip::endpoint::from_string( lipstr );
       my->listen_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( (string)fcep.get_address() ), fcep.port() );
-      
+
       ilog( "configured net to listen on ${ep}", ("ep", fcep) );
 
       my->acceptor.reset( new tcp::acceptor( app().get_io_service() ) );
@@ -325,6 +409,8 @@ void net_plugin::plugin_initialize( const variables_map& options ) {
    if( options.count( "remote-endpoint" ) ) {
       my->seed_nodes = options.at( "remote-endpoint" ).as< vector<string> >();
    }
+
+   //   fc::rand_pseudo_bytes(&my->node_id.data[0], (int)my->node_id.size());
 }
 
 void net_plugin::plugin_startup() {
@@ -353,7 +439,7 @@ try {
 
       ilog( "close connections ${s}", ("s",my->connections.size()) );
       auto cons = my->connections;
-      for( auto con : cons ) 
+      for( auto con : cons )
          con->socket->close();
 
       while( my->connections.size() ) {
