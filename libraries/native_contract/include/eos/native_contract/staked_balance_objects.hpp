@@ -47,7 +47,7 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
    types::Time lastUnstakingTime = types::Time::maximum();
 
    /// The account's vote on producers. This may either be a list of approved producers, or an account to proxy vote to
-   fc::static_variant<ProducerSlate, types::AccountName> producerVotes;
+   fc::static_variant<ProducerSlate, types::AccountName> producerVotes = ProducerSlate{};
 
    /**
     * @brief Add the provided stake to this balance, maintaining invariants
@@ -68,7 +68,17 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
     */
    void beginUnstakingTokens(types::ShareType amount, chainbase::database& db) const;
 
-   void updateVotes(types::ShareType stakeDelta, chainbase::database& db) const;
+   /**
+    * @brief Propagate the specified change in stake to the producer votes or the proxy
+    * @param stakeDelta The change in stake
+    * @param db Read-write reference to the database
+    *
+    * This method will apply the provided delta in voting stake to the next stage in the producer voting pipeline,
+    * whether that be the producers in the slate, or the account the votes are proxied to.
+    *
+    * This method will *not* update this object in any way. It will not adjust @ref stakedBalance, etc
+    */
+   void propagateVotes(types::ShareType stakeDelta, chainbase::database& db) const;
 };
 
 struct byOwnerName;

@@ -15,7 +15,7 @@ void StakedBalanceObject::stakeTokens(ShareType newStake, chainbase::database& d
       sbo.stakedBalance += newStake;
    });
 
-   updateVotes(newStake, db);
+   propagateVotes(newStake, db);
 }
 
 void StakedBalanceObject::beginUnstakingTokens(ShareType amount, chainbase::database& db) const {
@@ -31,7 +31,7 @@ void StakedBalanceObject::beginUnstakingTokens(ShareType amount, chainbase::data
    });
 }
 
-void StakedBalanceObject::updateVotes(ShareType stakeDelta, chainbase::database& db) const {
+void StakedBalanceObject::propagateVotes(ShareType stakeDelta, chainbase::database& db) const {
    if (producerVotes.contains<ProducerSlate>())
       // This account votes for producers directly; update their stakes
       boost::for_each(producerVotes.get<ProducerSlate>().range(), [&db, &stakeDelta](const AccountName& name) {

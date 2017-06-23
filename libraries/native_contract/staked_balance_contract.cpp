@@ -169,26 +169,99 @@ void ApproveProducer::validate_preconditions(precondition_validate_context& cont
 void ApproveProducer::apply(apply_context& context) {
    auto& db = context.mutable_db;
    auto approve = context.msg.as<types::ApproveProducer>();
-   auto producer = db.find<ProducerVotesObject, byOwnerName>(approve.producer);
-   auto voter = db.find<StakedBalanceObject, byOwnerName>(context.msg.sender);
+   const auto& producer = db.get<ProducerVotesObject, byOwnerName>(approve.producer);
+   const auto& voter = db.get<StakedBalanceObject, byOwnerName>(context.msg.sender);
    auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
+   auto totalVotingStake = voter.stakedBalance;
+
+   // Check if voter is proxied to; if so, we need to add in the proxied stake
+   if (auto proxy = db.find<ProxyVoteObject, byTargetName>(voter.ownerName))
+      totalVotingStake += proxy->proxiedStake;
 
    // Add/remove votes from producer
-   db.modify(*producer,
-             [approve = approve.approve, amount = voter->stakedBalance, &raceTime](ProducerVotesObject& pvo) {
+   db.modify(producer, [approve = approve.approve, totalVotingStake, &raceTime](ProducerVotesObject& pvo) {
       if (approve)
-         pvo.updateVotes(amount, raceTime);
+         pvo.updateVotes(totalVotingStake, raceTime);
       else
-         pvo.updateVotes(-amount, raceTime);
+         pvo.updateVotes(-totalVotingStake, raceTime);
    });
    // Add/remove producer from voter's approved producer list
-   db.modify(*voter, [&approve](StakedBalanceObject& sbo) {
+   db.modify(voter, [&approve](StakedBalanceObject& sbo) {
       auto& slate = sbo.producerVotes.get<ProducerSlate>();
       if (approve.approve)
          slate.add(approve.producer);
       else
          slate.remove(approve.producer);
    });
+}
+
+void AllowVoteProxying::validate(message_validate_context& context) {
+   auto allow = context.msg.as<types::AllowVoteProxying>();
+   EOS_ASSERT(allow.allow == 0 || allow.allow == 1, message_validate_exception,
+              "Unknown allow value: ${val}; must be either 0 or 1", ("val", allow.allow));
+}
+
+void AllowVoteProxying::validate_preconditions(precondition_validate_context& context) {
+   auto allow = context.msg.as<types::AllowVoteProxying>();
+   auto proxy = context.db.find<ProxyVoteObject, byTargetName>(context.msg.sender);
+   if (allow.allow)
+      EOS_ASSERT(proxy == nullptr, message_precondition_exception,
+                 "Account '${name}' already allows vote proxying", ("name", context.msg.sender));
+   else
+      EOS_ASSERT(proxy != nullptr, message_precondition_exception,
+                 "Account '${name}' already disallows vote proxying", ("name", context.msg.sender));
+}
+
+void AllowVoteProxying::apply(apply_context& context) {
+   auto allow = context.msg.as<types::AllowVoteProxying>();
+   auto& db = context.mutable_db;
+   if (allow.allow)
+      db.create<ProxyVoteObject>([target = context.msg.sender](ProxyVoteObject& pvo) {
+         pvo.proxyTarget = target;
+      });
+   else {
+      const auto& proxy = db.get<ProxyVoteObject, byTargetName>(context.msg.sender);
+      proxy.cancelProxies(db);
+      db.remove(proxy);
+   }
+}
+
+void SetVoteProxy::validate_preconditions(precondition_validate_context& context) {
+   auto svp = context.msg.as<types::SetVoteProxy>();
+   const auto& db = context.db;
+
+   auto proxy = db.find<ProxyVoteObject, byTargetName>(context.msg.sender);
+   EOS_ASSERT(proxy == nullptr, message_precondition_exception,
+              "Account '${src}' cannot proxy its votes, since it allows other accounts to proxy to it",
+              ("src", context.msg.sender));
+
+   if (svp.proxy != context.msg.sender) {
+      // We are trying to enable proxying to svp.proxy
+      auto proxy = db.find<ProxyVoteObject, byTargetName>(svp.proxy);
+      EOS_ASSERT(proxy != nullptr, message_precondition_exception,
+                 "Proxy target '${target}' does not allow votes to be proxied to it", ("target", svp.proxy));
+   } else {
+      // We are trying to disable proxying to sender.producerVotes.get<AccountName>()
+      const auto& sender = db.get<StakedBalanceObject, byOwnerName>(context.msg.sender);
+      EOS_ASSERT(sender.producerVotes.contains<AccountName>(), message_precondition_exception,
+                 "Account '${name}' does not currently proxy its votes to any account", ("name", context.msg.sender));
+   }
+}
+
+void SetVoteProxy::apply(apply_context& context) {
+   auto svp = context.msg.as<types::SetVoteProxy>();
+   auto& db = context.mutable_db;
+   const auto& proxy = db.get<ProxyVoteObject, byTargetName>(svp.proxy);
+   const auto& balance = db.get<StakedBalanceObject, byOwnerName>(context.msg.sender);
+
+   if (svp.proxy != context.msg.sender)
+      // We are enabling proxying to svp.proxy
+      proxy.addProxySource(context.msg.sender, balance.stakedBalance, db);
+   else {
+      // We are disabling proxying to balance.producerVotes.get<AccountName>()
+      proxy.removeProxySource(context.msg.sender, balance.stakedBalance, db);
+      db.modify(balance, [](StakedBalanceObject& sbo) { sbo.producerVotes = ProducerSlate{}; });
+   }
 }
 
 } // namespace eos

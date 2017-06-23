@@ -95,9 +95,13 @@ struct UpdateProducer
 # implies message.sender account
 struct ApproveProducer
    producer  AccountName
-   approve   Int8  # 0 or 1 
+   approve   Int8  # 0 or 1
 
-# implies message.sender account 
+# implies message.sender account
+struct AllowVoteProxying
+   allow   Int8  # 0 or 1
+
+# implies message.sender account
 struct SetVoteProxy
    proxy   AccountName
 

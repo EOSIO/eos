@@ -121,16 +121,19 @@ class ProxyVoteObject : public chainbase::object<chain::proxy_vote_object_type, 
    id_type id;
    /// The account receiving the proxied voting power
    types::AccountName proxyTarget;
-   /// The list of accounts proxying their voting power to @proxyTarget
+   /// The list of accounts proxying their voting power to @ref proxyTarget
    chain::shared_set<types::AccountName> proxySources;
    /// The total stake proxied to @ref proxyTarget. At all times, this should be equal to the sum of stake over all 
    /// accounts in @ref proxySources
-   types::ShareType proxiedStake;
+   types::ShareType proxiedStake = 0;
    
    void addProxySource(const types::AccountName& source, chain::ShareType sourceStake, chainbase::database& db) const;
    void removeProxySource(const types::AccountName& source, chain::ShareType sourceStake,
                           chainbase::database& db) const;
    void updateProxiedStake(chain::ShareType stakeDelta, chainbase::database& db) const;
+
+   /// Cancel proxying votes to @ref proxyTarget for all @ref proxySources
+   void cancelProxies(chainbase::database& db) const;
 };
 
 /**

@@ -66,7 +66,8 @@
 
 #define EOS_SYSTEM_CONTRACT_FUNCTIONS (CreateAccount)(DefineStruct)(SetCode)
 #define EOS_CONTRACT_FUNCTIONS (Transfer)(TransferToLocked)
-#define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS (CreateProducer)(UpdateProducer)(ApproveProducer)
+#define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS \
+   (CreateProducer)(UpdateProducer)(ApproveProducer)(SetVoteProxy)(AllowVoteProxying)
 
 namespace eos { namespace chain {
    using                               std::map;

@@ -1,4 +1,5 @@
 #include <eos/native_contract/producer_objects.hpp>
+#include <eos/native_contract/staked_balance_objects.hpp>
 
 #include <eos/chain/producer_object.hpp>
 
@@ -23,7 +24,7 @@ void ProxyVoteObject::addProxySource(const AccountName& source, ShareType source
       pvo.proxySources.insert(source);
       pvo.proxiedStake += sourceStake;
    });
-#warning TODO: Update proxy votes
+   db.get<StakedBalanceObject, byOwnerName>(proxyTarget).propagateVotes(sourceStake, db);
 }
 
 void ProxyVoteObject::removeProxySource(const AccountName& source, ShareType sourceStake,
@@ -32,14 +33,23 @@ void ProxyVoteObject::removeProxySource(const AccountName& source, ShareType sou
       pvo.proxySources.erase(source);
       pvo.proxiedStake -= sourceStake;
    });
-#warning TODO: Update proxy votes
+   db.get<StakedBalanceObject, byOwnerName>(proxyTarget).propagateVotes(sourceStake, db);
 }
 
 void ProxyVoteObject::updateProxiedStake(ShareType stakeDelta, chainbase::database& db) const {
    db.modify(*this, [stakeDelta](ProxyVoteObject& pvo) {
       pvo.proxiedStake += stakeDelta;
    });
-#warning TODO: Update proxy votes
+   db.get<StakedBalanceObject, byOwnerName>(proxyTarget).propagateVotes(stakeDelta, db);
+}
+
+void ProxyVoteObject::cancelProxies(chainbase::database& db) const {
+   boost::for_each(proxySources, [&db](const AccountName& source) {
+      const auto& balance = db.get<StakedBalanceObject, byOwnerName>(source);
+      db.modify(balance, [](StakedBalanceObject& sbo) {
+         sbo.producerVotes = ProducerSlate{};
+      });
+   });
 }
 
 ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db) const {
@@ -105,7 +115,7 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
             pso.currentRaceTime = newRaceTime;
          });
       } else {
-         wlog("All producers finished race, or race time at maximum; resetting race.");
+         wlog("Producer race finished; restarting race.");
          resetProducerRace(db);
       }
    } catch (ProducerRaceOverflowException&) {

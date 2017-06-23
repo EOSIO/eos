@@ -46,4 +46,16 @@ struct ApproveProducer {
    static void apply(chain::apply_context& context);
 };
 
+struct AllowVoteProxying {
+   static void validate(chain::message_validate_context& context);
+   static void validate_preconditions(chain::precondition_validate_context& context);
+   static void apply(chain::apply_context& context);
+};
+
+struct SetVoteProxy {
+   static void validate(chain::message_validate_context&) {}
+   static void validate_preconditions(chain::precondition_validate_context& context);
+   static void apply(chain::apply_context& context);
+};
+
 } // namespace eos
