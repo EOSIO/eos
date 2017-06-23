@@ -2,12 +2,13 @@
 
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
-//#include <appbase/application.hpp>
+#include <eos/chain/chain_controller.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/reflect/variant.hpp>
+#include <fc/crypto/rand.hpp>
 
 #include <boost/asio/ip/tcp.hpp>
 
@@ -90,10 +91,9 @@ typedef multi_index_container<
 > sync_request_index;
 
 class connection {
-   public:
-  connection( socket_ptr s, const fc::sha256 &node_id )
-    : socket(s),
-      local_node_id (node_id)
+public:
+  connection( socket_ptr s )
+    : socket(s)
   {
          wlog( "created connection" );
          pending_message_buffer.resize( 1024*1024*4 );
@@ -112,7 +112,7 @@ class connection {
       vector<char>                   pending_message_buffer;
 
       handshake_message              last_handshake;
-  const fc::sha256& local_node_id;
+
       std::deque<net_message>            out_queue;
 
       void send( const net_message& m ) {
@@ -162,7 +162,7 @@ class net_plugin_impl {
    std::set< connection* >       connections;
    bool                          done = false;
 
-  fc::sha256                     node_id;
+  fc::optional<handshake_message> hello;
 
    void connect( const string& ep ) {
      auto host = ep.substr( 0, ep.find(':') );
@@ -191,7 +191,7 @@ class net_plugin_impl {
         [sock,resolver,endpoint_itr,this]( const boost::system::error_code& err ) {
            if( !err ) {
               pending_connections.erase( sock );
-              start_session( new connection( sock, node_id ) );
+              start_session( new connection( sock ) );
            } else {
               if( endpoint_itr != tcp::resolver::iterator() ) {
                 connect( resolver, endpoint_itr );
@@ -222,25 +222,35 @@ class net_plugin_impl {
       ilog("network loop done");
    } FC_CAPTURE_AND_RETHROW() }
 
-  void init_handshake (handshake_message &hm) {
-    hm.network_version = 0;
-    database_plugin* dbp = application::instance().find_plugin<database_plugin>();
-    //hm.chain_id = dbp->db().get_chain_id();
-    //    hm.node_id = fc::sha256;
-    hm.last_irreversible_block_num = 0;
-    //   block_id_type   last_irreversible_block_id;
-    //   string          os;
-    //   string          agent;
 
+  void init_handshake () {
+    if (!hello) {
+      hello = handshake_message();
+    }
+
+    hello->network_version = 0;
+    //    hello->chain_id = chain->get_chain_id();
+    fc::rand_pseudo_bytes(hello->node_id.data(), hello->node_id.data_size());
+  }
+
+  void update_handshake () {
+    chain_plugin* cp = app().find_plugin<chain_plugin>();
+
+    hello->last_irreversible_block_id = cp->chain().get_block_id_for_num
+      (hello->last_irreversible_block_num = cp->chain().last_irreversible_block_num());
   }
 
    void start_session( connection* con ) {
      connections.insert( con );
      start_read_message( *con );
 
-     handshake_message hello;
-     init_handshake (hello);
-     con->send( hello );
+     if (hello.valid()) {
+       update_handshake ();
+     } else {
+       init_handshake ();
+     }
+
+     con->send( *hello );
 
      // con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
      // con->writeloop_complete = bf::async( [=](){ write_loop( con ); } );
@@ -250,7 +260,7 @@ class net_plugin_impl {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
          if( !ec ) {
-           start_session( new connection( socket, node_id ) );
+           start_session( new connection( socket ) );
             start_listen_loop();
          } else {
             elog( "Error accepting connection: ${m}", ("m", ec.message() ) );
@@ -278,8 +288,33 @@ class net_plugin_impl {
       );
    }
 
+
   void handle_message (connection &c, handshake_message &msg) {
     ilog ("got a handshake message");
+    if (!hello) {
+      init_handshake();
+    }
+    if (msg.node_id == hello->node_id)
+    {
+      dlog ("Self connection detected. Closing connection");
+      close(&c);
+      return;
+    }
+    if (msg.chain_id != hello->chain_id)
+      {
+        dlog ("Peer on a different chain. Closing connection");
+        close (&c);
+        return;
+      }
+    if (msg.network_version != hello->network_version)
+      {
+        dlog ("Peer network id does not match ");
+        close (&c);
+        return;
+      }
+
+
+
     c.last_handshake = msg;
   }
 
@@ -317,6 +352,7 @@ class net_plugin_impl {
                auto msg = fc::raw::unpack<net_message>( c.pending_message_buffer );
                ilog( "received message of size: ${s}", ("s",bytes_transferred) );
                start_read_message( c );
+
                switch (msg.which()) {
                case 0: {
                  handle_message (c, msg.get<handshake_message> ());
@@ -379,6 +415,7 @@ class net_plugin_impl {
 
 }; // class net_plugin_impl
 
+
 net_plugin::net_plugin()
 :my( new net_plugin_impl ) {
 }
@@ -409,11 +446,9 @@ void net_plugin::plugin_initialize( const variables_map& options ) {
    if( options.count( "remote-endpoint" ) ) {
       my->seed_nodes = options.at( "remote-endpoint" ).as< vector<string> >();
    }
-
-   //   fc::rand_pseudo_bytes(&my->node_id.data[0], (int)my->node_id.size());
 }
 
-void net_plugin::plugin_startup() {
+  void net_plugin::plugin_startup() {
   // boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
   if( my->acceptor ) {
       my->acceptor->open(my->listen_endpoint.protocol());

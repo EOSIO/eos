@@ -10,7 +10,7 @@ namespace eos {
       int16_t         network_version = 0;
       chain_id_type   chain_id; ///< used to identify chain
       fc::sha256      node_id; ///< used to identify peers and prevent self-connect
-      uint64_t        last_irreversible_block_num = 0;
+      uint32_t        last_irreversible_block_num = 0;
       block_id_type   last_irreversible_block_id;
       string          os;
       string          agent;
@@ -27,8 +27,8 @@ namespace eos {
    };
 
    struct sync_request_message {
-      uint64_t start_block;
-      uint64_t end_block;
+      uint32_t start_block;
+      uint32_t end_block;
    };
 
    struct peer_message {
