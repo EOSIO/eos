@@ -52,7 +52,7 @@
     NAME() = delete; \
     public: \
     template<typename Constructor, typename Allocator> \
-    NAME(Constructor&& c, chainbase::allocator<Allocator> a) \
+    NAME(Constructor&& c, chainbase::allocator<Allocator>) \
     { c(*this); }
 #define OBJECT_CTOR2_MACRO(x, y, field) ,field(a)
 #define OBJECT_CTOR2(NAME, FIELDS) \
@@ -220,6 +220,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (staked_balance_object_type)
                 (producer_votes_object_type)
                 (producer_schedule_object_type)
+                (proxy_vote_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eos::chain::void_t, )

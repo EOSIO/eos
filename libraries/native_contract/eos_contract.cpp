@@ -61,7 +61,6 @@ void Transfer::apply(apply_context& context) {
    auto transfer = context.msg.as<types::Transfer>();
    const auto& from = db.get<BalanceObject, byOwnerName>(transfer.from);
    const auto& to = db.get<BalanceObject, byOwnerName>(transfer.to);
-#warning TODO: move balance from account_object to an EOS-constract-specific object
    db.modify(from, [&](BalanceObject& a) {
       a.balance -= transfer.amount.amount;
    });

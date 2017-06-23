@@ -176,8 +176,6 @@ void producer_plugin_impl::schedule_production_loop() {
    if(time_to_next_second < 50000)      // we must sleep for at least 50ms
        time_to_next_second += 1000000;
 
-   fc::time_point next_wakeup(now + fc::microseconds(time_to_next_second));
-
    _timer.expires_from_now(boost::posix_time::microseconds(time_to_next_second));
    _timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
 }
