@@ -261,10 +261,10 @@ namespace WAST
 			}
 		};
 
-		assert(nextChar - state.string > state.nextToken->begin + 1);
+		assert(U32(nextChar - state.string) > state.nextToken->begin + 1);
 		++state.nextToken;
-		assert(nextChar - state.string <= state.nextToken->begin);
-		assert(nextChar - firstChar <= UINT32_MAX);
+		assert(U32(nextChar - state.string) <= state.nextToken->begin);
+		assert(U32(nextChar - firstChar) <= UINT32_MAX);
 		outName = Name(firstChar,U32(nextChar - firstChar));
 		return true;
 	}

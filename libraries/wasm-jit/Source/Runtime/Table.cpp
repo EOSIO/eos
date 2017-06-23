@@ -18,7 +18,7 @@ namespace Runtime
 		TableInstance* table = new TableInstance(type);
 
 		// In 64-bit, allocate enough address-space to safely access 32-bit table indices without bounds checking, or 16MB (4M elements) if the host is 32-bit.
-		const Uptr tableMaxBytes = HAS_64BIT_ADDRESS_SPACE ? (sizeof(TableInstance::FunctionElement) << 32) : 16*1024*1024;
+		const Uptr tableMaxBytes = HAS_64BIT_ADDRESS_SPACE ? Uptr(U64(sizeof(TableInstance::FunctionElement)) << 32) : 16*1024*1024;
 		
 		// On a 64 bit runtime, align the table base to a 4GB boundary, so the lower 32-bits will all be zero. Maybe it will allow better code generation?
 		// Note that this reserves a full extra 4GB, but only uses (4GB-1 page) for alignment, so there will always be a guard page at the end to
