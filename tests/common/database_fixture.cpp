@@ -143,8 +143,12 @@ types::Asset testing_database::get_unstaking_balance(const types::AccountName& a
 }
 
 std::set<types::AccountName> testing_database::get_approved_producers(const types::AccountName& account) {
-   auto set = get_database().get<StakedBalanceObject, byOwnerName>(account).approvedProducers;
-   return {set.begin(), set.end()};
+   const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
+   if (sbo.producerVotes.contains<ProducerSlate>()) {
+      auto range = sbo.producerVotes.get<ProducerSlate>().range();
+      return {range.begin(), range.end()};
+   }
+   return {};
 }
 
 types::PublicKey testing_database::get_block_signing_key(const types::AccountName& producerName) {

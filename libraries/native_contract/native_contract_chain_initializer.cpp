@@ -32,6 +32,7 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    db.add_index<StakedBalanceMultiIndex>();
    db.add_index<BalanceMultiIndex>();
    db.add_index<ProducerVotesMultiIndex>();
+   db.add_index<ProxyVoteMultiIndex>();
    db.add_index<ProducerScheduleMultiIndex>();
 
    // Install the native contract's message handlers

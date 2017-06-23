@@ -15,12 +15,7 @@ void StakedBalanceObject::stakeTokens(ShareType newStake, chainbase::database& d
       sbo.stakedBalance += newStake;
    });
 
-   // Update votes for approved producers
-   boost::for_each(approvedProducers, [&db, &newStake](const AccountName& name) {
-      db.modify(db.get<ProducerVotesObject, byOwnerName>(name), [&db, &newStake](ProducerVotesObject& pvo) {
-         pvo.updateVotes(newStake, ProducerScheduleObject::get(db).currentRaceTime);
-      });
-   });
+   updateVotes(newStake, db);
 }
 
 void StakedBalanceObject::beginUnstakingTokens(ShareType amount, chainbase::database& db) const {
@@ -34,6 +29,21 @@ void StakedBalanceObject::beginUnstakingTokens(ShareType amount, chainbase::data
       sbo.unstakingBalance = amount;
       sbo.lastUnstakingTime = db.get(dynamic_global_property_object::id_type()).time;
    });
+}
+
+void StakedBalanceObject::updateVotes(ShareType stakeDelta, chainbase::database& db) const {
+   if (producerVotes.contains<ProducerSlate>())
+      // This account votes for producers directly; update their stakes
+      boost::for_each(producerVotes.get<ProducerSlate>().range(), [&db, &stakeDelta](const AccountName& name) {
+         db.modify(db.get<ProducerVotesObject, byOwnerName>(name), [&db, &stakeDelta](ProducerVotesObject& pvo) {
+            pvo.updateVotes(stakeDelta, ProducerScheduleObject::get(db).currentRaceTime);
+         });
+      });
+   else {
+      // This account has proxied its votes to another account; update the ProxyVoteObject
+      const auto& proxy = db.get<ProxyVoteObject, byTargetName>(producerVotes.get<AccountName>());
+      proxy.updateProxiedStake(stakeDelta, db);
+   }
 }
 
 } // namespace eos

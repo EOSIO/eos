@@ -7,13 +7,37 @@
 
 #include <chainbase/chainbase.hpp>
 
+#include <fc/static_variant.hpp>
+
 namespace eos {
+/**
+ * @brief The ProducerSlate struct stores a list of producers voted on by an account
+ */
+struct ProducerSlate {
+   std::array<types::AccountName, config::MaxProducerVotes> votes;
+   size_t size = 0;
+
+   void add(types::AccountName producer) {
+      votes[size++] = producer;
+      std::inplace_merge(votes.begin(), votes.begin() + size - 1, votes.begin() + size);
+   }
+   void remove(types::AccountName producer) {
+      auto itr = std::remove(votes.begin(), votes.begin() + size, producer);
+      size = std::distance(votes.begin(), itr);
+   }
+   bool contains(types::AccountName producer) const {
+      return std::binary_search(votes.begin(), votes.begin() + size, producer);
+   }
+
+   auto range() { return boost::make_iterator_range_n(votes.begin(), size); }
+   auto range() const { return boost::make_iterator_range_n(votes.begin(), size); }
+};
 
 /**
  * @brief The StakedBalanceObject class tracks the staked balance (voting balance) for accounts
  */
 class StakedBalanceObject : public chainbase::object<chain::staked_balance_object_type, StakedBalanceObject> {
-   OBJECT_CTOR(StakedBalanceObject, (approvedProducers))
+   OBJECT_CTOR(StakedBalanceObject)
 
    id_type id;
    types::AccountName ownerName;
@@ -22,7 +46,8 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
    types::ShareType unstakingBalance = 0;
    types::Time lastUnstakingTime = types::Time::maximum();
 
-   chain::shared_set<types::AccountName> approvedProducers;
+   /// The account's vote on producers. This may either be a list of approved producers, or an account to proxy vote to
+   fc::static_variant<ProducerSlate, types::AccountName> producerVotes;
 
    /**
     * @brief Add the provided stake to this balance, maintaining invariants
@@ -42,6 +67,8 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
     * updating vote tallies
     */
    void beginUnstakingTokens(types::ShareType amount, chainbase::database& db) const;
+
+   void updateVotes(types::ShareType stakeDelta, chainbase::database& db) const;
 };
 
 struct byOwnerName;

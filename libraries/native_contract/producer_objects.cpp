@@ -18,6 +18,30 @@ void ProducerVotesObject::updateVotes(ShareType deltaVotes, UInt128 currentRaceT
    race.update(newSpeed, newPosition, currentRaceTime);
 }
 
+void ProxyVoteObject::addProxySource(const AccountName& source, ShareType sourceStake, chainbase::database& db) const {
+   db.modify(*this, [&source, sourceStake](ProxyVoteObject& pvo) {
+      pvo.proxySources.insert(source);
+      pvo.proxiedStake += sourceStake;
+   });
+#warning TODO: Update proxy votes
+}
+
+void ProxyVoteObject::removeProxySource(const AccountName& source, ShareType sourceStake,
+                                        chainbase::database& db) const {
+   db.modify(*this, [&source, sourceStake](ProxyVoteObject& pvo) {
+      pvo.proxySources.erase(source);
+      pvo.proxiedStake -= sourceStake;
+   });
+#warning TODO: Update proxy votes
+}
+
+void ProxyVoteObject::updateProxiedStake(ShareType stakeDelta, chainbase::database& db) const {
+   db.modify(*this, [stakeDelta](ProxyVoteObject& pvo) {
+      pvo.proxiedStake += stakeDelta;
+   });
+#warning TODO: Update proxy votes
+}
+
 ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db) const {
    // Create storage and machinery with nice names, for choosing the top-voted producers
    ProducerRound round;

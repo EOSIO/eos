@@ -57,6 +57,7 @@ const static UInt32 DefaultMaxTrxLifetime = 60*60;
 const static int BlocksPerRound = 21;
 const static int VotedProducersPerRound = 20;
 const static int IrreversibleThresholdPercent = 70 * Percent1;
+const static int MaxProducerVotes = 30;
 
 const static UInt128 ProducerRaceLapLength = std::numeric_limits<UInt128>::max();
 

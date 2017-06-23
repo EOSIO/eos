@@ -172,10 +172,11 @@ namespace eos { namespace chain {
       transaction_object_type,
       producer_object_type,
       chain_property_object_type,
-      balance_object_type, ///< Defined by native_system_contract_plugin
-      staked_balance_object_type, ///< Defined by native_system_contract_plugin
-      producer_votes_object_type, ///< Defined by native_system_contract_plugin
-      producer_schedule_object_type, ///< Defined by native_system_contract_plugin
+      balance_object_type, ///< Defined by native_contract library
+      staked_balance_object_type, ///< Defined by native_contract library
+      producer_votes_object_type, ///< Defined by native_contract library
+      producer_schedule_object_type, ///< Defined by native_contract library
+      proxy_vote_object_type, ///< Defined by native_contract library
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 

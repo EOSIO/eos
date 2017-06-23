@@ -8,6 +8,7 @@
 #include <eos/chain/exceptions.hpp>
 
 #include <boost/range/algorithm/for_each.hpp>
+#include <boost/range/algorithm/binary_search.hpp>
 
 namespace eos {
 using namespace chain;
@@ -147,12 +148,20 @@ void ApproveProducer::validate_preconditions(precondition_validate_context& cont
               "Could not approve producer '${name}'; no such producer found", ("name", approve.producer));
    EOS_ASSERT(voter != nullptr, message_precondition_exception,
               "Could not find balance for '${name}'", ("name", context.msg.sender));
+   EOS_ASSERT(voter->producerVotes.contains<ProducerSlate>(), message_precondition_exception,
+              "Cannot approve producer; approving account '${name}' proxies its votes to '${proxy}'",
+              ("name", voter->ownerName)("proxy", voter->producerVotes.get<AccountName>()));
+
+   const auto& slate = voter->producerVotes.get<ProducerSlate>();
+
+   EOS_ASSERT(slate.size < config::MaxProducerVotes, message_precondition_exception,
+              "Cannot approve producer; approved producer count is already at maximum");
    if (approve.approve)
-      EOS_ASSERT(voter->approvedProducers.count(approve.producer) == 0, message_precondition_exception,
+      EOS_ASSERT(!slate.contains(approve.producer), message_precondition_exception,
                  "Cannot add approval to producer '${name}'; producer is already approved",
                  ("name", approve.producer));
    else
-      EOS_ASSERT(voter->approvedProducers.count(approve.producer) == 1, message_precondition_exception,
+      EOS_ASSERT(slate.contains(approve.producer), message_precondition_exception,
                  "Cannot remove approval from producer '${name}'; producer is not approved",
                  ("name", approve.producer));
 }
@@ -174,10 +183,11 @@ void ApproveProducer::apply(apply_context& context) {
    });
    // Add/remove producer from voter's approved producer list
    db.modify(*voter, [&approve](StakedBalanceObject& sbo) {
+      auto& slate = sbo.producerVotes.get<ProducerSlate>();
       if (approve.approve)
-         sbo.approvedProducers.insert(approve.producer);
+         slate.add(approve.producer);
       else
-         sbo.approvedProducers.erase(approve.producer);
+         slate.remove(approve.producer);
    });
 }
 

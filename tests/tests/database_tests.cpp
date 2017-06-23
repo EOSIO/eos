@@ -199,11 +199,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
       db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
 
       {
-         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
-         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 1);
+         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(100));
          const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), bobBalance.stakedBalance);
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), db.get_staked_balance("bob"));
       }
 
       // OK, let's go to the next round
@@ -216,8 +215,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
       db.produce_blocks();
 
       {
-         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
-         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 0);
+         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 0);
          const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
       }
@@ -237,11 +235,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       db.produce_blocks();
 
       {
-         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
-         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 1);
+         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(0));
          const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), bobBalance.stakedBalance);
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), db.get_staked_balance("bob"));
       }
 
       Stake_Asset(db, bob, Asset(100).amount);
@@ -249,11 +246,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
 
       {
-         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
-         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 1);
+         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(100));
          const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), bobBalance.stakedBalance);
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), db.get_staked_balance("bob"));
       }
 
       // OK, let's go to the next round
@@ -266,8 +262,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       db.produce_blocks();
 
       {
-         const auto& bobBalance = db_db.get<StakedBalanceObject, byOwnerName>("bob");
-         BOOST_CHECK_EQUAL(bobBalance.approvedProducers.count("joe"), 0);
+         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 0);
          const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
       }

@@ -97,6 +97,43 @@ class ProducerVotesObject : public chainbase::object<chain::producer_votes_objec
 };
 
 /**
+ * @brief The ProxyVoteObject tracks proxied votes
+ * 
+ * This object is created when an account indicates that it wishes to allow other accounts to proxy their votes to it,
+ * so that the proxying accounts add their stake to the proxy target's votes.
+ * 
+ * When an account S proxies its votes to an account P, we look up the @ref ProxyVoteObject with @ref proxyTarget P, 
+ * and add S to the @ref proxySources, and add S's stake to @proxiedStake. We then update @ref proxyTarget's votes, to 
+ * account for the change in its voting weight. Any time S's stake changes, we update the @ref proxiedStake accordingly. 
+ * If S terminates its vote delegation to P, we remove S and its stake from @ref proxySources and @ref proxiedStake, 
+ * then update @ref proxyTarget's votes. If P stops accepting proxied votes, then its @ref ProxyVoteObject is removed 
+ * and all accounts listed in @ref proxySources revert back to an unproxied voting state.
+ * 
+ * Whenever any account A changes its votes, we check if there is some @ref ProxyVoteObject for which A is the target,
+ * and if so, we add the @ref proxiedStake to its voting weight.
+ * 
+ * An account A may only proxy to one account at a time, and if A has proxied its votes to some other account, A may 
+ * not cast any other votes until it unproxies its voting power.
+ */
+class ProxyVoteObject : public chainbase::object<chain::proxy_vote_object_type, ProxyVoteObject> {
+   OBJECT_CTOR(ProxyVoteObject, (proxySources))
+
+   id_type id;
+   /// The account receiving the proxied voting power
+   types::AccountName proxyTarget;
+   /// The list of accounts proxying their voting power to @proxyTarget
+   chain::shared_set<types::AccountName> proxySources;
+   /// The total stake proxied to @ref proxyTarget. At all times, this should be equal to the sum of stake over all 
+   /// accounts in @ref proxySources
+   types::ShareType proxiedStake;
+   
+   void addProxySource(const types::AccountName& source, chain::ShareType sourceStake, chainbase::database& db) const;
+   void removeProxySource(const types::AccountName& source, chain::ShareType sourceStake,
+                          chainbase::database& db) const;
+   void updateProxiedStake(chain::ShareType stakeDelta, chainbase::database& db) const;
+};
+
+/**
  * @brief The ProducerScheduleObject class schedules producers into rounds
  *
  * This class stores the state of the virtual race to select runner-up producers, and provides the logic for selecting
@@ -157,6 +194,17 @@ using ProducerVotesMultiIndex = chainbase::shared_multi_index_container<
    >
 >;
 
+/// Index proxies by the proxy target account name
+struct byTargetName;
+
+using ProxyVoteMultiIndex = chainbase::shared_multi_index_container<
+   ProxyVoteObject,
+   indexed_by<
+      ordered_unique<tag<by_id>, member<ProxyVoteObject, ProxyVoteObject::id_type, &ProxyVoteObject::id>>,
+      ordered_unique<tag<byTargetName>, member<ProxyVoteObject, types::AccountName, &ProxyVoteObject::proxyTarget>>
+   >
+>;
+
 using ProducerScheduleMultiIndex = chainbase::shared_multi_index_container<
    ProducerScheduleObject,
    indexed_by<
@@ -169,4 +217,5 @@ using ProducerScheduleMultiIndex = chainbase::shared_multi_index_container<
 } // namespace eos
 
 CHAINBASE_SET_INDEX_TYPE(eos::ProducerVotesObject, eos::ProducerVotesMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(eos::ProxyVoteObject, eos::ProxyVoteMultiIndex)
 CHAINBASE_SET_INDEX_TYPE(eos::ProducerScheduleObject, eos::ProducerScheduleMultiIndex)
