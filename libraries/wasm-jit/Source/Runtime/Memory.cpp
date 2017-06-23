@@ -20,7 +20,7 @@ namespace Runtime
 		const Uptr alignmentPages = alignmentBytes >> Platform::getPageSizeLog2();
 		outUnalignedNumPlatformPages = numAllocatedVirtualPages + alignmentPages;
 		outUnalignedBaseAddress = Platform::allocateVirtualPages(outUnalignedNumPlatformPages);
-		if(!outUnalignedBaseAddress) { return nullptr; }
+		if(!outUnalignedBaseAddress) { outUnalignedNumPlatformPages = 0; return nullptr; }
 		else { return (U8*)((Uptr)(outUnalignedBaseAddress + alignmentBytes - 1) & ~(alignmentBytes - 1)); }
 	}
 
