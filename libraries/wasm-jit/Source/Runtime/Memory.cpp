@@ -30,8 +30,8 @@ namespace Runtime
 
 		// On a 64-bit runtime, allocate 8GB of address space for the memory.
 		// This allows eliding bounds checks on memory accesses, since a 32-bit index + 32-bit offset will always be within the reserved address-space.
-		// On a 32-bit runtime, allocate 1GB.
-		const Uptr memoryMaxBytes = HAS_64BIT_ADDRESS_SPACE ? 8ull*1024*1024*1024 : 0x40000000;
+		// On a 32-bit runtime, allocate 512MB.
+		const Uptr memoryMaxBytes = HAS_64BIT_ADDRESS_SPACE ? 8ull*1024*1024*1024 : 0x20000000;
 		
 		// On a 64 bit runtime, align the instance memory base to a 4GB boundary, so the lower 32-bits will all be zero. Maybe it will allow better code generation?
 		// Note that this reserves a full extra 4GB, but only uses (4GB-1 page) for alignment, so there will always be a guard page at the end to
