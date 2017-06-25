@@ -86,6 +86,8 @@ public:
    // Only call this after plugin_startup()!
    const chain_controller& chain() const;
 
+  void get_chain_id (chain::chain_id_type &cid) const;
+
 private:
    unique_ptr<class chain_plugin_impl> my;
 };

@@ -20,6 +20,7 @@ using chain::fork_database;
 using chain::block_log;
 using chain::type_index;
 using chain::by_scope_name;
+using chain::chain_id_type;
 
 class chain_plugin_impl {
 public:
@@ -31,6 +32,7 @@ public:
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
    fc::optional<chain_controller>   chain;
+   chain_id_type                    chain_id;
 };
 
 
@@ -100,6 +102,7 @@ void chain_plugin::plugin_startup() {
 
    my->fork_db = fork_database();
    my->block_logger = block_log(my->block_log_dir);
+   my->chain_id = genesis.compute_chain_id();
    my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
                                 initializer, native_contract::make_administrator());
 
@@ -139,6 +142,10 @@ bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block
 
 chain_controller& chain_plugin::chain() { return *my->chain; }
 const chain::chain_controller& chain_plugin::chain() const { return *my->chain; }
+
+  void chain_plugin::get_chain_id (chain_id_type &cid)const {
+    memcpy (cid.data(), my->chain_id.data(), cid.data_size());
+  }
 
 namespace chain_apis {
 
