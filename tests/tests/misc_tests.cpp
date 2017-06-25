@@ -30,14 +30,14 @@ BOOST_AUTO_TEST_CASE(median_properties_test)
 
       votes.emplace_back(BlockchainConfiguration{1, 1, 1, 1, 1, 1, 1});
       votes.emplace_back(BlockchainConfiguration{1, 1, 1, 1, 1, 1, 1});
-      medians = {1024, 100, 1000, Asset(3333).amount, Asset(50).amount, Asset(50).amount, 100};
+      medians = BlockchainConfiguration {1024, 100, 1000, Asset(3333).amount, Asset(50).amount, Asset(50).amount, 100};
 
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values({medians}), medians);
 
       votes.erase(votes.begin() + 2);
       votes.erase(votes.end() - 1);
-      medians = {1024, 100, 1024, Asset(3333).amount, Asset(50).amount, Asset(100).amount, 100};
+      medians = BlockchainConfiguration {1024, 100, 1024, Asset(3333).amount, Asset(50).amount, Asset(100).amount, 100};
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 } FC_LOG_AND_RETHROW() }
 

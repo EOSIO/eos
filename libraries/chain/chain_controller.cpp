@@ -841,7 +841,7 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          auto messages = starter.prepare_database(*this, _db);
-         std::for_each(messages.begin(), messages.end(), [this](const auto& m) { process_message(m); });
+         std::for_each(messages.begin(), messages.end(), [this](const Message& m) { process_message(m); });
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
