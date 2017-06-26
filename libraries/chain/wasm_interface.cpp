@@ -29,8 +29,8 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
    auto& db    = wasm.current_apply_context->mutable_db;
    auto& scope = wasm.current_apply_context->scope;
    auto  mem   = wasm.current_memory;
-   char* key   = &memoryRef<char>( mem, keyptr   );
-   char* value = &memoryRef<char>( mem, valueptr );
+   char* key   = memoryArrayPtr<char>( mem, keyptr, keylen);
+   char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
    string keystr( key, key+keylen);
 
 //   if( valuelen == 8 ) idump(( *((int64_t*)value)));
@@ -60,7 +60,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
    auto& db    = wasm.current_apply_context->mutable_db;
    auto& scope = wasm.current_apply_context->scope;
    auto  mem   = wasm.current_memory;
-   char* key   = &memoryRef<char>( mem, keyptr   );
+   char* key   = memoryArrayPtr<char>( mem, keyptr, keylen);
    string keystr( key, key+keylen);
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
@@ -95,7 +95,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,Varint_unpack,Varint_unpack,none,i32,streamptr,i3
    auto& wasm  = wasm_interface::get();
    auto  mem   = wasm.current_memory;
 
-   uint32_t* stream = &memoryRef<uint32_t>( mem, streamptr );
+   uint32_t* stream = memoryArrayPtr<uint32_t>( mem, streamptr, 3 );
    const char* pos = &memoryRef<const char>( mem, stream[1] );
    const char* end = &memoryRef<const char>( mem, stream[2] );
    uint32_t& value = memoryRef<uint32_t>( mem, valueptr );
@@ -113,7 +113,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,AccountName_unpack,AccountName_unpack,none,i32,st
    auto  mem   = wasm.current_memory;
 
 
-   uint32_t* stream = &memoryRef<uint32_t>( mem, streamptr );
+   uint32_t* stream = memoryArrayPtr<uint32_t>( mem, streamptr, 3 );
    const char* pos = &memoryRef<const char>( mem, stream[1] );
    const char* end = &memoryRef<const char>( mem, stream[2] );
    AccountName* name = &memoryRef<AccountName>( mem, accountptr );
@@ -139,8 +139,8 @@ DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,
    auto& db    = wasm.current_apply_context->mutable_db;
    auto& scope = wasm.current_apply_context->scope;
    auto  mem   = wasm.current_memory;
-   char* key   = &memoryRef<char>( mem, keyptr   );
-   char* value = &memoryRef<char>( mem, valueptr );
+   char* key   = memoryArrayPtr<char>( mem, keyptr, keylen );
+   char* value = memoryArrayPtr<char>( mem, valueptr, valuelen );
    string keystr( key, key+keylen);
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
@@ -156,8 +156,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,dests
    FC_ASSERT( destsize > 0 );
    wasm_interface& wasm = wasm_interface::get();
    auto  mem   = wasm.current_memory;
-   char* begin = &Runtime::memoryRef<char>( mem, destptr );
-   Runtime::memoryRef<char>( mem, destptr + destsize );
+   char* begin = memoryArrayPtr<char>( mem, destptr, destsize );
 
    int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
    memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
@@ -192,8 +191,12 @@ DEFINE_INTRINSIC_FUNCTION1(env,printi64,printi64,none,i64,val) {
 
 DEFINE_INTRINSIC_FUNCTION2(env,print,print,none,i32,charptr,i32,size) {
   FC_ASSERT( size > 0 );
-  const char* str = &Runtime::memoryRef<const char>( Runtime::getDefaultMemory(wasm_interface::get().current_module), charptr);
-  const char* end = &Runtime::memoryRef<const char>( Runtime::getDefaultMemory(wasm_interface::get().current_module), charptr+size);
+
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const char* str = memoryArrayPtr<char>( mem, charptr, size );
+
   edump((charptr)(size));
 	wlog( std::string( str, size ) );
 }
