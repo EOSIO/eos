@@ -1,7 +1,7 @@
 #pragma once
 
 #include <eos/chain/message.hpp>
-
+#include <eos/chain/transaction.hpp>
 #include <eos/types/types.hpp>
 
 namespace chainbase { class database; }
@@ -34,6 +34,8 @@ public:
    types::String get(types::String key)const;
    void set(types::String key, types::String value);
    void remove(types::String key);
+
+   std::deque<eos::chain::generated_transaction> generated;
 
    chainbase::database& mutable_db;
 };

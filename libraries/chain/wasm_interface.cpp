@@ -76,7 +76,7 @@ DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
    auto  mem           = wasm.current_memory;
    char* dst           = &memoryRef<char>( mem, dstp);
    const char* src     = &memoryRef<const char>( mem, srcp );
-   char* dst_end       = &memoryRef<char>( mem, dstp+uint32_t(len));
+   //char* dst_end       = &memoryRef<char>( mem, dstp+uint32_t(len));
    const char* src_end = &memoryRef<const char>( mem, srcp+uint32_t(len) );
 
 #warning TODO: wasm memcpy has undefined behavior if memory ranges overlap
@@ -123,6 +123,37 @@ DEFINE_INTRINSIC_FUNCTION2(env,AccountName_unpack,AccountName_unpack,none,i32,st
    fc::raw::unpack( ds, *name );
 
    stream[1] += ds.pos() - pos;
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size ) {
+   auto& wasm  = wasm_interface::get();
+   auto  mem   = wasm.current_memory;
+   const char* buffer = &memoryRef<const char>( mem, trx_buffer );
+
+   FC_ASSERT( trx_buffer_size > 0 );
+   FC_ASSERT( wasm.current_apply_context, "not in apply context" );
+
+   fc::datastream<const char*> ds(buffer, trx_buffer_size );
+   eos::chain::generated_transaction gtrx;
+   eos::chain::Transaction& trx = gtrx;
+   fc::raw::unpack( ds, trx );
+
+/**
+ *  The code below this section provides sanity checks that the generated message is well formed
+ *  before being accepted. These checks do not need to be applied during reindex.
+ */
+#warning TODO: reserve per-thread static memory for MAX TRX SIZE 
+/** make sure that packing what we just unpacked produces expected output */
+   auto test = fc::raw::pack( trx );
+   FC_ASSERT( 0 == memcmp( buffer, test.data(), test.size() ) );
+
+/** TODO: make sure that we can call validate() on the message and it passes, this is thread safe and
+ *   ensures the type is properly registered and can be deserialized... one issue is that this could
+ *   construct a RECURSIVE virtual machine state which means the wasm_interface state needs to be a STACK vs
+ *   a per-thread global.
+ **/
+
+   wasm.current_apply_context->generated.emplace_back( std::move(gtrx) );
 }
 
 

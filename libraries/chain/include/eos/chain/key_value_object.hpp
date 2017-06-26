@@ -32,7 +32,7 @@ namespace eos { namespace chain {
       OBJECT_CTOR(key_value_object, (key)(value))
 
       id_type               id;
-      AccountName          scope;
+      AccountName           scope;
       shared_string         key;
       shared_string         value;
    };
