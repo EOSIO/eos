@@ -49,11 +49,42 @@ BOOST_AUTO_TEST_CASE(deterministic_randomness)
    vector<string> words = {"infamy", "invests", "estimated", "potters", "memorizes", "hal9000"};
    rng.shuffle(words);
    BOOST_CHECK_EQUAL(fc::json::to_string(words),
-                     fc::json::to_string(vector<string>{"potters","hal9000","memorizes","infamy","invests","estimated"}));
+                     fc::json::to_string(vector<string>{"hal9000","infamy","estimated","memorizes","invests","potters"}));
    rng.shuffle(words);
-   BOOST_CHECK_EQUAL(fc::json::to_string(words),
-                     fc::json::to_string(vector<string>{"memorizes","hal9000","infamy","invests","estimated","potters"}));
+   BOOST_CHECK_EQUAL(fc::json::to_string(words), 
+                     fc::json::to_string(vector<string>{"hal9000","estimated","infamy","memorizes","potters","invests"}));
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(deterministic_distributions)
+{ try {
+   randutils::seed_seq_fe<1> seed({123454321});
+   randutils::random_generator<pcg32_fast> rng(seed);
+
+   std::vector<int> nums = {0, 1, 2};
+
+   BOOST_CHECK_EQUAL(rng.uniform(0.0, 1.0), 0.52802440151572227);
+   BOOST_CHECK_EQUAL(rng.uniform(0.0, 1.0), 0.36562641779892147);
+   BOOST_CHECK_EQUAL(rng.uniform(0.0, 1.0), 0.44247416267171502);
+
+   BOOST_CHECK_EQUAL(rng.pick(nums), 2);
+   BOOST_CHECK_EQUAL(rng.pick(nums), 0);
+   BOOST_CHECK_EQUAL(rng.pick(nums), 2);
+
+   rng.shuffle(nums);
+   std::vector<int> a{0, 1, 2};
+   BOOST_CHECK(std::equal(nums.begin(), nums.end(), a.begin()));
+   rng.shuffle(nums);
+   std::vector<int> b{0, 2, 1};
+   BOOST_CHECK(std::equal(nums.begin(), nums.end(), b.begin()));
+   rng.shuffle(nums);
+   std::vector<int> c{1, 0, 2};
+   BOOST_CHECK(std::equal(nums.begin(), nums.end(), c.begin()));
+
+   BOOST_CHECK_EQUAL(rng.uniform(0, 9), 2);
+   BOOST_CHECK_EQUAL(rng.uniform(0, 9), 9);
+   BOOST_CHECK_EQUAL(rng.uniform(0, 9), 0);
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 

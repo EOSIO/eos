@@ -102,6 +102,9 @@
 #include <thread>
 #include <algorithm>
 
+#include <boost/random/uniform_int_distribution.hpp>
+#include <boost/random/uniform_real_distribution.hpp>
+
 // Ugly platform-specific code for auto_seeded
 
 #if !defined(RANDUTILS_CPU_ENTROPY) && defined(__has_builtin)
@@ -572,8 +575,8 @@ using auto_seed_256 = auto_seeded<seed_seq_fe256>;
 template <typename Numeric>
 using uniform_distribution = typename std::conditional<
             std::is_integral<Numeric>::value,
-              std::uniform_int_distribution<Numeric>,
-              std::uniform_real_distribution<Numeric> >::type;
+              boost::random::uniform_int_distribution<Numeric>,
+              boost::random::uniform_real_distribution<Numeric> >::type;
 
 
 
@@ -730,16 +733,19 @@ public:
                            std::forward<Params>(params)...);
     }
 
-    template <typename Iter>
-    void shuffle(Iter first, Iter last)
-    {
-        std::shuffle(first, last, engine_);
-    }
-
     template <typename Range>
     void shuffle(Range&& range)
     {
-        shuffle(std::begin(range), std::end(range));
+        // Fisher-Yates shuffle algorithm
+        int idx_count = range.size();
+        for (auto idx = range.rbegin(); idx != range.rend() - 1; ++idx , --idx_count)
+        {
+            int rand_idx = uniform(0, idx_count - 1);
+            if (*idx != range.at(rand_idx))
+            {
+                std::swap(range.at(rand_idx), *idx);
+            }
+        }
     }
 
 
