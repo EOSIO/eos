@@ -327,7 +327,7 @@ class net_plugin_impl {
       );
    }
 
-  void handle_message (connection &c, handshake_message &msg) {
+  void handle_message (connection &c, const handshake_message &msg) {
     if (!hello) {
       init_handshake();
     }
@@ -373,30 +373,30 @@ class net_plugin_impl {
   }
 
 
-  void handle_message (connection &c, peer_message &msg) {
+  void handle_message (connection &c, const peer_message &msg) {
     ilog ("got a peer message");
   }
 
-  void handle_message (connection &c, notice_message &msg) {
+  void handle_message (connection &c, const notice_message &msg) {
     ilog ("got a notice message");
   }
 
-  void handle_message (connection &c, sync_request_message &msg) {
+  void handle_message (connection &c, const sync_request_message &msg) {
     ilog ("got a sync request message for blocks ${s} to ${e}", ("s",msg.start_block)("e", msg.end_block));
     sync_state req = {msg.start_block,msg.end_block,0,time_point::now()};
     c.out_sync_state.insert (req);
     c.write_block_backlog ();
   }
 
-  void handle_message (connection &c, block_summary_message &msg) {
+  void handle_message (connection &c, const block_summary_message &msg) {
     ilog ("got a block summary message");
   }
 
-  void handle_message (connection &c, SignedTransaction &msg) {
+  void handle_message (connection &c, const SignedTransaction &msg) {
     ilog ("got a SignedTransacton");
   }
 
-  void handle_message (connection &c, signed_block &msg) {
+  void handle_message (connection &c, const signed_block &msg) {
     uint32_t bn = msg.block_num();
     ilog ("got a signed_block, num = ${n}", ("n", bn));
     chain_controller &cc = chain_plug->chain();
@@ -422,37 +422,8 @@ class net_plugin_impl {
     connection &c;
     msgHandler (net_plugin_impl &imp, connection &conn) : impl(imp), c(conn) {}
 
-    void operator()(handshake_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(peer_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(notice_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(sync_request_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(block_summary_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(SignedTransaction &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(signed_block &msg)
+    template <typename T>
+    void operator()(const T &msg) const
     {
       impl.handle_message (c, msg);
     }
