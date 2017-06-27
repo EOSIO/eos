@@ -430,12 +430,7 @@ namespace IR
 		visitOp(SIMDOP(108),i16x8_ge_s,"i16x8.ge_s",NoImm,BINARY(v128,v128)) \
 		visitOp(SIMDOP(109),i16x8_ge_u,"i16x8.ge_u",NoImm,BINARY(v128,v128)) \
 		visitOp(SIMDOP(110),i32x4_ge_s,"i32x4.ge_s",NoImm,BINARY(v128,v128)) \
-		visitOp(SIMDOP(111),i32x4_ge_u,"i32x4.ge_u",NoImm,BINARY(v128,v128)) \
-		\
-		visitOp(SIMDOP(136),i32x4_trunc_s_f32x4_sat,"i32x4.trunc_s/f32x4:sat",NoImm,UNARY(v128,v128)) \
-		visitOp(SIMDOP(137),i32x4_trunc_u_f32x4_sat,"i32x4.trunc_u/f32x4:sat",NoImm,UNARY(v128,v128)) \
-		visitOp(SIMDOP(138),i64x2_trunc_s_f64x2_sat,"i64x2.trunc_s/f64x2:sat",NoImm,UNARY(v128,v128)) \
-		visitOp(SIMDOP(139),i64x2_trunc_u_f64x2_sat,"i64x2.trunc_u/f64x2:sat",NoImm,UNARY(v128,v128))
+		visitOp(SIMDOP(111),i32x4_ge_u,"i32x4.ge_u",NoImm,BINARY(v128,v128))
    #define ENUM_FLOAT_SIMD_OPERATORS(visitOp) \
       visitOp(SIMDOP(136),i32x4_trunc_s_f32x4_sat,"i32x4.trunc_s/f32x4:sat",NoImm,UNARY(v128,v128)) \
       visitOp(SIMDOP(137),i32x4_trunc_u_f32x4_sat,"i32x4.trunc_u/f32x4:sat",NoImm,UNARY(v128,v128)) \
