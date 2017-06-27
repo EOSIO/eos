@@ -191,6 +191,7 @@ namespace eos { namespace chain {
    using generated_transaction_id_type = fc::sha256;
    using signature_type = fc::ecc::compact_signature;
    using weight_type = uint16_t;
+   using Bytes = types::Bytes;
 
    using public_key_type = eos::types::PublicKey;
    

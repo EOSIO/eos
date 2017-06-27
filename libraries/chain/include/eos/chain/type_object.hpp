@@ -32,9 +32,9 @@ namespace eos { namespace chain {
       OBJECT_CTOR(type_object, (fields))
 
       id_type               id;
-      AccountName          scope;
+      AccountName           scope;
       TypeName              name;
-      AccountName          base_scope;
+      AccountName           base_scope;
       TypeName              base;
       shared_vector<Field>  fields;
    };

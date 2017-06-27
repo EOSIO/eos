@@ -491,9 +491,6 @@ void chain_controller::_apply_block(const signed_block& next_block)
    create_block_summary(next_block);
    clear_expired_transactions();
 
-   if( !_node_property_object.debug_updates.empty() )
-      apply_debug_updates();
-
    // notify observers that the block has been applied
    // TODO: do this outside the write lock...? 
    applied_block( next_block ); //emit
@@ -735,22 +732,6 @@ bool chain_controller::before_last_checkpoint()const {
    return (_checkpoints.size() > 0) && (_checkpoints.rbegin()->first >= head_block_num());
 }
 
-/**
- *  This method dumps the state of the blockchain in a semi-human readable form for the
- *  purpose of tracking down funds and mismatches in currency allocation
- */
-void chain_controller::debug_dump() {
-}
-
-void debug_apply_update(chain_controller& db, const fc::variant_object& vo) {
-}
-
-void chain_controller::apply_debug_updates() {
-}
-
-void chain_controller::debug_update(const fc::variant_object& update) {
-}
-
 const global_property_object& chain_controller::get_global_properties()const {
    return _db.get<global_property_object>();
 }
@@ -849,17 +830,6 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
-      /*
-   static bool bound_apply = [](){
-      wrenpp::beginModule( "main" )
-         .bindClassReference<apply_context>( "ApplyContext" )
-            .bindFunction< decltype( &apply_context::get ), &apply_context::get >( false, "get(_)")
-            .bindFunction< decltype( &apply_context::set ), &apply_context::set >( false, "set(_,_)")
-         .endClass()
-      .endModule();
-      return true;
-   }();
-   */
 
    initialize_indexes();
    starter.register_types(*this, _db);
@@ -1113,5 +1083,61 @@ void chain_controller::set_apply_handler( const AccountName& contract, const Acc
 }
 
 chain_initializer_interface::~chain_initializer_interface() {}
+
+template<typename T>
+void chain_controller::to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value, fc::datastream<T>& ds )const
+{ try {
+   const auto& type_obj = _db.get<type_object,by_scope_name>( boost::make_tuple(scope, type) );
+   const auto& obj = value.get_object();
+
+   if( type_obj.base != TypeName() ) {
+      assert( type_obj.base_scope != AccountName() );
+      to_binary( type_obj.base_scope, type_obj.base, value, ds );
+   }
+
+   for( const auto& field : type_obj.fields ) {
+      // TODO: check to see if field.type is a built in type, otherwise recurse
+#warning TODO: determine whether a stack overflow could be caused by nesting types, may be mitigated by controlling sizeof value
+      to_binary( scope, field.type, obj[field.name], ds );
+   }
+} FC_CAPTURE_AND_RETHROW( (scope)(type)(value) ) }
+
+/**
+ *  This method should look up the type description in the chainstate and then use that description to unpack
+ *  buffer into a fc::variant.  
+ *
+ *  @pre   type is registered in type_index
+ *  @post  to_binary( scope, type, to_variant( scope, type, buffer ) ) == buffer
+ */
+fc::variant chain_controller::to_variant( const AccountName& scope, const TypeName& type, fc::datastream<const char*>& ds )const {
+   fc::mutable_variant_object mvo;
+   to_variant( scope, type, ds, mvo );
+   return fc::variant(std::move( mvo )) ;
+}
+void chain_controller::to_variant( const AccountName& scope, const TypeName& type, fc::datastream<const char*>& ds, fc::mutable_variant_object& mvo )const {
+try {
+   const auto& type_obj = _db.get<type_object,by_scope_name>( boost::make_tuple(scope, type) );
+
+   if( type_obj.base != TypeName() ) {
+      assert( type_obj.base_scope != AccountName() );
+      to_variant( type_obj.base_scope, type_obj.base, ds, mvo );
+   }
+
+   for( const auto& field : type_obj.fields ) {
+      /// TODO: check to see if type is built in
+      mvo.set(field.type, to_variant( scope, field.type, ds ) );
+   }
+} FC_CAPTURE_AND_RETHROW( (scope)(type) ) }
+
+Bytes chain_controller::to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value )const {
+try {
+   fc::datastream<size_t> bytes_size;
+   to_binary( scope, type, value, bytes_size );
+   Bytes temp(bytes_size.tellp());
+   fc::datastream<char*>  ds( temp.data(), temp.size() );
+   to_binary( scope, type, value, ds );
+   return temp;
+} FC_CAPTURE_AND_RETHROW( (scope)(type)(value) ) }
+
 
 } }

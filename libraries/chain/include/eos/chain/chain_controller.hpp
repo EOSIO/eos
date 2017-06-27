@@ -248,14 +248,23 @@ namespace eos { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
 
-         void debug_dump();
-         void apply_debug_updates();
-         void debug_update(const fc::variant_object& update);
+         void         from_variant( const AccountName& scope, const TypeName& type, 
+                                    const fc::variant& value, 
+                                    fc::datastream<char*>& ds )const;
+         types::Bytes to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value  )const;
+         fc::variant  to_variant( const AccountName& scope, const TypeName& type, fc::datastream<const char*>& ds )const;
 
    protected:
          const chainbase::database& get_database() const { return _db; }
          
    private:
+         template<typename T>
+         void to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value, fc::datastream<T>& ds )const;
+         void to_variant( const AccountName& scope, const TypeName& type, 
+                          fc::datastream<const char*>& ds, 
+                          fc::mutable_variant_object& mvo )const;
+
+
          /// Reset the object graph in-memory
          void initialize_indexes();
          void initialize_chain(chain_initializer_interface& starter);
