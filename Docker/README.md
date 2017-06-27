@@ -9,6 +9,7 @@ Build eos images
 
 ```
 cd eos/Docker
+cp ../genesis.json .
 docker build -t eosio/eos .
 ```
 
