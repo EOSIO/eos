@@ -108,19 +108,19 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
    try {
       if (boost::distance(LapCompleters) < AllProducersByFinishTime.size()
              && newRaceTime < std::numeric_limits<UInt128>::max()) {
-         ilog("Processed producer race. ${count} producers completed a lap at virtual time ${time}",
-              ("count", (int64_t)boost::distance(LapCompleters))("time", newRaceTime));
+         //ilog("Processed producer race. ${count} producers completed a lap at virtual time ${time}",
+         //     ("count", (int64_t)boost::distance(LapCompleters))("time", newRaceTime));
          boost::for_each(LapCompleters, StartNewLap);
          db.modify(*this, [newRaceTime](ProducerScheduleObject& pso) {
             pso.currentRaceTime = newRaceTime;
          });
       } else {
-         wlog("Producer race finished; restarting race.");
+         //wlog("Producer race finished; restarting race.");
          resetProducerRace(db);
       }
    } catch (ProducerRaceOverflowException&) {
       // Virtual race time has overflown. Reset race for everyone.
-      wlog("Producer race virtual time overflow detected! Resetting race.");
+      // wlog("Producer race virtual time overflow detected! Resetting race.");
       resetProducerRace(db);
    }
 

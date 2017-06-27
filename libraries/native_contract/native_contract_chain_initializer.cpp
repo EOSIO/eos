@@ -67,13 +67,6 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
                                                                                 chainbase::database& db) {
    std::vector<chain::Message> messages_to_process;
 
-   // Register native contract message types
-#define MACRO(r, data, elem) chain.register_type<types::elem>(data);
-   BOOST_PP_SEQ_FOR_EACH(MACRO, config::SystemContractName, EOS_SYSTEM_CONTRACT_FUNCTIONS)
-   BOOST_PP_SEQ_FOR_EACH(MACRO, config::EosContractName, EOS_CONTRACT_FUNCTIONS)
-   BOOST_PP_SEQ_FOR_EACH(MACRO, config::StakedBalanceContractName, EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS)
-#undef MACRO
-
    // Create the singleton object, ProducerScheduleObject
    db.create<ProducerScheduleObject>([](const auto&){});
 

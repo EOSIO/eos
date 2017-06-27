@@ -82,8 +82,6 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.expiration = db.head_block_time() + 100;
       trx.messages[0].sender = "init1";
       trx.messages[0].recipient = config::EosContractName;
-      trx.messages[0].type = "Undefined";
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), message_validate_exception ); // "Type Undefined is not defined"
 
       types::Transfer trans = { "init1", "init2", Asset(100), "transfer 100" };
 

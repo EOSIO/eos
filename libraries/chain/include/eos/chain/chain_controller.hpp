@@ -24,7 +24,6 @@
 #pragma once
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/account_object.hpp>
-#include <eos/chain/type_object.hpp>
 #include <eos/chain/node_property_object.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
@@ -74,20 +73,6 @@ namespace eos { namespace chain {
           */
          signal<void(const SignedTransaction&)> on_pending_transaction;
 
-         template<typename T>
-         void register_type( AccountName scope ) {
-            auto stru = eos::types::GetStruct<T>::type();
-            _db.create<type_object>([&](type_object& o) {
-               o.scope  = scope;
-               o.name   = stru.name;
-               o.base   = stru.base;
-#warning QUESTION Should we be setting o.base_scope here?
-               o.fields.reserve(stru.fields.size());
-               for( const auto& f : stru.fields )
-                  o.fields.push_back( f );
-            });
-            _db.get<type_object,by_scope_name>( boost::make_tuple(scope, stru.name) );
-         }
 
          /**
           *  The controller can override any script endpoint with native code.
@@ -248,22 +233,10 @@ namespace eos { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
 
-         void         from_variant( const AccountName& scope, const TypeName& type, 
-                                    const fc::variant& value, 
-                                    fc::datastream<char*>& ds )const;
-         types::Bytes to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value  )const;
-         fc::variant  to_variant( const AccountName& scope, const TypeName& type, fc::datastream<const char*>& ds )const;
-
    protected:
          const chainbase::database& get_database() const { return _db; }
          
    private:
-         template<typename T>
-         void to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value, fc::datastream<T>& ds )const;
-         void to_variant( const AccountName& scope, const TypeName& type, 
-                          fc::datastream<const char*>& ds, 
-                          fc::mutable_variant_object& mvo )const;
-
 
          /// Reset the object graph in-memory
          void initialize_indexes();
@@ -288,7 +261,6 @@ namespace eos { namespace chain {
          void validate_tapos(const SignedTransaction& trx)const;
          void validate_referenced_accounts(const SignedTransaction& trx)const;
          void validate_expiration(const SignedTransaction& trx) const;
-         void validate_message_types( const SignedTransaction& trx )const;
          /// @}
 
          void validate_message_precondition(precondition_validate_context& c)const;

@@ -858,9 +858,6 @@ R"(
 
       types::SetCode handler;
       handler.account = "simplecoin";
-      types::DefineStruct interface;
-      interface.scope = "simplecoin";
-      interface.definition = types::GetStruct<types::Transfer>::type();
 
       auto wasm = assemble_wast( wast_apply );
       handler.code.resize(wasm.size());
@@ -868,13 +865,10 @@ R"(
 
       {
          eos::chain::SignedTransaction trx;
-         trx.messages.resize(2);
+         trx.messages.resize(1);
          trx.messages[0].sender = "simplecoin";
          trx.messages[0].recipient = config::SystemContractName;
-         trx.setMessage(0, "DefineStruct",interface);
-         trx.messages[1].sender = "simplecoin";
-         trx.messages[1].recipient = config::SystemContractName;
-         trx.setMessage(1, "SetCode", handler);
+         trx.setMessage(0, "SetCode", handler);
          trx.expiration = db.head_block_time() + 100; 
          trx.set_reference_block(db.head_block_id()); 
          db.push_transaction(trx);
@@ -2014,22 +2008,16 @@ R"(
 
       types::SetCode handler;
       handler.account = "simplecoin";
-      types::DefineStruct interface;
-      interface.scope = "simplecoin";
-      interface.definition = types::GetStruct<types::Transfer>::type();
 
       auto wasm = assemble_wast( wast_apply );
       handler.code.resize(wasm.size());
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       eos::chain::SignedTransaction trx;
-      trx.messages.resize(2);
+      trx.messages.resize(1);
       trx.messages[0].sender = "simplecoin";
       trx.messages[0].recipient = config::SystemContractName;
-      trx.setMessage(0, "DefineStruct",interface);
-      trx.messages[1].sender = "simplecoin";
-      trx.messages[1].recipient = config::SystemContractName;
-      trx.setMessage(1, "SetCode", handler);
+      trx.setMessage(0, "SetCode", handler);
       trx.expiration = db.head_block_time() + 100;
       trx.set_reference_block(db.head_block_id());
       try {

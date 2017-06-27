@@ -63,7 +63,7 @@ namespace eos { namespace chain {
       AccountName         name;
       uint8_t             vm_type      = 0;
       uint8_t             vm_version   = 0;
-      uint16_t            code_version = 0;
+      fc::sha256          code_version;
       shared_vector<char> code;
       Time                creation_date;
    };

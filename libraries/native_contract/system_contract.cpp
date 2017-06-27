@@ -2,7 +2,6 @@
 
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/account_object.hpp>
-#include <eos/chain/type_object.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/global_property_object.hpp>
 
@@ -11,35 +10,6 @@
 namespace eos {
 using namespace chain;
 
-void DefineStruct::validate(message_validate_context& context) {
-   auto  msg = context.msg.as<types::DefineStruct>();
-   EOS_ASSERT(msg.definition.name != TypeName(), message_validate_exception, "must define a type name");
-   // TODO:  validate_type_name( msg.definition.name)
-   //   validate_type_name( msg.definition.base)
-}
-
-void DefineStruct::validate_preconditions(precondition_validate_context& context) {
-   auto& db = context.db;
-   auto  msg = context.msg.as<types::DefineStruct>();
-   db.get<account_object,by_name>(msg.scope);
-#warning TODO:  db.get<account_object>(sg.base_scope)
-}
-
-void DefineStruct::apply(apply_context& context) {
-   auto& db = context.mutable_db;
-   auto  msg = context.msg.as<types::DefineStruct>();
-
-   db.create<type_object>( [&](auto& type) {
-      type.scope = msg.scope;
-      type.name  = msg.definition.name;
-      type.fields.reserve(msg.definition.fields.size());
-#warning TODO:  type.base_scope =
-      type.base  = msg.definition.base;
-      for(const auto& f : msg.definition.fields) {
-         type.fields.push_back(f);
-      }
-   });
-}
 
 void SetCode::validate(message_validate_context& context) {
    auto  msg = context.msg.as<types::SetCode>();
@@ -62,7 +32,8 @@ void SetCode::apply(apply_context& context) {
    const auto& account = db.get<account_object,by_name>(msg.account);
    wlog( "set code: ${size}", ("size",msg.code.size()));
    db.modify( account, [&]( auto& a ) {
-      a.code_version++;
+      #warning TODO: update SetCode message to include the hash, then validate it in validate 
+      a.code_version = fc::sha256::hash( msg.code.data(), msg.code.size() );
       a.code.resize( msg.code.size() );
       memcpy( a.code.data(), msg.code.data(), msg.code.size() );
    });

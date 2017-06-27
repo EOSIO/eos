@@ -18,8 +18,6 @@ using fc::flat_map;
 using chain::block_id_type;
 using chain::fork_database;
 using chain::block_log;
-using chain::type_index;
-using chain::by_scope_name;
 using chain::chain_id_type;
 
 class chain_plugin_impl {
@@ -172,23 +170,6 @@ read_only::get_block_results read_only::get_block(const read_only::get_block_par
 
    FC_THROW_EXCEPTION(chain::unknown_block_exception,
                       "Could not find block: ${block}", ("block", params.block_num_or_id));
-}
-
-read_only::get_types_results read_only::get_types(const get_types_params& params) const {
-
-   auto& _db = app().get_plugin<database_plugin>().db();
-   auto& index = _db.get_index<type_index, by_scope_name>();
-   auto range = index.equal_range( boost::make_tuple( params.account_name ) );
-
-   get_types_results res;
-
-   for( const auto& to : boost::make_iterator_range( range.first, range.second ) ) {
-      fc::variant v;
-      fc::to_variant(to, v);
-      res.emplace_back(v);
-   }
-
-   return res;
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {

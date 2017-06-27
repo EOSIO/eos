@@ -510,7 +510,6 @@ try {
    validate_tapos(trx);
    validate_referenced_accounts(trx);
    validate_expiration(trx);
-   validate_message_types(trx);
 
    for (const auto& tm : trx.messages) { /// TODO: this loop can be processed in parallel
       Message m(tm);
@@ -585,17 +584,6 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void chain_controller::validate_message_types(const SignedTransaction& trx)const {
-try {
-   for( const auto& msg : trx.messages ) {
-      try {
-         _db.get<type_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
-      } catch(std::out_of_range) {
-         FC_THROW_EXCEPTION(message_validate_exception, "Unrecognized message recipient and type",
-                            ("recipient", msg.recipient)("type", msg.type));
-      }
-   }
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void chain_controller::validate_message_precondition( precondition_validate_context& context )const 
 { try {
@@ -778,7 +766,6 @@ void chain_controller::initialize_indexes() {
    _db.add_index<account_index>();
    _db.add_index<permission_index>();
    _db.add_index<action_permission_index>();
-   _db.add_index<type_index>();
    _db.add_index<key_value_index>();
 
    _db.add_index<global_property_multi_index>();
@@ -1084,60 +1071,6 @@ void chain_controller::set_apply_handler( const AccountName& contract, const Acc
 
 chain_initializer_interface::~chain_initializer_interface() {}
 
-template<typename T>
-void chain_controller::to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value, fc::datastream<T>& ds )const
-{ try {
-   const auto& type_obj = _db.get<type_object,by_scope_name>( boost::make_tuple(scope, type) );
-   const auto& obj = value.get_object();
-
-   if( type_obj.base != TypeName() ) {
-      assert( type_obj.base_scope != AccountName() );
-      to_binary( type_obj.base_scope, type_obj.base, value, ds );
-   }
-
-   for( const auto& field : type_obj.fields ) {
-      // TODO: check to see if field.type is a built in type, otherwise recurse
-#warning TODO: determine whether a stack overflow could be caused by nesting types, may be mitigated by controlling sizeof value
-      to_binary( scope, field.type, obj[field.name], ds );
-   }
-} FC_CAPTURE_AND_RETHROW( (scope)(type)(value) ) }
-
-/**
- *  This method should look up the type description in the chainstate and then use that description to unpack
- *  buffer into a fc::variant.  
- *
- *  @pre   type is registered in type_index
- *  @post  to_binary( scope, type, to_variant( scope, type, buffer ) ) == buffer
- */
-fc::variant chain_controller::to_variant( const AccountName& scope, const TypeName& type, fc::datastream<const char*>& ds )const {
-   fc::mutable_variant_object mvo;
-   to_variant( scope, type, ds, mvo );
-   return fc::variant(std::move( mvo )) ;
-}
-void chain_controller::to_variant( const AccountName& scope, const TypeName& type, fc::datastream<const char*>& ds, fc::mutable_variant_object& mvo )const {
-try {
-   const auto& type_obj = _db.get<type_object,by_scope_name>( boost::make_tuple(scope, type) );
-
-   if( type_obj.base != TypeName() ) {
-      assert( type_obj.base_scope != AccountName() );
-      to_variant( type_obj.base_scope, type_obj.base, ds, mvo );
-   }
-
-   for( const auto& field : type_obj.fields ) {
-      /// TODO: check to see if type is built in
-      mvo.set(field.type, to_variant( scope, field.type, ds ) );
-   }
-} FC_CAPTURE_AND_RETHROW( (scope)(type) ) }
-
-Bytes chain_controller::to_binary( const AccountName& scope, const TypeName& type, const fc::variant& value )const {
-try {
-   fc::datastream<size_t> bytes_size;
-   to_binary( scope, type, value, bytes_size );
-   Bytes temp(bytes_size.tellp());
-   fc::datastream<char*>  ds( temp.data(), temp.size() );
-   to_binary( scope, type, value, ds );
-   return temp;
-} FC_CAPTURE_AND_RETHROW( (scope)(type)(value) ) }
 
 
 } }

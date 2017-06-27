@@ -6,12 +6,6 @@
 
 namespace eos {
 
-struct DefineStruct {
-   static void validate(chain::message_validate_context& context);
-   static void validate_preconditions(chain::precondition_validate_context& context);
-   static void apply(chain::apply_context& context);
-};
-
 struct SetCode {
    static void validate(chain::message_validate_context& context);
    static void validate_preconditions(chain::precondition_validate_context& context);

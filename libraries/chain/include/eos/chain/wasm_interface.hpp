@@ -47,7 +47,7 @@ class wasm_interface {
          Runtime::ModuleInstance* instance = nullptr;
          IR::Module*              module   = nullptr;
          vector<char>             init_memory;
-         uint16_t                 code_version = -1;
+         fc::sha256               code_version;
       };
 
       map<AccountName, ModuleState> instances;

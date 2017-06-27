@@ -37,12 +37,6 @@ public:
    };
    using get_block_results = chain::signed_block;
    get_block_results get_block(const get_block_params& params) const;
-
-   struct get_types_params {
-      string account_name;
-   };
-   using get_types_results = std::vector<fc::variant>;
-   get_types_results get_types(const get_types_params& params) const;
 };
 
 class read_write {
@@ -99,4 +93,3 @@ FC_REFLECT(eos::chain_apis::read_only::get_info_results,
            (head_block_num)(head_block_id)(head_block_time)(head_block_producer)
            (recent_slots)(participation_rate))
 FC_REFLECT(eos::chain_apis::read_only::get_block_params, (block_num_or_id))
-FC_REFLECT(eos::chain_apis::read_only::get_types_params, (account_name))

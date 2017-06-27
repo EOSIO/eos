@@ -48,7 +48,7 @@ void AbstractSymbolTable::parse(std::istream& in) {
       line = line.substr(0, line.find('#'));
       line = fc::trim(line);
       if(!line.size()) continue;
-      std::cerr << line << "\n";
+      //std::cerr << line << "\n";
 
       line_tokens.clear();
       split(line_tokens, line, boost::is_any_of(" \t"), boost::token_compress_on);
@@ -69,7 +69,7 @@ void AbstractSymbolTable::parse(std::istream& in) {
          FC_ASSERT(line_tokens.size() == 3, "Expected a struct name");
          this->addTypeDef(line_tokens[1], line_tokens[2]);
       } else if(in_struct) { // parse field
-         idump((line_tokens));
+         //idump((line_tokens));
          FC_ASSERT(line_tokens.size() == 2, "a field must be two tokens long");
          const auto& name = line_tokens[0];
          const auto& type = line_tokens[1];

@@ -64,7 +64,7 @@
     { c(*this); }
 #define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
 
-#define EOS_SYSTEM_CONTRACT_FUNCTIONS (CreateAccount)(DefineStruct)(SetCode)
+#define EOS_SYSTEM_CONTRACT_FUNCTIONS (CreateAccount)(SetCode)
 #define EOS_CONTRACT_FUNCTIONS (Transfer)(TransferToLocked)
 #define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS \
    (CreateProducer)(UpdateProducer)(ApproveProducer)(SetVoteProxy)(AllowVoteProxying)
@@ -164,7 +164,6 @@ namespace eos { namespace chain {
       account_object_type,
       permission_object_type,
       action_code_object_type,
-      type_object_type,
       key_value_object_type,
       action_permission_object_type,
       global_property_object_type,
@@ -209,7 +208,6 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (account_object_type)
                 (permission_object_type)
                 (action_code_object_type)
-                (type_object_type)
                 (key_value_object_type)
                 (action_permission_object_type)
                 (global_property_object_type)

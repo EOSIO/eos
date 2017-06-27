@@ -386,12 +386,13 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 #warning TODO: free existing module if the code has been updated, currently leak memory
             state.instance     = nullptr;
             state.module       = nullptr;
-            state.code_version = -1;
+            state.code_version = fc::sha256();
          }
          state.module = new IR::Module();
 
         try
         {
+          wlog( "LOADING CODE" );
           Serialization::MemoryInputStream stream((const U8*)recipient.code.data(),recipient.code.size());
           WASM::serialize(stream,*state.module);
 
