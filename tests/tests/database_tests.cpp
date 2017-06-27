@@ -33,6 +33,8 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/range/algorithm/find.hpp>
+#include <boost/range/algorithm/find_if.hpp>
+#include <boost/range/algorithm/permutation.hpp>
 
 #include "../common/database_fixture.hpp"
 
@@ -266,6 +268,74 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
          const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
       }
+   } FC_LOG_AND_RETHROW()
+}
+
+// Test voting for producers by proxy
+BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
+   try {
+      using Action = std::function<void(testing_database&)>;
+      Action approve = [](auto& db) {
+         Approve_Producer(db, proxy, producer, true);
+      };
+      Action setproxy = [](auto& db) {
+         Set_Proxy(db, stakeholder, proxy);
+      };
+      Action allowproxy = [](auto& db) {
+         Allow_Proxy(db, proxy, true);
+      };
+      Action stake = [](auto& db) {
+         Stake_Asset(db, stakeholder, Asset(100).amount);
+      };
+
+      auto run = [this](std::vector<Action> actions) {
+         Make_Database(db)
+               db.produce_blocks();
+
+         Make_Account(db, stakeholder);
+         Make_Account(db, proxy);
+         Make_Account(db, producer);
+         Make_Producer(db, producer);
+
+         for (auto& action : actions) action(db);
+
+         // Produce blocks up to, but not including, the last block in the round
+         db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
+
+         {
+            BOOST_CHECK_EQUAL(db.get_approved_producers("proxy").count("producer"), 1);
+            BOOST_CHECK_EQUAL(db.get_staked_balance("stakeholder"), Asset(100));
+            const auto& producerVotes = db_db.get<ProducerVotesObject, byOwnerName>("producer");
+            BOOST_CHECK_EQUAL(producerVotes.getVotes(), db.get_staked_balance("stakeholder"));
+         }
+
+         // OK, let's go to the next round
+         db.produce_blocks();
+
+         const auto& gpo = db.get_global_properties();
+         BOOST_REQUIRE(boost::find(gpo.active_producers, "producer") != gpo.active_producers.end());
+
+         Approve_Producer(db, proxy, producer, false);
+         db.produce_blocks();
+
+         {
+            BOOST_CHECK_EQUAL(db.get_approved_producers("proxy").count("producer"), 0);
+            const auto& producerVotes = db_db.get<ProducerVotesObject, byOwnerName>("producer");
+            BOOST_CHECK_EQUAL(producerVotes.getVotes(), 0);
+         }
+      };
+
+      // Eh, I'm not going to try all legal permutations here... just several of them
+      run({approve, allowproxy, setproxy, stake});
+      run({allowproxy, approve, setproxy, stake});
+      run({allowproxy, setproxy, approve, stake});
+      run({allowproxy, setproxy, stake, approve});
+      run({stake, allowproxy, setproxy, approve});
+      run({stake, approve, allowproxy, setproxy});
+      run({approve, stake, allowproxy, setproxy});
+      run({approve, allowproxy, stake, setproxy});
+      // Make sure it throws if I try to proxy to an account before the account accepts proxying
+      BOOST_CHECK_THROW(run({setproxy, allowproxy, approve, stake}), chain::message_precondition_exception);
    } FC_LOG_AND_RETHROW()
 }
 } // namespace eos
