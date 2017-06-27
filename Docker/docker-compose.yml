@@ -1,0 +1,10 @@
+version: "2"
+
+services:
+  eos:
+    image: eosio/eos 
+    ports:
+    - "8888:8888"
+    - "9876:9876"
+    volumes:
+      - /data/store/eos:/opt/eos/bin/data-dir
