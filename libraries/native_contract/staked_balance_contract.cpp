@@ -254,10 +254,11 @@ void SetVoteProxy::apply(apply_context& context) {
    const auto& proxy = db.get<ProxyVoteObject, byTargetName>(svp.proxy);
    const auto& balance = db.get<StakedBalanceObject, byOwnerName>(context.msg.sender);
 
-   if (svp.proxy != context.msg.sender)
+   if (svp.proxy != context.msg.sender) {
       // We are enabling proxying to svp.proxy
       proxy.addProxySource(context.msg.sender, balance.stakedBalance, db);
-   else {
+      db.modify(balance, [target = svp.proxy](StakedBalanceObject& sbo) { sbo.producerVotes = target; });
+   } else {
       // We are disabling proxying to balance.producerVotes.get<AccountName>()
       proxy.removeProxySource(context.msg.sender, balance.stakedBalance, db);
       db.modify(balance, [](StakedBalanceObject& sbo) { sbo.producerVotes = ProducerSlate{}; });

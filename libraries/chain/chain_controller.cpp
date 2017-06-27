@@ -530,10 +530,8 @@ try {
 void chain_controller::validate_uniqueness( const SignedTransaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
-   auto trx_id = trx.id();
-   auto& trx_idx = _db.get_index<transaction_multi_index>();
-   EOS_ASSERT(trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end(),
-              transaction_exception, "Transaction is not unique");
+   auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
+   EOS_ASSERT(transaction == nullptr, transaction_exception, "Transaction is not unique");
 }
 
 void chain_controller::validate_tapos(const SignedTransaction& trx)const {
