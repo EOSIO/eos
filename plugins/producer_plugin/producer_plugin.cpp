@@ -38,8 +38,6 @@
 using std::string;
 using std::vector;
 
-namespace bpo = boost::program_options;
-
 namespace eos {
 
 class producer_plugin_impl {
@@ -98,11 +96,11 @@ void producer_plugin::set_program_options(
                                              eos::utilities::key_to_wif(default_priv_key));
 
    command_line_options.add_options()
-         ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("required-participation", bpo::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
-         ("producer-name,p", bpo::value<vector<string>>()->composing()->multitoken(),
+         ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
+         ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           ("ID of producer controlled by this node (e.g. " + producer_id_example + ", quotes are required, may specify multiple times)").c_str())
-         ("private-key", bpo::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
+         ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
                                                                                                 fc::json::to_string(private_key_default)),
           "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ;

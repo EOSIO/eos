@@ -78,3 +78,28 @@ plugin = eos::producer_plugin
 ```
 
 Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, this instructions will be updated to show how to create an example multi-node testnet.
+
+### Run in docker
+
+So simple and fast operation EOS:
+ - [Docker](https://docs.docker.com)
+ - [Docker-compose](https://github.com/docker/compose)
+ - [Docker-volumes](https://github.com/cpuguy83/docker-volumes)
+
+Build eos images
+
+```
+cd eos/Docker
+cp ../genesis.json .
+docker build -t eosio/eos .
+```
+
+Start docker
+
+```
+sudo mkdir -p /data/store/eos
+docker-compose -f docker-compose.yml up
+```
+
+Done
+

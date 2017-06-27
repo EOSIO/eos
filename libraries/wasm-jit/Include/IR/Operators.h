@@ -430,13 +430,67 @@ namespace IR
 		visitOp(SIMDOP(108),i16x8_ge_s,"i16x8.ge_s",NoImm,BINARY(v128,v128)) \
 		visitOp(SIMDOP(109),i16x8_ge_u,"i16x8.ge_u",NoImm,BINARY(v128,v128)) \
 		visitOp(SIMDOP(110),i32x4_ge_s,"i32x4.ge_s",NoImm,BINARY(v128,v128)) \
-		visitOp(SIMDOP(111),i32x4_ge_u,"i32x4.ge_u",NoImm,BINARY(v128,v128)) \
-		\
-		visitOp(SIMDOP(136),i32x4_trunc_s_f32x4_sat,"i32x4.trunc_s/f32x4:sat",NoImm,UNARY(v128,v128)) \
-		visitOp(SIMDOP(137),i32x4_trunc_u_f32x4_sat,"i32x4.trunc_u/f32x4:sat",NoImm,UNARY(v128,v128)) \
-		visitOp(SIMDOP(138),i64x2_trunc_s_f64x2_sat,"i64x2.trunc_s/f64x2:sat",NoImm,UNARY(v128,v128)) \
-		visitOp(SIMDOP(139),i64x2_trunc_u_f64x2_sat,"i64x2.trunc_u/f64x2:sat",NoImm,UNARY(v128,v128))
+		visitOp(SIMDOP(111),i32x4_ge_u,"i32x4.ge_u",NoImm,BINARY(v128,v128))
    #define ENUM_FLOAT_SIMD_OPERATORS(visitOp) \
+      visitOp(SIMDOP(7),f32x4_splat,"f32x4.splat",NoImm,UNARY(f32,v128)) \
+      visitOp(SIMDOP(8),f64x2_splat,"f64x2.splat",NoImm,UNARY(f64,v128)) \
+      \
+      visitOp(SIMDOP(15),f32x4_extract_lane,"f32x4.extract_lane",LaneIndexImm<4>,UNARY(v128,f32)) \
+      visitOp(SIMDOP(16),f64x2_extract_lane,"f64x2.extract_lane",LaneIndexImm<2>,UNARY(v128,f64)) \
+      \
+      visitOp(SIMDOP(21),f32x4_replace_lane,"f32x4.replace_lane",LaneIndexImm<4>,REPLACELANE(f32,v128)) \
+      visitOp(SIMDOP(22),f64x2_replace_lane,"f64x2.replace_lane",LaneIndexImm<2>,REPLACELANE(f64,v128)) \
+      \
+      visitOp(SIMDOP(75),f32x4_eq,"f32x4.eq",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(76),f64x2_eq,"f64x2.eq",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(80),f32x4_ne,"f32x4.ne",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(81),f64x2_ne,"f64x2.ne",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(88),f32x4_lt,"f32x4.lt",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(89),f64x2_lt,"f64x2.lt",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(96),f32x4_le,"f32x4.le",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(97),f64x2_le,"f64x2.le",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(104),f32x4_gt,"f32x4.gt",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(105),f64x2_gt,"f64x2.gt",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(112),f32x4_ge,"f32x4.ge",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(113),f64x2_ge,"f64x2.ge",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(114),f32x4_neg,"f32x4.neg",NoImm,UNARY(v128,v128)) \
+      visitOp(SIMDOP(115),f64x2_neg,"f64x2.neg",NoImm,UNARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(116),f32x4_abs,"f32x4.abs",NoImm,UNARY(v128,v128)) \
+      visitOp(SIMDOP(117),f64x2_abs,"f64x2.abs",NoImm,UNARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(118),f32x4_min,"f32x4.min",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(119),f64x2_min,"f64x2.min",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(120),f32x4_max,"f32x4.max",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(121),f64x2_max,"f64x2.max",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(122),f32x4_add,"f32x4.add",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(123),f64x2_add,"f64x2.add",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(124),f32x4_sub,"f32x4.sub",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(125),f64x2_sub,"f64x2.sub",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(126),f32x4_div,"f32x4.div",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(127),f64x2_div,"f64x2.div",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(128),f32x4_mul,"f32x4.mul",NoImm,BINARY(v128,v128)) \
+      visitOp(SIMDOP(129),f64x2_mul,"f64x2.mul",NoImm,BINARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(130),f32x4_sqrt,"f32x4.sqrt",NoImm,UNARY(v128,v128)) \
+      visitOp(SIMDOP(131),f64x2_sqrt,"f64x2.sqrt",NoImm,UNARY(v128,v128)) \
+      \
+      visitOp(SIMDOP(132),f32x4_convert_s_i32x4,"f32x4.convert_s/i32x4",NoImm,UNARY(v128,v128)) \
+      visitOp(SIMDOP(133),f32x4_convert_u_i32x4,"f32x4.convert_u/i32x4",NoImm,UNARY(v128,v128)) \
+      visitOp(SIMDOP(134),f64x2_convert_s_i64x2,"f64x2.convert_s/i64x2",NoImm,UNARY(v128,v128)) \
+      visitOp(SIMDOP(135),f64x2_convert_u_i64x2,"f64x2.convert_u/i64x2",NoImm,UNARY(v128,v128)) \
+      \
       visitOp(SIMDOP(136),i32x4_trunc_s_f32x4_sat,"i32x4.trunc_s/f32x4:sat",NoImm,UNARY(v128,v128)) \
       visitOp(SIMDOP(137),i32x4_trunc_u_f32x4_sat,"i32x4.trunc_u/f32x4:sat",NoImm,UNARY(v128,v128)) \
       visitOp(SIMDOP(138),i64x2_trunc_s_f64x2_sat,"i64x2.trunc_s/f64x2:sat",NoImm,UNARY(v128,v128)) \
