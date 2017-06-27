@@ -514,8 +514,13 @@ namespace WASM
 					irEncoderStream.name(imm); \
 					break; \
 				}
-			ENUM_OPERATORS(VISIT_OPCODE)
+			ENUM_NONFLOAT_OPERATORS(VISIT_OPCODE)
 			#undef VISIT_OPCODE
+         #define VISIT_OPCODE(_,name,nameString,...) \
+            case Opcode::name: \
+               throw FatalSerializationException("float instructions not allowed");
+         ENUM_FLOAT_NONCONTROL_NONPARAMETRIC_OPERATORS(VISIT_OPCODE)
+         #undef VISIT_OPCODE
 			default: throw FatalSerializationException("unknown opcode");
 			};
 		};
