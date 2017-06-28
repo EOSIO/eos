@@ -84,8 +84,8 @@ namespace eos { namespace chain {
       id_type           id;
       AccountName       owner; ///< the account this permission belongs to
       id_type           parent; ///< parent permission 
-      PermissionName    name;
-      shared_authority  auth; ///< TODO
+      PermissionName    name; ///< human-readable name for the permission
+      shared_authority  auth; ///< authority required to execute this permission
    };
 
    struct by_parent;
@@ -124,6 +124,6 @@ CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_i
 FC_REFLECT(chainbase::oid<eos::chain::permission_object>, (_id))
 FC_REFLECT(chainbase::oid<eos::chain::account_object>, (_id))
 
+FC_REFLECT(eos::chain::shared_authority, (threshold)(accounts)(keys))
 FC_REFLECT(eos::chain::account_object, (id)(name)(vm_type)(vm_version)(code_version)(code)(creation_date))
-// TODO: Reflect permission_object::auth
-FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name))
+FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name)(auth))
