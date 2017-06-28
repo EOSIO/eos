@@ -64,27 +64,27 @@ BOOST_FIXTURE_TEST_CASE(undo_test, testing_fixture)
 // Test the block fetching methods on database, get_block_id_for_num, fetch_bock_by_id, and fetch_block_by_number
 BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
 { try {
-      Make_Database(db)
+      Make_Blockchain(chain)
       vector<block_id_type> block_ids;
 
       // Produce 20 blocks and check their IDs should match the above
-      db.produce_blocks(20);
+        chain.produce_blocks(20);
       for (int i = 0; i < 20; ++i) {
-         block_ids.emplace_back(db.fetch_block_by_number(i+1)->id());
+         block_ids.emplace_back(chain.fetch_block_by_number(i+1)->id());
          BOOST_CHECK_EQUAL(block_header::num_from_id(block_ids.back()), i+1);
-         BOOST_CHECK_EQUAL(db.get_block_id_for_num(i+1), block_ids.back());
-         BOOST_CHECK_EQUAL(db.fetch_block_by_number(i+1)->id(), block_ids.back());
+         BOOST_CHECK_EQUAL(chain.get_block_id_for_num(i+1), block_ids.back());
+         BOOST_CHECK_EQUAL(chain.fetch_block_by_number(i+1)->id(), block_ids.back());
       }
 
       // Check the last irreversible block number is set correctly
-      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 6);
+      BOOST_CHECK_EQUAL(chain.last_irreversible_block_num(), 6);
       // Check that block 21 cannot be found (only 20 blocks exist)
-      BOOST_CHECK_THROW(db.get_block_id_for_num(21), eos::chain::unknown_block_exception);
+      BOOST_CHECK_THROW(chain.get_block_id_for_num(21), eos::chain::unknown_block_exception);
 
-      db.produce_blocks();
+        chain.produce_blocks();
       // Check the last irreversible block number is updated correctly
-      BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 7);
+      BOOST_CHECK_EQUAL(chain.last_irreversible_block_num(), 7);
       // Check that block 21 can now be found
-      BOOST_CHECK_EQUAL(db.get_block_id_for_num(21), db.head_block_id());
+      BOOST_CHECK_EQUAL(chain.get_block_id_for_num(21), chain.head_block_id());
 } FC_LOG_AND_RETHROW() }
 } // namespace eos

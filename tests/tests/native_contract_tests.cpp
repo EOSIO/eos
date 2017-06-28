@@ -26,25 +26,26 @@ BOOST_AUTO_TEST_SUITE(system_contract_tests)
 //Simple test of account creation
 BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
 { try {
-      Make_Database(db);
-      db.produce_blocks(10);
+      Make_Blockchain(chain);
+      chain.produce_blocks(10);
 
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("init1"), Asset(100000));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000));
 
-      Make_Account(db, joe, init1, Asset(1000));
+      Make_Account(chain, joe, init1, Asset(1000));
 
       { // test in the pending state
-         BOOST_CHECK_EQUAL(db.get_liquid_balance("joe"), Asset(1000));
-         BOOST_CHECK_EQUAL(db.get_liquid_balance("init1"), Asset(100000 - 1000));
+         BOOST_CHECK_EQUAL(chain.get_liquid_balance("joe"), Asset(1000));
+         BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 1000));
 
-         const auto& joe_owner_authority = db_db.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
+         const auto& joe_owner_authority = chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.threshold, 1);
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.accounts.size(), 0);
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.keys.size(), 1);
          BOOST_CHECK_EQUAL(string(joe_owner_authority.auth.keys[0].key), string(joe_public_key));
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.keys[0].weight, 1);
 
-         const auto& joe_active_authority = db_db.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
+         const auto& joe_active_authority =
+            chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
          BOOST_CHECK_EQUAL(joe_active_authority.auth.threshold, 1);
          BOOST_CHECK_EQUAL(joe_active_authority.auth.accounts.size(), 0);
          BOOST_CHECK_EQUAL(joe_active_authority.auth.keys.size(), 1);
@@ -52,19 +53,20 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
          BOOST_CHECK_EQUAL(joe_active_authority.auth.keys[0].weight, 1);
       }
 
-      db.produce_blocks(1); /// verify changes survived creating a new block
+        chain.produce_blocks(1); /// verify changes survived creating a new block
       {
-         BOOST_CHECK_EQUAL(db.get_liquid_balance("joe"), Asset(1000));
-         BOOST_CHECK_EQUAL(db.get_liquid_balance("init1"), Asset(100000 - 1000));
+         BOOST_CHECK_EQUAL(chain.get_liquid_balance("joe"), Asset(1000));
+         BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 1000));
 
-         const auto& joe_owner_authority = db_db.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
+         const auto& joe_owner_authority = chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.threshold, 1);
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.accounts.size(), 0);
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.keys.size(), 1);
          BOOST_CHECK_EQUAL(string(joe_owner_authority.auth.keys[0].key), string(joe_public_key));
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.keys[0].weight, 1);
 
-         const auto& joe_active_authority = db_db.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
+         const auto& joe_active_authority =
+            chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
          BOOST_CHECK_EQUAL(joe_active_authority.auth.threshold, 1);
          BOOST_CHECK_EQUAL(joe_active_authority.auth.accounts.size(), 0);
          BOOST_CHECK_EQUAL(joe_active_authority.auth.keys.size(), 1);
@@ -76,17 +78,17 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
 // Simple test to verify a simple transfer transaction works
 BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 { try {
-      Make_Database(db)
+      Make_Blockchain(chain)
 
-      BOOST_CHECK_EQUAL(db.head_block_num(), 0);
-      db.produce_blocks(10);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 10);
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 0);
+      chain.produce_blocks(10);
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 10);
 
       SignedTransaction trx;
-      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // no messages
+      BOOST_REQUIRE_THROW(chain.push_transaction(trx), transaction_exception); // no messages
       trx.messages.resize(1);
-      trx.set_reference_block(db.head_block_id());
-      trx.expiration = db.head_block_time() + 100;
+      trx.set_reference_block(chain.head_block_id());
+      trx.expiration = chain.head_block_time() + 100;
       trx.messages[0].sender = "init1";
       trx.messages[0].recipient = config::EosContractName;
 
@@ -101,53 +103,53 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 
       auto unpack_trans = trx.messageAs<types::Transfer>(0);
 
-      BOOST_REQUIRE_THROW(db.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
+      BOOST_REQUIRE_THROW(chain.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
       trx.messages[0].notify = {"init2"};
       trx.setMessage(0, "Transfer", trans);
-      db.push_transaction(trx);
+        chain.push_transaction(trx);
 
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("init1"), Asset(100000 - 100));
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("init2"), Asset(100000 + 100));
-      db.produce_blocks(1);
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init2"), Asset(100000 + 100));
+        chain.produce_blocks(1);
 
-      BOOST_REQUIRE_THROW(db.push_transaction(trx), transaction_exception); // not unique
+      BOOST_REQUIRE_THROW(chain.push_transaction(trx), transaction_exception); // not unique
 
-      Transfer_Asset(db, init2, init1, Asset(100));
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("init1"), Asset(100000));
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("init2"), Asset(100000));
+      Transfer_Asset(chain, init2, init1, Asset(100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init2"), Asset(100000));
 } FC_LOG_AND_RETHROW() }
 
 // Simple test of creating/updating a new block producer
 BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 { try {
-      Make_Database(db)
-      db.produce_blocks();
-      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+      Make_Blockchain(chain)
+        chain.produce_blocks();
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
 
-      Make_Account(db, producer);
-      Make_Producer(db, producer, producer_public_key);
+      Make_Account(chain, producer);
+      Make_Producer(chain, producer, producer_public_key);
 
-      while (db.head_block_num() < 3) {
-         auto& producer = db.get_producer("producer");
-         BOOST_CHECK_EQUAL(db.get_producer(producer.owner).owner, "producer");
+      while (chain.head_block_num() < 3) {
+         auto& producer = chain.get_producer("producer");
+         BOOST_CHECK_EQUAL(chain.get_producer(producer.owner).owner, "producer");
          BOOST_CHECK_EQUAL(producer.signing_key, producer_public_key);
          BOOST_CHECK_EQUAL(producer.last_aslot, 0);
          BOOST_CHECK_EQUAL(producer.total_missed, 0);
          BOOST_CHECK_EQUAL(producer.last_confirmed_block_num, 0);
-         db.produce_blocks();
+            chain.produce_blocks();
       }
 
       Make_Key(signing);
-      Update_Producer(db, "producer", signing_public_key);
-      auto& producer = db.get_producer("producer");
+      Update_Producer(chain, "producer", signing_public_key);
+      auto& producer = chain.get_producer("producer");
       BOOST_CHECK_EQUAL(producer.signing_key, signing_public_key);
 } FC_LOG_AND_RETHROW() }
 
 // Test producer votes on blockchain parameters in full blockchain context
 BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture)
 { try {
-      Make_Database(db)
-      db.produce_blocks(21);
+      Make_Blockchain(chain)
+        chain.produce_blocks(21);
 
       vector<BlockchainConfiguration> votes{
          {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   },
@@ -179,21 +181,21 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture)
 
       for (int i = 0; i < votes.size(); ++i) {
          auto name = std::string("init") + fc::to_string(i);
-         Update_Producer(db, name, db.get_producer(name).signing_key, votes[i]);
+         Update_Producer(chain, name, chain.get_producer(name).signing_key, votes[i]);
       }
 
-      BOOST_CHECK_NE(db.get_global_properties().configuration, medians);
-      db.produce_blocks(20);
-      BOOST_CHECK_NE(db.get_global_properties().configuration, medians);
-      db.produce_blocks();
-      BOOST_CHECK_EQUAL(db.get_global_properties().configuration, medians);
+      BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
+        chain.produce_blocks(20);
+      BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
+        chain.produce_blocks();
+      BOOST_CHECK_EQUAL(chain.get_global_properties().configuration, medians);
 } FC_LOG_AND_RETHROW() }
 
 // Test producer votes on blockchain parameters in full blockchain context, with missed blocks
 BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
 { try {
-      Make_Database(db)
-      db.produce_blocks(21);
+      Make_Blockchain(chain)
+        chain.produce_blocks(21);
 
       vector<BlockchainConfiguration> votes{
          {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   },
@@ -225,50 +227,50 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
 
       for (int i = 0; i < votes.size(); ++i) {
          auto name = std::string("init") + fc::to_string(i);
-         Update_Producer(db, name, db.get_producer(name).signing_key, votes[i]);
+         Update_Producer(chain, name, chain.get_producer(name).signing_key, votes[i]);
       }
 
-      BOOST_CHECK_NE(db.get_global_properties().configuration, medians);
-      db.produce_blocks(2);
-      db.produce_blocks(18, 5);
-      BOOST_CHECK_NE(db.get_global_properties().configuration, medians);
-      db.produce_blocks();
-      BOOST_CHECK_EQUAL(db.get_global_properties().configuration, medians);
+      BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
+        chain.produce_blocks(2);
+        chain.produce_blocks(18, 5);
+      BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
+        chain.produce_blocks();
+      BOOST_CHECK_EQUAL(chain.get_global_properties().configuration, medians);
 } FC_LOG_AND_RETHROW() }
 
 // Test that if I create a producer and vote for him, he gets in on the next round (but not before)
 BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
    try {
-      Make_Database(db)
-      db.produce_blocks();
+      Make_Blockchain(chain)
+        chain.produce_blocks();
 
-      Make_Account(db, joe);
-      Make_Account(db, bob);
-      Stake_Asset(db, bob, Asset(100).amount);
-      Make_Producer(db, joe);
-      Approve_Producer(db, bob, joe, true);
+      Make_Account(chain, joe);
+      Make_Account(chain, bob);
+      Stake_Asset(chain, bob, Asset(100).amount);
+      Make_Producer(chain, joe);
+      Approve_Producer(chain, bob, joe, true);
       // Produce blocks up to, but not including, the last block in the round
-      db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
+        chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
 
       {
-         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 1);
-         BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(100));
-         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), db.get_staked_balance("bob"));
+         BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
+         BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(100));
+         const auto& joeVotes = chain_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
       }
 
       // OK, let's go to the next round
-      db.produce_blocks();
+        chain.produce_blocks();
 
-      const auto& gpo = db.get_global_properties();
+      const auto& gpo = chain.get_global_properties();
       BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
 
-      Approve_Producer(db, bob, joe, false);
-      db.produce_blocks();
+      Approve_Producer(chain, bob, joe, false);
+        chain.produce_blocks();
 
       {
-         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
+         const auto& joeVotes = chain_db.get<ProducerVotesObject, byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
       }
    } FC_LOG_AND_RETHROW()
@@ -277,45 +279,45 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 // Same as producer_voting_1, except we first cast the vote for the producer, _then_ get a stake
 BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
    try {
-      Make_Database(db)
-      db.produce_blocks();
+      Make_Blockchain(chain)
+        chain.produce_blocks();
 
-      Make_Account(db, joe);
-      Make_Account(db, bob);
-      Make_Producer(db, joe);
-      Approve_Producer(db, bob, joe, true);
-      db.produce_blocks();
+      Make_Account(chain, joe);
+      Make_Account(chain, bob);
+      Make_Producer(chain, joe);
+      Approve_Producer(chain, bob, joe, true);
+        chain.produce_blocks();
 
       {
-         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 1);
-         BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(0));
-         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), db.get_staked_balance("bob"));
+         BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
+         BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(0));
+         const auto& joeVotes = chain_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
       }
 
-      Stake_Asset(db, bob, Asset(100).amount);
+      Stake_Asset(chain, bob, Asset(100).amount);
       // Produce blocks up to, but not including, the last block in the round
-      db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
+        chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
 
       {
-         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 1);
-         BOOST_CHECK_EQUAL(db.get_staked_balance("bob"), Asset(100));
-         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), db.get_staked_balance("bob"));
+         BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
+         BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(100));
+         const auto& joeVotes = chain_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
       }
 
       // OK, let's go to the next round
-      db.produce_blocks();
+        chain.produce_blocks();
 
-      const auto& gpo = db.get_global_properties();
+      const auto& gpo = chain.get_global_properties();
       BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
 
-      Approve_Producer(db, bob, joe, false);
-      db.produce_blocks();
+      Approve_Producer(chain, bob, joe, false);
+        chain.produce_blocks();
 
       {
-         BOOST_CHECK_EQUAL(db.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = db_db.get<ProducerVotesObject, byOwnerName>("joe");
+         BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
+         const auto& joeVotes = chain_db.get<ProducerVotesObject, byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
       }
    } FC_LOG_AND_RETHROW()
@@ -324,53 +326,54 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
 // Test voting for producers by proxy
 BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
    try {
-      using Action = std::function<void(testing_database&)>;
-      Action approve = [](auto& db) {
-         Approve_Producer(db, proxy, producer, true);
+      using Action = std::function<void(testing_blockchain&)>;
+      Action approve = [](auto& chain) {
+         Approve_Producer(chain, proxy, producer, true);
       };
-      Action setproxy = [](auto& db) {
-         Set_Proxy(db, stakeholder, proxy);
+      Action setproxy = [](auto& chain) {
+         Set_Proxy(chain, stakeholder, proxy);
       };
-      Action allowproxy = [](auto& db) {
-         Allow_Proxy(db, proxy, true);
+      Action allowproxy = [](auto& chain) {
+         Allow_Proxy(chain, proxy, true);
       };
-      Action stake = [](auto& db) {
-         Stake_Asset(db, stakeholder, Asset(100).amount);
+      Action stake = [](auto& chain) {
+         Stake_Asset(chain, stakeholder, Asset(100).amount);
       };
 
       auto run = [this](std::vector<Action> actions) {
-         Make_Database(db)
-               db.produce_blocks();
+         Make_Blockchain(chain)
+         chain.produce_blocks();
 
-         Make_Account(db, stakeholder);
-         Make_Account(db, proxy);
-         Make_Account(db, producer);
-         Make_Producer(db, producer);
+         Make_Account(chain, stakeholder);
+         Make_Account(chain, proxy);
+         Make_Account(chain, producer);
+         Make_Producer(chain, producer);
 
-         for (auto& action : actions) action(db);
+         for (auto& action : actions)
+            action(chain);
 
          // Produce blocks up to, but not including, the last block in the round
-         db.produce_blocks(config::BlocksPerRound - db.head_block_num() - 1);
+         chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
 
          {
-            BOOST_CHECK_EQUAL(db.get_approved_producers("proxy").count("producer"), 1);
-            BOOST_CHECK_EQUAL(db.get_staked_balance("stakeholder"), Asset(100));
-            const auto& producerVotes = db_db.get<ProducerVotesObject, byOwnerName>("producer");
-            BOOST_CHECK_EQUAL(producerVotes.getVotes(), db.get_staked_balance("stakeholder"));
+            BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 1);
+            BOOST_CHECK_EQUAL(chain.get_staked_balance("stakeholder"), Asset(100));
+            const auto& producerVotes = chain_db.get<ProducerVotesObject, byOwnerName>("producer");
+            BOOST_CHECK_EQUAL(producerVotes.getVotes(), chain.get_staked_balance("stakeholder"));
          }
 
          // OK, let's go to the next round
-         db.produce_blocks();
+            chain.produce_blocks();
 
-         const auto& gpo = db.get_global_properties();
+         const auto& gpo = chain.get_global_properties();
          BOOST_REQUIRE(boost::find(gpo.active_producers, "producer") != gpo.active_producers.end());
 
-         Approve_Producer(db, proxy, producer, false);
-         db.produce_blocks();
+         Approve_Producer(chain, proxy, producer, false);
+            chain.produce_blocks();
 
          {
-            BOOST_CHECK_EQUAL(db.get_approved_producers("proxy").count("producer"), 0);
-            const auto& producerVotes = db_db.get<ProducerVotesObject, byOwnerName>("producer");
+            BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 0);
+            const auto& producerVotes = chain_db.get<ProducerVotesObject, byOwnerName>("producer");
             BOOST_CHECK_EQUAL(producerVotes.getVotes(), 0);
          }
       };

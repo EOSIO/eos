@@ -50,36 +50,36 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 // Simple test of block production and head_block_num tracking
 BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 { try {
-      Make_Database(db)
+      Make_Blockchain(chain)
 
-      BOOST_CHECK_EQUAL(db.head_block_num(), 0);
-      db.produce_blocks();
-      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
-      db.produce_blocks(5);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 6);
-      db.produce_blocks(db.get_global_properties().active_producers.size());
-      BOOST_CHECK_EQUAL(db.head_block_num(), db.get_global_properties().active_producers.size() + 6);
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 0);
+        chain.produce_blocks();
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
+        chain.produce_blocks(5);
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 6);
+        chain.produce_blocks(chain.get_global_properties().active_producers.size());
+      BOOST_CHECK_EQUAL(chain.head_block_num(), chain.get_global_properties().active_producers.size() + 6);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
-      Make_Database(db);
-      db.produce_blocks(10);
+      Make_Blockchain(chain);
+      chain.produce_blocks(10);
 
-      Make_Account(db, newguy);
+      Make_Account(chain, newguy);
 
-      Transfer_Asset(db, newguy, init0, Asset(1));
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("init0"), Asset(100000-99));
+      Transfer_Asset(chain, newguy, init0, Asset(1));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init0"), Asset(100000-99));
 
-      db.produce_blocks();
-      BOOST_CHECK_EQUAL(db.head_block_num(), 11);
-      BOOST_CHECK(db.fetch_block_by_number(11).valid());
-      BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.empty());
-      BOOST_CHECK(!db.fetch_block_by_number(11)->cycles.front().empty());
-      BOOST_CHECK_EQUAL(db.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(db.get_liquid_balance("init0"), Asset(100000-99));
+        chain.produce_blocks();
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 11);
+      BOOST_CHECK(chain.fetch_block_by_number(11).valid());
+      BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.empty());
+      BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.front().empty());
+      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init0"), Asset(100000-99));
 } FC_LOG_AND_RETHROW() }
 
 
@@ -119,10 +119,10 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
-      Make_Database(db);
-      db.produce_blocks(10);
-      Make_Account(db, simplecoin);
-      db.produce_blocks(1);
+      Make_Blockchain(chain);
+      chain.produce_blocks(10);
+      Make_Account(chain, simplecoin);
+      chain.produce_blocks(1);
 
 
 
@@ -869,10 +869,10 @@ R"(
          trx.messages[0].sender = "simplecoin";
          trx.messages[0].recipient = config::SystemContractName;
          trx.setMessage(0, "SetCode", handler);
-         trx.expiration = db.head_block_time() + 100; 
-         trx.set_reference_block(db.head_block_id()); 
-         db.push_transaction(trx);
-         db.produce_blocks(1);
+         trx.expiration = chain.head_block_time() + 100; 
+         trx.set_reference_block(chain.head_block_id()); 
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
       }
 
 
@@ -882,9 +882,9 @@ R"(
          eos::chain::SignedTransaction trx;
          trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "Transfer",
                             types::Transfer{"simplecoin", "init1", 1+i, "hello"} );
-         trx.expiration = db.head_block_time() + 100;
-         trx.set_reference_block(db.head_block_id());
-         db.push_transaction(trx);
+         trx.expiration = chain.head_block_time() + 100;
+         trx.set_reference_block(chain.head_block_id());
+         chain.push_transaction(trx);
       }
       auto end = fc::time_point::now();
       idump((1000*1000000.0 / (end-start).count()));
@@ -894,9 +894,9 @@ R"(
          eos::chain::SignedTransaction trx;
          trx.emplaceMessage("init1", "simplecoin", vector<AccountName>{"init2"}, "Transfer",
                             types::Transfer{"init1", "init2", 102, "hello again"});
-         trx.expiration = db.head_block_time() + 100;
-         trx.set_reference_block(db.head_block_id());
-         db.push_transaction(trx);
+         trx.expiration = chain.head_block_time() + 100;
+         trx.set_reference_block(chain.head_block_id());
+         chain.push_transaction(trx);
       }
 /*
       auto start = fc::time_point::now();
@@ -906,7 +906,7 @@ R"(
       auto end = fc::time_point::now();
       idump((  200*1000000.0 / (end-start).count() ) );
 */
-      db.produce_blocks(1);
+      chain.produce_blocks(1);
 /*
       const auto& world = db_db.get<key_value_object,by_scope_key>(boost::make_tuple(AccountName("init1"),
                                                                                      String("hello")));
@@ -918,108 +918,108 @@ R"(
 // Simple test of block production when a block is missed
 BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
 { try {
-      Make_Database(db)
+      Make_Blockchain(chain)
 
-      db.produce_blocks();
-      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+      chain.produce_blocks();
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
 
-      AccountName skipped_producers[3] = {db.get_scheduled_producer(1),
-                                          db.get_scheduled_producer(2),
-                                          db.get_scheduled_producer(3)};
-      auto next_block_time = db.get_slot_time(4);
-      auto next_producer = db.get_scheduled_producer(4);
+      AccountName skipped_producers[3] = {chain.get_scheduled_producer(1),
+                                          chain.get_scheduled_producer(2),
+                                          chain.get_scheduled_producer(3)};
+      auto next_block_time = chain.get_slot_time(4);
+      auto next_producer = chain.get_scheduled_producer(4);
 
-      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
-      db.produce_blocks(1, 3);
-      BOOST_CHECK_EQUAL(db.head_block_num(), 2);
-      BOOST_CHECK_EQUAL(db.head_block_time().to_iso_string(), next_block_time.to_iso_string());
-      BOOST_CHECK_EQUAL(db.head_block_producer(), next_producer);
-      BOOST_CHECK_EQUAL(db.get_producer(next_producer).total_missed, 0);
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
+      chain.produce_blocks(1, 3);
+      BOOST_CHECK_EQUAL(chain.head_block_num(), 2);
+      BOOST_CHECK_EQUAL(chain.head_block_time().to_iso_string(), next_block_time.to_iso_string());
+      BOOST_CHECK_EQUAL(chain.head_block_producer(), next_producer);
+      BOOST_CHECK_EQUAL(chain.get_producer(next_producer).total_missed, 0);
 
       for (auto producer : skipped_producers) {
-         BOOST_CHECK_EQUAL(db.get_producer(producer).total_missed, 1);
+         BOOST_CHECK_EQUAL(chain.get_producer(producer).total_missed, 1);
       }
 } FC_LOG_AND_RETHROW() }
 
 // Simple sanity test of test network: if databases aren't connected to the network, they don't sync to eachother
 BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
 { try {
-      Make_Databases((db1)(db2))
+      Make_Blockchains((chain1)(chain2));
 
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
-      db1.produce_blocks();
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
-      db2.produce_blocks(5);
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 5);
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 0);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 0);
+      chain1.produce_blocks();
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 0);
+      chain2.produce_blocks(5);
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 5);
 } FC_LOG_AND_RETHROW() }
 
 // Test that two databases on the same network do sync to eachother
 BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
 { try {
-      Make_Databases((db1)(db2))
-      Make_Network(net, (db1)(db2))
+      Make_Blockchains((chain1)(chain2))
+      Make_Network(net, (chain1)(chain2))
 
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
-      db1.produce_blocks();
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 1);
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
-      db2.produce_blocks(5);
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 6);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 6);
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 0);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 0);
+      chain1.produce_blocks();
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain2.head_block_id().str());
+      chain2.produce_blocks(5);
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain2.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
 
 // Test that two databases joining and leaving a network sync correctly after a fork
 BOOST_FIXTURE_TEST_CASE(forked_network, testing_fixture)
 { try {
-      Make_Databases((db1)(db2))
+      Make_Blockchains((chain1)(chain2))
       Make_Network(net)
 
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 0);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
-      db1.produce_blocks();
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 1);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 0);
-      BOOST_CHECK_NE(db1.head_block_id().str(), db2.head_block_id().str());
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 0);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 0);
+      chain1.produce_blocks();
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 0);
+      BOOST_CHECK_NE(chain1.head_block_id().str(), chain2.head_block_id().str());
 
-      net.connect_database(db1);
-      net.connect_database(db2);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 1);
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+      net.connect_blockchain(chain1);
+      net.connect_blockchain(chain2);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain2.head_block_id().str());
 
-      db2.produce_blocks(5);
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 6);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 6);
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+      chain2.produce_blocks(5);
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 6);
+      BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain2.head_block_id().str());
 
-      net.disconnect_database(db1);
-      db1.produce_blocks(1, 1);
-      db2.produce_blocks();
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 7);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 7);
-      BOOST_CHECK_NE(db1.head_block_id().str(), db2.head_block_id().str());
+      net.disconnect_database(chain1);
+      chain1.produce_blocks(1, 1);
+      chain2.produce_blocks();
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 7);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 7);
+      BOOST_CHECK_NE(chain1.head_block_id().str(), chain2.head_block_id().str());
 
-      db2.produce_blocks(1, 1);
-      net.connect_database(db1);
-      BOOST_CHECK_EQUAL(db1.head_block_num(), 8);
-      BOOST_CHECK_EQUAL(db2.head_block_num(), 8);
-      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
+      chain2.produce_blocks(1, 1);
+      net.connect_blockchain(chain1);
+      BOOST_CHECK_EQUAL(chain1.head_block_num(), 8);
+      BOOST_CHECK_EQUAL(chain2.head_block_num(), 8);
+      BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain2.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
 
 // Check that the recent_slots_filled bitmap is being updated correctly
 BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 { try {
-      Make_Database(db)
-      db.produce_blocks();
+      Make_Blockchain(chain)
+      chain.produce_blocks();
 
       auto rsf = [&]() -> string
       {
-         auto rsf = db.get_dynamic_global_properties().recent_slots_filled;
+         auto rsf = chain.get_dynamic_global_properties().recent_slots_filled;
          string result = "";
          result.reserve(64);
          for( int i=0; i<64; i++ )
@@ -1038,91 +1038,91 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
       BOOST_CHECK_EQUAL( rsf(),
          "1111111111111111111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), config::Percent100 );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), config::Percent100 );
 
-      db.produce_blocks(1, 1);
+      chain.produce_blocks(1, 1);
       BOOST_CHECK_EQUAL( rsf(),
          "0111111111111111111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(127-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(127-64) );
 
-      db.produce_blocks(1, 1);
+      chain.produce_blocks(1, 1);
       BOOST_CHECK_EQUAL( rsf(),
          "0101111111111111111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(126-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(126-64) );
 
-      db.produce_blocks(1, 2);
+      chain.produce_blocks(1, 2);
       BOOST_CHECK_EQUAL( rsf(),
          "0010101111111111111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(124-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(124-64) );
 
-      db.produce_blocks(1, 3);
+      chain.produce_blocks(1, 3);
       BOOST_CHECK_EQUAL( rsf(),
          "0001001010111111111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(121-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(121-64) );
 
-      db.produce_blocks(1, 5);
+      chain.produce_blocks(1, 5);
       BOOST_CHECK_EQUAL( rsf(),
          "0000010001001010111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(116-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(116-64) );
 
-      db.produce_blocks(1, 8);
+      chain.produce_blocks(1, 8);
       BOOST_CHECK_EQUAL( rsf(),
          "0000000010000010001001010111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(108-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(108-64) );
 
-      db.produce_blocks(1, 13);
+      chain.produce_blocks(1, 13);
       BOOST_CHECK_EQUAL( rsf(),
          "0000000000000100000000100000100010010101111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(95-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(95-64) );
 
-      db.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL( rsf(),
          "1000000000000010000000010000010001001010111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(95-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(95-64) );
 
-      db.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL( rsf(),
          "1100000000000001000000001000001000100101011111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(95-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(95-64) );
 
-      db.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL( rsf(),
          "1110000000000000100000000100000100010010101111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(95-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(95-64) );
 
-      db.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL( rsf(),
          "1111000000000000010000000010000010001001010111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(95-64) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(95-64) );
 
-      db.produce_blocks(1, 64);
+      chain.produce_blocks(1, 64);
       BOOST_CHECK_EQUAL( rsf(),
          "0000000000000000000000000000000000000000000000000000000000000000"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(0) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(0) );
 
-      db.produce_blocks(1, 63);
+      chain.produce_blocks(1, 63);
       BOOST_CHECK_EQUAL( rsf(),
          "0000000000000000000000000000000000000000000000000000000000000001"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(1) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(1) );
 
-      db.produce_blocks(1, 32);
+      chain.produce_blocks(1, 32);
       BOOST_CHECK_EQUAL( rsf(),
          "0000000000000000000000000000000010000000000000000000000000000000"
       );
-      BOOST_CHECK_EQUAL( db.producer_participation_rate(), pct(1) );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(1) );
 } FC_LOG_AND_RETHROW() }
 
 // Check that a db rewinds to the LIB after being closed and reopened
@@ -1130,21 +1130,21 @@ BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
       auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
       {
-         Make_Database(db, x);
+         Make_Blockchain(chain, x);
 
-         db.produce_blocks(20);
+         chain.produce_blocks(20);
 
-         BOOST_CHECK_EQUAL(db.head_block_num(), 20);
-         BOOST_CHECK_EQUAL(db.last_irreversible_block_num(), 20 - lag);
+         BOOST_CHECK_EQUAL(chain.head_block_num(), 20);
+         BOOST_CHECK_EQUAL(chain.last_irreversible_block_num(), 20 - lag);
       }
 
       {
-         Make_Database(db, x);
+         Make_Blockchain(chain, x);
 
          // After restarting, we should have rewound to the last irreversible block.
-         BOOST_CHECK_EQUAL(db.head_block_num(), 20 - lag);
-         db.produce_blocks(5);
-         BOOST_CHECK_EQUAL(db.head_block_num(), 25 - lag);
+         BOOST_CHECK_EQUAL(chain.head_block_num(), 20 - lag);
+         chain.produce_blocks(5);
+         BOOST_CHECK_EQUAL(chain.head_block_num(), 25 - lag);
       }
 } FC_LOG_AND_RETHROW() }
 
@@ -1152,7 +1152,7 @@ BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 // that it missed while it was down
 BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 { try {
-      Make_Database(producer)
+      Make_Blockchain(producer)
       Make_Network(net, (producer))
 
       auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
@@ -1160,8 +1160,8 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 
       {
          // The new node, sleepy, joins, syncs, disconnects
-         Make_Database(sleepy, sleepy)
-         net.connect_database(sleepy);
+         Make_Blockchain(sleepy, sleepy)
+         net.connect_blockchain(sleepy);
          BOOST_CHECK_EQUAL(producer.head_block_num(), 20);
          BOOST_CHECK_EQUAL(sleepy.head_block_num(), 20);
 
@@ -1173,11 +1173,11 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
       BOOST_CHECK_EQUAL(producer.head_block_num(), 25);
 
       // Sleepy is reborn! Check that it is now rewound to the LIB...
-      Make_Database(sleepy, sleepy)
+      Make_Blockchain(sleepy, sleepy)
       BOOST_CHECK_EQUAL(sleepy.head_block_num(), 20 - lag);
 
       // Reconnect sleepy to the network and check that it syncs up to the present
-      net.connect_database(sleepy);
+      net.connect_blockchain(sleepy);
       BOOST_CHECK_EQUAL(sleepy.head_block_num(), 25);
       BOOST_CHECK_EQUAL(sleepy.head_block_id().str(), producer.head_block_id().str());
 } FC_LOG_AND_RETHROW() }
@@ -1191,7 +1191,7 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
          block_log log(get_temp_dir("log"));
          fork_database fdb;
          native_contract::native_contract_chain_initializer initr(genesis_state());
-         testing_database chain(db, fdb, log, initr, *this);
+         testing_blockchain chain(db, fdb, log, initr, *this);
 
          chain.produce_blocks(100);
 
@@ -1203,7 +1203,7 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
          block_log log(get_temp_dir("log"));
          fork_database fdb;
          native_contract::native_contract_chain_initializer initr(genesis_state());
-         testing_database chain(db, fdb, log, initr, *this);
+         testing_blockchain chain(db, fdb, log, initr, *this);
 
          BOOST_CHECK_EQUAL(chain.head_block_num(), 100 - lag);
          chain.produce_blocks(20);
@@ -1214,49 +1214,49 @@ BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 // Test wiping a database and resyncing with an ongoing network
 BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)
 { try {
-      Make_Databases((db1)(db2))
-      Make_Network(net, (db1)(db2))
+      Make_Blockchains((chain1)(chain2))
+      Make_Network(net, (chain1)(chain2))
       {
          // Create db3 with a temporary data dir
-         Make_Database(db3)
-         net.connect_database(db3);
+         Make_Blockchain(chain3)
+         net.connect_blockchain(chain3);
 
-         db1.produce_blocks(3);
-         db2.produce_blocks(3);
-         BOOST_CHECK_EQUAL(db1.head_block_num(), 6);
-         BOOST_CHECK_EQUAL(db2.head_block_num(), 6);
-         BOOST_CHECK_EQUAL(db3.head_block_num(), 6);
-         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
-         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db3.head_block_id().str());
+         chain1.produce_blocks(3);
+         chain2.produce_blocks(3);
+         BOOST_CHECK_EQUAL(chain1.head_block_num(), 6);
+         BOOST_CHECK_EQUAL(chain2.head_block_num(), 6);
+         BOOST_CHECK_EQUAL(chain3.head_block_num(), 6);
+         BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain2.head_block_id().str());
+         BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain3.head_block_id().str());
 
-         net.disconnect_database(db3);
+         net.disconnect_database(chain3);
       }
 
       {
-         // Create new db3 with a new temporary data dir
-         Make_Database(db3)
-         BOOST_CHECK_EQUAL(db3.head_block_num(), 0);
+         // Create new chain3 with a new temporary data dir
+         Make_Blockchain(chain3)
+         BOOST_CHECK_EQUAL(chain3.head_block_num(), 0);
 
-         net.connect_database(db3);
-         BOOST_CHECK_EQUAL(db3.head_block_num(), 6);
+         net.connect_blockchain(chain3);
+         BOOST_CHECK_EQUAL(chain3.head_block_num(), 6);
 
-         db1.produce_blocks(3);
-         db2.produce_blocks(3);
-         BOOST_CHECK_EQUAL(db1.head_block_num(), 12);
-         BOOST_CHECK_EQUAL(db2.head_block_num(), 12);
-         BOOST_CHECK_EQUAL(db3.head_block_num(), 12);
-         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
-         BOOST_CHECK_EQUAL(db1.head_block_id().str(), db3.head_block_id().str());
+         chain1.produce_blocks(3);
+         chain2.produce_blocks(3);
+         BOOST_CHECK_EQUAL(chain1.head_block_num(), 12);
+         BOOST_CHECK_EQUAL(chain2.head_block_num(), 12);
+         BOOST_CHECK_EQUAL(chain3.head_block_num(), 12);
+         BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain2.head_block_id().str());
+         BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain3.head_block_id().str());
       }
 } FC_LOG_AND_RETHROW() }
 
 //Test account script float rejection
 BOOST_FIXTURE_TEST_CASE(create_script_w_float, testing_fixture)
 { try {
-      Make_Database(db);
-      db.produce_blocks(10);
-      Make_Account(db, simplecoin);
-      db.produce_blocks(1);
+      Make_Blockchain(chain);
+      chain.produce_blocks(10);
+      Make_Account(chain, simplecoin);
+      chain.produce_blocks(1);
 
 
 
@@ -1376,7 +1376,8 @@ void onApply_Transfer_simplecoin() {
    static Balance to_balance;
    to_balance.balance = 0;
 
-   read = load( (const char*)&message.from, sizeof(message.from), (char*)&from_balance.balance, sizeof(from_balance.balance) );
+   read = load( (const char*)&message.from, sizeof(message.from), (char*)&from_balance.balance, 
+sizeof(from_balance.balance) );
    assert( read == sizeof(Balance), "no existing balance" );
    assert( from_balance.balance >= message.amount, "insufficient funds" );
    read = load( (const char*)&message.to, sizeof(message.to), (char*)&to_balance.balance, sizeof(to_balance.balance) );
@@ -1389,7 +1390,8 @@ void onApply_Transfer_simplecoin() {
      return;
 
    if( from_balance.balance )
-      store( (const char*)&message.from, sizeof(AccountName), (const char*)&from_balance.balance, sizeof(from_balance.balance) );
+      store( (const char*)&message.from, sizeof(AccountName), (const char*)&from_balance.balance, 
+sizeof(from_balance.balance) );
    else
       remove( (const char*)&message.from, sizeof(AccountName) );
 
@@ -2018,10 +2020,10 @@ R"(
       trx.messages[0].sender = "simplecoin";
       trx.messages[0].recipient = config::SystemContractName;
       trx.setMessage(0, "SetCode", handler);
-      trx.expiration = db.head_block_time() + 100;
-      trx.set_reference_block(db.head_block_id());
+      trx.expiration = chain.head_block_time() + 100;
+      trx.set_reference_block(chain.head_block_id());
       try {
-         db.push_transaction(trx);
+         chain.push_transaction(trx);
          BOOST_FAIL("floating point instructions should be rejected");
 /*      } catch (const Serialization::FatalSerializationException& fse) {
          BOOST_CHECK_EQUAL("float instructions not allowed", fse.message);

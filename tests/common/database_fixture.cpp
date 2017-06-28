@@ -92,12 +92,12 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
    return itr->second;
 }
 
-testing_database::testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& initializer, testing_fixture& fixture)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator()),
      fixture(fixture) {}
 
-void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
+void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
    if (count == 0)
       return;
 
@@ -109,7 +109,7 @@ void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
    }
 }
 
-void testing_database::sync_with(testing_database& other) {
+void testing_blockchain::sync_with(testing_blockchain& other) {
    // Already in sync?
    if (head_block_id() == other.head_block_id())
       return;
@@ -117,7 +117,7 @@ void testing_database::sync_with(testing_database& other) {
    if (head_block_num() < other.head_block_num())
       return other.sync_with(*this);
 
-   auto sync_dbs = [](testing_database& a, testing_database& b) {
+   auto sync_dbs = [](testing_blockchain& a, testing_blockchain& b) {
       for (int i = 1; i <= a.head_block_num(); ++i) {
          auto block = a.fetch_block_by_number(i);
          if (block && !b.is_known_block(block->id())) {
@@ -130,19 +130,19 @@ void testing_database::sync_with(testing_database& other) {
    sync_dbs(other, *this);
 }
 
-types::Asset testing_database::get_liquid_balance(const types::AccountName& account) {
+types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& account) {
    return get_database().get<BalanceObject, byOwnerName>(account).balance;
 }
 
-types::Asset testing_database::get_staked_balance(const types::AccountName& account) {
+types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
    return get_database().get<StakedBalanceObject, byOwnerName>(account).stakedBalance;
 }
 
-types::Asset testing_database::get_unstaking_balance(const types::AccountName& account) {
+types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
    return get_database().get<StakedBalanceObject, byOwnerName>(account).unstakingBalance;
 }
 
-std::set<types::AccountName> testing_database::get_approved_producers(const types::AccountName& account) {
+std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
    const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
    if (sbo.producerVotes.contains<ProducerSlate>()) {
       auto range = sbo.producerVotes.get<ProducerSlate>().range();
@@ -151,37 +151,37 @@ std::set<types::AccountName> testing_database::get_approved_producers(const type
    return {};
 }
 
-types::PublicKey testing_database::get_block_signing_key(const types::AccountName& producerName) {
+types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountName& producerName) {
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
-void testing_network::connect_database(testing_database& new_database) {
-   if (databases.count(&new_database))
+void testing_network::connect_blockchain(testing_blockchain& new_database) {
+   if (blockchains.count(&new_database))
       return;
 
    // If the network isn't empty, sync the new database with one of the old ones. The old ones are already in sync with
    // eachother, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
    // of them gets synced, it will propagate blocks to the others as well.
-   if (!databases.empty()) {
-      databases.begin()->first->sync_with(new_database);
+   if (!blockchains.empty()) {
+        blockchains.begin()->first->sync_with(new_database);
    }
 
    // The new database is now in sync with any old ones; go ahead and connect the propagation signal.
-   databases[&new_database] = new_database.applied_block.connect([this, &new_database](const signed_block& block) {
+    blockchains[&new_database] = new_database.applied_block.connect([this, &new_database](const signed_block& block) {
       propagate_block(block, new_database);
    });
 }
 
-void testing_network::disconnect_database(testing_database& leaving_database) {
-   databases.erase(&leaving_database);
+void testing_network::disconnect_database(testing_blockchain& leaving_database) {
+    blockchains.erase(&leaving_database);
 }
 
 void testing_network::disconnect_all() {
-   databases.clear();
+    blockchains.clear();
 }
 
-void testing_network::propagate_block(const signed_block& block, const testing_database& skip_db) {
-   for (const auto& pair : databases) {
+void testing_network::propagate_block(const signed_block& block, const testing_blockchain& skip_db) {
+   for (const auto& pair : blockchains) {
       if (pair.first == &skip_db) continue;
       boost::signals2::shared_connection_block blocker(pair.second);
       pair.first->push_block(block);

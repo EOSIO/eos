@@ -88,7 +88,7 @@ FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
 FC_DECLARE_DERIVED_EXCEPTION(missing_key_exception, eos::chain::testing_exception, 6010000, "key could not be found")
 
 /**
- * @brief The testing_fixture class provides various services relevant to testing the database.
+ * @brief The testing_fixture class provides various services relevant to testing the blockchain.
  */
 class testing_fixture {
 public:
@@ -125,42 +125,43 @@ protected:
 };
 
 /**
- * @brief The testing_database class wraps database and eliminates some of the boilerplate for common operations on the
- * database during testing.
+ * @brief The testing_blockchain class wraps chain_controller and eliminates some of the boilerplate for common 
+ * operations on the blockchain during testing.
  *
- * testing_databases have an optional ID, which is passed to the constructor. If two testing_databases are created with
- * the same ID, they will have the same data directory. If no ID, or an empty ID, is provided, the database will have a
- * unique data directory which no subsequent testing_database will be assigned.
+ * testing_blockchains have an optional ID, which is passed to the constructor. If two testing_blockchains are created 
+ * with the same ID, they will have the same data directory. If no ID, or an empty ID, is provided, the database will 
+ * have a unique data directory which no subsequent testing_blockchain will be assigned.
  *
- * testing_database helps with producing blocks, or missing blocks, via the @ref produce_blocks and @ref miss_blocks
+ * testing_blockchain helps with producing blocks, or missing blocks, via the @ref produce_blocks and @ref miss_blocks
  * methods. To produce N blocks, simply call produce_blocks(N); to miss N blocks, call miss_blocks(N). Note that missing
- * blocks has no effect on the database until the next block, following the missed blocks, is produced.
+ * blocks has no effect on the blockchain until the next block, following the missed blocks, is produced.
  */
-class testing_database : public chain_controller {
+class testing_blockchain : public chain_controller {
 public:
-   testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                      chain_initializer_interface& initializer, testing_fixture& fixture);
 
    /**
-    * @brief Produce new blocks, adding them to the database, optionally following a gap of missed blocks
+    * @brief Produce new blocks, adding them to the blockchain, optionally following a gap of missed blocks
     * @param count Number of blocks to produce
     * @param blocks_to_miss Number of block intervals to miss a production before producing the next block
     *
-    * Creates and adds  @ref count new blocks to the database, after going @ref blocks_to_miss intervals without
+    * Creates and adds  @ref count new blocks to the blockchain, after going @ref blocks_to_miss intervals without
     * producing a block.
     */
    void produce_blocks(uint32_t count = 1, uint32_t blocks_to_miss = 0);
 
    /**
-    * @brief Sync this database with other
-    * @param other Database to sync with
+    * @brief Sync this blockchain with other
+    * @param other Blockchain to sync with
     *
-    * To sync the databases, all blocks from one database which are unknown to the other are pushed to the other, then
-    * the same thing in reverse. Whichever database has more blocks will have its blocks sent to the other first.
+    * To sync the blockchains, all blocks from one blockchain which are unknown to the other are pushed to the other, 
+    * then the same thing in reverse. Whichever blockchain has more blocks will have its blocks sent to the other 
+    * first.
     *
     * Blocks not on the main fork are ignored.
     */
-   void sync_with(testing_database& other);
+   void sync_with(testing_blockchain& other);
 
    /// @brief Get the liquid balance belonging to the named account
    Asset get_liquid_balance(const types::AccountName& account);
@@ -181,39 +182,39 @@ protected:
 using boost::signals2::scoped_connection;
 
 /**
- * @brief The testing_network class provides a simplistic virtual P2P network connecting testing_databases together.
+ * @brief The testing_network class provides a simplistic virtual P2P network connecting testing_blockchains together.
  *
- * A testing_database may be connected to zero or more testing_networks at any given time. When a new testing_database
- * joins the network, it will be synced with all other databases already in the network (blocks known only to the new
- * database will be pushed to the prior network members and vice versa, ignoring blocks not on the main fork). After
- * this, whenever any database in the network gets a new block, that block will be pushed to all other databases in the
- * network as well.
+ * A testing_blockchain may be connected to zero or more testing_networks at any given time. When a new 
+ * testing_blockchain joins the network, it will be synced with all other blockchains already in the network (blocks 
+ * known only to the new chain will be pushed to the prior network members and vice versa, ignoring blocks not on the 
+ * main fork). After this, whenever any blockchain in the network gets a new block, that block will be pushed to all 
+ * other blockchains in the network as well.
  */
 class testing_network {
 public:
    /**
     * @brief Add a new database to the network
-    * @param new_database The database to add
+    * @param new_blockchain The blockchain to add
     */
-   void connect_database(testing_database& new_database);
+   void connect_blockchain(testing_blockchain& new_database);
    /**
     * @brief Remove a database from the network
-    * @param leaving_database The database to remove
+    * @param leaving_blockchain The database to remove
     */
-   void disconnect_database(testing_database& leaving_database);
+   void disconnect_database(testing_blockchain& leaving_blockchain);
    /**
-    * @brief Disconnect all databases from the network
+    * @brief Disconnect all blockchains from the network
     */
    void disconnect_all();
 
    /**
-    * @brief Send a block to all databases in this network
+    * @brief Send a block to all blockchains in this network
     * @param block The block to send
     */
-   void propagate_block(const signed_block& block, const testing_database& skip_db);
+   void propagate_block(const signed_block& block, const testing_blockchain& skip_db);
 
 protected:
-   std::map<testing_database*, scoped_connection> databases;
+   std::map<testing_blockchain*, scoped_connection> blockchains;
 };
 
 /// Some helpful macros to reduce boilerplate when making testcases
@@ -221,53 +222,53 @@ protected:
 #include "macro_support.hpp"
 
 /**
- * @brief Create/Open a testing_database, optionally with an ID
+ * @brief Create/Open a testing_blockchain, optionally with an ID
  *
- * Creates and opens a testing_database with the first argument as its name, and, if present, the second argument as
+ * Creates and opens a testing_blockchain with the first argument as its name, and, if present, the second argument as
  * its ID. The ID should be provided without quotes.
  *
  * Example:
  * @code{.cpp}
- * // Create testing_database db1
- * Make_Database(db1)
+ * // Create testing_blockchain chain1
+ * Make_Blockchain(chain1)
  *
  * // The above creates the following objects:
- * chainbase::database db1_db;
- * block_log db1_log;
- * fork_database db1_fdb;
- * native_contract::native_contract_chain_initializer db1_initializer;
- * testing_database db1;
+ * chainbase::database chain1_db;
+ * block_log chain1_log;
+ * fork_database chain1_fdb;
+ * native_contract::native_contract_chain_initializer chain1_initializer;
+ * testing_blockchain chain1;
  * @endcode
  */
-#define Make_Database(...) BOOST_PP_OVERLOAD(MKDB, __VA_ARGS__)(__VA_ARGS__)
+#define Make_Blockchain(...) BOOST_PP_OVERLOAD(MKCHAIN, __VA_ARGS__)(__VA_ARGS__)
 /**
- * @brief Similar to @ref Make_Database, but works with several databases at once
+ * @brief Similar to @ref Make_Blockchain, but works with several chains at once
  *
- * Creates and opens several testing_databases
+ * Creates and opens several testing_blockchains
  *
  * Example:
  * @code{.cpp}
- * // Create testing_databases db1 and db2, with db2 having ID "id2"
- * Make_Databases((db1)(db2, id2))
+ * // Create testing_blockchains chain1 and chain2, with chain2 having ID "id2"
+ * Make_Blockchains((chain1)(chain2, id2))
  * @endcode
  */
-#define Make_Databases(...) BOOST_PP_SEQ_FOR_EACH(MKDBS_MACRO, _, __VA_ARGS__)
+#define Make_Blockchains(...) BOOST_PP_SEQ_FOR_EACH(MKCHAINS_MACRO, _, __VA_ARGS__)
 
 /**
- * @brief Make_Network is a shorthand way to create a testing_network and connect some testing_databases to it.
+ * @brief Make_Network is a shorthand way to create a testing_network and connect some testing_blockchains to it.
  *
  * Example usage:
  * @code{.cpp}
- * // Create and open testing_databases named alice, bob, and charlie
+ * // Create and open testing_blockchains named alice, bob, and charlie
  * MKDBS((alice)(bob)(charlie))
  * // Create a testing_network named net and connect alice and bob to it
  * Make_Network(net, (alice)(bob))
  *
  * // Connect charlie to net, then disconnect alice
- * net.connect_database(charlie);
- * net.disconnect_database(alice);
+ * net.connect_blockchain(charlie);
+ * net.disconnect_blockchain(alice);
  *
- * // Create a testing_network named net2 with no databases connected
+ * // Create a testing_network named net2 with no blockchains connected
  * Make_Network(net2)
  * @endcode
  */
@@ -309,13 +310,14 @@ protected:
  * @brief Make_Account is a shorthand way to create an account
  *
  * Use Make_Account to create an account, including keys. The changes will be applied via a transaction applied to the
- * provided database object. The changes will not be incorporated into a block; they will be left in the pending state.
+ * provided blockchain object. The changes will not be incorporated into a block; they will be left in the pending 
+ * state.
  *
  * Unless overridden, new accounts are created with a balance of Asset(100)
  *
  * Example:
  * @code{.cpp}
- * Make_Account(db, joe)
+ * Make_Account(chain, joe)
  * // ... creates these objects:
  * private_key_type joe_private_key;
  * PublicKey joe_public_key;
@@ -325,14 +327,14 @@ protected:
  *
  * You may specify a third argument for the creating account:
  * @code{.cpp}
- * // Same as MKACCT(db, joe) except that sam will create joe's account instead of init0
- * Make_Account(db, joe, sam)
+ * // Same as MKACCT(chain, joe) except that sam will create joe's account instead of init0
+ * Make_Account(chain, joe, sam)
  * @endcode
  *
  * You may specify a fourth argument for the amount to transfer in account creation:
  * @code{.cpp}
- * // Same as MKACCT(db, joe, sam) except that sam will send joe ASSET(100) during creation
- * Make_Account(db, joe, sam, Asset(100))
+ * // Same as MKACCT(chain, joe, sam) except that sam will send joe ASSET(100) during creation
+ * Make_Account(chain, joe, sam, Asset(100))
  * @endcode
  *
  * You may specify a fifth argument, which will be used as the owner authority (must be an Authority, NOT a key!).
@@ -350,13 +352,13 @@ protected:
  * Use Transfer_Asset to send funds from one account to another:
  * @code{.cpp}
  * // Send 10 EOS from alice to bob
- * Transfer_Asset(db, alice, bob, Asset(10));
+ * Transfer_Asset(chain, alice, bob, Asset(10));
  *
  * // Send 10 EOS from alice to bob with memo "Thanks for all the fish!"
- * Transfer_Asset(db, alice, bob, Asset(10), "Thanks for all the fish!");
+ * Transfer_Asset(chain, alice, bob, Asset(10), "Thanks for all the fish!");
  * @endcode
  *
- * The changes will be applied via a transaction applied to the provided database object. The changes will not be
+ * The changes will be applied via a transaction applied to the provided blockchain object. The changes will not be
  * incorporated into a block; they will be left in the pending state.
  */
 #define Transfer_Asset(...) BOOST_PP_OVERLOAD(XFER, __VA_ARGS__)(__VA_ARGS__)
@@ -367,10 +369,10 @@ protected:
  * Use Stake_Asset to stake liquid funds:
  * @code{.cpp}
  * // Convert 10 of bob's EOS from liquid to staked
- * Stake_Asset(db, bob, Asset(10).amount);
+ * Stake_Asset(chain, bob, Asset(10).amount);
  *
  * // Stake and transfer 10 EOS from alice to bob (alice pays liquid EOS and bob receives stake)
- * Stake_Asset(db, alice, bob, Asset(10).amount);
+ * Stake_Asset(chain, alice, bob, Asset(10).amount);
  * @endcode
  */
 #define Stake_Asset(...) BOOST_PP_OVERLOAD(STAKE, __VA_ARGS__)(__VA_ARGS__)
@@ -381,7 +383,7 @@ protected:
  * Use Unstake_Asset to begin unstaking funds:
  * @code{.cpp}
  * // Begin unstaking 10 of bob's EOS
- * Unstake_Asset(db, bob, Asset(10).amount);
+ * Unstake_Asset(chain, bob, Asset(10).amount);
  * @endcode
  *
  * This can also be used to cancel an unstaking in progress, by passing Asset(0) as the amount.
@@ -394,7 +396,7 @@ protected:
  * Use Finish_Unstake_Asset to liquidate unstaked funds:
  * @code{.cpp}
  * // Reclaim as liquid 10 of bob's unstaked EOS
- * Unstake_Asset(db, bob, Asset(10).amount);
+ * Unstake_Asset(chain, bob, Asset(10).amount);
  * @endcode
  */
 #define Finish_Unstake_Asset(...) BOOST_PP_OVERLOAD(FINISH_UNSTAKE, __VA_ARGS__)(__VA_ARGS__)
@@ -405,20 +407,20 @@ protected:
  * Use Allow_Proxy to set whether an accound allows other accounts to proxy votes to it:
  * @code{.cpp}
  * // Enable proxying to bob
- * Allow_Proxy(db, bob, true);
+ * Allow_Proxy(chain, bob, true);
  *
  * // Disable proxying to sam
- * Allow_Proxy(db, sam, false);
+ * Allow_Proxy(chain, sam, false);
  * @endcode
  */
-#define Allow_Proxy(db, proxy, allowed) \
+#define Allow_Proxy(chain, proxy, allowed) \
 { \
    eos::chain::SignedTransaction trx; \
    trx.emplaceMessage(#proxy, config::StakedBalanceContractName, vector<AccountName>{}, "AllowVoteProxying", \
                       types::AllowVoteProxying{bool(allowed)}); \
-   trx.expiration = db.head_block_time() + 100; \
-   trx.set_reference_block(db.head_block_id()); \
-   db.push_transaction(trx); \
+   trx.expiration = chain.head_block_time() + 100; \
+   trx.set_reference_block(chain.head_block_id()); \
+   chain.push_transaction(trx); \
 }
 
 /**
@@ -427,13 +429,13 @@ protected:
  * Use Set_Proxy to set what account a stakeholding account proxies its voting power to
  * @code{.cpp}
  * // Proxy sam's votes to bob
- * Set_Proxy(db, sam, bob);
+ * Set_Proxy(chain, sam, bob);
  *
  * // Unproxy sam's votes
- * Set_Proxy(db, sam, sam);
+ * Set_Proxy(chain, sam, sam);
  * @endcode
  */
-#define Set_Proxy(db, stakeholder, proxy) \
+#define Set_Proxy(chain, stakeholder, proxy) \
 { \
    eos::chain::SignedTransaction trx; \
    vector<AccountName> notifies; \
@@ -441,9 +443,9 @@ protected:
       notifies.emplace_back(#proxy); \
    trx.emplaceMessage(#stakeholder, config::StakedBalanceContractName, notifies, "SetVoteProxy", \
                       types::SetVoteProxy{#proxy}); \
-   trx.expiration = db.head_block_time() + 100; \
-   trx.set_reference_block(db.head_block_id()); \
-   db.push_transaction(trx); \
+   trx.expiration = chain.head_block_time() + 100; \
+   trx.set_reference_block(chain.head_block_id()); \
+   chain.push_transaction(trx); \
 }
 
 /**
@@ -453,13 +455,13 @@ protected:
  * @code{.cpp}
  * // Create a block producer belonging to joe using signing_key as the block signing key and config as the producer's
  * // vote for a @ref BlockchainConfiguration:
- * Make_Producer(db, joe, signing_key, config);
+ * Make_Producer(chain, joe, signing_key, config);
  *
  * // Create a block producer belonging to joe using signing_key as the block signing key:
- * Make_Producer(db, joe, signing_key);
+ * Make_Producer(chain, joe, signing_key);
  *
  * // Create a block producer belonging to joe, using a new key as the block signing key:
- * Make_Producer(db, joe);
+ * Make_Producer(chain, joe);
  * // ... creates the objects:
  * private_key_type joe_producer_private_key;
  * PublicKey joe_producer_public_key;
@@ -473,9 +475,9 @@ protected:
  * Use Approve_Producer to change an account's approval of a block producer:
  * @code{.cpp}
  * // Set joe's approval for pete's block producer to Approve
- * Approve_Producer(db, joe, pete, true);
+ * Approve_Producer(chain, joe, pete, true);
  * // Set joe's approval for pete's block producer to Disapprove
- * Approve_Producer(db, joe, pete, false);
+ * Approve_Producer(chain, joe, pete, false);
  * @endcode
  */
 #define Approve_Producer(...) BOOST_PP_OVERLOAD(APPDCR, __VA_ARGS__)(__VA_ARGS__)
@@ -494,10 +496,10 @@ protected:
  * @code{.cpp}
  * // Update a block producer belonging to joe using signing_key as the new block signing key, and config as the
  * // producer's new vote for a @ref BlockchainConfiguration:
- * Update_Producer(db, "joe", signing_key, config)
+ * Update_Producer(chain, "joe", signing_key, config)
  *
  * // Update a block producer belonging to joe using signing_key as the new block signing key:
- * Update_Producer(db, "joe", signing_key)
+ * Update_Producer(chain, "joe", signing_key)
  * @endcode
  */
 #define Update_Producer(...) BOOST_PP_OVERLOAD(UPPDCR, __VA_ARGS__)(__VA_ARGS__)
