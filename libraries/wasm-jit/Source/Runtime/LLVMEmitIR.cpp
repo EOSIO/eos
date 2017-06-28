@@ -25,7 +25,7 @@ namespace LLVMJIT
 		llvm::Constant* defaultTablePointer;
 		llvm::Constant* defaultTableEndOffset;
 		llvm::Constant* defaultMemoryBase;
-		llvm::Constant* defaultMemoryAddressMask;
+		llvm::Constant* defaultMemoryEndOffset;
 		
 		llvm::DIBuilder diBuilder;
 		llvm::DICompileUnit* diCompileUnit;
@@ -217,23 +217,56 @@ namespace LLVMJIT
 		// Bounds checks and converts a memory operation I32 address operand to a LLVM pointer.
 		llvm::Value* coerceByteIndexToPointer(llvm::Value* byteIndex,U32 offset,llvm::Type* memoryType)
 		{
-			// On a 64 bit runtime, if the address is 32-bits, zext it to 64-bits.
-			// This is crucial for security, as LLVM will otherwise implicitly sign extend it to 64-bits in the GEP below,
-			// interpreting it as a signed offset and allowing access to memory outside the sandboxed memory range.
-			// There are no 'far addresses' in a 32 bit runtime.
-			llvm::Value* nativeByteIndex = sizeof(Uptr) == 4 ? byteIndex : irBuilder.CreateZExt(byteIndex,llvmI64Type);
-			llvm::Value* offsetByteIndex = nativeByteIndex;
-			if(offset)
+			if(HAS_64BIT_ADDRESS_SPACE)
 			{
-				auto nativeOffset = sizeof(Uptr) == 4 ? emitLiteral((U32)offset) : irBuilder.CreateZExt(emitLiteral((U32)offset),llvmI64Type);
-				offsetByteIndex = irBuilder.CreateAdd(nativeByteIndex,nativeOffset);
+				// On a 64 bit runtime, if the address is 32-bits, zext it to 64-bits.
+				// This is crucial for security, as LLVM will otherwise implicitly sign extend it to 64-bits in the GEP below,
+				// interpreting it as a signed offset and allowing access to memory outside the sandboxed memory range.
+				// There are no 'far addresses' in a 32 bit runtime.
+				if(sizeof(Uptr) != 4) { byteIndex = irBuilder.CreateZExt(byteIndex,llvmI64Type); }
+
+				// Add the offset to the byte index.
+				if(offset)
+				{
+					byteIndex = irBuilder.CreateAdd(byteIndex,irBuilder.CreateZExt(emitLiteral(offset),llvmI64Type));
+				}
+
+				// If HAS_64BIT_ADDRESS_SPACE, the memory has enough virtual address space allocated to
+				// ensure that any 32-bit byte index + 32-bit offset will fall within the virtual address sandbox,
+				// so no explicit bounds check is necessary.
+			}
+			else
+			{
+				// Add the offset to the byte index using a LLVM intrinsic that returns a carry bit if the add overflowed.
+				llvm::Value* overflowed = emitLiteral(false);
+				if(offset)
+				{
+					auto offsetByteIndexWithOverflow = irBuilder.CreateCall(
+						getLLVMIntrinsic({llvmI32Type},llvm::Intrinsic::uadd_with_overflow),
+						{byteIndex,emitLiteral(U32(offset))}
+						);
+					byteIndex = irBuilder.CreateExtractValue(offsetByteIndexWithOverflow,{0});
+					overflowed = irBuilder.CreateExtractValue(offsetByteIndexWithOverflow,{1});
+				}
+
+				// Check that the offset didn't overflow, and that the final byte index is within the virtual address space
+				// allocated for the memory.
+				emitConditionalTrapIntrinsic(
+					irBuilder.CreateOr(
+						overflowed,
+						irBuilder.CreateICmpUGT(
+							byteIndex,
+							irBuilder.CreateSub(
+								moduleContext.defaultMemoryEndOffset,
+								emitLiteral(Uptr(memoryType->getPrimitiveSizeInBits() / 8) - 1)
+								)
+							)
+						),
+					"wavmIntrinsics.accessViolationTrap",FunctionType::get(),{});
 			}
 
-			// Mask the index to the address-space size.
-			auto maskedByteIndex = irBuilder.CreateAnd(offsetByteIndex,moduleContext.defaultMemoryAddressMask);
-
 			// Cast the pointer to the appropriate type.
-			auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,maskedByteIndex);
+			auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,byteIndex);
 			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo());
 		}
 
@@ -1559,10 +1592,10 @@ namespace LLVMJIT
 		if(moduleInstance->defaultMemory)
 		{
 			defaultMemoryBase = emitLiteralPointer(moduleInstance->defaultMemory->baseAddress,llvmI8PtrType);
-			const Uptr defaultMemoryAddressMaskValue = Uptr(moduleInstance->defaultMemory->endOffset) - 1;
-			defaultMemoryAddressMask = emitLiteral(defaultMemoryAddressMaskValue);
+			const Uptr defaultMemoryEndOffsetValue = Uptr(moduleInstance->defaultMemory->endOffset);
+			defaultMemoryEndOffset = emitLiteral(defaultMemoryEndOffsetValue);
 		}
-		else { defaultMemoryBase = defaultMemoryAddressMask = nullptr; }
+		else { defaultMemoryBase = defaultMemoryEndOffset = nullptr; }
 
 		// Set up the LLVM values used to access the global table.
 		if(moduleInstance->defaultTable)

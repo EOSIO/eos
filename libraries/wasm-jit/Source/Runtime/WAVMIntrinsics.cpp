@@ -132,6 +132,11 @@ namespace Runtime
 	{
 		causeException(Exception::Cause::reachedUnreachable);
 	}
+	
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,accessViolationTrap,accessViolationTrap,none)
+	{
+		causeException(Exception::Cause::accessViolation);
+	}
 
 	DEFINE_INTRINSIC_FUNCTION3(wavmIntrinsics,indirectCallSignatureMismatch,indirectCallSignatureMismatch,none,i32,index,i64,expectedSignatureBits,i64,tableBits)
 	{

@@ -30,19 +30,20 @@ namespace Runtime
 
 		// On a 64-bit runtime, allocate 8GB of address space for the memory.
 		// This allows eliding bounds checks on memory accesses, since a 32-bit index + 32-bit offset will always be within the reserved address-space.
-		// On a 32-bit runtime, allocate 512MB.
-		const Uptr memoryMaxBytes = HAS_64BIT_ADDRESS_SPACE ? 8ull*1024*1024*1024 : 0x20000000;
+		// On a 32-bit runtime, allocate 256MB.
+		const Uptr memoryMaxBytes = HAS_64BIT_ADDRESS_SPACE ? Uptr(8ull*1024*1024*1024) : 0x10000000;
 		
 		// On a 64 bit runtime, align the instance memory base to a 4GB boundary, so the lower 32-bits will all be zero. Maybe it will allow better code generation?
 		// Note that this reserves a full extra 4GB, but only uses (4GB-1 page) for alignment, so there will always be a guard page at the end to
 		// protect against unaligned loads/stores that straddle the end of the address-space.
-		const Uptr alignmentBytes = HAS_64BIT_ADDRESS_SPACE ? 4ull*1024*1024*1024 : ((Uptr)1 << Platform::getPageSizeLog2());
+		const Uptr alignmentBytes = HAS_64BIT_ADDRESS_SPACE ? Uptr(4ull*1024*1024*1024) : ((Uptr)1 << Platform::getPageSizeLog2());
 		memory->baseAddress = allocateVirtualPagesAligned(memoryMaxBytes,alignmentBytes,memory->reservedBaseAddress,memory->reservedNumPlatformPages);
 		memory->endOffset = memoryMaxBytes;
 		if(!memory->baseAddress) { delete memory; return nullptr; }
 
 		// Grow the memory to the type's minimum size.
-		if(growMemory(memory,type.size.min) == -1) { delete memory; return nullptr; }
+		assert(type.size.min <= UINTPTR_MAX);
+		if(growMemory(memory,Uptr(type.size.min)) == -1) { delete memory; return nullptr; }
 
 		// Add the memory to the global array.
 		memories.push_back(memory);
@@ -79,7 +80,11 @@ namespace Runtime
 	}
 
 	Uptr getMemoryNumPages(MemoryInstance* memory) { return memory->numPages; }
-	Uptr getMemoryMaxPages(MemoryInstance* memory) { return memory->type.size.max; }
+	Uptr getMemoryMaxPages(MemoryInstance* memory)
+	{
+		assert(memory->type.size.max <= UINTPTR_MAX);
+		return Uptr(memory->type.size.max);
+	}
 
 	Iptr growMemory(MemoryInstance* memory,Uptr numNewPages)
 	{

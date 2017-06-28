@@ -11,11 +11,17 @@
 	#define DUMP_UNOPTIMIZED_MODULE 1
 	#define VERIFY_MODULE 1
 	#define DUMP_OPTIMIZED_MODULE 1
+	#define PRINT_DISASSEMBLY 1
 #else
 	#define USE_WRITEABLE_JIT_CODE_PAGES 0
 	#define DUMP_UNOPTIMIZED_MODULE 0
 	#define VERIFY_MODULE 0
 	#define DUMP_OPTIMIZED_MODULE 0
+	#define DUMP_DISASSEMBLY 0
+#endif
+
+#if PRINT_DISASSEMBLY
+#include "llvm-c/Disassembler.h"
 #endif
 
 namespace LLVMJIT
@@ -225,7 +231,7 @@ namespace LLVMJIT
 		~JITUnit()
 		{
 			compileLayer->removeModuleSet(handle);
-			#ifdef _WIN32
+			#ifdef _WIN64
 				if(pdataCopy) { Platform::deregisterSEHUnwindInfo(reinterpret_cast<Uptr>(pdataCopy)); }
 			#endif
 		}
@@ -328,7 +334,11 @@ namespace LLVMJIT
 
 		void notifySymbolLoaded(const char* name,Uptr baseAddress,Uptr numBytes,std::map<U32,U32>&& offsetToOpIndexMap) override
 		{
-			assert(!strcmp(name,"invokeThunk"));
+			#if defined(_WIN32) && !defined(_WIN64)
+				assert(!strcmp(name,"_invokeThunk"));
+			#else
+				assert(!strcmp(name,"invokeThunk"));
+			#endif
 			symbol = new JITSymbol(functionType,baseAddress,numBytes,std::move(offsetToOpIndexMap));
 		}
 	};
@@ -341,18 +351,43 @@ namespace LLVMJIT
 		virtual llvm::JITSymbol findSymbolInLogicalDylib(const std::string& name) override;
 	};
 	
+	static std::map<std::string,const char*> runtimeSymbolMap =
+	{
+		#ifdef _WIN32
+			// the LLVM X86 code generator calls __chkstk when allocating more than 4KB of stack space
+			{"__chkstk","__chkstk"},
+			#ifndef _WIN64
+			{"__aullrem","_aullrem"},
+			{"__allrem","_allrem"},
+			{"__aulldiv","_aulldiv"},
+			{"__alldiv","_alldiv"},
+			#endif
+		#endif
+		#ifdef __ARM__
+		{"__aeabi_uidiv","__aeabi_uidiv"},
+		{"__aeabi_idiv","__aeabi_idiv"},
+		{"__aeabi_idivmod","__aeabi_idivmod"},
+		{"__aeabi_uldiv","__aeabi_uldiv"},
+		{"__aeabi_uldivmod","__aeabi_uldivmod"},
+		{"__aeabi_unwind_cpp_pr0","__aeabi_unwind_cpp_pr0"},
+		{"__aeabi_unwind_cpp_pr1","__aeabi_unwind_cpp_pr1"},
+		#endif
+	};
+
 	NullResolver NullResolver::singleton;
 	llvm::JITSymbol NullResolver::findSymbol(const std::string& name)
 	{
-		// Allow __chkstk through: the LLVM X86 code generator adds calls to it when allocating more than 4KB of stack space.
-		if(name == "__chkstk")
+		// Allow some intrinsics used by LLVM
+		auto runtimeSymbolNameIt = runtimeSymbolMap.find(name);
+		if(runtimeSymbolNameIt != runtimeSymbolMap.end())
 		{
-			void *addr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name);
-			if (addr) { return llvm::JITSymbol(reinterpret_cast<Uptr>(addr),llvm::JITSymbolFlags::None); }
+			const char* lookupName = runtimeSymbolNameIt->second;
+			void *addr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(lookupName);
+			if(!addr) { Errors::fatalf("LLVM generated code references undefined external symbol: %s\n",lookupName); }
+			return llvm::JITSymbol(reinterpret_cast<Uptr>(addr),llvm::JITSymbolFlags::None);
 		}
 
-		Log::printf(Log::Category::error,"LLVM generated code referenced external symbol: %s\n",name.c_str());
-		Errors::unreachable();
+		Errors::fatalf("LLVM generated code references disallowed external symbol: %s\n",name.c_str());
 	}
 	llvm::JITSymbol NullResolver::findSymbolInLogicalDylib(const std::string& name) { return llvm::JITSymbol(nullptr); }
 
@@ -371,7 +406,7 @@ namespace LLVMJIT
 			// Make a copy of the loaded object info for use by the finalizer.
 			jitUnit->loadedObjects.push_back({object,loadedObject});
 
-			#ifdef _WIN32
+			#ifdef _WIN64
 				// On Windows, look for .pdata and .xdata sections containing information about how to unwind the stack.
 				// This needs to be done before the below emitAndFinalize call, which will incorrectly apply relocations to the unwind info.
 				
@@ -423,6 +458,36 @@ namespace LLVMJIT
 
 	}
 
+	#if PRINT_DISASSEMBLY
+	void disassembleFunction(U8* bytes,Uptr numBytes)
+	{
+		LLVMDisasmContextRef disasmRef = LLVMCreateDisasm(llvm::sys::getProcessTriple().c_str(),nullptr,0,nullptr,nullptr);
+
+		U8* nextByte = bytes;
+		Uptr numBytesRemaining = numBytes;
+		while(numBytesRemaining)
+		{
+			char instructionBuffer[256];
+			const Uptr numInstructionBytes = LLVMDisasmInstruction(
+				disasmRef,
+				nextByte,
+				numBytesRemaining,
+				reinterpret_cast<Uptr>(nextByte),
+				instructionBuffer,
+				sizeof(instructionBuffer)
+				);
+			assert(numInstructionBytes > 0);
+			assert(numInstructionBytes <= numBytesRemaining);
+			numBytesRemaining -= numInstructionBytes;
+			nextByte += numInstructionBytes;
+
+			Log::printf(Log::Category::debug,"\t\t%s\n",instructionBuffer);
+		};
+
+		LLVMDisasmDispose(disasmRef);
+	}
+	#endif
+
 	void JITUnit::NotifyFinalizedFunctor::operator()(const llvm::orc::ObjectLinkingLayerBase::ObjSetHandleT& objectSetHandle)
 	{
 		for(Uptr objectIndex = 0;objectIndex < jitUnit->loadedObjects.size();++objectIndex)
@@ -444,7 +509,8 @@ namespace LLVMJIT
 				&&	address)
 				{
 					// Compute the address the functions was loaded at.
-					Uptr loadedAddress = *address;
+					assert(*address <= UINTPTR_MAX);
+					Uptr loadedAddress = Uptr(*address);
 					auto symbolSection = symbol.getSection();
 					if(symbolSection)
 					{
@@ -455,9 +521,19 @@ namespace LLVMJIT
 					llvm::DILineInfoTable lineInfoTable = dwarfContext->getLineInfoForAddressRange(loadedAddress,symbolSizePair.second);
 					std::map<U32,U32> offsetToOpIndexMap;
 					for(auto lineInfo : lineInfoTable) { offsetToOpIndexMap.emplace(U32(lineInfo.first - loadedAddress),lineInfo.second.Line); }
+					
+					#if PRINT_DISASSEMBLY
+					Log::printf(Log::Category::error,"Disassembly for function %s\n",name.get().data());
+					disassembleFunction(reinterpret_cast<U8*>(loadedAddress),Uptr(symbolSizePair.second));
+					#endif
 
 					// Notify the JIT unit that the symbol was loaded.
-					jitUnit->notifySymbolLoaded(name->data(),loadedAddress,symbolSizePair.second,std::move(offsetToOpIndexMap));
+					assert(symbolSizePair.second <= UINTPTR_MAX);
+					jitUnit->notifySymbolLoaded(
+						name->data(),loadedAddress,
+						Uptr(symbolSizePair.second),
+						std::move(offsetToOpIndexMap)
+						);
 				}
 			}
 		}
@@ -525,7 +601,7 @@ namespace LLVMJIT
 		{
 			Timing::logRatePerSecond("Generated machine code",machineCodeTimer,(F64)llvmModule->size(),"functions");
 		}
-		
+
 		delete llvmModule;
 	}
 
@@ -551,10 +627,18 @@ namespace LLVMJIT
 
 	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex)
 	{
-		if(!strncmp(externalName,"wasmFunc",8))
+		#if defined(_WIN32) && !defined(_WIN64)
+			const char wasmFuncPrefix[] = "_wasmFunc";
+		#else
+			const char wasmFuncPrefix[] = "wasmFunc";
+		#endif
+		const Uptr numPrefixChars = sizeof(wasmFuncPrefix) - 1;
+		if(!strncmp(externalName,wasmFuncPrefix,numPrefixChars))
 		{
 			char* numberEnd = nullptr;
-			outFunctionDefIndex = std::strtoull(externalName + 8,&numberEnd,10);
+			U64 functionDefIndex64 = std::strtoull(externalName + numPrefixChars,&numberEnd,10);
+			if(functionDefIndex64 > UINTPTR_MAX) { return false; }
+			outFunctionDefIndex = Uptr(functionDefIndex64);
 			return true;
 		}
 		else { return false; }
@@ -663,6 +747,7 @@ namespace LLVMJIT
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmPrinter();
 		llvm::InitializeNativeTargetAsmParser();
+		llvm::InitializeNativeTargetDisassembler();
 		llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 
 		auto targetTriple = llvm::sys::getProcessTriple();
@@ -671,7 +756,15 @@ namespace LLVMJIT
 			// our symbols can't be found in the JITed object file.
 			targetTriple += "-elf";
 		#endif
-		targetMachine = llvm::EngineBuilder().selectTarget(llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>());
+		targetMachine = llvm::EngineBuilder().selectTarget(
+			llvm::Triple(targetTriple),"","",
+			#if defined(_WIN32) && !defined(_WIN64)
+				// Use SSE2 instead of the FPU on x86 for more control over how intermediate results are rounded.
+				llvm::SmallVector<std::string,1>({"+sse2"})
+			#else
+				llvm::SmallVector<std::string,0>()
+			#endif
+			);
 
 		llvmI8Type = llvm::Type::getInt8Ty(context);
 		llvmI16Type = llvm::Type::getInt16Ty(context);
