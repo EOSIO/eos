@@ -10,20 +10,18 @@ namespace eos { namespace chain {
 
 class message_validate_context {
 public:
-   explicit message_validate_context(const chain::Message& m)
-      :msg(m){}
+   explicit message_validate_context(const chainbase::database& d, const chain::Message& m, types::AccountName s)
+      :msg(m),db(d),scope(s){}
 
-   const chain::Message& msg;
+   const chain::Message&        msg;
+   const chainbase::database&   db;    /// required only for loading the contract code
+   types::AccountName           scope; /// the contract that is being called
 };
 
 class precondition_validate_context : public message_validate_context {
 public:
    precondition_validate_context(const chainbase::database& db, const chain::Message& m, const types::AccountName& scope)
-      :message_validate_context(m),scope(scope),db(db){}
-
-
-   const types::AccountName& scope;
-   const chainbase::database& db;
+      :message_validate_context(db, m, scope){}
 };
 
 class apply_context : public precondition_validate_context {

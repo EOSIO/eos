@@ -273,19 +273,6 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
      }
    };
 
-   void wasm_interface::validate( message_validate_context& c ) {
-      current_validate_context       = &c;
-      current_precondition_context   = nullptr;
-      current_apply_context          = nullptr;
-
-   }
-
-   void wasm_interface::precondition( precondition_validate_context& c ) {
-      current_validate_context       = &c;
-      current_precondition_context   = &c;
-      current_apply_context          = nullptr;
-   }
-
 
    char* wasm_interface::vm_allocate( int bytes ) {
 			FunctionInstance* alloc_function = asFunctionNullable(getInstanceExport(current_module,"alloc"));
@@ -303,29 +290,29 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       return U32(ptr - &memoryRef<char>(current_memory,0));
    }
 
-   void  wasm_interface::vm_apply()
-   { try {
+   void  wasm_interface::vm_call( std::string name ) {
+   try {
       try {
-         std::string mangledapply("onApply_");
-         mangledapply += std::string( current_validate_context->msg.type ) + "_";
-         mangledapply += std::string( current_validate_context->msg.recipient );
-//         idump((mangledapply));
+         name += std::string( current_validate_context->msg.type ) + "_";
+         name += std::string( current_validate_context->msg.recipient );
 
-				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,mangledapply.c_str()));
+				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,name.c_str()));
 		 		 if( !apply ) return; /// if not found then it is a no-op
 
 				 const FunctionType* functionType = getFunctionType(apply);
 				 FC_ASSERT( functionType->parameters.size() == 0 );
-
 				 std::vector<Value> args(0);
-
 				 Runtime::invokeFunction(apply,args);
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
 					edump((e.callStack));
 					throw;
       }
-   } FC_CAPTURE_AND_RETHROW() }
+   } FC_CAPTURE_AND_RETHROW( (name)(current_validate_context->msg.type) ) }
+
+   void  wasm_interface::vm_precondition() { vm_call( "onPrecondition_" ); } 
+   void  wasm_interface::vm_apply()        { vm_call( "onApply_" );        }
+   void  wasm_interface::vm_validate()     { vm_call("onValidate_");       }
 
    void  wasm_interface::vm_onInit()
    { try {
@@ -350,28 +337,48 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       }
    } FC_CAPTURE_AND_RETHROW() }
 
+   void wasm_interface::validate( message_validate_context& c ) {
+
+      current_validate_context       = &c;
+      current_precondition_context   = nullptr;
+      current_apply_context          = nullptr;
+
+      load( c.scope, c.db );
+      vm_validate();
+   }
+
+
    void wasm_interface::apply( apply_context& c ) {
     try {
-      load( c.scope, c.db );
 
       current_validate_context       = &c;
       current_precondition_context   = &c;
       current_apply_context          = &c;
 
+      load( c.scope, c.db );
       vm_apply();
 
    } FC_CAPTURE_AND_RETHROW() }
 
    void wasm_interface::init( apply_context& c ) {
     try {
-//      ilog( "WASM INTERFACE INIT" );
-      load( c.scope, c.db );
-
       current_validate_context       = &c;
       current_precondition_context   = &c;
       current_apply_context          = &c;
 
+      load( c.scope, c.db );
       vm_onInit();
+
+   } FC_CAPTURE_AND_RETHROW() }
+
+   void wasm_interface::precondition( precondition_validate_context& c ) {
+   try {
+      load( c.scope, c.db );
+
+      current_validate_context       = &c;
+      current_precondition_context   = &c;
+
+      vm_precondition();
 
    } FC_CAPTURE_AND_RETHROW() }
 

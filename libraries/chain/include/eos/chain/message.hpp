@@ -44,6 +44,14 @@ struct Message : public types::Message {
          if(no == n) return true;
       return false; 
    }
+
+   template<typename Lambda>
+   void for_each_handler( Lambda&& l )const {
+      l( sender );
+      l( recipient );
+      for( const auto& notice : notify )
+         l(notice);
+   }
 };
 
 

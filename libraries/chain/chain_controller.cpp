@@ -512,19 +512,24 @@ try {
    validate_expiration(trx);
 
    for (const auto& tm : trx.messages) { /// TODO: this loop can be processed in parallel
-      Message m(tm);
-      message_validate_context mvc(m);
-      auto contract_handlers_itr = message_validate_handlers.find(m.recipient);
-      if (contract_handlers_itr != message_validate_handlers.end()) {
-         auto message_handler_itr = contract_handlers_itr->second.find({m.recipient, m.type});
-         if (message_handler_itr != contract_handlers_itr->second.end()) {
-            message_handler_itr->second(mvc);
-            continue;
+      const Message* m = reinterpret_cast<const Message*>(&tm); //  m(tm);
+      m->for_each_handler( [&]( const AccountName& a ) {
+         message_validate_context mvc(_db,*m,a);
+         auto contract_handlers_itr = message_validate_handlers.find(a);
+         if (contract_handlers_itr != message_validate_handlers.end()) {
+            auto message_handler_itr = contract_handlers_itr->second.find({a, m->type});
+            if (message_handler_itr != contract_handlers_itr->second.end()) {
+               message_handler_itr->second(mvc);
+               return;
+            }
          }
-      }
-
-      /// TODO: dispatch to script if not handled above
+         const auto& acnt = _db.get<account_object,by_name>( a );
+         if( acnt.code.size() ) {
+            wasm_interface::get().validate( mvc );
+         }
+       });
    }
+
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void chain_controller::validate_uniqueness( const SignedTransaction& trx )const {
@@ -594,8 +599,11 @@ void chain_controller::validate_message_precondition( precondition_validate_cont
           return;
        }
     }
-    /// TODO: dispatch to script if not handled above
-   } FC_CAPTURE_AND_RETHROW() }
+    const auto& recipient = _db.get<account_object,by_name>( context.scope );
+    if( recipient.code.size() ) {
+       wasm_interface::get().precondition( context );
+    }
+} FC_CAPTURE_AND_RETHROW() }
 
 void chain_controller::process_message(Message message) {
    apply_context apply_ctx(_db, message, message.recipient);
