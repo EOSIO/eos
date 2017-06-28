@@ -74,30 +74,30 @@ namespace IR
 		serialize(stream,tableType.elementType);
 		
 		Uptr flags = 0;
-		if(!Stream::isInput && tableType.size.max != UINT64_MAX) { flags |= 1; }
+		if(!Stream::isInput && tableType.size.max != UINT64_MAX) { flags |= 0x01; }
 		#if ENABLE_THREADING_PROTOTYPE
-		if(!Stream::isInput && tableType.isShared) { flags |= 2; }
+		if(!Stream::isInput && tableType.isShared) { flags |= 0x10; }
 		serializeVarUInt32(stream,flags);
-		if(Stream::isInput) { tableType.isShared = (flags & 2) != 0; }
+		if(Stream::isInput) { tableType.isShared = (flags & 0x10) != 0; }
 		#else
 		serializeVarUInt32(stream,flags);
 		#endif
-		serialize(stream,tableType.size,flags & 1);
+		serialize(stream,tableType.size,flags & 0x01);
 	}
 
 	template<typename Stream>
 	void serialize(Stream& stream,MemoryType& memoryType)
 	{
 		Uptr flags = 0;
-		if(!Stream::isInput && memoryType.size.max != UINT64_MAX) { flags |= 1; }
+		if(!Stream::isInput && memoryType.size.max != UINT64_MAX) { flags |= 0x01; }
 		#if ENABLE_THREADING_PROTOTYPE
-		if(!Stream::isInput && memoryType.isShared) { flags |= 2; }
+		if(!Stream::isInput && memoryType.isShared) { flags |= 0x10; }
 		serializeVarUInt32(stream,flags);
-		if(Stream::isInput) { memoryType.isShared = (flags & 2) != 0; }
+		if(Stream::isInput) { memoryType.isShared = (flags & 0x10) != 0; }
 		#else
 		serializeVarUInt32(stream,flags);
 		#endif
-		serialize(stream,memoryType.size,flags & 1);
+		serialize(stream,memoryType.size,flags & 0x01);
 	}
 
 	template<typename Stream>
