@@ -45,7 +45,7 @@ using namespace eos::chain;
 
 extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
 
-#define TEST_DB_SIZE (1024*1024*10)
+#define TEST_DB_SIZE (1024*1024*1000)
 
 #define EOS_REQUIRE_THROW( expr, exc_type )          \
 {                                                         \

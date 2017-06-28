@@ -28,6 +28,7 @@
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/key_value_object.hpp>
+#include <eos/chain/block_summary_object.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -59,6 +60,17 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
       BOOST_CHECK_EQUAL(chain.head_block_num(), 6);
         chain.produce_blocks(chain.get_global_properties().active_producers.size());
       BOOST_CHECK_EQUAL(chain.head_block_num(), chain.get_global_properties().active_producers.size() + 6);
+} FC_LOG_AND_RETHROW() }
+
+// Test that TaPoS still works after block 65535 (See Issue #55)
+BOOST_FIXTURE_TEST_CASE(tapos_wrap, testing_fixture)
+{ try {
+      Make_Blockchain(chain)
+      Make_Account(chain, acct);
+      Stake_Asset(chain, acct, Asset(5).amount);
+      elog("Hang on, this will take a minute...");
+      chain.produce_blocks(65536);
+      Begin_Unstake_Asset(chain, acct, Asset(1).amount);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)

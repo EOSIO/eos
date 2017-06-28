@@ -68,7 +68,7 @@ void SignedTransaction::set_reference_block(const block_id_type& reference_block
 }
 
 bool SignedTransaction::verify_reference_block(const block_id_type& reference_block) const {
-   return refBlockNum == fc::endian_reverse_u32(reference_block._hash[0]) &&
+   return refBlockNum == (decltype(refBlockNum))fc::endian_reverse_u32(reference_block._hash[0]) &&
          refBlockPrefix == (decltype(refBlockPrefix))reference_block._hash[1];
 }
 
