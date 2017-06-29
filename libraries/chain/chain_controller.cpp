@@ -178,9 +178,9 @@ bool chain_controller::push_block(const signed_block& new_block, uint32_t skip)
 
 bool chain_controller::_push_block(const signed_block& new_block)
 { try {
-   uint32_t skip = get_node_properties().skip_flags;
+   uint32_t skip = _skip_flags;
    if (!(skip&skip_fork_db)) {
-      /// TODO: if the block is greater than the head block and before the next maitenance interval
+      /// TODO: if the block is greater than the head block and before the next maintenance interval
       // verify that the block signer is in the current set of active producers.
 
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
@@ -259,10 +259,8 @@ bool chain_controller::_push_block(const signed_block& new_block)
 void chain_controller::push_transaction(const SignedTransaction& trx, uint32_t skip)
 { try {
    with_skip_flags(skip, [&]() {
-      with_producing([&](){
-         _db.with_write_lock([&]() {
-            _push_transaction(trx);
-         });
+      _db.with_write_lock([&]() {
+         _push_transaction(trx);
       });
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
@@ -293,15 +291,13 @@ signed_block chain_controller::generate_block(
    uint32_t skip /* = 0 */
    )
 { try {
-   return with_producing( [&]() {
-      return with_skip_flags( skip, [&](){
-         auto b = _db.with_write_lock( [&](){
-           return _generate_block( when, producer, block_signing_private_key );
-         });
-         push_block(b);
-         return b;
+   return with_skip_flags( skip, [&](){
+      auto b = _db.with_write_lock( [&](){
+         return _generate_block( when, producer, block_signing_private_key );
       });
-    });
+      push_block(b, skip);
+      return b;
+   });
 } FC_CAPTURE_AND_RETHROW( (when) ) }
 
 signed_block chain_controller::_generate_block(
@@ -311,7 +307,7 @@ signed_block chain_controller::_generate_block(
    )
 {
    try {
-   uint32_t skip = get_node_properties().skip_flags;
+   uint32_t skip = _skip_flags;
    uint32_t slot_num = get_slot_at_time( when );
    FC_ASSERT( slot_num > 0 );
    AccountName scheduled_producer = get_scheduled_producer( slot_num );
@@ -454,11 +450,10 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
    with_skip_flags(skip, [&](){ _apply_block(next_block); });
 }
 
-
 void chain_controller::_apply_block(const signed_block& next_block)
 { try {
    uint32_t next_block_num = next_block.block_num();
-   uint32_t skip = get_node_properties().skip_flags;
+   uint32_t skip = _skip_flags;
 
    FC_ASSERT((skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(),
              "", ("next_block.transaction_merkle_root", next_block.transaction_merkle_root)
@@ -752,16 +747,8 @@ types::AccountName chain_controller::head_block_producer() const {
    return {};
 }
 
-const node_property_object& chain_controller::get_node_properties()const {
-   return _node_property_object;
-}
-
 const producer_object& chain_controller::get_producer(const types::AccountName& ownerName) const {
    return _db.get<producer_object, by_owner>(ownerName);
-}
-
-node_property_object& chain_controller::node_properties() {
-   return _node_property_object;
 }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
@@ -785,16 +772,6 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 { try {
    if (!_db.find<global_property_object>()) {
       _db.with_write_lock([this, &starter] {
-         struct auth_inhibitor {
-            auth_inhibitor(chain_controller& db) : db(db), old_flags(db.node_properties().skip_flags)
-            { db.node_properties().skip_flags |= skip_authority_check; }
-            ~auth_inhibitor()
-            { db.node_properties().skip_flags = old_flags; }
-         private:
-            chain_controller& db;
-            uint32_t old_flags;
-         } inhibitor(*this);
-
          auto initial_timestamp = starter.get_chain_start_time();
          FC_ASSERT(initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
          FC_ASSERT(initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
