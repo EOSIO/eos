@@ -5,6 +5,7 @@
 #include <functional>
 
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/algorithm/string/trim.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/crypto/base64.hpp>
@@ -53,6 +54,55 @@ namespace eos { namespace types {
    using Int64     = int64_t; //Int<64>; 
    using Int128    = boost::multiprecision::int128_t;
    using Int256    = boost::multiprecision::int256_t;
+
+   struct Name {
+      uint64_t value = 0;
+      Name( const String& str ) {
+         FC_ASSERT( str.size() <= 12 );
+         for( uint32_t i = 0; i < str.size(); ++i ) {
+            value <<= 5;
+            value |= char_to_symbol( str[ str.size() -1 - i ] );
+         }
+      }
+      char char_to_symbol( char c ) const {
+         if( c >= 'a' && c <= 'z' )
+            return (c - 'a') + 1;
+         if( c >= '1' && c <= '5' )
+            return (c - '1') + 26;
+         FC_ASSERT( c == '.', "invalid character '${c}' (${i}) in Name string", ("c", String(&c,1))("i",int(c)) );
+         return 0;
+      }
+
+      Name( uint64_t v = 0 ):value(v){
+         FC_ASSERT( !(v>>(5*12)), "invalid name id" );
+      };
+
+      operator String()const {
+         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
+         String str;
+         uint64_t tmp = value;
+         for( uint32_t i = 0; i < 12; ++i ) {
+            char c = charmap[tmp & 0x1f ];
+            str += c;
+            tmp >>= 5;
+         }
+         boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
+         return str;
+      }
+
+      Name& operator=( uint64_t v ) {
+         FC_ASSERT( !(v>>(5*12)), "invalid name id" );
+         value = v;
+         return *this;
+      }
+
+      Name& operator=( const String& n ) {
+         value = Name(n).value;
+         return *this;
+      }
+
+      operator uint64_t()const        { return value; }
+   };
 
    struct Field {
       FieldName name;
@@ -114,11 +164,14 @@ namespace eos { namespace types {
 }} // namespace eos::types
 
 namespace fc {
+  void to_variant(const eos::types::Name& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eos::types::Name& check);
   void to_variant(const std::vector<eos::types::Field>& c, fc::variant& v);
   void from_variant(const fc::variant& v, std::vector<eos::types::Field>& check);
   void to_variant(const std::map<std::string,eos::types::Struct>& c, fc::variant& v);
   void from_variant(const fc::variant& v, std::map<std::string,eos::types::Struct>& check);
 }
 
+FC_REFLECT(eos::types::Name, (value))
 FC_REFLECT(eos::types::Field, (name)(type))
 FC_REFLECT(eos::types::Struct, (name)(base)(fields))

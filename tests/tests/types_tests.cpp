@@ -6,6 +6,7 @@ namespace eos { namespace types {
 
 BOOST_AUTO_TEST_SUITE(types_tests)
 
+
 /// Put the SimpleSymbolTable through its paces
 BOOST_AUTO_TEST_CASE(basic_simple_symbol_table_test)
 { try {

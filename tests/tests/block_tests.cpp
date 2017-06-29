@@ -48,6 +48,22 @@ using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
+
+
+BOOST_AUTO_TEST_CASE(name_test) {
+   using eos::types::Name;
+   Name temp;
+   temp = "temp";
+   BOOST_CHECK_EQUAL( String("temp"), String(temp) );
+   BOOST_CHECK_EQUAL( String("temp.temp"), String(Name("temp.temp")) );
+   BOOST_CHECK_EQUAL( String(""), String(Name()) );
+   BOOST_CHECK_EQUAL( String("hello"), String(Name("hello")) );
+   BOOST_REQUIRE_THROW( Name(-1), fc::exception ); // only lower 60 bits are valid
+   BOOST_REQUIRE_THROW( Name("Hello"), fc::exception ); // capital invalid
+   BOOST_REQUIRE_THROW( Name("9ello"), fc::exception ); // number 9 invalid
+   BOOST_REQUIRE_THROW( Name("6ello"), fc::exception ); // number 6 invalid
+}
+
 // Simple test of block production and head_block_num tracking
 BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 { try {
