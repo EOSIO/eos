@@ -21,7 +21,7 @@
 using namespace eos;
 using namespace chain;
 
-BOOST_AUTO_TEST_SUITE(system_contract_tests)
+BOOST_AUTO_TEST_SUITE(native_contract_tests)
 
 //Simple test of account creation
 BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
@@ -53,7 +53,7 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
          BOOST_CHECK_EQUAL(joe_active_authority.auth.keys[0].weight, 1);
       }
 
-        chain.produce_blocks(1); /// verify changes survived creating a new block
+      chain.produce_blocks(1); /// verify changes survived creating a new block
       {
          BOOST_CHECK_EQUAL(chain.get_liquid_balance("joe"), Asset(1000));
          BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 1000));
@@ -66,13 +66,72 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.keys[0].weight, 1);
 
          const auto& joe_active_authority =
-            chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
+         chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
          BOOST_CHECK_EQUAL(joe_active_authority.auth.threshold, 1);
          BOOST_CHECK_EQUAL(joe_active_authority.auth.accounts.size(), 0);
          BOOST_CHECK_EQUAL(joe_active_authority.auth.keys.size(), 1);
          BOOST_CHECK_EQUAL(string(joe_active_authority.auth.keys[0].key), string(joe_public_key));
          BOOST_CHECK_EQUAL(joe_active_authority.auth.keys[0].weight, 1);
       }
+} FC_LOG_AND_RETHROW() }
+
+// Verify that staking and unstaking works
+BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
+{ try {
+   // Create account sam with default balance of 100, and stake 55 of it
+   Make_Blockchain(chain);
+   Make_Account(chain, sam);
+   Stake_Asset(chain, sam, Asset(55).amount);
+   
+   // Check balances
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(55).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(0).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(45).amount);
+   
+   chain.produce_blocks();
+   
+   // Start unstaking 20, check balances
+   BOOST_CHECK_THROW(Begin_Unstake_Asset(chain, sam, Asset(56).amount), chain::message_precondition_exception);
+   Begin_Unstake_Asset(chain, sam, Asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(45).amount);
+   
+   // Make sure we can't liquidate early
+   BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, Asset(10).amount), chain::message_precondition_exception);
+   
+   // Fast forward to when we can liquidate
+   elog("Hang on, this will take a minute...");
+   chain.produce_blocks(config::StakedBalanceCooldownSeconds / config::BlockIntervalSeconds + 1);
+   
+   BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, Asset(21).amount), chain::message_precondition_exception);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(45).amount);
+   
+   // Liquidate 10 of the 20 unstaking and check balances
+   Finish_Unstake_Asset(chain, sam, Asset(10).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(10).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(55).amount);
+   
+   // Liquidate 2 of the 10 left unstaking and check balances
+   Finish_Unstake_Asset(chain, sam, Asset(2).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(8).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(57).amount);
+   
+   // Ignore the 8 left in unstaking, and begin unstaking 5, which should restake the 8, and start over unstaking 5
+   Begin_Unstake_Asset(chain, sam, Asset(5).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(38).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(5).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(57).amount);
+   
+   // Begin unstaking 20, which should only deduct 15 from staked, since 5 was already in unstaking
+   Begin_Unstake_Asset(chain, sam, Asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(23).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(57).amount);
 } FC_LOG_AND_RETHROW() }
 
 // Simple test to verify a simple transfer transaction works
@@ -106,11 +165,11 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       BOOST_REQUIRE_THROW(chain.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
       trx.messages[0].notify = {"init2"};
       trx.setMessage(0, "Transfer", trans);
-        chain.push_transaction(trx);
+      chain.push_transaction(trx);
 
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 100));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("init2"), Asset(100000 + 100));
-        chain.produce_blocks(1);
+      chain.produce_blocks(1);
 
       BOOST_REQUIRE_THROW(chain.push_transaction(trx), transaction_exception); // not unique
 
@@ -123,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 { try {
       Make_Blockchain(chain)
-        chain.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
 
       Make_Account(chain, producer);
@@ -136,7 +195,7 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
          BOOST_CHECK_EQUAL(producer.last_aslot, 0);
          BOOST_CHECK_EQUAL(producer.total_missed, 0);
          BOOST_CHECK_EQUAL(producer.last_confirmed_block_num, 0);
-            chain.produce_blocks();
+         chain.produce_blocks();
       }
 
       Make_Key(signing);
@@ -149,7 +208,7 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture)
 { try {
       Make_Blockchain(chain)
-        chain.produce_blocks(21);
+      chain.produce_blocks(21);
 
       vector<BlockchainConfiguration> votes{
          {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   },
@@ -185,9 +244,9 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture)
       }
 
       BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
-        chain.produce_blocks(20);
+      chain.produce_blocks(20);
       BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
-        chain.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.get_global_properties().configuration, medians);
 } FC_LOG_AND_RETHROW() }
 
@@ -195,7 +254,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
 { try {
       Make_Blockchain(chain)
-        chain.produce_blocks(21);
+      chain.produce_blocks(21);
 
       vector<BlockchainConfiguration> votes{
          {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   },
@@ -231,10 +290,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
       }
 
       BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
-        chain.produce_blocks(2);
-        chain.produce_blocks(18, 5);
+      chain.produce_blocks(2);
+      chain.produce_blocks(18, 5);
       BOOST_CHECK_NE(chain.get_global_properties().configuration, medians);
-        chain.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.get_global_properties().configuration, medians);
 } FC_LOG_AND_RETHROW() }
 
@@ -242,7 +301,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
    try {
       Make_Blockchain(chain)
-        chain.produce_blocks();
+      chain.produce_blocks();
 
       Make_Account(chain, joe);
       Make_Account(chain, bob);
@@ -250,7 +309,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
       Make_Producer(chain, joe);
       Approve_Producer(chain, bob, joe, true);
       // Produce blocks up to, but not including, the last block in the round
-        chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
+      chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
@@ -260,13 +319,13 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
       }
 
       // OK, let's go to the next round
-        chain.produce_blocks();
+      chain.produce_blocks();
 
       const auto& gpo = chain.get_global_properties();
       BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
 
       Approve_Producer(chain, bob, joe, false);
-        chain.produce_blocks();
+      chain.produce_blocks();
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
@@ -280,13 +339,13 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
    try {
       Make_Blockchain(chain)
-        chain.produce_blocks();
+      chain.produce_blocks();
 
       Make_Account(chain, joe);
       Make_Account(chain, bob);
       Make_Producer(chain, joe);
       Approve_Producer(chain, bob, joe, true);
-        chain.produce_blocks();
+      chain.produce_blocks();
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
@@ -297,7 +356,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
 
       Stake_Asset(chain, bob, Asset(100).amount);
       // Produce blocks up to, but not including, the last block in the round
-        chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
+      chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
@@ -307,13 +366,13 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       }
 
       // OK, let's go to the next round
-        chain.produce_blocks();
+      chain.produce_blocks();
 
       const auto& gpo = chain.get_global_properties();
       BOOST_REQUIRE(boost::find(gpo.active_producers, "joe") != gpo.active_producers.end());
 
       Approve_Producer(chain, bob, joe, false);
-        chain.produce_blocks();
+      chain.produce_blocks();
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
@@ -363,13 +422,13 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
          }
 
          // OK, let's go to the next round
-            chain.produce_blocks();
+         chain.produce_blocks();
 
          const auto& gpo = chain.get_global_properties();
          BOOST_REQUIRE(boost::find(gpo.active_producers, "producer") != gpo.active_producers.end());
 
          Approve_Producer(chain, proxy, producer, false);
-            chain.produce_blocks();
+         chain.produce_blocks();
 
          {
             BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 0);
