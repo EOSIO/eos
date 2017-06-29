@@ -1030,10 +1030,6 @@ namespace LLVMJIT
 		EMIT_SIMD_SPLAT(i64x2,scalar,2)
 		EMIT_SIMD_SPLAT(f32x4,scalar,4)
 		EMIT_SIMD_SPLAT(f64x2,scalar,2)
-		EMIT_SIMD_SPLAT(b8x16,coerceI32ToBool(scalar),16)
-		EMIT_SIMD_SPLAT(b16x8,coerceI32ToBool(scalar),8)
-		EMIT_SIMD_SPLAT(b32x4,coerceI32ToBool(scalar),4)
-		EMIT_SIMD_SPLAT(b64x2,coerceI32ToBool(scalar),2)
 
 		EMIT_STORE_OP(v128,store,value->getType(),4,identityConversion)
 		EMIT_LOAD_OP(v128,load,llvmI64x2Type,4,identityConversion)
@@ -1177,11 +1173,6 @@ namespace LLVMJIT
 
 		EMIT_SIMD_EXTRACT_LANE_OP(f32x4_extract_lane,llvmF32x4Type,4,scalar)
 		EMIT_SIMD_EXTRACT_LANE_OP(f64x2_extract_lane,llvmF64x2Type,2,scalar)
-
-		EMIT_SIMD_EXTRACT_LANE_OP(b8x16_extract_lane,llvmB8x16Type,16,coerceBoolToI32(scalar))
-		EMIT_SIMD_EXTRACT_LANE_OP(b16x8_extract_lane,llvmB16x8Type,8,coerceBoolToI32(scalar))
-		EMIT_SIMD_EXTRACT_LANE_OP(b32x4_extract_lane,llvmB32x4Type,4,coerceBoolToI32(scalar))
-		EMIT_SIMD_EXTRACT_LANE_OP(b64x2_extract_lane,llvmB64x2Type,2,coerceBoolToI32(scalar))
 		
 		#define EMIT_SIMD_REPLACE_LANE_OP(typePrefix,llvmType,numLanes,coerceScalar) \
 			void typePrefix##_replace_lane(LaneIndexImm<numLanes> imm) \
@@ -1198,11 +1189,6 @@ namespace LLVMJIT
 
 		EMIT_SIMD_REPLACE_LANE_OP(f32x4,llvmF32x4Type,4,scalar)
 		EMIT_SIMD_REPLACE_LANE_OP(f64x2,llvmF64x2Type,2,scalar)
-
-		EMIT_SIMD_REPLACE_LANE_OP(b8x16,llvmB8x16Type,16,coerceI32ToBool(scalar))
-		EMIT_SIMD_REPLACE_LANE_OP(b16x8,llvmB16x8Type,8,coerceI32ToBool(scalar))
-		EMIT_SIMD_REPLACE_LANE_OP(b32x4,llvmB32x4Type,4,coerceI32ToBool(scalar))
-		EMIT_SIMD_REPLACE_LANE_OP(b64x2,llvmB64x2Type,2,coerceI32ToBool(scalar))
 
 		void v8x16_shuffle(ShuffleImm<16> imm)
 		{

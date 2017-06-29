@@ -47,10 +47,6 @@ namespace LLVMJIT
 	llvm::Type* llvmI64x2Type;
 	llvm::Type* llvmF32x4Type;
 	llvm::Type* llvmF64x2Type;
-	llvm::Type* llvmB8x16Type;
-	llvm::Type* llvmB16x8Type;
-	llvm::Type* llvmB32x4Type;
-	llvm::Type* llvmB64x2Type;
 	#endif
 
 	llvm::Constant* typedZeroConstants[(Uptr)ValueType::num];
@@ -783,10 +779,6 @@ namespace LLVMJIT
 		llvmI64x2Type = llvm::VectorType::get(llvmI64Type,2);
 		llvmF32x4Type = llvm::VectorType::get(llvmF32Type,4);
 		llvmF64x2Type = llvm::VectorType::get(llvmF64Type,2);
-		llvmB8x16Type = llvm::VectorType::get(llvmBoolType,16);
-		llvmB16x8Type = llvm::VectorType::get(llvmBoolType,8);
-		llvmB32x4Type = llvm::VectorType::get(llvmBoolType,4);
-		llvmB64x2Type = llvm::VectorType::get(llvmBoolType,2);
 		#endif
 
 		llvmResultTypes[(Uptr)ResultType::none] = llvm::Type::getVoidTy(context);
