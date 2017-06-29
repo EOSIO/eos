@@ -78,9 +78,9 @@ namespace eos { namespace chain {
           *  The controller can override any script endpoint with native code.
           */
          ///@{
-         void set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v );
-         void set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v );
-         void set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v );
+         void set_validate_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, message_validate_handler v );
+         void set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const ActionName& action, precondition_validate_handler v );
+         void set_apply_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, apply_handler v );
          //@}
 
          enum validation_steps
@@ -305,7 +305,7 @@ namespace eos { namespace chain {
 
          node_property_object             _node_property_object;
 
-         typedef pair<AccountName,TypeName> handler_key;
+         typedef pair<AccountName,types::Name> handler_key;
          map< AccountName, map<handler_key, message_validate_handler> >        message_validate_handlers;
          map< AccountName, map<handler_key, precondition_validate_handler> >   precondition_validate_handlers;
          map< AccountName, map<handler_key, apply_handler> >                   apply_handlers;

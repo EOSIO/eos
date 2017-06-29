@@ -5,7 +5,8 @@
 
 #include <boost/range/algorithm/for_each.hpp>
 
-namespace eos {
+namespace native {
+namespace staked {
 using namespace chain;
 using namespace types;
 
@@ -46,4 +47,4 @@ void StakedBalanceObject::propagateVotes(ShareType stakeDelta, chainbase::databa
    }
 }
 
-} // namespace eos
+} } // namespace native::staked

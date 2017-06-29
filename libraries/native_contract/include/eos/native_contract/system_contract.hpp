@@ -4,18 +4,19 @@
 
 #include <eos/types/types.hpp>
 
-namespace eos {
+namespace native {
+namespace system {
+using namespace ::eos::chain;
+namespace chain = ::eos::chain;
+namespace types = ::eos::types;
 
-struct SetCode {
-   static void validate(chain::message_validate_context& context);
-   static void validate_preconditions(chain::precondition_validate_context& context);
-   static void apply(chain::apply_context& context);
-};
+void validate_system_setcode(chain::message_validate_context& context);
+void precondition_system_setcode(chain::precondition_validate_context& context);
+void apply_system_setcode(chain::apply_context& context);
 
-struct CreateAccount {
-   static void validate(chain::message_validate_context& context);
-   static void validate_preconditions(chain::precondition_validate_context& context);
-   static void apply(chain::apply_context& context);
-};
+void validate_system_newaccount(chain::message_validate_context& context);
+void precondition_system_newaccount(chain::precondition_validate_context& context);
+void apply_system_newaccount(chain::apply_context& context);
 
-} // namespace eos
+} // namespace system
+} // namespace native

@@ -1,5 +1,6 @@
-typedef FixedString32  AccountName
-typedef FixedString16  PermissionName
+typedef Name           AccountName
+typedef Name           PermissionName
+typedef Name           FuncName
 typedef FixedString32  MessageName
 typedef FixedString32  TypeName
 
@@ -9,7 +10,7 @@ struct Message
    sender      AccountName # testing
    recipient   AccountName
    notify      AccountName[]
-   type        TypeName
+   type        FuncName 
    data        Bytes
 
 struct AccountPermission
@@ -49,26 +50,26 @@ struct BlockchainConfiguration
    minEosBalance     ShareType
    maxTrxLifetime    UInt32
 
-struct Transfer
+struct transfer
    from      AccountName  # may not be the message.sender if message.sender has delegated authority by from
    to        AccountName
    amount    Asset
    memo      String
 
-struct TransferToLocked
+struct lock
    from      AccountName
    to        AccountName
    amount    ShareType
 
-struct StartUnlockEos
+struct unlock
    account   AccountName
    amount    ShareType
 
-struct ClaimUnlockedEos
+struct claim
    account   AccountName
    amount    ShareType
 
-struct CreateAccount
+struct newaccount
    creator   AccountName
    name      AccountName
    owner     Authority
@@ -76,38 +77,29 @@ struct CreateAccount
    recovery  Authority
    deposit   Asset
 
-struct SetCode
+struct setcode
    account         AccountName  # the account that is handling the message
    vmtype          UInt8        # the virtual machine type
    vmversion       UInt8        # the virtual machine version
    code            Bytes        # the apply
 
-struct CreateProducer
+
+struct setproducer
    name           AccountName
    key            PublicKey
    configuration  BlockchainConfiguration
 
-struct UpdateProducer
-   name           AccountName
-   newKey         PublicKey
-   configuration  BlockchainConfiguration
-
 # implies message.sender account
-struct ApproveProducer
+struct okproducer
    producer  AccountName
    approve   Int8  # 0 or 1
 
 # implies message.sender account
-struct AllowVoteProxying
-   allow   Int8  # 0 or 1
 
 # implies message.sender account
-struct SetVoteProxy
+struct setproxy
    proxy   AccountName
 
-struct DefineStruct
-   scope        AccountName
-   definition   Struct
 
 struct UpdatePermission
    account     AccountName

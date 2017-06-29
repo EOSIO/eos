@@ -34,7 +34,7 @@ namespace eos { namespace types {
    using FieldName     = fc::fixed_string<>;
    using FixedString32 = fc::fixed_string<fc::array<uint64_t,4>>;// std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>>; 
    using FixedString16 = fc::fixed_string<>; 
-   using TypeName      = FixedString32;
+   using TypeName      = FixedString32;;
    using Bytes         = Vector<char>;
 
    template<size_t Size>
@@ -57,13 +57,25 @@ namespace eos { namespace types {
 
    struct Name {
       uint64_t value = 0;
-      Name( const String& str ) {
+      bool valid()const { return 0 == (value >> 60); }
+      bool empty()const { return 0 == value; }
+      bool good()const  { return !empty() && valid();  }
+
+      Name( const char* str ) { try {
+         const auto len = strnlen(str,14);
+         FC_ASSERT( len <= 12 );
+         for( uint32_t i = 0; i < len; ++i ) {
+            value <<= 5;
+            value |= char_to_symbol( str[ len -1 - i ] );
+         }
+      } FC_CAPTURE_AND_RETHROW( (str) ) }
+      Name( const String& str ) { try {
          FC_ASSERT( str.size() <= 12 );
          for( uint32_t i = 0; i < str.size(); ++i ) {
             value <<= 5;
             value |= char_to_symbol( str[ str.size() -1 - i ] );
          }
-      }
+      } FC_CAPTURE_AND_RETHROW((str)) }
       char char_to_symbol( char c ) const {
          if( c >= 'a' && c <= 'z' )
             return (c - 'a') + 1;
@@ -77,7 +89,7 @@ namespace eos { namespace types {
          FC_ASSERT( !(v>>(5*12)), "invalid name id" );
       };
 
-      operator String()const {
+      explicit operator String()const {
          static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
          String str;
          uint64_t tmp = value;
@@ -100,9 +112,25 @@ namespace eos { namespace types {
          value = Name(n).value;
          return *this;
       }
+      Name& operator=( const char* n ) {
+         value = Name(n).value;
+         return *this;
+      }
 
+      template<typename Stream>
+      friend Stream& operator << ( Stream& out, const Name& n ) {
+         return out << String(n);
+      }
+
+      friend bool operator < ( const Name& a, const Name& b ) { return a.value < b.value; }
+      friend bool operator > ( const Name& a, const Name& b ) { return a.value > b.value; }
+      friend bool operator == ( const Name& a, const Name& b ) { return a.value == b.value; }
+      friend bool operator != ( const Name& a, const Name& b ) { return a.value != b.value; }
+
+      operator bool()const            { return value; }
       operator uint64_t()const        { return value; }
    };
+
 
    struct Field {
       FieldName name;

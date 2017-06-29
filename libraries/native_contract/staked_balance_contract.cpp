@@ -10,30 +10,31 @@
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm/binary_search.hpp>
 
-namespace eos {
-using namespace chain;
+namespace native {
+namespace staked {
 
-void CreateAccount_Notify_Staked::apply(apply_context& context) {
-   auto create = context.msg.as<types::CreateAccount>();
+
+void apply_system_newaccount( apply_context& context ) {
+   auto create = context.msg.as<types::newaccount>();
    context.mutable_db.create<StakedBalanceObject>([&create](StakedBalanceObject& sbo) {
       sbo.ownerName = create.name;
    });
 }
 
-void TransferToLocked_Notify_Staked::apply(apply_context& context) {
-   auto lock = context.msg.as<types::TransferToLocked>();
+void apply_eos_lock(apply_context& context) {
+   auto lock = context.msg.as<types::lock>();
    const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(lock.to);
 
    balance.stakeTokens(lock.amount, context.mutable_db);
 }
 
-void StartUnlockEos::validate(message_validate_context& context) {
-   auto unlock = context.msg.as<types::StartUnlockEos>();
+void validate_staked_unlock(message_validate_context& context) {
+   auto unlock = context.msg.as<types::unlock>();
    EOS_ASSERT(unlock.amount >= 0, message_validate_exception, "Unlock amount cannot be negative");
 }
 
-void StartUnlockEos::validate_preconditions(precondition_validate_context& context) {
-   auto unlock = context.msg.as<types::StartUnlockEos>();
+void precondition_staked_unlock(precondition_validate_context& context) {
+   auto unlock = context.msg.as<types::unlock>();
    ShareType balance;
    try {
       balance = context.db.get<StakedBalanceObject, byOwnerName>(unlock.account).stakedBalance;
@@ -42,22 +43,22 @@ void StartUnlockEos::validate_preconditions(precondition_validate_context& conte
               "Insufficient locked funds to unlock ${a}", ("a", unlock.amount));
 }
 
-void StartUnlockEos::apply(apply_context& context) {
-   auto unlock = context.msg.as<types::StartUnlockEos>();
+void apply_staked_unlock(apply_context& context) {
+   auto unlock = context.msg.as<types::unlock>();
    const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(unlock.account);
 
    balance.beginUnstakingTokens(unlock.amount, context.mutable_db);
 }
 
-void ClaimUnlockedEos::validate(message_validate_context& context) {
-   auto claim = context.msg.as<types::ClaimUnlockedEos>();
+void validate_staked_claim(message_validate_context& context) {
+   auto claim = context.msg.as<types::claim>();
    EOS_ASSERT(claim.amount > 0, message_validate_exception, "Claim amount must be positive");
    EOS_ASSERT(context.msg.has_notify(config::EosContractName), message_validate_exception,
               "EOS Contract (${name}) must be notified", ("name", config::EosContractName));
 }
 
-void ClaimUnlockedEos::validate_preconditions(precondition_validate_context& context) {
-   auto claim = context.msg.as<types::ClaimUnlockedEos>();
+void precondition_staked_claim(precondition_validate_context& context) {
+   auto claim = context.msg.as<types::claim>();
    auto balance = context.db.find<StakedBalanceObject, byOwnerName>(claim.account);
    EOS_ASSERT(balance != nullptr, message_precondition_exception,
               "Could not find staked balance for ${name}", ("name", claim.account));
@@ -70,29 +71,29 @@ void ClaimUnlockedEos::validate_preconditions(precondition_validate_context& con
               ("claimAmount", claim.amount)("available", balance->unstakingBalance));
 }
 
-void ClaimUnlockedEos::apply(apply_context& context) {
-   auto claim = context.msg.as<types::ClaimUnlockedEos>();
+void apply_staked_claim(apply_context& context) {
+   auto claim = context.msg.as<types::claim>();
    context.mutable_db.modify(context.db.get<StakedBalanceObject, byOwnerName>(claim.account),
                              [&claim](StakedBalanceObject& sbo) {
       sbo.unstakingBalance -= claim.amount;
    });
 }
 
-void CreateProducer::validate(message_validate_context& context) {
-   auto create = context.msg.as<types::CreateProducer>();
-   EOS_ASSERT(create.name.size() > 0, message_validate_exception, "Producer owner name cannot be empty");
+void validate_staked_setproducer(message_validate_context& context) {
+   auto create = context.msg.as<types::setproducer>();
+   EOS_ASSERT(create.name.good(), message_validate_exception, "Producer owner name cannot be empty");
 }
 
-void CreateProducer::validate_preconditions(precondition_validate_context& context) {
-   auto create = context.msg.as<types::CreateProducer>();
+void precondition_staked_setproducer(precondition_validate_context& context) {
+   auto create = context.msg.as<types::setproducer>();
    const auto& db = context.db;
    auto producer = db.find<producer_object, by_owner>(create.name);
    EOS_ASSERT(producer == nullptr, message_precondition_exception,
               "Account ${name} already has a block producer", ("name", create.name));
 }
 
-void CreateProducer::apply(apply_context& context) {
-   auto create = context.msg.as<types::CreateProducer>();
+void apply_staked_setproducer(apply_context& context) {
+   auto create = context.msg.as<types::setproducer>();
    auto& db = context.mutable_db;
    db.create<producer_object>([&create](producer_object& p) {
       p.owner = create.name;
@@ -106,9 +107,10 @@ void CreateProducer::apply(apply_context& context) {
    });
 }
 
+/*
 void UpdateProducer::validate(message_validate_context& context) {
    auto update = context.msg.as<types::UpdateProducer>();
-   EOS_ASSERT(update.name.size() > 0, message_validate_exception, "Producer owner name cannot be empty");
+   EOS_ASSERT(update.name.good(), message_validate_exception, "Producer owner name cannot be empty");
 }
 
 void UpdateProducer::validate_preconditions(precondition_validate_context& context) {
@@ -129,18 +131,19 @@ void UpdateProducer::apply(apply_context& context) {
       p.configuration = update.configuration;
    });
 }
+*/
 
-void ApproveProducer::validate(message_validate_context& context) {
-   auto approve = context.msg.as<types::ApproveProducer>();
+void validate_staked_okproducer(message_validate_context& context) {
+   auto approve = context.msg.as<types::okproducer>();
    EOS_ASSERT(approve.approve == 0 || approve.approve == 1, message_validate_exception,
               "Unknown approval value: ${val}; must be either 0 or 1", ("val", approve.approve));
-   EOS_ASSERT(approve.producer.size() != 0, message_validate_exception,
+   EOS_ASSERT(approve.producer.good(), message_validate_exception,
               "Approved producer's name cannot be empty");
 }
 
-void ApproveProducer::validate_preconditions(precondition_validate_context& context) {
+void precondition_staked_okproducer(precondition_validate_context& context) {
    const auto& db = context.db;
-   auto approve = context.msg.as<types::ApproveProducer>();
+   auto approve = context.msg.as<types::okproducer>();
    auto producer = db.find<ProducerVotesObject, byOwnerName>(approve.producer);
    auto voter = db.find<StakedBalanceObject, byOwnerName>(context.msg.sender);
 
@@ -166,9 +169,9 @@ void ApproveProducer::validate_preconditions(precondition_validate_context& cont
                  ("name", approve.producer));
 }
 
-void ApproveProducer::apply(apply_context& context) {
+void apply_staked_okproducer(apply_context& context) {
    auto& db = context.mutable_db;
-   auto approve = context.msg.as<types::ApproveProducer>();
+   auto approve = context.msg.as<types::okproducer>();
    const auto& producer = db.get<ProducerVotesObject, byOwnerName>(approve.producer);
    const auto& voter = db.get<StakedBalanceObject, byOwnerName>(context.msg.sender);
    auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
@@ -195,39 +198,9 @@ void ApproveProducer::apply(apply_context& context) {
    });
 }
 
-void AllowVoteProxying::validate(message_validate_context& context) {
-   auto allow = context.msg.as<types::AllowVoteProxying>();
-   EOS_ASSERT(allow.allow == 0 || allow.allow == 1, message_validate_exception,
-              "Unknown allow value: ${val}; must be either 0 or 1", ("val", allow.allow));
-}
 
-void AllowVoteProxying::validate_preconditions(precondition_validate_context& context) {
-   auto allow = context.msg.as<types::AllowVoteProxying>();
-   auto proxy = context.db.find<ProxyVoteObject, byTargetName>(context.msg.sender);
-   if (allow.allow)
-      EOS_ASSERT(proxy == nullptr, message_precondition_exception,
-                 "Account '${name}' already allows vote proxying", ("name", context.msg.sender));
-   else
-      EOS_ASSERT(proxy != nullptr, message_precondition_exception,
-                 "Account '${name}' already disallows vote proxying", ("name", context.msg.sender));
-}
-
-void AllowVoteProxying::apply(apply_context& context) {
-   auto allow = context.msg.as<types::AllowVoteProxying>();
-   auto& db = context.mutable_db;
-   if (allow.allow)
-      db.create<ProxyVoteObject>([target = context.msg.sender](ProxyVoteObject& pvo) {
-         pvo.proxyTarget = target;
-      });
-   else {
-      const auto& proxy = db.get<ProxyVoteObject, byTargetName>(context.msg.sender);
-      proxy.cancelProxies(db);
-      db.remove(proxy);
-   }
-}
-
-void SetVoteProxy::validate_preconditions(precondition_validate_context& context) {
-   auto svp = context.msg.as<types::SetVoteProxy>();
+void precondition_staked_setproxy(precondition_validate_context& context) {
+   auto svp = context.msg.as<types::setproxy>();
    const auto& db = context.db;
 
    auto proxy = db.find<ProxyVoteObject, byTargetName>(context.msg.sender);
@@ -248,8 +221,8 @@ void SetVoteProxy::validate_preconditions(precondition_validate_context& context
    }
 }
 
-void SetVoteProxy::apply(apply_context& context) {
-   auto svp = context.msg.as<types::SetVoteProxy>();
+void apply_staked_setproxy(apply_context& context) {
+   auto svp = context.msg.as<types::setproxy>();
    auto& db = context.mutable_db;
    const auto& proxy = db.get<ProxyVoteObject, byTargetName>(svp.proxy);
    const auto& balance = db.get<StakedBalanceObject, byOwnerName>(context.msg.sender);
@@ -265,4 +238,4 @@ void SetVoteProxy::apply(apply_context& context) {
    }
 }
 
-} // namespace eos
+} } // namespace native::staked

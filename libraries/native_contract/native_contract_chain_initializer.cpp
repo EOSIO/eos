@@ -11,6 +11,7 @@
 
 namespace eos { namespace native_contract {
 using namespace chain;
+namespace chain = ::eos::chain;
 
 types::Time native_contract_chain_initializer::get_chain_start_time() {
    return genesis.initial_timestamp;
@@ -29,38 +30,59 @@ std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_ini
 
 void native_contract_chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
    // Install the native contract's indexes; we can't do anything until our objects are recognized
-   db.add_index<StakedBalanceMultiIndex>();
-   db.add_index<BalanceMultiIndex>();
-   db.add_index<ProducerVotesMultiIndex>();
-   db.add_index<ProxyVoteMultiIndex>();
-   db.add_index<ProducerScheduleMultiIndex>();
+   db.add_index<native::staked::StakedBalanceMultiIndex>();
+   db.add_index<native::staked::ProducerVotesMultiIndex>();
+   db.add_index<native::staked::ProxyVoteMultiIndex>();
+   db.add_index<native::staked::ProducerScheduleMultiIndex>();
 
-   // Install the native contract's message handlers
-   // First, set message handlers
-#define SET_HANDLERS(contractname, handlername) \
-   chain.set_validate_handler(contractname, contractname, #handlername, &handlername::validate); \
-   chain.set_precondition_validate_handler(contractname, contractname, #handlername, &handlername::validate_preconditions); \
-   chain.set_apply_handler(contractname, contractname, #handlername, &handlername::apply);
-#define FWD_SET_HANDLERS(r, data, elem) SET_HANDLERS(data, elem)
-   BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::SystemContractName, EOS_SYSTEM_CONTRACT_FUNCTIONS)
-   BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::EosContractName, EOS_CONTRACT_FUNCTIONS)
-   BOOST_PP_SEQ_FOR_EACH(FWD_SET_HANDLERS, config::StakedBalanceContractName, EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS)
-#undef FWD_SET_HANDLERS
-#undef SET_HANDLERS
+   db.add_index<native::eos::BalanceMultiIndex>();
 
-   // Second, set notify handlers
-   auto SetNotifyHandlers = [&chain](auto recipient, auto scope, auto message, auto validate, auto apply) {
-      chain.set_precondition_validate_handler(recipient, scope, message, validate);
-      chain.set_apply_handler(recipient, scope, message, apply);
-   };
-   SetNotifyHandlers(config::EosContractName, config::StakedBalanceContractName, "TransferToLocked",
-                     &TransferToLocked_Notify_Staked::validate_preconditions, &TransferToLocked_Notify_Staked::apply);
-   SetNotifyHandlers(config::StakedBalanceContractName, config::EosContractName, "ClaimUnlockedEos",
-                     &ClaimUnlockedEos_Notify_Eos::validate_preconditions, &ClaimUnlockedEos_Notify_Eos::apply);
-   SetNotifyHandlers(config::SystemContractName, config::EosContractName, "CreateAccount",
-                     &CreateAccount_Notify_Eos::validate_preconditions, &CreateAccount_Notify_Eos::apply);
-   SetNotifyHandlers(config::SystemContractName, config::StakedBalanceContractName, "CreateAccount",
-                     &CreateAccount_Notify_Staked::validate_preconditions, &CreateAccount_Notify_Staked::apply);
+#define SET_PRE_HANDLER( contract, scope, action ) \
+   chain.set_precondition_validate_handler( Name(#contract), Name(#scope), Name(#action), BOOST_PP_CAT(&native::contract::precondition_, BOOST_PP_CAT( BOOST_PP_CAT(scope, _), action)) )
+#define SET_VAL_HANDLER( contract, scope, action ) \
+   chain.set_validate_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::contract::validate_, BOOST_PP_CAT(scope, BOOST_PP_CAT(_,action) ) ) )
+#define SET_APP_HANDLER( contract, scope, action ) \
+   chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::contract::apply_, BOOST_PP_CAT(scope, BOOST_PP_CAT(_,action) ) ) )
+
+   SET_PRE_HANDLER( eos, system, newaccount );
+   SET_APP_HANDLER( eos, system, newaccount );
+
+   SET_APP_HANDLER( eos, staked, claim );
+
+   SET_VAL_HANDLER( eos, eos, transfer );
+   SET_PRE_HANDLER( eos, eos, transfer );
+   SET_APP_HANDLER( eos, eos, transfer );
+
+   SET_VAL_HANDLER( eos, eos, lock );
+   SET_PRE_HANDLER( eos, eos, lock );
+   SET_APP_HANDLER( eos, eos, lock );
+
+   SET_APP_HANDLER( staked, system, newaccount );
+   SET_APP_HANDLER( staked, eos, lock );
+
+   SET_VAL_HANDLER( staked, staked, claim );
+   SET_PRE_HANDLER( staked, staked, claim );
+   SET_APP_HANDLER( staked, staked, claim );
+
+   SET_VAL_HANDLER( staked, staked, unlock );
+   SET_PRE_HANDLER( staked, staked, unlock );
+   SET_APP_HANDLER( staked, staked, unlock );
+
+   SET_VAL_HANDLER( staked, staked, okproducer );
+   SET_PRE_HANDLER( staked, staked, okproducer );
+   SET_APP_HANDLER( staked, staked, okproducer );
+
+//   SET_VAL_HANDLER( staked, staked, setproxy );
+   SET_PRE_HANDLER( staked, staked, setproxy );
+   SET_APP_HANDLER( staked, staked, setproxy );
+
+   SET_VAL_HANDLER( system, system, setcode );
+   SET_PRE_HANDLER( system, system, setcode );
+   SET_APP_HANDLER( system, system, setcode );
+
+   SET_VAL_HANDLER( system, system, newaccount );
+   SET_PRE_HANDLER( system, system, newaccount );
+   SET_APP_HANDLER( system, system, newaccount );
 }
 
 std::vector<chain::Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
@@ -68,7 +90,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    std::vector<chain::Message> messages_to_process;
 
    // Create the singleton object, ProducerScheduleObject
-   db.create<ProducerScheduleObject>([](const auto&){});
+   db.create<native::staked::ProducerScheduleObject>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto CreateNativeAccount = [this, &db](auto name, auto liquidBalance) {
@@ -76,11 +98,11 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
       });
-      db.create<BalanceObject>([&name, liquidBalance](BalanceObject& b) {
+      db.create<native::eos::BalanceObject>([&name, liquidBalance]( auto& b) {
          b.ownerName = name;
          b.balance = liquidBalance;
       });
-      db.create<StakedBalanceObject>([&name](StakedBalanceObject& sb) { sb.ownerName = name; });
+      db.create<native::staked::StakedBalanceObject>([&name](auto& sb) { sb.ownerName = name; });
    };
    CreateNativeAccount(config::SystemContractName, config::InitialTokenSupply);
    CreateNativeAccount(config::EosContractName, 0);
@@ -93,7 +115,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    for (const auto& acct : genesis.initial_accounts) {
       chain::Message message(config::SystemContractName, config::SystemContractName,
       {config::EosContractName, config::StakedBalanceContractName},
-                             "CreateAccount", types::CreateAccount(config::SystemContractName, acct.name,
+                             "newaccount", types::newaccount(config::SystemContractName, acct.name,
                                                                    KeyAuthority(acct.owner_key),
                                                                    KeyAuthority(acct.active_key),
                                                                    KeyAuthority(acct.owner_key),
@@ -101,7 +123,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
       messages_to_process.emplace_back(std::move(message));
       if (acct.liquid_balance > 0) {
          message = chain::Message(config::SystemContractName, config::EosContractName, {},
-                                  "Transfer", types::Transfer(config::SystemContractName, acct.name,
+                                  "transfer", types::transfer(config::SystemContractName, acct.name,
                                                               acct.liquid_balance, "Genesis Allocation"));
          messages_to_process.emplace_back(std::move(message));
       }
@@ -110,7 +132,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    // Create initial producers
    auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
       return chain::Message(config::SystemContractName, config::StakedBalanceContractName, vector<AccountName>{},
-                            "CreateProducer", types::CreateProducer(p.owner_name, p.block_signing_key, config));
+                            "setproducer", types::setproducer(p.owner_name, p.block_signing_key, config));
    });
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));
 

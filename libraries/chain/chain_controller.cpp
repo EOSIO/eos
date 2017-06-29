@@ -1065,13 +1065,13 @@ uint32_t chain_controller::producer_participation_rate()const
    return uint64_t(config::Percent100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
 }
 
-void chain_controller::set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v ) {
+void chain_controller::set_validate_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, message_validate_handler v ) {
    message_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void chain_controller::set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v ) {
+void chain_controller::set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const ActionName& action, precondition_validate_handler v ) {
    precondition_validate_handlers[contract][std::make_pair(scope,action)] = v;
 }
-void chain_controller::set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v ) {
+void chain_controller::set_apply_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, apply_handler v ) {
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
 

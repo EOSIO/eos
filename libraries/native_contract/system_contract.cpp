@@ -7,32 +7,32 @@
 
 #include <eos/chain/wasm_interface.hpp>
 
-namespace eos {
+namespace native {
+namespace system {
 using namespace chain;
+namespace config = ::eos::config;
 
-
-void SetCode::validate(message_validate_context& context) {
-   auto  msg = context.msg.as<types::SetCode>();
+void validate_system_setcode(message_validate_context& context) {
+   auto  msg = context.msg.as<types::setcode>();
    FC_ASSERT( msg.vmtype == 0 );
    FC_ASSERT( msg.vmversion == 0 );
-   // TODO: verify code compiles and is properly sanitized
+#warning TODO: verify code compiles and is properly sanitized
 }
 
-void SetCode::validate_preconditions(precondition_validate_context& context)
+void precondition_system_setcode(precondition_validate_context& context)
 { try {
-   auto& db = context.db;
-   auto  msg = context.msg.as<types::SetCode>();
-   // db.get<type_object,by_scope_name>( boost::make_tuple(msg.account, msg.type))
-
+   //auto& db = context.db;
+   //auto  msg = context.msg.as<types::setcode>();
 } FC_CAPTURE_AND_RETHROW() }
 
-void SetCode::apply(apply_context& context) {
+void apply_system_setcode(apply_context& context) {
    auto& db = context.mutable_db;
-   auto  msg = context.msg.as<types::SetCode>();
+   auto  msg = context.msg.as<types::setcode>();
    const auto& account = db.get<account_object,by_name>(msg.account);
    wlog( "set code: ${size}", ("size",msg.code.size()));
    db.modify( account, [&]( auto& a ) {
-      #warning TODO: update SetCode message to include the hash, then validate it in validate 
+      /** TODO: consider whether a microsecond level local timestamp is sufficient */
+      #warning TODO: update setcode message to include the hash, then validate it in validate 
       a.code_version = fc::sha256::hash( msg.code.data(), msg.code.size() );
       a.code.resize( msg.code.size() );
       memcpy( a.code.data(), msg.code.data(), msg.code.size() );
@@ -42,8 +42,8 @@ void SetCode::apply(apply_context& context) {
    wasm_interface::get().init( init_context );
 }
 
-void CreateAccount::validate(message_validate_context& context) {
-   auto create = context.msg.as<types::CreateAccount>();
+void validate_system_newaccount(message_validate_context& context) {
+   auto create = context.msg.as<types::newaccount>();
 
    EOS_ASSERT(context.msg.has_notify(config::EosContractName), message_validate_exception,
               "Must notify EOS Contract (${name})", ("name", config::EosContractName));
@@ -55,9 +55,9 @@ void CreateAccount::validate(message_validate_context& context) {
    EOS_ASSERT( eos::validate(create.recovery), message_validate_exception, "Invalid recovery authority");
 }
 
-void CreateAccount::validate_preconditions(precondition_validate_context& context) {
+void precondition_system_newaccount(precondition_validate_context& context) {
    const auto& db = context.db;
-   auto create = context.msg.as<types::CreateAccount>();
+   auto create = context.msg.as<types::newaccount>();
 
    db.get<account_object,by_name>(create.creator); ///< make sure it exists
 
@@ -77,9 +77,9 @@ void CreateAccount::validate_preconditions(precondition_validate_context& contex
    validate_authority_preconditions(create.recovery);
 }
 
-void CreateAccount::apply(apply_context& context) {
+void apply_system_newaccount(apply_context& context) {
    auto& db = context.mutable_db;
-   auto create = context.msg.as<types::CreateAccount>();
+   auto create = context.msg.as<types::newaccount>();
    const auto& new_account = db.create<account_object>([&create, &db](account_object& a) {
       a.name = create.name;
       a.creation_date = db.get(dynamic_global_property_object::id_type()).time;
@@ -98,4 +98,4 @@ void CreateAccount::apply(apply_context& context) {
    });
 }
 
-} // namespace eos
+} } // namespace native::system

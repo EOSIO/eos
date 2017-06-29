@@ -17,7 +17,7 @@ int main( int argc, char** argv ) {
 
       idump( (m) );
 
-      eos::types::Transfer t;
+      eos::types::transfer t;
       t.from = m.sender;
       t.to = "other";
 

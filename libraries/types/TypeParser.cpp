@@ -11,7 +11,7 @@ namespace alg = boost::algorithm;
 
 bool AbstractSymbolTable::isValidTypeName(const TypeName& name, bool allowArray) const {
    std::string mutable_name = name;
-   if (mutable_name.empty() || !std::isupper(mutable_name[0])) return false;
+   if (mutable_name.empty() ) return false;
 
    // If appropriate, remove trailing []
    if (allowArray && alg::ends_with(mutable_name, "[]"))

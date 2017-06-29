@@ -4,30 +4,29 @@
 
 #include <eos/types/types.hpp>
 
-namespace eos {
+namespace native {
+namespace eos { ///< eos native currency contract
+namespace chain = ::eos::chain;
+namespace types = ::eos::types;
 
-struct CreateAccount_Notify_Eos {
-   static void validate_preconditions(chain::precondition_validate_context& context);
-   static void apply(chain::apply_context& context);
-};
+/// handle apply the newaccount message to the system contract when we are notified
+void precondition_system_newaccount(chain::precondition_validate_context& context);
+void apply_system_newaccount(chain::apply_context& context);
 
-struct ClaimUnlockedEos_Notify_Eos {
-   static void validate_preconditions(chain::precondition_validate_context&) {}
-   static void apply(chain::apply_context& context);
-};
+/*
+void precondition_staked_unlock(chain::precondition_validate_context&) {}
+void apply_staked_unlock(chain::apply_context& context);
+*/
 
-struct Transfer {
-   static void validate(chain::message_validate_context& context);
-   static void validate_preconditions(chain::precondition_validate_context& context);
-   static void apply(chain::apply_context& context);
-};
+void validate_eos_transfer(chain::message_validate_context& context);
+void precondition_eos_transfer(chain::precondition_validate_context& context);
+void apply_eos_transfer(chain::apply_context& context);
 
-struct TransferToLocked {
-   static void validate(chain::message_validate_context& context);
-   static void validate_preconditions(chain::precondition_validate_context& context);
-   static void apply(chain::apply_context& context);
-};
+void validate_eos_lock(chain::message_validate_context& context);
+void precondition_eos_lock(chain::precondition_validate_context& context);
+void apply_eos_lock(chain::apply_context& context);
 
-void ClaimUnlockedEos_Notify_Eos(chain::apply_context& context);
+void apply_staked_claim(chain::apply_context&);
 
 } // namespace eos
+} // namespace native

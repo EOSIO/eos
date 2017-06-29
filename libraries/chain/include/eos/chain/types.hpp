@@ -63,11 +63,10 @@
     : id(0) BOOST_PP_SEQ_FOR_EACH(OBJECT_CTOR2_MACRO, _, FIELDS) \
     { c(*this); }
 #define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
-
-#define EOS_SYSTEM_CONTRACT_FUNCTIONS (CreateAccount)(SetCode)
-#define EOS_CONTRACT_FUNCTIONS (Transfer)(TransferToLocked)
+#define EOS_SYSTEM_CONTRACT_FUNCTIONS (newaccount)(setcode)
+#define EOS_CONTRACT_FUNCTIONS (transfer)(lock)
 #define EOS_STAKED_BALANCE_CONTRACT_FUNCTIONS \
-   (CreateProducer)(UpdateProducer)(ApproveProducer)(SetVoteProxy)(AllowVoteProxying)
+   (setproducer)(okproducer)(setproxy)
 
 namespace eos { namespace chain {
    using                               std::map;
@@ -112,6 +111,8 @@ namespace eos { namespace chain {
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
+   using eos::types::Name;
+   using ActionName = Name;
    using eos::types::AccountName;
    using eos::types::PermissionName;
    using eos::types::Asset;

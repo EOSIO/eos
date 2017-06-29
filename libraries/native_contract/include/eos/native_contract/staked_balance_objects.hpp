@@ -9,7 +9,14 @@
 
 #include <fc/static_variant.hpp>
 
-namespace eos {
+namespace native {
+namespace staked {
+
+using namespace ::eos::chain;
+namespace config = ::eos::config;
+namespace chain = ::eos::chain;
+namespace types = ::eos::types;
+
 /**
  * @brief The ProducerSlate struct stores a list of producers voted on by an account
  */
@@ -95,6 +102,6 @@ using StakedBalanceMultiIndex = chainbase::shared_multi_index_container<
    >
 >;
 
-} // namespace eos
+} } // namespace native::staked
 
-CHAINBASE_SET_INDEX_TYPE(eos::StakedBalanceObject, eos::StakedBalanceMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::staked::StakedBalanceObject, native::staked::StakedBalanceMultiIndex)
