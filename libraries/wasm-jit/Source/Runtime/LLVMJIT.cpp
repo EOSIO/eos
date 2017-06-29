@@ -363,7 +363,7 @@ namespace LLVMJIT
 			{"__alldiv","_alldiv"},
 			#endif
 		#endif
-		#ifdef __ARM__
+		#ifdef __arm__
 		{"__aeabi_uidiv","__aeabi_uidiv"},
 		{"__aeabi_idiv","__aeabi_idiv"},
 		{"__aeabi_idivmod","__aeabi_idivmod"},
