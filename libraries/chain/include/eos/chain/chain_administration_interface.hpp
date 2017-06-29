@@ -14,9 +14,6 @@ class chain_controller;
  * The @ref chain_controller is not responsible for scheduling block producers, calculating the current @ref 
  * BlockchainConfiguration, but it needs to know the results of these calculations. This interface allows the @ref 
  * chain_controller to invoke these calculations and retrieve their results when needed.
- * 
- * @note This class uses the Curiously Recurring Template Pattern for static polymorphism: 
- * https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
  */
 class chain_administration_interface {
 public:
