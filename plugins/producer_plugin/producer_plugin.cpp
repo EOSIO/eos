@@ -90,7 +90,7 @@ void producer_plugin::set_program_options(
    boost::program_options::options_description& config_file_options)
 {
    auto default_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("nathan")));
-   string producer_id_example = fc::json::to_string("init0");
+   string producer_id_example = fc::json::to_string("inita");
 
    auto private_key_default = std::make_pair(chain::public_key_type(default_priv_key.get_public_key()),
                                              eos::utilities::key_to_wif(default_priv_key));

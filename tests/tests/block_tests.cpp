@@ -96,9 +96,9 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 
       Make_Account(chain, newguy);
 
-      Transfer_Asset(chain, newguy, init0, Asset(1));
+      Transfer_Asset(chain, newguy, inita, Asset(1));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init0"), Asset(100000-99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-99));
 
         chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.head_block_num(), 11);
@@ -107,7 +107,7 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.front().empty());
       BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init0"), Asset(100000-99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-99));
 } FC_LOG_AND_RETHROW() }
 
 
@@ -884,7 +884,7 @@ R"(
 
 )";
 
-      types::SetCode handler;
+      types::setcode handler;
       handler.account = "simplecoin";
 
       auto wasm = assemble_wast( wast_apply );
@@ -896,7 +896,7 @@ R"(
          trx.messages.resize(1);
          trx.messages[0].sender = "simplecoin";
          trx.messages[0].recipient = config::SystemContractName;
-         trx.setMessage(0, "SetCode", handler);
+         trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100; 
          trx.set_reference_block(chain.head_block_id()); 
          chain.push_transaction(trx);
@@ -909,7 +909,7 @@ R"(
       {
          eos::chain::SignedTransaction trx;
          trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "Transfer",
-                            types::Transfer{"simplecoin", "init1", 1+i, "hello"} );
+                            types::transfer{"simplecoin", "init1", 1+i, "hello"} );
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
          chain.push_transaction(trx);
@@ -921,7 +921,7 @@ R"(
          wlog( "transfer 102 from init1 to init2" );
          eos::chain::SignedTransaction trx;
          trx.emplaceMessage("init1", "simplecoin", vector<AccountName>{"init2"}, "Transfer",
-                            types::Transfer{"init1", "init2", 102, "hello again"});
+                            types::transfer{"init1", "init2", 102, "hello again"});
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
          chain.push_transaction(trx);
@@ -2036,7 +2036,7 @@ R"(
 
 )";
 
-      types::SetCode handler;
+      types::setcode handler;
       handler.account = "simplecoin";
 
       auto wasm = assemble_wast( wast_apply );
@@ -2047,7 +2047,7 @@ R"(
       trx.messages.resize(1);
       trx.messages[0].sender = "simplecoin";
       trx.messages[0].recipient = config::SystemContractName;
-      trx.setMessage(0, "SetCode", handler);
+      trx.setMessage(0, "setcode", handler);
       trx.expiration = chain.head_block_time() + 100;
       trx.set_reference_block(chain.head_block_id());
       try {

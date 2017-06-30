@@ -46,11 +46,14 @@
 uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
 namespace eos { namespace chain {
+   using namespace native::staked;
+   using namespace native::eos;
+   using namespace native;
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
    for (int i = 0; i < config::BlocksPerRound; ++i) {
-      auto name = std::string("init") + fc::to_string(i);
+      auto name = std::string("inita"); name.back()+=i;
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
       default_genesis_state.initial_accounts.emplace_back(name, 0, 100000, public_key, public_key);
@@ -131,19 +134,19 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
 }
 
 types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& account) {
-   return get_database().get<BalanceObject, byOwnerName>(account).balance;
+   return get_database().get<BalanceObject, native::eos::byOwnerName>(account).balance;
 }
 
 types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, byOwnerName>(account).stakedBalance;
+   return get_database().get<StakedBalanceObject, native::staked::byOwnerName>(account).stakedBalance;
 }
 
 types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, byOwnerName>(account).unstakingBalance;
+   return get_database().get<StakedBalanceObject, native::staked::byOwnerName>(account).unstakingBalance;
 }
 
 std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
-   const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
+   const auto& sbo = get_database().get<StakedBalanceObject, staked::byOwnerName>(account);
    if (sbo.producerVotes.contains<ProducerSlate>()) {
       auto range = sbo.producerVotes.get<ProducerSlate>().range();
       return {range.begin(), range.end()};

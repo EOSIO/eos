@@ -401,27 +401,6 @@ protected:
  */
 #define Finish_Unstake_Asset(...) BOOST_PP_OVERLOAD(FINISH_UNSTAKE, __VA_ARGS__)(__VA_ARGS__)
 
-/**
- * @brief Shorthand way to enable/disable vote proxying
- *
- * Use Allow_Proxy to set whether an accound allows other accounts to proxy votes to it:
- * @code{.cpp}
- * // Enable proxying to bob
- * Allow_Proxy(chain, bob, true);
- *
- * // Disable proxying to sam
- * Allow_Proxy(chain, sam, false);
- * @endcode
- */
-#define Allow_Proxy(chain, proxy, allowed) \
-{ \
-   eos::chain::SignedTransaction trx; \
-   trx.emplaceMessage(#proxy, config::StakedBalanceContractName, vector<AccountName>{}, "AllowVoteProxying", \
-                      types::AllowVoteProxying{bool(allowed)}); \
-   trx.expiration = chain.head_block_time() + 100; \
-   trx.set_reference_block(chain.head_block_id()); \
-   chain.push_transaction(trx); \
-}
 
 /**
  * @brief Shorthand way to set voting proxy
@@ -441,8 +420,8 @@ protected:
    vector<AccountName> notifies; \
    if (std::string(#stakeholder) == std::string(#proxy)) \
       notifies.emplace_back(#proxy); \
-   trx.emplaceMessage(#stakeholder, config::StakedBalanceContractName, notifies, "SetVoteProxy", \
-                      types::SetVoteProxy{#proxy}); \
+   trx.emplaceMessage(#stakeholder, config::StakedBalanceContractName, notifies, "setproxy", \
+                      types::setproxy{#proxy}); \
    trx.expiration = chain.head_block_time() + 100; \
    trx.set_reference_block(chain.head_block_id()); \
    chain.push_transaction(trx); \

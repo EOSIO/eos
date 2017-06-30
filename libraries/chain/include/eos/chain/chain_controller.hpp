@@ -24,7 +24,6 @@
 #pragma once
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/account_object.hpp>
-#include <eos/chain/node_property_object.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
 
@@ -150,16 +149,6 @@ namespace eos { namespace chain {
          }
 
          template<typename Function>
-         auto with_producing( Function&& f ) -> decltype((*((Function*)nullptr))()) 
-         {
-            auto old_producing = _producing;
-            auto on_exit   = fc::make_scoped_exit( [&](){ _producing = old_producing; } );
-            _producing = true;
-            return f();
-         }
-
-
-         template<typename Function>
          auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))()) 
          {
             auto old_pending = std::move( _pending_transactions );
@@ -174,12 +163,8 @@ namespace eos { namespace chain {
             return f();
          }
 
-
          void pop_block();
          void clear_pending();
-
-
-
 
          /**
           * @brief Get the producer scheduled for block production in a slot.
@@ -219,7 +204,6 @@ namespace eos { namespace chain {
 
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
-         const node_property_object&            get_node_properties()const;
          const producer_object&                 get_producer(const AccountName& ownerName)const;
 
          time_point_sec   head_block_time()const;
@@ -228,8 +212,6 @@ namespace eos { namespace chain {
          AccountName      head_block_producer()const;
 
          uint32_t block_interval()const { return config::BlockIntervalSeconds; }
-
-         node_property_object& node_properties();
 
          uint32_t last_irreversible_block_num() const;
 
@@ -297,15 +279,13 @@ namespace eos { namespace chain {
          optional<database::session>      _pending_tx_session;
          deque<SignedTransaction>         _pending_transactions;
 
-         bool                             _producing = false;
          bool                             _pushing  = false;
          uint64_t                         _skip_flags = 0;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 
-         node_property_object             _node_property_object;
-
          typedef pair<AccountName,types::Name> handler_key;
+
          map< AccountName, map<handler_key, message_validate_handler> >        message_validate_handlers;
          map< AccountName, map<handler_key, precondition_validate_handler> >   precondition_validate_handlers;
          map< AccountName, map<handler_key, apply_handler> >                   apply_handlers;

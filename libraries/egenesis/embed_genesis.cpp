@@ -216,7 +216,7 @@ void load_genesis(
 int main( int argc, char** argv )
 { try {
    int main_return = 0;
-   boost::program_options::options_description cli_options("Eos Chain Identifier");
+   boost::program_options::options_description cli_options("EOS Chain Identifier");
    cli_options.add_options()
       ("help,h", "Print this help message and exit.")
       ("genesis-json,g", boost::program_options::value<boost::filesystem::path>(), "File to read genesis state from")
