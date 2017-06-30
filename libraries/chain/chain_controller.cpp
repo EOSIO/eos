@@ -509,6 +509,9 @@ try {
    for (const auto& tm : trx.messages) { /// TODO: this loop can be processed in parallel
       const Message* m = reinterpret_cast<const Message*>(&tm); //  m(tm);
       m->for_each_handler( [&]( const AccountName& a ) {
+
+         #warning TODO: call validate handlers on all notified accounts, currently it only calls the recipient's validate
+
          message_validate_context mvc(_db,*m,a);
          auto contract_handlers_itr = message_validate_handlers.find(a);
          if (contract_handlers_itr != message_validate_handlers.end()) {
@@ -586,9 +589,9 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
 void chain_controller::validate_message_precondition( precondition_validate_context& context )const 
 { try {
     const auto& m = context.msg;
-    auto contract_handlers_itr = precondition_validate_handlers.find( m.recipient );
+    auto contract_handlers_itr = precondition_validate_handlers.find( context.scope );
     if( contract_handlers_itr != precondition_validate_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {context.scope, m.type} );
+       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {
           message_handler_itr->second(context);
           return;
@@ -621,14 +624,15 @@ void chain_controller::process_message(Message message) {
 void chain_controller::apply_message( apply_context& context ) 
 { try {
     const auto& m = context.msg;
-    auto contract_handlers_itr = apply_handlers.find( m.recipient );
+    auto contract_handlers_itr = apply_handlers.find( context.scope );
     if( contract_handlers_itr != apply_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {context.scope, m.type} );
+       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
        if( message_handler_itr != contract_handlers_itr->second.end() ) {
           message_handler_itr->second(context);
           return;
        }
     }
+    ilog( "no native handler found" );
     const auto& recipient = _db.get<account_object,by_name>( context.scope );
     if( recipient.code.size() ) {
        wasm_interface::get().apply( context );

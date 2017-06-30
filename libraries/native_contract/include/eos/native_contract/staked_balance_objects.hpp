@@ -51,7 +51,7 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
 
    types::ShareType stakedBalance = 0;
    types::ShareType unstakingBalance = 0;
-   types::Time lastUnstakingTime = types::Time::maximum();
+   types::Time      lastUnstakingTime = types::Time::maximum();
 
    /// The account's vote on producers. This may either be a list of approved producers, or an account to proxy vote to
    fc::static_variant<ProducerSlate, types::AccountName> producerVotes = ProducerSlate{};

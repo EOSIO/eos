@@ -95,16 +95,18 @@ void precondition_eos_transfer(precondition_validate_context& context) {
 }
 
 void apply_eos_transfer(apply_context& context) {
-   auto& db = context.mutable_db;
    auto transfer = context.msg.as<types::transfer>();
-   const auto& from = db.get<BalanceObject, byOwnerName>(transfer.from);
-   const auto& to = db.get<BalanceObject, byOwnerName>(transfer.to);
-   db.modify(from, [&](BalanceObject& a) {
-      a.balance -= transfer.amount.amount;
-   });
-   db.modify(to, [&](BalanceObject& a) {
-      a.balance += transfer.amount.amount;
-   });
+   try {
+      auto& db = context.mutable_db;
+      const auto& from = db.get<BalanceObject, byOwnerName>(transfer.from);
+      const auto& to = db.get<BalanceObject, byOwnerName>(transfer.to);
+      db.modify(from, [&](BalanceObject& a) {
+         a.balance -= transfer.amount.amount;
+      });
+      db.modify(to, [&](BalanceObject& a) {
+         a.balance += transfer.amount.amount;
+      });
+   } FC_CAPTURE_AND_RETHROW( (transfer) ) 
 }
 ///@}
 

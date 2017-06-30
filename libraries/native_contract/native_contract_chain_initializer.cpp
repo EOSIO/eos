@@ -72,6 +72,10 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_PRE_HANDLER( staked, staked, okproducer );
    SET_APP_HANDLER( staked, staked, okproducer );
 
+   SET_VAL_HANDLER( staked, staked, setproducer );
+   SET_PRE_HANDLER( staked, staked, setproducer );
+   SET_APP_HANDLER( staked, staked, setproducer );
+
 //   SET_VAL_HANDLER( staked, staked, setproxy );
    SET_PRE_HANDLER( staked, staked, setproxy );
    SET_APP_HANDLER( staked, staked, setproxy );
@@ -93,7 +97,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    db.create<native::staked::ProducerScheduleObject>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto CreateNativeAccount = [this, &db](auto name, auto liquidBalance) {
+   auto CreateNativeAccount = [this, &db](Name name, auto liquidBalance) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;

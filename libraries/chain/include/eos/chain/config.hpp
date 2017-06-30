@@ -36,7 +36,7 @@ const static char KeyPrefix[] = "EOS";
 
 const static char SystemContractName[] = "system";
 const static char EosContractName[] = "eos";
-const static char StakedBalanceContractName[] = "stake";
+const static char StakedBalanceContractName[] = "staked";
 
 const static ShareType InitialTokenSupply = Asset::fromString("90000000.00000000 EOS").amount;
 

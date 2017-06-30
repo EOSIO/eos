@@ -18,6 +18,7 @@ void apply_system_newaccount( apply_context& context ) {
    auto create = context.msg.as<types::newaccount>();
    context.mutable_db.create<StakedBalanceObject>([&create](StakedBalanceObject& sbo) {
       sbo.ownerName = create.name;
+      sbo.stakedBalance = create.deposit.amount;
    });
 }
 

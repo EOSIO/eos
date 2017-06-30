@@ -83,6 +83,7 @@ BOOST_FIXTURE_TEST_CASE(tapos_wrap, testing_fixture)
 { try {
       Make_Blockchain(chain)
       Make_Account(chain, acct);
+      Transfer_Asset(chain, system, acct, Asset(5));
       Stake_Asset(chain, acct, Asset(5).amount);
       elog("Hang on, this will take a minute...");
       chain.produce_blocks(65536);
@@ -320,7 +321,7 @@ R"(
   (export "String_unpack" (func $String_unpack))
   (export "Transfer_unpack" (func $Transfer_unpack))
   (export "onInit" (func $onInit))
-  (export "onApply_Transfer_simplecoin" (func $onApply_Transfer_simplecoin))
+  (export "onApply_transfer_simplecoin" (func $onApply_Transfer_simplecoin))
   (func $malloc (param $0 i32) (result i32)
     (local $1 i32)
     (i32.store offset=8208
@@ -908,7 +909,7 @@ R"(
       for (uint32_t i = 0; i < 1000; ++i)
       {
          eos::chain::SignedTransaction trx;
-         trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "Transfer",
+         trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"init1"}, "transfer",
                             types::transfer{"simplecoin", "init1", 1+i, "hello"} );
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -920,7 +921,7 @@ R"(
       {
          wlog( "transfer 102 from init1 to init2" );
          eos::chain::SignedTransaction trx;
-         trx.emplaceMessage("init1", "simplecoin", vector<AccountName>{"init2"}, "Transfer",
+         trx.emplaceMessage("init1", "simplecoin", vector<AccountName>{"init2"}, "transfer",
                             types::transfer{"init1", "init2", 102, "hello again"});
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
