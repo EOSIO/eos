@@ -29,13 +29,14 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
       Make_Blockchain(chain);
       chain.produce_blocks(10);
 
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000));
 
-      Make_Account(chain, joe, init1, Asset(1000));
+      Make_Account(chain, joe, inita, Asset(1000));
+      Transfer_Asset(chain, inita, joe, Asset(1000));
 
       { // test in the pending state
          BOOST_CHECK_EQUAL(chain.get_liquid_balance("joe"), Asset(1000));
-         BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 1000));
+         BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000 - 2000));
 
          const auto& joe_owner_authority = chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.threshold, 1);
@@ -56,7 +57,7 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
       chain.produce_blocks(1); /// verify changes survived creating a new block
       {
          BOOST_CHECK_EQUAL(chain.get_liquid_balance("joe"), Asset(1000));
-         BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 1000));
+         BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000 - 2000));
 
          const auto& joe_owner_authority = chain_db.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
          BOOST_CHECK_EQUAL(joe_owner_authority.auth.threshold, 1);
@@ -81,57 +82,62 @@ BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
    // Create account sam with default balance of 100, and stake 55 of it
    Make_Blockchain(chain);
    Make_Account(chain, sam);
+   Transfer_Asset(chain, inita, sam, Asset(55) );
+
+   // MakeAccount should start sam out with some staked balance
+   BOOST_REQUIRE_EQUAL(chain.get_staked_balance("sam"), Asset(100).amount);
+
    Stake_Asset(chain, sam, Asset(55).amount);
    
    // Check balances
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(55).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(155).amount);
    BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(0).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(45).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(0).amount);
    
    chain.produce_blocks();
    
    // Start unstaking 20, check balances
-   BOOST_CHECK_THROW(Begin_Unstake_Asset(chain, sam, Asset(56).amount), chain::message_precondition_exception);
+   BOOST_CHECK_THROW(Begin_Unstake_Asset(chain, sam, Asset(156).amount), chain::message_precondition_exception);
    Begin_Unstake_Asset(chain, sam, Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
    BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(45).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(0).amount);
    
    // Make sure we can't liquidate early
    BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, Asset(10).amount), chain::message_precondition_exception);
    
    // Fast forward to when we can liquidate
-   elog("Hang on, this will take a minute...");
+   wlog("Hang on, this will take a minute...");
    chain.produce_blocks(config::StakedBalanceCooldownSeconds / config::BlockIntervalSeconds + 1);
    
    BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, Asset(21).amount), chain::message_precondition_exception);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
    BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(45).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(0).amount);
    
    // Liquidate 10 of the 20 unstaking and check balances
    Finish_Unstake_Asset(chain, sam, Asset(10).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
    BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(10).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(55).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(10).amount);
    
    // Liquidate 2 of the 10 left unstaking and check balances
    Finish_Unstake_Asset(chain, sam, Asset(2).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(35).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
    BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(8).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(57).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(12).amount);
    
    // Ignore the 8 left in unstaking, and begin unstaking 5, which should restake the 8, and start over unstaking 5
    Begin_Unstake_Asset(chain, sam, Asset(5).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(38).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(138).amount);
    BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(5).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(57).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(12).amount);
    
    // Begin unstaking 20, which should only deduct 15 from staked, since 5 was already in unstaking
    Begin_Unstake_Asset(chain, sam, Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(23).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(123).amount);
    BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(57).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(12).amount);
 } FC_LOG_AND_RETHROW() }
 
 // Simple test to verify a simple transfer transaction works
@@ -148,10 +154,10 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.messages.resize(1);
       trx.set_reference_block(chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
-      trx.messages[0].sender = "init1";
+      trx.messages[0].sender = "inita";
       trx.messages[0].recipient = config::EosContractName;
 
-      types::transfer trans = { "init1", "init2", Asset(100), "transfer 100" };
+      types::transfer trans = { "inita", "initb", Asset(100), "transfer 100" };
 
       UInt64 value(5);
       auto packed = fc::raw::pack(value);
@@ -162,20 +168,20 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 
       auto unpack_trans = trx.messageAs<types::transfer>(0);
 
-      BOOST_REQUIRE_THROW(chain.push_transaction(trx), message_validate_exception); // "fail to notify receiver, init2"
-      trx.messages[0].notify = {"init2"};
+      BOOST_REQUIRE_THROW(chain.push_transaction(trx), message_validate_exception); // "fail to notify receiver, initb"
+      trx.messages[0].notify = {"initb"};
       trx.setMessage(0, "transfer", trans);
       chain.push_transaction(trx);
 
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000 - 100));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init2"), Asset(100000 + 100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000 - 100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("initb"), Asset(100000 + 100));
       chain.produce_blocks(1);
 
       BOOST_REQUIRE_THROW(chain.push_transaction(trx), transaction_exception); // not unique
 
-      Transfer_Asset(chain, init2, init1, Asset(100));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init1"), Asset(100000));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("init2"), Asset(100000));
+      Transfer_Asset(chain, initb, inita, Asset(100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("initb"), Asset(100000));
 } FC_LOG_AND_RETHROW() }
 
 // Simple test of creating/updating a new block producer

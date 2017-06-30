@@ -18,7 +18,7 @@ namespace eos { namespace chain {
    }
 
 DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-//   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
+   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -48,6 +48,12 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
          o.value.insert( 0, value, valuelen );
       });
    }
+}
+DEFINE_INTRINSIC_FUNCTION1(env,name_to_int64,name_to_int64,i64,i32,cstr) {
+   auto& wasm  = wasm_interface::get();
+   auto  mem   = wasm.current_memory;
+   const char* str   = memoryArrayPtr<const char>( mem, cstr, 13);
+   return Name(str).value;
 }
 
 DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
@@ -159,7 +165,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size
 
 
 DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-   //ilog( "load" );
+   ilog( "load ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -213,23 +219,19 @@ DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) {
    return old_end;
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i32,val) {
-  idump((val));
-}
-DEFINE_INTRINSIC_FUNCTION1(env,printi64,printi64,none,i64,val) {
-  idump((val));
+DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
+  std::cerr << val;
+//  idump((val));
 }
 
-DEFINE_INTRINSIC_FUNCTION2(env,print,print,none,i32,charptr,i32,size) {
-  FC_ASSERT( size > 0 );
-
+DEFINE_INTRINSIC_FUNCTION1(env,print,print,none,i32,charptr) {
   auto& wasm  = wasm_interface::get();
   auto  mem   = wasm.current_memory;
 
-  const char* str = memoryArrayPtr<char>( mem, charptr, size );
+  const char* str = &memoryRef<const char>( mem, charptr );
 
-  edump((charptr)(size));
-	wlog( std::string( str, size ) );
+  std::cerr << std::string( str, strlen(str) );
+//	wlog( std::string( str, strlen(size) ) );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
@@ -302,6 +304,12 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 				 const FunctionType* functionType = getFunctionType(apply);
 				 FC_ASSERT( functionType->parameters.size() == 0 );
 				 std::vector<Value> args(0);
+
+         auto& state = *current_state;
+         char* memstart = &memoryRef<char>( current_memory, 0 );
+         memset( memstart + state.mem_end, 0, ((1<<16) - state.mem_end) );
+         memcpy( memstart, state.init_memory.data(), state.mem_end);
+
 				 Runtime::invokeFunction(apply,args);
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
@@ -317,8 +325,8 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    void  wasm_interface::vm_onInit()
    { try {
       try {
-         // wlog( "onInit" );
-				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"onInit"));
+         // wlog( "on_init" );
+				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"on_init"));
 		 		 if( !apply ) {
            wlog( "no onInit method found" );
 					 return; /// if not found then it is a no-op
@@ -346,6 +354,16 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       load( c.scope, c.db );
       vm_validate();
    }
+   void wasm_interface::precondition( precondition_validate_context& c ) {
+   try {
+
+      current_validate_context       = &c;
+      current_precondition_context   = &c;
+
+      load( c.scope, c.db );
+      vm_precondition();
+
+   } FC_CAPTURE_AND_RETHROW() }
 
 
    void wasm_interface::apply( apply_context& c ) {
@@ -371,16 +389,6 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
    } FC_CAPTURE_AND_RETHROW() }
 
-   void wasm_interface::precondition( precondition_validate_context& c ) {
-   try {
-      load( c.scope, c.db );
-
-      current_validate_context       = &c;
-      current_precondition_context   = &c;
-
-      vm_precondition();
-
-   } FC_CAPTURE_AND_RETHROW() }
 
 
    void wasm_interface::load( const AccountName& name, const chainbase::database& db ) {
@@ -410,12 +418,16 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
           current_memory = Runtime::getDefaultMemory(state.instance);
 
           char* memstart = &memoryRef<char>( current_memory, 0 );
-          state.init_memory.resize(1<<16); /// TODO: actually get memory size
-          memcpy( state.init_memory.data(), memstart, state.init_memory.size() );
+         // state.init_memory.resize(1<<16); /// TODO: actually get memory size
           std::cerr <<"INIT MEMORY: \n";
           for( uint32_t i = 0; i < 10000; ++i )
-              if( memstart[i] )
-								 std::cerr << (char)memstart[i];
+              if( memstart[i] ) {
+                   state.mem_end = i;
+						//		 std::cerr << (char)memstart[i];
+              }
+
+          state.init_memory.resize(state.mem_end);
+          memcpy( state.init_memory.data(), memstart, state.mem_end ); //state.init_memory.size() );
           std::cerr <<"\n";
           state.code_version = recipient.code_version;
         }
@@ -437,78 +449,10 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
           throw;
         }
       }
-
       current_module = state.instance;
       current_memory = getDefaultMemory( current_module );
-      char* memstart = &memoryRef<char>( current_memory, 0 );
-      memcpy( memstart, state.init_memory.data(), state.init_memory.size() );
+      current_state  = &state;
    }
 
-
-
-/*
-   void wasm_interface::load(const char* bytes, size_t len)
-   { try {
-     static vector<char> memory_backup;
-     if( module ) {
-       char* memstart = &memoryRef<char>( current_memory, 0 );
-       memcpy( memstart, memory_backup.data(), memory_backup.size() );
-       return;
-			 auto start = fc::time_point::now();
-
-       RootResolver rootResolver;
-       LinkResult linkResult = linkModule(*module,rootResolver);
-       current_module = instantiateModule( *module, std::move(linkResult.resolvedImports) );
-       FC_ASSERT( current_module );
-			 current_memory = Runtime::getDefaultMemory(current_module);
-
-
-			 auto end = fc::time_point::now();
-			 idump((  1000000.0 / (end-start).count() ) );
-       return;
-		  //  Runtime::freeUnreferencedObjects({});
-        delete module;
-     }
-     wlog( "new module" );
-     module = new IR::Module();
-
-     // Load the module from a binary WebAssembly file.
-     try
-     {
-			 auto start = fc::time_point::now();
-       Serialization::MemoryInputStream stream((const U8*)bytes,len);
-       WASM::serialize(stream,*module);
-
-       RootResolver rootResolver;
-       LinkResult linkResult = linkModule(*module,rootResolver);
-       current_module = instantiateModule( *module, std::move(linkResult.resolvedImports) );
-       FC_ASSERT( current_module );
-			 current_memory = Runtime::getDefaultMemory(current_module);
-			 auto end = fc::time_point::now();
-
-       char* memstart = &memoryRef<char>( current_memory, 0 );
-       memory_backup.resize(1<<16);
-       memcpy( memstart, memory_backup.data(), memory_backup.size() );
-			idump((  1000000.0 / (end-start).count() ) );
-     }
-     catch(Serialization::FatalSerializationException exception)
-     {
-       std::cerr << "Error deserializing WebAssembly binary file:" << std::endl;
-       std::cerr << exception.message << std::endl;
-       throw;
-     }
-     catch(IR::ValidationException exception)
-     {
-       std::cerr << "Error validating WebAssembly binary file:" << std::endl;
-       std::cerr << exception.message << std::endl;
-       throw;
-     }
-     catch(std::bad_alloc)
-     {
-       std::cerr << "Memory allocation failed: input is likely malformed" << std::endl;
-       throw;
-     }
-   } FC_CAPTURE_AND_RETHROW() }
-   */
 
 } }

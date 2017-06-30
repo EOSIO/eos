@@ -46,18 +46,18 @@ BOOST_FIXTURE_TEST_CASE(undo_test, testing_fixture)
 
       // Create an account
       db.create<account_object>([](account_object& a) {
-          a.name = "Billy the Kid";
+          a.name = "billy";
       });
 
       // Make sure we can retrieve that account by name
-      auto ptr = db.find<account_object, by_name, std::string>("Billy the Kid");
+      auto ptr = db.find<account_object, by_name, std::string>("billy");
       BOOST_CHECK(ptr != nullptr);
 
       // Undo creation of the account
       ses.undo();
 
       // Make sure we can no longer find the account
-      ptr = db.find<account_object, by_name, std::string>("Billy the Kid");
+      ptr = db.find<account_object, by_name, std::string>("billy");
       BOOST_CHECK(ptr == nullptr);
 } FC_LOG_AND_RETHROW() }
 

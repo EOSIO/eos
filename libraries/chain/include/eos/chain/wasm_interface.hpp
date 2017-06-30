@@ -18,6 +18,15 @@ class  chain_controller;
  */
 class wasm_interface {
    public:
+      struct ModuleState {
+         Runtime::ModuleInstance* instance     = nullptr;
+         IR::Module*              module       = nullptr;
+         int                      mem_start    = 0;
+         int                      mem_end      = 1<<16;
+         vector<char>             init_memory;
+         fc::sha256               code_version;
+      };
+
       static wasm_interface& get();
 
       void init( apply_context& c );
@@ -31,6 +40,7 @@ class wasm_interface {
 
       Runtime::MemoryInstance*   current_memory  = nullptr;
       Runtime::ModuleInstance*   current_module  = nullptr;
+      ModuleState*               current_state   = nullptr;
 
    private:
       void load( const AccountName& name, const chainbase::database& db );
@@ -44,12 +54,6 @@ class wasm_interface {
       U32   vm_pointer_to_offset( char* );
 
 
-      struct ModuleState {
-         Runtime::ModuleInstance* instance = nullptr;
-         IR::Module*              module   = nullptr;
-         vector<char>             init_memory;
-         fc::sha256               code_version;
-      };
 
       map<AccountName, ModuleState> instances;
 

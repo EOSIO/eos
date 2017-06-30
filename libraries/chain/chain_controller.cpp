@@ -632,7 +632,7 @@ void chain_controller::apply_message( apply_context& context )
           return;
        }
     }
-    ilog( "no native handler found" );
+    //ilog( "no native handler found" );
     const auto& recipient = _db.get<account_object,by_name>( context.scope );
     if( recipient.code.size() ) {
        wasm_interface::get().apply( context );
