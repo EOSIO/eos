@@ -141,7 +141,6 @@ public:
 
          boost::asio::async_write( *socket, boost::asio::buffer( buffer.data(), buffer.size() ),
             [this,buf=std::move(buffer)]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-               ilog( "write message handler..." );
                if( ec ) {
                   elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
                } else  {
@@ -153,7 +152,6 @@ public:
 
      void write_block_backlog ( ) {
       try {
-        ilog ("write loop sending backlog ");
         if (out_sync_state.size() > 0) {
           chain_controller& cc = app().find_plugin<chain_plugin>()->chain();
           auto ss = out_sync_state.begin();
@@ -418,14 +416,15 @@ class net_plugin_impl {
 
   void handle_message (connection &c, const signed_block &msg) {
     uint32_t bn = msg.block_num();
-    ilog ("got a signed_block, num = ${n}", ("n", bn));
+    dlog ("got a signed_block, num = ${n}", ("n", bn));
     chain_controller &cc = chain_plug->chain();
 
     if (cc.is_known_block(msg.id())) {
-      ilog ("block id ${id} is known", ("id", msg.id()) );
+      dlog ("block id ${id} is known", ("id", msg.id()) );
       return;
     }
     uint32_t num = msg.block_num();
+
     bool syncing = false;
     for (auto &ss: c.in_sync_state) {
       if (num >= ss.end_block) {
@@ -434,6 +433,35 @@ class net_plugin_impl {
       const_cast<sync_state&>(ss).last = num;
       syncing = true;
       break;
+    }
+    if (!syncing) {
+      try {
+        block_id_type id = chain_plug->chain().get_block_id_for_num (num-1);
+      }
+      catch (const unknown_block_exception &ex) {
+        uint32_t head = chain_plug->chain().last_irreversible_block_num()+1;
+        try {
+          while (head < num)
+            {
+              if (cc.is_known_block (cc.get_block_id_for_num (head))) {
+                head++;
+              }
+              else {
+                break;
+              }
+            }
+        }
+        catch (...) {}
+
+        dlog ("block num ${n} is not known head = ${h}",("n",num)("h",head));
+        sync_state req = {head, num, 0, time_point::now() };
+        c.in_sync_state.insert (req);
+        sync_request_message srm = {req.start_block, req.end_block };
+        c.send (srm);
+
+        syncing = true;
+      }
+
     }
     chain_plug->accept_block(msg, syncing);
   }
