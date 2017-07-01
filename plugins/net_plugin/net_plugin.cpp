@@ -194,19 +194,20 @@ class net_plugin_impl {
   chain_plugin* chain_plug;
 
 
-   void connect( const string& ep ) {
-     auto host = ep.substr( 0, ep.find(':') );
-     auto port = ep.substr( host.size()+1, host.size() );
+   void connect( const string& peer_addr ) {
+     auto host = peer_addr.substr( 0, peer_addr.find(':') );
+     auto port = peer_addr.substr( host.size()+1, host.size() );
      idump((host)(port));
      auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
      tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+     // Note: need to add support for IPv6 too
 
      resolver->async_resolve( query,
-       [resolver,ep,this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ){
+       [resolver,peer_addr,this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ){
          if( !err ) {
            connect( resolver, endpoint_itr );
          } else {
-           elog( "Unable to resolve ${ep}: ${error}", ( "ep", ep )("error", err.message() ) );
+           elog( "Unable to resolve ${peer_addr}: ${error}", ( "peer_addr", peer_addr )("error", err.message() ) );
          }
      });
    }
@@ -394,6 +395,7 @@ class net_plugin_impl {
 
   void handle_message (connection &c, const SignedTransaction &msg) {
     ilog ("got a SignedTransacton");
+    chain_plug->accept_transaction (msg);
   }
 
   void handle_message (connection &c, const signed_block &msg) {
@@ -406,14 +408,16 @@ class net_plugin_impl {
       return;
     }
     uint32_t num = msg.block_num();
+    bool syncing = false;
     for (auto &ss: c.in_sync_state) {
       if (num >= ss.end_block) {
         continue;
       }
       const_cast<sync_state&>(ss).last = num;
+      syncing = true;
       break;
     }
-    // TODO: add block to global state
+    chain_plug->accept_block(msg, syncing);
   }
 
 
@@ -478,6 +482,7 @@ void net_plugin::set_program_options( options_description& cli, options_descript
          ("listen-endpoint", bpo::value<string>()->default_value( "127.0.0.1:9876" ), "The local IP address and port to listen for incoming connections.")
          ("remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
          ("public-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The public IP address and port that should be advertized to peers.")
+     ("agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
          ;
 }
 
@@ -495,14 +500,16 @@ void net_plugin::plugin_initialize( const variables_map& options ) {
    if( options.count( "remote-endpoint" ) ) {
       my->seed_nodes = options.at( "remote-endpoint" ).as< vector<string> >();
    }
-
-   my->user_agent_name = "EOS Test Agent";
+   if (options.count("agent-name")) {
+     my->user_agent_name = options.at ("agent-name").as< string > ();
+   }
    my->chain_plug = app().find_plugin<chain_plugin>();
 }
 
   void net_plugin::plugin_startup() {
   // boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
   if( my->acceptor ) {
+
       my->acceptor->open(my->listen_endpoint.protocol());
       my->acceptor->set_option(tcp::acceptor::reuse_address(true));
       my->acceptor->bind(my->listen_endpoint);
