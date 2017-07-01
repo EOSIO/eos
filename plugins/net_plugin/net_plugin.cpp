@@ -3,6 +3,7 @@
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
 #include <eos/chain/chain_controller.hpp>
+#include <eos/chain/exceptions.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>
@@ -42,7 +43,7 @@ struct node_transaction_state {
 struct transaction_state {
    transaction_id_type id;
    bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
-   bool                is_noticed_to_peer = false; ///< have we sent peer noitce we know it (true if we reeive from this peer)
+   bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
    uint32_t            block_num = -1; ///< the block number the transaction was included in
    time_point          validated_time; ///< infinity for unvalidated
    time_point          requested_time; /// incase we fetch large trx
@@ -272,12 +273,21 @@ class net_plugin_impl {
     hello->os = "other";
 #endif
     hello->agent = user_agent_name;
-
+    update_handshake ();
   }
 
   void update_handshake () {
-    hello->last_irreversible_block_id = chain_plug->chain().get_block_id_for_num
-      (hello->last_irreversible_block_num = chain_plug->chain().last_irreversible_block_num());
+    try {
+      hello->last_irreversible_block_id = chain_plug->chain().get_block_id_for_num
+        (hello->last_irreversible_block_num = chain_plug->chain().last_irreversible_block_num());
+      ilog ("update_handshake my libnum = ${n}",("n",hello->last_irreversible_block_num));
+    }
+    catch (const unknown_block_exception &ex) {
+      hello->last_irreversible_block_id = fc::sha256::hash(0);
+      hello->last_irreversible_block_num = 0;
+      ilog ("update_handshake my libnum = ${n}",("n",hello->last_irreversible_block_num));
+
+    }
   }
 
    void start_session( connection* con ) {
@@ -328,6 +338,13 @@ class net_plugin_impl {
       );
    }
 
+  template<typename T>
+  void send_all (const T &msg) {
+    for (auto &c : connections) {
+      c->send(msg);
+    }
+  }
+
   void handle_message (connection &c, const handshake_message &msg) {
     if (!hello) {
       init_handshake();
@@ -350,6 +367,7 @@ class net_plugin_impl {
     }
     chain_controller& cc = chain_plug->chain();
     uint32_t head = cc.head_block_num ();
+    ilog ("My head block = ${h} their lib = ${lib}", ("h",head)("lib", msg.last_irreversible_block_num));
     if ( msg.last_irreversible_block_num > head) {
       uint32_t delta = msg.last_irreversible_block_num - head;
       uint32_t count = connections.size();
@@ -546,5 +564,9 @@ try {
    }
    ilog( "exit shutdown" );
 } FC_CAPTURE_AND_RETHROW() }
+
+  void net_plugin::broadcast_block (const chain::signed_block &sb) {
+    my->send_all (sb);
+  }
 
 }
