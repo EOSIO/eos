@@ -37,8 +37,7 @@
 #include <eos/types/native.hpp>
 #include <eos/types/generated.hpp>
 
-#include <eos/utilities/randutils.hpp>
-#include <eos/utilities/pcg-random/pcg_random.hpp>
+#include <eos/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -881,8 +880,7 @@ ProducerRound chain_controller::calculate_next_round(const signed_block& next_bl
               "Unexpected round changes in new block header",
               ("expected changes", changes)("block changes", next_block.producer_changes));
 
-   randutils::seed_seq_fe<1> seed{next_block.timestamp.sec_since_epoch()};
-   randutils::random_generator<pcg32_fast> rng(seed);
+   utilities::rand::random rng(next_block.timestamp.sec_since_epoch());
    rng.shuffle(schedule);
    return schedule;
 }
