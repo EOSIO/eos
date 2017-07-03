@@ -51,7 +51,7 @@ struct Balance {
   uint64_t    balance;
 };
 
-void onInit() {
+void init() {
   static Balance initial = { 1000*1000 };
   static AccountName simplecoin;
   simplecoin = name_to_int64( "simplecoin" );

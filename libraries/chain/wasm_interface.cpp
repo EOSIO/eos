@@ -295,8 +295,8 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    void  wasm_interface::vm_call( std::string name ) {
    try {
       try {
-         name += std::string( current_validate_context->msg.type ) + "_";
-         name += std::string( current_validate_context->msg.recipient );
+         name += "_" + std::string( current_validate_context->msg.recipient );
+         name += std::string( current_validate_context->msg.type );
 
 				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,name.c_str()));
 		 		 if( !apply ) return; /// if not found then it is a no-op
@@ -326,7 +326,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    { try {
       try {
          // wlog( "on_init" );
-				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"on_init"));
+				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"init"));
 		 		 if( !apply ) {
            wlog( "no onInit method found" );
 					 return; /// if not found then it is a no-op

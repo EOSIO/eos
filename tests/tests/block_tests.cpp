@@ -113,7 +113,7 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 
 
 vector<uint8_t> assemble_wast( const std::string& wast ) {
-   std::cout << "\n" << wast << "\n";
+//   std::cout << "\n" << wast << "\n";
   IR::Module module;
 	std::vector<WAST::Error> parseErrors;
 	WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
@@ -153,7 +153,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       Make_Account(chain, simplecoin);
       chain.produce_blocks(1);
 
-#include "simplecoin.wast"
+#include "wast/simplecoin.wast"
 
       types::setcode handler;
       handler.account = "simplecoin";

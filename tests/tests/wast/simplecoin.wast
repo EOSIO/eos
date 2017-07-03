@@ -22,9 +22,9 @@ const char* simplecoin_wast = R"====((module
   (data (i32.const 80) "\n\00")
   (data (i32.const 128) "insufficient funds\00")
   (export "memory" (memory $0))
-  (export "on_init" (func $on_init))
+  (export "init" (func $init))
   (export "apply_simplecoin_transfer" (func $apply_simplecoin_transfer))
-  (func $on_init
+  (func $init
     (i64.store offset=24
       (i32.const 0)
       (call $name_to_int64
