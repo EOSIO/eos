@@ -18,7 +18,7 @@ namespace eos { namespace chain {
    }
 
 DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
+//   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -165,7 +165,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size
 
 
 DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-   ilog( "load ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
+//   ilog( "load ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -295,11 +295,13 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    void  wasm_interface::vm_call( std::string name ) {
    try {
       try {
-         name += "_" + std::string( current_validate_context->msg.recipient );
+         name += "_" + std::string( current_validate_context->msg.recipient ) + "_";
          name += std::string( current_validate_context->msg.type );
 
 				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,name.c_str()));
-		 		 if( !apply ) return; /// if not found then it is a no-op
+		 		 if( !apply ) {
+             return; /// if not found then it is a no-op
+         } 
 
 				 const FunctionType* functionType = getFunctionType(apply);
 				 FC_ASSERT( functionType->parameters.size() == 0 );
@@ -318,9 +320,9 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       }
    } FC_CAPTURE_AND_RETHROW( (name)(current_validate_context->msg.type) ) }
 
-   void  wasm_interface::vm_precondition() { vm_call( "onPrecondition_" ); } 
-   void  wasm_interface::vm_apply()        { vm_call( "onApply_" );        }
-   void  wasm_interface::vm_validate()     { vm_call("onValidate_");       }
+   void  wasm_interface::vm_precondition() { vm_call("precondition" ); } 
+   void  wasm_interface::vm_apply()        { vm_call("apply" );        }
+   void  wasm_interface::vm_validate()     { vm_call("validate");       }
 
    void  wasm_interface::vm_onInit()
    { try {
