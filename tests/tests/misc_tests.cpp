@@ -1,7 +1,6 @@
 #include <eos/chain/BlockchainConfiguration.hpp>
 
-#include <eos/utilities/randutils.hpp>
-#include <eos/utilities/pcg-random/pcg_random.hpp>
+#include <eos/utilities/rand.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -44,34 +43,28 @@ BOOST_AUTO_TEST_CASE(median_properties_test)
 /// Test that our deterministic random shuffle algorithm gives the same results in all environments
 BOOST_AUTO_TEST_CASE(deterministic_randomness)
 { try {
-   randutils::seed_seq_fe<1> seed({123454321});
-   randutils::random_generator<pcg32_fast> rng(seed);
+   utilities::rand::random rng(123454321);
    vector<string> words = {"infamy", "invests", "estimated", "potters", "memorizes", "hal9000"};
    rng.shuffle(words);
    BOOST_CHECK_EQUAL(fc::json::to_string(words),
-                     fc::json::to_string(vector<string>{"hal9000","infamy","estimated","memorizes","invests","potters"}));
+                     fc::json::to_string(vector<string>{"hal9000","infamy","invests","estimated","memorizes","potters"}));
    rng.shuffle(words);
    BOOST_CHECK_EQUAL(fc::json::to_string(words), 
-                     fc::json::to_string(vector<string>{"hal9000","estimated","infamy","memorizes","potters","invests"}));
+                     fc::json::to_string(vector<string>{"memorizes","infamy","hal9000","potters","estimated","invests"}));
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(deterministic_distributions)
 { try {
-   randutils::seed_seq_fe<1> seed({123454321});
-   randutils::random_generator<pcg32_fast> rng(seed);
+   utilities::rand::random rng(123454321);
+
+   BOOST_CHECK_EQUAL(rng.next(), UINT64_C(13636622732572118961));
+   BOOST_CHECK_EQUAL(rng.next(), UINT64_C(8049736256506128729));
+   BOOST_CHECK_EQUAL(rng.next(), UINT64_C(1224405983932261174));
 
    std::vector<int> nums = {0, 1, 2};
 
-   BOOST_CHECK_EQUAL(rng.uniform(0.0, 1.0), 0.52802440151572227);
-   BOOST_CHECK_EQUAL(rng.uniform(0.0, 1.0), 0.36562641779892147);
-   BOOST_CHECK_EQUAL(rng.uniform(0.0, 1.0), 0.44247416267171502);
-
-   BOOST_CHECK_EQUAL(rng.pick(nums), 2);
-   BOOST_CHECK_EQUAL(rng.pick(nums), 0);
-   BOOST_CHECK_EQUAL(rng.pick(nums), 2);
-
    rng.shuffle(nums);
-   std::vector<int> a{0, 1, 2};
+   std::vector<int> a{2, 0, 1};
    BOOST_CHECK(std::equal(nums.begin(), nums.end(), a.begin()));
    rng.shuffle(nums);
    std::vector<int> b{0, 2, 1};
@@ -80,9 +73,6 @@ BOOST_AUTO_TEST_CASE(deterministic_distributions)
    std::vector<int> c{1, 0, 2};
    BOOST_CHECK(std::equal(nums.begin(), nums.end(), c.begin()));
 
-   BOOST_CHECK_EQUAL(rng.uniform(0, 9), 2);
-   BOOST_CHECK_EQUAL(rng.uniform(0, 9), 9);
-   BOOST_CHECK_EQUAL(rng.uniform(0, 9), 0);
 } FC_LOG_AND_RETHROW() }
 
 
