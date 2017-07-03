@@ -1,9 +1,14 @@
 extern "C" {
+#define assert assertnonei32i32
+#define store storenonei32i32i32i32
+#define load loadi32i32i32i32i32
+#define name_to_int64 name_to_int64i64i32
+#define readMessage readMessagei32i32i32
 typedef long long    uint64_t;
 typedef unsigned int uint32_t;
 typedef uint64_t     AccountName;
 int load( const void* keyptr, int keylen, void* valueptr, int valuelen );
-int store( const void* keyptr, int keylen, const void* valueptr, int valuelen );
+void store( const void* keyptr, int keylen, const void* valueptr, int valuelen );
 int readMessage( void* dest, int destsize );
 int remove( const void* key, int keyLength );
 void printi( uint64_t );

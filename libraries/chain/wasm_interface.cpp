@@ -10,6 +10,7 @@
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/account_object.hpp>
 
+extern "C" {
 namespace eos { namespace chain {
    using namespace IR;
    using namespace Runtime;
@@ -456,3 +457,4 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
 
 } }
+}//extern
