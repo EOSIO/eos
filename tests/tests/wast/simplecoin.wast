@@ -16,7 +16,7 @@ const char* simplecoin_wast = R"====((module
   (import "env" "store" (func $store (param i32 i32 i32 i32)))
   (table 0 anyfunc)
   (memory $0 1)
-  (data (i32.const 16) "@B\0f\00\00\00\00\00")
+  (data (i32.const 16) "\00\e4\0bT\02\00\00\00")
   (data (i32.const 32) "simplecoin\00")
   (data (i32.const 48) "on_init called with \00")
   (data (i32.const 80) "\n\00")
@@ -142,6 +142,4 @@ const char* simplecoin_wast = R"====((module
       (i32.const 8)
     )
   )
-)
-
-)====";
+))====";

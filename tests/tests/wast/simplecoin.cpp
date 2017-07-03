@@ -3,7 +3,7 @@ typedef long long    uint64_t;
 typedef unsigned int uint32_t;
 typedef uint64_t     AccountName;
 int load( const void* keyptr, int keylen, void* valueptr, int valuelen );
-int store( const void* keyptr, int keylen, const void* valueptr, int valuelen );
+void store( const void* keyptr, int keylen, const void* valueptr, int valuelen );
 int readMessage( void* dest, int destsize );
 int remove( const void* key, int keyLength );
 void printi( uint64_t );
@@ -11,7 +11,6 @@ void print( const char* str );
 void assert( int test, const char* message );
 void* memcpy( void* dest, const void* src, uint32_t size );
 uint64_t name_to_int64( const char* name );
-
 /*
 void* malloc( unsigned int size ) {
     static char dynamic_memory[1024*8];
@@ -24,6 +23,7 @@ void* malloc( unsigned int size ) {
 */
 }
 
+
 template<typename Key, typename Value>
 int load( const Key& key,  Value& v ) { return load( &key, sizeof(Key), &v, sizeof(Value) ); }
 template<typename Key, typename Value>
@@ -32,9 +32,7 @@ template<typename Key>
 void remove( const Key& key ) { remove( &key, sizeof(key) );  }
 template<typename Message>
 void readMessage( Message& m ) { readMessage( &m, sizeof(Message) ); }
-
 /// END BUILT IN LIBRARY.... everything below this is "user contract"
-
 
 
 extern "C" {
@@ -52,19 +50,17 @@ struct Balance {
 };
 
 void init() {
-  static Balance initial = { 1000*1000 };
+  static Balance initial = { uint64_t(10)*1000*1000ll*1000ll };
   static AccountName simplecoin;
   simplecoin = name_to_int64( "simplecoin" );
-
+  print( "on_init called with "); printi( initial.balance ); print( "\n");
   store( simplecoin, initial ); 
 }
-
 
 void apply_simplecoin_transfer() {
    static Transfer message;
    static Balance from_balance;
    static Balance to_balance;
-
    to_balance.balance = 0;
 
    readMessage( message  );

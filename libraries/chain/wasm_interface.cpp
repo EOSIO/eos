@@ -220,7 +220,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) {
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
-  std::cerr << val;
+  std::cerr << uint64_t(val);
 //  idump((val));
 }
 
