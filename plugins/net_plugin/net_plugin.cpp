@@ -120,7 +120,11 @@ public:
          out_queue.push_back( m );
          if( out_queue.size() == 1 )
             send_next_message();
+         else {
+           dlog ("send: out_queue size = ${s}", ("s",out_queue.size()));
+         }
       }
+
 
       void send_next_message() {
         if( !out_queue.size() ) {
@@ -159,6 +163,7 @@ public:
                num <= ss->end_block; num++) {
             fc::optional<signed_block> sb = cc.fetch_block_by_number(num);
             if (sb) {
+              dlog("write backlog, block #${num}",("num",num));
               send( *sb );
             }
             ss.get_node()->value().last = num;
@@ -436,25 +441,13 @@ class net_plugin_impl {
     }
     if (!syncing) {
       try {
-        block_id_type id = chain_plug->chain().get_block_id_for_num (num-1);
+        block_id_type id = cc.get_block_id_for_num (num-1);
+        dlog ("got the prevous block id = ${id}",("id",id));
       }
       catch (const unknown_block_exception &ex) {
-        uint32_t head = chain_plug->chain().last_irreversible_block_num()+1;
-        try {
-          while (head < num)
-            {
-              if (cc.is_known_block (cc.get_block_id_for_num (head))) {
-                head++;
-              }
-              else {
-                break;
-              }
-            }
-        }
-        catch (...) {}
-
-        dlog ("block num ${n} is not known head = ${h}",("n",num)("h",head));
-        sync_state req = {head, num, 0, time_point::now() };
+        uint32_t head = cc.head_block_num();
+        dlog ("block num ${n} is not known, head = ${h}",("n",(num-1))("h",head));
+        sync_state req = {head+1, num-1, 0, time_point::now() };
         c.in_sync_state.insert (req);
         sync_request_message srm = {req.start_block, req.end_block };
         c.send (srm);
