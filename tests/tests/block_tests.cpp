@@ -48,8 +48,6 @@ using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
-
-
 BOOST_AUTO_TEST_CASE(name_test) {
    using eos::types::Name;
    Name temp;
@@ -96,19 +94,20 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       chain.produce_blocks(10);
 
       Make_Account(chain, newguy);
+      Transfer_Asset(chain, inita, newguy, Asset(100));
 
       Transfer_Asset(chain, newguy, inita, Asset(1));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
+      chain.produce_blocks();
 
-        chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.head_block_num(), 11);
       BOOST_CHECK(chain.fetch_block_by_number(11).valid());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.empty());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.front().empty());
-      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
+      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 3);
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
 } FC_LOG_AND_RETHROW() }
 
 
