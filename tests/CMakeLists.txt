@@ -9,3 +9,7 @@ endif()
 file(GLOB UNIT_TESTS "tests/*.cpp")
 add_executable( chain_test ${UNIT_TESTS} ${COMMON_SOURCES} )
 target_link_libraries( chain_test eos_native_contract eos_chain chainbase eos_utilities eos_egenesis_none fc ${PLATFORM_SPECIFIC_LIBS} )
+
+file(GLOB SLOW_TESTS "slow_tests/*.cpp")
+add_executable( slow_test ${SLOW_TESTS} ${COMMON_SOURCES} )
+target_link_libraries( slow_test eos_native_contract eos_chain chainbase eos_utilities eos_egenesis_none fc ${PLATFORM_SPECIFIC_LIBS} )
