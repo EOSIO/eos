@@ -29,33 +29,6 @@
 
 namespace eos { namespace chain {
 
-   struct shared_authority {
-      shared_authority( chainbase::allocator<char> alloc )
-      :accounts(alloc),keys(alloc)
-      {}
-
-      shared_authority& operator=(const Authority& a) {
-         threshold = a.threshold;
-         accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
-         keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
-         return *this;
-      }
-      shared_authority& operator=(Authority&& a) {
-         threshold = a.threshold;
-         accounts.reserve(a.accounts.size());
-         for (auto& p : a.accounts)
-            accounts.emplace_back(std::move(p));
-         keys.reserve(a.keys.size());
-         for (auto& p : a.keys)
-            keys.emplace_back(std::move(p));
-         return *this;
-      }
-
-      UInt32                                        threshold = 0;
-      shared_vector<types::AccountPermissionWeight> accounts;
-      shared_vector<types::KeyPermissionWeight>     keys;
-   };
-
    class account_object : public chainbase::object<account_object_type, account_object> {
       OBJECT_CTOR(account_object,(code))
 
@@ -78,52 +51,10 @@ namespace eos { namespace chain {
       >
    >;
 
-   class permission_object : public chainbase::object<permission_object_type, permission_object> {
-      OBJECT_CTOR(permission_object, (auth) )
-
-      id_type           id;
-      AccountName       owner; ///< the account this permission belongs to
-      id_type           parent; ///< parent permission 
-      PermissionName    name; ///< human-readable name for the permission
-      shared_authority  auth; ///< authority required to execute this permission
-   };
-
-   struct by_parent;
-   struct by_owner;
-   using permission_index = chainbase::shared_multi_index_container<
-      permission_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<permission_object, permission_object::id_type, &permission_object::id>>,
-         ordered_unique<tag<by_parent>,
-            composite_key<permission_object,
-               member<permission_object, permission_object::id_type, &permission_object::parent>,
-               member<permission_object, permission_object::id_type, &permission_object::id>
-            >
-         >,
-         ordered_unique<tag<by_owner>,
-            composite_key<permission_object,
-               member<permission_object, AccountName, &permission_object::owner>,
-               member<permission_object, PermissionName, &permission_object::name>,
-               member<permission_object, permission_object::id_type, &permission_object::id>
-            >
-         >,
-         ordered_unique<tag<by_name>,
-            composite_key<permission_object,
-               member<permission_object, PermissionName, &permission_object::name>,
-               member<permission_object, permission_object::id_type, &permission_object::id>
-            >
-         >
-      >
-   >;
-
 } } // eos::chain
 
 CHAINBASE_SET_INDEX_TYPE(eos::chain::account_object, eos::chain::account_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_index)
 
-FC_REFLECT(chainbase::oid<eos::chain::permission_object>, (_id))
 FC_REFLECT(chainbase::oid<eos::chain::account_object>, (_id))
 
-FC_REFLECT(eos::chain::shared_authority, (threshold)(accounts)(keys))
 FC_REFLECT(eos::chain::account_object, (id)(name)(vm_type)(vm_version)(code_version)(code)(creation_date))
-FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name)(auth))

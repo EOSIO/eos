@@ -23,7 +23,7 @@
  */
 #pragma once
 #include <eos/chain/types.hpp>
-#include <eos/chain/account_object.hpp>
+#include <eos/chain/permission_object.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -57,7 +57,7 @@ namespace eos { namespace chain {
       OBJECT_CTOR(action_permission_object)
 
       id_type                        id;
-      account_id_type                owner; ///< the account whose permission we seek
+      AccountName                    owner; ///< the account whose permission we seek
       permission_object::id_type     scope_permission; ///< the scope permission defined by the contract for the action
       permission_object::id_type     owner_permission; ///< the owner permission that is required
    };
@@ -69,7 +69,7 @@ namespace eos { namespace chain {
          ordered_unique<tag<by_id>, member<action_permission_object, action_permission_object::id_type, &action_permission_object::id>>,
          ordered_unique<tag<by_owner_scope>, 
             composite_key< action_permission_object,
-               member<action_permission_object, account_id_type, &action_permission_object::owner>,
+               member<action_permission_object, AccountName, &action_permission_object::owner>,
                member<action_permission_object, permission_object::id_type, &action_permission_object::scope_permission>
             >
          >

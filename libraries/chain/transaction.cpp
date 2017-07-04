@@ -27,6 +27,8 @@
 #include <fc/smart_ref_impl.hpp>
 #include <algorithm>
 
+#include <boost/range/adaptor/transformed.hpp>
+
 namespace eos { namespace chain {
 
 digest_type SignedTransaction::digest()const {
@@ -50,16 +52,12 @@ eos::chain::transaction_id_type SignedTransaction::id() const {
 }
 
 const signature_type& eos::chain::SignedTransaction::sign(const private_key_type& key, const chain_id_type& chain_id) {
-   digest_type h = sig_digest( chain_id );
-   signatures.push_back(key.sign_compact(h));
+   signatures.push_back(key.sign_compact(sig_digest(chain_id)));
    return signatures.back();
 }
 
 signature_type eos::chain::SignedTransaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
-   digest_type::encoder enc;
-   fc::raw::pack( enc, chain_id );
-   fc::raw::pack( enc, static_cast<const types::Transaction&>(*this) );
-   return key.sign_compact(enc.result());
+   return key.sign_compact(sig_digest(chain_id));
 }
 
 void SignedTransaction::set_reference_block(const block_id_type& reference_block) {
@@ -74,17 +72,13 @@ bool SignedTransaction::verify_reference_block(const block_id_type& reference_bl
 
 flat_set<public_key_type> SignedTransaction::get_signature_keys( const chain_id_type& chain_id )const
 { try {
-   auto d = sig_digest( chain_id );
-   flat_set<public_key_type> result;
-   for( const auto&  sig : signatures )
-   {
-      EOS_ASSERT(
-         result.insert( fc::ecc::public_key(sig,d) ).second,
-         tx_duplicate_sig,
-         "Duplicate Signature detected" );
-   }
-   return result;
-} FC_CAPTURE_AND_RETHROW() }
+   using boost::adaptors::transformed;
+   auto SigToKey = transformed([digest = sig_digest(chain_id)](const fc::ecc::compact_signature& signature) {
+      return public_key_type(fc::ecc::public_key(signature, digest));
+   });
+   auto keyRange = signatures | SigToKey;
+   return {keyRange.begin(), keyRange.end()};
+   } FC_CAPTURE_AND_RETHROW() }
 
 eos::chain::digest_type SignedTransaction::merkle_digest() const {
    digest_type::encoder enc;

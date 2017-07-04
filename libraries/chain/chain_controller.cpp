@@ -639,10 +639,19 @@ void chain_controller::apply_message( apply_context& context )
 
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
 
-
 void chain_controller::_apply_transaction(const SignedTransaction& trx)
 { try {
    validate_transaction(trx);
+
+   auto getAuthority = [&db=_db](const types::AccountPermission& permission) {
+      auto key = boost::make_tuple(permission.account, permission.permission);
+      return db.get<permission_object, by_owner>(key).auth;
+   };
+#warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
+   auto checker = MakeAuthorityChecker(std::move(getAuthority), trx.get_signature_keys(chain_id_type{}));
+
+   for (const auto& requiredAuthority : trx.authorizations)
+      EOS_ASSERT(checker.satisfied(requiredAuthority), tx_missing_auth, "Transaction is not authorized.");
 
    for (const auto& message : trx.messages) {
       process_message(message);

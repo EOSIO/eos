@@ -1,6 +1,7 @@
 #include <eos/native_contract/system_contract.hpp>
 
 #include <eos/chain/message_handling_contexts.hpp>
+#include <eos/chain/permission_object.hpp>
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/global_property_object.hpp>
@@ -50,9 +51,9 @@ void validate_system_newaccount(message_validate_context& context) {
    EOS_ASSERT(context.msg.has_notify(config::StakedBalanceContractName), message_validate_exception,
               "Must notify Staked Balance Contract (${name})", ("name", config::StakedBalanceContractName));
 
-   EOS_ASSERT( eos::validate(create.owner), message_validate_exception, "Invalid owner authority");
-   EOS_ASSERT( eos::validate(create.active), message_validate_exception, "Invalid active authority");
-   EOS_ASSERT( eos::validate(create.recovery), message_validate_exception, "Invalid recovery authority");
+   EOS_ASSERT( validate(create.owner), message_validate_exception, "Invalid owner authority");
+   EOS_ASSERT( validate(create.active), message_validate_exception, "Invalid active authority");
+   EOS_ASSERT( validate(create.recovery), message_validate_exception, "Invalid recovery authority");
 }
 
 void precondition_system_newaccount(precondition_validate_context& context) {
