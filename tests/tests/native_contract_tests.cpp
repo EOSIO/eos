@@ -245,7 +245,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture)
       BOOST_REQUIRE_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 
       for (int i = 0; i < votes.size(); ++i) {
-         auto name = std::string("init") + fc::to_string(i);
+         auto name = std::string("init") + char('a' + i);
          Update_Producer(chain, name, chain.get_producer(name).signing_key, votes[i]);
       }
 
@@ -291,7 +291,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
       BOOST_REQUIRE_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 
       for (int i = 0; i < votes.size(); ++i) {
-         auto name = std::string("init") + fc::to_string(i);
+         auto name = std::string("init") + char('a' + i);
          Update_Producer(chain, name, chain.get_producer(name).signing_key, votes[i]);
       }
 
@@ -311,7 +311,6 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 
       Make_Account(chain, joe);
       Make_Account(chain, bob);
-      Stake_Asset(chain, bob, Asset(100).amount);
       Make_Producer(chain, joe);
       Approve_Producer(chain, bob, joe, true);
       // Produce blocks up to, but not including, the last block in the round
@@ -355,12 +354,11 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
-         BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(0));
+         BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(100));
          const auto& joeVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
       }
 
-      Stake_Asset(chain, bob, Asset(100).amount);
       // Produce blocks up to, but not including, the last block in the round
       chain.produce_blocks(config::BlocksPerRound - chain.head_block_num() - 1);
 
