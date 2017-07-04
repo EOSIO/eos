@@ -3,6 +3,7 @@
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
 #include <eos/chain/chain_controller.hpp>
+#include <eos/chain/exceptions.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>
@@ -42,7 +43,7 @@ struct node_transaction_state {
 struct transaction_state {
    transaction_id_type id;
    bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
-   bool                is_noticed_to_peer = false; ///< have we sent peer noitce we know it (true if we reeive from this peer)
+   bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
    uint32_t            block_num = -1; ///< the block number the transaction was included in
    time_point          validated_time; ///< infinity for unvalidated
    time_point          requested_time; /// incase we fetch large trx
@@ -119,7 +120,11 @@ public:
          out_queue.push_back( m );
          if( out_queue.size() == 1 )
             send_next_message();
+         else {
+           dlog ("send: out_queue size = ${s}", ("s",out_queue.size()));
+         }
       }
+
 
       void send_next_message() {
         if( !out_queue.size() ) {
@@ -140,7 +145,6 @@ public:
 
          boost::asio::async_write( *socket, boost::asio::buffer( buffer.data(), buffer.size() ),
             [this,buf=std::move(buffer)]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-               ilog( "write message handler..." );
                if( ec ) {
                   elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
                } else  {
@@ -152,7 +156,6 @@ public:
 
      void write_block_backlog ( ) {
       try {
-        ilog ("write loop sending backlog ");
         if (out_sync_state.size() > 0) {
           chain_controller& cc = app().find_plugin<chain_plugin>()->chain();
           auto ss = out_sync_state.begin();
@@ -160,6 +163,7 @@ public:
                num <= ss->end_block; num++) {
             fc::optional<signed_block> sb = cc.fetch_block_by_number(num);
             if (sb) {
+              dlog("write backlog, block #${num}",("num",num));
               send( *sb );
             }
             ss.get_node()->value().last = num;
@@ -194,19 +198,20 @@ class net_plugin_impl {
   chain_plugin* chain_plug;
 
 
-   void connect( const string& ep ) {
-     auto host = ep.substr( 0, ep.find(':') );
-     auto port = ep.substr( host.size()+1, host.size() );
+   void connect( const string& peer_addr ) {
+     auto host = peer_addr.substr( 0, peer_addr.find(':') );
+     auto port = peer_addr.substr( host.size()+1, host.size() );
      idump((host)(port));
      auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
      tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+     // Note: need to add support for IPv6 too
 
      resolver->async_resolve( query,
-       [resolver,ep,this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ){
+       [resolver,peer_addr,this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ){
          if( !err ) {
            connect( resolver, endpoint_itr );
          } else {
-           elog( "Unable to resolve ${ep}: ${error}", ( "ep", ep )("error", err.message() ) );
+           elog( "Unable to resolve ${peer_addr}: ${error}", ( "peer_addr", peer_addr )("error", err.message() ) );
          }
      });
    }
@@ -271,12 +276,21 @@ class net_plugin_impl {
     hello->os = "other";
 #endif
     hello->agent = user_agent_name;
-
+    update_handshake ();
   }
 
   void update_handshake () {
-    hello->last_irreversible_block_id = chain_plug->chain().get_block_id_for_num
-      (hello->last_irreversible_block_num = chain_plug->chain().last_irreversible_block_num());
+    try {
+      hello->last_irreversible_block_id = chain_plug->chain().get_block_id_for_num
+        (hello->last_irreversible_block_num = chain_plug->chain().last_irreversible_block_num());
+      ilog ("update_handshake my libnum = ${n}",("n",hello->last_irreversible_block_num));
+    }
+    catch (const unknown_block_exception &ex) {
+      hello->last_irreversible_block_id = fc::sha256::hash(0);
+      hello->last_irreversible_block_num = 0;
+      ilog ("update_handshake my libnum = ${n}",("n",hello->last_irreversible_block_num));
+
+    }
   }
 
    void start_session( connection* con ) {
@@ -327,7 +341,14 @@ class net_plugin_impl {
       );
    }
 
-  void handle_message (connection &c, handshake_message &msg) {
+  template<typename T>
+  void send_all (const T &msg) {
+    for (auto &c : connections) {
+      c->send(msg);
+    }
+  }
+
+  void handle_message (connection &c, const handshake_message &msg) {
     if (!hello) {
       init_handshake();
     }
@@ -349,6 +370,7 @@ class net_plugin_impl {
     }
     chain_controller& cc = chain_plug->chain();
     uint32_t head = cc.head_block_num ();
+    ilog ("My head block = ${h} their lib = ${lib}", ("h",head)("lib", msg.last_irreversible_block_num));
     if ( msg.last_irreversible_block_num > head) {
       uint32_t delta = msg.last_irreversible_block_num - head;
       uint32_t count = connections.size();
@@ -373,47 +395,68 @@ class net_plugin_impl {
   }
 
 
-  void handle_message (connection &c, peer_message &msg) {
+  void handle_message (connection &c, const peer_message &msg) {
     ilog ("got a peer message");
   }
 
-  void handle_message (connection &c, notice_message &msg) {
+  void handle_message (connection &c, const notice_message &msg) {
     ilog ("got a notice message");
   }
 
-  void handle_message (connection &c, sync_request_message &msg) {
+  void handle_message (connection &c, const sync_request_message &msg) {
     ilog ("got a sync request message for blocks ${s} to ${e}", ("s",msg.start_block)("e", msg.end_block));
     sync_state req = {msg.start_block,msg.end_block,0,time_point::now()};
     c.out_sync_state.insert (req);
     c.write_block_backlog ();
   }
 
-  void handle_message (connection &c, block_summary_message &msg) {
+  void handle_message (connection &c, const block_summary_message &msg) {
     ilog ("got a block summary message");
   }
 
-  void handle_message (connection &c, SignedTransaction &msg) {
+  void handle_message (connection &c, const SignedTransaction &msg) {
     ilog ("got a SignedTransacton");
+    chain_plug->accept_transaction (msg);
   }
 
-  void handle_message (connection &c, signed_block &msg) {
+  void handle_message (connection &c, const signed_block &msg) {
     uint32_t bn = msg.block_num();
-    ilog ("got a signed_block, num = ${n}", ("n", bn));
+    dlog ("got a signed_block, num = ${n}", ("n", bn));
     chain_controller &cc = chain_plug->chain();
 
     if (cc.is_known_block(msg.id())) {
-      ilog ("block id ${id} is known", ("id", msg.id()) );
+      dlog ("block id ${id} is known", ("id", msg.id()) );
       return;
     }
     uint32_t num = msg.block_num();
+
+    bool syncing = false;
     for (auto &ss: c.in_sync_state) {
       if (num >= ss.end_block) {
         continue;
       }
       const_cast<sync_state&>(ss).last = num;
+      syncing = true;
       break;
     }
-    // TODO: add block to global state
+    if (!syncing) {
+      try {
+        block_id_type id = cc.get_block_id_for_num (num-1);
+        dlog ("got the prevous block id = ${id}",("id",id));
+      }
+      catch (const unknown_block_exception &ex) {
+        uint32_t head = cc.head_block_num();
+        dlog ("block num ${n} is not known, head = ${h}",("n",(num-1))("h",head));
+        sync_state req = {head+1, num-1, 0, time_point::now() };
+        c.in_sync_state.insert (req);
+        sync_request_message srm = {req.start_block, req.end_block };
+        c.send (srm);
+
+        syncing = true;
+      }
+
+    }
+    chain_plug->accept_block(msg, syncing);
   }
 
 
@@ -422,37 +465,8 @@ class net_plugin_impl {
     connection &c;
     msgHandler (net_plugin_impl &imp, connection &conn) : impl(imp), c(conn) {}
 
-    void operator()(handshake_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(peer_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(notice_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(sync_request_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(block_summary_message &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(SignedTransaction &msg)
-    {
-      impl.handle_message (c, msg);
-    }
-
-    void operator()(signed_block &msg)
+    template <typename T>
+    void operator()(const T &msg) const
     {
       impl.handle_message (c, msg);
     }
@@ -507,6 +521,7 @@ void net_plugin::set_program_options( options_description& cli, options_descript
          ("listen-endpoint", bpo::value<string>()->default_value( "127.0.0.1:9876" ), "The local IP address and port to listen for incoming connections.")
          ("remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
          ("public-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The public IP address and port that should be advertized to peers.")
+     ("agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
          ;
 }
 
@@ -524,14 +539,16 @@ void net_plugin::plugin_initialize( const variables_map& options ) {
    if( options.count( "remote-endpoint" ) ) {
       my->seed_nodes = options.at( "remote-endpoint" ).as< vector<string> >();
    }
-
-   my->user_agent_name = "EOS Test Agent";
+   if (options.count("agent-name")) {
+     my->user_agent_name = options.at ("agent-name").as< string > ();
+   }
    my->chain_plug = app().find_plugin<chain_plugin>();
 }
 
   void net_plugin::plugin_startup() {
   // boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
   if( my->acceptor ) {
+
       my->acceptor->open(my->listen_endpoint.protocol());
       my->acceptor->set_option(tcp::acceptor::reuse_address(true));
       my->acceptor->bind(my->listen_endpoint);
@@ -568,5 +585,9 @@ try {
    }
    ilog( "exit shutdown" );
 } FC_CAPTURE_AND_RETHROW() }
+
+  void net_plugin::broadcast_block (const chain::signed_block &sb) {
+    my->send_all (sb);
+  }
 
 }
