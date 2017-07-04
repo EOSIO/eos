@@ -81,58 +81,42 @@ void apply_staked_claim(apply_context& context) {
 }
 
 void validate_staked_setproducer(message_validate_context& context) {
-   auto create = context.msg.as<types::setproducer>();
-   EOS_ASSERT(create.name.good(), message_validate_exception, "Producer owner name cannot be empty");
-}
-
-void precondition_staked_setproducer(precondition_validate_context& context) {
-   auto create = context.msg.as<types::setproducer>();
-   const auto& db = context.db;
-   auto producer = db.find<producer_object, by_owner>(create.name);
-   EOS_ASSERT(producer == nullptr, message_precondition_exception,
-              "Account ${name} already has a block producer", ("name", create.name));
-}
-
-void apply_staked_setproducer(apply_context& context) {
-   auto create = context.msg.as<types::setproducer>();
-   auto& db = context.mutable_db;
-   db.create<producer_object>([&create](producer_object& p) {
-      p.owner = create.name;
-      p.signing_key = create.key;
-      p.configuration = create.configuration;
-   });
-   auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
-   db.create<ProducerVotesObject>([&create, &raceTime](ProducerVotesObject& pvo) {
-      pvo.ownerName = create.name;
-      pvo.startNewRaceLap(raceTime);
-   });
-}
-
-/*
-void UpdateProducer::validate(message_validate_context& context) {
-   auto update = context.msg.as<types::UpdateProducer>();
+   auto update = context.msg.as<types::setproducer>();
    EOS_ASSERT(update.name.good(), message_validate_exception, "Producer owner name cannot be empty");
 }
 
-void UpdateProducer::validate_preconditions(precondition_validate_context& context) {
+void precondition_staked_setproducer(precondition_validate_context& context) {
+   auto update = context.msg.as<types::setproducer>();
    const auto& db = context.db;
-   auto update = context.msg.as<types::UpdateProducer>();
-   const auto& producer = db.get<producer_object, by_owner>(update.name);
-   EOS_ASSERT(producer.signing_key != update.newKey || producer.configuration != update.configuration,
-              message_validate_exception, "Producer's new settings may not be identical to old settings");
+   auto producer = db.find<producer_object, by_owner>(update.name);
+   if (producer)
+      EOS_ASSERT(producer->signing_key != update.key || producer->configuration != update.configuration,
+                 message_validate_exception, "Producer's new settings may not be identical to old settings");
 }
 
-void UpdateProducer::apply(apply_context& context) {
+void apply_staked_setproducer(apply_context& context) {
+   auto update = context.msg.as<types::setproducer>();
    auto& db = context.mutable_db;
-   auto update = context.msg.as<types::UpdateProducer>();
-   const auto& producer = db.get<producer_object, by_owner>(update.name);
+   auto producer = db.find<producer_object, by_owner>(update.name);
 
-   db.modify(producer, [&update](producer_object& p) {
-      p.signing_key = update.newKey;
-      p.configuration = update.configuration;
-   });
+   if (producer)
+      db.modify(*producer, [&update](producer_object& p) {
+         p.signing_key = update.key;
+         p.configuration = update.configuration;
+      });
+   else {
+      db.create<producer_object>([&update](producer_object& p) {
+         p.owner = update.name;
+         p.signing_key = update.key;
+         p.configuration = update.configuration;
+      });
+      auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
+      db.create<ProducerVotesObject>([name = update.name, raceTime](ProducerVotesObject& pvo) {
+         pvo.ownerName = name;
+         pvo.startNewRaceLap(raceTime);
+      });
+   }
 }
-*/
 
 void validate_staked_okproducer(message_validate_context& context) {
    auto approve = context.msg.as<types::okproducer>();

@@ -156,7 +156,8 @@ namespace eos { namespace chain {
             auto on_exit = fc::make_scoped_exit( [&](){ 
                for( const auto& t : old_pending ) {
                   try {
-                     push_transaction( t );
+                     if (!is_known_transaction(t.id()))
+                        push_transaction( t );
                   } catch ( ... ){}
                }
             });

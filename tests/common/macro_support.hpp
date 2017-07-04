@@ -8,16 +8,18 @@
    block_log name ## _log(get_temp_dir() / "blocklog"); \
    fork_database name ## _fdb; \
    native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
-   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this);
+   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this); \
+   BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
 #define MKCHAIN2(name, id) \
    chainbase::database name ## _db(get_temp_dir(#id), chainbase::database::read_write, TEST_DB_SIZE); \
    block_log name ## _log(get_temp_dir(#id) / "blocklog"); \
    fork_database name ## _fdb; \
    native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
-   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this);
+   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this); \
+   BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
 #define MKCHAINS_MACRO(x, y, name) Make_Blockchain(name)
 
-#define MKNET1(name) testing_network name;
+#define MKNET1(name) testing_network name; BOOST_TEST_CHECKPOINT("Created testnet " << #name);
 #define MKNET2_MACRO(x, name, chain) name.connect_blockchain(chain);
 #define MKNET2(name, ...) MKNET1(name) BOOST_PP_SEQ_FOR_EACH(MKNET2_MACRO, name, __VA_ARGS__)
 
@@ -31,6 +33,7 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Created account " << #name); \
    }
 #define MKACCT2(chain, name) \
    Make_Key(name) \
@@ -60,6 +63,7 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Transfered " << amount << " from " << #sender << " to " << #recipient); \
    }
 #define XFER4(chain, sender, recipient, amount) XFER5(chain, sender, recipient, amount, "")
 
@@ -75,6 +79,7 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Staked " << amount << " to " << #recipient); \
    }
 #define STAKE3(chain, account, amount) STAKE4(chain, account, account, amount)
 
@@ -86,6 +91,7 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Begin unstake " << amount << " to " << #account); \
    }
 
 #define FINISH_UNSTAKE3(chain, account, amount) \
@@ -96,6 +102,7 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Finish unstake " << amount << " to " << #account); \
    }
 
 #define MKPDCR4(chain, owner, key, cfg) \
@@ -106,6 +113,7 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Create producer " << #owner); \
    }
 #define MKPDCR3(chain, owner, key) MKPDCR4(chain, owner, key, BlockchainConfiguration{});
 #define MKPDCR2(chain, owner) \
@@ -120,6 +128,7 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Set producer approval from " << #voter << " for " << #producer << " to " << approved); \
    }
 
 #define UPPDCR4(chain, owner, key, cfg) \
@@ -130,5 +139,6 @@
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
+      BOOST_TEST_CHECKPOINT("Update producer " << #owner); \
    }
 #define UPPDCR3(chain, owner, key) UPPDCR4(chain, owner, key, chain.get_producer(owner).configuration)
