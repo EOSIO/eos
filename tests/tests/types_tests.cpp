@@ -15,7 +15,6 @@ BOOST_AUTO_TEST_CASE(basic_simple_symbol_table_test)
       BOOST_CHECK_THROW(table.getType("Struct"), type_exception);
       BOOST_CHECK_THROW(table.getType("Foo"), unknown_type_exception);
 
-      BOOST_CHECK_THROW(table.addType({"testtype", "", {{"f1", "String"}}}), invalid_type_name_exception);
       BOOST_CHECK_THROW(table.addType({"test type", "", {{"f1", "String"}}}), invalid_type_name_exception);
       BOOST_CHECK_THROW(table.addType({"Testtype[]", "", {{"f1", "String"}}}), invalid_type_name_exception);
       BOOST_CHECK_THROW(table.addType({"Testtype]", "", {{"f1", "String"}}}), invalid_type_name_exception);
@@ -30,8 +29,6 @@ BOOST_AUTO_TEST_CASE(basic_simple_symbol_table_test)
       BOOST_CHECK_THROW(table.addType({"_Testtype", "", {{"f1", "String"}}}), invalid_type_name_exception);
       BOOST_CHECK_THROW(table.addType({"Testtype_", "", {{"f1", "String"}}}), invalid_type_name_exception);
       BOOST_CHECK_THROW(table.addType({"Test_type", "", {{"f1", "String"}}}), invalid_type_name_exception);
-      BOOST_CHECK_THROW(table.addType({"0Testtype", "", {{"f1", "String"}}}), invalid_type_name_exception);
-      BOOST_CHECK_THROW(table.addType({"0testtype", "", {{"f1", "String"}}}), invalid_type_name_exception);
       table.addType({"Testtype", "", {{"f1", "String"}}});
       table.addType({"Testtype1", "", {{"f1", "String"}}});
       table.addType({"Test2type", "", {{"f1", "String"}}});
