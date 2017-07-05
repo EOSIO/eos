@@ -1,4 +1,5 @@
 #include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/authority.hpp>
 
 #include <eos/utilities/rand.hpp>
 
@@ -72,9 +73,62 @@ BOOST_AUTO_TEST_CASE(deterministic_distributions)
    rng.shuffle(nums);
    std::vector<int> c{1, 0, 2};
    BOOST_CHECK(std::equal(nums.begin(), nums.end(), c.begin()));
-
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(authority_checker)
+{ try {
+   #define KEY(x) auto x = fc::ecc::private_key::regenerate(fc::sha256::hash(#x)).get_public_key()
+
+   KEY(a);
+   KEY(b);
+   KEY(c);
+
+   auto GetNullAuthority = [](auto){return Authority();};
+
+   Authority A(2, {{a, 1}, {b, 1}}, {});
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a, b}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a, b, c}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, c}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {b, c}).satisfied(A));
+
+   A = Authority(3, {{a,1},{b,1},{c,1}}, {});
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {c, b, a}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, c}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {b, c}).satisfied(A));
+
+   A = Authority(1, {{a, 1}, {b, 1}}, {});
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {c}).satisfied(A));
+
+   A = Authority(1, {{a, 2}, {b, 1}}, {});
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {c}).satisfied(A));
+
+   auto GetCAuthority = [c](auto){return Authority(1, {{c, 1}}, {});};
+
+   A = Authority(2, {{a, 2}, {b, 1}}, {{{"hello", "world"}, 1}});
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {b,c}).satisfied(A));
+
+   A = Authority(2, {{a, 1}, {b, 1}}, {{{"hello", "world"}, 1}});
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,b}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {b,c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,c}).satisfied(A));
+
+   A = Authority(2, {{a, 1}, {b, 1}}, {{{"hello", "world"}, 2}});
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,b}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
 
