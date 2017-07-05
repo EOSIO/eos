@@ -9,6 +9,7 @@
 #include "IR/Validate.h"
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/account_object.hpp>
+#include <chrono>
 
 namespace eos { namespace chain {
    using namespace IR;
@@ -16,6 +17,16 @@ namespace eos { namespace chain {
 
    wasm_interface::wasm_interface() {
    }
+
+   std::chrono::time_point<std::chrono::system_clock> checktimeStart;
+
+DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
+   auto dur = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - checktimeStart);
+   if (dur.count() > 1500) {
+      wlog("checktime called ${d}", ("d", dur.count()));
+      throw checktime_exceeded();
+   }
+}
 
 DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
 //   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
@@ -245,6 +256,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 //   return 0;
 }
 
+DEFINE_INTRINSIC_FUNCTION1(env,loopControl,loopControl,i32,i32,i) {
+   usleep(50);
+   return i < 40;
+}
+
    wasm_interface& wasm_interface::get() {
       static wasm_interface*  wasm = nullptr;
       if( !wasm )
@@ -309,6 +325,8 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
          memset( memstart + state.mem_end, 0, ((1<<16) - state.mem_end) );
          memcpy( memstart, state.init_memory.data(), state.mem_end);
 
+         checktimeStart = std::chrono::system_clock::now();
+
          Runtime::invokeFunction(call,args);
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
@@ -330,6 +348,8 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
                wlog( "no onInit method found" );
                return; /// if not found then it is a no-op
          }
+
+         checktimeStart = std::chrono::system_clock::now();
 
             const FunctionType* functionType = getFunctionType(apply);
             FC_ASSERT( functionType->parameters.size() == 0 );
@@ -407,7 +427,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
         {
           wlog( "LOADING CODE" );
           Serialization::MemoryInputStream stream((const U8*)recipient.code.data(),recipient.code.size());
-          WASM::serialize(stream,*state.module);
+          WASM::serializeWithInjection(stream,*state.module);
 
           RootResolver rootResolver;
           LinkResult linkResult = linkModule(*state.module,rootResolver);

@@ -6,6 +6,10 @@
 
 namespace eos { namespace chain {
 
+struct checktime_exceeded : public fc::exception
+{
+};
+
 class  chain_controller;
 
 /**

@@ -29,6 +29,7 @@
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/block_summary_object.hpp>
+#include <eos/chain/wasm_interface.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -308,7 +309,7 @@ typedef struct {
   uint64_t    balance;
 } Balance;
 
-void onInit() {
+void init() {
   static Balance initial;
   static AccountName simplecoin;
   AccountName_initCString( &simplecoin, "simplecoin", 10 );
@@ -318,7 +319,7 @@ void onInit() {
 }
 
 
-void onApply_Transfer_simplecoin() {
+void apply_simplecoin_transfer() {
    static char buffer[100];
 
    int read   = readMessage( buffer, 100  );
@@ -387,8 +388,8 @@ R"(
   (export "uint64_unpack" (func $uint64_unpack))
   (export "String_unpack" (func $String_unpack))
   (export "Transfer_unpack" (func $Transfer_unpack))
-  (export "onInit" (func $onInit))
-  (export "onApply_Transfer_simplecoin" (func $onApply_Transfer_simplecoin))
+  (export "init" (func $init))
+  (export "apply_simplecoin_transfer" (func $apply_simplecoin_transfer))
   (func $malloc (param $0 i32) (result i32)
     (local $1 i32)
     (i32.store offset=8208
@@ -699,7 +700,7 @@ R"(
       )
     )
   )
-  (func $onInit
+  (func $init
     (call $assert
       (i32.const 1)
       (i32.const 8240)
@@ -727,7 +728,7 @@ R"(
       (i32.const 8)
     )
   )
-  (func $onApply_Transfer_simplecoin
+  (func $apply_simplecoin_transfer
     (local $0 i32)
     (local $1 i32)
     (local $2 i64)
@@ -987,6 +988,59 @@ R"(
       } catch (...) {
         // empty throw expected, since
       }
+} FC_LOG_AND_RETHROW() }
+
+//Test account script float rejection
+BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
+{ try {
+      Make_Blockchain(chain);
+      chain.produce_blocks(10);
+      Make_Account(chain, simplecoin);
+      chain.produce_blocks(1);
+
+#include "wast/loop.wast"
+
+   types::setcode handler;
+   handler.account = "simplecoin";
+
+   auto wasm = assemble_wast( wast_apply );
+   handler.code.resize(wasm.size());
+   memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+   {
+      eos::chain::SignedTransaction trx;
+      trx.messages.resize(1);
+      trx.messages[0].sender = "simplecoin";
+      trx.messages[0].recipient = config::SystemContractName;
+      trx.setMessage(0, "setcode", handler);
+      trx.expiration = chain.head_block_time() + 100;
+      trx.set_reference_block(chain.head_block_id());
+      wlog("push_transaction 1");
+      chain.push_transaction(trx);
+      wlog("produce_blocks 1");
+      chain.produce_blocks(1);
+      wlog("produce_blocks 1");
+   }
+
+
+   auto start = fc::time_point::now();
+   {
+      eos::chain::SignedTransaction trx;
+      trx.emplaceMessage("simplecoin", "simplecoin", vector<AccountName>{"inita"}, "transfer",
+                         types::transfer{"simplecoin", "inita", 1, "hello"} );
+      trx.expiration = chain.head_block_time() + 100;
+      trx.set_reference_block(chain.head_block_id());
+      try
+      {
+         wlog("starting long transaction");
+         chain.push_transaction(trx);
+         BOOST_FAIL("transaction should have failed with checktime_exceeded");
+      }
+      catch (const eos::chain::checktime_exceeded& check)
+      {
+         wlog("checktime_exceeded caught");
+      }
+   }
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
