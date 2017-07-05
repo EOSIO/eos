@@ -18,7 +18,8 @@ namespace eos {
         void plugin_startup();
         void plugin_shutdown();
 
-     void broadcast_block(const chain::signed_block &sb);
+        void broadcast_block(const chain::signed_block &sb);
+        void broadcast_transaction (const chain::SignedTransaction &txn);
 
       private:
         std::unique_ptr<class net_plugin_impl> my;
