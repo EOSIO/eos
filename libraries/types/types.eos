@@ -6,16 +6,16 @@ typedef FixedString32  TypeName
 
 # import account type as localtype
 
-struct Message
-   sender      AccountName # testing
-   recipient   AccountName
-   notify      AccountName[]
-   type        FuncName 
-   data        Bytes
-
 struct AccountPermission
    account    AccountName
    permission PermissionName
+
+struct Message
+   code            AccountName         # the contract defining the code to execute
+   recipients      AccountName[]       # the contexts within which the above code will execute
+   authorization   AccountPermission[] # the accounts and permission levels provided
+   type            FuncName            # the action to be taken 
+   data            Bytes               # opaque data processed by code
 
 struct AccountPermissionWeight
    permission   AccountPermission
@@ -25,8 +25,8 @@ struct Transaction
    refBlockNum       UInt16
    refBlockPrefix    UInt32
    expiration        Time
+   scope             AccountName[]   # the accounts whose data may be accessed while processing this transaction
    messages          Message[]
-   authorization     AccountPermission[]
 
 struct SignedTransaction inherits Transaction
    signatures     Signature[]
