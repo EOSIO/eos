@@ -90,8 +90,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.messages.resize(1);
       trx.set_reference_block(chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
-      trx.messages[0].sender = "inita";
-      trx.messages[0].recipient = config::EosContractName;
+      trx.messages[0].recipients = {"inita", config::EosContractName};
 
       types::transfer trans = { "inita", "initb", Asset(100), "transfer 100" };
 
@@ -105,7 +104,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       auto unpack_trans = trx.messageAs<types::transfer>(0);
 
       BOOST_REQUIRE_THROW(chain.push_transaction(trx), message_validate_exception); // "fail to notify receiver, initb"
-      trx.messages[0].notify = {"initb"};
+      trx.messages[0].recipients = {"inita", "initb"};
       trx.setMessage(0, "transfer", trans);
       chain.push_transaction(trx);
 

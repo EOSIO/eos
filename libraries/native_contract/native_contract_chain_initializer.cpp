@@ -117,16 +117,18 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
       return types::Authority(1, {{k, 1}}, {});
    };
    for (const auto& acct : genesis.initial_accounts) {
-      chain::Message message(config::SystemContractName, config::SystemContractName,
-      {config::EosContractName, config::StakedBalanceContractName},
+      chain::Message message(config::SystemContractName,
+                             vector<AccountName>{config::EosContractName, config::StakedBalanceContractName},
+                             vector<types::AccountPermission>{},
                              "newaccount", types::newaccount(config::SystemContractName, acct.name,
-                                                                   KeyAuthority(acct.owner_key),
-                                                                   KeyAuthority(acct.active_key),
-                                                                   KeyAuthority(acct.owner_key),
-                                                                   acct.staking_balance));
+                                                             KeyAuthority(acct.owner_key),
+                                                             KeyAuthority(acct.active_key),
+                                                             KeyAuthority(acct.owner_key),
+                                                             acct.staking_balance));
       messages_to_process.emplace_back(std::move(message));
       if (acct.liquid_balance > 0) {
-         message = chain::Message(config::SystemContractName, config::EosContractName, {},
+         message = chain::Message(config::SystemContractName, vector<AccountName>{config::EosContractName},
+                                  vector<types::AccountPermission>{},
                                   "transfer", types::transfer(config::SystemContractName, acct.name,
                                                               acct.liquid_balance, "Genesis Allocation"));
          messages_to_process.emplace_back(std::move(message));
@@ -135,7 +137,8 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
 
    // Create initial producers
    auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
-      return chain::Message(config::SystemContractName, config::StakedBalanceContractName, vector<AccountName>{},
+      return chain::Message(config::SystemContractName, {config::StakedBalanceContractName},
+                            vector<types::AccountPermission>{},
                             "setproducer", types::setproducer(p.owner_name, p.block_signing_key, config));
    });
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));

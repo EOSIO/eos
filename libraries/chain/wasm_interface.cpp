@@ -71,7 +71,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
    if( obj ) {
-			db.remove( *obj );
+      db.remove( *obj );
       return true;
    }
    return false;
@@ -88,9 +88,9 @@ DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
 #warning TODO: wasm memcpy has undefined behavior if memory ranges overlap
 /*
    if( dst > src )
-			FC_ASSERT( dst < src_end && src < dst_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
+      FC_ASSERT( dst < src_end && src < dst_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
    else
-			FC_ASSERT( src < dst_end && dst < src_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
+      FC_ASSERT( src < dst_end && dst < src_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
 */
    memcpy( dst, src, uint32_t(len) );
    return dstp;
@@ -254,7 +254,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       if( !wasm )
       {
          wlog( "Runtime::init" );
-	       Runtime::init();
+         Runtime::init();
          wasm = new wasm_interface();
       }
       return *wasm;
@@ -277,10 +277,10 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
 
    char* wasm_interface::vm_allocate( int bytes ) {
-			FunctionInstance* alloc_function = asFunctionNullable(getInstanceExport(current_module,"alloc"));
-	    const FunctionType* functionType = getFunctionType(alloc_function);
+      FunctionInstance* alloc_function = asFunctionNullable(getInstanceExport(current_module,"alloc"));
+      const FunctionType* functionType = getFunctionType(alloc_function);
       FC_ASSERT( functionType->parameters.size() == 1 );
-	    std::vector<Value> invokeArgs(1);
+      std::vector<Value> invokeArgs(1);
       invokeArgs[0] = U32(bytes);
 
       auto result = Runtime::invokeFunction(alloc_function,invokeArgs);
@@ -295,28 +295,28 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    void  wasm_interface::vm_call( std::string name ) {
    try {
       try {
-         name += "_" + std::string( current_validate_context->msg.recipient ) + "_";
+         name += "_" + std::string( current_validate_context->msg.code ) + "_";
          name += std::string( current_validate_context->msg.type );
 
-				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,name.c_str()));
-		 		 if( !apply ) {
+         FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,name.c_str()));
+         if( !apply ) {
              return; /// if not found then it is a no-op
          } 
 
-				 const FunctionType* functionType = getFunctionType(apply);
-				 FC_ASSERT( functionType->parameters.size() == 0 );
-				 std::vector<Value> args(0);
+         const FunctionType* functionType = getFunctionType(apply);
+         FC_ASSERT( functionType->parameters.size() == 0 );
+         std::vector<Value> args(0);
 
          auto& state = *current_state;
          char* memstart = &memoryRef<char>( current_memory, 0 );
          memset( memstart + state.mem_end, 0, ((1<<16) - state.mem_end) );
          memcpy( memstart, state.init_memory.data(), state.mem_end);
 
-				 Runtime::invokeFunction(apply,args);
+         Runtime::invokeFunction(apply,args);
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
-					edump((e.callStack));
-					throw;
+          edump((e.callStack));
+          throw;
       }
    } FC_CAPTURE_AND_RETHROW( (name)(current_validate_context->msg.type) ) }
 
@@ -328,22 +328,22 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
    { try {
       try {
          // wlog( "on_init" );
-				 FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"init"));
-		 		 if( !apply ) {
-           wlog( "no onInit method found" );
-					 return; /// if not found then it is a no-op
+            FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"init"));
+            if( !apply ) {
+               wlog( "no onInit method found" );
+               return; /// if not found then it is a no-op
          }
 
-				 const FunctionType* functionType = getFunctionType(apply);
-				 FC_ASSERT( functionType->parameters.size() == 0 );
+            const FunctionType* functionType = getFunctionType(apply);
+            FC_ASSERT( functionType->parameters.size() == 0 );
 
-				 std::vector<Value> args(0);
+            std::vector<Value> args(0);
 
-				 Runtime::invokeFunction(apply,args);
+            Runtime::invokeFunction(apply,args);
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
-					edump((e.callStack));
-					throw;
+          edump((e.callStack));
+          throw;
       }
    } FC_CAPTURE_AND_RETHROW() }
 
@@ -425,7 +425,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
           for( uint32_t i = 0; i < 10000; ++i )
               if( memstart[i] ) {
                    state.mem_end = i;
-						//		 std::cerr << (char)memstart[i];
+                   //std::cerr << (char)memstart[i];
               }
 
           state.init_memory.resize(state.mem_end);

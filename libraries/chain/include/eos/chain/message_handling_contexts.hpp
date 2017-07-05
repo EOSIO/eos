@@ -11,11 +11,25 @@ namespace eos { namespace chain {
 class message_validate_context {
 public:
    explicit message_validate_context(const chainbase::database& d, const chain::Message& m, types::AccountName s)
-      :msg(m),db(d),scope(s){}
+      :msg(m),db(d),scope(s),used_authorizations(msg.authorization.size(), false){}
+
+   /**
+    * @brief Require @ref account to have approved of this message
+    * @param account The account whose approval is required
+    *
+    * This method will check that @ref account is listed in the message's declared authorizations, and marks the
+    * authorization as used. Note that all authorizations on a message must be used, or the message is invalid.
+    *
+    * @throws tx_missing_auth If no sufficient permission was found
+    */
+   void require_authorization(const types::AccountName& account);
+   bool all_authorizations_used() const;
 
    const chain::Message&        msg;
-   const chainbase::database&   db;    /// required only for loading the contract code
-   types::AccountName           scope; /// the contract that is being called
+   const chainbase::database&   db;
+   types::AccountName           scope;
+   ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
+   vector<bool>                 used_authorizations;
 };
 
 class precondition_validate_context : public message_validate_context {

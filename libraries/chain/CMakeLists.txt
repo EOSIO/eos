@@ -17,6 +17,7 @@ add_library( eos_chain
 
              types.cpp
              chain_administration_interface.cpp
+             message_handling_contexts.cpp
 
              ${HEADERS}
            )

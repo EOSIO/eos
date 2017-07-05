@@ -47,7 +47,7 @@ void validate_staked_okproducer(chain::message_validate_context& context);
 void precondition_staked_okproducer(chain::precondition_validate_context& context);
 void apply_staked_okproducer(chain::apply_context& context);
 
-//void validate_staked_setproxy(chain::message_validate_context&) {}
+void validate_staked_setproxy(chain::message_validate_context&context);
 void precondition_staked_setproxy(chain::precondition_validate_context& context);
 void apply_staked_setproxy(chain::apply_context& context);
 ///@}

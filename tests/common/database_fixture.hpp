@@ -417,11 +417,12 @@ protected:
 #define Set_Proxy(chain, stakeholder, proxy) \
 { \
    eos::chain::SignedTransaction trx; \
-   vector<AccountName> notifies; \
-   if (std::string(#stakeholder) == std::string(#proxy)) \
-      notifies.emplace_back(#proxy); \
-   trx.emplaceMessage(#stakeholder, config::StakedBalanceContractName, notifies, "setproxy", \
-                      types::setproxy{#proxy}); \
+   if (std::string(#stakeholder) != std::string(#proxy)) \
+      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#stakeholder, #proxy}, \
+                         vector<types::AccountPermission>{}, "setproxy", types::setproxy{0, 1}); \
+   else \
+      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#stakeholder}, \
+                         vector<types::AccountPermission>{}, "setproxy", types::setproxy{0, 0}); \
    trx.expiration = chain.head_block_time() + 100; \
    trx.set_reference_block(chain.head_block_id()); \
    chain.push_transaction(trx); \

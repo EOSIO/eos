@@ -552,21 +552,18 @@ void chain_controller::validate_referenced_accounts(const SignedTransaction& trx
       require_account(auth.account);
    }
    for(const auto& msg : trx.messages) {
-      require_account(msg.sender);
-      require_account(msg.recipient);
-      const AccountName* previous_notify_account = nullptr;
-      for(const auto& current_notify_account : msg.notify) {
-         require_account(current_notify_account);
-         if(previous_notify_account) {
-            EOS_ASSERT(current_notify_account < *previous_notify_account, message_validate_exception,
+      require_account(msg.code);
+      const AccountName* previous_recipient = nullptr;
+      for(const auto& current_recipient : msg.recipients) {
+         require_account(current_recipient);
+         if(previous_recipient) {
+            EOS_ASSERT(current_recipient < *previous_recipient, message_validate_exception,
                        "Message notify accounts out of order. Possibly a bug in the wallet?");
          }
 
-         EOS_ASSERT(current_notify_account != msg.sender, message_validate_exception,
-                    "Message sender is listed in accounts to notify. Possibly a bug in the wallet?");
-         EOS_ASSERT(current_notify_account != msg.recipient, message_validate_exception,
-                    "Message recipient is listed in accounts to notify. Possibly a bug in the wallet?");
-         previous_notify_account = &current_notify_account;
+         EOS_ASSERT(current_recipient != msg.code, message_validate_exception,
+                    "Code account is listed among recipients. Possibly a bug in the wallet?");
+         previous_recipient = &current_recipient;
       }
    }
 }
@@ -588,22 +585,22 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
 void chain_controller::validate_message_precondition( precondition_validate_context& context )const 
 { try {
     const auto& m = context.msg;
-    auto contract_handlers_itr = precondition_validate_handlers.find( context.scope );
-    if( contract_handlers_itr != precondition_validate_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handler_itr != contract_handlers_itr->second.end() ) {
+    auto contract_handlers_itr = precondition_validate_handlers.find(context.scope);
+    if (contract_handlers_itr != precondition_validate_handlers.end()) {
+       auto message_handler_itr = contract_handlers_itr->second.find({m.code, m.type});
+       if (message_handler_itr != contract_handlers_itr->second.end()) {
           message_handler_itr->second(context);
           return;
        }
     }
-    const auto& recipient = _db.get<account_object,by_name>( context.scope );
-    if( recipient.code.size() ) {
-       wasm_interface::get().precondition( context );
+    const auto& recipient = _db.get<account_object,by_name>(context.scope);
+    if (recipient.code.size()) {
+       wasm_interface::get().precondition(context);
     }
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_controller::process_message(Message message) {
-   apply_context apply_ctx(_db, message, message.recipient);
+   apply_context apply_ctx(_db, message, message.code);
 
    /** TODO: pre condition validation and application can occur in parallel */
    /** TODO: verify that message is fully authorized
@@ -611,30 +608,29 @@ void chain_controller::process_message(Message message) {
    validate_message_precondition(apply_ctx);
    apply_message(apply_ctx);
 
-   for (const auto& notify_account : message.notify) {
+   for (const auto& recipient : message.recipients) {
       try {
-         apply_context notify_ctx(_db, message, notify_account);
-         validate_message_precondition(notify_ctx);
-         apply_message(notify_ctx);
-      } FC_CAPTURE_AND_RETHROW((notify_account)(message))
+         apply_context recipient_ctx(_db, message, recipient);
+         validate_message_precondition(recipient_ctx);
+         apply_message(recipient_ctx);
+      } FC_CAPTURE_AND_RETHROW((recipient)(message))
    }
 }
 
-void chain_controller::apply_message( apply_context& context ) 
+void chain_controller::apply_message(apply_context& context)
 { try {
     const auto& m = context.msg;
-    auto contract_handlers_itr = apply_handlers.find( context.scope );
-    if( contract_handlers_itr != apply_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handler_itr != contract_handlers_itr->second.end() ) {
+    auto contract_handlers_itr = apply_handlers.find(context.scope);
+    if (contract_handlers_itr != apply_handlers.end()) {
+       auto message_handler_itr = contract_handlers_itr->second.find({m.code, m.type});
+       if (message_handler_itr != contract_handlers_itr->second.end()) {
           message_handler_itr->second(context);
           return;
        }
     }
-    //ilog( "no native handler found" );
-    const auto& recipient = _db.get<account_object,by_name>( context.scope );
-    if( recipient.code.size() ) {
-       wasm_interface::get().apply( context );
+    const auto& recipient = _db.get<account_object,by_name>(context.scope);
+    if (recipient.code.size()) {
+       wasm_interface::get().apply(context);
     }
 
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
