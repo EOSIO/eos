@@ -1,4 +1,4 @@
-#include <contracts/currency.hpp> /// defines transfer struct (abi)
+#include <currency/currency.hpp> /// defines transfer struct (abi)
 
 struct CurrencyAccount {
    CurrencyAccount( uint64_t b = 0 ):balance(b){}
@@ -15,7 +15,7 @@ struct CurrencyAccount {
     *  
     *  username/currency/singlton/account -> CurrencyAccount
     */ 
-   static Name tableId() { return Name("singlton"); }
+   static Name tableId() { return NAME("singlton"); }
 };
 
 
@@ -27,36 +27,34 @@ void apply_currency_transfer() {
 
    static CurrencyAccount from_account;
    static CurrencyAccount to_account;
-   Db::get( transfer.from, "account", from_account );
-   Db::get( transfer.to, "account", to_account );
+   Db::get( transfer.from, NAME("account"), from_account );
+   Db::get( transfer.to, NAME("account"), to_account );
 
    assert( from_account.balance >= transfer.amount, "insufficient funds" );
    from_account.balance -= transfer.amount;
    to_account.balance   += transfer.amount;
 
    if( from_account.balance == 0 )
-      Db::remove<CurrencyAccount>( transfer.from, "account" )
+      Db::remove<CurrencyAccount>( transfer.from, NAME("account") );
    else
-      Db::store( transfer.from, "account", from_account ); 
+      Db::store( transfer.from, NAME("account"), from_account ); 
 
-   Db::store( transfer.to, "account", to_account ); 
+   Db::store( transfer.to, NAME("account"), to_account ); 
 }
 
-export "C" {
+extern "C" 
+{
     void init()  {
        ///        scope       key        value
-       Db::store( "currency", "account", CurrencyAccount( 1000ll*1000ll*1000ll ) );
+       Db::store( NAME("currency"), NAME("account"), CurrencyAccount( 1000ll*1000ll*1000ll ) );
     }
 
-
-//   void validate( uint64_t code, uint64_t action ) { }
-//   void precondition( uint64_t code, uint64_t action ) { }
    /**
     *  The apply method implements the dispatch of events to this contract
     */
    void apply( uint64_t code, uint64_t action ) {
-      assert( code == currentCode() );
-      if( action == "transfer" ) apply_currency_transfer();
+      assert( code == currentCode(), "invalid notice given" );
+      if( action == NAME("transfer") ) apply_currency_transfer();
    }
 }
 
