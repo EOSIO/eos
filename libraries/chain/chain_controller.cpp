@@ -58,10 +58,14 @@ namespace eos { namespace chain {
 
 
 String apply_context::get( String key )const {
+   /*
    const auto& obj = db.get<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
    return String(obj.value.begin(),obj.value.end());
+   */
+   return String();
 }
 void apply_context::set( String key, String value ) {
+   /*
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
    if( obj ) {
       mutable_db.modify( *obj, [&]( auto& o ) {
@@ -75,12 +79,15 @@ void apply_context::set( String key, String value ) {
          o.value.insert( 0, value.data(), value.size() );
       });
    }
+   */
 }
 void apply_context::remove( String key ) {
+   /*
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
    if( obj ) {
       mutable_db.remove( *obj );
    }
+   */
 }
 
 
@@ -511,10 +518,10 @@ try {
 
          #warning TODO: call validate handlers on all notified accounts, currently it only calls the recipient's validate
 
-         message_validate_context mvc(_db,*m,a);
-         auto contract_handlers_itr = message_validate_handlers.find(a);
+         message_validate_context mvc(_db,trx,*m,a);
+         auto contract_handlers_itr = message_validate_handlers.find(a); /// namespace is the notifier
          if (contract_handlers_itr != message_validate_handlers.end()) {
-            auto message_handler_itr = contract_handlers_itr->second.find({a, m->type});
+            auto message_handler_itr = contract_handlers_itr->second.find({m->code, m->type});
             if (message_handler_itr != contract_handlers_itr->second.end()) {
                message_handler_itr->second(mvc);
                return;
@@ -586,7 +593,7 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
 void chain_controller::validate_message_precondition( precondition_validate_context& context )const 
 { try {
     const auto& m = context.msg;
-    auto contract_handlers_itr = precondition_validate_handlers.find(context.scope);
+    auto contract_handlers_itr = precondition_validate_handlers.find(context.code);
     if (contract_handlers_itr != precondition_validate_handlers.end()) {
        auto message_handler_itr = contract_handlers_itr->second.find({m.code, m.type});
        if (message_handler_itr != contract_handlers_itr->second.end()) {
@@ -594,14 +601,34 @@ void chain_controller::validate_message_precondition( precondition_validate_cont
           return;
        }
     }
-    const auto& recipient = _db.get<account_object,by_name>(context.scope);
+    const auto& recipient = _db.get<account_object,by_name>(context.code);
     if (recipient.code.size()) {
        wasm_interface::get().precondition(context);
     }
 } FC_CAPTURE_AND_RETHROW() }
 
-void chain_controller::process_message(Message message) {
-   apply_context apply_ctx(_db, message, message.code);
+
+/**
+ *  When processing a message it needs to run:
+ *
+ *  code::precondition( message.code, message.apply )
+ *  code::apply( message.code, message.apply )
+ *
+ *  Then for each recipient it needs to run 
+ *
+ *  ````
+ *   recipient::precondition( message.code, message.apply )
+ *   recipient::apply( message.code, message.apply )
+ *  ```
+ *
+ *  The data that can be read is anything declared in trx.scope
+ *  The data that can be written is anything stored in  * / [code | recipient] / *
+ *
+ *  The order of execution of precondition and apply can impact the validity of the
+ *  entire message.
+ */
+void chain_controller::process_message( const Transaction& trx, const Message& message) {
+   apply_context apply_ctx(_db, trx, message, message.code);
 
    /** TODO: pre condition validation and application can occur in parallel */
    /** TODO: verify that message is fully authorized
@@ -611,7 +638,7 @@ void chain_controller::process_message(Message message) {
 
    for (const auto& recipient : message.recipients) {
       try {
-         apply_context recipient_ctx(_db, message, recipient);
+         apply_context recipient_ctx(_db, trx, message, recipient);
          validate_message_precondition(recipient_ctx);
          apply_message(recipient_ctx);
       } FC_CAPTURE_AND_RETHROW((recipient)(message))
@@ -620,8 +647,10 @@ void chain_controller::process_message(Message message) {
 
 void chain_controller::apply_message(apply_context& context)
 { try {
+    /// context.code => the execution namespace
+    /// message.code / message.type => Event
     const auto& m = context.msg;
-    auto contract_handlers_itr = apply_handlers.find(context.scope);
+    auto contract_handlers_itr = apply_handlers.find(context.code);
     if (contract_handlers_itr != apply_handlers.end()) {
        auto message_handler_itr = contract_handlers_itr->second.find({m.code, m.type});
        if (message_handler_itr != contract_handlers_itr->second.end()) {
@@ -629,7 +658,7 @@ void chain_controller::apply_message(apply_context& context)
           return;
        }
     }
-    const auto& recipient = _db.get<account_object,by_name>(context.scope);
+    const auto& recipient = _db.get<account_object,by_name>(context.code);
     if (recipient.code.size()) {
        wasm_interface::get().apply(context);
     }
@@ -651,7 +680,7 @@ void chain_controller::_apply_transaction(const SignedTransaction& trx)
       EOS_ASSERT(checker.satisfied(requiredAuthority), tx_missing_auth, "Transaction is not authorized.");
 
    for (const auto& message : trx.messages) {
-      process_message(message);
+      process_message(trx, message);
    }
 
    //Insert transaction into unique transactions database.
@@ -801,7 +830,8 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          auto messages = starter.prepare_database(*this, _db);
-         std::for_each(messages.begin(), messages.end(), [this](const Message& m) { process_message(m); });
+         const Transaction trx; /// dummy tranaction required for scope validation
+         std::for_each(messages.begin(), messages.end(), [&](const Message& m) { process_message(trx,m); });
       });
    }
 } FC_CAPTURE_AND_RETHROW() }

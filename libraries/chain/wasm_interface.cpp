@@ -19,6 +19,7 @@ namespace eos { namespace chain {
 
 DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
 //   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
+/*
    FC_ASSERT( keylen > 0 );
    FC_ASSERT( valuelen >= 0 );
 
@@ -48,7 +49,38 @@ DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valuep
          o.value.insert( 0, value, valuelen );
       });
    }
+*/
 }
+
+DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
+//   ilog( "load ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
+/**
+   FC_ASSERT( keylen > 0 );
+   FC_ASSERT( valuelen >= 0 );
+
+   auto& wasm  = wasm_interface::get();
+
+   FC_ASSERT( wasm.current_apply_context, "no apply context found" );
+
+   auto& db    = wasm.current_apply_context->mutable_db;
+   auto& scope = wasm.current_apply_context->scope;
+   auto  mem   = wasm.current_memory;
+   char* key   = memoryArrayPtr<char>( mem, keyptr, keylen );
+   char* value = memoryArrayPtr<char>( mem, valueptr, valuelen );
+   string keystr( key, key+keylen);
+
+   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
+   if( obj == nullptr ) return -1;
+   auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
+   if( copylen ) {
+      obj->value.copy(value, copylen);
+   }
+   return copylen;
+*/
+   return 0;
+}
+
+
 DEFINE_INTRINSIC_FUNCTION1(env,name_to_int64,name_to_int64,i64,i32,cstr) {
    auto& wasm  = wasm_interface::get();
    auto  mem   = wasm.current_memory;
@@ -57,6 +89,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,name_to_int64,name_to_int64,i64,i32,cstr) {
 }
 
 DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
+   /*
    FC_ASSERT( keylen > 0 );
 
    auto& wasm  = wasm_interface::get();
@@ -74,6 +107,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
       db.remove( *obj );
       return true;
    }
+   */
    return false;
 }
 
@@ -114,22 +148,6 @@ DEFINE_INTRINSIC_FUNCTION2(env,Varint_unpack,Varint_unpack,none,i32,streamptr,i3
    stream[1] += ds.pos() - pos;
 }
 
-DEFINE_INTRINSIC_FUNCTION2(env,AccountName_unpack,AccountName_unpack,none,i32,streamptr,i32,accountptr) {
-   auto& wasm  = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-
-
-   uint32_t* stream = memoryArrayPtr<uint32_t>( mem, streamptr, 3 );
-   const char* pos = &memoryRef<const char>( mem, stream[1] );
-   const char* end = &memoryRef<const char>( mem, stream[2] );
-   AccountName* name = &memoryRef<AccountName>( mem, accountptr );
-   memset( name, 0, 32 );
-
-   fc::datastream<const char*> ds( pos, end - pos );
-   fc::raw::unpack( ds, *name );
-
-   stream[1] += ds.pos() - pos;
-}
 
 DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size ) {
    auto& wasm  = wasm_interface::get();
@@ -160,34 +178,12 @@ DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size
  **/
 
    wasm.current_apply_context->generated.emplace_back( std::move(gtrx) );
+
+   return 0;
 }
 
 
 
-DEFINE_INTRINSIC_FUNCTION4(env,load,load,i32,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-//   ilog( "load ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
-   FC_ASSERT( keylen > 0 );
-   FC_ASSERT( valuelen >= 0 );
-
-   auto& wasm  = wasm_interface::get();
-
-   FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-
-   auto& db    = wasm.current_apply_context->mutable_db;
-   auto& scope = wasm.current_apply_context->scope;
-   auto  mem   = wasm.current_memory;
-   char* key   = memoryArrayPtr<char>( mem, keyptr, keylen );
-   char* value = memoryArrayPtr<char>( mem, valueptr, valuelen );
-   string keystr( key, key+keylen);
-
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
-   if( obj == nullptr ) return -1;
-   auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
-   if( copylen ) {
-      obj->value.copy(value, copylen);
-   }
-   return copylen;
-}
 
 DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
    FC_ASSERT( destsize > 0 );
@@ -292,27 +288,28 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       return U32(ptr - &memoryRef<char>(current_memory,0));
    }
 
-   void  wasm_interface::vm_call( std::string name ) {
+   void  wasm_interface::vm_call( const char* name ) {
    try {
       try {
+         /*
          name += "_" + std::string( current_validate_context->msg.code ) + "_";
          name += std::string( current_validate_context->msg.type );
+         */
+         /// TODO: cache this somehow
+         FunctionInstance* call = asFunctionNullable(getInstanceExport(current_module,name) );
+         if( !call )
+         //FC_ASSERT( apply, "no entry point found for ${call}", ("call", std::string(name))  );
 
-         FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,name.c_str()));
-         if( !apply ) {
-             return; /// if not found then it is a no-op
-         } 
-
-         const FunctionType* functionType = getFunctionType(apply);
-         FC_ASSERT( functionType->parameters.size() == 0 );
-         std::vector<Value> args(0);
+         FC_ASSERT( getFunctionType(call)->parameters.size() == 2 );
+         std::vector<Value> args = { Value(uint64_t(current_validate_context->msg.code)),
+                                     Value(uint64_t(current_validate_context->msg.type)) };
 
          auto& state = *current_state;
          char* memstart = &memoryRef<char>( current_memory, 0 );
          memset( memstart + state.mem_end, 0, ((1<<16) - state.mem_end) );
          memcpy( memstart, state.init_memory.data(), state.mem_end);
 
-         Runtime::invokeFunction(apply,args);
+         Runtime::invokeFunction(call,args);
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
           edump((e.callStack));
@@ -353,7 +350,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       current_precondition_context   = nullptr;
       current_apply_context          = nullptr;
 
-      load( c.scope, c.db );
+      load( c.code, c.db );
       vm_validate();
    }
    void wasm_interface::precondition( precondition_validate_context& c ) {
@@ -362,7 +359,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       current_validate_context       = &c;
       current_precondition_context   = &c;
 
-      load( c.scope, c.db );
+      load( c.code, c.db );
       vm_precondition();
 
    } FC_CAPTURE_AND_RETHROW() }
@@ -370,12 +367,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
    void wasm_interface::apply( apply_context& c ) {
     try {
-
       current_validate_context       = &c;
       current_precondition_context   = &c;
       current_apply_context          = &c;
 
-      load( c.scope, c.db );
+      load( c.code, c.db );
       vm_apply();
 
    } FC_CAPTURE_AND_RETHROW() }
@@ -386,7 +382,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       current_precondition_context   = &c;
       current_apply_context          = &c;
 
-      load( c.scope, c.db );
+      load( c.code, c.db );
       vm_onInit();
 
    } FC_CAPTURE_AND_RETHROW() }

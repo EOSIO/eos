@@ -29,11 +29,13 @@
 namespace eos { namespace chain {
 
    struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {
-      OBJECT_CTOR(key_value_object, (key)(value))
+      OBJECT_CTOR(key_value_object, (value))
 
       id_type               id;
-      AccountName           scope;
-      shared_string         key;
+      AccountName           scope; 
+      AccountName           code;
+      AccountName           table;
+      AccountName           key;
       shared_string         value;
    };
 
@@ -45,9 +47,12 @@ namespace eos { namespace chain {
          ordered_unique<tag<by_scope_key>, 
             composite_key< key_value_object,
                member<key_value_object, AccountName, &key_value_object::scope>,
-               member<key_value_object, shared_string, &key_value_object::key>
+               member<key_value_object, AccountName, &key_value_object::code>,
+               member<key_value_object, AccountName, &key_value_object::table>,
+               member<key_value_object, AccountName, &key_value_object::key>,
+               member<key_value_object, shared_string, &key_value_object::value>
             >,
-            composite_key_compare< std::less<AccountName>, chainbase::strcmp_less >
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,chainbase::strcmp_less >
          >
       >
    >;
@@ -56,4 +61,4 @@ namespace eos { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eos::chain::key_value_object, eos::chain::key_value_index)
 
-FC_REFLECT(eos::chain::key_value_object, (id)(scope)(key)(value) )
+FC_REFLECT(eos::chain::key_value_object, (id)(scope)(code)(table)(key)(value) )

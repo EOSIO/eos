@@ -62,7 +62,7 @@ public:
                return true;
          }
       for (const auto& apw : authority.accounts)
-#warning TODO: Recursion limit? Yes: implement as producer-configurable parameter
+//#warning TODO: Recursion limit? Yes: implement as producer-configurable parameter 
          if (satisfied(apw.permission)) {
             weight += apw.weight;
             if (weight >= authority.threshold)

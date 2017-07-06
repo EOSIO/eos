@@ -10,8 +10,11 @@ namespace eos { namespace chain {
 
 class message_validate_context {
 public:
-   explicit message_validate_context(const chainbase::database& d, const chain::Message& m, types::AccountName s)
-      :msg(m),db(d),scope(s),used_authorizations(msg.authorization.size(), false){}
+   explicit message_validate_context(const chainbase::database& d, 
+                                     const chain::Transaction& t,
+                                     const chain::Message& m, 
+                                     types::AccountName c )
+      :db(d),trx(t),msg(m),code(c),used_authorizations(msg.authorization.size(), false){}
 
    /**
     * @brief Require @ref account to have approved of this message
@@ -25,31 +28,40 @@ public:
    void require_authorization(const types::AccountName& account);
    bool all_authorizations_used() const;
 
-   const chain::Message&        msg;
-   const chainbase::database&   db;
-   types::AccountName           scope;
+   const chainbase::database&   db;  ///< database where state is stored
+   const chain::Transaction&    trx; ///< used to gather the valid read/write scopes
+   const chain::Message&        msg; ///< message being applied
+   types::AccountName           code; ///< the code that is currently running
+
    ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
    vector<bool>                 used_authorizations;
 };
 
 class precondition_validate_context : public message_validate_context {
 public:
-   precondition_validate_context(const chainbase::database& db, const chain::Message& m, const types::AccountName& scope)
-      :message_validate_context(db, m, scope){}
+   precondition_validate_context(const chainbase::database& db, 
+                                 const chain::Transaction& t,
+                                 const chain::Message& m, 
+                                 const types::AccountName& code)
+      :message_validate_context(db, t, m, code){}
 };
 
 class apply_context : public precondition_validate_context {
-public:
-   apply_context(chainbase::database& db, const chain::Message& m, const types::AccountName& scope)
-      :precondition_validate_context(db,m,scope),mutable_db(db){}
+    public:
+      apply_context(chainbase::database& db, 
+                    const chain::Transaction& t,
+                    const chain::Message& m, 
+                    const types::AccountName& code)
+         :precondition_validate_context(db,t,m,code),mutable_db(db){}
 
-   types::String get(types::String key)const;
-   void set(types::String key, types::String value);
-   void remove(types::String key);
+      types::String get(types::String key)const;
+      void set(types::String key, types::String value);
+      void remove(types::String key);
 
-   std::deque<eos::chain::generated_transaction> generated;
+      std::deque<eos::chain::generated_transaction> applied; ///< sync calls made 
+      std::deque<eos::chain::generated_transaction> generated; ///< async calls requested
 
-   chainbase::database& mutable_db;
+      chainbase::database& mutable_db;
 };
 
 using message_validate_handler = std::function<void(message_validate_context&)>;

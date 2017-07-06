@@ -61,21 +61,24 @@ namespace eos { namespace types {
       bool empty()const { return 0 == value; }
       bool good()const  { return !empty() && valid();  }
 
-      Name( const char* str ) { try {
+      Name( const char* str )   { set(str);           } 
+      Name( const String& str ) { set( str.c_str() ); }
+
+      void set( const char* str ) {
+      try {
          const auto len = strnlen(str,14);
-         FC_ASSERT( len <= 12 );
-         for( uint32_t i = 0; i < len; ++i ) {
+         FC_ASSERT( len <= 13 );
+         for( uint32_t i = 0; i <= 12 && i < len; ++i ) {
             value <<= 5;
             value |= char_to_symbol( str[ len -1 - i ] );
          }
-      } FC_CAPTURE_AND_RETHROW( (str) ) }
-      Name( const String& str ) { try {
-         FC_ASSERT( str.size() <= 12 );
-         for( uint32_t i = 0; i < str.size(); ++i ) {
-            value <<= 5;
-            value |= char_to_symbol( str[ str.size() -1 - i ] );
+         if( 13 == len ) {
+            value <<= 4;
+            value |= 0x0f & char_to_symbol( str[ 12 ] );
          }
-      } FC_CAPTURE_AND_RETHROW((str)) }
+      }FC_CAPTURE_AND_RETHROW( (str) ) }
+
+
       char char_to_symbol( char c ) const {
          if( c >= 'a' && c <= 'z' )
             return (c - 'a') + 1;
@@ -86,7 +89,7 @@ namespace eos { namespace types {
       }
 
       Name( uint64_t v = 0 ):value(v){
-         FC_ASSERT( !(v>>(5*12)), "invalid name id" );
+      //   FC_ASSERT( !(v>>(5*12)), "invalid name id" );
       }
 
       explicit operator String()const {
@@ -98,13 +101,15 @@ namespace eos { namespace types {
             str += c;
             tmp >>= 5;
          }
+         char c = charmap[tmp & 0x0f];
+         str += c;
+
          boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
          return str;
       }
       String toString() const { return String(*this); }
 
       Name& operator=( uint64_t v ) {
-         FC_ASSERT( !(v>>(5*12)), "invalid name id" );
          value = v;
          return *this;
       }

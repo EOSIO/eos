@@ -46,7 +46,7 @@ class wasm_interface {
       void load( const AccountName& name, const chainbase::database& db );
 
       char* vm_allocate( int bytes );   
-      void  vm_call( std::string name );
+      void  vm_call( const char* name );
       void  vm_validate();
       void  vm_precondition();
       void  vm_apply();

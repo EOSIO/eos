@@ -247,7 +247,7 @@ namespace eos { namespace chain {
          /// @}
 
          void validate_message_precondition(precondition_validate_context& c)const;
-         void process_message(Message message);
+         void process_message(const Transaction& trx, const Message& message);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
