@@ -30,6 +30,7 @@
                          vector<AccountName>{#creator, config::StakedBalanceContractName, config::EosContractName}, \
                          vector<types::AccountPermission>{}, \
                          "newaccount", types::newaccount{#creator, #name, owner, active, recovery, deposit}); \
+      boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -61,6 +62,7 @@
       trx.emplaceMessage(config::EosContractName, vector<AccountName>{#sender, #recipient}, \
                          vector<types::AccountPermission>{}, \
                          "transfer", types::transfer{#sender, #recipient, amount, memo}); \
+      boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -101,6 +103,7 @@
       eos::chain::SignedTransaction trx; \
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#account, config::EosContractName}, \
                          vector<types::AccountPermission>{}, "claim", types::claim{#account, amount}); \
+      boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -129,6 +132,7 @@
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#voter, #producer}, \
                          vector<types::AccountPermission>{}, \
                          "okproducer", types::okproducer{0, 1, approved? 1 : 0}); \
+      boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -138,12 +142,12 @@
 #define UPPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#owner}, \
+      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{owner}, \
                          vector<types::AccountPermission>{}, \
                          "setproducer", types::setproducer{owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
-      BOOST_TEST_CHECKPOINT("Update producer " << #owner); \
+      BOOST_TEST_CHECKPOINT("Update producer " << owner); \
    }
 #define UPPDCR3(chain, owner, key) UPPDCR4(chain, owner, key, chain.get_producer(owner).configuration)

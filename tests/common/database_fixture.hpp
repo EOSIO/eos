@@ -423,6 +423,7 @@ protected:
    else \
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#stakeholder}, \
                          vector<types::AccountPermission>{}, "setproxy", types::setproxy{0, 0}); \
+   boost::sort(trx.messages.back().recipients); \
    trx.expiration = chain.head_block_time() + 100; \
    trx.set_reference_block(chain.head_block_id()); \
    chain.push_transaction(trx); \

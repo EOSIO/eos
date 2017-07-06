@@ -99,6 +99,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       auto unpacked = fc::raw::unpack<UInt64>(packed);
       BOOST_CHECK_EQUAL( value, unpacked );
       trx.messages[0].type = "transfer";
+      trx.messages[0].code = config::EosContractName;
       trx.setMessage(0, "transfer", trans);
 
       auto unpack_trans = trx.messageAs<types::transfer>(0);

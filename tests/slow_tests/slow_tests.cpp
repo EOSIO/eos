@@ -177,7 +177,8 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.messages.resize(1);
-         trx.messages[0].recipients = {"simplecoin", config::SystemContractName};
+         trx.messages[0].code = config::SystemContractName;
+         trx.messages[0].recipients = {"simplecoin"};
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -190,7 +191,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       for (uint32_t i = 0; i < 100000; ++i)
       {
          eos::chain::SignedTransaction trx;
-         trx.emplaceMessage("simplecoin", vector<AccountName>{"simplecoin", "inita"},
+         trx.emplaceMessage("simplecoin", vector<AccountName>{"inita"},
                             vector<types::AccountPermission>{},
                             "transfer", types::transfer{"simplecoin", "inita", 1+i, "hello"});
          trx.expiration = chain.head_block_time() + 100;
@@ -971,7 +972,8 @@ R"(
 
       eos::chain::SignedTransaction trx;
       trx.messages.resize(1);
-      trx.messages[0].recipients = {"simplecoin", config::SystemContractName};
+      trx.messages[0].code = config::SystemContractName;
+      trx.messages[0].recipients = {"simplecoin"};
       trx.setMessage(0, "setcode", handler);
       trx.expiration = chain.head_block_time() + 100;
       trx.set_reference_block(chain.head_block_id());

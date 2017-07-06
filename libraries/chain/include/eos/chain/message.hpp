@@ -7,6 +7,7 @@ namespace eos { namespace chain {
 /**
  * @brief The message struct defines a blockchain message
  *
+#warning Outdated documentation should be fixed
  * Messages are the heart of all activity on the blockchain,
  * -- all events and actions which take place in the chain are
  * recorded as messages. Messages are sent from one account 
