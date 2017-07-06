@@ -76,7 +76,7 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_PRE_HANDLER( staked, staked, setproducer );
    SET_APP_HANDLER( staked, staked, setproducer );
 
-//   SET_VAL_HANDLER( staked, staked, setproxy );
+   SET_VAL_HANDLER( staked, staked, setproxy );
    SET_PRE_HANDLER( staked, staked, setproxy );
    SET_APP_HANDLER( staked, staked, setproxy );
 
@@ -127,7 +127,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
                                                              acct.staking_balance));
       messages_to_process.emplace_back(std::move(message));
       if (acct.liquid_balance > 0) {
-         message = chain::Message(config::SystemContractName, vector<AccountName>{config::EosContractName},
+         message = chain::Message(config::EosContractName, vector<AccountName>{config::SystemContractName, acct.name},
                                   vector<types::AccountPermission>{},
                                   "transfer", types::transfer(config::SystemContractName, acct.name,
                                                               acct.liquid_balance, "Genesis Allocation"));
@@ -137,7 +137,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
 
    // Create initial producers
    auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
-      return chain::Message(config::SystemContractName, {config::StakedBalanceContractName},
+      return chain::Message(config::StakedBalanceContractName, {p.owner_name},
                             vector<types::AccountPermission>{},
                             "setproducer", types::setproducer(p.owner_name, p.block_signing_key, config));
    });
