@@ -1,107 +1,119 @@
+/**
+ *  @file exchange.cpp
+ *  @brief defines an example exchange contract 
+ *
+ *  This exchange contract assumes the existence of two currency contracts
+ *  located at @currencya and @currencyb.  These currency contracts have
+ *  provided an API header defined in currench.hpp which the exchange 
+ *  contract will use to process messages related to deposits and withdraws.
+ *
+ *  The exchange contract knows that the currency contracts requireNotice()
+ *  of both the sender and receiver; therefore, the exchange contract can
+ *  implement a message handler that will be called anytime funds are deposited
+ *  to or withdrawn from the exchange.
+ *
+ *  When tokens are sent to @exchange from another account the exchange will
+ *  credit the user's balance of the proper currency. 
+ *
+ *  To withdraw from the exchange, the user simply reverses the "to" and "from"
+ *  fields of the currency contract transfer message. The currency contract will
+ *  require the "authority" of the exchange, but the exchange's init() function
+ *  configured this permission to allow *anyone* to transfer from the exchange.
+ *
+ *  To prevent people from stealing all the money from the exchange, the
+ *  exchange's transfer handler  requires both the authority of the receiver and
+ *  asserts that the user has a sufficient balance on the exchange. Lacking
+ *  both of these the exchange will kill the transfer.
+ *
+ *  The exchange and one of the currency contracts are forced to execute in the same
+ *  thread anytime there is a deposit or withdraw. The transaction containing
+ *  the transfer are already required to include the exchange in the scope by
+ *  the currency contract.
+ *
+ *  creating, canceling, and filling orders do not require blocking either currency
+ *  contract.  Users can only deposit or withdraw to their own currency account.
+ */
+#include <contracts/currency.hpp> /// defines transfer struct
 
-struct Transfer {
-  AccountName from;
-  AccountName to;
-  uint64_t    amount;
-  char        memo[];
-};
 
-struct Withdraw {
-  AccountName from;
-  AccountName currency;
-  uint64_t    amount;
-};
-
-struct Balance {
+struct Account {
    uint64_t   a = 0;
    uint64_t   b = 0;
+   int        open_orders = 0;
+
+   bool isEmpty()const { return !(a|b|open_orders); }
+   /**
+    *  Balance records for all exchange users are stored here
+    *  exchange/exchange/balance/username -> Balance
+    */
+   static Name tableId() { return Name("balance"); }
 };
+
+
+extern "C" {
+void init() {
+   setAuthority( "currencya", "transfer", "anyone" );
+   setAuthority( "currencyb", "transfer", "anyone" );
+   registerHandler( "apply", "currencya", "transfer" );
+   registerHandler( "apply", "currencyb", "transfer" );
+}
 
 /**
  *  This method is called after the "transfer" action of code
  *  "currencya" is called and "exchange" is listed in the notifiers.
  */
 void apply_currencya_transfer() {
-   assert( "exchange" == currentCode() );
-   assert( "exchange" == currentContext() );
+   const auto& transfer  = currentMessage<Transfer>();
 
-   auto transfer = readMessage<Transfer>();
    if( transfer.to == "exchange" ) {
-      auto balance = read<Balance>( code, "balance" );
-      balance.a += transfer.amount;
-      store( "balance", balance );
+      static Balance to_balance;
+      Db::get( transfer.from, to_balance );
+      to_balance.a += transfer.amount;
+      Db::store( transfer.from, to_balance );
    } else if( transfer.from == "exchange" ) {
-      auto balance = read<Balance>( code, "balance" );
+      requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
+
+      static Balance to_balance;
+      auto balance = Db::get( transfer.to, to_balance );
       assert( balance.a >= transfer.amount, "insufficient funds to withdraw" );
       balance.a -= transfer.amount;
-      store( "balance", balance );
+
+      if( balance.isEmpty() )
+         Db::remove<Balance>( transfer.to );
+      else
+         Db::store( transfer.to, to_balance );
    } else {
-      assert( false, "notified on currencya transfer that is not relevant to this exchange" );
+      assert( false, "notified on transfer that is not relevant to this exchange" );
    }
 }
 
 /**
- *  TODO: determine the order in which notifers are called... perhaps to follow
- *        the order they are listed in the message
- *  This method is called when the "transfer" action of code
- *  "currencyb" is called and "exchange" is listed in the notifiers.
+ *  This method is called after the "transfer" action of code
+ *  "currencya" is called and "exchange" is listed in the notifiers.
  */
 void apply_currencyb_transfer() {
-   assert( "exchange" == currentCode() );
-   assert( "exchange" == currentContext() );
+   const auto& transfer  = currentMessage<Transfer>();
 
-   auto transfer = readMessage<Transfer>();
    if( transfer.to == "exchange" ) {
-      auto balance = read<Balance>( code, "balance" );
-      balance.b += transfer.amount;
+      static Balance to_balance;
+      Db::get( transfer.from, to_balance );
+      to_balance.b += transfer.amount;
+      Db::store( transfer.from, to_balance );
    } else if( transfer.from == "exchange" ) {
-      requireAuth( {transfer.from} ); /// require the reciever of funds (account owner) to authorize this 
-      auto balance = read<Balance>( code, "balance" );
-      assert( balance.b >= transfer.amount, "insufficient balance" );
+      requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
+
+      static Balance to_balance;
+      auto balance = Db::get( transfer.to, to_balance );
+      assert( balance.b >= transfer.amount, "insufficient funds to withdraw" );
       balance.b -= transfer.amount;
-      store( "balance", balance );
+
+      if( balance.isEmpty() )
+         Db::remove<Balance>( transfer.to );
+      else
+         Db::store( transfer.to, to_balance );
    } else {
-      assert( false, "notified on currencyb transfer that is not relevant to this exchange" );
+      assert( false, "notified on transfer that is not relevant to this exchange" );
    }
 }
 
-/**
- *  This method is called when the "withdraw" action of the code "exchange" is called
- *  and "exchange" is notified. It will attempt to issue a sync transfer to the proper
- *  currency. The currency will in turn call our transfer handler which will verify that
- *  there is sufficient balance to process the withdraw and decrement the balance.
- *
- *  This entire process can be ignored if @exchange grants "anyone" the ability to transfer
- *  either of the currencies and then validates the "withdraw transfer" by requiring the
- *  authority of the 
- *
- *
- *
-void apply_exchange_withdraw() {
-   assert( "exchange" == currentCode() );
-   assert( "exchange" == currentContext() );
-
-   auto balance = read<Balance>( code, "balance" );
-
-   auto withdraw = readMessage<Withdraw>();
-   if( withdraw.currency == "currencya" ) {
-      assert( balance.a >= withdraw.amount );
-   }
-   else if( withdraw.currency == "currencyb" ) {
-      assert( balance.b >= withdraw.amount );
-   } else {
-      assert( false, "invalid currency" );
-   }
-   Transfer transfer;
-   transfer.amount = withdraw.amount;
-
-   /// in blockchain this shows up as "generated and applied" vs just "generated", 
-   /// for this method to succeed withdraw.from must be defined within the current scope
-   ///        code               authorities    notifiers                   message
-   sync_send( withdraw.currency, {"exchange"}, {"exchange", withdraw.from}, transfer );
-};
-*/
-
-
-
-
+} // extern "C"
