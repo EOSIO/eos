@@ -50,13 +50,6 @@ struct Account {
 };
 
 
-extern "C" {
-void init() {
-   setAuthority( "currencya", "transfer", "anyone" );
-   setAuthority( "currencyb", "transfer", "anyone" );
-   registerHandler( "apply", "currencya", "transfer" );
-   registerHandler( "apply", "currencyb", "transfer" );
-}
 
 /**
  *  This method is called after the "transfer" action of code
@@ -116,4 +109,26 @@ void apply_currencyb_transfer() {
    }
 }
 
-} // extern "C"
+
+export "C" {
+   void init() {
+      setAuthority( "currencya", "transfer", "anyone" );
+      setAuthority( "currencyb", "transfer", "anyone" );
+      registerHandler( "apply", "currencya", "transfer" );
+      registerHandler( "apply", "currencyb", "transfer" );
+   }
+
+//   void validate( uint64_t code, uint64_t action ) { }
+//   void precondition( uint64_t code, uint64_t action ) { }
+   /**
+    *  The apply method implements the dispatch of events to this contract
+    */
+   void apply( uint64_t code, uint64_t action ) {
+      if( code == "currencya" ) {
+        if( action == "transfer" ) apply_currencya_transfer();
+      } else if( code == "currencyb" ) {
+        if( action == "transfer" ) apply_currencyb_transfer();
+      } else {
+      }
+   }
+}

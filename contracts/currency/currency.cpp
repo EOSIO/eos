@@ -18,11 +18,6 @@ struct CurrencyAccount {
    static Name tableId() { return Name("singlton"); }
 };
 
-void init()  {
-   ///        scope       key        value
-   Db::store( "currency", "account", CurrencyAccount( 1000ll*1000ll*1000ll ) );
-}
-
 
 void apply_currency_transfer() {
    const auto& transfer  = currentMessage<Transfer>();
@@ -47,5 +42,21 @@ void apply_currency_transfer() {
    Db::store( transfer.to, "account", to_account ); 
 }
 
+export "C" {
+    void init()  {
+       ///        scope       key        value
+       Db::store( "currency", "account", CurrencyAccount( 1000ll*1000ll*1000ll ) );
+    }
 
+
+//   void validate( uint64_t code, uint64_t action ) { }
+//   void precondition( uint64_t code, uint64_t action ) { }
+   /**
+    *  The apply method implements the dispatch of events to this contract
+    */
+   void apply( uint64_t code, uint64_t action ) {
+      assert( code == currentCode() );
+      if( action == "transfer" ) apply_currency_transfer();
+   }
+}
 
