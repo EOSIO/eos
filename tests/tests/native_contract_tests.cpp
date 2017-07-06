@@ -99,6 +99,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       auto unpacked = fc::raw::unpack<UInt64>(packed);
       BOOST_CHECK_EQUAL( value, unpacked );
       trx.messages[0].type = "transfer";
+      trx.messages[0].code = config::EosContractName;
       trx.setMessage(0, "transfer", trans);
 
       auto unpack_trans = trx.messageAs<types::transfer>(0);
@@ -140,7 +141,7 @@ BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
       }
 
       Make_Key(signing);
-      Update_Producer(chain, producer, signing_public_key);
+      Update_Producer(chain, "producer", signing_public_key);
       auto& producer = chain.get_producer("producer");
       BOOST_CHECK_EQUAL(producer.signing_key, signing_public_key);
 } FC_LOG_AND_RETHROW() }

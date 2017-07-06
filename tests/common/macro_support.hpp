@@ -142,12 +142,12 @@
 #define UPPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#owner}, \
+      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{owner}, \
                          vector<types::AccountPermission>{}, \
                          "setproducer", types::setproducer{owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
-      BOOST_TEST_CHECKPOINT("Update producer " << #owner); \
+      BOOST_TEST_CHECKPOINT("Update producer " << owner); \
    }
 #define UPPDCR3(chain, owner, key) UPPDCR4(chain, owner, key, chain.get_producer(owner).configuration)
