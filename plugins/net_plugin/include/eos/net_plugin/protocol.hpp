@@ -12,6 +12,8 @@ namespace eos {
       fc::sha256      node_id; ///< used to identify peers and prevent self-connect
       uint32_t        last_irreversible_block_num = 0;
       block_id_type   last_irreversible_block_id;
+      uint32_t        head_num = 0;
+      block_id_type   head_id;
       string          os;
       string          agent;
    };
@@ -32,7 +34,7 @@ namespace eos {
    };
 
    struct peer_message {
-      vector<fc::ip::endpoint> peers;
+     vector<fc::ip::endpoint> peers;
    };
 
    using net_message = static_variant<handshake_message,
@@ -48,7 +50,8 @@ namespace eos {
 
 FC_REFLECT( eos::handshake_message,
             (network_version)(chain_id)(node_id)
-            (last_irreversible_block_num)(last_irreversible_block_num)
+            (last_irreversible_block_num)(last_irreversible_block_id)
+            (head_num)(head_id)
             (os)(agent) )
 
 FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )

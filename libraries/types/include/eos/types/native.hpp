@@ -87,7 +87,7 @@ namespace eos { namespace types {
 
       Name( uint64_t v = 0 ):value(v){
          FC_ASSERT( !(v>>(5*12)), "invalid name id" );
-      };
+      }
 
       explicit operator String()const {
          static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
@@ -101,6 +101,7 @@ namespace eos { namespace types {
          boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
          return str;
       }
+      String toString() const { return String(*this); }
 
       Name& operator=( uint64_t v ) {
          FC_ASSERT( !(v>>(5*12)), "invalid name id" );

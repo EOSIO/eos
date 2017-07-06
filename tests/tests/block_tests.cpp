@@ -68,11 +68,11 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
       Make_Blockchain(chain)
 
       BOOST_CHECK_EQUAL(chain.head_block_num(), 0);
-        chain.produce_blocks();
+      chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
-        chain.produce_blocks(5);
+      chain.produce_blocks(5);
       BOOST_CHECK_EQUAL(chain.head_block_num(), 6);
-        chain.produce_blocks(chain.get_global_properties().active_producers.size());
+      chain.produce_blocks(chain.get_global_properties().active_producers.size());
       BOOST_CHECK_EQUAL(chain.head_block_num(), chain.get_global_properties().active_producers.size() + 6);
 } FC_LOG_AND_RETHROW() }
 
