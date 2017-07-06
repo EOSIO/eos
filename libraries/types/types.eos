@@ -3,6 +3,7 @@ typedef Name           PermissionName
 typedef Name           FuncName
 typedef FixedString32  MessageName
 typedef FixedString32  TypeName
+typedef UInt8          NameIndex # Index to an AccountName in Message::recipients
 
 # import account type as localtype
 
@@ -91,14 +92,13 @@ struct setproducer
 
 # implies message.sender account
 struct okproducer
-   producer  AccountName
-   approve   Int8  # 0 or 1
+   voter     NameIndex # The account casting a vote
+   producer  NameIndex # The producer being voted on
+   approve   Int8  # 1 to approve, or 0 to disapprove
 
-# implies message.sender account
-
-# implies message.sender account
 struct setproxy
-   proxy   AccountName
+   stakeholder    NameIndex # The account with stake to be proxied
+   proxy          NameIndex # The account to cast votes with stakeholder's stake weight
 
 
 struct UpdatePermission
