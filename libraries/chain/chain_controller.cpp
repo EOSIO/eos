@@ -557,8 +557,9 @@ void chain_controller::validate_referenced_accounts(const SignedTransaction& trx
       for(const auto& current_recipient : msg.recipients) {
          require_account(current_recipient);
          if(previous_recipient) {
-            EOS_ASSERT(current_recipient < *previous_recipient, message_validate_exception,
-                       "Message notify accounts out of order. Possibly a bug in the wallet?");
+            EOS_ASSERT(*previous_recipient < current_recipient, message_validate_exception,
+                       "Message recipient accounts out of order. Possibly a bug in the wallet?",
+                       ("current", current_recipient.value)("previous", previous_recipient->value));
          }
 
          EOS_ASSERT(current_recipient != msg.code, message_validate_exception,

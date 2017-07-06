@@ -110,8 +110,7 @@ namespace eos { namespace chain {
       }
       template <typename... Args>
       void emplaceMessage(Args&&... a) {
-         Message m(std::forward<Args>(a)...);
-         messages.emplace_back(m);
+         messages.emplace_back(Message(std::forward<Args>(a)...));
       }
 
       /**
