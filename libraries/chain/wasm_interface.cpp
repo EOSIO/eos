@@ -20,9 +20,15 @@ namespace eos { namespace chain {
 
    std::chrono::time_point<std::chrono::system_clock> checktimeStart;
 
+#ifdef NDEBUG
+   const int CHECKTIME_LIMIT = 2000;
+#else
+   const int CHECKTIME_LIMIT = 12000;
+#endif
+
 DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
    auto dur = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - checktimeStart);
-   if (dur.count() > 1500) {
+   if (dur.count() > CHECKTIME_LIMIT) {
       wlog("checktime called ${d}", ("d", dur.count()));
       throw checktime_exceeded();
    }
@@ -294,6 +300,8 @@ DEFINE_INTRINSIC_FUNCTION1(env,loopControl,loopControl,i32,i32,i) {
       FC_ASSERT( functionType->parameters.size() == 1 );
       std::vector<Value> invokeArgs(1);
       invokeArgs[0] = U32(bytes);
+
+      checktimeStart = std::chrono::system_clock::now();
 
       auto result = Runtime::invokeFunction(alloc_function,invokeArgs);
 
