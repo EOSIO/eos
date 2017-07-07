@@ -42,10 +42,8 @@ int32_t store_i64( AccountName scope, TableName table, uint64_t key, const void*
 int32_t load_i64( AccountName scope, AccountName code, TableName table, uint64_t key, void* data, uint32_t datalen );
 int32_t remove_i64( AccountName scope, TableName table, uint64_t key );
 
-/**
- *  @return the current account scope within which the currentCode() is being applied.
- */
-AccountName currentContext();
+void print( const char* cstr );
+void printi( uint64_t value );
 
 /**
  *  @return the account which specifes the code that is being run
@@ -203,7 +201,7 @@ struct Db
 
 template<typename T>
 T currentMessage() {
-   static T value;
+   T value;
    readMessage( &value, sizeof(value) );
    return value;
 }

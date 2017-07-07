@@ -103,3 +103,19 @@ docker-compose -f docker-compose.yml up
 
 Done
 
+
+
+
+### How to Build LLVM and clang for WASM
+
+By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets. 
+
+```
+git clone --depth 1 --single-branch --branch release_40 git@github.com:llvm-mirror/llvm.git
+cd llvm/tools
+git clone --depth 1 --single-branch --branch release_40 git@github.com:llvm-mirror/clang.git
+mkdir build
+cd build
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+```
+

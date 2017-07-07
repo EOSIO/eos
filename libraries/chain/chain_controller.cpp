@@ -568,9 +568,6 @@ void chain_controller::validate_referenced_accounts(const SignedTransaction& trx
                        "Message recipient accounts out of order. Possibly a bug in the wallet?",
                        ("current", current_recipient.value)("previous", previous_recipient->value));
          }
-
-         EOS_ASSERT(current_recipient != msg.code, message_validate_exception,
-                    "Code account is listed among recipients. Possibly a bug in the wallet?");
          previous_recipient = &current_recipient;
       }
    }

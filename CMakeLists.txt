@@ -159,6 +159,7 @@ if(ENABLE_COVERAGE_TESTING)
     SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
 endif()
 
+add_subdirectory( contracts )
 add_subdirectory( libraries )
 add_subdirectory( programs )
 add_subdirectory( plugins )

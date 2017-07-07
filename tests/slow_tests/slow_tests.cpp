@@ -162,15 +162,15 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
       Make_Blockchain(chain);
       chain.produce_blocks(10);
-      Make_Account(chain, simplecoin);
+      Make_Account(chain, currency);
       chain.produce_blocks(1);
 
-#include "wast/simplecoin.wast"
+#include <currency/currency.wast.hpp>
 
       types::setcode handler;
-      handler.account = "simplecoin";
+      handler.account = "currency";
 
-      auto wasm = assemble_wast( simplecoin_wast );
+      auto wasm = assemble_wast( currency_wast );
       handler.code.resize(wasm.size());
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
@@ -178,7 +178,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          eos::chain::SignedTransaction trx;
          trx.messages.resize(1);
          trx.messages[0].code = config::SystemContractName;
-         trx.messages[0].recipients = {"simplecoin"};
+         trx.messages[0].recipients = {"currency"};
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -188,18 +188,18 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 
 
       auto start = fc::time_point::now();
-      for (uint32_t i = 0; i < 100000; ++i)
+      for (uint32_t i = 0; i < 10000; ++i)
       {
          eos::chain::SignedTransaction trx;
-         trx.emplaceMessage("simplecoin", vector<AccountName>{"inita"},
+         trx.emplaceMessage("currency", vector<AccountName>{"inita","currency"},
                             vector<types::AccountPermission>{},
-                            "transfer", types::transfer{"simplecoin", "inita", 1+i, "hello"});
+                            "transfer", types::transfer{"currency", "inita", 1+i, "hello"});
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
          chain.push_transaction(trx);
       }
       auto end = fc::time_point::now();
-      idump((100000*1000000.0 / (end-start).count()));
+      idump((10000*1000000.0 / (end-start).count()));
 
       chain.produce_blocks(10);
 
