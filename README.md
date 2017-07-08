@@ -17,6 +17,7 @@ Eos has the following external dependencies, which must be installed on your sys
 
 ```
 git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
 ./autogen.sh
 ./configure
 make
