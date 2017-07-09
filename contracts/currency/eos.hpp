@@ -212,3 +212,11 @@ void requireNotice( AccountName name, Accounts... accounts ){
    requireNotice( accounts... );
 }
 
+
+struct Ratio {
+   uint64_t base  = 1;
+   uint64_t quote = 1;
+};
+static_assert( sizeof(Ratio) == 2*sizeof(uint64_t), "unexpected padding" );
+
+

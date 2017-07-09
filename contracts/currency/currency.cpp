@@ -53,8 +53,9 @@ extern "C"
     *  The apply method implements the dispatch of events to this contract
     */
    void apply( uint64_t code, uint64_t action ) {
-      //assert( code == currentCode(), "invalid notice given" );
-      if( action == NAME("transfer") ) apply_currency_transfer();
+      if( code == NAME("currency") ) {
+         if( action == NAME("transfer") ) apply_currency_transfer();
+      }
    }
 }
 

@@ -21,44 +21,26 @@ DEFINE_INTRINSIC_FUNCTION0(env,currentCode,currentCode,i64) {
    auto& wasm  = wasm_interface::get();
    return wasm.current_validate_context->code.value;
 }
-DEFINE_INTRINSIC_FUNCTION4(env,store,store,none,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen ) {
-//   ilog( "store ${keylen}  ${vallen}", ("keylen",keylen)("vallen",valuelen) );
-/*
-   FC_ASSERT( keylen > 0 );
-   FC_ASSERT( valuelen >= 0 );
 
-   auto& wasm  = wasm_interface::get();
-
-   FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-
-   auto& db    = wasm.current_apply_context->mutable_db;
-   auto& scope = wasm.current_apply_context->scope;
-   auto  mem   = wasm.current_memory;
-   char* key   = memoryArrayPtr<char>( mem, keyptr, keylen);
-   char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
-   string keystr( key, key+keylen);
-
-//   if( valuelen == 8 ) idump(( *((int64_t*)value)));
-
-
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
-   if( obj ) {
-      db.modify( *obj, [&]( auto& o ) {
-         o.value.assign(value, valuelen);
-      });
-   } else {
-      db.create<key_value_object>( [&](auto& o) {
-         o.scope = scope;
-         o.key.insert( 0, key, keylen );
-         o.value.insert( 0, value, valuelen );
-      });
-   }
-*/
-}
 DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
+   auto& wasm  = wasm_interface::get();
+   const auto& msg   = wasm.current_validate_context->msg;
+   for( const auto& perm : msg.authorization )
+      if( perm.account == Name(account) ) return;
+   FC_ASSERT( !"missing authorization", "expected authorization ${auth}", ("auth",Name(account)) );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
+   auto& wasm  = wasm_interface::get();
+   const auto& msg   = wasm.current_validate_context->msg;
+   for( const auto& r : msg.recipients )
+      if( r == Name(account) ) return;
+   FC_ASSERT( !"missing expected recipient", "expected ${auth} to be notified", ("auth",Name(account)) );
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
+   auto& wasm  = wasm_interface::get();
+   wasm.requireScope( scope );
 }
 
 DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i64,key) 
@@ -71,11 +53,13 @@ DEFINE_INTRINSIC_FUNCTION5(env,store_i64,store_i64,i32,i64,scope,i64,table,i64,k
    FC_ASSERT( valuelen >= 0 );
 
    auto& wasm  = wasm_interface::get();
+   wasm.requireScope( scope );
 
    FC_ASSERT( wasm.current_apply_context, "no apply context found" );
 
    auto& db    = wasm.current_apply_context->mutable_db;
    auto& code = wasm.current_apply_context->code;
+
    auto  mem   = wasm.current_memory;
    char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
 
@@ -510,6 +494,14 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       current_memory = getDefaultMemory( current_module );
       current_state  = &state;
    }
+
+
+   void wasm_interface::requireScope( AccountName scope )const { try {
+      const auto& trx   = current_validate_context->trx;
+      for( const auto& s : trx.scope )
+         if( s == scope ) return;
+      FC_ASSERT( !"missing expected scope", "expected ${scope} to be in transaction scope", ("scope",Name(scope)) );
+   } FC_CAPTURE_AND_RETHROW( (Name(scope)) ) }
 
 
 } }
