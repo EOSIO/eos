@@ -1,6 +1,8 @@
 #include <appbase/application.hpp>
 
 #include <eos/producer_plugin/producer_plugin.hpp>
+#include <eos/chain_plugin/chain_plugin.hpp>
+#include <eos/http_plugin/http_plugin.hpp>
 #include <eos/chain_api_plugin/chain_api_plugin.hpp>
 #include <eos/net_plugin/net_plugin.hpp>
 
@@ -17,8 +19,10 @@ int main(int argc, char** argv)
    try {
       app().register_plugin<net_plugin>();
       app().register_plugin<chain_api_plugin>();
+      app().register_plugin<http_plugin>();
       app().register_plugin<producer_plugin>();
-      if(!app().initialize<net_plugin, chain_plugin>(argc, argv))
+      app().register_plugin<chain_plugin>();
+      if(!app().initialize<chain_plugin, net_plugin, producer_plugin>(argc, argv))
          return -1;
 
       app().startup();

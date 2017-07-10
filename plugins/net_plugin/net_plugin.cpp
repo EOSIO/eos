@@ -4,6 +4,7 @@
 #include <eos/net_plugin/protocol.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
+#include <eos/chain/block.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>
@@ -214,7 +215,6 @@ namespace eos {
 
 
   }; // class connection
-
 
 
   class net_plugin_impl {
@@ -486,21 +486,36 @@ namespace eos {
 
     void handle_message (connection_ptr c, const notice_message &msg) {
       dlog ("got a notice message");
+      chain_controller &cc = chain_plug->chain();
+      for (const auto& b : msg.known_blocks) {
+        if (! cc.is_known_block (b)) {
+    c->block_state.insert((block_state){b,true,true,fc::time_point()});
+        }
+      }
+      for (const auto& t : msg.known_trx) {
+        if (!cc.is_known_transaction (t)) {
+    c->trx_state.insert((transaction_state){t,true,true,(uint32_t)-1,fc::time_point(),fc::time_point()});
+        }
+      }
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
-      ilog ("got a sync request message for blocks ${s} to ${e}", ("s",msg.start_block)("e", msg.end_block));
+      dlog ("got a sync request message for blocks ${s} to ${e}", ("s",msg.start_block)("e", msg.end_block));
       sync_state req = {msg.start_block,msg.end_block,msg.start_block-1,time_point::now()};
       c->out_sync_state.insert (req);
       c->write_block_backlog ();
     }
 
     void handle_message (connection_ptr c, const block_summary_message &msg) {
-      ilog ("got a block summary message");
-      // TODO: reconstruct actual block from cached transactions
+      //dlog ("got a block summary message");
+      #warning TODO: reconstruct actual block from cached transactions
       chain_controller &cc = chain_plug->chain();
       if (cc.is_known_block(msg.block.id())) {
-        dlog ("block id ${id} is known", ("id", msg.block.id()) );
+        const auto& itr = c->block_state.get<by_id>();
+        block_state value = *itr.find(msg.block.id());
+        value.is_known=true;
+        c->block_state.insert (std::move(value));
+        //dlog ("block id ${id} is known", ("id", msg.block.id()) );
         return;
       }
       try {
@@ -601,6 +616,10 @@ namespace eos {
       c.reset ();
     }
 
+    static void pending_txn (const SignedTransaction& txn) {
+      dlog ("got signaled of txn!");
+    }
+
   }; // class net_plugin_impl
 
   net_plugin::net_plugin()
@@ -652,6 +671,7 @@ namespace eos {
       my->acceptor->set_option(tcp::acceptor::reuse_address(true));
       my->acceptor->bind(my->listen_endpoint);
       my->acceptor->listen();
+      my->chain_plug->chain().on_pending_transaction.connect (&net_plugin_impl::pending_txn);
 
       my->start_listen_loop();
     }
@@ -687,12 +707,18 @@ namespace eos {
 
   void net_plugin::broadcast_block (const chain::signed_block &sb) {
     vector<transaction_id_type> trxs;
+    if (!sb.cycles.empty()) {
+      for (const auto& cyc : sb.cycles) {
+        for (const auto& thr : cyc) {
+          for (auto ui : thr.user_input) {
+            trxs.push_back (ui.id());
+          }
+        }
+      }
+    }
+
     block_summary_message bsm = {sb, trxs};
     my->send_all (bsm);
-  }
-
-  void net_plugin::broadcast_transaction (const chain::SignedTransaction &txn) {
-    my->send_all (txn);
   }
 
 }
