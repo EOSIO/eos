@@ -66,6 +66,7 @@ namespace eos { namespace types {
 
       void set( const char* str ) {
       try {
+         value = 0;
          const auto len = strnlen(str,14);
          FC_ASSERT( len <= 13 );
          for( uint32_t i = 0; i <= 12 && i < len; ++i ) {
@@ -83,8 +84,8 @@ namespace eos { namespace types {
          if( c >= 'a' && c <= 'z' )
             return (c - 'a') + 1;
          if( c >= '1' && c <= '5' )
-            return (c - '1') + 26;
-         FC_ASSERT( c == '.', "invalid character '${c}' (${i}) in Name string", ("c", String(&c,1))("i",int(c)) );
+            return (c - '1') + 27;
+         //FC_ASSERT( c == '.', "invalid character '${c}' (${i}) in Name string", ("c", String(&c,1))("i",int(c)) );
          return 0;
       }
 

@@ -507,12 +507,13 @@ void chain_controller::validate_transaction(const SignedTransaction& trx)const {
 try {
    EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
+   validate_scope(trx);
+   validate_expiration(trx);
    validate_uniqueness(trx);
    validate_tapos(trx);
    validate_referenced_accounts(trx);
-   validate_expiration(trx);
 
-   for (const auto& tm : trx.messages) { /// TODO: this loop can be processed in parallel
+   for (const auto& tm : trx.messages) { 
       const Message* m = reinterpret_cast<const Message*>(&tm); //  m(tm);
       m->for_each_handler( [&]( const AccountName& a ) {
 
@@ -535,6 +536,12 @@ try {
    }
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
+
+void chain_controller::validate_scope( const SignedTransaction& trx )const {
+   EOS_ASSERT(trx.scope.size() > 0, transaction_exception, "No scope specified by transaction" );
+   for( uint32_t i = 1; i < trx.scope.size(); ++i )
+      EOS_ASSERT( trx.scope[i-1] < trx.scope[i], transaction_exception, "Scopes must be sorted and unique" );
+}
 
 void chain_controller::validate_uniqueness( const SignedTransaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;

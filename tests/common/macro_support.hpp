@@ -23,9 +23,15 @@
 #define MKNET2_MACRO(x, name, chain) name.connect_blockchain(chain);
 #define MKNET2(name, ...) MKNET1(name) BOOST_PP_SEQ_FOR_EACH(MKNET2_MACRO, name, __VA_ARGS__)
 
+inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
+   std::sort( names.begin(), names.end() );
+   return names;
+}
+
 #define MKACCT_IMPL(chain, name, creator, active, owner, recovery, deposit) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names({ #creator, "system" }); \
       trx.emplaceMessage(config::SystemContractName, \
                          vector<AccountName>{#creator, config::StakedBalanceContractName, config::EosContractName}, \
                          vector<types::AccountPermission>{}, \
@@ -59,6 +65,7 @@
 #define XFER5(chain, sender, recipient, amount, memo) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names({#sender,#recipient}); \
       trx.emplaceMessage(config::EosContractName, vector<AccountName>{#sender, #recipient}, \
                          vector<types::AccountPermission>{}, \
                          "transfer", types::transfer{#sender, #recipient, amount, memo}); \
@@ -113,6 +120,7 @@
 #define MKPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names( {#owner, "staked"} ); \
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#owner}, \
                          vector<types::AccountPermission>{}, \
                          "setproducer", types::setproducer{#owner, key, cfg}); \
@@ -129,6 +137,7 @@
 #define APPDCR4(chain, voter, producer, approved) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names( {#voter, "staked"} ); \
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#voter, #producer}, \
                          vector<types::AccountPermission>{}, \
                          "okproducer", types::okproducer{0, 1, approved? 1 : 0}); \
@@ -142,6 +151,7 @@
 #define UPPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names( {#owner, "staked"} ); \
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{owner}, \
                          vector<types::AccountPermission>{}, \
                          "setproducer", types::setproducer{owner, key, cfg}); \

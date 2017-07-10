@@ -42,7 +42,6 @@ class wasm_interface {
       Runtime::ModuleInstance*   current_module  = nullptr;
       ModuleState*               current_state   = nullptr;
 
-      void requireScope( AccountName scope )const;
    private:
       void load( const AccountName& name, const chainbase::database& db );
 

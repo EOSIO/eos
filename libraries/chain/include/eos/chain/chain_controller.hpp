@@ -244,6 +244,7 @@ namespace eos { namespace chain {
          void validate_tapos(const SignedTransaction& trx)const;
          void validate_referenced_accounts(const SignedTransaction& trx)const;
          void validate_expiration(const SignedTransaction& trx) const;
+         void validate_scope(const SignedTransaction& trx) const;
          /// @}
 
          void validate_message_precondition(precondition_validate_context& c)const;

@@ -31,16 +31,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
-   auto& wasm  = wasm_interface::get();
-   const auto& msg   = wasm.current_validate_context->msg;
-   for( const auto& r : msg.recipients )
-      if( r == Name(account) ) return;
-   FC_ASSERT( !"missing expected recipient", "expected ${auth} to be notified", ("auth",Name(account)) );
+   wasm_interface::get().current_validate_context->require_recipient( account );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
-   auto& wasm  = wasm_interface::get();
-   wasm.requireScope( scope );
+   wasm_interface::get().current_validate_context->require_scope( scope );
 }
 
 DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i64,key) 
@@ -53,7 +48,7 @@ DEFINE_INTRINSIC_FUNCTION5(env,store_i64,store_i64,i32,i64,scope,i64,table,i64,k
    FC_ASSERT( valuelen >= 0 );
 
    auto& wasm  = wasm_interface::get();
-   wasm.requireScope( scope );
+   wasm.current_validate_context->require_scope( scope );
 
    FC_ASSERT( wasm.current_apply_context, "no apply context found" );
 
@@ -494,14 +489,5 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
       current_memory = getDefaultMemory( current_module );
       current_state  = &state;
    }
-
-
-   void wasm_interface::requireScope( AccountName scope )const { try {
-      const auto& trx   = current_validate_context->trx;
-      for( const auto& s : trx.scope )
-         if( s == scope ) return;
-      FC_ASSERT( !"missing expected scope", "expected ${scope} to be in transaction scope", ("scope",Name(scope)) );
-   } FC_CAPTURE_AND_RETHROW( (Name(scope)) ) }
-
 
 } }
