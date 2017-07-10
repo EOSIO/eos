@@ -23,11 +23,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,currentCode,currentCode,i64) {
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
-   auto& wasm  = wasm_interface::get();
-   const auto& msg   = wasm.current_validate_context->msg;
-   for( const auto& perm : msg.authorization )
-      if( perm.account == Name(account) ) return;
-   FC_ASSERT( !"missing authorization", "expected authorization ${auth}", ("auth",Name(account)) );
+   wasm_interface::get().current_validate_context->require_authorization( Name(account) );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
@@ -38,48 +34,19 @@ DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
    wasm_interface::get().current_validate_context->require_scope( scope );
 }
 
-DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i64,key) 
-{
-   return 0;
-}
-
 DEFINE_INTRINSIC_FUNCTION5(env,store_i64,store_i64,i32,i64,scope,i64,table,i64,key,i32,valueptr,i32,valuelen) 
 {
-   FC_ASSERT( valuelen >= 0 );
-
    auto& wasm  = wasm_interface::get();
-   wasm.current_validate_context->require_scope( scope );
-
    FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-
-   auto& db    = wasm.current_apply_context->mutable_db;
-   auto& code = wasm.current_apply_context->code;
 
    auto  mem   = wasm.current_memory;
    char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
 
    //idump((Name(scope))(Name(code))(Name(table))(Name(key))(valuelen) );
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
-                                                            AccountName(key) ) );
-   if( obj ) {
-      db.modify( *obj, [&]( auto& o ) {
-         o.value.assign(value, valuelen);
-      });
-   } else {
-      db.create<key_value_object>( [&](auto& o) {
-         o.scope = scope;
-         o.code  = code;
-         o.table = table;
-         o.key   = key;
-         o.value.insert( 0, value, valuelen );
-      });
-   }
 
-   return 0;
+   return wasm.current_apply_context->store_i64( scope, table, key, value, valuelen );
 }
+
 DEFINE_INTRINSIC_FUNCTION6(env,load_i64,load_i64,i32,i64,scope,i64,code,i64,table,i64,key,i32,valueptr,i32,valuelen) 
 {
    //idump((Name(scope))(Name(code))(Name(table))(Name(key))(valuelen) );
@@ -87,59 +54,18 @@ DEFINE_INTRINSIC_FUNCTION6(env,load_i64,load_i64,i32,i64,scope,i64,code,i64,tabl
    FC_ASSERT( valuelen >= 0 );
 
    auto& wasm  = wasm_interface::get();
-
    FC_ASSERT( wasm.current_validate_context, "no apply context found" );
 
-   auto& db    = wasm.current_apply_context->mutable_db;
    auto  mem   = wasm.current_memory;
    char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
 
-
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
-                                                            AccountName(key) ) );
-   if( obj == nullptr ) {
-      wlog( "not found" );
-      return -1;
-   }
-   auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
-   if( copylen ) {
-      obj->value.copy(value, copylen);
-   }
-   return copylen;
+   return wasm.current_validate_context->load_i64( scope, code, table, key, value, valuelen );
 }
 
-
-DEFINE_INTRINSIC_FUNCTION1(env,name_to_int64,name_to_int64,i64,i32,cstr) {
+DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i64,key) {
    auto& wasm  = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-   const char* str   = memoryArrayPtr<const char>( mem, cstr, 13);
-   return Name(str).value;
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,remove,remove,i32,i32,keyptr,i32,keylen) {
-   /*
-   FC_ASSERT( keylen > 0 );
-
-   auto& wasm  = wasm_interface::get();
-
    FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-
-   auto& db    = wasm.current_apply_context->mutable_db;
-   auto& scope = wasm.current_apply_context->scope;
-   auto  mem   = wasm.current_memory;
-   char* key   = memoryArrayPtr<char>( mem, keyptr, keylen);
-   string keystr( key, key+keylen);
-
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, keystr) );
-   if( obj ) {
-      db.remove( *obj );
-      return true;
-   }
-   */
-   return false;
+   return wasm.current_apply_context->remove_i64( scope, table, key );
 }
 
 DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {

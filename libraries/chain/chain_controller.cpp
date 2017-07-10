@@ -57,41 +57,6 @@
 namespace eos { namespace chain {
 
 
-String apply_context::get( String key )const {
-   /*
-   const auto& obj = db.get<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
-   return String(obj.value.begin(),obj.value.end());
-   */
-   return String();
-}
-void apply_context::set( String key, String value ) {
-   /*
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
-   if( obj ) {
-      mutable_db.modify( *obj, [&]( auto& o ) {
-         o.value.resize( value.size() );
-        // memcpy( o.value.data(), value.data(), value.size() );
-      });
-   } else {
-      mutable_db.create<key_value_object>( [&](auto& o) {
-         o.scope = scope;
-         o.key.insert( 0, key.data(), key.size() );
-         o.value.insert( 0, value.data(), value.size() );
-      });
-   }
-   */
-}
-void apply_context::remove( String key ) {
-   /*
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(scope, key) );
-   if( obj ) {
-      mutable_db.remove( *obj );
-   }
-   */
-}
-
-
-
 bool chain_controller::is_known_block(const block_id_type& id)const
 {
    return _fork_db.is_known_block(id) || _block_log.read_block_by_id(id);

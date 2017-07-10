@@ -35,6 +35,9 @@ public:
    const chain::Message&        msg; ///< message being applied
    types::AccountName           code; ///< the code that is currently running
 
+
+   int32_t load_i64( Name scope, Name code, Name table, Name Key, char* data, uint32_t maxlen );
+
    ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
    vector<bool>                 used_authorizations;
 };
@@ -56,9 +59,8 @@ class apply_context : public precondition_validate_context {
                     const types::AccountName& code)
          :precondition_validate_context(db,t,m,code),mutable_db(db){}
 
-      types::String get(types::String key)const;
-      void set(types::String key, types::String value);
-      void remove(types::String key);
+      int32_t store_i64( Name scope, Name table, Name key, const char* data, uint32_t len);
+      int32_t remove_i64( Name scope, Name table, Name key );
 
       std::deque<eos::chain::generated_transaction> applied; ///< sync calls made 
       std::deque<eos::chain::generated_transaction> generated; ///< async calls requested
