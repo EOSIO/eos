@@ -25,8 +25,8 @@ void apply_currency_transfer() {
    requireNotice( transfer.to, transfer.from );
    requireAuth( transfer.from );
 
-   static CurrencyAccount from_account;
-   static CurrencyAccount to_account;
+   CurrencyAccount from_account;
+   CurrencyAccount to_account;
    Db::get( transfer.from, NAME("account"), from_account );
    Db::get( transfer.to, NAME("account"), to_account );
 

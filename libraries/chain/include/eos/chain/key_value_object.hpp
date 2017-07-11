@@ -57,8 +57,50 @@ namespace eos { namespace chain {
       >
    >;
 
+   struct key128x128_value_object : public chainbase::object<key128x128_value_object_type, key128x128_value_object> {
+      OBJECT_CTOR(key128x128_value_object, (value))
+
+      id_type               id;
+      AccountName           scope; 
+      AccountName           code;
+      AccountName           table;
+      uint128_t             primary_key;
+      uint128_t             secondary_key;
+      shared_string         value;
+   };
+
+   struct by_scope_primary;
+   struct by_scope_secondary;
+   using key128x128_value_index = chainbase::shared_multi_index_container<
+      key128x128_value_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<key128x128_value_object, key128x128_value_object::id_type, &key128x128_value_object::id>>,
+         ordered_unique<tag<by_scope_primary>, 
+            composite_key< key128x128_value_object,
+               member<key128x128_value_object, AccountName, &key128x128_value_object::scope>,
+               member<key128x128_value_object, AccountName, &key128x128_value_object::code>,
+               member<key128x128_value_object, AccountName, &key128x128_value_object::table>,
+               member<key128x128_value_object, uint128_t, &key128x128_value_object::primary_key>,
+               member<key128x128_value_object, uint128_t, &key128x128_value_object::secondary_key>
+            >,
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint128_t>,std::less<uint128_t> >
+         >,
+         ordered_unique<tag<by_scope_secondary>, 
+            composite_key< key128x128_value_object,
+               member<key128x128_value_object, AccountName, &key128x128_value_object::scope>,
+               member<key128x128_value_object, AccountName, &key128x128_value_object::code>,
+               member<key128x128_value_object, AccountName, &key128x128_value_object::table>,
+               member<key128x128_value_object, uint128_t, &key128x128_value_object::secondary_key>,
+               member<key128x128_value_object, uint128_t, &key128x128_value_object::primary_key>
+            >,
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint128_t>, std::less<uint128_t> >
+         >
+      >
+   >;
+
 } } // eos::chain
 
 CHAINBASE_SET_INDEX_TYPE(eos::chain::key_value_object, eos::chain::key_value_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::key128x128_value_object, eos::chain::key128x128_value_index)
 
 FC_REFLECT(eos::chain::key_value_object, (id)(scope)(code)(table)(key)(value) )

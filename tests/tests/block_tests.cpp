@@ -137,6 +137,91 @@ using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
+
+/**
+ *  The purpose of this test is to demonstrate that it is possible
+ *  to schedule 3M transactions into cycles where each cycle contains
+ *  a set of independent transactions.  
+ *
+ *  This simple single threaded algorithm sorts 3M transactions each of which
+ *  requires scope of 2 accounts chosen with a normal probability distribution
+ *  amoung a set of 2 million accounts.
+ *
+ *  This algorithm executes in less than 0.5 seconds on a 4Ghz Core i7 and could
+ *  potentially take just .05 seconds with 10+ CPU cores. Future improvements might
+ *  use a more robust bloomfilter to identify collisions.
+ */
+///@{
+struct Location {
+   uint32_t thread = -1;
+   uint32_t cycle  = -1;
+   Location& operator=( const Location& l ) {
+      thread = l.thread;
+      cycle = l.cycle;
+      return *this;
+   }
+};
+struct ExTransaction : public Transaction {
+   Location location;
+};
+
+BOOST_AUTO_TEST_CASE(schedule_test) {
+   vector<ExTransaction*> transactions(3*1000*1000);
+   auto rand_scope = []() {
+      return rand()%1000000 + rand()%1000000;
+   };
+
+   for( auto& t : transactions ) {
+      t = new ExTransaction();
+      t->scope = sort_names({ rand_scope(), rand_scope() });
+   }
+
+   int cycle = 0;
+   std::vector<int> thread_count(1024);
+
+   vector<ExTransaction*> postponed;
+   postponed.reserve(transactions.size());
+   auto current = transactions;
+
+   vector<bool>  used(1024*1024);
+   auto start = fc::time_point::now();
+   bool scheduled = true;
+   while( scheduled ) {
+      scheduled = false;
+      for( auto t : current ) {
+         bool u = false;
+         for( const auto& s : t->scope ) {
+            if( used[s.value%used.size()] ) {
+               u = true;
+               postponed.push_back(t);
+               break;
+            }
+         }
+         if( !u ) {
+            for( const auto& s : t->scope ) {
+               used[s.value%used.size()] = true;
+            }
+            t->location.cycle  = cycle;
+            t->location.thread = thread_count[cycle]++;
+            scheduled = true;
+         }
+      }
+      current.resize(0);
+      used.resize(0); used.resize(1024*1024);
+      std::swap( current, postponed );
+      ++cycle;
+      
+   } 
+   auto end = fc::time_point::now();
+   thread_count.resize(cycle+1);
+//   idump((cycle));
+//   idump((thread_count));
+
+   auto sort_time = end-start;
+   edump((sort_time.count()/1000000.0));
+}
+///@} end of schedule test 
+
 BOOST_AUTO_TEST_CASE(name_test) {
    using eos::types::Name;
    Name temp;

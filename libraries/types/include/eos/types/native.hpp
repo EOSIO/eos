@@ -54,6 +54,7 @@ namespace eos { namespace types {
    using Int64     = int64_t; //Int<64>; 
    using Int128    = boost::multiprecision::int128_t;
    using Int256    = boost::multiprecision::int256_t;
+   using uint128_t = unsigned __int128; /// native clang/gcc 128 intrinisic
 
    struct Name {
       uint64_t value = 0;

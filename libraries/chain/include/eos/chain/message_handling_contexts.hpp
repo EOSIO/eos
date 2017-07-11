@@ -38,6 +38,18 @@ public:
 
    int32_t load_i64( Name scope, Name code, Name table, Name Key, char* data, uint32_t maxlen );
 
+
+   int32_t front_primary_i128i128( Name scope, Name code, Name table, 
+                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+   int32_t back_primary_i128i128( Name scope, Name code, Name table, 
+                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+   int32_t load_primary_i128i128( Name scope, Name code, Name table, 
+                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+   int32_t lowerbound_primary_i128i128( Name scope, Name code, Name table, 
+                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+   int32_t lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
+                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
    ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
    vector<bool>                 used_authorizations;
 };
