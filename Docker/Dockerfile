@@ -32,7 +32,7 @@ RUN cd /tmp && git clone https://github.com/cryptonomex/secp256k1-zkp.git \
   && ldconfig && rm -rf /tmp/secp256k1-zkp*
 
 RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
-  && cd eos && mkdir build && cd build \
+  && touch /tmp/eos/contracts/CMakeLists.txt && cd eos && mkdir build && cd build \
   && cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_STANDARD=14 -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j$(nproc) && make install \
   && rm -rf /tmp/eos*
