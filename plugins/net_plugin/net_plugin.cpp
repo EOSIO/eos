@@ -115,7 +115,7 @@ namespace eos {
     sync_request_index             in_sync_state;
     sync_request_index             out_sync_state;
     socket_ptr                     socket;
-    vector<fc::ip::endpoint>       shared_peers;
+    std::set<fc::ip::endpoint>       shared_peers;
 
     uint32_t                       pending_message_size;
     vector<char>                   pending_message_buffer;
@@ -202,7 +202,7 @@ namespace eos {
       try {
         fc::optional<signed_block> sb = cc.fetch_block_by_number(num);
         if (sb) {
-          dlog("write backlog, block #${num}",("num",num));
+          // dlog("write backlog, block #${num}",("num",num));
           send( *sb );
         }
       } catch ( ... ) {
@@ -393,14 +393,17 @@ namespace eos {
       return fc::ip::endpoint (addr,ep.port());
     }
 
-    void send_peer_list () {
+    void send_peer_list_to (connection &conn) {
       peer_message pm;
       pm.peers.resize(connections.size());
       for (auto &c : connections) {
-        pm.peers.push_back (asio_to_fc(c->socket->remote_endpoint()));
+        fc::ip::endpoint remote = asio_to_fc(c->socket->remote_endpoint());
+        if (conn.shared_peers.find(remote) == conn.shared_peers.end()) {
+          pm.peers.push_back(remote);
+        }
       }
-      for (auto c : connections) {
-        c->send (pm);
+      if (!pm.peers.empty()) {
+        conn.send (pm);
       }
     }
 
@@ -437,7 +440,7 @@ namespace eos {
       if (!hello) {
         init_handshake();
       }
-      dlog ("got a handshake message");
+      // dlog ("got a handshake message");
       if (msg.node_id == hello->node_id) {
         elog ("Self connection detected. Closing connection");
         close(c);
@@ -463,8 +466,9 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const peer_message &msg) {
-      dlog ("got a peer message");
+      // dlog ("got a peer message");
       for (auto fcep : msg.peers) {
+        c->shared_peers.insert (fcep);
         tcp::endpoint ep = fc_to_asio (fcep);
         if (ep == listen_endpoint || ep == public_endpoint) {
           continue;
@@ -485,29 +489,31 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const notice_message &msg) {
-      dlog ("got a notice message");
+      // dlog ("got a notice message");
       chain_controller &cc = chain_plug->chain();
       for (const auto& b : msg.known_blocks) {
         if (! cc.is_known_block (b)) {
-    c->block_state.insert((block_state){b,true,true,fc::time_point()});
+          c->block_state.insert((block_state){b,true,true,fc::time_point()});
         }
       }
       for (const auto& t : msg.known_trx) {
         if (!cc.is_known_transaction (t)) {
-    c->trx_state.insert((transaction_state){t,true,true,(uint32_t)-1,fc::time_point(),fc::time_point()});
+          c->trx_state.insert((transaction_state){t,true,true,(uint32_t)-1,
+                fc::time_point(),fc::time_point()});
         }
       }
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
-      dlog ("got a sync request message for blocks ${s} to ${e}", ("s",msg.start_block)("e", msg.end_block));
+      // og ("got a sync request message for blocks ${s} to ${e}",
+      //      ("s",msg.start_block)("e", msg.end_block));
       sync_state req = {msg.start_block,msg.end_block,msg.start_block-1,time_point::now()};
       c->out_sync_state.insert (req);
       c->write_block_backlog ();
     }
 
     void handle_message (connection_ptr c, const block_summary_message &msg) {
-      //dlog ("got a block summary message");
+      // dlog ("got a block summary message");
       #warning TODO: reconstruct actual block from cached transactions
       chain_controller &cc = chain_plug->chain();
       if (cc.is_known_block(msg.block.id())) {
@@ -515,7 +521,7 @@ namespace eos {
         block_state value = *itr.find(msg.block.id());
         value.is_known=true;
         c->block_state.insert (std::move(value));
-        //dlog ("block id ${id} is known", ("id", msg.block.id()) );
+        // dlog ("block id ${id} is known", ("id", msg.block.id()) );
         return;
       }
       try {
@@ -541,7 +547,7 @@ namespace eos {
       chain_controller &cc = chain_plug->chain();
 
       if (cc.is_known_block(msg.id())) {
-        dlog ("block id ${id} is known", ("id", msg.id()) );
+        // dlog ("block id ${id} is known", ("id", msg.id()) );
         return;
       }
       uint32_t num = 0;
@@ -617,7 +623,7 @@ namespace eos {
     }
 
     static void pending_txn (const SignedTransaction& txn) {
-      dlog ("got signaled of txn!");
+      // dlog ("got signaled of txn!");
     }
 
   }; // class net_plugin_impl
