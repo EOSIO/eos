@@ -192,13 +192,13 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       for (uint32_t i = 0; i < 10000; ++i)
       {
          eos::chain::SignedTransaction trx;
-         trx.scope = {"currency","inita"};
+         trx.scope = sort_names({"currency","inita"});
          trx.emplaceMessage("currency", vector<AccountName>{"inita","currency"},
                             vector<types::AccountPermission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "inita", 1+i, "hello"});
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
-         idump((trx));
+         //idump((trx));
          chain.push_transaction(trx);
       }
       auto end = fc::time_point::now();

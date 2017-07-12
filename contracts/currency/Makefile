@@ -1,5 +1,5 @@
 currency.wast: currency.cpp Makefile ../eoslib/eos.hpp currency.hpp
-	 /usr/local/Cellar/llvm/4.0.0_1/bin/clang-4.0 -emit-llvm -O3 --std=c++14 --target=wasm32 -c currency.cpp  -I.. -fno-threadsafe-statics -fno-rtti -fno-exceptions -o .currency.bc -I /usr/local/Cellar/llvm/4.0.0_1/include/c++/v1/
+	 /usr/local/Cellar/llvm/4.0.0_1/bin/clang-4.0 -emit-llvm -O3 --std=c++14 --target=wasm32 -c currency.cpp  -I.. -fno-threadsafe-statics -fno-rtti -fno-exceptions -o .currency.bc 
 	 /Users/dlarimer/Downloads/llvm/build/bin/llc -asm-verbose=false .currency.bc
 	 /Users/dlarimer/eos/libraries/binaryen/bin/s2wasm -s 1024 .currency.s > currency.wast
 	 wc -l currency.wast
@@ -11,9 +11,15 @@ currency.wast: currency.cpp Makefile ../eoslib/eos.hpp currency.hpp
 #	 /usr/local/Cellar/llvm/4.0.0_1/bin/clang-4.0 -emit-llvm -O3 --std=c++14 --target=wasm32 -nostdinc -c currency.cpp  -I.. -fno-threadsafe-statics -fno-rtti -fno-exceptions -o .currency.bc
 #	 /usr/local/Cellar/llvm/4.0.0_1/bin/clang-4.0 -emit-llvm  --std=c++14 --target=wasm32 -nostdinc -c currency.cpp  -I.. -fno-threadsafe-statics -fno-rtti -fno-exceptions -o .currency.bc
 
-test.wast: test.cpp Makefile eos.hpp
-	 /usr/local/Cellar/llvm/4.0.0_1/bin/clang-4.0 -emit-llvm -O3 --std=c++14 --target=wasm32 -nostdinc -c test.cpp  -I.. -fno-threadsafe-statics -fno-rtti -fno-exceptions
-	 /Users/dlarimer/Downloads/llvm/build/bin/llc -asm-verbose=false test.bc
-	 /Users/dlarimer/eos/libraries/binaryen/bin/s2wasm test.s -s 1024  > test.wast
-	 cat test.wast
+
+
+test.wast: test.cpp Makefile ../eoslib/eos.hpp 
+	 /usr/local/Cellar/llvm/4.0.0_1/bin/clang-4.0 -emit-llvm --std=c++14 --target=wasm32 -c test.cpp  -I.. -fno-threadsafe-statics -fno-rtti -fno-exceptions -o .test.bc 
+	 /Users/dlarimer/Downloads/llvm/build/bin/llc -asm-verbose=false .test.bc
+	 /Users/dlarimer/eos/libraries/binaryen/bin/s2wasm -s 1024 .test.s > test.wast
+	 wc -l test.wast
+	 echo '#pragma once' > test.wast.hpp
+	 echo 'const char* test_wast = R"=====(' >> test.wast.hpp
+	 cat test.wast >> test.wast.hpp
+	 echo ')=====";' >> test.wast.hpp
 

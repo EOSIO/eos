@@ -33,204 +33,186 @@
  *  creating, canceling, and filling orders do not require blocking either currency
  *  contract.  Users can only deposit or withdraw to their own currency account.
  */
-#include <currency/currency.hpp> /// defines transfer struct
+#include <exchange/exchange.hpp> /// defines transfer struct
+using namespace exchange;
 
-typedef uint128_t Price;
+namespace exchange {
+void save( const Account& a ) {
+   if( a.isEmpty() )
+      Db::remove( N(exchange), N(account), a.owner );
+   else
+      Db::store( N(exchange), N(account), a.owner, a );
+}
 
-struct OrderID {
-   uint64_t owner = 0;
-   uint64_t id    = 0;
-
-   operator const uint128_t& ()const { 
-      return *reinterpret_cast<const uint128_t*>(this);
-   }
-
-   operator uint128_t& (){ 
-      return *reinterpret_cast<uint128_t*>(this);
-   }
-};
-static_assert( sizeof(OrderID) == sizeof(uint128_t), "unexpected packing" );
-
-struct Order {
-   OrderID&  primary()  { return id;    }
-   Price&    secondary(){ return price; }
-
-   OrderID   id;
-   Price     price;
-   uint64_t  quantity;
-   Time      expiration;
-};
-
-using Bids = TABLE(exchange,exchange,bids,Order); 
-using Asks = TABLE(exchange,exchange,asks,Order); 
-typedef Asks::SecondaryIndex  AsksByPrice;
-typedef Bids::SecondaryIndex  BidsByPrice;
-typedef Asks::PrimaryIndex  AsksById;
-typedef Bids::PrimaryIndex  BidsById;
-
-struct Account {
-   uint64_t   a = 0;
-   uint64_t   b = 0;
-   int        open_orders = 0;
-
-   bool isEmpty()const { return !(a|b|open_orders); }
-
-   static Name tableId() { return NAME("account"); }
-};
-
-
+template<typename Lambda>
+void modifyAccount( AccountName a, Lambda&& modify ) {
+   auto acnt = getAccount( a );
+   modify( acnt );
+   save( acnt );
+}
 
 /**
  *  This method is called after the "transfer" action of code
  *  "currencya" is called and "exchange" is listed in the notifiers.
  */
-void apply_currencya_transfer() {
-   const auto& transfer  = currentMessage<Transfer>();
-
+void apply_currency_transfer( const currency::Transfer& transfer ) {
    if( transfer.to == N(exchange) ) {
-      Account to_balance;
-      Db::get( transfer.from, to_balance );
-      to_balance.a += transfer.amount;
-      Db::store( transfer.from, to_balance );
+      modifyAccount( transfer.to, [&]( Account& account ){ 
+          account.currency_balance += transfer.quantity; 
+      });
    } else if( transfer.from == N(exchange) ) {
       requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
 
-      Account to_balance;
-      Db::get( transfer.to, to_balance );
-      assert( to_balance.a >= transfer.amount, "insufficient funds to withdraw" );
-      to_balance.a -= transfer.amount;
-
-      if( to_balance.isEmpty() )
-         Db::remove<Account>( transfer.to );
-      else
-         Db::store( transfer.to, to_balance );
+      modifyAccount( transfer.to, [&]( Account& account ){ 
+          account.currency_balance -= transfer.quantity; 
+      });
    } else {
       assert( false, "notified on transfer that is not relevant to this exchange" );
    }
 }
 
-void apply_currencyb_transfer() {
-   const auto& transfer  = currentMessage<Transfer>();
-
+/**
+ *  This method is called after the "transfer" action of code
+ *  "currencya" is called and "exchange" is listed in the notifiers.
+ */
+void apply_eos_transfer( const eos::Transfer& transfer ) {
    if( transfer.to == N(exchange) ) {
-      Account to_balance;
-      Db::get( transfer.from, to_balance );
-      to_balance.b += transfer.amount;
-      Db::store( transfer.from, to_balance );
+      modifyAccount( transfer.to, [&]( Account& account ){ 
+          account.eos_balance += transfer.quantity; 
+      });
    } else if( transfer.from == N(exchange) ) {
       requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
 
-      Account to_balance;
-      Db::get( transfer.to, to_balance );
-      assert( to_balance.b >= transfer.amount, "insufficient funds to withdraw" );
-      to_balance.b -= transfer.amount;
-
-      if( to_balance.isEmpty() )
-         Db::remove<Account>( transfer.to );
-      else
-         Db::store( transfer.to, to_balance );
+      modifyAccount( transfer.to, [&]( Account& account ){ 
+          account.eos_balance -= transfer.quantity; 
+      });
    } else {
       assert( false, "notified on transfer that is not relevant to this exchange" );
    }
 }
 
-struct Buy {
-   AccountName buyer;
-   Price       price;
-   uint64_t    quantity = 0;
-   uint32_t    id = 0;
-   Time        expiration;
-   uint8_t     fill_or_kill = false;
-};
 
-struct Sell {
-   AccountName seller;
-   Price       price;
-   uint64_t    quantity = 0;
-   uint32_t    id = 0;
-   Time        expiration;
-   uint8_t     fill_or_kill = false;
-};
+void fill( Bid& bid, Ask& ask, Account& buyer, Account& seller, 
+           eos::Tokens e, currency::Tokens c) {
+   bid.quantity -= e;
+   seller.eos_balance += e;
 
-void fill( Order& bid, Order& ask, Account& buyer, Account& seller, uint64_t usd, uint64_t token ) {
-   bid.quantity -= usd;
-   seller.a += usd;
-   ask.quantity -= token;
-   buyer.b += token;
+   ask.quantity -= c;
+   buyer.currency_balance += c;
+}
+
+void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
+   eos::Tokens ask_eos = ask.quantity * ask.price;
+
+   eos::Tokens      fill_amount_eos = min<eos::Tokens>( ask_eos, bid.quantity );
+   currency::Tokens fill_amount_currency;
+
+   if( fill_amount_eos == ask_eos ) { /// complete fill of ask
+      fill_amount_currency = ask.quantity;
+   } else { /// complete fill of buy
+      fill_amount_currency = fill_amount_eos / ask.price;
+   }
+
+   fill( bid, ask, buyer, seller, fill_amount_eos, fill_amount_currency );
 }
 
 /**
  * 
  *  
  */
-void apply_exchange_buy() {
-   auto buy = currentMessage<Buy>();
-   assert( buy.expiration > now(), "order expired" );
+void apply_exchange_buy( BuyOrder order ) {
+   Bid& bid = order;
+   requireAuth( bid.buyer.name ); 
 
-   Account buyer_account;
+   assert( bid.quantity > eos::Tokens(0), "invalid quantity" );
+   assert( bid.expiration > now(), "order expired" );
 
-   Db::get( buy.buyer, buyer_account );
-   assert( buyer_account.a >= buy.quantity, "insufficient funds" );
-   assert( buy.quantity > 0, "invalid quantity" );
-   buyer_account.a -= buy.quantity;
+   static Bid existing_bid;
+   assert( BidsById::get( bid.buyer, existing_bid ), "order with this id already exists" );
 
-   Order buyer_bid;
-   assert( BidsById::get( OrderID{ buy.buyer, buy.id}, buyer_bid ), "order with this id already exists" );
+   auto buyer_account = getAccount( bid.buyer.name );
+   buyer_account.eos_balance -= bid.quantity;
 
-   buyer_bid.price         = buy.price;
-   buyer_bid.id.owner      = buy.buyer;
-   buyer_bid.id.id         = buy.id;
-   buyer_bid.quantity      = buy.quantity;
-   buyer_bid.expiration    = buy.expiration;
-
-   Order lowest_ask;
-
+   static Ask lowest_ask;
    if( !AsksByPrice::front( lowest_ask ) ) {
-      assert( !buy.fill_or_kill, "order not completely filled" );
-      Bids::store( buyer_bid );
-      Db::store( buy.buyer, buyer_account );
+      assert( !order.fill_or_kill, "order not completely filled" );
+      Bids::store( bid );
+      save( buyer_account );
       return;
    }
 
-   Account seller_account;
-   Db::get( lowest_ask.id.owner, seller_account );
+   auto seller_account = getAccount( lowest_ask.seller.name );
 
-   while( lowest_ask.price <= buyer_bid.price ) {
-      auto ask_usd           = lowest_ask.price * lowest_ask.quantity;
-      auto fill_amount_usd   = min<uint64_t>( ask_usd, buyer_bid.quantity );
-      uint64_t fill_amount_token = 0;
+   while( lowest_ask.price <= bid.price ) {
+      match( bid, buyer_account, lowest_ask, seller_account );
 
-      lowest_ask.quantity -= fill_amount_token;
-      buy.quantity        -= fill_amount_usd;
-
-      if( fill_amount_usd == ask_usd ) { /// complete fill of ask
-         fill_amount_token = lowest_ask.quantity;
-      } else { /// complete fill of buy
-         fill_amount_token = fill_amount_usd / lowest_ask.price;
-      }
-      /// either fill_amount_token == seller.quantity or fill_amount_usd == buy.quantity
-
-      fill( buyer_bid, lowest_ask, buyer_account, seller_account, fill_amount_usd, fill_amount_token );
-
-      if( lowest_ask.quantity == 0 ) {
-         Db::store( lowest_ask.id.owner, seller_account );
+      if( lowest_ask.quantity == currency::Tokens(0) ) {
+         save( seller_account );
+         save( buyer_account );
          Asks::remove( lowest_ask );
          if( !AsksByPrice::front( lowest_ask ) ) {
             break;
          }
-         Db::get( lowest_ask.id.owner, seller_account );
+         seller_account = getAccount( lowest_ask.seller.name );
       } else {
          break; // buyer's bid should be filled
       }
    }
 
-   Db::store( buy.buyer, buyer_account );
-   if( buyer_bid.quantity > 0 ) {
-      assert( !buy.fill_or_kill, "order not completely filled" );
-      Bids::store( buyer_bid );
+   save( buyer_account );
+   if( bid.quantity ) {
+      assert( !order.fill_or_kill, "order not completely filled" );
+      Bids::store( bid );
    }
 }
 
+void apply_exchange_sell( SellOrder order ) {
+   Ask& ask = order;
+   requireAuth( ask.seller.name ); 
+
+   assert( ask.quantity > currency::Tokens(0), "invalid quantity" );
+   assert( ask.expiration > now(), "order expired" );
+
+   static Ask existing_ask;
+   assert( AsksById::get( ask.seller, existing_ask ), "order with this id already exists" );
+
+   auto seller_account = getAccount( ask.seller.name );
+   seller_account.currency_balance -= ask.quantity;
+
+   static Bid highest_bid;
+   if( !BidsByPrice::back( highest_bid ) ) {
+      assert( !order.fill_or_kill, "order not completely filled" );
+      Asks::store( ask );
+      save( seller_account );
+      return;
+   }
+
+   auto buyer_account = getAccount( highest_bid.buyer.name );
+
+   while( highest_bid.price >= ask.price ) {
+      match( highest_bid, buyer_account, ask, seller_account );
+
+      if( highest_bid.quantity == eos::Tokens(0) ) {
+         save( seller_account );
+         save( buyer_account );
+         Bids::remove( highest_bid );
+         if( !BidsByPrice::back( highest_bid ) ) {
+            break;
+         }
+         buyer_account = getAccount( highest_bid.buyer.name );
+      } else {
+         break; // buyer's bid should be filled
+      }
+   }
+
+   save( seller_account );
+   if( ask.quantity ) {
+      assert( !order.fill_or_kill, "order not completely filled" );
+      Asks::store( ask );
+   }
+}
+
+/*
 void apply_exchange_sell() {
    auto sell = currentMessage<Sell>();
    assert( sell.expiration > now(), "order expired" );
@@ -299,7 +281,8 @@ void apply_exchange_sell() {
       Asks::store( seller_ask );
    }
 }
-
+*/
+} // namespace exchange
 
 extern "C" {
    void init() {
@@ -317,11 +300,26 @@ extern "C" {
     *  The apply method implements the dispatch of events to this contract
     */
    void apply( uint64_t code, uint64_t action ) {
-      if( code == N(currencya) ) {
-        if( action == N(transfer) ) apply_currencya_transfer();
-      } else if( code == N(currencyb) ) {
-        if( action == N(transfer) ) apply_currencyb_transfer();
-      } else {
+      if( code == N(exchange) ) {
+         switch( action ) {
+            case N(buy):
+               apply_exchange_buy( currentMessage<exchange::BuyOrder>() );
+               break;
+            case N(sell):
+               break;
+            default:
+               assert( false, "unknown action" );
+         }
+      } 
+      else if( code == N(currency) ) {
+        if( action == N(transfer) ) 
+           apply_currency_transfer( currentMessage<currency::Transfer>() );
+      } 
+      else if( code == N(eos) ) {
+        if( action == N(transfer) ) 
+           apply_eos_transfer( currentMessage<eos::Transfer>() );
+      } 
+      else {
       }
    }
 }
