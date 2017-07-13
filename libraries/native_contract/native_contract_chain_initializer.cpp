@@ -145,19 +145,19 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));
 
    // Create special accounts
-   auto CreateSpecialAccount = [this, &db](Name name, const auto& owner, const auto& active) {
+   auto create_special_account = [this, &db](Name name, const auto& owner, const auto& active) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
       });
       const auto& owner_permission = db.create<permission_object>([&owner, &name](permission_object& p) {
-         p.name = "owner";
+         p.name = config::OwnerName;
          p.parent = 0;
          p.owner = name;
          p.auth = std::move(owner);
       });
       db.create<permission_object>([&active, &owner_permission](permission_object& p) {
-         p.name = "active";
+         p.name = config::ActiveName;
          p.parent = owner_permission.id;
          p.owner = owner_permission.owner;
          p.auth = std::move(active);
@@ -165,14 +165,14 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    };
 
    auto empty_authority = types::Authority(0, {}, {});
-   auto active_producers_authority = types::Authority(genesis.initial_producers.size(), {}, {});
+   auto active_producers_authority = types::Authority(uint32_t(genesis.initial_producers.size()*config::ProducersAuthorityThreshold), {}, {});
    for(auto& p : genesis.initial_producers) {
-      active_producers_authority.accounts.push_back({{p.owner_name,"active"}, 1});
+      active_producers_authority.accounts.push_back({{p.owner_name, config::ActiveName}, 1});
    }
 
    //CreateNativeAccount(config::AnybodyAccountName, 0);
-   CreateSpecialAccount(config::NobodyAccountName, empty_authority, empty_authority);
-   CreateSpecialAccount(config::ProducersAccountName, empty_authority, active_producers_authority);
+   create_special_account(config::NobodyAccountName, empty_authority, empty_authority);
+   create_special_account(config::ProducersAccountName, empty_authority, active_producers_authority);
 
    return messages_to_process;
 }

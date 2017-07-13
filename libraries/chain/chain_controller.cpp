@@ -719,12 +719,12 @@ void chain_controller::update_global_properties(const signed_block& b) {
          gpo.configuration = std::move(config);
       });
 
-      auto active_producers_authority = types::Authority(gpo.active_producers.size(), {}, {});
+      auto active_producers_authority = types::Authority(uint32_t(gpo.active_producers.size()*config::ProducersAuthorityThreshold), {}, {});
       for(auto& name : gpo.active_producers) {
-         active_producers_authority.accounts.push_back({{name,"active"}, 1});
+         active_producers_authority.accounts.push_back({{name, config::ActiveName}, 1});
       }
 
-      auto po = _db.get<permission_object, by_owner>( boost::make_tuple(config::ProducersAccountName, "active") );
+      auto po = _db.get<permission_object, by_owner>( boost::make_tuple(config::ProducersAccountName, config::ActiveName) );
       _db.modify(po,[active_producers_authority] (permission_object& po) {
          po.auth = active_producers_authority;
       });
