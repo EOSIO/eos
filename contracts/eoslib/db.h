@@ -39,8 +39,7 @@ int32_t back_primary_i128i128( AccountName scope, AccountName code, TableName ta
 int32_t next_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t previous_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
-int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                const void* primary, void* data, uint32_t len );
+int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, 
                                       const void* key, void* data, uint32_t len );

@@ -28,8 +28,10 @@ uint32_t readMessage( void* msg, uint32_t len );
  */
 uint32_t messageSize();
 
-void print( const char* cstr );
+void prints( const char* cstr );
 void printi( uint64_t value );
+void printi128( const uint128_t* value );
+void printn( uint64_t name );
 
 /**
  *  @return the account which specifes the code that is being run

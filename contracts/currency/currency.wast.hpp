@@ -1,4 +1,3 @@
-#pragma once
 const char* currency_wast = R"=====(
 (module
  (type $FUNCSIG$vj (func (param i64)))

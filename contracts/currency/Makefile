@@ -3,8 +3,7 @@ currency.wast: currency.cpp Makefile ../eoslib/eos.hpp currency.hpp
 	 /Users/dlarimer/Downloads/llvm/build/bin/llc -asm-verbose=false .currency.bc
 	 /Users/dlarimer/eos/libraries/binaryen/bin/s2wasm -s 1024 .currency.s > currency.wast
 	 wc -l currency.wast
-	 echo '#pragma once' > currency.wast.hpp
-	 echo 'const char* currency_wast = R"=====(' >> currency.wast.hpp
+	 echo 'const char* currency_wast = R"=====(' > currency.wast.hpp
 	 cat currency.wast >> currency.wast.hpp
 	 echo ')=====";' >> currency.wast.hpp
 

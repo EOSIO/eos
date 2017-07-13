@@ -484,7 +484,7 @@ try {
 
          #warning TODO: call validate handlers on all notified accounts, currently it only calls the recipient's validate
 
-         message_validate_context mvc(_db,trx,*m,a);
+         message_validate_context mvc(*this,_db,trx,*m,a);
          auto contract_handlers_itr = message_validate_handlers.find(a); /// namespace is the notifier
          if (contract_handlers_itr != message_validate_handlers.end()) {
             auto message_handler_itr = contract_handlers_itr->second.find({m->code, m->type});
@@ -597,7 +597,7 @@ void chain_controller::validate_message_precondition( precondition_validate_cont
  *  entire message.
  */
 void chain_controller::process_message( const Transaction& trx, const Message& message) {
-   apply_context apply_ctx(_db, trx, message, message.code);
+   apply_context apply_ctx(*this, _db, trx, message, message.code);
 
    /** TODO: pre condition validation and application can occur in parallel */
    /** TODO: verify that message is fully authorized
@@ -607,7 +607,7 @@ void chain_controller::process_message( const Transaction& trx, const Message& m
 
    for (const auto& recipient : message.recipients) {
       try {
-         apply_context recipient_ctx(_db, trx, message, recipient);
+         apply_context recipient_ctx(*this,_db, trx, message, recipient);
          validate_message_precondition(recipient_ctx);
          apply_message(recipient_ctx);
       } FC_CAPTURE_AND_RETHROW((recipient)(message))
@@ -629,6 +629,7 @@ void chain_controller::apply_message(apply_context& context)
     }
     const auto& recipient = _db.get<account_object,by_name>(context.code);
     if (recipient.code.size()) {
+       //idump((context.code)(context.msg.type));
        wasm_interface::get().apply(context);
     }
 
@@ -767,6 +768,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<permission_index>();
    _db.add_index<action_permission_index>();
    _db.add_index<key_value_index>();
+   _db.add_index<key128x128_value_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();

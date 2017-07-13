@@ -1,4 +1,6 @@
 #pragma once
+#include <eoslib/math.hpp>
+
 namespace eos {
 
    template<typename NumberType, uint64_t CurrencyType = N(eos) >
@@ -55,11 +57,11 @@ namespace eos {
        */
       static const uint64_t precision = 1000ll*1000ll*1000ll*1000ll*1000ll;
 
-      price():base_per_quote(1){}
+      price():base_per_quote(1ul){}
 
       price( BaseToken base, QuoteToken quote ) {
-         assert( base  >= BaseToken(1), "invalid price" );
-         assert( quote >= QuoteToken(1), "invalid price" );
+         assert( base  >= BaseToken(1ul), "invalid price" );
+         assert( quote >= QuoteToken(1ul), "invalid price" );
 
          base_per_quote = base.quantity;
          base_per_quote *= precision;
@@ -67,7 +69,7 @@ namespace eos {
       }
 
       friend QuoteToken operator / ( BaseToken b, const price& q ) {
-         return QuoteToken( uint64_t((uint128_t(b.quantity) * precision)  / q.base_per_quote) );
+         return QuoteToken( uint64_t((uint128(b.quantity) * uint128(precision) )  / q.base_per_quote) );
       }
 
       friend BaseToken operator * ( QuoteToken b, const price& q ) {
@@ -82,11 +84,11 @@ namespace eos {
       friend bool operator == ( const price& a, const price& b ) { return a.base_per_quote == b.base_per_quote; }
       friend bool operator != ( const price& a, const price& b ) { return a.base_per_quote != b.base_per_quote; }
 
-      private:
+//      private:
       /**
        * represented as number of base tokens to purchase 1 quote token 
        */
-      uint128_t base_per_quote; 
+      eos::uint128 base_per_quote; 
    };
 
    typedef eos::token<uint64_t,N(eos)>   Tokens;

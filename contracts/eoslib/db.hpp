@@ -56,8 +56,8 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
     static bool remove( uint64_t scope, uint64_t table, const void* data ) {
        return remove_i128i128( scope, table, data );
     }
-    static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table, const void* primary, void* data, uint32_t len ) {
-       return load_primary_i128i128( scope, code, table, primary, data, len );
+    static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return load_primary_i128i128( scope, code, table, data, len );
     }
     static int32_t front_secondary( AccountName scope, AccountName code, TableName table, void* data, uint32_t len ) {
        return front_secondary_i128i128( scope, code, table,  data, len );
@@ -96,7 +96,8 @@ struct Table {
          return impl::previous_primary( scope, code, table, &r, sizeof(Record) ) == sizeof(Record);
       }
       static bool get( const PrimaryType& p, Record& r ) {
-         return impl::load_primary( scope, code, table, &p, &r, sizeof(Record) ) == sizeof(Record);
+         *reinterpret_cast<PrimaryType*>(&r) = p;
+         return impl::load_primary( scope, code, table, &r, sizeof(Record) ) == sizeof(Record);
       }
       static bool lower_bound( const PrimaryType& p, Record& r ) {
          return impl::lower_bound_primary( scope, code, table, &p &r, sizeof(Record) ) == sizeof(Record);

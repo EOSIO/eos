@@ -34,7 +34,7 @@ namespace exchange {
       bool isEmpty()const { return ! ( bool(eos_balance) | bool(currency_balance) | open_orders); }
    };
 
-   Account getAccount( AccountName owner ) {
+   inline Account getAccount( AccountName owner ) {
       Account account(owner);
       Db::get( N(exchange), N(exchange), N(account), owner, account );
       return account;

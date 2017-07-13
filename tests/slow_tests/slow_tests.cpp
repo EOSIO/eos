@@ -46,6 +46,27 @@
 using namespace eos;
 using namespace chain;
 
+   struct OrderID {
+      AccountName name;
+      uint64_t    number  = 0;
+   };
+
+   struct Bid {
+      OrderID            buyer;
+      fc::uint128_t      price;
+      uint64_t           quantity;
+      Time               expiration;
+   };
+   struct Ask {
+      OrderID            seller;
+      fc::uint128_t      price;
+      uint64_t           quantity;
+      Time               expiration;
+   };
+FC_REFLECT( OrderID, (name)(number) );
+FC_REFLECT( Bid, (buyer)(price)(quantity)(expiration) );
+FC_REFLECT( Ask, (seller)(price)(quantity)(expiration) );
+
 BOOST_AUTO_TEST_SUITE(slow_tests)
 
 // Test that TaPoS still works after block 65535 (See Issue #55)
@@ -157,6 +178,51 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
    }
 }
 
+void SetCode( testing_blockchain& chain, AccountName account, const char* wast ) {
+   try {
+      types::setcode handler;
+      handler.account = account;
+
+      auto wasm = assemble_wast( wast );
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = {account};
+         trx.messages.resize(1);
+         trx.messages[0].code = config::SystemContractName;
+         trx.messages[0].recipients = {account};
+         trx.setMessage(0, "setcode", handler);
+         trx.expiration = chain.head_block_time() + 100;
+         trx.set_reference_block(chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
+      }
+} FC_LOG_AND_RETHROW( ) }
+
+void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
+   eos::chain::SignedTransaction trx;
+   trx.scope = sort_names({from,to});
+   trx.emplaceMessage("currency", sort_names( {from,to} ),
+                      vector<types::AccountPermission>{ {from,"active"} },
+                      "transfer", types::transfer{from, to, amount, ""});
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+   chain.push_transaction(trx);
+}
+
+void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
+   eos::chain::SignedTransaction trx;
+   trx.scope = sort_names({from,to});
+   trx.emplaceMessage("currency", sort_names( {from,to} ),
+                      vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
+                      "transfer", types::transfer{from, to, amount, ""});
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+   chain.push_transaction(trx);
+}
+
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
@@ -208,6 +274,114 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 
 } FC_LOG_AND_RETHROW() }
 
+
+static const uint64_t precision = 1000ll*1000ll*1000ll*1000ll*1000ll;
+fc::uint128_t to_price( double p ) {
+   uint64_t  pi(p);
+   fc::uint128_t result(pi);
+   result *= precision;
+
+   double fract = p - pi;
+   result += uint64_t( fract * precision );
+   return result;
+}
+
+
+void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
+
+   Ask b {  OrderID{seller,ordernum}, 
+            to_price(price),
+            cur_quantity, 
+            chain.head_block_time()+fc::days(3) 
+         };
+
+   eos::chain::SignedTransaction trx;
+   trx.scope = sort_names({"exchange"});
+   trx.emplaceMessage("exchange", sort_names( {"exchange"} ),
+                      vector<types::AccountPermission>{ {seller,"active"} },
+                      "sell", b );
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+   chain.push_transaction(trx);
+
+}
+void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
+   Bid b {  OrderID{buyer,ordernum}, 
+            to_price(price),
+            cur_quantity, 
+            chain.head_block_time()+fc::days(3) 
+         };
+
+   eos::chain::SignedTransaction trx;
+   trx.scope = sort_names({"exchange"});
+   trx.emplaceMessage("exchange", sort_names( {"exchange"} ),
+                      vector<types::AccountPermission>{ {buyer,"active"} },
+                      "buy", b );
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+   chain.push_transaction(trx);
+}
+
+BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
+#include <currency/currency.wast.hpp>
+#include <exchange/exchange.wast.hpp>
+  try {
+   try {
+      Make_Blockchain(chain);
+      chain.produce_blocks(2);
+      Make_Account(chain, currency);
+      Make_Account(chain, exchange);
+      chain.produce_blocks(1);
+
+      SetCode(chain, "currency", currency_wast);
+      SetCode(chain, "exchange", exchange_wast);
+
+      chain.produce_blocks(1);
+
+      ilog( "transfering currency to the users" );
+      TransferCurrency( chain, "currency", "inita", 1000 );
+      TransferCurrency( chain, "currency", "initb", 2000 );
+
+      Transfer_Asset(chain, system, inita, Asset(50));
+      Transfer_Asset(chain, system, initb, Asset(50));
+      chain.produce_blocks(1);
+      ilog( "transfering funds to the exchange" );
+      TransferCurrency( chain, "inita", "exchange", 1000 );
+      TransferCurrency( chain, "initb", "exchange", 2000 );
+
+      Transfer_Asset(chain, inita, exchange, Asset(500));
+      Transfer_Asset(chain, initb, exchange, Asset(500));
+
+      BOOST_REQUIRE_THROW( TransferCurrency( chain, "initb", "exchange", 2000 ), fc::exception ); // insufficient funds
+
+
+      BOOST_REQUIRE_THROW( WithdrawCurrency( chain, "exchange", "initb", 2001 ), fc::exception ); // insufficient funds
+
+      ilog( "withdrawing from exchange" );
+
+      WithdrawCurrency( chain, "exchange", "initb", 2000 );
+      chain.produce_blocks(1);
+
+      ilog( "send back to exchange" );
+      TransferCurrency( chain, "initb", "exchange", 2000 );
+      chain.produce_blocks(1);
+
+      SellCurrency( chain, "initb", "exchange", 1, 100, .5 );
+      //BOOST_REQUIRE_THROW( SellCurrency( chain, "initb", "exchange", 1, 100, .5 ), fc::exception ); // order id already exists
+      SellCurrency( chain, "initb", "exchange", 2, 100, .75 );
+
+      BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ); 
+      //BOOST_REQUIRE_THROW( BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ), fc::exception );  // order id already exists
+
+      /// this should buy 5 from initb order 2 at a price of .75
+      BuyCurrency( chain, "initb", "exchange", 2, 50, .8 ); 
+
+   } FC_LOG_AND_RETHROW() 
+  }catch(...) {
+     elog( "unexpected exception" );
+  }
+}
+
 //Test account script float rejection
 BOOST_FIXTURE_TEST_CASE(create_script_w_float, testing_fixture)
 { try {
@@ -217,147 +391,6 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_float, testing_fixture)
       chain.produce_blocks(1);
 
 
-
-/*
-      auto c_apply = R"(
-typedef long long    uint64_t;
-typedef unsigned int uint32_t;
-
-void print( char* string, int length );
-void printi( int );
-void printi64( uint64_t );
-void assert( int test, char* message );
-void store( const char* key, int keylength, const char* value, int valuelen );
-int load( const char* key, int keylength, char* value, int maxlen );
-int remove( const char* key, int keyLength );
-void* memcpy( void* dest, const void* src, uint32_t size );
-int readMessage( char* dest, int destsize );
-
-void* malloc( unsigned int size ) {
-    static char dynamic_memory[1024*8];
-    static int  start = 0;
-    int old_start = start;
-    start +=  8*((size+7)/8);
-    assert( start < sizeof(dynamic_memory), "out of memory" );
-    return &dynamic_memory[old_start];
-}
-
-
-typedef struct {
-  uint64_t   name[4];
-} AccountName;
-
-typedef struct {
-  uint32_t  length;
-  char      data[];
-} String;
-
-
-typedef struct {
-   char* start;
-   char* pos;
-   char* end;
-} DataStream;
-
-void DataStream_init( DataStream* ds, char* start, int length ) {
-  ds->start = start;
-  ds->end   = start + length;
-  ds->pos   = start;
-}
-void AccountName_initString( AccountName* a, String* s ) {
-  assert( s->length <= sizeof(AccountName), "String is longer than account name allows" );
-  memcpy( a, s->data, s->length );
-}
-void AccountName_initCString( AccountName* a, const char* s, uint32_t len ) {
-  assert( len <= sizeof(AccountName), "String is longer than account name allows" );
-  memcpy( a, s, len );
-}
-
-void AccountName_unpack( DataStream* ds, AccountName* account );
-void uint64_unpack( DataStream* ds, uint64_t* value ) {
-  assert( ds->pos + sizeof(uint64_t) <= ds->end, "read past end of stream" );
-  memcpy( (char*)value, ds->pos, 8 );
-  ds->pos += sizeof(uint64_t);
-}
-void Varint_unpack( DataStream* ds, uint32_t* value );
-void String_unpack( DataStream* ds, String** value ) {
-   static uint32_t size;
-   Varint_unpack( ds, &size );
-   assert( ds->pos + size <= ds->end, "read past end of stream");
-   String* str = (String*)malloc( size + sizeof(String) );
-   memcpy( str->data, ds->pos, size );
-   *value = str;
-}
-
-/// END BUILT IN LIBRARY.... everything below this is "user contract"
-
-
-typedef struct  {
-  AccountName from;
-  AccountName to;
-  uint64_t    amount;
-  String*     memo;
-} Transfer;
-
-void Transfer_unpack( DataStream* ds, Transfer* transfer )
-{
-   AccountName_unpack( ds, &transfer->from );
-   AccountName_unpack( ds, &transfer->to   );
-   uint64_unpack( ds, &transfer->amount );
-   String_unpack( ds, &transfer->memo );
-}
-
-typedef struct {
-  uint64_t    balance;
-} Balance;
-
-void onInit() {
-  static Balance initial;
-  static AccountName simplecoin;
-  AccountName_initCString( &simplecoin, "simplecoin", 10 );
-  initial.balance = 1000*1000;
-
-  store( (const char*)&simplecoin, sizeof(AccountName), (const char*)&initial, sizeof(Balance));
-}
-
-
-void onApply_Transfer_simplecoin() {
-   static char buffer[100];
-
-   int read   = readMessage( buffer, 100  );
-   static Transfer message;
-   static DataStream ds;
-   DataStream_init( &ds, buffer, read );
-   Transfer_unpack( &ds, &message );
-
-   static Balance from_balance;
-   static Balance to_balance;
-   to_balance.balance = 0;
-
-   read = load( (const char*)&message.from, sizeof(message.from), (char*)&from_balance.balance,
-sizeof(from_balance.balance) );
-   assert( read == sizeof(Balance), "no existing balance" );
-   assert( from_balance.balance >= message.amount, "insufficient funds" );
-   read = load( (const char*)&message.to, sizeof(message.to), (char*)&to_balance.balance, sizeof(to_balance.balance) );
-
-   to_balance.balance   += message.amount;
-   from_balance.balance -= message.amount;
-
-   double bal = to_balance.balance;
-   if( bal + 0.5 < 50.5 )
-     return;
-
-   if( from_balance.balance )
-      store( (const char*)&message.from, sizeof(AccountName), (const char*)&from_balance.balance,
-sizeof(from_balance.balance) );
-   else
-      remove( (const char*)&message.from, sizeof(AccountName) );
-
-   store( (const char*)&message.to, sizeof(message.to), (const char*)&to_balance.balance, sizeof(to_balance.balance) );
-}
-
-");
-*/
 std::string wast_apply =
 R"(
 (module

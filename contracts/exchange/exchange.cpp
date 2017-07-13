@@ -34,18 +34,25 @@
  *  contract.  Users can only deposit or withdraw to their own currency account.
  */
 #include <exchange/exchange.hpp> /// defines transfer struct
+#include <eoslib/print.hpp>
+
 using namespace exchange;
+using namespace eos;
 
 namespace exchange {
-void save( const Account& a ) {
-   if( a.isEmpty() )
+inline void save( const Account& a ) {
+   if( a.isEmpty() ) {
+      print("remove");
       Db::remove( N(exchange), N(account), a.owner );
-   else
+   }
+   else {
+      print("store");
       Db::store( N(exchange), N(account), a.owner, a );
+   }
 }
 
 template<typename Lambda>
-void modifyAccount( AccountName a, Lambda&& modify ) {
+inline void modifyAccount( AccountName a, Lambda&& modify ) {
    auto acnt = getAccount( a );
    modify( acnt );
    save( acnt );
@@ -57,13 +64,21 @@ void modifyAccount( AccountName a, Lambda&& modify ) {
  */
 void apply_currency_transfer( const currency::Transfer& transfer ) {
    if( transfer.to == N(exchange) ) {
-      modifyAccount( transfer.to, [&]( Account& account ){ 
+      modifyAccount( transfer.from, [&]( Account& account ){ 
+          print( "balance: " );
+          printi( account.currency_balance.quantity );
+          print( "deposit: " );
+          printi( transfer.quantity.quantity );
           account.currency_balance += transfer.quantity; 
       });
    } else if( transfer.from == N(exchange) ) {
       requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
 
       modifyAccount( transfer.to, [&]( Account& account ){ 
+          print( "balance: " );
+          printi( account.currency_balance.quantity );
+          print( "withdraw: " );
+          printi( transfer.quantity.quantity );
           account.currency_balance -= transfer.quantity; 
       });
    } else {
@@ -77,7 +92,7 @@ void apply_currency_transfer( const currency::Transfer& transfer ) {
  */
 void apply_eos_transfer( const eos::Transfer& transfer ) {
    if( transfer.to == N(exchange) ) {
-      modifyAccount( transfer.to, [&]( Account& account ){ 
+      modifyAccount( transfer.from, [&]( Account& account ){ 
           account.eos_balance += transfer.quantity; 
       });
    } else if( transfer.from == N(exchange) ) {
@@ -89,16 +104,6 @@ void apply_eos_transfer( const eos::Transfer& transfer ) {
    } else {
       assert( false, "notified on transfer that is not relevant to this exchange" );
    }
-}
-
-
-void fill( Bid& bid, Ask& ask, Account& buyer, Account& seller, 
-           eos::Tokens e, currency::Tokens c) {
-   bid.quantity -= e;
-   seller.eos_balance += e;
-
-   ask.quantity -= c;
-   buyer.currency_balance += c;
 }
 
 void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
@@ -113,7 +118,15 @@ void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
       fill_amount_currency = fill_amount_eos / ask.price;
    }
 
-   fill( bid, ask, buyer, seller, fill_amount_eos, fill_amount_currency );
+   print( "\n\nmatch bid: ", Name(bid.buyer.name), ":", bid.buyer.number,
+          "match ask: ", Name(ask.seller.name), ":", ask.seller.number, "\n\n" );
+
+
+   bid.quantity -= fill_amount_eos;
+   seller.eos_balance += fill_amount_eos;
+
+   ask.quantity -= fill_amount_currency;
+   buyer.currency_balance += fill_amount_currency;
 }
 
 /**
@@ -127,23 +140,30 @@ void apply_exchange_buy( BuyOrder order ) {
    assert( bid.quantity > eos::Tokens(0), "invalid quantity" );
    assert( bid.expiration > now(), "order expired" );
 
-   static Bid existing_bid;
-   assert( BidsById::get( bid.buyer, existing_bid ), "order with this id already exists" );
+   print( Name(bid.buyer.name), " created bid for ", order.quantity.quantity, " currency at price: ", order.price.base_per_quote, "\n" );
+
+   Bid existing_bid;
+   assert( !BidsById::get( bid.buyer, existing_bid ), "order with this id already exists" );
+   print( __FILE__, __LINE__, "\n" );
 
    auto buyer_account = getAccount( bid.buyer.name );
    buyer_account.eos_balance -= bid.quantity;
 
-   static Ask lowest_ask;
+   Ask lowest_ask;
    if( !AsksByPrice::front( lowest_ask ) ) {
+      print( "\n No asks found, saving buyer account and storing bid\n" );
       assert( !order.fill_or_kill, "order not completely filled" );
       Bids::store( bid );
       save( buyer_account );
       return;
    }
 
+   print( "asks found, lets see what matches\n" );
+
    auto seller_account = getAccount( lowest_ask.seller.name );
 
    while( lowest_ask.price <= bid.price ) {
+      print( "lowest ask <= bid.price\n" );
       match( bid, buyer_account, lowest_ask, seller_account );
 
       if( lowest_ask.quantity == currency::Tokens(0) ) {
@@ -158,12 +178,18 @@ void apply_exchange_buy( BuyOrder order ) {
          break; // buyer's bid should be filled
       }
    }
+   print( "lowest_ask >= bid.price or buyer's bid has been filled\n" );
 
    save( buyer_account );
+   print( "saving buyer's account\n" );
    if( bid.quantity ) {
+      print( bid.quantity.quantity, " eos left over" );
       assert( !order.fill_or_kill, "order not completely filled" );
       Bids::store( bid );
+      return;
    }
+   print( "bid filled\n" );
+
 }
 
 void apply_exchange_sell( SellOrder order ) {
@@ -173,20 +199,26 @@ void apply_exchange_sell( SellOrder order ) {
    assert( ask.quantity > currency::Tokens(0), "invalid quantity" );
    assert( ask.expiration > now(), "order expired" );
 
-   static Ask existing_ask;
-   assert( AsksById::get( ask.seller, existing_ask ), "order with this id already exists" );
+   print( "\n\n", Name(ask.seller.name), " created sell for ", order.quantity.quantity, 
+          " currency at price: ", order.price.base_per_quote, "\n");
+
+   Ask existing_ask;
+   assert( !AsksById::get( ask.seller, existing_ask ), "order with this id already exists" );
 
    auto seller_account = getAccount( ask.seller.name );
    seller_account.currency_balance -= ask.quantity;
 
-   static Bid highest_bid;
+
+   Bid highest_bid;
    if( !BidsByPrice::back( highest_bid ) ) {
       assert( !order.fill_or_kill, "order not completely filled" );
+      print( "\n No bids found, saving seller account and storing ask\n" );
       Asks::store( ask );
       save( seller_account );
       return;
    }
 
+   print( "\n bids found, lets see what matches\n" );
    auto buyer_account = getAccount( highest_bid.buyer.name );
 
    while( highest_bid.price >= ask.price ) {
@@ -208,80 +240,11 @@ void apply_exchange_sell( SellOrder order ) {
    save( seller_account );
    if( ask.quantity ) {
       assert( !order.fill_or_kill, "order not completely filled" );
+      print( "saving ask\n" );
       Asks::store( ask );
    }
 }
 
-/*
-void apply_exchange_sell() {
-   auto sell = currentMessage<Sell>();
-   assert( sell.expiration > now(), "order expired" );
-
-   Account seller_account;
-
-   Db::get( sell.seller, seller_account );
-   assert( seller_account.b >= sell.quantity, "insufficient funds" );
-   assert( sell.quantity > 0, "invalid quantity" );
-   seller_account.b -= sell.quantity;
-
-   Order seller_ask;
-   assert( AsksById::get( OrderID{ sell.seller, sell.id}, seller_ask ), "order with this id already exists" );
-
-   seller_ask.price         = sell.price;
-   seller_ask.id.owner      = sell.seller;
-   seller_ask.id.id         = sell.id;
-   seller_ask.quantity      = sell.quantity;
-   seller_ask.expiration    = sell.expiration;
-
-   Order highest_bid;
-
-   if( !BidsByPrice::back( highest_bid ) ) {
-      assert( !sell.fill_or_kill, "order not completely filled" );
-      Bids::store( seller_ask );
-      Db::store( sell.seller, seller_account );
-      return;
-   }
-
-   Account buyer_account;
-   Db::get( highest_bid.id.owner, buyer_account );
-
-   while( highest_bid.price >= seller_ask.price ) {
-      auto ask_usd           = seller_ask.quantity;
-      auto bid_usd           = seller_ask.price * seller_ask.quantity;
-      auto fill_amount_usd   = min<uint64_t>( ask_usd, bid_usd );
-      uint64_t fill_amount_token = 0;
-
-      seller_ask.quantity  -= fill_amount_token;
-      highest_bid.quantity -= fill_amount_usd;
-
-      if( fill_amount_usd == ask_usd ) { /// complete fill of ask
-         fill_amount_token = seller_ask.quantity;
-      } else { /// complete fill of buy
-         fill_amount_token = fill_amount_usd / seller_ask.price;
-      }
-      /// either fill_amount_token == seller.quantity or fill_amount_usd == buy.quantity
-
-      fill( highest_bid, seller_ask, buyer_account, seller_account, fill_amount_usd, fill_amount_token );
-
-      if( highest_bid.quantity == 0 ) {
-         Db::store( highest_bid.id.owner, buyer_account );
-         Asks::remove( highest_bid );
-         if( !BidsByPrice::back( highest_bid ) ) {
-            break;
-         }
-         Db::get( highest_bid.id.owner, buyer_account );
-      } else {
-         break; // buyer's bid should be filled
-      }
-   }
-
-   Db::store( sell.seller, seller_account );
-   if( seller_ask.quantity > 0 ) {
-      assert( !sell.fill_or_kill, "order not completely filled" );
-      Asks::store( seller_ask );
-   }
-}
-*/
 } // namespace exchange
 
 extern "C" {
@@ -306,6 +269,7 @@ extern "C" {
                apply_exchange_buy( currentMessage<exchange::BuyOrder>() );
                break;
             case N(sell):
+               apply_exchange_sell( currentMessage<exchange::SellOrder>() );
                break;
             default:
                assert( false, "unknown action" );
