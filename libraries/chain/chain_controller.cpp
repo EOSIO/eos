@@ -707,7 +707,8 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
 }
 
 void chain_controller::update_global_properties(const signed_block& b) {
-   // If we're at the end of a round, update the BlockchainConfiguration and producer schedule
+   // If we're at the end of a round, update the BlockchainConfiguration, producer schedule
+   // and "producers" special account authority
    if (b.block_num() % config::BlocksPerRound == 0) {
       auto schedule = calculate_next_round(b);
       auto config = _admin->get_blockchain_configuration(_db, schedule);
@@ -716,6 +717,16 @@ void chain_controller::update_global_properties(const signed_block& b) {
       _db.modify(gpo, [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
          gpo.active_producers = std::move(schedule);
          gpo.configuration = std::move(config);
+      });
+
+      auto active_producers_authority = types::Authority(gpo.active_producers.size(), {}, {});
+      for(auto& name : gpo.active_producers) {
+         active_producers_authority.accounts.push_back({{name,"active"}, 1});
+      }
+
+      auto po = _db.get<permission_object, by_owner>( boost::make_tuple(config::ProducersAccountName, "active") );
+      _db.modify(po,[active_producers_authority] (permission_object& po) {
+         po.auth = active_producers_authority;
       });
    }
 }
