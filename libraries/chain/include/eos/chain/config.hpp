@@ -38,6 +38,10 @@ const static char SystemContractName[] = "system";
 const static char EosContractName[] = "eos";
 const static char StakedBalanceContractName[] = "staked";
 
+const static char NobodyAccountName[] = "nobody";
+const static char AnybodyAccountName[] = "anybody";
+const static char ProducersAccountName[] = "producers";
+
 const static ShareType InitialTokenSupply = Asset::fromString("90000000.00000000 EOS").amount;
 
 const static int BlockIntervalSeconds = 3;
