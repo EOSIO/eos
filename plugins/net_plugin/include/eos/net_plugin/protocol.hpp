@@ -16,7 +16,7 @@ namespace eos {
       block_id_type   head_id;
       string          os;
       string          agent;
-   };
+     };
 
    struct notice_message {
       vector<transaction_id_type> known_trx;

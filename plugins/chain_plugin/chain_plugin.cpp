@@ -3,6 +3,7 @@
 #include <eos/chain/block_log.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/producer_object.hpp>
+#include <eos/chain/config.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
@@ -24,6 +25,7 @@ class chain_plugin_impl {
 public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
+   chain::Time                      genesis_timestamp;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -44,6 +46,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 {
    cfg.add_options()
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
+     ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -61,6 +64,21 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if(options.count("genesis-json")) {
       my->genesis_file = options.at("genesis-json").as<bfs::path>();
+   }
+   if(options.count("genesis-timestamp")) {
+     string tstr = options.at("genesis-timestamp").as<string>();
+     if (strcasecmp (tstr.c_str(), "now") == 0) {
+       my->genesis_timestamp = fc::time_point::now();
+       auto diff = my->genesis_timestamp.sec_since_epoch() % config::BlockIntervalSeconds;
+       if (diff > 0) {
+         auto delay =  (config::BlockIntervalSeconds - diff);
+         my->genesis_timestamp += delay;
+         dlog ("pausing ${s} seconds to the next interval",("s",delay));
+       }
+     }
+     else {
+       my->genesis_timestamp = chain::Time::from_iso_string (tstr);
+     }
    }
    if (options.count("block-log-dir")) {
       auto bld = options.at("block-log-dir").as<bfs::path>();
@@ -96,6 +114,11 @@ void chain_plugin::plugin_startup() {
    auto& db = app().get_plugin<database_plugin>().db();
 
    auto genesis = fc::json::from_file(my->genesis_file).as<native_contract::genesis_state_type>();
+   if (my->genesis_timestamp.sec_since_epoch() > 0) {
+
+     genesis.initial_timestamp = my->genesis_timestamp;
+   }
+
    native_contract::native_contract_chain_initializer initializer(genesis);
 
    my->fork_db = fork_database();
@@ -109,7 +132,8 @@ void chain_plugin::plugin_startup() {
       my->chain->add_checkpoints(my->loaded_checkpoints);
    }
 
-   ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
+   ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
+        ("num", my->chain->head_block_num())("ts", genesis.initial_timestamp.to_iso_string()));
 }
 
 void chain_plugin::plugin_shutdown() {
