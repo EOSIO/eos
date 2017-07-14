@@ -61,7 +61,7 @@ const static ShareType DefaultElectedPay = Asset(100).amount;
 const static ShareType DefaultRunnerUpPay = Asset(75).amount;
 const static ShareType DefaultMinEosBalance = Asset(100).amount;
 const static UInt32 DefaultMaxTrxLifetime = 60*60;
-const static double ProducersAuthorityThreshold = 2.0/3.0;
+const static UInt32 ProducersAuthorityThreshold = 14;
 
 const static int BlocksPerRound = 21;
 const static int VotedProducersPerRound = 20;

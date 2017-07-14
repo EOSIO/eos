@@ -52,10 +52,9 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, testing_fixture)
       BOOST_CHECK(producers != nullptr);
 
       auto& gpo = chain_db.get<global_property_object>();
-      auto threshold = uint32_t(gpo.active_producers.size()*config::ProducersAuthorityThreshold);
 
       const auto& producers_active_authority = chain_db.get<permission_object, by_owner>(boost::make_tuple(config::ProducersAccountName, config::ActiveName));
-      BOOST_CHECK_EQUAL(producers_active_authority.auth.threshold, threshold);
+      BOOST_CHECK_EQUAL(producers_active_authority.auth.threshold, config::ProducersAuthorityThreshold);
       BOOST_CHECK_EQUAL(producers_active_authority.auth.accounts.size(), gpo.active_producers.size());
       BOOST_CHECK_EQUAL(producers_active_authority.auth.keys.size(), 0);
 
@@ -109,10 +108,8 @@ BOOST_FIXTURE_TEST_CASE(producers_authority, testing_fixture)
       BOOST_REQUIRE(boost::find(gpo.active_producers, "newproducer2") != gpo.active_producers.end());
       BOOST_REQUIRE(boost::find(gpo.active_producers, "newproducer3") != gpo.active_producers.end());
 
-      auto threshold = uint32_t(gpo.active_producers.size()*config::ProducersAuthorityThreshold);
-
       const auto& producers_active_authority = chain_db.get<permission_object, by_owner>(boost::make_tuple(config::ProducersAccountName, config::ActiveName));
-      BOOST_CHECK_EQUAL(producers_active_authority.auth.threshold, threshold);
+      BOOST_CHECK_EQUAL(producers_active_authority.auth.threshold, config::ProducersAuthorityThreshold);
       BOOST_CHECK_EQUAL(producers_active_authority.auth.accounts.size(), gpo.active_producers.size());
       BOOST_CHECK_EQUAL(producers_active_authority.auth.keys.size(), 0);
 

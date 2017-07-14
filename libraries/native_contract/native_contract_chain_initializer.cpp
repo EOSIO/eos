@@ -165,7 +165,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    };
 
    auto empty_authority = types::Authority(0, {}, {});
-   auto active_producers_authority = types::Authority(uint32_t(genesis.initial_producers.size()*config::ProducersAuthorityThreshold), {}, {});
+   auto active_producers_authority = types::Authority(config::ProducersAuthorityThreshold, {}, {});
    for(auto& p : genesis.initial_producers) {
       active_producers_authority.accounts.push_back({{p.owner_name, config::ActiveName}, 1});
    }
