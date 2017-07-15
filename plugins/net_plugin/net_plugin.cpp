@@ -212,6 +212,8 @@ namespace eos {
     tcp::endpoint public_endpoint;
 
     vector<string> seed_nodes;
+    std::set<tcp::endpoint>       resolved_seed_nodes;
+    std::set<fc::ip::endpoint>    learned_nodes;
 
     std::set<socket_ptr>          pending_sockets;
     std::set< connection_ptr >    connections;
@@ -242,7 +244,7 @@ namespace eos {
                                  }
                                });
     }
-
+#if 0
     void connect( tcp::endpoint ep) {
       auto sock = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       pending_sockets.insert( sock );
@@ -256,6 +258,7 @@ namespace eos {
           }
         });
     }
+#endif
 
     void connect( std::shared_ptr<tcp::resolver> resolver, tcp::resolver::iterator endpoint_itr ) {
       auto sock = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
@@ -268,6 +271,7 @@ namespace eos {
                            ( const boost::system::error_code& err ) {
                              pending_sockets.erase( sock );
                              if( !err ) {
+                               resolved_seed_nodes.insert (sock->remote_endpoint());
                                connection_ptr c = std::make_shared<connection>(sock);
                                start_session( c );
                              } else {
@@ -402,6 +406,14 @@ namespace eos {
       }
     }
 
+    void forward (connection_ptr source, const net_message &msg) {
+      for (auto c : connections ) {
+        if (c != source) {
+          c->send (msg);
+        }
+      }
+    }
+
     void handle_message (connection_ptr c, const handshake_message &msg) {
 
       dlog ("got a handshake message");
@@ -437,17 +449,10 @@ namespace eos {
         if (ep == listen_endpoint || ep == public_endpoint) {
           continue;
         }
-        bool found = false;
-        for (auto pend : pending_sockets) {
-          if ((found = (pend->remote_endpoint() == ep))) break;
-        }
-        if (!found) {
-          for (auto conn : connections) {
-            if ((found = (conn->socket->remote_endpoint() == ep))) break;
-          }
-        }
-        if (!found) {
-          connect (ep);
+
+        if (resolved_seed_nodes.find(ep) == resolved_seed_nodes.end() &&
+            learned_nodes.find (fcep) == learned_nodes.end()) {
+          learned_nodes.insert (fcep);
         }
       }
     }
@@ -466,6 +471,7 @@ namespace eos {
                 fc::time_point(),fc::time_point()});
         }
       }
+      forward (c, msg);
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
@@ -486,23 +492,26 @@ namespace eos {
         value.is_known=true;
         c->block_state.insert (std::move(value));
         // dlog ("block id ${id} is known", ("id", msg.block.id()) );
-        return;
       }
-      try {
-        chain_plug->accept_block(msg.block, false);
-      } catch (const unlinkable_block_exception &ex) {
-        elog ("unable to accept block #${n}",("n",msg.block.block_num()));
-        close (c);
-      } catch (const assert_exception &ex) {
-        elog ("unable to accept block cuz my asserts! #${n}",("n",msg.block.block_num()));
-        close (c);
+      else {
+        try {
+          chain_plug->accept_block(msg.block, false);
+        } catch (const unlinkable_block_exception &ex) {
+          elog ("   caught unlinkable block exception #${n}",("n",msg.block.block_num()));
+          // close (c);
+        } catch (const assert_exception &ex) {
+          // received a block due to out of sequence
+          elog ("  caught assertion #${n}",("n",msg.block.block_num()));
+          // close (c);
+        }
       }
-
+      forward (c, msg);
     }
 
     void handle_message (connection_ptr c, const SignedTransaction &msg) {
       dlog ("got a SignedTransacton");
       chain_plug->accept_transaction (msg);
+      forward (c, msg);
     }
 
     void handle_message (connection_ptr c, const signed_block &msg) {
