@@ -131,7 +131,9 @@ namespace eos { namespace types {
       }
 
       friend bool operator < ( const Name& a, const Name& b ) { return a.value < b.value; }
+      friend bool operator <= ( const Name& a, const Name& b ) { return a.value <= b.value; }
       friend bool operator > ( const Name& a, const Name& b ) { return a.value > b.value; }
+      friend bool operator >=( const Name& a, const Name& b ) { return a.value >= b.value; }
       friend bool operator == ( const Name& a, const Name& b ) { return a.value == b.value; }
       friend bool operator != ( const Name& a, const Name& b ) { return a.value != b.value; }
 

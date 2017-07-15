@@ -1,10 +1,13 @@
 #pragma once
 #include <eoslib/math.hpp>
+#include <eoslib/print.hpp>
 
 namespace eos {
 
    template<typename NumberType, uint64_t CurrencyType = N(eos) >
    struct token {
+       static const uint64_t currency_type = CurrencyType;
+
        token(){}
        explicit token( NumberType v ):quantity(v){};
        NumberType quantity = 0;
@@ -41,6 +44,10 @@ namespace eos {
        friend bool operator != ( const token& a, const token& b ) { return a.quantity != b.quantity; }
 
        explicit operator bool()const { return quantity != 0; }
+
+        inline void print() {
+           eos::print( quantity, " ", Name(CurrencyType) );
+        }
    };
 
    /**
@@ -49,6 +56,8 @@ namespace eos {
    template<typename BaseToken, typename QuoteToken>
    struct price
    {
+      typedef BaseToken  base_token_type;
+      typedef QuoteToken quote_token_type;
       /**
        *  The largest base 10 integer that can be represented with 53 bits of
        *  a double. This number keeps the math in range of JavaScript. By
@@ -84,7 +93,10 @@ namespace eos {
       friend bool operator == ( const price& a, const price& b ) { return a.base_per_quote == b.base_per_quote; }
       friend bool operator != ( const price& a, const price& b ) { return a.base_per_quote != b.base_per_quote; }
 
-//      private:
+      inline void print() {
+         eos::print( base_per_quote, ".", " ", Name(base_token_type::currency_type), "/", Name(quote_token_type::currency_type)  );
+      }
+      private:
       /**
        * represented as number of base tokens to purchase 1 quote token 
        */

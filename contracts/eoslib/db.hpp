@@ -138,7 +138,8 @@ struct Table {
    };
 
    static bool store( const Record& r ) {
-      return impl::store( scope, table, &r, sizeof(r) );
+      assert( impl::store( scope, table, &r, sizeof(r) ), "error storing record" );
+      return true;
    }
    static bool remove( const Record& r ) {
       return impl::remove( scope, table, &r );

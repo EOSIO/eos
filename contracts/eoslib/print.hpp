@@ -28,6 +28,11 @@ namespace eos {
       printn(name.value);
    }
 
+   template<typename T>
+   inline void print_native( T&& t ) {
+      t.print();
+   }
+
    template<typename Arg>
    inline void print( Arg a ) {
       print_native(a);

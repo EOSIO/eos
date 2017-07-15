@@ -32,6 +32,9 @@ namespace fc
       uint128( uint64_t _h, uint64_t _l )
       :hi(_h),lo(_l){}
       uint128( const fc::bigint& bi );
+      uint128( unsigned __int128 i ) {
+         memcpy(this, (char*)&i, sizeof(i) );
+      }
 
       operator std::string()const;
       operator fc::bigint()const;
@@ -122,6 +125,8 @@ namespace fc
 
   void to_variant( const uint128& var,  variant& vo );
   void from_variant( const variant& var,  uint128& vo );
+  void to_variant( const unsigned __int128& var,  variant& vo );
+  void from_variant( const variant& var,  unsigned __int128& vo );
 
   namespace raw
   {

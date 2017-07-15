@@ -606,6 +606,7 @@ void chain_controller::process_message( const Transaction& trx, const Message& m
    apply_message(apply_ctx);
 
    for (const auto& recipient : message.recipients) {
+      if( recipient == message.code ) continue; /// we already ran it above
       try {
          apply_context recipient_ctx(*this,_db, trx, message, recipient);
          validate_message_precondition(recipient_ctx);

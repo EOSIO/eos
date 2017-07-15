@@ -41,16 +41,24 @@ DEFINE_INTRINSIC_FUNCTION0(env,now,now,i32) {
 }
 
 DEFINE_INTRINSIC_FUNCTION4(env,store_i128i128,store_i128i128,i32,i64,scope,i64,table,i32,data,i32,datalen) {
+   static const uint32_t keylen = 2*sizeof(uint128_t);
+   FC_ASSERT( datalen >= keylen, "insufficient data passed" );
+
    auto& wasm  = wasm_interface::get();
    FC_ASSERT( wasm.current_apply_context, "not a valid apply context" );
 
-   char* v     = &memoryRef<char>( wasm.current_memory, data );
-   uint128_t&  primary   = *((uint128_t*)v);
-   uint128_t&  secondary = *(((uint128_t*)v)+1);
-   char* value = v + 2*sizeof(uint128_t);
-   return wasm_interface::get().current_apply_context->store_i128i128( 
+   char* v     = memoryArrayPtr<char>( wasm.current_memory, data, datalen );
+
+   uint128_t*  primary   = ((uint128_t*)v);
+   uint128_t*  secondary = primary + 1;
+
+   char* value = (char*)(secondary+1);
+   uint32_t valuelen = datalen - keylen;
+   auto result = wasm_interface::get().current_apply_context->store_i128i128( 
                 Name(scope), Name(table),
-                primary, secondary, value, datalen - 2*sizeof(uint128_t) );
+                *primary, *secondary, value, valuelen ) + keylen;
+   wdump((datalen)(valuelen)(result));
+   return result;
 }
 
 DEFINE_INTRINSIC_FUNCTION3(env,remove_i128i128,remove_i128i128,i32,i64,scope,i64,table,i32,data) {
@@ -72,31 +80,52 @@ DEFINE_INTRINSIC_FUNCTION5(env,load_secondary_i128i128,load_secondary_i128i128,i
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,back_primary_i128i128,back_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,data,i32,datalen) {
-
+   wlog( "back primary" );
    auto& wasm  = wasm_interface::get();
    char* v     = &memoryRef<char>( wasm.current_memory, data );
    return wasm_interface::get().current_validate_context->back_primary_i128i128( Name(scope), Name(code), Name(table),
                                                                           (uint128_t*)v, (uint128_t*)(v+sizeof(uint128_t)), v, datalen-(2*sizeof(uint128_t)) );
 }
 DEFINE_INTRINSIC_FUNCTION5(env,front_primary_i128i128,front_primary,i32,i64,scope,i64,code,i64,table,i32,data,i32,datalen) {
+   wlog( "front primary" );
    auto& wasm  = wasm_interface::get();
    char* v     = &memoryRef<char>( wasm.current_memory, data );
    return wasm_interface::get().current_validate_context->front_primary_i128i128( Name(scope), Name(code), Name(table),
-                                                                          (uint128_t*)v, (uint128_t*)(v+sizeof(uint128_t)), v, datalen-(2*sizeof(uint128_t)) );
+                                                                          (uint128_t*)v, (uint128_t*)(v+sizeof(uint128_t)), 
+                                                                          v, datalen-(2*sizeof(uint128_t)) ) + 2*sizeof(uint128_t);
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,back_secondary_i128i128,back_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,data,i32,datalen) {
+   wlog( "back secondary" );
    auto& wasm  = wasm_interface::get();
-   char* v     = &memoryRef<char>( wasm.current_memory, data );
+   char* v     = memoryArrayPtr<char>( wasm.current_memory, data, datalen );
+
+
+
    return wasm_interface::get().current_validate_context->back_secondary_i128i128( Name(scope), Name(code), Name(table),
                                                                           (uint128_t*)v, (uint128_t*)(v+sizeof(uint128_t)), v, datalen-(2*sizeof(uint128_t)) );
-   return 0;
 }
 DEFINE_INTRINSIC_FUNCTION5(env,front_secondary_i128i128,front_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,data,i32,datalen) {
+   wlog( "front secondary" );
+   FC_ASSERT( datalen >= 2*sizeof(uint128_t), "insufficient data passed" );
    auto& wasm  = wasm_interface::get();
-   char* v     = &memoryRef<char>( wasm.current_memory, data );
-   return wasm_interface::get().current_validate_context->front_secondary_i128i128( Name(scope), Name(code), Name(table),
-                                                                          (uint128_t*)v, (uint128_t*)(v+sizeof(uint128_t)), v, datalen-(2*sizeof(uint128_t)) );
+
+   char* v = memoryArrayPtr<char>( wasm.current_memory, data, datalen );
+
+   uint128_t* primary   = (uint128_t*)v;
+   uint128_t* secondary = primary+1;
+   const uint32_t keylen = 2*sizeof(uint128_t);
+
+   char* value       = v + keylen;
+   uint64_t valuelen = datalen - keylen;
+
+   auto result = wasm_interface::get().current_validate_context->front_secondary_i128i128( Name(scope), Name(code), Name(table),
+                                                                          primary, secondary, value, valuelen);
+   if( result >= 0) {
+      result += keylen;
+   }
+   wdump((result)(datalen));
+   return result;
 }
 
 DEFINE_INTRINSIC_FUNCTION0(env,currentCode,currentCode,i64) {
@@ -236,7 +265,8 @@ DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,dests
 }
 
 DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
-  std::string message = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
+   const char* m = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
+  std::string message( m );
   if( !test ) edump((message));
   FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
 }
@@ -474,12 +504,12 @@ DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
 
           char* memstart = &memoryRef<char>( current_memory, 0 );
          // state.init_memory.resize(1<<16); /// TODO: actually get memory size
-          std::cerr <<"INIT MEMORY: \n";
           for( uint32_t i = 0; i < 10000; ++i )
               if( memstart[i] ) {
-                   state.mem_end = i;
+                   state.mem_end = i+1;
                    //std::cerr << (char)memstart[i];
               }
+          ilog( "INIT MEMORY: ${size}", ("size", state.mem_end) );
 
           state.init_memory.resize(state.mem_end);
           memcpy( state.init_memory.data(), memstart, state.mem_end ); //state.init_memory.size() );

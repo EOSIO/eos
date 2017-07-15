@@ -31,7 +31,7 @@ int32_t remove_i64( AccountName scope, TableName table, uint64_t key );
  *  32 bytes are the primary and secondary keys.  These keys will be interpreted and sorted as unsigned
  *  128 bit integers.  
  *
- *  @return the total number of bytes read or -1 for "not found" or "end".  
+ *  @return the total number of bytes read or -1 for "not found" or "end" where bytes read includes 32 bytes of the key  
  */
 ///@{
 int32_t front_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );

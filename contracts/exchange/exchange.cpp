@@ -65,20 +65,12 @@ inline void modifyAccount( AccountName a, Lambda&& modify ) {
 void apply_currency_transfer( const currency::Transfer& transfer ) {
    if( transfer.to == N(exchange) ) {
       modifyAccount( transfer.from, [&]( Account& account ){ 
-          print( "balance: " );
-          printi( account.currency_balance.quantity );
-          print( "deposit: " );
-          printi( transfer.quantity.quantity );
           account.currency_balance += transfer.quantity; 
       });
    } else if( transfer.from == N(exchange) ) {
       requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
 
       modifyAccount( transfer.to, [&]( Account& account ){ 
-          print( "balance: " );
-          printi( account.currency_balance.quantity );
-          print( "withdraw: " );
-          printi( transfer.quantity.quantity );
           account.currency_balance -= transfer.quantity; 
       });
    } else {
@@ -140,7 +132,7 @@ void apply_exchange_buy( BuyOrder order ) {
    assert( bid.quantity > eos::Tokens(0), "invalid quantity" );
    assert( bid.expiration > now(), "order expired" );
 
-   print( Name(bid.buyer.name), " created bid for ", order.quantity.quantity, " currency at price: ", order.price.base_per_quote, "\n" );
+   print( Name(bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.price, "\n" );
 
    Bid existing_bid;
    assert( !BidsById::get( bid.buyer, existing_bid ), "order with this id already exists" );
@@ -183,7 +175,7 @@ void apply_exchange_buy( BuyOrder order ) {
    save( buyer_account );
    print( "saving buyer's account\n" );
    if( bid.quantity ) {
-      print( bid.quantity.quantity, " eos left over" );
+      print( bid.quantity, " eos left over" );
       assert( !order.fill_or_kill, "order not completely filled" );
       Bids::store( bid );
       return;
@@ -199,8 +191,8 @@ void apply_exchange_sell( SellOrder order ) {
    assert( ask.quantity > currency::Tokens(0), "invalid quantity" );
    assert( ask.expiration > now(), "order expired" );
 
-   print( "\n\n", Name(ask.seller.name), " created sell for ", order.quantity.quantity, 
-          " currency at price: ", order.price.base_per_quote, "\n");
+   print( "\n\n", Name(ask.seller.name), " created sell for ", order.quantity, 
+          " currency at price: ", order.price, "\n");
 
    Ask existing_ask;
    assert( !AsksById::get( ask.seller, existing_ask ), "order with this id already exists" );

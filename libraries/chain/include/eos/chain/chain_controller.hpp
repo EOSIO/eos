@@ -216,8 +216,9 @@ namespace eos { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
 
-   protected:
+ //  protected:
          const chainbase::database& get_database() const { return _db; }
+         chainbase::database& get_mutable_database() { return _db; }
          
    private:
 

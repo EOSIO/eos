@@ -67,7 +67,98 @@ FC_REFLECT( OrderID, (name)(number) );
 FC_REFLECT( Bid, (buyer)(price)(quantity)(expiration) );
 FC_REFLECT( Ask, (seller)(price)(quantity)(expiration) );
 
+   struct record {
+      uint64_t a = 0;
+      uint64_t b = 0;
+      uint64_t c = 0;
+      fc::uint128 d = 0;
+      fc::uint128 e = 0;
+   };
+
+   struct by_abcde;
+   struct by_abced;
+   using test_index = boost::multi_index_container<
+      record,
+      indexed_by<
+         ordered_unique<tag<by_abcde>, 
+            composite_key< record,
+               member<record, uint64_t, &record::a>,
+               member<record, uint64_t, &record::b>,
+               member<record, uint64_t, &record::c>,
+               member<record, fc::uint128, &record::d>,
+               member<record, fc::uint128, &record::e>
+            >
+         >,
+         ordered_unique<tag<by_abced>, 
+            composite_key< record,
+               member<record, uint64_t, &record::a>,
+               member<record, uint64_t, &record::b>,
+               member<record, uint64_t, &record::c>,
+               member<record, fc::uint128, &record::e>,
+               member<record, fc::uint128, &record::d>
+            >
+         >
+      >
+   >;
+//   FC_REFLECT( record, (a)(b)(c)(d)(e) );
+
 BOOST_AUTO_TEST_SUITE(slow_tests)
+
+
+BOOST_FIXTURE_TEST_CASE(multiindex, testing_fixture)
+{
+   test_index idx;
+   idx.emplace( record{1,0,0,1,9} );
+   idx.emplace( record{1,1,1,2,8} );
+   idx.emplace( record{1,2,3,3,7} );
+   idx.emplace( record{1,2,3,5,6} );
+   idx.emplace( record{1,2,3,6,5} );
+   idx.emplace( record{1,2,3,7,5} );
+   idx.emplace( record{1,2,3,8,3} );
+
+   auto& by_de = idx.get<by_abcde>();
+   auto& by_ed = idx.get<by_abced>();
+
+   auto itr = by_de.lower_bound( boost::make_tuple(1,2,3,0,0) );
+   BOOST_REQUIRE( itr != by_de.end() );
+   BOOST_REQUIRE( itr->d == 3 );
+
+   auto itr2 = by_ed.lower_bound( boost::make_tuple(1,2,3,0,0) );
+   BOOST_REQUIRE( itr2 != by_ed.end() );
+   BOOST_REQUIRE( itr2->e == 3 );
+   //BOOST_REQUIRE( itr2 == by_ed.begin() );
+   Make_Blockchain(chain)
+   auto& db = chain.get_mutable_database();
+   db.create<key128x128_value_object>( [&]( auto& obj ) {
+        obj.scope = 1;
+        obj.code = 1;
+        obj.table = 1;
+        obj.primary_key = 1;
+        obj.secondary_key = 2;
+   });
+   db.create<key128x128_value_object>( [&]( auto& obj ) {
+        obj.scope = 1;
+        obj.code = 1;
+        obj.table = 1;
+        obj.primary_key = 2;
+        obj.secondary_key = 3;
+   });
+   db.create<key128x128_value_object>( [&]( auto& obj ) {
+        obj.scope = 1;
+        obj.code = 1;
+        obj.table = 1;
+        obj.primary_key = 3;
+        obj.secondary_key = 2;
+   });
+   {
+   auto& sidx = db.get_index< key128x128_value_index, by_scope_secondary> ();
+   auto lower = sidx.lower_bound( boost::make_tuple( 1, 1, 1, 0, 0 ) );
+   BOOST_REQUIRE( lower != sidx.end() );
+   BOOST_REQUIRE( lower->primary_key == 1 );
+   BOOST_REQUIRE( lower->secondary_key == 2 );
+   }
+
+}
 
 // Test that TaPoS still works after block 65535 (See Issue #55)
 BOOST_FIXTURE_TEST_CASE(tapos_wrap, testing_fixture)
@@ -297,7 +388,7 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.emplaceMessage("exchange", sort_names( {"exchange"} ),
+   trx.emplaceMessage("exchange", sort_names( {} ),
                       vector<types::AccountPermission>{ {seller,"active"} },
                       "sell", b );
    trx.expiration = chain.head_block_time() + 100;
@@ -314,7 +405,7 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.emplaceMessage("exchange", sort_names( {"exchange"} ),
+   trx.emplaceMessage("exchange", sort_names( {} ),
                       vector<types::AccountPermission>{ {buyer,"active"} },
                       "buy", b );
    trx.expiration = chain.head_block_time() + 100;
@@ -366,15 +457,18 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
       TransferCurrency( chain, "initb", "exchange", 2000 );
       chain.produce_blocks(1);
 
+      wlog( "start buy and sell" );
       SellCurrency( chain, "initb", "exchange", 1, 100, .5 );
+      SellCurrency( chain, "initb", "exchange", 1, 100, .75 );
+      SellCurrency( chain, "initb", "exchange", 1, 100, .85 );
       //BOOST_REQUIRE_THROW( SellCurrency( chain, "initb", "exchange", 1, 100, .5 ), fc::exception ); // order id already exists
-      SellCurrency( chain, "initb", "exchange", 2, 100, .75 );
+      //SellCurrency( chain, "initb", "exchange", 2, 100, .75 );
 
       BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ); 
       //BOOST_REQUIRE_THROW( BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ), fc::exception );  // order id already exists
 
       /// this should buy 5 from initb order 2 at a price of .75
-      BuyCurrency( chain, "initb", "exchange", 2, 50, .8 ); 
+      //BuyCurrency( chain, "initb", "exchange", 2, 50, .8 ); 
 
    } FC_LOG_AND_RETHROW() 
   }catch(...) {
