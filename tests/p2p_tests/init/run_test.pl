@@ -29,7 +29,7 @@ my $run_duration = 60;
 if (!GetOptions("nodes=i" => \$nodes,
                 "first-pause=i" => \$first_pause,
                 "launch-pause=i" => \$launch_pause,
-                "duration=i" => \$run_duratiion,
+                "duration=i" => \$run_duration,
                 "one-producer" => \$only_one)) {
     print "usage: $ARGV[0] [--nodes=<n>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>] [--one-producer]\n";
     print "where:\n";
@@ -127,6 +127,5 @@ print "all nodes launched, network running for $run_duration seconds\n";
 sleep ($run_duration);
 foreach my $pp (@pid) {
     print "killing $pp\n";
-    my $res = kill 2, $pp;
-    print "kill returned $res"
+    kill 2, $pp;
 }
