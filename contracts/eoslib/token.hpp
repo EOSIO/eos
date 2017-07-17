@@ -1,9 +1,28 @@
+/**
+ * @file token.hpp
+ * @brief Defines types and ABI for standard token messages and database tables
+ *
+ */
 #pragma once
 #include <eoslib/math.hpp>
 #include <eoslib/print.hpp>
 
+/**
+ *  @defgroup tokens Token API
+ *  @brief Defines the ABI for interfacing with standard-compatible token messages and database tables.
+ *
+ *
+ */
+
+
+
 namespace eos {
 
+   /**
+    *  @brief a uint64_t wrapper with checks for proper types and over/underflows.
+    *
+    *  @ingroup tokens
+    */
    template<typename NumberType, uint64_t CurrencyType = N(eos) >
    struct token {
        static const uint64_t currency_type = CurrencyType;
@@ -51,7 +70,11 @@ namespace eos {
    };
 
    /**
+    *  @brief defines a fixed precision price between two tokens.
+    *
     *  A price is written as  X  Base/Quote
+    *
+    *  @ingroup tokens
     */
    template<typename BaseToken, typename QuoteToken>
    struct price
@@ -105,7 +128,15 @@ namespace eos {
 
    typedef eos::token<uint64_t,N(eos)>   Tokens;
 
+
+   /**
+    *  @brief the binary structure of the `transfer` message type for the `eos` contract.
+    *
+    *  @ingroup tokens
+    */
    struct Transfer {
+     static const uint64_t action_type = N(transfer);
+
      AccountName  from;
      AccountName  to;
      Tokens       quantity;
