@@ -17,6 +17,7 @@ Eos has the following external dependencies, which must be installed on your sys
 
 ```
 git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
 ./autogen.sh
 ./configure
 make
@@ -77,7 +78,7 @@ producer-name = initu
 plugin = eos::producer_plugin
 ```
 
-Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, this instructions will be updated to show how to create an example multi-node testnet.
+Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, these instructions will be updated to show how to create an example multi-node testnet.
 
 ### Run in docker
 
@@ -108,7 +109,7 @@ Done
 
 ### How to Build LLVM and clang for WASM
 
-By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets. 
+By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets.
 
 ```
 git clone --depth 1 --single-branch --branch release_40 git@github.com:llvm-mirror/llvm.git
