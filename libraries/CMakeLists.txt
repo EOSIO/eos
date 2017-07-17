@@ -1,7 +1,11 @@
 add_subdirectory( fc )
 add_subdirectory( chainbase )
 add_subdirectory( wasm-jit )
-#add_subdirectory( binaryen )
+
+if(WASM_TOOLCHAIN)
+  add_subdirectory( binaryen )
+endif()
+
 add_subdirectory( types )
 add_subdirectory( chain )
 add_subdirectory( egenesis )
