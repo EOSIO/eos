@@ -43,6 +43,9 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
+#include <currency/currency.wast.hpp>
+#include <exchange/exchange.wast.hpp>
+
 using namespace eos;
 using namespace chain;
 
@@ -322,7 +325,6 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       Make_Account(chain, currency);
       chain.produce_blocks(1);
 
-#include <currency/currency.wast.hpp>
 
       types::setcode handler;
       handler.account = "currency";
@@ -414,8 +416,6 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
 }
 
 BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
-#include <currency/currency.wast.hpp>
-#include <exchange/exchange.wast.hpp>
   try {
    try {
       Make_Blockchain(chain);

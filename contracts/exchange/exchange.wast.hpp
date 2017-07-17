@@ -1,12 +1,12 @@
 const char* exchange_wast = R"=====(
 (module
- (type $FUNCSIG$vj (func (param i64)))
  (type $FUNCSIG$vii (func (param i32 i32)))
- (type $FUNCSIG$i (func (result i32)))
- (type $FUNCSIG$ijjjjii (func (param i64 i64 i64 i64 i32 i32) (result i32)))
+ (type $FUNCSIG$vj (func (param i64)))
+ (type $FUNCSIG$vi (func (param i32)))
  (type $FUNCSIG$ijjj (func (param i64 i64 i64) (result i32)))
  (type $FUNCSIG$ijjjii (func (param i64 i64 i64 i32 i32) (result i32)))
- (type $FUNCSIG$vi (func (param i32)))
+ (type $FUNCSIG$ijjjjii (func (param i64 i64 i64 i64 i32 i32) (result i32)))
+ (type $FUNCSIG$i (func (result i32)))
  (type $FUNCSIG$ijjii (func (param i64 i64 i32 i32) (result i32)))
  (type $FUNCSIG$ijji (func (param i64 i64 i32) (result i32)))
  (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
@@ -32,41 +32,41 @@ const char* exchange_wast = R"=====(
  (import "env" "store_i64" (func $store_i64 (param i64 i64 i64 i32 i32) (result i32)))
  (table 0 anyfunc)
  (memory $0 1)
- (data (i32.const 4) "0\08\00\00")
- (data (i32.const 16) "notified on transfer that is not relevant to this exchange\00")
- (data (i32.const 80) "\n\nmatch bid: \00")
- (data (i32.const 96) ":\00")
- (data (i32.const 112) "match ask: \00")
- (data (i32.const 128) "\n\n\00")
- (data (i32.const 144) "invalid quantity\00")
- (data (i32.const 176) "order expired\00")
- (data (i32.const 192) " created bid for \00")
- (data (i32.const 224) " currency at price: \00")
- (data (i32.const 256) "\n\00")
- (data (i32.const 272) "order with this id already exists\00")
- (data (i32.const 320) "exchange.cpp\00")
- (data (i32.const 336) "\n No asks found, saving buyer account and storing bid\n\00")
- (data (i32.const 400) "order not completely filled\00")
- (data (i32.const 432) "asks found, lets see what matches\n\00")
- (data (i32.const 480) "lowest ask <= bid.price\n\00")
- (data (i32.const 512) "lowest_ask >= bid.price or buyer\'s bid has been filled\n\00")
- (data (i32.const 576) "saving buyer\'s account\n\00")
- (data (i32.const 608) " eos left over\00")
- (data (i32.const 624) "bid filled\n\00")
- (data (i32.const 640) " created sell for \00")
- (data (i32.const 672) "\n No bids found, saving seller account and storing ask\n\00")
- (data (i32.const 736) "\n bids found, lets see what matches\n\00")
- (data (i32.const 784) "saving ask\n\00")
- (data (i32.const 800) "unknown action\00")
- (data (i32.const 816) "remove\00")
- (data (i32.const 832) "store\00")
- (data (i32.const 848) "integer overflow adding token balance\00")
- (data (i32.const 896) "integer underflow subtracting token balance\00")
- (data (i32.const 944) "cast to 64 bit loss of precision\00")
- (data (i32.const 992) " \00")
- (data (i32.const 1008) ".\00")
- (data (i32.const 1024) "/\00")
- (data (i32.const 1040) "error storing record\00")
+ (data (i32.const 4) "`\08\00\00")
+ (data (i32.const 16) "integer overflow adding token balance\00")
+ (data (i32.const 64) "integer underflow subtracting token balance\00")
+ (data (i32.const 112) "notified on transfer that is not relevant to this exchange\00")
+ (data (i32.const 176) "remove\00")
+ (data (i32.const 192) "store\00")
+ (data (i32.const 208) "cast to 64 bit loss of precision\00")
+ (data (i32.const 256) "\n\nmatch bid: \00")
+ (data (i32.const 272) ":\00")
+ (data (i32.const 288) "match ask: \00")
+ (data (i32.const 304) "\n\n\00")
+ (data (i32.const 320) "invalid quantity\00")
+ (data (i32.const 352) "order expired\00")
+ (data (i32.const 368) " created bid for \00")
+ (data (i32.const 400) " currency at price: \00")
+ (data (i32.const 432) "\n\00")
+ (data (i32.const 448) "order with this id already exists\00")
+ (data (i32.const 496) "/Users/dlarimer/eos/contracts/exchange/exchange.cpp\00")
+ (data (i32.const 560) "\n No asks found, saving buyer account and storing bid\n\00")
+ (data (i32.const 624) "order not completely filled\00")
+ (data (i32.const 656) "error storing record\00")
+ (data (i32.const 688) "asks found, lets see what matches\n\00")
+ (data (i32.const 736) "lowest ask <= bid.price\n\00")
+ (data (i32.const 768) "lowest_ask >= bid.price or buyer\'s bid has been filled\n\00")
+ (data (i32.const 832) "saving buyer\'s account\n\00")
+ (data (i32.const 864) " \00")
+ (data (i32.const 880) " eos left over\00")
+ (data (i32.const 896) "bid filled\n\00")
+ (data (i32.const 912) ".\00")
+ (data (i32.const 928) "/\00")
+ (data (i32.const 944) " created sell for \00")
+ (data (i32.const 976) "\n No bids found, saving seller account and storing ask\n\00")
+ (data (i32.const 1040) "\n bids found, lets see what matches\n\00")
+ (data (i32.const 1088) "saving ask\n\00")
+ (data (i32.const 1104) "unknown action\00")
  (export "memory" (memory $0))
  (export "_ZN8exchange23apply_currency_transferERKN8currency8TransferE" (func $_ZN8exchange23apply_currency_transferERKN8currency8TransferE))
  (export "_ZN8exchange18apply_eos_transferERKN3eos8TransferE" (func $_ZN8exchange18apply_eos_transferERKN3eos8TransferE))
@@ -125,7 +125,7 @@ const char* exchange_wast = R"=====(
       )
       (get_local $2)
      )
-     (i32.const 848)
+     (i32.const 16)
     )
     (i64.store offset=16
      (get_local $3)
@@ -171,7 +171,7 @@ const char* exchange_wast = R"=====(
        (get_local $0)
       )
      )
-     (i32.const 896)
+     (i32.const 64)
     )
     (i64.store offset=16
      (get_local $3)
@@ -191,7 +191,7 @@ const char* exchange_wast = R"=====(
    )
    (call $assert
     (i32.const 0)
-    (i32.const 16)
+    (i32.const 112)
    )
   )
   (i32.store offset=4
@@ -199,6 +199,91 @@ const char* exchange_wast = R"=====(
    (i32.add
     (get_local $3)
     (i32.const 32)
+   )
+  )
+ )
+ (func $_ZN8exchange10getAccountEy (param $0 i32) (param $1 i64)
+  (i32.store offset=8
+   (get_local $0)
+   (i32.const 0)
+  )
+  (i64.store
+   (get_local $0)
+   (get_local $1)
+  )
+  (i64.store align=4
+   (i32.add
+    (get_local $0)
+    (i32.const 20)
+   )
+   (i64.const 0)
+  )
+  (i64.store align=4
+   (i32.add
+    (get_local $0)
+    (i32.const 12)
+   )
+   (i64.const 0)
+  )
+  (drop
+   (call $load_i64
+    (i64.const 179785961221)
+    (i64.const 179785961221)
+    (i64.const 21967113313)
+    (get_local $1)
+    (get_local $0)
+    (i32.const 32)
+   )
+  )
+ )
+ (func $_ZN8exchange4saveERKNS_7AccountE (param $0 i32)
+  (block $label$0
+   (br_if $label$0
+    (i32.eqz
+     (i32.or
+      (i64.ne
+       (i64.or
+        (i64.load offset=16
+         (get_local $0)
+        )
+        (i64.load offset=8
+         (get_local $0)
+        )
+       )
+       (i64.const 0)
+      )
+      (i32.load offset=24
+       (get_local $0)
+      )
+     )
+    )
+   )
+   (call $prints
+    (i32.const 192)
+   )
+   (drop
+    (call $store_i64
+     (i64.const 179785961221)
+     (i64.const 21967113313)
+     (i64.load
+      (get_local $0)
+     )
+     (get_local $0)
+     (i32.const 32)
+    )
+   )
+   (return)
+  )
+  (call $prints
+   (i32.const 176)
+  )
+  (drop
+   (call $remove_i64
+    (i64.const 179785961221)
+    (i64.const 21967113313)
+    (i64.load
+     (get_local $0)
+    )
    )
   )
  )
@@ -252,7 +337,7 @@ const char* exchange_wast = R"=====(
       )
       (get_local $2)
      )
-     (i32.const 848)
+     (i32.const 16)
     )
     (i64.store offset=8
      (get_local $3)
@@ -298,7 +383,7 @@ const char* exchange_wast = R"=====(
        (get_local $0)
       )
      )
-     (i32.const 896)
+     (i32.const 64)
     )
     (i64.store offset=8
      (get_local $3)
@@ -318,7 +403,7 @@ const char* exchange_wast = R"=====(
    )
    (call $assert
     (i32.const 0)
-    (i32.const 16)
+    (i32.const 112)
    )
   )
   (i32.store offset=4
@@ -421,7 +506,7 @@ const char* exchange_wast = R"=====(
      (get_local $11)
     )
    )
-   (i32.const 944)
+   (i32.const 208)
   )
   (i64.store offset=8
    (get_local $11)
@@ -523,7 +608,7 @@ const char* exchange_wast = R"=====(
       (get_local $11)
      )
     )
-    (i32.const 944)
+    (i32.const 208)
    )
   )
   (set_local $6
@@ -547,31 +632,31 @@ const char* exchange_wast = R"=====(
    )
   )
   (call $prints
-   (i32.const 80)
+   (i32.const 256)
   )
   (call $printn
    (get_local $9)
   )
   (call $prints
-   (i32.const 96)
+   (i32.const 272)
   )
   (call $printi
    (get_local $8)
   )
   (call $prints
-   (i32.const 112)
+   (i32.const 288)
   )
   (call $printn
    (get_local $7)
   )
   (call $prints
-   (i32.const 96)
+   (i32.const 272)
   )
   (call $printi
    (get_local $6)
   )
   (call $prints
-   (i32.const 128)
+   (i32.const 304)
   )
   (call $assert
    (i64.ge_u
@@ -585,7 +670,7 @@ const char* exchange_wast = R"=====(
     )
     (get_local $5)
    )
-   (i32.const 896)
+   (i32.const 64)
   )
   (i64.store
    (get_local $0)
@@ -606,7 +691,7 @@ const char* exchange_wast = R"=====(
     )
     (get_local $5)
    )
-   (i32.const 848)
+   (i32.const 16)
   )
   (i64.store offset=8
    (get_local $3)
@@ -629,7 +714,7 @@ const char* exchange_wast = R"=====(
     )
     (get_local $10)
    )
-   (i32.const 896)
+   (i32.const 64)
   )
   (i64.store
    (get_local $2)
@@ -650,7 +735,7 @@ const char* exchange_wast = R"=====(
     )
     (get_local $10)
    )
-   (i32.const 848)
+   (i32.const 16)
   )
   (i64.store offset=16
    (get_local $1)
@@ -706,7 +791,7 @@ const char* exchange_wast = R"=====(
     )
     (i64.const 0)
    )
-   (i32.const 144)
+   (i32.const 320)
   )
   (call $assert
    (i32.gt_u
@@ -715,7 +800,7 @@ const char* exchange_wast = R"=====(
     )
     (call $now)
    )
-   (i32.const 176)
+   (i32.const 352)
   )
   (set_local $1
    (i64.load
@@ -736,12 +821,12 @@ const char* exchange_wast = R"=====(
    (get_local $7)
   )
   (call $_ZN3eos5printIPKcJNS_5tokenIyLy19941EEES2_NS_5priceIS4_NS3_IyLy862690298531EEEEES2_EEEvT_DpT0_
-   (i32.const 192)
+   (i32.const 368)
    (get_local $8)
-   (i32.const 224)
+   (i32.const 400)
    (get_local $2)
    (get_local $1)
-   (i32.const 256)
+   (i32.const 432)
   )
   (i64.store
    (i32.add
@@ -808,16 +893,16 @@ const char* exchange_wast = R"=====(
     )
     (i32.const 48)
    )
-   (i32.const 272)
+   (i32.const 448)
   )
   (call $prints
-   (i32.const 320)
+   (i32.const 496)
   )
   (call $printi
    (i64.const 139)
   )
   (call $prints
-   (i32.const 256)
+   (i32.const 432)
   )
   (call $_ZN8exchange10getAccountEy
    (i32.add
@@ -833,7 +918,7 @@ const char* exchange_wast = R"=====(
     )
     (get_local $8)
    )
-   (i32.const 896)
+   (i32.const 64)
   )
   (i64.store offset=120
    (get_local $9)
@@ -891,7 +976,7 @@ const char* exchange_wast = R"=====(
       )
      )
      (call $prints
-      (i32.const 432)
+      (i32.const 688)
      )
      (call $_ZN8exchange10getAccountEy
       (i32.add
@@ -952,7 +1037,7 @@ const char* exchange_wast = R"=====(
       )
       (loop $label$4
        (call $prints
-        (i32.const 480)
+        (i32.const 736)
        )
        (call $_ZN8exchange5matchERNS_3BidERNS_7AccountERNS_3AskES3_
         (get_local $0)
@@ -1111,7 +1196,7 @@ const char* exchange_wast = R"=====(
       )
      )
      (call $prints
-      (i32.const 512)
+      (i32.const 768)
      )
      (call $_ZN8exchange4saveERKNS_7AccountE
       (i32.add
@@ -1120,7 +1205,7 @@ const char* exchange_wast = R"=====(
       )
      )
      (call $prints
-      (i32.const 576)
+      (i32.const 832)
      )
      (br_if $label$1
       (i64.eqz
@@ -1138,13 +1223,13 @@ const char* exchange_wast = R"=====(
       (get_local $8)
      )
      (call $prints
-      (i32.const 992)
+      (i32.const 864)
      )
      (call $printn
       (i64.const 19941)
      )
      (call $prints
-      (i32.const 608)
+      (i32.const 880)
      )
      (call $assert
       (i32.eqz
@@ -1152,7 +1237,7 @@ const char* exchange_wast = R"=====(
         (get_local $0)
        )
       )
-      (i32.const 400)
+      (i32.const 624)
      )
      (call $assert
       (call $store_i128i128
@@ -1161,12 +1246,12 @@ const char* exchange_wast = R"=====(
        (get_local $0)
        (i32.const 48)
       )
-      (i32.const 1040)
+      (i32.const 656)
      )
      (br $label$0)
     )
     (call $prints
-     (i32.const 336)
+     (i32.const 560)
     )
     (call $assert
      (i32.eqz
@@ -1174,7 +1259,7 @@ const char* exchange_wast = R"=====(
        (get_local $0)
       )
      )
-     (i32.const 400)
+     (i32.const 624)
     )
     (call $assert
      (call $store_i128i128
@@ -1183,7 +1268,7 @@ const char* exchange_wast = R"=====(
       (get_local $0)
       (i32.const 48)
      )
-     (i32.const 1040)
+     (i32.const 656)
     )
     (call $_ZN8exchange4saveERKNS_7AccountE
      (i32.add
@@ -1194,7 +1279,7 @@ const char* exchange_wast = R"=====(
     (br $label$0)
    )
    (call $prints
-    (i32.const 624)
+    (i32.const 896)
    )
   )
   (i32.store offset=4
@@ -1205,88 +1290,68 @@ const char* exchange_wast = R"=====(
    )
   )
  )
- (func $_ZN8exchange10getAccountEy (param $0 i32) (param $1 i64)
-  (i32.store offset=8
-   (get_local $0)
+ (func $_ZN3eos5printIPKcJNS_5tokenIyLy19941EEES2_NS_5priceIS4_NS3_IyLy862690298531EEEEES2_EEEvT_DpT0_ (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64) (param $4 i64) (param $5 i32)
+  (local $6 i32)
+  (i32.store offset=4
    (i32.const 0)
-  )
-  (i64.store
-   (get_local $0)
-   (get_local $1)
-  )
-  (i64.store align=4
-   (i32.add
-    (get_local $0)
-    (i32.const 20)
-   )
-   (i64.const 0)
-  )
-  (i64.store align=4
-   (i32.add
-    (get_local $0)
-    (i32.const 12)
-   )
-   (i64.const 0)
-  )
-  (drop
-   (call $load_i64
-    (i64.const 179785961221)
-    (i64.const 179785961221)
-    (i64.const 21967113313)
-    (get_local $1)
-    (get_local $0)
-    (i32.const 32)
-   )
-  )
- )
- (func $_ZN8exchange4saveERKNS_7AccountE (param $0 i32)
-  (block $label$0
-   (br_if $label$0
-    (i32.eqz
-     (i32.or
-      (i64.ne
-       (i64.or
-        (i64.load offset=16
-         (get_local $0)
-        )
-        (i64.load offset=8
-         (get_local $0)
-        )
-       )
-       (i64.const 0)
-      )
-      (i32.load offset=24
-       (get_local $0)
-      )
+   (tee_local $6
+    (i32.sub
+     (i32.load offset=4
+      (i32.const 0)
      )
+     (i32.const 16)
     )
    )
-   (call $prints
-    (i32.const 832)
-   )
-   (drop
-    (call $store_i64
-     (i64.const 179785961221)
-     (i64.const 21967113313)
-     (i64.load
-      (get_local $0)
-     )
-     (get_local $0)
-     (i32.const 32)
-    )
-   )
-   (return)
   )
   (call $prints
-   (i32.const 816)
+   (get_local $0)
   )
-  (drop
-   (call $remove_i64
-    (i64.const 179785961221)
-    (i64.const 21967113313)
-    (i64.load
-     (get_local $0)
-    )
+  (call $printi
+   (get_local $1)
+  )
+  (call $prints
+   (i32.const 864)
+  )
+  (call $printn
+   (i64.const 19941)
+  )
+  (call $prints
+   (get_local $2)
+  )
+  (i64.store offset=8
+   (get_local $6)
+   (get_local $4)
+  )
+  (i64.store
+   (get_local $6)
+   (get_local $3)
+  )
+  (call $printi128
+   (get_local $6)
+  )
+  (call $prints
+   (i32.const 912)
+  )
+  (call $prints
+   (i32.const 864)
+  )
+  (call $printn
+   (i64.const 19941)
+  )
+  (call $prints
+   (i32.const 928)
+  )
+  (call $printn
+   (i64.const 862690298531)
+  )
+  (call $prints
+   (get_local $5)
+  )
+  (i32.store offset=4
+   (i32.const 0)
+   (i32.add
+    (get_local $6)
+    (i32.const 16)
    )
   )
  )
@@ -1327,7 +1392,7 @@ const char* exchange_wast = R"=====(
     )
     (i64.const 0)
    )
-   (i32.const 144)
+   (i32.const 320)
   )
   (call $assert
    (i32.gt_u
@@ -1336,7 +1401,7 @@ const char* exchange_wast = R"=====(
     )
     (call $now)
    )
-   (i32.const 176)
+   (i32.const 352)
   )
   (set_local $1
    (i64.load
@@ -1354,18 +1419,18 @@ const char* exchange_wast = R"=====(
    )
   )
   (call $prints
-   (i32.const 128)
+   (i32.const 304)
   )
   (call $printn
    (get_local $7)
   )
   (call $_ZN3eos5printIPKcJNS_5tokenIyLy862690298531EEES2_NS_5priceINS3_IyLy19941EEES4_EES2_EEEvT_DpT0_
-   (i32.const 640)
+   (i32.const 944)
    (get_local $8)
-   (i32.const 224)
+   (i32.const 400)
    (get_local $2)
    (get_local $1)
-   (i32.const 256)
+   (i32.const 432)
   )
   (i64.store
    (i32.add
@@ -1432,7 +1497,7 @@ const char* exchange_wast = R"=====(
     )
     (i32.const 48)
    )
-   (i32.const 272)
+   (i32.const 448)
   )
   (call $_ZN8exchange10getAccountEy
    (i32.add
@@ -1448,7 +1513,7 @@ const char* exchange_wast = R"=====(
     )
     (get_local $8)
    )
-   (i32.const 896)
+   (i32.const 64)
   )
   (i64.store offset=128
    (get_local $9)
@@ -1505,7 +1570,7 @@ const char* exchange_wast = R"=====(
      )
     )
     (call $prints
-     (i32.const 736)
+     (i32.const 1040)
     )
     (call $_ZN8exchange10getAccountEy
      (i32.add
@@ -1743,10 +1808,10 @@ const char* exchange_wast = R"=====(
        (get_local $0)
       )
      )
-     (i32.const 400)
+     (i32.const 624)
     )
     (call $prints
-     (i32.const 784)
+     (i32.const 1088)
     )
     (call $assert
      (call $store_i128i128
@@ -1755,7 +1820,7 @@ const char* exchange_wast = R"=====(
       (get_local $0)
       (i32.const 48)
      )
-     (i32.const 1040)
+     (i32.const 656)
     )
     (br $label$0)
    )
@@ -1765,10 +1830,10 @@ const char* exchange_wast = R"=====(
       (get_local $0)
      )
     )
-    (i32.const 400)
+    (i32.const 624)
    )
    (call $prints
-    (i32.const 672)
+    (i32.const 976)
    )
    (call $assert
     (call $store_i128i128
@@ -1777,7 +1842,7 @@ const char* exchange_wast = R"=====(
      (get_local $0)
      (i32.const 48)
     )
-    (i32.const 1040)
+    (i32.const 656)
    )
    (call $_ZN8exchange4saveERKNS_7AccountE
     (i32.add
@@ -1791,6 +1856,71 @@ const char* exchange_wast = R"=====(
    (i32.add
     (get_local $9)
     (i32.const 192)
+   )
+  )
+ )
+ (func $_ZN3eos5printIPKcJNS_5tokenIyLy862690298531EEES2_NS_5priceINS3_IyLy19941EEES4_EES2_EEEvT_DpT0_ (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64) (param $4 i64) (param $5 i32)
+  (local $6 i32)
+  (i32.store offset=4
+   (i32.const 0)
+   (tee_local $6
+    (i32.sub
+     (i32.load offset=4
+      (i32.const 0)
+     )
+     (i32.const 16)
+    )
+   )
+  )
+  (call $prints
+   (get_local $0)
+  )
+  (call $printi
+   (get_local $1)
+  )
+  (call $prints
+   (i32.const 864)
+  )
+  (call $printn
+   (i64.const 862690298531)
+  )
+  (call $prints
+   (get_local $2)
+  )
+  (i64.store offset=8
+   (get_local $6)
+   (get_local $4)
+  )
+  (i64.store
+   (get_local $6)
+   (get_local $3)
+  )
+  (call $printi128
+   (get_local $6)
+  )
+  (call $prints
+   (i32.const 912)
+  )
+  (call $prints
+   (i32.const 864)
+  )
+  (call $printn
+   (i64.const 19941)
+  )
+  (call $prints
+   (i32.const 928)
+  )
+  (call $printn
+   (i64.const 862690298531)
+  )
+  (call $prints
+   (get_local $5)
+  )
+  (i32.store offset=4
+   (i32.const 0)
+   (i32.add
+    (get_local $6)
+    (i32.const 16)
    )
   )
  )
@@ -2005,7 +2135,7 @@ const char* exchange_wast = R"=====(
    )
    (call $assert
     (i32.const 0)
-    (i32.const 800)
+    (i32.const 1104)
    )
   )
   (i32.store offset=4
@@ -2013,136 +2143,6 @@ const char* exchange_wast = R"=====(
    (i32.add
     (get_local $2)
     (i32.const 224)
-   )
-  )
- )
- (func $_ZN3eos5printIPKcJNS_5tokenIyLy19941EEES2_NS_5priceIS4_NS3_IyLy862690298531EEEEES2_EEEvT_DpT0_ (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64) (param $4 i64) (param $5 i32)
-  (local $6 i32)
-  (i32.store offset=4
-   (i32.const 0)
-   (tee_local $6
-    (i32.sub
-     (i32.load offset=4
-      (i32.const 0)
-     )
-     (i32.const 16)
-    )
-   )
-  )
-  (call $prints
-   (get_local $0)
-  )
-  (call $printi
-   (get_local $1)
-  )
-  (call $prints
-   (i32.const 992)
-  )
-  (call $printn
-   (i64.const 19941)
-  )
-  (call $prints
-   (get_local $2)
-  )
-  (i64.store offset=8
-   (get_local $6)
-   (get_local $4)
-  )
-  (i64.store
-   (get_local $6)
-   (get_local $3)
-  )
-  (call $printi128
-   (get_local $6)
-  )
-  (call $prints
-   (i32.const 1008)
-  )
-  (call $prints
-   (i32.const 992)
-  )
-  (call $printn
-   (i64.const 19941)
-  )
-  (call $prints
-   (i32.const 1024)
-  )
-  (call $printn
-   (i64.const 862690298531)
-  )
-  (call $prints
-   (get_local $5)
-  )
-  (i32.store offset=4
-   (i32.const 0)
-   (i32.add
-    (get_local $6)
-    (i32.const 16)
-   )
-  )
- )
- (func $_ZN3eos5printIPKcJNS_5tokenIyLy862690298531EEES2_NS_5priceINS3_IyLy19941EEES4_EES2_EEEvT_DpT0_ (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64) (param $4 i64) (param $5 i32)
-  (local $6 i32)
-  (i32.store offset=4
-   (i32.const 0)
-   (tee_local $6
-    (i32.sub
-     (i32.load offset=4
-      (i32.const 0)
-     )
-     (i32.const 16)
-    )
-   )
-  )
-  (call $prints
-   (get_local $0)
-  )
-  (call $printi
-   (get_local $1)
-  )
-  (call $prints
-   (i32.const 992)
-  )
-  (call $printn
-   (i64.const 862690298531)
-  )
-  (call $prints
-   (get_local $2)
-  )
-  (i64.store offset=8
-   (get_local $6)
-   (get_local $4)
-  )
-  (i64.store
-   (get_local $6)
-   (get_local $3)
-  )
-  (call $printi128
-   (get_local $6)
-  )
-  (call $prints
-   (i32.const 1008)
-  )
-  (call $prints
-   (i32.const 992)
-  )
-  (call $printn
-   (i64.const 19941)
-  )
-  (call $prints
-   (i32.const 1024)
-  )
-  (call $printn
-   (i64.const 862690298531)
-  )
-  (call $prints
-   (get_local $5)
-  )
-  (i32.store offset=4
-   (i32.const 0)
-   (i32.add
-    (get_local $6)
-    (i32.const 16)
    )
   )
  )

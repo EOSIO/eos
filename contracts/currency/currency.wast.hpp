@@ -2,9 +2,9 @@ const char* currency_wast = R"=====(
 (module
  (type $FUNCSIG$vj (func (param i64)))
  (type $FUNCSIG$ijjj (func (param i64 i64 i64) (result i32)))
- (type $FUNCSIG$ijjjjii (func (param i64 i64 i64 i64 i32 i32) (result i32)))
  (type $FUNCSIG$ijjjii (func (param i64 i64 i64 i32 i32) (result i32)))
  (type $FUNCSIG$vii (func (param i32 i32)))
+ (type $FUNCSIG$ijjjjii (func (param i64 i64 i64 i64 i32 i32) (result i32)))
  (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
  (import "env" "assert" (func $assert (param i32 i32)))
  (import "env" "load_i64" (func $load_i64 (param i64 i64 i64 i64 i32 i32) (result i32)))

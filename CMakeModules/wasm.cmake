@@ -80,7 +80,7 @@ macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast.hpp
     DEPENDS ${DESTINATION_FOLDER}/${target}.wast
-    COMMAND echo "const char* currency_wast = R\"=====("  > ${DESTINATION_FOLDER}/${target}.wast.hpp
+    COMMAND echo "const char* ${target}_wast = R\"=====("  > ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMAND cat ${DESTINATION_FOLDER}/${target}.wast >> ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMENT "Generating ${target}.wast.hpp"
