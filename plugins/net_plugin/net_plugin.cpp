@@ -11,12 +11,16 @@
 #include <fc/container/flat.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/crypto/rand.hpp>
+#include <fc/exception/exception.hpp>
 
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ip/host_name.hpp>
 
 namespace eos {
   using std::vector;
   using boost::asio::ip::tcp;
+  using boost::asio::ip::address_v4;
+  using boost::asio::ip::host_name;
   using fc::time_point;
   using fc::time_point_sec;
   using eos::chain::transaction_id_type;
@@ -209,7 +213,7 @@ namespace eos {
     unique_ptr<tcp::acceptor> acceptor;
 
     tcp::endpoint listen_endpoint;
-    tcp::endpoint public_endpoint;
+    string        p2p_address;
 
     vector<string> seed_nodes;
     std::set<tcp::endpoint>       resolved_seed_nodes;
@@ -355,7 +359,7 @@ namespace eos {
 
 
     tcp::endpoint fc_to_asio (const fc::ip::endpoint &fcep) {
-      boost::asio::ip::address_v4 addr((uint32_t)fcep.get_address());
+      address_v4 addr((uint32_t)fcep.get_address());
       return tcp::endpoint(addr, fcep.port());
     }
 
@@ -415,8 +419,7 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const handshake_message &msg) {
-
-      dlog ("got a handshake message");
+      dlog ("got a handshake message from ${p}", ("p", msg.p2p_address));
       if (msg.node_id == node_id) {
         elog ("Self connection detected. Closing connection");
         close(c);
@@ -442,11 +445,11 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const peer_message &msg) {
-      dlog ("got a peer message");
+      dlog ("got a peer message with ${pc}", ("pc", msg.peers.size()));
       for (auto fcep : msg.peers) {
         c->shared_peers.insert (fcep);
         tcp::endpoint ep = fc_to_asio (fcep);
-        if (ep == listen_endpoint || ep == public_endpoint) {
+        if (ep == listen_endpoint) {
           continue;
         }
 
@@ -608,6 +611,7 @@ namespace eos {
     hello.network_version = 0;
     hello.chain_id = info->chain_id;
     hello.node_id = info->node_id;
+    hello.p2p_address = info->p2p_address;
 #if defined( __APPLE__ )
     hello.os = "osx";
 #elif defined( __linux__ )
@@ -652,21 +656,21 @@ namespace eos {
   void net_plugin::set_program_options( options_description& cli, options_description& cfg )
   {
     cfg.add_options()
-      ("listen-endpoint", bpo::value<string>()->default_value( "127.0.0.1:9876" ), "The local IP address and port to listen for incoming connections.")
+      ("listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The local IP address and port to listen for incoming connections.")
       ("remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
-      ("public-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The public IP address and port that should be advertized to peers.")
+      ("public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
       ("agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
       ;
   }
 
   void net_plugin::plugin_initialize( const variables_map& options ) {
     ilog("Initialize net plugin");
+    auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
     if( options.count( "listen-endpoint" ) ) {
-      auto lipstr = options.at("listen-endpoint").as< string >();
-      auto host = lipstr.substr( 0, lipstr.find(':') );
-      auto port = lipstr.substr( host.size()+1, host.size() );
+      my->p2p_address = options.at("listen-endpoint").as< string >();
+      auto host = my->p2p_address.substr( 0, my->p2p_address.find(':') );
+      auto port = my->p2p_address.substr( host.size()+1, my->p2p_address.size() );
       idump((host)(port));
-      auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
       tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
       // Note: need to add support for IPv6 too?
 
@@ -674,6 +678,24 @@ namespace eos {
 
       my->acceptor.reset( new tcp::acceptor( app().get_io_service() ) );
     }
+    if (options.count ("public-endpoint") ) {
+      my->p2p_address = options.at("public-endpoint").as< string >();
+    }
+    else {
+      if (my->listen_endpoint.address().to_v4() == address_v4::any()) {
+        boost::system::error_code ec;
+        auto host = host_name(ec);
+        if (ec.value() != boost::system::errc::success) {
+
+          FC_THROW_EXCEPTION (fc::invalid_arg_exception,
+                              "Unable to retrieve host_name. ${msg}", ("msg",ec.message()));
+
+        }
+        auto port = my->p2p_address.substr (my->p2p_address.find(':'), my->p2p_address.size());
+        my->p2p_address = host + port;
+      }
+    }
+
     if( options.count( "remote-endpoint" ) ) {
       my->seed_nodes = options.at( "remote-endpoint" ).as< vector<string> >();
     }
