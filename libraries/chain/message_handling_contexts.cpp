@@ -94,7 +94,6 @@ int32_t message_validate_context::back_primary_i128i128( Name scope, Name code, 
 int32_t message_validate_context::back_secondary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
-   /*
     require_scope( scope );
     const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
     auto itr = idx.lower_bound( boost::make_tuple( AccountName(scope), 
@@ -102,15 +101,15 @@ int32_t message_validate_context::back_secondary_i128i128( Name scope, Name code
                                                   table.value+1, 
                                                   *secondary, uint128_t(0) ) );
 
-    if( itr == idx.begin() && itr == idx.end() ) 
-       return 0;
+    if( itr == idx.end() ) 
+       return -1;
 
     --itr;
 
     if( itr->scope != scope ||
         itr->code != code ||
-        itr->table != table ||
-        itr->primary_key != *primary ) return -1;
+        itr->table != table 
+        ) return -2;
 
     *secondary = itr->secondary_key;
     *primary = itr->primary_key;
@@ -120,15 +119,12 @@ int32_t message_validate_context::back_secondary_i128i128( Name scope, Name code
        itr->value.copy(value, copylen);
     }
     return copylen;
-    */
-   return -1;
 }
 
 
 int32_t message_validate_context::front_primary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
-   /*
     require_scope( scope );
     const auto& idx = db.get_index<key128x128_value_index,by_scope_primary>();
     auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
@@ -143,8 +139,8 @@ int32_t message_validate_context::front_primary_i128i128( Name scope, Name code,
 
     if( itr->scope != scope ||
         itr->code != code ||
-        itr->table != table ||
-        itr->primary_key != *primary ) return -1;
+        itr->table != table 
+       ) return -2;
 
     *secondary = itr->secondary_key;
     *primary = itr->primary_key;
@@ -154,61 +150,29 @@ int32_t message_validate_context::front_primary_i128i128( Name scope, Name code,
        itr->value.copy(value, copylen);
     }
     return copylen;
-    */
-   return -1;
 }
 int32_t message_validate_context::front_secondary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
     require_scope( scope );
     const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
-    /*
     auto itr = idx.lower_bound( boost::make_tuple( AccountName(scope), 
                                                   AccountName(code), 
                                                   AccountName(table), 
                                                   uint128_t(0), uint128_t(0) ) );
-                                                  */
-    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(0ull), 
-                                                  uint64_t(0ull), 
-                                                  uint64_t(0ull),
-                                                  uint128_t(0),
-                                                  uint128_t(0)) );
 
-    wdump((scope)(code)(table));
-    idump((idx.size()));
-    for( const auto& item : idx ) {
-       auto tup = boost::make_tuple( item.scope, item.code, item.table, item.primary_key, item.secondary_key );
-       auto in  = boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
-                                     uint128_t(1), uint128_t(1) );
-       idump( (scope)(code)(table)(fc::uint128(*primary))(fc::uint128(*secondary)) );
-       if( item.scope == uint64_t(scope) )
-          if( item.code == uint64_t(code) )
-             if( item.table == uint64_t(table) )
-             {
-                ilog( "matching scope, code, table" );
-                /*
-                if( item.secondary_key >= uint128_t(0) ) {
-                   idump( "secondary_key >= 0" );
-                   if( item.primary_key >= uint128_t(0) )
-                      idump( "primary_key >= 0" );
-                }
-                */
-             }
+    FC_ASSERT( itr == idx.begin(), "lower bound of all 0 should be begin" );
 
-       wdump( (item.scope)(item.code)(item.table)(fc::uint128(item.primary_key))(fc::uint128(item.secondary_key)) );
-    }
-    ilog(".");
-
-    if( itr == idx.end() ) 
+    if( itr == idx.end() )  {
        return -1;
+    }
 
-    /*
-    --itr;
 
     if( itr->scope != scope ||
         itr->code != code ||
-        itr->table != table ||
-        itr->primary_key != *primary ) return -1;
+        itr->table != table ) {
+        return -2;  
+    }
 
     *secondary = itr->secondary_key;
     *primary = itr->primary_key;
@@ -218,8 +182,6 @@ int32_t message_validate_context::front_secondary_i128i128( Name scope, Name cod
        itr->value.copy(value, copylen);
     }
     return copylen;
-    */
-    return -1;
 }
 
 
@@ -234,9 +196,9 @@ int32_t message_validate_context::load_primary_i128i128( Name scope, Name code, 
                                                   *primary, uint128_t(0) ) );
 
     if( itr == idx.end() ||
-        itr->scope != uint64_t(scope) ||
-        itr->code != uint64_t(code) ||
-        itr->table != uint64_t(table) ||
+        itr->scope != (scope) ||
+        itr->code != (code) ||
+        itr->table != (table) ||
         itr->primary_key != *primary ) return -1;
 
     *secondary = itr->secondary_key;
@@ -250,7 +212,6 @@ int32_t message_validate_context::load_primary_i128i128( Name scope, Name code, 
 int32_t message_validate_context::lowerbound_primary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
-   /*
    require_scope( scope );
    const auto& idx = db.get_index<key128x128_value_index,by_scope_primary>();
    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
@@ -271,14 +232,11 @@ int32_t message_validate_context::lowerbound_primary_i128i128( Name scope, Name 
       itr->value.copy(value, copylen);
    }
    return copylen;
-   */
-   return -1;
 }
 
 int32_t message_validate_context::lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
-   /*
    require_scope( scope );
    const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
@@ -299,8 +257,6 @@ int32_t message_validate_context::lowerbound_secondary_i128i128( Name scope, Nam
       itr->value.copy(value, copylen);
    }
    return copylen;
-   */
-   return -1;
 }
 
 int32_t apply_context::remove_i64( Name scope, Name table, Name key ) {
