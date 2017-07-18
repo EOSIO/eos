@@ -110,12 +110,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 }
 
-void chain_plugin::plugin_startup() {
+void chain_plugin::plugin_startup() 
+{ try {
    auto& db = app().get_plugin<database_plugin>().db();
+
+   FC_ASSERT( fc::exists( my->genesis_file ), 
+              "unable to find genesis file '${f}', check --genesis-json argument", 
+              ("f",my->genesis_file.generic_string()) );
 
    auto genesis = fc::json::from_file(my->genesis_file).as<native_contract::genesis_state_type>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
-
      genesis.initial_timestamp = my->genesis_timestamp;
    }
 
@@ -134,7 +138,8 @@ void chain_plugin::plugin_startup() {
 
    ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
         ("num", my->chain->head_block_num())("ts", genesis.initial_timestamp.to_iso_string()));
-}
+
+} FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
 }
@@ -174,6 +179,7 @@ namespace chain_apis {
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
    return {
       db.head_block_num(),
+      db.last_irreversible_block_num(),
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),

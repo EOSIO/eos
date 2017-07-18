@@ -158,6 +158,7 @@ namespace eos {
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
+      ilog( "add api url: ${c}", ("c",url) );
       my->http_ios.post([=](){
         my->url_handlers.insert(std::make_pair(url,handler));
       });

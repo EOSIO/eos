@@ -66,7 +66,7 @@ void new_chain_banner(const eos::chain::chain_controller& db)
       "*******************************\n"
       "*                             *\n"
       "*   ------ NEW CHAIN ------   *\n"
-      "*   -   Welcome to Eos!   -   *\n"
+      "*   -   Welcome to EOS!   -   *\n"
       "*   -----------------------   *\n"
       "*                             *\n"
       "*******************************\n"

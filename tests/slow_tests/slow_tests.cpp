@@ -305,6 +305,7 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
                       "transfer", types::transfer{from, to, amount, ""});
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
+   idump((trx));
    chain.push_transaction(trx);
 }
 
