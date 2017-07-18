@@ -90,6 +90,8 @@ int32_t store_i64( AccountName scope, TableName table, const void* data, uint32_
  *  @return the number of bytes read or -1 if key was not found
  */
 int32_t load_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t front_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t back_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
 
 /**
  *  @return 1 if a record was removed, and 0 if no record with key was found

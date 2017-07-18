@@ -5,12 +5,11 @@ namespace TOKEN_NAME {
    ///  When storing accounts, check for empty balance and remove account
    void storeAccount( AccountName account, const Account& a ) {
       if( a.isEmpty() ) {
-         printi(account);
-         ///        scope    table       key
-         Db::remove( account, N(account), N(account) );
+         ///               value, scope
+         Accounts::remove( a, account );
       } else {
-         ///        scope    table       key         value
-         Db::store( account, N(account), N(account), a );
+         ///              value, scope
+         Accounts::store( a, account );
       }
    }
 
@@ -34,7 +33,7 @@ using namespace currency;
 
 extern "C" {
     void init()  {
-       storeAccount( N(currency), Account{ Tokens(1000ll*1000ll*1000ll) } );
+       storeAccount( N(currency), Account( CurrencyTokens(1000ll*1000ll*1000ll) ) );
     }
 
    /// The apply method implements the dispatch of events to this contract

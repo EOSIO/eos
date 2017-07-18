@@ -145,32 +145,35 @@ DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
    wasm_interface::get().current_validate_context->require_scope( scope );
 }
 
-DEFINE_INTRINSIC_FUNCTION5(env,store_i64,store_i64,i32,i64,scope,i64,table,i64,key,i32,valueptr,i32,valuelen) 
+DEFINE_INTRINSIC_FUNCTION4(env,store_i64,store_i64,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) 
 {
    auto& wasm  = wasm_interface::get();
    FC_ASSERT( wasm.current_apply_context, "no apply context found" );
+   FC_ASSERT( valuelen >= sizeof(uint64_t) );
 
    auto  mem   = wasm.current_memory;
    char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
+   uint64_t* key = reinterpret_cast<uint64_t*>(value);
 
    //idump((Name(scope))(Name(code))(Name(table))(Name(key))(valuelen) );
 
-   return wasm.current_apply_context->store_i64( scope, table, key, value, valuelen );
+   return wasm.current_apply_context->store_i64( scope, table, *key, value, valuelen );
 }
 
-DEFINE_INTRINSIC_FUNCTION6(env,load_i64,load_i64,i32,i64,scope,i64,code,i64,table,i64,key,i32,valueptr,i32,valuelen) 
+DEFINE_INTRINSIC_FUNCTION5(env,load_i64,load_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) 
 {
    //idump((Name(scope))(Name(code))(Name(table))(Name(key))(valuelen) );
 
-   FC_ASSERT( valuelen >= 0 );
+   FC_ASSERT( valuelen >= sizeof(uint64_t) );
 
    auto& wasm  = wasm_interface::get();
    FC_ASSERT( wasm.current_validate_context, "no apply context found" );
 
    auto  mem   = wasm.current_memory;
    char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
+   uint64_t* key = reinterpret_cast<uint64_t*>(value);
 
-   return wasm.current_validate_context->load_i64( scope, code, table, key, value, valuelen );
+   return wasm.current_validate_context->load_i64( scope, code, table, *key, value, valuelen );
 }
 
 DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i64,key) {
@@ -182,38 +185,17 @@ DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i64
 DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
    auto& wasm          = wasm_interface::get();
    auto  mem           = wasm.current_memory;
-   char* dst           = &memoryRef<char>( mem, dstp);
-   const char* src     = &memoryRef<const char>( mem, srcp );
-   //char* dst_end       = &memoryRef<char>( mem, dstp+uint32_t(len));
-   const char* src_end = &memoryRef<const char>( mem, srcp+uint32_t(len) );
+   char* dst           = memoryArrayPtr<char>( mem, dstp, len);
+   const char* src     = memoryArrayPtr<const char>( mem, srcp, len );
+   FC_ASSERT( len > 0 );
 
-#warning TODO: wasm memcpy has undefined behavior if memory ranges overlap
-/*
    if( dst > src )
-      FC_ASSERT( dst < src_end && src < dst_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
+      FC_ASSERT( dst >= (src + len), "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
    else
-      FC_ASSERT( src < dst_end && dst < src_end, "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
-*/
+      FC_ASSERT( src >= (dst + len), "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
+
    memcpy( dst, src, uint32_t(len) );
    return dstp;
-}
-
-
-DEFINE_INTRINSIC_FUNCTION2(env,Varint_unpack,Varint_unpack,none,i32,streamptr,i32,valueptr) {
-   auto& wasm  = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-
-   uint32_t* stream = memoryArrayPtr<uint32_t>( mem, streamptr, 3 );
-   const char* pos = &memoryRef<const char>( mem, stream[1] );
-   const char* end = &memoryRef<const char>( mem, stream[2] );
-   uint32_t& value = memoryRef<uint32_t>( mem, valueptr );
-
-   fc::unsigned_int vi;
-   fc::datastream<const char*> ds(pos,end-pos);
-   fc::raw::unpack( ds, vi );
-   value = vi.value;
-
-   stream[1] += ds.pos() - pos;
 }
 
 
@@ -304,22 +286,10 @@ DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
 
   const char* str = &memoryRef<const char>( mem, charptr );
 
-  std::cerr << std::string( str, strlen(str) );
+  std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,toUpper,toUpper,none,i32,charptr) {
-   std::cerr << "TO UPPER CALLED\n";// << charptr << "\n";
-//   std::cerr << "moduleInstance: " << moduleInstance << "\n";
-  // /*U8* base = */Runtime::getMemoryBaseAddress( Runtime::getDefaultMemory(moduleInstance) );
-   //std::cerr << "Base Address: " << (int64_t)base;
-   //char* c = (char*)(base + charptr);
-   char& c = Runtime::memoryRef<char>( Runtime::getDefaultMemory(wasm_interface::get().current_module), charptr );
-//   std::cerr << "char: " << c <<"\n";
-//   if( c > 'Z' ) c -= 32;
-//   return 0;
 }
 
    wasm_interface& wasm_interface::get() {

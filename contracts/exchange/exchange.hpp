@@ -2,12 +2,15 @@
 
 namespace exchange {
 
+   using currency::CurrencyTokens;
+   using EosTokens = eos::Tokens;
+
    struct OrderID {
       AccountName name    = 0;
       uint64_t    number  = 0;
    };
 
-   typedef eos::price<eos::Tokens,currency::Tokens>     Price;
+   typedef eos::price<EosTokens,CurrencyTokens>     Price;
 
    struct Bid {
       OrderID            buyer;
@@ -17,28 +20,24 @@ namespace exchange {
    };
 
    struct Ask {
-      OrderID            seller;
-      Price              price;
-      currency::Tokens   quantity;
-      Time               expiration;
+      OrderID          seller;
+      Price            price;
+      CurrencyTokens   quantity;
+      Time             expiration;
    };
 
    struct Account {
       Account( AccountName o = AccountName() ):owner(o){}
 
       AccountName        owner;
-      eos::Tokens        eos_balance;
-      currency::Tokens   currency_balance;
+      EosTokens          eos_balance;
+      CurrencyTokens     currency_balance;
       uint32_t           open_orders = 0;
 
       bool isEmpty()const { return ! ( bool(eos_balance) | bool(currency_balance) | open_orders); }
    };
 
-   inline Account getAccount( AccountName owner ) {
-      Account account(owner);
-      Db::get( N(exchange), N(exchange), N(account), owner, account );
-      return account;
-   }
+   using Accounts = Table<N(exchange),N(exchange),N(account),Account,uint64_t>;
 
    TABLE2(Bids,exchange,exchange,bids,Bid,BidsById,OrderID,BidsByPrice,Price); 
    TABLE2(Asks,exchange,exchange,bids,Ask,AsksById,OrderID,AsksByPrice,Price); 
@@ -46,5 +45,12 @@ namespace exchange {
 
    struct BuyOrder : public Bid  { uint8_t fill_or_kill = false; };
    struct SellOrder : public Ask { uint8_t fill_or_kill = false; };
+
+
+   inline Account getAccount( AccountName owner ) {
+      Account account(owner);
+      Accounts::get( account );
+      return account;
+   }
 }
 

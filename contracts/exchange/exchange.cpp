@@ -43,11 +43,11 @@ namespace exchange {
 inline void save( const Account& a ) {
    if( a.isEmpty() ) {
       print("remove");
-      Db::remove( N(exchange), N(account), a.owner );
+      Accounts::remove(a);
    }
    else {
       print("store");
-      Db::store( N(exchange), N(account), a.owner, a );
+      Accounts::store(a);
    }
 }
 
@@ -101,8 +101,8 @@ void apply_eos_transfer( const eos::Transfer& transfer ) {
 void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
    eos::Tokens ask_eos = ask.quantity * ask.price;
 
-   eos::Tokens      fill_amount_eos = min<eos::Tokens>( ask_eos, bid.quantity );
-   currency::Tokens fill_amount_currency;
+   EosTokens      fill_amount_eos = min<eos::Tokens>( ask_eos, bid.quantity );
+   CurrencyTokens fill_amount_currency;
 
    if( fill_amount_eos == ask_eos ) { /// complete fill of ask
       fill_amount_currency = ask.quantity;
@@ -158,7 +158,7 @@ void apply_exchange_buy( BuyOrder order ) {
       print( "lowest ask <= bid.price\n" );
       match( bid, buyer_account, lowest_ask, seller_account );
 
-      if( lowest_ask.quantity == currency::Tokens(0) ) {
+      if( lowest_ask.quantity == CurrencyTokens(0) ) {
          save( seller_account );
          save( buyer_account );
          Asks::remove( lowest_ask );
@@ -188,7 +188,7 @@ void apply_exchange_sell( SellOrder order ) {
    Ask& ask = order;
    requireAuth( ask.seller.name ); 
 
-   assert( ask.quantity > currency::Tokens(0), "invalid quantity" );
+   assert( ask.quantity > CurrencyTokens(0), "invalid quantity" );
    assert( ask.expiration > now(), "order expired" );
 
    print( "\n\n", Name(ask.seller.name), " created sell for ", order.quantity, 
@@ -216,7 +216,7 @@ void apply_exchange_sell( SellOrder order ) {
    while( highest_bid.price >= ask.price ) {
       match( highest_bid, buyer_account, ask, seller_account );
 
-      if( highest_bid.quantity == eos::Tokens(0) ) {
+      if( highest_bid.quantity == EosTokens(0) ) {
          save( seller_account );
          save( buyer_account );
          Bids::remove( highest_bid );

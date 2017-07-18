@@ -23,7 +23,15 @@ namespace TOKEN_NAME {
       CurrencyTokens    quantity;
    };
 
+   /**
+    *  @brief row in Account table stored within each scope
+    */
    struct Account {
+      Account( CurrencyTokens b = CurrencyTokens() ):balance(b){}
+
+      /**
+       *  The key is constant because there is only one record per scope/currency/accounts
+       */
       const uint64_t     key = N(account);
       CurrencyTokens     balance;
 

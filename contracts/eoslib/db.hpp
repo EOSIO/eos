@@ -8,7 +8,6 @@ extern "C" {
 
 /**
  *  @ingroup databaseCpp
- */
 struct Db
 {
 
@@ -34,15 +33,15 @@ struct Db
    }
 
    template<typename T>
-   static int32_t store( Name scope, TableName table, uint64_t key, const T& value ) {
-      return store_i64( scope, table, key, &value, sizeof(value) );
+   static int32_t store( Name scope, TableName table, const T& value ) {
+      return store_i64( scope, table,  &value, sizeof(value) );
    }
 
    static bool remove( Name scope, TableName table, uint64_t key ) {
       return remove_i64( scope, table, key );
    }
-
 };
+ */
 
 
 template<int Primary, int Secondary>
@@ -83,7 +82,7 @@ struct table_impl<sizeof(uint64_t),0> {
        return back_i64( scope, code, table, data, len );
     }
     static bool remove( uint64_t scope, uint64_t table, const void* data ) {
-       return remove_i64( scope, table, data );
+       return remove_i64( scope, table, *((uint64_t*)data) );
     }
     static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
        return load_i64( scope, code, table, data, len );
@@ -113,7 +112,7 @@ template<uint64_t scope, uint64_t code, uint64_t table, typename Record, typenam
 struct Table {
    private:
    typedef table_impl<sizeof( PrimaryType ), sizeof( SecondaryType )> impl;
-   static_assert( sizeof(PrimaryType) + sizeof(SecondaryType) >= sizeof(Record), "invalid template parameters" );
+   static_assert( sizeof(PrimaryType) + sizeof(SecondaryType) <= sizeof(Record), "invalid template parameters" );
 
    public:
    typedef PrimaryType Primary;
@@ -144,8 +143,8 @@ struct Table {
       static bool upper_bound( const PrimaryType& p, Record& r ) {
          return impl::upper_bound_primary( scope, code, table, &p &r, sizeof(Record) ) == sizeof(Record);
       }
-      static bool remove( const Record& r ) {
-         return impl::remove( scope, table, &r );
+      static bool remove( const Record& r, uint64_t s = scope ) {
+         return impl::remove( s, table, &r );
       }
    };
 
@@ -205,8 +204,8 @@ struct Table {
 template<uint64_t scope, uint64_t code, uint64_t table, typename Record, typename PrimaryType>
 struct Table<scope,code,table,Record,PrimaryType,void> {
    private:
-   typedef table_impl<sizeof( PrimaryType )> impl;
-   static_assert( sizeof(PrimaryType) >= sizeof(Record), "invalid template parameters" );
+   typedef table_impl<sizeof( PrimaryType ),0> impl;
+   static_assert( sizeof(PrimaryType) <= sizeof(Record), "invalid template parameters" );
 
    public:
    typedef PrimaryType Primary;
