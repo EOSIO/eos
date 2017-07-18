@@ -1,5 +1,5 @@
 /**
-   @defgroup eosiorpc EOS.IO RPC Interface
+   @defgroup eosiorpc eosd RPC Interface
    @brief Describes how to interface with eosd over HTTP RPC
 
    `eosd` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
@@ -41,12 +41,13 @@
 
    @subsection v1chaingetblock get_block
 
-@subsection examplegetlbock  Example get_block Usage
+@subsubsection examplegetlbock  Example get_block Usage
    ```
    curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":5}'
    curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b}'
    ```
 
+@subsubsection examplegetlbockresult  Example get_block Result
    ```
 	 {
 		 "previous": "0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b",
@@ -56,9 +57,9 @@
 		 "producer_changes": [ ],
 		 "producer_signature": "204cb94b3186c3b4a7f88be4e9db9f8af2ffdb7ef0f27a065c8177a5fcfacf876f684e59c39fb009903c0c59220b147bb07f1144df1c65d26c57b534a76dd29073",
 		 "cycles": [ ],
-     "id":"000000050c0175cbf218a70131ddc3c3fab8b6e954edef77e0bfe7c36b599b1d",
-     "block_num":5,
-     "refBlockPrefix":27728114
+ 		 "id":"000000050c0175cbf218a70131ddc3c3fab8b6e954edef77e0bfe7c36b599b1d",
+ 		 "block_num":5,
+ 		 "refBlockPrefix":27728114
 	 }
    ```
 

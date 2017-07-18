@@ -10,6 +10,7 @@
 /**
  *  @defgroup tokens Token API
  *  @brief Defines the ABI for interfacing with standard-compatible token messages and database tables.
+ *  @ingroup contractdev
  *
  *
  */
