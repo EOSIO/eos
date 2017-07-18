@@ -20,4 +20,6 @@ typedef uint64_t TokenName;
 typedef uint64_t TableName;
 typedef uint32_t Time;
 
+#define PACKED(X) __attribute((packed)) X
+
 } /// extern "C"

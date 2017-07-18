@@ -21,8 +21,8 @@ namespace eos { namespace chain {
 DEFINE_INTRINSIC_FUNCTION2(env,multeq_i128,multeq_i128,none,i32,self,i32,other) {
    auto& wasm  = wasm_interface::get();
    auto  mem   = wasm.current_memory;
-   uint128_t& v = memoryRef<uint128_t>( mem, self );
-   const uint128_t& o= memoryRef<const uint128_t>( mem, other );
+   auto& v = memoryRef<unsigned __int128>( mem, self );
+   const auto& o = memoryRef<const unsigned __int128>( mem, other );
    v *= o;
 }
 
@@ -30,8 +30,8 @@ DEFINE_INTRINSIC_FUNCTION2(env,multeq_i128,multeq_i128,none,i32,self,i32,other) 
 DEFINE_INTRINSIC_FUNCTION2(env,diveq_i128,diveq_i128,none,i32,self,i32,other) {
    auto& wasm  = wasm_interface::get();
    auto  mem          = wasm.current_memory;
-   uint128_t& v       = memoryRef<uint128_t>( mem, self );
-   const uint128_t& o = memoryRef<const uint128_t>( mem, other );
+   auto& v = memoryRef<unsigned __int128>( mem, self );
+   const auto& o = memoryRef<const unsigned __int128>( mem, other );
    FC_ASSERT( o != 0, "divide by zero" );
    v /= o;
 }
@@ -61,9 +61,17 @@ DEFINE_INTRINSIC_FUNCTION4(env,store_i128i128,store_i128i128,i32,i64,scope,i64,t
    return result;
 }
 
+struct i128_keys {
+   uint128_t primary;
+   uint128_t secondary;
+};
+
 DEFINE_INTRINSIC_FUNCTION3(env,remove_i128i128,remove_i128i128,i32,i64,scope,i64,table,i32,data) {
-   FC_ASSERT( !"remove not implemented" );
-   return 0;
+   auto& wasm  = wasm_interface::get();
+   FC_ASSERT( wasm.current_apply_context, "not a valid apply context" );
+
+   const i128_keys& keys = memoryRef<const i128_keys>( wasm.current_memory, data );
+   return wasm_interface::get().current_apply_context->remove_i128i128( Name(scope), Name(table), keys.primary, keys.secondary );
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,load_primary_i128i128,load_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,data,i32,datalen) {
@@ -237,11 +245,14 @@ DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size
 
 DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
    FC_ASSERT( destsize > 0 );
+
    wasm_interface& wasm = wasm_interface::get();
    auto  mem   = wasm.current_memory;
-   char* begin = memoryArrayPtr<char>( mem, destptr, destsize );
+   char* begin = memoryArrayPtr<char>( mem, destptr, uint32_t(destsize) );
 
    int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
+
+   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
    memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
    return minlen;
 }
@@ -273,8 +284,9 @@ DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
 DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
   auto& wasm  = wasm_interface::get();
   auto  mem   = wasm.current_memory;
-  fc::uint128_t& value = memoryRef<fc::uint128_t>( mem, val );
-  std::cerr << fc::variant(value).get_string();
+  auto& value = memoryRef<unsigned __int128>( mem, val );
+  fc::uint128_t v(value>>64, uint64_t(value) );
+  std::cerr << fc::variant(v).get_string();
 }
 DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
   std::cerr << Name(val).toString();

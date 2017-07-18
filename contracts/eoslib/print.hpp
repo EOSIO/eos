@@ -5,6 +5,7 @@
 
 namespace eos {
 
+   static_assert( sizeof(long) == sizeof(int), "unexpected size difference" );
 
    inline void print( const char* ptr ) {
       prints(ptr);
@@ -17,6 +18,9 @@ namespace eos {
       printi(num);
    }
    inline void print( int num ) {
+      printi(num);
+   }
+   inline void print( unsigned int num ) {
       printi(num);
    }
 

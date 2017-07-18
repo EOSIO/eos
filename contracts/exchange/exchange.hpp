@@ -12,21 +12,31 @@ namespace exchange {
 
    typedef eos::price<EosTokens,CurrencyTokens>     Price;
 
-   struct Bid {
+   struct PACKED( Bid ) {
       OrderID            buyer;
       Price              price;
       eos::Tokens        quantity;
       Time               expiration;
-   };
 
-   struct Ask {
+      void print() {
+         eos::print( "{ quantity: ", quantity, ", price: ", price, " }" );
+      }
+   };
+   static_assert( sizeof(Bid) == 32+12, "unexpected padding" );
+
+   struct PACKED( Ask ) {
       OrderID          seller;
       Price            price;
       CurrencyTokens   quantity;
       Time             expiration;
-   };
 
-   struct Account {
+      void print() {
+         eos::print( "{ quantity: ", quantity, ", price: ", price, " }" );
+      }
+   };
+   static_assert( sizeof(Ask) == 32+12, "unexpected padding" );
+
+   struct PACKED( Account ) {
       Account( AccountName o = AccountName() ):owner(o){}
 
       AccountName        owner;

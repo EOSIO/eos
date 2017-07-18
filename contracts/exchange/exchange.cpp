@@ -99,6 +99,8 @@ void apply_eos_transfer( const eos::Transfer& transfer ) {
 }
 
 void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
+   print( "match bid: ", bid, "\nmatch ask: ", ask, "\n");
+
    eos::Tokens ask_eos = ask.quantity * ask.price;
 
    EosTokens      fill_amount_eos = min<eos::Tokens>( ask_eos, bid.quantity );
@@ -150,7 +152,8 @@ void apply_exchange_buy( BuyOrder order ) {
       return;
    }
 
-   print( "asks found, lets see what matches\n" );
+   print( "ask: ", lowest_ask, "\n" );
+   print( "bid: ", bid, "\n" );
 
    auto seller_account = getAccount( lowest_ask.seller.name );
 

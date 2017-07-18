@@ -82,6 +82,7 @@ class apply_context : public precondition_validate_context {
 
       int32_t store_i64( Name scope, Name table, Name key, const char* data, uint32_t len);
       int32_t remove_i64( Name scope, Name table, Name key );
+      int32_t remove_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary );
       int32_t store_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary,
                               const char* data, uint32_t len );
 

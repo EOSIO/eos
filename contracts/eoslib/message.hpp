@@ -1,5 +1,6 @@
 #pragma once
 #include <eoslib/message.h>
+#include <eoslib/print.hpp>
 
 namespace eos {
 

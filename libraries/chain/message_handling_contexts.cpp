@@ -259,6 +259,21 @@ int32_t message_validate_context::lowerbound_secondary_i128i128( Name scope, Nam
    return copylen;
 }
 
+int32_t apply_context::remove_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary ) {
+   require_scope( scope );
+
+   const auto* obj = db.find<key128x128_value_object,by_scope_primary>( boost::make_tuple(
+                                                            AccountName(scope), 
+                                                            AccountName(code), 
+                                                            AccountName(table), 
+                                                            primary, secondary) );
+   if( obj ) {
+      mutable_db.remove( *obj );
+      return 1;
+   }
+   return 0;
+}
+
 int32_t apply_context::remove_i64( Name scope, Name table, Name key ) {
    require_scope( scope );
 

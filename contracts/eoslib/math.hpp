@@ -74,7 +74,7 @@ namespace eos {
         }
 
      private:
-        uint128_t value;
+        uint128_t value = 0;
   };
 
    /**

@@ -101,10 +101,13 @@ namespace eos {
       }
 
       friend QuoteToken operator / ( BaseToken b, const price& q ) {
-         return QuoteToken( uint64_t((uint128(b.quantity) * uint128(precision) )  / q.base_per_quote) );
+         eos::print( "operator/ ", uint128(b.quantity), " * ", uint128( precision ), " / ", q.base_per_quote, "\n" );
+         return QuoteToken( uint64_t((uint128(b.quantity) * uint128(precision)   / q.base_per_quote)) );
       }
 
-      friend BaseToken operator * ( QuoteToken b, const price& q ) {
+      friend BaseToken operator * ( const QuoteToken& b, const price& q ) {
+         eos::print( "b: ", b, " \n" );
+         eos::print( "operator* ", uint128(b.quantity), " * ", uint128( q.base_per_quote ), " / ", precision, "\n" );
          //return QuoteToken( uint64_t( mult_div_i128( b.quantity, q.base_per_quote, precision ) ) );
          return BaseToken( uint64_t((b.quantity * q.base_per_quote) / precision) );
       }

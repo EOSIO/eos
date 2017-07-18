@@ -54,21 +54,23 @@ using namespace chain;
       uint64_t    number  = 0;
    };
 
-   struct Bid {
+   struct __attribute((packed)) Bid {
       OrderID            buyer;
-      fc::uint128_t      price;
+      unsigned __int128  price;
       uint64_t           quantity;
       Time               expiration;
+      uint8_t            fill_or_kill = false;
    };
-   struct Ask {
+   struct __attribute((packed)) Ask {
       OrderID            seller;
-      fc::uint128_t      price;
+      unsigned __int128  price;
       uint64_t           quantity;
       Time               expiration;
+      uint8_t            fill_or_kill = false;
    };
 FC_REFLECT( OrderID, (name)(number) );
-FC_REFLECT( Bid, (buyer)(price)(quantity)(expiration) );
-FC_REFLECT( Ask, (seller)(price)(quantity)(expiration) );
+FC_REFLECT( Bid, (buyer)(price)(quantity)(expiration)(fill_or_kill) );
+FC_REFLECT( Ask, (seller)(price)(quantity)(expiration)(fill_or_kill) );
 
    struct record {
       uint64_t a = 0;
@@ -369,9 +371,9 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 
 
 static const uint64_t precision = 1000ll*1000ll*1000ll*1000ll*1000ll;
-fc::uint128_t to_price( double p ) {
+unsigned __int128 to_price( double p ) {
    uint64_t  pi(p);
-   fc::uint128_t result(pi);
+   unsigned __int128 result(pi);
    result *= precision;
 
    double fract = p - pi;
@@ -393,6 +395,7 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
    trx.emplaceMessage("exchange", sort_names( {} ),
                       vector<types::AccountPermission>{ {seller,"active"} },
                       "sell", b );
+   //trx.messages.back().set_packed( "sell", b);
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
    chain.push_transaction(trx);
@@ -410,6 +413,7 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
    trx.emplaceMessage("exchange", sort_names( {} ),
                       vector<types::AccountPermission>{ {buyer,"active"} },
                       "buy", b );
+   //trx.messages.back().set_packed( "buy", b);
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
    chain.push_transaction(trx);
@@ -464,7 +468,8 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
       //BOOST_REQUIRE_THROW( SellCurrency( chain, "initb", "exchange", 1, 100, .5 ), fc::exception ); // order id already exists
       //SellCurrency( chain, "initb", "exchange", 2, 100, .75 );
 
-      BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ); 
+//      BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ); 
+      BuyCurrency( chain, "initb", "exchange", 1, 50, .5 ); 
       //BOOST_REQUIRE_THROW( BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ), fc::exception );  // order id already exists
 
       /// this should buy 5 from initb order 2 at a price of .75

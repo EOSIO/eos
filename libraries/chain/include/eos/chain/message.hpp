@@ -30,6 +30,13 @@ struct Message : public types::Message {
    Message(const types::Message& m) : types::Message(m) {}
 
    template<typename T>
+   void set_packed(const types::FuncName& t, const T& value) {
+      type = t;
+      data.resize(sizeof(value));
+      memcpy( data.data(), &value, sizeof(value) );
+   }
+
+   template<typename T>
    void set(const types::FuncName& t, const T& value) {
       type = t;
       data = fc::raw::pack(value);
