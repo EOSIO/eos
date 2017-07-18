@@ -6,8 +6,9 @@
 
 #include <eoslib/types.h>
 /**
- *  @defgroup database EOS.IO Database API
+ *  @defgroup database Database API
  *  @brief APIs that store and retreive data on the blockchain
+ *  @ingroup contractdev
  *
  *  EOS.IO organizes data according to the following broad structure:
  *
@@ -107,12 +108,29 @@ int32_t remove_i64( AccountName scope, TableName table, uint64_t key );
  *  @brief Interface to a database table with 128 bit primary and secondary keys and arbitary binary data value.
  *  @ingroup databaseC 
  *
- *  These methods expect data to point to a record that is at least 2*sizeof(uint128_t) where the leading
- *  32 bytes are the primary and secondary keys.  These keys will be interpreted and sorted as unsigned
- *  128 bit integers.  
+ *  @param scope - the account where table data will be found
+ *  @param code  - the code which owns the table
+ *  @param table - the name of the table where record is stored
+ *  @param data  - a pointer to memory that is at least 32 bytes long 
+ *  @param len   - the length of data, must be greater than or equal to 32 bytes
  *
  *  @return the total number of bytes read or -1 for "not found" or "end" where bytes 
  *  read includes 32 bytes of the key  
+ *
+ *  These methods assume a database table with records of the form:
+ *
+ *  ```
+ *     struct Record {
+ *        uint128  primary;
+ *        uint128  secondary;
+ *        ... arbitrary data ...
+ *     };
+ *
+ *  ```
+ *
+ *  You can iterate over these indicies with primary index sorting records by { primary, secondary } and
+ *  the secondary index sorting records by { secondary, primary }.  This means that duplicates of the primary or
+ *  secondary values are allowed so long as there are no duplicates of the combination {primary, secondary}.
  *
  *  @see Table class in C++ API
  * 
@@ -143,12 +161,17 @@ int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, Tab
                                      const void* key, void* data, uint32_t len );
 
 int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, const void* secondary, void* data, uint32_t len );
-///@}
 
-/// data must point to 2*sizeof(uint128) containing primary and secondary key
+/**
+ * @param data - must point to at lest 32 bytes containing {primary,secondary}
+ *
+ * @return true if the record was removed, false if no record was found
+ */
 bool remove_i128i128( AccountName scope, TableName table, const void* data );
-/// data must point to at least 2*sizeof(uint128) containing primary and secondary key
+/**
+ * Creates or updates a record and returns true if successful
+ */
 bool store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
 
-///@ }
+///@}  dbi128i128
 

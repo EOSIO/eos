@@ -1,6 +1,7 @@
 #include <currency/currency.hpp> /// defines transfer struct (abi)
 
 namespace TOKEN_NAME {
+   using namespace eos;
 
    ///  When storing accounts, check for empty balance and remove account
    void storeAccount( AccountName account, const Account& a ) {

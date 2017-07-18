@@ -2,13 +2,34 @@
 #include <eoslib/math.h>
 
 namespace eos {
+
+  /**
+   *  @defgroup mathapi Math API
+   *  @brief Defines common math functions 
+   *  @ingroup contractdev
+   */
+
+  /**
+   *  @defgroup mathcppapi Math C++ API
+   *  @brief Defines common math functions and helper types
+   *  @ingroup mathapi
+   *
+   *  @{
+   */
+
+  /** @brief wraps multeq_i128 from @ref mathcapi */
   inline void multeq( uint128_t& self, const uint128_t& other ) {
      multeq_i128( &self, &other );
   }
+
+  /** @brief wraps diveq_i128 from @ref mathcapi */
   inline void diveq( uint128_t& self, const uint128_t& other ) {
      diveq_i128( &self, &other );
   }
 
+  /**
+   * @brief a struct that wraps uint128 integer and defines common operator overloads
+   */
   struct uint128 {
      public:
         uint128( uint128_t i = 0 ):value(i){}
@@ -55,4 +76,21 @@ namespace eos {
      private:
         uint128_t value;
   };
+
+   /**
+    * Define similar to std::min()
+    */
+   template<typename T>
+   T min( const T& a, const T&b ) {
+     return a < b ? a : b;
+   }
+   /**
+    * Define similar to std::max()
+    */
+   template<typename T>
+   T max( const T& a, const T&b ) {
+     return a > b ? a : b;
+   }
+
+   /// @} /// mathcppapi
 }

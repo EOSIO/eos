@@ -3,6 +3,12 @@
 *.cmake
 *.dylib
 *.ll
+*.bc
+*.wast
+*.wast.hpp
+*.wasm
+*.s
+*.dot
 
 CMakeCache.txt
 CMakeFiles

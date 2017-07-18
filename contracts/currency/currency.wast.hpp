@@ -15,9 +15,10 @@ const char* currency_wast = R"=====(
  (import "env" "store_i64" (func $store_i64 (param i64 i64 i32 i32) (result i32)))
  (table 0 anyfunc)
  (memory $0 1)
- (data (i32.const 4) "p\04\00\00")
+ (data (i32.const 4) "\90\04\00\00")
  (data (i32.const 16) "integer underflow subtracting token balance\00")
  (data (i32.const 64) "integer overflow adding token balance\00")
+ (data (i32.const 112) "message shorter than expected\00")
  (export "memory" (memory $0))
  (export "_ZN8currency12storeAccountEyRKNS_7AccountE" (func $_ZN8currency12storeAccountEyRKNS_7AccountE))
  (export "_ZN8currency23apply_currency_transferERKNS_8TransferE" (func $_ZN8currency23apply_currency_transferERKNS_8TransferE))
@@ -327,14 +328,18 @@ const char* currency_wast = R"=====(
     (get_local $2)
     (i64.const 0)
    )
-   (drop
-    (call $readMessage
-     (i32.add
-      (get_local $2)
-      (i32.const 8)
+   (call $assert
+    (i32.gt_u
+     (call $readMessage
+      (i32.add
+       (get_local $2)
+       (i32.const 8)
+      )
+      (i32.const 24)
      )
-     (i32.const 24)
+     (i32.const 23)
     )
+    (i32.const 112)
    )
    (call $_ZN8currency23apply_currency_transferERKNS_8TransferE
     (i32.add

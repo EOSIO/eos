@@ -31,7 +31,7 @@ const char* exchange_wast = R"=====(
  (import "env" "store_i64" (func $store_i64 (param i64 i64 i32 i32) (result i32)))
  (table 0 anyfunc)
  (memory $0 1)
- (data (i32.const 4) "`\08\00\00")
+ (data (i32.const 4) "\80\08\00\00")
  (data (i32.const 16) "integer overflow adding token balance\00")
  (data (i32.const 64) "remove\00")
  (data (i32.const 80) "store\00")
@@ -65,7 +65,8 @@ const char* exchange_wast = R"=====(
  (data (i32.const 976) "\n No bids found, saving seller account and storing ask\n\00")
  (data (i32.const 1040) "\n bids found, lets see what matches\n\00")
  (data (i32.const 1088) "saving ask\n\00")
- (data (i32.const 1104) "unknown action\00")
+ (data (i32.const 1104) "message shorter than expected\00")
+ (data (i32.const 1136) "unknown action\00")
  (export "memory" (memory $0))
  (export "_ZN8exchange23apply_currency_transferERKN8currency8TransferE" (func $_ZN8exchange23apply_currency_transferERKN8currency8TransferE))
  (export "_ZN8exchange18apply_eos_transferERKN3eos8TransferE" (func $_ZN8exchange18apply_eos_transferERKN3eos8TransferE))
@@ -2886,14 +2887,18 @@ const char* exchange_wast = R"=====(
        (get_local $2)
        (i32.const 0)
       )
-      (drop
-       (call $readMessage
-        (i32.add
-         (get_local $2)
-         (i32.const 176)
+      (call $assert
+       (i32.gt_u
+        (call $readMessage
+         (i32.add
+          (get_local $2)
+          (i32.const 176)
+         )
+         (i32.const 48)
         )
-        (i32.const 48)
+        (i32.const 47)
        )
+       (i32.const 1104)
       )
       (call $_ZN8exchange18apply_exchange_buyENS_8BuyOrderE
        (call $memcpy
@@ -2924,14 +2929,18 @@ const char* exchange_wast = R"=====(
        (get_local $2)
        (i64.const 0)
       )
-      (drop
-       (call $readMessage
-        (i32.add
-         (get_local $2)
-         (i32.const 104)
+      (call $assert
+       (i32.gt_u
+        (call $readMessage
+         (i32.add
+          (get_local $2)
+          (i32.const 104)
+         )
+         (i32.const 24)
         )
-        (i32.const 24)
+        (i32.const 23)
        )
+       (i32.const 1104)
       )
       (call $_ZN8exchange23apply_currency_transferERKN8currency8TransferE
        (i32.add
@@ -2957,14 +2966,18 @@ const char* exchange_wast = R"=====(
       (get_local $2)
       (i64.const 0)
      )
-     (drop
-      (call $readMessage
-       (i32.add
-        (get_local $2)
-        (i32.const 104)
+     (call $assert
+      (i32.gt_u
+       (call $readMessage
+        (i32.add
+         (get_local $2)
+         (i32.const 104)
+        )
+        (i32.const 24)
        )
-       (i32.const 24)
+       (i32.const 23)
       )
+      (i32.const 1104)
      )
      (call $_ZN8exchange18apply_eos_transferERKN3eos8TransferE
       (i32.add
@@ -3001,14 +3014,18 @@ const char* exchange_wast = R"=====(
      (get_local $2)
      (i32.const 0)
     )
-    (drop
-     (call $readMessage
-      (i32.add
-       (get_local $2)
-       (i32.const 128)
+    (call $assert
+     (i32.gt_u
+      (call $readMessage
+       (i32.add
+        (get_local $2)
+        (i32.const 128)
+       )
+       (i32.const 48)
       )
-      (i32.const 48)
+      (i32.const 47)
      )
+     (i32.const 1104)
     )
     (drop
      (call $memcpy
@@ -3033,7 +3050,7 @@ const char* exchange_wast = R"=====(
    )
    (call $assert
     (i32.const 0)
-    (i32.const 1104)
+    (i32.const 1136)
    )
   )
   (i32.store offset=4
