@@ -33,48 +33,46 @@
  *  creating, canceling, and filling orders do not require blocking either currency
  *  contract.  Users can only deposit or withdraw to their own currency account.
  */
-#include <contracts/currency.hpp> /// defines transfer struct
+#include <exchange/exchange.hpp> /// defines transfer struct
+#include <eoslib/print.hpp>
 
+using namespace exchange;
+using namespace eos;
 
-struct Account {
-   uint64_t   a = 0;
-   uint64_t   b = 0;
-   int        open_orders = 0;
+namespace exchange {
+inline void save( const Account& a ) {
+   if( a.isEmpty() ) {
+      print("remove");
+      Accounts::remove(a);
+   }
+   else {
+      print("store");
+      Accounts::store(a);
+   }
+}
 
-   bool isEmpty()const { return !(a|b|open_orders); }
-   /**
-    *  Balance records for all exchange users are stored here
-    *  exchange/exchange/balance/username -> Balance
-    */
-   static Name tableId() { return Name("balance"); }
-};
-
-
+template<typename Lambda>
+inline void modifyAccount( AccountName a, Lambda&& modify ) {
+   auto acnt = getAccount( a );
+   modify( acnt );
+   save( acnt );
+}
 
 /**
  *  This method is called after the "transfer" action of code
  *  "currencya" is called and "exchange" is listed in the notifiers.
  */
-void apply_currencya_transfer() {
-   const auto& transfer  = currentMessage<Transfer>();
-
-   if( transfer.to == "exchange" ) {
-      static Balance to_balance;
-      Db::get( transfer.from, to_balance );
-      to_balance.a += transfer.amount;
-      Db::store( transfer.from, to_balance );
-   } else if( transfer.from == "exchange" ) {
+void apply_currency_transfer( const currency::Transfer& transfer ) {
+   if( transfer.to == N(exchange) ) {
+      modifyAccount( transfer.from, [&]( Account& account ){ 
+          account.currency_balance += transfer.quantity; 
+      });
+   } else if( transfer.from == N(exchange) ) {
       requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
 
-      static Balance to_balance;
-      auto balance = Db::get( transfer.to, to_balance );
-      assert( balance.a >= transfer.amount, "insufficient funds to withdraw" );
-      balance.a -= transfer.amount;
-
-      if( balance.isEmpty() )
-         Db::remove<Balance>( transfer.to );
-      else
-         Db::store( transfer.to, to_balance );
+      modifyAccount( transfer.to, [&]( Account& account ){ 
+          account.currency_balance -= transfer.quantity; 
+      });
    } else {
       assert( false, "notified on transfer that is not relevant to this exchange" );
    }
@@ -84,38 +82,174 @@ void apply_currencya_transfer() {
  *  This method is called after the "transfer" action of code
  *  "currencya" is called and "exchange" is listed in the notifiers.
  */
-void apply_currencyb_transfer() {
-   const auto& transfer  = currentMessage<Transfer>();
-
-   if( transfer.to == "exchange" ) {
-      static Balance to_balance;
-      Db::get( transfer.from, to_balance );
-      to_balance.b += transfer.amount;
-      Db::store( transfer.from, to_balance );
-   } else if( transfer.from == "exchange" ) {
+void apply_eos_transfer( const eos::Transfer& transfer ) {
+   if( transfer.to == N(exchange) ) {
+      modifyAccount( transfer.from, [&]( Account& account ){ 
+          account.eos_balance += transfer.quantity; 
+      });
+   } else if( transfer.from == N(exchange) ) {
       requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
 
-      static Balance to_balance;
-      auto balance = Db::get( transfer.to, to_balance );
-      assert( balance.b >= transfer.amount, "insufficient funds to withdraw" );
-      balance.b -= transfer.amount;
-
-      if( balance.isEmpty() )
-         Db::remove<Balance>( transfer.to );
-      else
-         Db::store( transfer.to, to_balance );
+      modifyAccount( transfer.to, [&]( Account& account ){ 
+          account.eos_balance -= transfer.quantity; 
+      });
    } else {
       assert( false, "notified on transfer that is not relevant to this exchange" );
    }
 }
 
+void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
+   print( "match bid: ", bid, "\nmatch ask: ", ask, "\n");
 
-export "C" {
+   eos::Tokens ask_eos = ask.quantity * ask.price;
+
+   EosTokens      fill_amount_eos = min<eos::Tokens>( ask_eos, bid.quantity );
+   CurrencyTokens fill_amount_currency;
+
+   if( fill_amount_eos == ask_eos ) { /// complete fill of ask
+      fill_amount_currency = ask.quantity;
+   } else { /// complete fill of buy
+      fill_amount_currency = fill_amount_eos / ask.price;
+   }
+
+   print( "\n\nmatch bid: ", Name(bid.buyer.name), ":", bid.buyer.number,
+          "match ask: ", Name(ask.seller.name), ":", ask.seller.number, "\n\n" );
+
+
+   bid.quantity -= fill_amount_eos;
+   seller.eos_balance += fill_amount_eos;
+
+   ask.quantity -= fill_amount_currency;
+   buyer.currency_balance += fill_amount_currency;
+}
+
+/**
+ * 
+ *  
+ */
+void apply_exchange_buy( BuyOrder order ) {
+   Bid& bid = order;
+   requireAuth( bid.buyer.name ); 
+
+   assert( bid.quantity > eos::Tokens(0), "invalid quantity" );
+   assert( bid.expiration > now(), "order expired" );
+
+   print( Name(bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.price, "\n" );
+
+   Bid existing_bid;
+   assert( !BidsById::get( bid.buyer, existing_bid ), "order with this id already exists" );
+   print( __FILE__, __LINE__, "\n" );
+
+   auto buyer_account = getAccount( bid.buyer.name );
+   buyer_account.eos_balance -= bid.quantity;
+
+   Ask lowest_ask;
+   if( !AsksByPrice::front( lowest_ask ) ) {
+      print( "\n No asks found, saving buyer account and storing bid\n" );
+      assert( !order.fill_or_kill, "order not completely filled" );
+      Bids::store( bid );
+      save( buyer_account );
+      return;
+   }
+
+   print( "ask: ", lowest_ask, "\n" );
+   print( "bid: ", bid, "\n" );
+
+   auto seller_account = getAccount( lowest_ask.seller.name );
+
+   while( lowest_ask.price <= bid.price ) {
+      print( "lowest ask <= bid.price\n" );
+      match( bid, buyer_account, lowest_ask, seller_account );
+
+      if( lowest_ask.quantity == CurrencyTokens(0) ) {
+         save( seller_account );
+         save( buyer_account );
+         Asks::remove( lowest_ask );
+         if( !AsksByPrice::front( lowest_ask ) ) {
+            break;
+         }
+         seller_account = getAccount( lowest_ask.seller.name );
+      } else {
+         break; // buyer's bid should be filled
+      }
+   }
+   print( "lowest_ask >= bid.price or buyer's bid has been filled\n" );
+
+   save( buyer_account );
+   print( "saving buyer's account\n" );
+   if( bid.quantity ) {
+      print( bid.quantity, " eos left over" );
+      assert( !order.fill_or_kill, "order not completely filled" );
+      Bids::store( bid );
+      return;
+   }
+   print( "bid filled\n" );
+
+}
+
+void apply_exchange_sell( SellOrder order ) {
+   Ask& ask = order;
+   requireAuth( ask.seller.name ); 
+
+   assert( ask.quantity > CurrencyTokens(0), "invalid quantity" );
+   assert( ask.expiration > now(), "order expired" );
+
+   print( "\n\n", Name(ask.seller.name), " created sell for ", order.quantity, 
+          " currency at price: ", order.price, "\n");
+
+   Ask existing_ask;
+   assert( !AsksById::get( ask.seller, existing_ask ), "order with this id already exists" );
+
+   auto seller_account = getAccount( ask.seller.name );
+   seller_account.currency_balance -= ask.quantity;
+
+
+   Bid highest_bid;
+   if( !BidsByPrice::back( highest_bid ) ) {
+      assert( !order.fill_or_kill, "order not completely filled" );
+      print( "\n No bids found, saving seller account and storing ask\n" );
+      Asks::store( ask );
+      save( seller_account );
+      return;
+   }
+
+   print( "\n bids found, lets see what matches\n" );
+   auto buyer_account = getAccount( highest_bid.buyer.name );
+
+   while( highest_bid.price >= ask.price ) {
+      match( highest_bid, buyer_account, ask, seller_account );
+
+      if( highest_bid.quantity == EosTokens(0) ) {
+         save( seller_account );
+         save( buyer_account );
+         Bids::remove( highest_bid );
+         if( !BidsByPrice::back( highest_bid ) ) {
+            break;
+         }
+         buyer_account = getAccount( highest_bid.buyer.name );
+      } else {
+         break; // buyer's bid should be filled
+      }
+   }
+
+   save( seller_account );
+   if( ask.quantity ) {
+      assert( !order.fill_or_kill, "order not completely filled" );
+      print( "saving ask\n" );
+      Asks::store( ask );
+   }
+}
+
+} // namespace exchange
+
+extern "C" {
    void init() {
+      /*
       setAuthority( "currencya", "transfer", "anyone" );
       setAuthority( "currencyb", "transfer", "anyone" );
       registerHandler( "apply", "currencya", "transfer" );
       registerHandler( "apply", "currencyb", "transfer" );
+      */
    }
 
 //   void validate( uint64_t code, uint64_t action ) { }
@@ -124,11 +258,27 @@ export "C" {
     *  The apply method implements the dispatch of events to this contract
     */
    void apply( uint64_t code, uint64_t action ) {
-      if( code == "currencya" ) {
-        if( action == "transfer" ) apply_currencya_transfer();
-      } else if( code == "currencyb" ) {
-        if( action == "transfer" ) apply_currencyb_transfer();
-      } else {
+      if( code == N(exchange) ) {
+         switch( action ) {
+            case N(buy):
+               apply_exchange_buy( currentMessage<exchange::BuyOrder>() );
+               break;
+            case N(sell):
+               apply_exchange_sell( currentMessage<exchange::SellOrder>() );
+               break;
+            default:
+               assert( false, "unknown action" );
+         }
+      } 
+      else if( code == N(currency) ) {
+        if( action == N(transfer) ) 
+           apply_currency_transfer( currentMessage<currency::Transfer>() );
+      } 
+      else if( code == N(eos) ) {
+        if( action == N(transfer) ) 
+           apply_eos_transfer( currentMessage<eos::Transfer>() );
+      } 
+      else {
       }
    }
 }

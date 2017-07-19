@@ -18,6 +18,8 @@
 
 #include <fc/reflect/reflect.hpp>
 
+#define N(X) eos::types::string_to_name(#X)
+
 namespace eos { namespace types {
    using namespace boost::multiprecision;
 
@@ -54,7 +56,34 @@ namespace eos { namespace types {
    using Int64     = int64_t; //Int<64>; 
    using Int128    = boost::multiprecision::int128_t;
    using Int256    = boost::multiprecision::int256_t;
+   using uint128_t = unsigned __int128; /// native clang/gcc 128 intrinisic
+   
+   static constexpr char char_to_symbol( char c ) {
+      if( c >= 'a' && c <= 'z' )
+         return (c - 'a') + 1;
+      if( c >= '1' && c <= '5' )
+         return (c - '1') + 26;
+      return 0;
+   }
 
+   static constexpr uint64_t string_to_name( const char* str ) {
+      uint32_t len = 0;
+      while( str[len] ) ++len;
+
+      uint64_t value = 0;
+
+      for( uint32_t i = 0; i <= 12 && i < len; ++i ) {
+         value <<= 5;
+         value |= char_to_symbol( str[ len -1 - i ] );
+      }
+
+      if( len == 13 ) {
+         value <<= 4;
+         value |= 0x0f & char_to_symbol( str[ 12 ] );
+      }
+      return value;
+   }
+   
    struct Name {
       uint64_t value = 0;
       bool valid()const { return 0 == (value >> 60); }
@@ -66,6 +95,7 @@ namespace eos { namespace types {
 
       void set( const char* str ) {
       try {
+         value = 0;
          const auto len = strnlen(str,14);
          FC_ASSERT( len <= 13 );
          for( uint32_t i = 0; i <= 12 && i < len; ++i ) {
@@ -77,16 +107,6 @@ namespace eos { namespace types {
             value |= 0x0f & char_to_symbol( str[ 12 ] );
          }
       }FC_CAPTURE_AND_RETHROW( (str) ) }
-
-
-      char char_to_symbol( char c ) const {
-         if( c >= 'a' && c <= 'z' )
-            return (c - 'a') + 1;
-         if( c >= '1' && c <= '5' )
-            return (c - '1') + 26;
-         FC_ASSERT( c == '.', "invalid character '${c}' (${i}) in Name string", ("c", String(&c,1))("i",int(c)) );
-         return 0;
-      }
 
       Name( uint64_t v = 0 ):value(v){
       //   FC_ASSERT( !(v>>(5*12)), "invalid name id" );
@@ -129,7 +149,9 @@ namespace eos { namespace types {
       }
 
       friend bool operator < ( const Name& a, const Name& b ) { return a.value < b.value; }
+      friend bool operator <= ( const Name& a, const Name& b ) { return a.value <= b.value; }
       friend bool operator > ( const Name& a, const Name& b ) { return a.value > b.value; }
+      friend bool operator >=( const Name& a, const Name& b ) { return a.value >= b.value; }
       friend bool operator == ( const Name& a, const Name& b ) { return a.value == b.value; }
       friend bool operator != ( const Name& a, const Name& b ) { return a.value != b.value; }
 

@@ -23,14 +23,21 @@ struct Message : public types::Message {
    Message() = default;
    template<typename T>
    Message(const AccountName& code, const vector<types::AccountName>& recipients,
-           const vector<types::AccountPermission>& authorization, const TypeName& type, T&& value)
-      : types::Message(code, recipients, authorization, {}, {}) {
+           const vector<types::AccountPermission>& authorization, const types::FuncName& type, T&& value)
+      :types::Message(code, type, recipients, authorization, Bytes()) {
       set<T>(type, std::forward<T>(value));
    }
    Message(const types::Message& m) : types::Message(m) {}
 
    template<typename T>
-   void set(const TypeName& t, const T& value) {
+   void set_packed(const types::FuncName& t, const T& value) {
+      type = t;
+      data.resize(sizeof(value));
+      memcpy( data.data(), &value, sizeof(value) );
+   }
+
+   template<typename T>
+   void set(const types::FuncName& t, const T& value) {
       type = t;
       data = fc::raw::pack(value);
    }

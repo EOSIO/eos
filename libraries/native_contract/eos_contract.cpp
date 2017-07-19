@@ -77,7 +77,11 @@ void validate_eos_transfer(message_validate_context& context) {
    auto transfer = context.msg.as<types::transfer>();
    try {
       EOS_ASSERT(transfer.amount > Asset(0), message_validate_exception, "Must transfer a positive amount");
-      EOS_ASSERT(context.msg.has_notify(transfer.to), message_validate_exception, "Must notify recipient of transfer");
+      context.require_recipient(transfer.to);
+      context.require_recipient(transfer.from);
+
+      context.require_scope(transfer.to);
+      context.require_scope(transfer.from);
    } FC_CAPTURE_AND_RETHROW((transfer))
 }
 
@@ -128,6 +132,10 @@ void validate_eos_lock(message_validate_context& context) {
               message_validate_exception, "Recipient account must be notified");
    EOS_ASSERT(context.msg.has_notify(config::StakedBalanceContractName), message_validate_exception,
               "Staked Balance Contract (${name}) must be notified", ("name", config::StakedBalanceContractName));
+   context.require_recipient(lock.to);
+   context.require_scope(lock.to);
+   context.require_recipient(lock.from);
+   context.require_scope(lock.from);
 }
 
 /**

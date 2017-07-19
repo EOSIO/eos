@@ -98,7 +98,7 @@ namespace eos { namespace chain {
       flat_set<public_key_type> get_signature_keys(const chain_id_type& chain_id)const;
 
       template <typename T>
-      void setMessage(int messageIndex, const TypeName& type, T&& value) {
+      void setMessage(int messageIndex, const types::FuncName& type, T&& value) {
          Message m(messages[messageIndex]);
          m.set(type, std::forward<T>(value));
          messages[messageIndex] = m;

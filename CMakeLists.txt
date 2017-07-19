@@ -8,7 +8,7 @@ INCLUDE( VersionMacros )
 INCLUDE( SetupTargetMacros )
 
 set( BLOCKCHAIN_NAME "Eos" )
-set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_CXX_STANDARD 17 )
 
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
 set( GUI_CLIENT_EXECUTABLE_NAME eos )
@@ -157,6 +157,18 @@ set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analys
 
 if(ENABLE_COVERAGE_TESTING)
     SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+endif()
+
+include(wasm)
+if(WASM_TOOLCHAIN)
+  message(STATUS "Using WASM clang => " ${WASM_CLANG})
+  message(STATUS "Using WASM llc => " ${WASM_LLC})
+  message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
+  add_subdirectory(contracts)
+else()
+  message(STATUS "-------------------------------------------------------------------")
+  message(STATUS "No WASM compiler could be found ... (skiping building of contracts)")
+  message(STATUS "-------------------------------------------------------------------")
 endif()
 
 add_subdirectory( libraries )

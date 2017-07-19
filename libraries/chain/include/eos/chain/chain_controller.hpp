@@ -216,8 +216,9 @@ namespace eos { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
 
-   protected:
+ //  protected:
          const chainbase::database& get_database() const { return _db; }
+         chainbase::database& get_mutable_database() { return _db; }
          
    private:
 
@@ -244,6 +245,7 @@ namespace eos { namespace chain {
          void validate_tapos(const SignedTransaction& trx)const;
          void validate_referenced_accounts(const SignedTransaction& trx)const;
          void validate_expiration(const SignedTransaction& trx) const;
+         void validate_scope(const SignedTransaction& trx) const;
          /// @}
 
          void validate_message_precondition(precondition_validate_context& c)const;

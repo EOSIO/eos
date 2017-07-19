@@ -10,13 +10,14 @@ namespace eos {
       int16_t         network_version = 0;
       chain_id_type   chain_id; ///< used to identify chain
       fc::sha256      node_id; ///< used to identify peers and prevent self-connect
+      string          p2p_address;
       uint32_t        last_irreversible_block_num = 0;
       block_id_type   last_irreversible_block_id;
       uint32_t        head_num = 0;
       block_id_type   head_id;
       string          os;
       string          agent;
-   };
+     };
 
    struct notice_message {
       vector<transaction_id_type> known_trx;
@@ -50,6 +51,7 @@ namespace eos {
 
 FC_REFLECT( eos::handshake_message,
             (network_version)(chain_id)(node_id)
+            (p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
             (os)(agent) )

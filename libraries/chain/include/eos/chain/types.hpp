@@ -133,6 +133,7 @@ namespace eos { namespace chain {
    using eos::types::Int64;
    using eos::types::Int128;
    using eos::types::Int256;
+   using eos::types::uint128_t;
 
    using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
    using RoundChanges = std::map<AccountName, AccountName>;
@@ -162,6 +163,7 @@ namespace eos { namespace chain {
       permission_object_type,
       action_code_object_type,
       key_value_object_type,
+      key128x128_value_object_type,
       action_permission_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
@@ -206,6 +208,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (permission_object_type)
                 (action_code_object_type)
                 (key_value_object_type)
+                (key128x128_value_object_type)
                 (action_permission_object_type)
                 (global_property_object_type)
                 (dynamic_global_property_object_type)

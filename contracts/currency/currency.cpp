@@ -1,60 +1,47 @@
 #include <currency/currency.hpp> /// defines transfer struct (abi)
 
-struct CurrencyAccount {
-   CurrencyAccount( uint64_t b = 0 ):balance(b){}
+namespace TOKEN_NAME {
+   using namespace eos;
 
-   uint64_t balance = 0;
+   ///  When storing accounts, check for empty balance and remove account
+   void storeAccount( AccountName account, const Account& a ) {
+      if( a.isEmpty() ) {
+         ///               value, scope
+         Accounts::remove( a, account );
+      } else {
+         ///              value, scope
+         Accounts::store( a, account );
+      }
+   }
 
-   /** used as a hint to Db::store to tell it which table name within the current 
-    *  scope to use.  Data is stored in tables under a structure like
-    *
-    *  scope/code/table/key->value
-    *
-    *  In this case the "singlton" table is designed for constant named keys that
-    *  refer to a unique object type. User account balances are stored here:
-    *  
-    *  username/currency/singlton/account -> CurrencyAccount
-    */ 
-   static Name tableId() { return NAME("singlton"); }
-};
+   void apply_currency_transfer( const TOKEN_NAME::Transfer& transfer ) {
+      requireNotice( transfer.to, transfer.from );
+      requireAuth( transfer.from );
 
+      auto from = getAccount( transfer.from );
+      auto to   = getAccount( transfer.to );
 
-void apply_currency_transfer() {
-   const auto& transfer  = currentMessage<Transfer>();
-   /** will call apply_currency_transfer() method in code defined by transfer.to and transfer.from */
-   requireNotice( transfer.to, transfer.from );
-   requireAuth( transfer.from );
+      from.balance -= transfer.quantity; /// token subtraction has underflow assertion
+      to.balance   += transfer.quantity; /// token addition has overflow assertion
 
-   static CurrencyAccount from_account;
-   static CurrencyAccount to_account;
-   Db::get( transfer.from, NAME("account"), from_account );
-   Db::get( transfer.to, NAME("account"), to_account );
+      storeAccount( transfer.from, from );
+      storeAccount( transfer.to, to );
+   }
 
-   assert( from_account.balance >= transfer.amount, "insufficient funds" );
-   from_account.balance -= transfer.amount;
-   to_account.balance   += transfer.amount;
+}  // namespace TOKEN_NAME
 
-   if( from_account.balance == 0 )
-      Db::remove<CurrencyAccount>( transfer.from, NAME("account") );
-   else
-      Db::store( transfer.from, NAME("account"), from_account ); 
+using namespace currency;
 
-   Db::store( transfer.to, NAME("account"), to_account ); 
-}
-
-extern "C" 
-{
+extern "C" {
     void init()  {
-       ///        scope       key        value
-       Db::store( NAME("currency"), NAME("account"), CurrencyAccount( 1000ll*1000ll*1000ll ) );
+       storeAccount( N(currency), Account( CurrencyTokens(1000ll*1000ll*1000ll) ) );
     }
 
-   /**
-    *  The apply method implements the dispatch of events to this contract
-    */
+   /// The apply method implements the dispatch of events to this contract
    void apply( uint64_t code, uint64_t action ) {
-      assert( code == currentCode(), "invalid notice given" );
-      if( action == NAME("transfer") ) apply_currency_transfer();
+      if( code == N(currency) ) {
+         if( action == N(transfer) ) 
+            currency::apply_currency_transfer( currentMessage< TOKEN_NAME::Transfer >() );
+      }
    }
 }
-

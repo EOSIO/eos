@@ -33,7 +33,7 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
              cb(400, "Invalid arguments"); \
              elog("Unable to parse arguments: ${args}", ("args", body)); \
           } catch (fc::exception& e) { \
-             cb(500, e.what()); \
+             cb(500, e.to_detail_string()); \
              elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
           } \
        }}
@@ -42,6 +42,7 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
 #define CHAIN_RW_CALL(call_name) CALL(chain, rw_api, chain_apis::read_write, call_name)
 
 void chain_api_plugin::plugin_startup() {
+   ilog( "starting chain_api_plugin" );
    my.reset(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
    auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();

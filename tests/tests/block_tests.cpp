@@ -46,7 +46,181 @@
 using namespace eos;
 using namespace chain;
 
+
+/*
+ *  This code is saved because it provides an alternative implementation of string to int conversion.
+   struct Tame {
+      uint64_t value = 0;
+      bool valid()const { return 0 == (value >> 60); }
+      bool empty()const { return 0 == value; }
+      bool good()const  { return !empty() && valid();  }
+
+      Tame( const char* str )   { set(str);           } 
+      Tame( const String& str ) { set( str.c_str() ); }
+
+      void set( const char* str ) {
+      try {
+         idump((std::string(str)));
+         const auto len = strnlen(str,14);
+         value = 0;
+         FC_ASSERT( len <= 13 );
+         for( uint32_t i = 0; i < len && i < 12; ++i )
+            value |= uint64_t(char_to_symbol( str[i] )) << (59-(i*5));
+         if( len == 13 )
+            value |= (0x0f & char_to_symbol( str[ 12 ] ));
+      }FC_CAPTURE_AND_RETHROW( (str) ) }
+
+
+      uint8_t char_to_symbol( char c ) const {
+         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
+         if( c >= 'a' && c <= 'z' ) {
+            idump((int(((c-'a') + 1)))(string()+c));
+          //  FC_ASSERT( charmap[((c-'a') + 1)] == c );
+            return uint8_t(c - 'a') + 1;
+         }
+         if( c >= '1' && c <= '5' ) {
+            idump((int(((c-'1') + 26)))(string()+c));
+           // FC_ASSERT( charmap[((c-'1') + 26)] == c );
+            return uint8_t(c - '1') + 27;
+         }
+         FC_ASSERT( c == '.', "invalid character '${c}' (${i}) in Tame string", ("c", String(&c,1))("i",int(c)) );
+         return 0;
+      }
+
+      Tame( uint64_t v = 0 ):value(v){
+      //   FC_ASSERT( !(v>>(5*12)), "invalid name id" );
+      }
+
+      explicit operator String()const {
+         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
+         String str;
+         uint64_t tmp = value;
+         for( uint32_t i = 0; i < 12; ++i ) {
+            str += charmap[ 0x1f & (tmp >> (59-i*5)) ];
+         }
+         str += charmap[0x0f & tmp];
+         boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
+         return str;
+      }
+
+      String toString() const { return String(*this); }
+
+      Tame& operator=( uint64_t v ) {
+         value = v;
+         return *this;
+      }
+
+      Tame& operator=( const String& n ) {
+         value = Tame(n).value;
+         return *this;
+      }
+      Tame& operator=( const char* n ) {
+         value = Tame(n).value;
+         return *this;
+      }
+
+      template<typename Stream>
+      friend Stream& operator << ( Stream& out, const Tame& n ) {
+         return out << String(n);
+      }
+
+      friend bool operator < ( const Tame& a, const Tame& b ) { return a.value < b.value; }
+      friend bool operator > ( const Tame& a, const Tame& b ) { return a.value > b.value; }
+      friend bool operator == ( const Tame& a, const Tame& b ) { return a.value == b.value; }
+      friend bool operator != ( const Tame& a, const Tame& b ) { return a.value != b.value; }
+
+      operator bool()const            { return value; }
+      operator uint64_t()const        { return value; }
+   };
+*/
+
+
 BOOST_AUTO_TEST_SUITE(block_tests)
+
+
+/**
+ *  The purpose of this test is to demonstrate that it is possible
+ *  to schedule 3M transactions into cycles where each cycle contains
+ *  a set of independent transactions.  
+ *
+ *  This simple single threaded algorithm sorts 3M transactions each of which
+ *  requires scope of 2 accounts chosen with a normal probability distribution
+ *  amoung a set of 2 million accounts.
+ *
+ *  This algorithm executes in less than 0.5 seconds on a 4Ghz Core i7 and could
+ *  potentially take just .05 seconds with 10+ CPU cores. Future improvements might
+ *  use a more robust bloomfilter to identify collisions.
+ */
+///@{
+struct Location {
+   uint32_t thread = -1;
+   uint32_t cycle  = -1;
+   Location& operator=( const Location& l ) {
+      thread = l.thread;
+      cycle = l.cycle;
+      return *this;
+   }
+};
+struct ExTransaction : public Transaction {
+   Location location;
+};
+
+BOOST_AUTO_TEST_CASE(schedule_test) {
+   vector<ExTransaction*> transactions(3*1000*1000);
+   auto rand_scope = []() {
+      return rand()%1000000 + rand()%1000000;
+   };
+
+   for( auto& t : transactions ) {
+      t = new ExTransaction();
+      t->scope = sort_names({ rand_scope(), rand_scope() });
+   }
+
+   int cycle = 0;
+   std::vector<int> thread_count(1024);
+
+   vector<ExTransaction*> postponed;
+   postponed.reserve(transactions.size());
+   auto current = transactions;
+
+   vector<bool>  used(1024*1024);
+   auto start = fc::time_point::now();
+   bool scheduled = true;
+   while( scheduled ) {
+      scheduled = false;
+      for( auto t : current ) {
+         bool u = false;
+         for( const auto& s : t->scope ) {
+            if( used[s.value%used.size()] ) {
+               u = true;
+               postponed.push_back(t);
+               break;
+            }
+         }
+         if( !u ) {
+            for( const auto& s : t->scope ) {
+               used[s.value%used.size()] = true;
+            }
+            t->location.cycle  = cycle;
+            t->location.thread = thread_count[cycle]++;
+            scheduled = true;
+         }
+      }
+      current.resize(0);
+      used.resize(0); used.resize(1024*1024);
+      std::swap( current, postponed );
+      ++cycle;
+      
+   } 
+   auto end = fc::time_point::now();
+   thread_count.resize(cycle+1);
+//   idump((cycle));
+//   idump((thread_count));
+
+   auto sort_time = end-start;
+   edump((sort_time.count()/1000000.0));
+}
+///@} end of schedule test 
 
 BOOST_AUTO_TEST_CASE(name_test) {
    using eos::types::Name;
@@ -55,11 +229,9 @@ BOOST_AUTO_TEST_CASE(name_test) {
    BOOST_CHECK_EQUAL( String("temp"), String(temp) );
    BOOST_CHECK_EQUAL( String("temp.temp"), String(Name("temp.temp")) );
    BOOST_CHECK_EQUAL( String(""), String(Name()) );
-   BOOST_CHECK_EQUAL( String("hello"), String(Name("hello")) );
-   BOOST_REQUIRE_THROW( Name(-1), fc::exception ); // only lower 60 bits are valid
-   BOOST_REQUIRE_THROW( Name("Hello"), fc::exception ); // capital invalid
-   BOOST_REQUIRE_THROW( Name("9ello"), fc::exception ); // number 9 invalid
-   BOOST_REQUIRE_THROW( Name("6ello"), fc::exception ); // number 6 invalid
+   BOOST_REQUIRE_EQUAL( String("hello"), String(Name("hello")) );
+   BOOST_REQUIRE_EQUAL( Name(-1), Name(String(Name(-1))) );
+   BOOST_REQUIRE_EQUAL( String(Name(-1)), String(Name(String(Name(-1)))) );
 }
 
 // Simple test of block production and head_block_num tracking

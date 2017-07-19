@@ -39,7 +39,7 @@ void apply_system_setcode(apply_context& context) {
       memcpy( a.code.data(), msg.code.data(), msg.code.size() );
    });
 
-   apply_context init_context( context.mutable_db, context.trx, context.msg, msg.account );
+   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account );
    wasm_interface::get().init( init_context );
 }
 

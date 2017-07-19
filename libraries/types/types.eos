@@ -13,9 +13,9 @@ struct AccountPermission
 
 struct Message
    code            AccountName         # the contract defining the primary code to execute for code/type
+   type            FuncName            # the action to be taken 
    recipients      AccountName[]       # the other contracts whose code will run handlers for primary/type
    authorization   AccountPermission[] # the accounts and permission levels provided
-   type            FuncName            # the action to be taken 
    data            Bytes               # opaque data processed by code
 
 struct AccountPermissionWeight
