@@ -259,7 +259,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,dests
 
    int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
 
-   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
+//   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
    memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
    return minlen;
 }
@@ -371,7 +371,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 
          FC_ASSERT( getFunctionType(call)->parameters.size() == 2 );
 
-         idump((current_validate_context->msg.code)(current_validate_context->msg.type)(current_validate_context->code));
+  //       idump((current_validate_context->msg.code)(current_validate_context->msg.type)(current_validate_context->code));
          std::vector<Value> args = { Value(uint64_t(current_validate_context->msg.code)),
                                      Value(uint64_t(current_validate_context->msg.type)) };
 

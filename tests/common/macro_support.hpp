@@ -25,6 +25,8 @@
 
 inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    std::sort( names.begin(), names.end() );
+   auto itr = std::unique( names.begin(), names.end() );
+   names.erase( itr, names.end() );
    return names;
 }
 
@@ -80,6 +82,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define STAKE4(chain, sender, recipient, amount) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names( { #sender, #recipient } ); \
       trx.emplaceMessage(config::EosContractName, vector<AccountName>{#sender, config::StakedBalanceContractName}, \
                          vector<types::AccountPermission>{}, "lock", types::lock{#sender, #recipient, amount}); \
       if (std::string(#sender) != std::string(#recipient)) { \
@@ -96,6 +99,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define BEGIN_UNSTAKE3(chain, account, amount) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names( { "staked" } ); \
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#account}, \
                          vector<types::AccountPermission>{}, \
                          "unlock", types::unlock{#account, amount}); \
@@ -108,6 +112,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define FINISH_UNSTAKE3(chain, account, amount) \
    { \
       eos::chain::SignedTransaction trx; \
+      trx.scope = sort_names( { "staked", #account } ); \
       trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#account, config::EosContractName}, \
                          vector<types::AccountPermission>{}, "claim", types::claim{#account, amount}); \
       boost::sort(trx.messages.back().recipients); \

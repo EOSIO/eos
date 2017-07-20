@@ -302,7 +302,11 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
    trx.scope = sort_names({from,to});
    trx.emplaceMessage("currency", sort_names( {from,to} ),
                       vector<types::AccountPermission>{ {from,"active"} },
-                      "transfer", types::transfer{from, to, amount, ""});
+                      "transfer", types::transfer{from, to, amount});
+   auto& re = trx.messages.back().recipients;
+   auto itr = std::remove( re.begin(), re.end(), Name("currency") );
+   re.erase( itr, re.end() );
+
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
    idump((trx));
@@ -314,7 +318,7 @@ void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName 
    trx.scope = sort_names({from,to});
    trx.emplaceMessage("currency", sort_names( {from,to} ),
                       vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
-                      "transfer", types::transfer{from, to, amount, ""});
+                      "transfer", types::transfer{from, to, amount});
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
    chain.push_transaction(trx);
@@ -341,7 +345,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          trx.scope = {"currency"};
          trx.messages.resize(1);
          trx.messages[0].code = config::SystemContractName;
-         trx.messages[0].recipients = {"currency"};
+         trx.messages[0].recipients = {};
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -355,9 +359,9 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         trx.emplaceMessage("currency", vector<AccountName>{"inita","currency"},
+         trx.emplaceMessage("currency", vector<AccountName>{"inita"},
                             vector<types::AccountPermission>{ {"currency","active"} },
-                            "transfer", types::transfer{"currency", "inita", 1+i, "hello"});
+                            "transfer", types::transfer{"currency", "inita", 1+i});
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
          //idump((trx));
