@@ -7,16 +7,24 @@
 #include <eos/chain/global_property_object.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
+#include <eos/types/AbiSerializer.hpp>
 
 namespace native {
 namespace system {
 using namespace chain;
+using eos::types::AbiSerializer;
+
 namespace config = ::eos::config;
 
 void validate_system_setcode(message_validate_context& context) {
    auto  msg = context.msg.as<types::setcode>();
    FC_ASSERT( msg.vmtype == 0 );
    FC_ASSERT( msg.vmversion == 0 );
+
+   /// if an ABI is specified make sure it is well formed and doesn't
+   /// reference any undefined types
+   AbiSerializer( msg.abi ).validate();
+
 #warning TODO: verify code compiles and is properly sanitized
 }
 
@@ -37,6 +45,8 @@ void apply_system_setcode(apply_context& context) {
       a.code_version = fc::sha256::hash( msg.code.data(), msg.code.size() );
       a.code.resize( msg.code.size() );
       memcpy( a.code.data(), msg.code.data(), msg.code.size() );
+
+      a.set_abi( msg.abi );
    });
 
    apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account );

@@ -34,8 +34,6 @@ public:
     */
    void parse(std::istream& in);
 
-   string binaryToJson(const TypeName& type, const Bytes& binary);
-   Bytes  jsonToBinary(const TypeName& type, const string& json);
 };
 
 
@@ -56,13 +54,14 @@ public:
    virtual Struct getType(TypeName name) const override;
    virtual TypeName resolveTypedef(TypeName name) const override;
 
-
    //      private:
-   set<TypeName>           known;
+   const set<TypeName>     known;
    vector<TypeName>        order;
    map<TypeName, TypeName> typedefs;
    map<TypeName, Struct>   structs;
 };
+
+
 
 }} // namespace eos::types
 

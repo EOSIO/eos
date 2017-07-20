@@ -209,7 +209,7 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
    db.push_transaction(params);
-   return read_write::push_transaction_results();
+   return read_write::push_transaction_results{ params.id() };
 }
 
 } // namespace chain_apis

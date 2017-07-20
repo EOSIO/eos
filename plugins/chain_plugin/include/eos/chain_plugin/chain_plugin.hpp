@@ -64,7 +64,9 @@ public:
    push_block_results push_block(const push_block_params& params);
 
    using push_transaction_params = chain::SignedTransaction;
-   using push_transaction_results = empty;
+   struct push_transaction_results {
+      chain::transaction_id_type transaction_id;
+   };
    push_transaction_results push_transaction(const push_transaction_params& params);
 };
 } // namespace chain_apis
@@ -110,3 +112,4 @@ FC_REFLECT(eos::chain_apis::read_only::get_info_results,
 FC_REFLECT(eos::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT_DERIVED( eos::chain_apis::read_only::get_block_results, (eos::chain::signed_block), (id)(block_num)(refBlockPrefix) );
+FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_id) )

@@ -47,93 +47,6 @@ using namespace eos;
 using namespace chain;
 
 
-/*
- *  This code is saved because it provides an alternative implementation of string to int conversion.
-   struct Tame {
-      uint64_t value = 0;
-      bool valid()const { return 0 == (value >> 60); }
-      bool empty()const { return 0 == value; }
-      bool good()const  { return !empty() && valid();  }
-
-      Tame( const char* str )   { set(str);           } 
-      Tame( const String& str ) { set( str.c_str() ); }
-
-      void set( const char* str ) {
-      try {
-         idump((std::string(str)));
-         const auto len = strnlen(str,14);
-         value = 0;
-         FC_ASSERT( len <= 13 );
-         for( uint32_t i = 0; i < len && i < 12; ++i )
-            value |= uint64_t(char_to_symbol( str[i] )) << (59-(i*5));
-         if( len == 13 )
-            value |= (0x0f & char_to_symbol( str[ 12 ] ));
-      }FC_CAPTURE_AND_RETHROW( (str) ) }
-
-
-      uint8_t char_to_symbol( char c ) const {
-         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
-         if( c >= 'a' && c <= 'z' ) {
-            idump((int(((c-'a') + 1)))(string()+c));
-          //  FC_ASSERT( charmap[((c-'a') + 1)] == c );
-            return uint8_t(c - 'a') + 1;
-         }
-         if( c >= '1' && c <= '5' ) {
-            idump((int(((c-'1') + 26)))(string()+c));
-           // FC_ASSERT( charmap[((c-'1') + 26)] == c );
-            return uint8_t(c - '1') + 27;
-         }
-         FC_ASSERT( c == '.', "invalid character '${c}' (${i}) in Tame string", ("c", String(&c,1))("i",int(c)) );
-         return 0;
-      }
-
-      Tame( uint64_t v = 0 ):value(v){
-      //   FC_ASSERT( !(v>>(5*12)), "invalid name id" );
-      }
-
-      explicit operator String()const {
-         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
-         String str;
-         uint64_t tmp = value;
-         for( uint32_t i = 0; i < 12; ++i ) {
-            str += charmap[ 0x1f & (tmp >> (59-i*5)) ];
-         }
-         str += charmap[0x0f & tmp];
-         boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
-         return str;
-      }
-
-      String toString() const { return String(*this); }
-
-      Tame& operator=( uint64_t v ) {
-         value = v;
-         return *this;
-      }
-
-      Tame& operator=( const String& n ) {
-         value = Tame(n).value;
-         return *this;
-      }
-      Tame& operator=( const char* n ) {
-         value = Tame(n).value;
-         return *this;
-      }
-
-      template<typename Stream>
-      friend Stream& operator << ( Stream& out, const Tame& n ) {
-         return out << String(n);
-      }
-
-      friend bool operator < ( const Tame& a, const Tame& b ) { return a.value < b.value; }
-      friend bool operator > ( const Tame& a, const Tame& b ) { return a.value > b.value; }
-      friend bool operator == ( const Tame& a, const Tame& b ) { return a.value == b.value; }
-      friend bool operator != ( const Tame& a, const Tame& b ) { return a.value != b.value; }
-
-      operator bool()const            { return value; }
-      operator uint64_t()const        { return value; }
-   };
-*/
-
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
@@ -221,6 +134,41 @@ BOOST_AUTO_TEST_CASE(schedule_test) {
    edump((sort_time.count()/1000000.0));
 }
 ///@} end of schedule test 
+
+
+BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
+  
+   try {
+   Make_Blockchain(chain)
+   Name from("from"), to("to");
+   uint64_t amount = 10;
+
+   eos::chain::SignedTransaction trx;
+   trx.scope = sort_names({from,to});
+   trx.emplaceMessage("eos", sort_names( {from,to} ),
+                      vector<types::AccountPermission>{ {from,"active"} },
+                      "transfer", types::transfer{from, to, amount/*, ""*/});
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+
+   auto original = fc::raw::pack( trx );
+   auto var      = chain.transaction_to_variant( trx );
+   auto from_var = chain.transaction_from_variant( var );
+   auto _process  = fc::raw::pack( from_var );
+
+   /*
+   idump((trx));
+   idump((var));
+   idump((from_var));
+   idump((original));
+   idump((_process));
+   */
+   FC_ASSERT( original == _process, "Transaction seralization not reversible" );
+   } catch ( const fc::exception& e ) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
 
 BOOST_AUTO_TEST_CASE(name_test) {
    using eos::types::Name;

@@ -102,6 +102,14 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
+
+         if( name == config::EosContractName ) {
+            types::Abi eos_abi;
+            eos_abi.types.push_back( types::TypeDef{"AccountName","Name"} );
+            eos_abi.actions.push_back( types::Action{Name("transfer"), "transfer"} );
+            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::transfer>::type() );
+            a.set_abi(eos_abi);
+         }
       });
       db.create<native::eos::BalanceObject>([&name, liquidBalance]( auto& b) {
          b.ownerName = name;
@@ -131,7 +139,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
          message = chain::Message(config::EosContractName, vector<AccountName>{config::SystemContractName, acct.name},
                                   vector<types::AccountPermission>{},
                                   "transfer", types::transfer(config::SystemContractName, acct.name,
-                                                              acct.liquid_balance, "Genesis Allocation"));
+                                                              acct.liquid_balance.amount/*, "Genesis Allocation"*/));
          messages_to_process.emplace_back(std::move(message));
       }
    }

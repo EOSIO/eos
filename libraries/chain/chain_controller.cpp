@@ -36,6 +36,7 @@
 
 #include <eos/types/native.hpp>
 #include <eos/types/generated.hpp>
+#include <eos/types/AbiSerializer.hpp>
 
 #include <eos/utilities/rand.hpp>
 
@@ -1075,6 +1076,89 @@ void chain_controller::set_apply_handler( const AccountName& contract, const Acc
 
 chain_initializer_interface::~chain_initializer_interface() {}
 
+
+SignedTransaction chain_controller::transaction_from_variant( const fc::variant& v )const {
+   const variant_object& vo = v.get_object();
+#define GET_FIELD( VO, FIELD, RESULT ) \
+   if( VO.contains(#FIELD) ) fc::from_variant( VO[#FIELD], RESULT.FIELD )
+
+   SignedTransaction result;
+   GET_FIELD( vo, refBlockNum, result );
+   GET_FIELD( vo, refBlockPrefix, result );
+   GET_FIELD( vo, expiration, result );
+   GET_FIELD( vo, scope, result );
+   GET_FIELD( vo, signatures, result );
+
+   if( vo.contains( "messages" ) ) {
+      const vector<variant>& msgs = vo["messages"].get_array();
+      result.messages.resize( msgs.size() );
+      for( uint32_t i = 0; i <  msgs.size(); ++i ) {
+         const auto& vo = msgs[i].get_object();
+         GET_FIELD( vo, code, result.messages[i] );
+         GET_FIELD( vo, type, result.messages[i] );
+         GET_FIELD( vo, recipients, result.messages[i] );
+         GET_FIELD( vo, authorization, result.messages[i] );
+
+         if( vo.contains( "data" ) ) {
+            const auto& data = vo["data"];
+            if( data.is_string() ) {
+               GET_FIELD( vo, data, result.messages[i] );
+            } else if ( data.is_object() ) {
+               const auto& code_account = _db.get<account_object,by_name>( result.messages[i].code );
+               if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+                  fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+                  eos::types::Abi abi;
+                  fc::raw::unpack( ds, abi );
+                  types::AbiSerializer abis( abi );
+                  result.messages[i].data = abis.variantToBinary( abis.getActionType( result.messages[i].type ), data );
+               }
+            }
+         }
+      }
+   }
+   return result;
+#undef GET_FIELD
+}
+
+fc::variant  chain_controller::transaction_to_variant( const SignedTransaction& trx )const {
+#define SET_FIELD( MVO, OBJ, FIELD ) MVO(#FIELD, OBJ.FIELD)
+
+    fc::mutable_variant_object trx_mvo;
+    SET_FIELD( trx_mvo, trx, refBlockNum );
+    SET_FIELD( trx_mvo, trx, refBlockPrefix );
+    SET_FIELD( trx_mvo, trx, expiration );
+    SET_FIELD( trx_mvo, trx, scope );
+    SET_FIELD( trx_mvo, trx, signatures );
+
+    vector<fc::mutable_variant_object> msgs( trx.messages.size() );
+    vector<fc::variant> msgsv(msgs.size());
+
+    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
+       auto& msg_mvo = msgs[i];
+       auto& msg     = trx.messages[i];
+       SET_FIELD( msg_mvo, msg, code );
+       SET_FIELD( msg_mvo, msg, type );
+       SET_FIELD( msg_mvo, msg, recipients );
+       SET_FIELD( msg_mvo, msg, authorization );
+
+       const auto& code_account = _db.get<account_object,by_name>( msg.code );
+       if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+          fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+          eos::types::Abi abi;
+          fc::raw::unpack( ds, abi );
+          types::AbiSerializer abis( abi );
+          msg_mvo( "data", abis.binaryToVariant( abis.getActionType( msg.type ), msg.data ) );
+       }
+       else {
+         SET_FIELD( msg_mvo, msg, data );
+       }
+       msgsv[i] = std::move( msgs[i] );
+    }
+    trx_mvo( "messages", std::move(msgsv) );
+
+    return fc::variant( std::move( trx_mvo ) );
+#undef SET_FIELD
+}
 
 
 } }

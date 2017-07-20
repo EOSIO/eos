@@ -62,18 +62,18 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define MKACCT7(chain, name, creator, deposit, owner, active, recovery) \
    MKACCT_IMPL(chain, name, creator, owner, active, recovery, deposit)
 
-#define XFER5(chain, sender, recipient, amount, memo) \
+#define XFER5(chain, sender, recipient, Amount, memo) \
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names({#sender,#recipient}); \
       trx.emplaceMessage(config::EosContractName, vector<AccountName>{#sender, #recipient}, \
                          vector<types::AccountPermission>{}, \
-                         "transfer", types::transfer{#sender, #recipient, amount, memo}); \
+                         "transfer", types::transfer{#sender, #recipient, Amount.amount/*, memo*/}); \
       boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
-      BOOST_TEST_CHECKPOINT("Transfered " << amount << " from " << #sender << " to " << #recipient); \
+      BOOST_TEST_CHECKPOINT("Transfered " << Amount << " from " << #sender << " to " << #recipient); \
    }
 #define XFER4(chain, sender, recipient, amount) XFER5(chain, sender, recipient, amount, "")
 

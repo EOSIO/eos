@@ -76,7 +76,7 @@ void validate_eos_transfer(message_validate_context& context) {
 #warning TODO: should transfer validate that the sender is in the provided authorites
    auto transfer = context.msg.as<types::transfer>();
    try {
-      EOS_ASSERT(transfer.amount > Asset(0), message_validate_exception, "Must transfer a positive amount");
+      EOS_ASSERT(transfer.amount > 0, message_validate_exception, "Must transfer a positive amount");
       context.require_recipient(transfer.to);
       context.require_recipient(transfer.from);
 
@@ -93,7 +93,7 @@ void precondition_eos_transfer(precondition_validate_context& context) {
    try {
       db.get<account_object,by_name>(transfer.to); ///< make sure this exists
       const auto& from = db.get<BalanceObject, byOwnerName>(transfer.from);
-      EOS_ASSERT(from.balance >= transfer.amount.amount, message_precondition_exception, "Insufficient Funds",
+      EOS_ASSERT(from.balance >= transfer.amount, message_precondition_exception, "Insufficient Funds",
                  ("from.balance",from.balance)("transfer.amount",transfer.amount));
    } FC_CAPTURE_AND_RETHROW((transfer))
 }
@@ -105,10 +105,10 @@ void apply_eos_transfer(apply_context& context) {
       const auto& from = db.get<BalanceObject, byOwnerName>(transfer.from);
       const auto& to = db.get<BalanceObject, byOwnerName>(transfer.to);
       db.modify(from, [&](BalanceObject& a) {
-         a.balance -= transfer.amount.amount;
+         a.balance -= ShareType(transfer.amount);
       });
       db.modify(to, [&](BalanceObject& a) {
-         a.balance += transfer.amount.amount;
+         a.balance += ShareType(transfer.amount);
       });
    } FC_CAPTURE_AND_RETHROW( (transfer) ) 
 }

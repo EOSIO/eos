@@ -109,7 +109,20 @@ namespace eos { namespace chain {
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
          const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
-         std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
+         std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork)const;
+
+         /**
+          *  This method will convert a variant to a SignedTransaction using a contract's ABI to
+          *  interpret the message types.
+          */
+         SignedTransaction transaction_from_variant( const fc::variant& v )const;
+
+         /**
+          * This method will convert a signed transaction into a human-friendly variant that can be
+          * converted to JSON.  
+          */
+         fc::variant       transaction_to_variant( const SignedTransaction& trx )const;
+
 
          /**
           *  Calculate the percent of block production slots that were missed in the
