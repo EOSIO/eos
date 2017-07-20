@@ -10,12 +10,13 @@ Build eos images
 ```
 cd eos/Docker
 cp ../genesis.json .
-docker build -t eosio/eos .
+docker build --rm -t eosio/eos .
 ```
 
 Start docker
 
 ```
+sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
 docker-compose -f docker-compose.yml up
 ```
