@@ -8,6 +8,7 @@
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
 #include <eos/native_contract/genesis_state.hpp>
+#include <eos/types/AbiSerializer.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -20,6 +21,11 @@ using chain::block_id_type;
 using chain::fork_database;
 using chain::block_log;
 using chain::chain_id_type;
+using chain::account_object;
+using chain::key_value_object;
+using chain::by_name;
+using chain::by_scope_key;
+
 
 class chain_plugin_impl {
 public:
@@ -186,6 +192,47 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
       __builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
    };
+}
+
+read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_only::get_table_rows_i64_params& p )const {
+   read_only::get_table_rows_i64_result result;
+   const auto& d = db.get_database();
+   const auto& code_account = d.get<account_object,by_name>( p.code );
+
+   types::AbiSerializer abis;
+   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+      eos::types::Abi abi;
+      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+      fc::raw::unpack( ds, abi );
+      abis.setAbi( abi );
+   }
+
+   const auto& idx = d.get_index<chain::key_value_index,by_scope_key>();
+   auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
+   auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
+
+   vector<char> data;
+
+   auto start = fc::time_point::now();
+   auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
+
+   int count = 0;
+   auto itr = lower;
+   for( itr = lower; itr != upper; ++itr ) {
+      data.resize( sizeof(uint64_t) + itr->value.size() );
+      memcpy( data.data(), &itr->key, sizeof(itr->key) );
+      memcpy( data.data()+sizeof(uint64_t), itr->value.data(), itr->value.size() );
+
+      if( p.json ) 
+         result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
+      else
+         result.rows.emplace_back( fc::variant(data) );
+      if( ++count == p.limit || fc::time_point::now() > end )
+         break;
+   }
+   if( itr != upper ) 
+      result.more = true;
+   return result;
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {

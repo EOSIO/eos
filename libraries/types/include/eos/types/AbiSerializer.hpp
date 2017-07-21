@@ -11,7 +11,9 @@ using std::string;
  *  be converted to and from JSON.
  */
 struct AbiSerializer {
+   AbiSerializer(){}
    AbiSerializer( const Abi& abi );
+   void setAbi( const Abi& abi );
 
    map<TypeName, TypeName> typedefs;
    map<TypeName, Struct>   structs;
@@ -27,6 +29,7 @@ struct AbiSerializer {
    const Struct& getStruct( const TypeName& type )const;
 
    TypeName getActionType( Name action )const;
+   TypeName getTableType( Name action )const;
 
    fc::variant binaryToVariant(const TypeName& type, const Bytes& binary)const;
    Bytes       variantToBinary(const TypeName& type, const fc::variant& var)const;

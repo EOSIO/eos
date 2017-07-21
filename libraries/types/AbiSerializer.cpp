@@ -4,6 +4,15 @@
 namespace eos { namespace types {
 
    AbiSerializer::AbiSerializer( const Abi& abi ) {
+      setAbi(abi);
+   }
+
+   void AbiSerializer::setAbi( const Abi& abi ) {
+      typedefs.clear();
+      structs.clear();
+      actions.clear();
+      tables.clear();
+
       for( const auto& td : abi.types )
          typedefs[td.newTypeName] = td.type;
 
@@ -148,6 +157,11 @@ namespace eos { namespace types {
    TypeName AbiSerializer::getActionType( Name action )const {
       auto itr = actions.find(action);
       if( itr != actions.end() ) return itr->second;
+      return TypeName();
+   }
+   TypeName AbiSerializer::getTableType( Name action )const {
+      auto itr = tables.find(action);
+      if( itr != tables.end() ) return itr->second;
       return TypeName();
    }
 

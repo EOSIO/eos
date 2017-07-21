@@ -1,6 +1,8 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <eos/chain/chain_controller.hpp>
+#include <eos/chain/key_value_object.hpp>
+#include <eos/chain/account_object.hpp>
 
 #include <eos/database_plugin/database_plugin.hpp>
 
@@ -10,6 +12,7 @@ namespace eos {
    using eos::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
+   using chain::Name;
 
 namespace chain_apis {
 struct empty{};
@@ -52,6 +55,23 @@ public:
    };
 
    get_block_results get_block(const get_block_params& params) const;
+
+   struct get_table_rows_i64_params {
+      bool        json = false;
+      Name        scope;
+      Name        code;
+      Name        table;
+      uint64_t    lower_bound = 0;
+      uint64_t    upper_bound = uint64_t(-1);
+      uint32_t    limit = 10;
+   };
+
+   struct get_table_rows_i64_result {
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object 
+      bool                more; ///< true if last element in data is not the end and sizeof data() < limit
+   };
+
+   get_table_rows_i64_result get_table_rows_i64( const get_table_rows_i64_params& params )const;
 };
 
 class read_write {
@@ -113,3 +133,7 @@ FC_REFLECT(eos::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT_DERIVED( eos::chain_apis::read_only::get_block_results, (eos::chain::signed_block), (id)(block_num)(refBlockPrefix) );
 FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_id) )
+FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_params,
+           (json)(scope)(code)(table)(lower_bound)(upper_bound)(limit) );
+FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_result,
+           (rows)(more) );

@@ -14,7 +14,7 @@ var searchData=
   ['token_2ehpp',['token.hpp',['../token_8hpp.html',1,'']]],
   ['token_3c_20uint64_5ft_2c_20n_28currency_29_3e',['token&lt; uint64_t, N(currency)&gt;',['../structeos_1_1token.html',1,'eos']]],
   ['token_3c_20uint64_5ft_2c_20n_28eos_29_3e',['token&lt; uint64_t, N(eos)&gt;',['../structeos_1_1token.html',1,'eos']]],
-  ['token_5fname',['TOKEN_NAME',['../namespace_t_o_k_e_n___n_a_m_e.html',1,'TOKEN_NAME'],['../currency_8hpp.html#a2bf6bf152ba93be8cace72c5d55abc71',1,'TOKEN_NAME():&#160;currency.hpp']]],
+  ['token_5fname',['TOKEN_NAME',['../namespace_t_o_k_e_n___n_a_m_e.html',1,'TOKEN_NAME'],['../currency_8hpp.html#a2bf6bf152ba93be8cace72c5d55abc71',1,'TOKEN_NAME():&#160;currency.hpp'],['../system_8hpp.html#a2bf6bf152ba93be8cace72c5d55abc71',1,'TOKEN_NAME():&#160;system.hpp']]],
   ['tokenname',['TokenName',['../types_8h.html#a619dcf2195dd83ea4fc9aa62c92ec437',1,'types.h']]],
   ['tokens',['Tokens',['../namespaceeos.html#a100da99668f0d5c65bf15dae78926104',1,'eos::Tokens()'],['../group__tokens.html',1,'(Global Namespace)']]],
   ['total_5fvotes',['total_votes',['../struct_post_record.html#aca901b24573f6a0bf3e1058b197b6174',1,'PostRecord']]],

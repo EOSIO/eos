@@ -37,11 +37,11 @@ extern "C" {
        storeAccount( N(currency), Account( CurrencyTokens(1000ll*1000ll*1000ll) ) );
     }
 
-   /// The apply method implements the dispatch of events to this contract
-   void apply( uint64_t code, uint64_t action ) {
-      if( code == N(currency) ) {
-         if( action == N(transfer) ) 
-            currency::apply_currency_transfer( currentMessage< TOKEN_NAME::Transfer >() );
-      }
-   }
+    /// The apply method implements the dispatch of events to this contract
+    void apply( uint64_t code, uint64_t action ) {
+       if( code == N(currency) ) {
+          if( action == N(transfer) ) 
+             currency::apply_currency_transfer( currentMessage< TOKEN_NAME::Transfer >() );
+       }
+    }
 }

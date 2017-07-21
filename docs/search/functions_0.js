@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['account',['Account',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#acc96b530db9c63a37c07de6b062c2e9d',1,'TOKEN_NAME::Account']]],
-  ['apply',['apply',['../currency_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;currency.cpp'],['../exchange_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;exchange.cpp']]],
+  ['account',['Account',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#acc96b530db9c63a37c07de6b062c2e9d',1,'TOKEN_NAME::Account::Account(CurrencyTokens b=CurrencyTokens())'],['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#acc96b530db9c63a37c07de6b062c2e9d',1,'TOKEN_NAME::Account::Account(CurrencyTokens b=CurrencyTokens())']]],
+  ['apply',['apply',['../currency_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;currency.cpp'],['../exchange_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;exchange.cpp'],['../system_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;system.cpp']]],
   ['apply_5fcurrency_5ftransfer',['apply_currency_transfer',['../namespace_t_o_k_e_n___n_a_m_e.html#ad480ac2ff519e253e8d947fca896a12f',1,'TOKEN_NAME::apply_currency_transfer()'],['../namespaceexchange.html#a7d1831d86ebf1c90cc808e7dbab7b33d',1,'exchange::apply_currency_transfer()']]],
   ['apply_5feos_5ftransfer',['apply_eos_transfer',['../namespaceexchange.html#a7cd292ab951651316cbdaab066d73f22',1,'exchange']]],
   ['apply_5fexchange_5fbuy',['apply_exchange_buy',['../namespaceexchange.html#a144bb14807f5677faf9d569813f9294e',1,'exchange']]],

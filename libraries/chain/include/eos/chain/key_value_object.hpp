@@ -49,10 +49,9 @@ namespace eos { namespace chain {
                member<key_value_object, AccountName, &key_value_object::scope>,
                member<key_value_object, AccountName, &key_value_object::code>,
                member<key_value_object, AccountName, &key_value_object::table>,
-               member<key_value_object, AccountName, &key_value_object::key>,
-               member<key_value_object, shared_string, &key_value_object::value>
+               member<key_value_object, AccountName, &key_value_object::key>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,chainbase::strcmp_less >
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<AccountName> >
          >
       >
    >;

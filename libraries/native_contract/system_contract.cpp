@@ -79,13 +79,12 @@ void precondition_system_newaccount(precondition_validate_context& context) {
 
 #warning TODO: make sure creation deposit is greater than min account balance
 
-   auto validate_authority_preconditions = [&context](const auto& auth) {
+
+   /// validate_authority_preconditions
+   for( const auto& auth : { create.owner, create.active, create.recovery } ){
       for(const auto& a : auth.accounts)
          context.db.get<account_object,by_name>(a.permission.account);
-   };
-   validate_authority_preconditions(create.owner);
-   validate_authority_preconditions(create.active);
-   validate_authority_preconditions(create.recovery);
+   }
 }
 
 void apply_system_newaccount(apply_context& context) {

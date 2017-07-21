@@ -388,9 +388,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       }
    } FC_CAPTURE_AND_RETHROW( (name)(current_validate_context->msg.type) ) }
 
-   void  wasm_interface::vm_precondition() { vm_call("precondition" ); } 
-   void  wasm_interface::vm_apply()        { vm_call("apply" );        }
-   void  wasm_interface::vm_validate()     { vm_call("validate");       }
+   void  wasm_interface::vm_apply()        { vm_call("apply" );          }
 
    void  wasm_interface::vm_onInit()
    { try {
@@ -416,22 +414,25 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    } FC_CAPTURE_AND_RETHROW() }
 
    void wasm_interface::validate( message_validate_context& c ) {
-
+      /*
       current_validate_context       = &c;
       current_precondition_context   = nullptr;
       current_apply_context          = nullptr;
 
       load( c.code, c.db );
       vm_validate();
+      */
    }
    void wasm_interface::precondition( precondition_validate_context& c ) {
    try {
 
+      /*
       current_validate_context       = &c;
       current_precondition_context   = &c;
 
       load( c.code, c.db );
       vm_precondition();
+      */
 
    } FC_CAPTURE_AND_RETHROW() }
 

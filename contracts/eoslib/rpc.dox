@@ -31,6 +31,7 @@
    ```
    { 
       "head_block_num":449,
+      "last_irreversible_block_num": 434,
       "head_block_id":"000001c1a0f072a5ca76831ac6c6e2988efcf162e953eb40046ec2ceca817a9f",
       "head_block_time":"2017-07-18T21:02:24",
       "head_block_producer":"initd",
