@@ -2,6 +2,7 @@
 #include <eos/chain/permission_object.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/key_value_object.hpp>
+#include <eos/chain/chain_controller.hpp>
 
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/range/algorithm/find_if.hpp>
@@ -34,24 +35,25 @@ void message_validate_context::require_scope(const types::AccountName& account)c
       return scope == account;
    });
 
-   EOS_ASSERT( itr != trx.scope.end(), tx_missing_scope,
-              "Required scope ${scope} not declared by transaction", ("scope",account) );
+   if( controller.should_check_scope() ) {
+      EOS_ASSERT( itr != trx.scope.end(), tx_missing_scope,
+                 "Required scope ${scope} not declared by transaction", ("scope",account) );
+   }
 }
 
-bool message_validate_context::has_recipient( const types::AccountName& account )const {
+bool apply_context::has_recipient( const types::AccountName& account )const {
    if( msg.code == account ) return true;
 
-   auto itr = boost::find_if(msg.recipients, [&account](const auto& recipient) {
+   auto itr = boost::find_if(notified, [&account](const auto& recipient) {
       return recipient == account;
    });
 
-   return itr != msg.recipients.end();
+   return itr != notified.end();
 }
 
-void message_validate_context::require_recipient(const types::AccountName& account)const {
-
-   EOS_ASSERT( has_recipient( account ), tx_missing_recipient,
-              "Required recipient ${recipient} not declared by message", ("recipient",account)("recipients",msg.recipients) );
+void apply_context::require_recipient(const types::AccountName& account) {
+   if( !has_recipient( account ) )
+      notified.push_back(account);
 }
 
 bool message_validate_context::all_authorizations_used() const {

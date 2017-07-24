@@ -418,12 +418,11 @@ protected:
 { \
    eos::chain::SignedTransaction trx; \
    if (std::string(#stakeholder) != std::string(#proxy)) \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#stakeholder, #proxy}, \
-                         vector<types::AccountPermission>{}, "setproxy", types::setproxy{0, 1}); \
+      trx.emplaceMessage(config::EosContractName, \
+                         vector<types::AccountPermission>{ {#stakeholder,"active"} }, "setproxy", types::setproxy{#stakeholder, #proxy}); \
    else \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#stakeholder}, \
-                         vector<types::AccountPermission>{}, "setproxy", types::setproxy{0, 0}); \
-   boost::sort(trx.messages.back().recipients); \
+      trx.emplaceMessage(config::EosContractName, \
+                         vector<types::AccountPermission>{ {#stakeholder,"active"} }, "setproxy", types::setproxy{#stakeholder, #proxy}); \
    trx.expiration = chain.head_block_time() + 100; \
    trx.set_reference_block(chain.head_block_id()); \
    chain.push_transaction(trx); \

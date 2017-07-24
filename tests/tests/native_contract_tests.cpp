@@ -91,7 +91,6 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.set_reference_block(chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
       trx.scope = sort_names( {"inita", "initb"} );
-      trx.messages[0].recipients = {"inita", config::EosContractName};
 
       types::transfer trans = { "inita", "initb", (100)/*, "transfer 100"*/ };
 
@@ -106,7 +105,6 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       auto unpack_trans = trx.messageAs<types::transfer>(0);
 
       BOOST_REQUIRE_THROW(chain.push_transaction(trx), message_validate_exception); // "fail to notify receiver, initb and sender, inita"
-      trx.messages[0].recipients = {"inita", "initb"};
       trx.setMessage(0, "transfer", trans);
       chain.push_transaction(trx);
 
@@ -256,7 +254,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(100));
-         const auto& joeVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("joe");
+         const auto& joeVotes = chain_db.get<native::eos::ProducerVotesObject, native::eos::byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
       }
 
@@ -271,7 +269,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("joe");
+         const auto& joeVotes = chain_db.get<native::eos::ProducerVotesObject, native::eos::byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
       }
    } FC_LOG_AND_RETHROW()
@@ -292,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(100));
-         const auto& joeVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("joe");
+         const auto& joeVotes = chain_db.get<native::eos::ProducerVotesObject, native::eos::byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
       }
 
@@ -302,7 +300,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), Asset(100));
-         const auto& joeVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("joe");
+         const auto& joeVotes = chain_db.get<native::eos::ProducerVotesObject, native::eos::byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
       }
 
@@ -317,7 +315,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("joe");
+         const auto& joeVotes = chain_db.get<native::eos::ProducerVotesObject, native::eos::byOwnerName>("joe");
          BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
       }
    } FC_LOG_AND_RETHROW()
@@ -355,7 +353,7 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
          {
             BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 1);
             BOOST_CHECK_EQUAL(chain.get_staked_balance("stakeholder"), Asset(100));
-            const auto& producerVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("producer");
+            const auto& producerVotes = chain_db.get<native::eos::ProducerVotesObject, native::eos::byOwnerName>("producer");
             BOOST_CHECK_EQUAL(producerVotes.getVotes(), chain.get_staked_balance("stakeholder"));
          }
 
@@ -370,7 +368,7 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
 
          {
             BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 0);
-            const auto& producerVotes = chain_db.get<native::staked::ProducerVotesObject, native::staked::byOwnerName>("producer");
+            const auto& producerVotes = chain_db.get<native::eos::ProducerVotesObject, native::eos::byOwnerName>("producer");
             BOOST_CHECK_EQUAL(producerVotes.getVotes(), 0);
          }
       };

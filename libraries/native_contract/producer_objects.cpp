@@ -8,7 +8,7 @@
 #include <boost/range/algorithm_ext.hpp>
 
 namespace native {
-namespace staked {
+namespace eos {
 using namespace chain;
 using namespace types;
 
@@ -142,4 +142,4 @@ void ProducerScheduleObject::resetProducerRace(chainbase::database& db) const {
    });
 }
 
-} } // namespace native::staked
+} } // namespace native::eos

@@ -3,7 +3,6 @@ typedef Name           PermissionName
 typedef Name           FuncName
 typedef FixedString32  MessageName
 typedef FixedString32  TypeName
-typedef UInt8          NameIndex # Index to an AccountName in Message::recipients
 
 # import account type as localtype
 
@@ -14,7 +13,6 @@ struct AccountPermission
 struct Message
    code            AccountName         # the contract defining the primary code to execute for code/type
    type            FuncName            # the action to be taken 
-   recipients      AccountName[]       # the other contracts whose code will run handlers for primary/type
    authorization   AccountPermission[] # the accounts and permission levels provided
    data            Bytes               # opaque data processed by code
 
@@ -110,13 +108,13 @@ struct setproducer
 
 # implies message.sender account
 struct okproducer
-   voter     NameIndex # The account casting a vote
-   producer  NameIndex # The producer being voted on
+   voter     AccountName # The account casting a vote
+   producer  AccountName # The producer being voted on
    approve   Int8  # 1 to approve, or 0 to disapprove
 
 struct setproxy
-   stakeholder    NameIndex # The account with stake to be proxied
-   proxy          NameIndex # The account to cast votes with stakeholder's stake weight
+   stakeholder    AccountName # The account with stake to be proxied
+   proxy          AccountName # The account to cast votes with stakeholder's stake weight
 
 
 struct UpdatePermission

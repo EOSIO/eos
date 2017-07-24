@@ -35,9 +35,7 @@ using types::PermissionName;
 
 const static char KeyPrefix[] = "EOS";
 
-const static AccountName SystemContractName = N(system);
 const static AccountName EosContractName = N(eos);
-const static AccountName StakedBalanceContractName = N(staked);
 
 const static AccountName NobodyAccountName = N(nobody);
 const static AccountName AnybodyAccountName = N(anybody);

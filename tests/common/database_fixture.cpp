@@ -46,7 +46,6 @@
 uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
 namespace eos { namespace chain {
-   using namespace native::staked;
    using namespace native::eos;
    using namespace native;
 
@@ -138,15 +137,15 @@ types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& ac
 }
 
 types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::staked::byOwnerName>(account).stakedBalance;
+   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).stakedBalance;
 }
 
 types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::staked::byOwnerName>(account).unstakingBalance;
+   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).unstakingBalance;
 }
 
 std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
-   const auto& sbo = get_database().get<StakedBalanceObject, staked::byOwnerName>(account);
+   const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
    if (sbo.producerVotes.contains<ProducerSlate>()) {
       auto range = sbo.producerVotes.get<ProducerSlate>().range();
       return {range.begin(), range.end()};

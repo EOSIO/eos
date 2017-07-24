@@ -12,7 +12,7 @@
 #include <boost/multi_index/mem_fun.hpp>
 
 namespace native {
-namespace staked {
+namespace eos {
 
 using namespace ::eos::chain;
 namespace config = ::eos::config;
@@ -237,8 +237,8 @@ using ProducerScheduleMultiIndex = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // namespace native::staked
+} } // namespace native::eos
 
-CHAINBASE_SET_INDEX_TYPE(native::staked::ProducerVotesObject, native::staked::ProducerVotesMultiIndex)
-CHAINBASE_SET_INDEX_TYPE(native::staked::ProxyVoteObject, native::staked::ProxyVoteMultiIndex)
-CHAINBASE_SET_INDEX_TYPE(native::staked::ProducerScheduleObject, native::staked::ProducerScheduleMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eos::ProducerVotesObject, native::eos::ProducerVotesMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eos::ProxyVoteObject, native::eos::ProxyVoteMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eos::ProducerScheduleObject, native::eos::ProducerScheduleMultiIndex)

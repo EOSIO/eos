@@ -145,7 +145,7 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.emplaceMessage("eos", sort_names( {from,to} ),
+   trx.emplaceMessage("eos", 
                       vector<types::AccountPermission>{ {from,"active"} },
                       "transfer", types::transfer{from, to, amount/*, ""*/});
    trx.expiration = chain.head_block_time() + 100;

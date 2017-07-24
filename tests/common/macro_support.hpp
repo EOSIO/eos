@@ -33,12 +33,10 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define MKACCT_IMPL(chain, name, creator, active, owner, recovery, deposit) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names({ #creator, "system" }); \
-      trx.emplaceMessage(config::SystemContractName, \
-                         vector<AccountName>{#creator, config::StakedBalanceContractName, config::EosContractName}, \
+      trx.scope = sort_names({ #creator, "eos" }); \
+      trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{}, \
                          "newaccount", types::newaccount{#creator, #name, owner, active, recovery, deposit}); \
-      boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -68,10 +66,9 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names({#sender,#recipient}); \
-      trx.emplaceMessage(config::EosContractName, vector<AccountName>{#sender, #recipient}, \
-                         vector<types::AccountPermission>{}, \
+      trx.emplaceMessage(config::EosContractName, \
+                         vector<types::AccountPermission>{ {#sender,"active"} }, \
                          "transfer", types::transfer{#sender, #recipient, Amount.amount/*, memo*/}); \
-      boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -83,12 +80,8 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( { #sender, #recipient } ); \
-      trx.emplaceMessage(config::EosContractName, vector<AccountName>{#sender, config::StakedBalanceContractName}, \
+      trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{}, "lock", types::lock{#sender, #recipient, amount}); \
-      if (std::string(#sender) != std::string(#recipient)) { \
-         trx.messages.front().recipients.emplace_back(#recipient); \
-         boost::sort(trx.messages.front().recipients); \
-      } \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -99,8 +92,8 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define BEGIN_UNSTAKE3(chain, account, amount) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( { "staked" } ); \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#account}, \
+      trx.scope = sort_names( { "eos" } ); \
+      trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{}, \
                          "unlock", types::unlock{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
@@ -112,10 +105,9 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define FINISH_UNSTAKE3(chain, account, amount) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( { "staked", #account } ); \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#account, config::EosContractName}, \
+      trx.scope = sort_names( { "eos", #account } ); \
+      trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{}, "claim", types::claim{#account, amount}); \
-      boost::sort(trx.messages.back().recipients); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -125,8 +117,8 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define MKPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( {#owner, "staked"} ); \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#owner}, \
+      trx.scope = sort_names( {#owner, "eos"} ); \
+      trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{}, \
                          "setproducer", types::setproducer{#owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \
@@ -142,11 +134,10 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define APPDCR4(chain, voter, producer, approved) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( {#voter, "staked"} ); \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{#voter, #producer}, \
+      trx.scope = sort_names( {#voter, "eos"} ); \
+      trx.emplaceMessage(config::EosContractName,  \
                          vector<types::AccountPermission>{}, \
-                         "okproducer", types::okproducer{0, 1, approved? 1 : 0}); \
-      boost::sort(trx.messages.back().recipients); \
+                         "okproducer", types::okproducer{#voter, #producer, approved? 1 : 0}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx); \
@@ -156,8 +147,8 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define UPPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( {#owner, "staked"} ); \
-      trx.emplaceMessage(config::StakedBalanceContractName, vector<AccountName>{owner}, \
+      trx.scope = sort_names( {#owner, "eos"} ); \
+      trx.emplaceMessage(config::EosContractName,  \
                          vector<types::AccountPermission>{}, \
                          "setproducer", types::setproducer{owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \

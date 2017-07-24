@@ -29,8 +29,6 @@ public:
     */
    void require_authorization(const types::AccountName& account);
    void require_scope(const types::AccountName& account)const;
-   void require_recipient(const types::AccountName& account)const;
-   bool has_recipient( const types::AccountName& account )const;
    bool has_authorization( const types::AccountName& account )const;
    bool all_authorizations_used() const;
 
@@ -88,8 +86,12 @@ class apply_context : public precondition_validate_context {
       int32_t store_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary,
                               const char* data, uint32_t len );
 
-      std::deque<eos::chain::generated_transaction> applied; ///< sync calls made 
-      std::deque<eos::chain::generated_transaction> generated; ///< async calls requested
+      bool has_recipient( const types::AccountName& account )const;
+      void require_recipient(const types::AccountName& account);
+
+      std::deque<AccountName>          notified;
+      std::deque<ProcessedTransaction> sync_transactions; ///< sync calls made 
+      std::deque<GeneratedTransaction> async_transactions; ///< async calls requested
 
       chain_controller&    mutable_controller;
       chainbase::database& mutable_db;

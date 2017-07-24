@@ -77,8 +77,6 @@ namespace eos { namespace chain {
           *  The controller can override any script endpoint with native code.
           */
          ///@{
-         void set_validate_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, message_validate_handler v );
-         void set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const ActionName& action, precondition_validate_handler v );
          void set_apply_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, apply_handler v );
          //@}
 
@@ -96,7 +94,8 @@ namespace eos { namespace chain {
             skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
             skip_producer_schedule_check= 1 << 10,  ///< used while reindexing
-            skip_validate               = 1 << 11 ///< used prior to checkpoint, skips validate() call on transaction
+            skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
+            skip_scope_check            = 1 << 12  ///< used to skip checks for proper scope
          };
 
          /**
@@ -135,9 +134,13 @@ namespace eos { namespace chain {
          bool before_last_checkpoint()const;
 
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         void push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
+
+
+         ProcessedTransaction push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
+         ProcessedTransaction _push_transaction( const SignedTransaction& trx );
+
+
          bool _push_block( const signed_block& b );
-         void _push_transaction( const SignedTransaction& trx );
 
          signed_block generate_block(
             fc::time_point_sec when,
@@ -233,6 +236,7 @@ namespace eos { namespace chain {
          const chainbase::database& get_database() const { return _db; }
          chainbase::database& get_mutable_database() { return _db; }
          
+         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
    private:
 
          /// Reset the object graph in-memory
@@ -242,9 +246,12 @@ namespace eos { namespace chain {
          void replay();
 
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
-         void apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
          void _apply_block(const signed_block& next_block);
-         void _apply_transaction(const SignedTransaction& trx);
+
+
+         ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
+         ProcessedTransaction _apply_transaction(const SignedTransaction& trx);
+         ProcessedTransaction process_transaction( const SignedTransaction& trx );
 
          void require_account(const AccountName& name) const;
 
@@ -259,10 +266,10 @@ namespace eos { namespace chain {
          void validate_referenced_accounts(const SignedTransaction& trx)const;
          void validate_expiration(const SignedTransaction& trx) const;
          void validate_scope(const SignedTransaction& trx) const;
+         void validate_authority(const SignedTransaction& trx )const;
          /// @}
 
-         void validate_message_precondition(precondition_validate_context& c)const;
-         void process_message(const Transaction& trx, const Message& message);
+         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message, MessageOutput& output);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
@@ -302,8 +309,6 @@ namespace eos { namespace chain {
 
          typedef pair<AccountName,types::Name> handler_key;
 
-         map< AccountName, map<handler_key, message_validate_handler> >        message_validate_handlers;
-         map< AccountName, map<handler_key, precondition_validate_handler> >   precondition_validate_handlers;
          map< AccountName, map<handler_key, apply_handler> >                   apply_handlers;
    };
 

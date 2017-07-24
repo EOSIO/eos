@@ -287,8 +287,7 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
          eos::chain::SignedTransaction trx;
          trx.scope = {account};
          trx.messages.resize(1);
-         trx.messages[0].code = config::SystemContractName;
-         trx.messages[0].recipients = {account};
+         trx.messages[0].code = config::EosContractName;
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -300,12 +299,9 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
 void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.emplaceMessage("currency", sort_names( {from,to} ),
+   trx.emplaceMessage("currency", 
                       vector<types::AccountPermission>{ {from,"active"} },
                       "transfer", types::transfer{from, to, amount});
-   auto& re = trx.messages.back().recipients;
-   auto itr = std::remove( re.begin(), re.end(), Name("currency") );
-   re.erase( itr, re.end() );
 
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
@@ -316,7 +312,7 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
 void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.emplaceMessage("currency", sort_names( {from,to} ),
+   trx.emplaceMessage("currency", 
                       vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
                       "transfer", types::transfer{from, to, amount});
    trx.expiration = chain.head_block_time() + 100;
@@ -344,8 +340,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          eos::chain::SignedTransaction trx;
          trx.scope = {"currency"};
          trx.messages.resize(1);
-         trx.messages[0].code = config::SystemContractName;
-         trx.messages[0].recipients = {};
+         trx.messages[0].code = config::EosContractName;
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -359,7 +354,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         trx.emplaceMessage("currency", vector<AccountName>{"inita"},
+         trx.emplaceMessage("currency", 
                             vector<types::AccountPermission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "inita", 1+i});
          trx.expiration = chain.head_block_time() + 100;
@@ -397,7 +392,7 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.emplaceMessage("exchange", sort_names( {} ),
+   trx.emplaceMessage("exchange", 
                       vector<types::AccountPermission>{ {seller,"active"} },
                       "sell", b );
    //trx.messages.back().set_packed( "sell", b);
@@ -415,7 +410,7 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.emplaceMessage("exchange", sort_names( {} ),
+   trx.emplaceMessage("exchange", 
                       vector<types::AccountPermission>{ {buyer,"active"} },
                       "buy", b );
    //trx.messages.back().set_packed( "buy", b);
@@ -1113,8 +1108,7 @@ R"(
       eos::chain::SignedTransaction trx;
       trx.scope = {"simplecoin"};
       trx.messages.resize(1);
-      trx.messages[0].code = config::SystemContractName;
-      trx.messages[0].recipients = {"simplecoin"};
+      trx.messages[0].code = config::EosContractName;
       trx.setMessage(0, "setcode", handler);
       trx.expiration = chain.head_block_time() + 100;
       trx.set_reference_block(chain.head_block_id());
