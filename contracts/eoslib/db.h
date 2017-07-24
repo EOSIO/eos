@@ -5,6 +5,7 @@
 #pragma once
 
 #include <eoslib/types.h>
+extern "C" {
 /**
  *  @defgroup database Database API
  *  @brief APIs that store and retreive data on the blockchain
@@ -174,4 +175,4 @@ bool remove_i128i128( AccountName scope, TableName table, const void* data );
 bool store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
 
 ///@}  dbi128i128
-
+}
