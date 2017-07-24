@@ -24,6 +24,12 @@ namespace eos {
       vector<block_id_type>       known_blocks;
    };
 
+
+   struct request_message {
+      vector<transaction_id_type> req_trx;
+      vector<block_id_type>       req_blocks;
+   };
+
    struct block_summary_message {
       signed_block                block;
       vector<transaction_id_type> trx_ids;
@@ -41,6 +47,7 @@ namespace eos {
    using net_message = static_variant<handshake_message,
                                       peer_message,
                                       notice_message,
+                                      request_message,
                                       sync_request_message,
                                       block_summary_message,
                                       SignedTransaction,
@@ -58,6 +65,7 @@ FC_REFLECT( eos::handshake_message,
 
 FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
 FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
+FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
 FC_REFLECT( eos::peer_message, (peers) )
 
@@ -121,5 +129,16 @@ State:
 
      Once you have caught up to all peers, notify all peers of your head block so they know that you
      know the LIB and will start sending you real time tranasctions
+
+parallel fetches, request in groups
+
+
+only relay transactions to peers if we don't already know about it.
+
+send a notification rather than a transaaction if the txn is > 3mtu size.
+
+
+
+
 
 */

@@ -22,9 +22,8 @@ int main(int argc, char** argv)
       app().register_plugin<http_plugin>();
       app().register_plugin<producer_plugin>();
       app().register_plugin<chain_plugin>();
-      if(!app().initialize<chain_plugin, net_plugin, producer_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
          return -1;
-
       app().startup();
       app().exec();
    } catch (const fc::exception& e) {

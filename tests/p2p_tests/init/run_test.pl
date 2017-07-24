@@ -13,13 +13,13 @@ my $eos_home = defined $ENV{EOS_HOME} ? $ENV{EOS_HOME} : getcwd;
 my $eosd = $eos_home . "/programs/eosd/eosd";
 
 my $nodes = defined $ENV{EOS_TEST_RING} ? $ENV{EOS_TEST_RING} : "1";
-my $only_one = defined $ENV{EOS_TEST_ONE_PRODUCER} ? "1" : "";
+my $pnodes = defined $ENV{EOS_TEST_PRODUCERS} ? $ENV{EOS_TEST_PRODUCERS} : "1";
 
 my $prods = 21;
 my $genesis = "$eos_home/genesis.json";
 my $http_port_base = 8888;
 my $p2p_port_base = 9876;
-my $data_dir_base = './test-dir-node';
+my $data_dir_base = "tdn";
 my $http_port_base = 8888;
 my $hostname = "localhost";
 my $first_pause = 45;
@@ -32,23 +32,34 @@ if (!GetOptions("nodes=i" => \$nodes,
                 "first-pause=i" => \$first_pause,
                 "launch-pause=i" => \$launch_pause,
                 "duration=i" => \$run_duration,
-                "one-producer" => \$only_one)) {
-    print "usage: $ARGV[0] [--nodes=<n>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>] [--one-producer]\n";
+                "pnodes=i" => \$pnodes)) {
+    print "usage: $ARGV[0] [--nodes=<n>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>] [--pnodes]\n";
     print "where:\n";
     print "--nodes=n (default = 1) sets the number of eosd instances to launch\n";
     print "--first-pause=n (default = 45) sets the seconds delay after starting the first instance\n";
     print "--launch-pause=n (default = 5) sets the seconds delay after starting subsequent nodes\n";
     print "--duration=n (default = 60) sets the seconds delay after starting the last node before shutting down the test\n";
-    print "--one-producer (default = no) if set concentrates all producers into the first node\n";
+    print "--pnodes=n (default = 1) sets the number nodes that will also be producers\n";
     print "\nproducer count currently fixed at $prods\n";
     exit
 }
 
-my $per_node = int ($prods / ($only_one ? 1 : $nodes));
-my $extra = $prods - ($per_node * $nodes);
+die "pnodes value must be between 1 and $prods\n" if ($pnodes < 1 || $pnodes > $prods);
+
+$nodes = $pnodes if ($nodes < $pnodes);
+
+my $per_node = int ($prods / $pnodes);
+my $extra = $prods - ($per_node * $pnodes);
+my @pcount;
+for (my $p = 0; $p < $pnodes; $p++) {
+    $pcount[$p] = $per_node;
+    if ($extra) {
+        $pcount[$p]++;
+        $extra--;
+    }
+}
 my @pid;
 my @data_dir;
-my $prod_ndx = ord('a');
 my @p2p_port;
 my @http_port;
 my @peers;
@@ -59,12 +70,17 @@ for (my $i = 0; $i < $nodes; $i++) {
     $data_dir[$i] = "$data_dir_base-$i";
 }
 
+opendir(DIR, ".") or die $!;
+while (my $d = readdir(DIR)) {
+    if ($d =~ $data_dir_base) {
+        rmtree ($d);
+    }
+}
+closedir(DIR);
 
 sub write_config {
     my $i = shift;
-
-    print "purging directory $data_dir[$i]\n";
-    rmtree ($data_dir[$i]);
+    my $producer = shift;
     mkdir ($data_dir[$i]);
 
     open (my $cfg, '>', "$data_dir[$i]/config.ini") ;
@@ -73,23 +89,25 @@ sub write_config {
     print $cfg "readonly = 0\n";
     print $cfg "shared-file-dir = \"blockchain\"\n";
     print $cfg "shared-file-size = 64\n";
-    print $cfg "http-server-endpoint = $hostname:$http_port[$i]\n";
+    print $cfg "http-server-endpoint = 0.0.0.0:$http_port[$i]\n";
     print $cfg "listen-endpoint = 0.0.0.0:$p2p_port[$i]\n";
     print $cfg "public-endpoint = $hostname:$p2p_port[$i]\n";
     foreach my $peer (@peers) {
         print $cfg "remote-endpoint = $peer\n";
     }
 
-    print $cfg "enable-stale-production = true\n";
-    print $cfg "required-participation = true\n";
-    print $cfg "private-key = [\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]\n";
+    if (defined $producer) {
+        print $cfg "enable-stale-production = true\n";
+        print $cfg "required-participation = true\n";
+        print $cfg "private-key = [\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]\n";
 
-    if ($i == 0 || $only_one != "1") {
         print $cfg "plugin = eos::producer_plugin\n";
-        $per_node += $extra if ($i == $nodes - 1);
-        for (my $p = 0; $p < $per_node; $p++) {
-            my $pname = "init" . chr($prod_ndx++);
-            print $cfg "producer-name = $pname\n";
+
+        my $prod_ndx = ord('a') + $producer;
+        my $num_prod = $pcount[$producer];
+        for (my $p = 0; $p < $num_prod; $p++) {
+            print $cfg "producer-name = init" . chr($prod_ndx) . "\n";
+            $prod_ndx += $pnodes; # ($p < $per_node-1) ? $pnodes : 1;
         }
     }
     close $cfg;
@@ -98,6 +116,7 @@ sub write_config {
 
 sub make_ring_topology () {
     for (my $i = 0; $i < $nodes; $i++) {
+        my $pi = $i if ($i < $pnodes);
         my $rport = ($i == $nodes - 1) ? $p2p_port_base : $p2p_port[$i] + 1;
         $peers[0] = "$rhost:$rport";
         if ($nodes > 2) {
@@ -105,7 +124,7 @@ sub make_ring_topology () {
             $rport += $nodes if ($i == 0);
             $peers[1] = "$rhost:$rport";
         }
-        write_config ($i);
+        write_config ($i, $pi);
     }
     return 1;
 }

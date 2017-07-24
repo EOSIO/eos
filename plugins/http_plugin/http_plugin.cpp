@@ -96,10 +96,24 @@ namespace eos {
 
    void http_plugin::plugin_initialize(const variables_map& options) {
       if(options.count("http-server-endpoint")) {
+        #if 0
          auto lipstr = options.at("http-server-endpoint").as< string >();
          auto fcep = fc::ip::endpoint::from_string(lipstr);
          my->listen_endpoint = tcp::endpoint(boost::asio::ip::address_v4::from_string((string)fcep.get_address()), fcep.port());
-         ilog("configured http to listen on ${ep}", ("ep", fcep));
+        #endif
+         auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
+         if( options.count( "http-server-endpoint" ) ) {
+           auto lipstr =  options.at("http-server-endpoint").as< string >();
+           auto host = lipstr.substr( 0, lipstr.find(':') );
+           auto port = lipstr.substr( host.size()+1, lipstr.size() );
+           idump((host)(port));
+           tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+           my->listen_endpoint = *resolver->resolve( query);
+           ilog("configured http to listen on ${h}:${p}", ("h",host)("p",port));
+         }
+
+         // uint32_t addr = my->listen_endpoint->address().to_v4().to_ulong();
+         // auto fcep = fc::ip::endpoint (addr,my->listen_endpoint->port());
       }
    }
 
