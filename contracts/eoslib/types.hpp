@@ -10,7 +10,7 @@ namespace  eos {
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 1;
       if( c >= '1' && c <= '5' )
-         return (c - '1') + 26;
+         return (c - '1') + 27;
       return 0;
    }
 
@@ -31,7 +31,7 @@ namespace  eos {
          value |= char_to_symbol( str[ len -1 - i ] );
       }
 
-      if( len == 13 ) {
+      if( len >= 13 ) {
          value <<= 4;
          value |= 0x0f & char_to_symbol( str[ 12 ] );
       }

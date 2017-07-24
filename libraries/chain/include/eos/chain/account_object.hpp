@@ -30,15 +30,22 @@
 namespace eos { namespace chain {
 
    class account_object : public chainbase::object<account_object_type, account_object> {
-      OBJECT_CTOR(account_object,(code))
+      OBJECT_CTOR(account_object,(code)(abi))
 
       id_type             id;
       AccountName         name;
       uint8_t             vm_type      = 0;
       uint8_t             vm_version   = 0;
       fc::sha256          code_version;
-      shared_vector<char> code;
       Time                creation_date;
+      shared_vector<char> code;
+      shared_vector<char> abi;
+
+      void set_abi( const eos::types::Abi& _abi ) {
+         abi.resize( fc::raw::pack_size( _abi ) );
+         fc::datastream<char*> ds( abi.data(), abi.size() );
+         fc::raw::pack( ds, _abi );
+      }
    };
    using account_id_type = account_object::id_type;
 

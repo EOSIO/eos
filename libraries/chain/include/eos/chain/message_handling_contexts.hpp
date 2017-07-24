@@ -30,6 +30,8 @@ public:
    void require_authorization(const types::AccountName& account);
    void require_scope(const types::AccountName& account)const;
    void require_recipient(const types::AccountName& account)const;
+   bool has_recipient( const types::AccountName& account )const;
+   bool has_authorization( const types::AccountName& account )const;
    bool all_authorizations_used() const;
 
    const chain_controller&      controller;

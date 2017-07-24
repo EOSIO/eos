@@ -8,6 +8,15 @@
 
 namespace eos { namespace chain {
 
+bool message_validate_context::has_authorization(const types::AccountName& account)const {
+
+   auto itr = boost::find_if(msg.authorization, [&account](const types::AccountPermission& ap) {
+      return ap.account == account;
+   });
+   return itr != msg.authorization.end();
+
+}
+
 void message_validate_context::require_authorization(const types::AccountName& account) {
 
    auto itr = boost::find_if(msg.authorization, [&account](const types::AccountPermission& ap) {
@@ -29,12 +38,19 @@ void message_validate_context::require_scope(const types::AccountName& account)c
               "Required scope ${scope} not declared by transaction", ("scope",account) );
 }
 
-void message_validate_context::require_recipient(const types::AccountName& account)const {
+bool message_validate_context::has_recipient( const types::AccountName& account )const {
+   if( msg.code == account ) return true;
+
    auto itr = boost::find_if(msg.recipients, [&account](const auto& recipient) {
       return recipient == account;
    });
 
-   EOS_ASSERT( itr != msg.recipients.end(), tx_missing_recipient,
+   return itr != msg.recipients.end();
+}
+
+void message_validate_context::require_recipient(const types::AccountName& account)const {
+
+   EOS_ASSERT( has_recipient( account ), tx_missing_recipient,
               "Required recipient ${recipient} not declared by message", ("recipient",account)("recipients",msg.recipients) );
 }
 

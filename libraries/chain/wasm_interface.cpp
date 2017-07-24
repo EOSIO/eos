@@ -166,6 +166,13 @@ DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
    wasm_interface::get().current_validate_context->require_recipient( account );
 }
 
+DEFINE_INTRINSIC_FUNCTION1(env,hasRecipient,hasRecipient,i32,i64,account) {
+   return wasm_interface::get().current_validate_context->has_recipient( account );
+}
+DEFINE_INTRINSIC_FUNCTION1(env,hasAuth,hasAuth,i32,i64,account) {
+   return wasm_interface::get().current_validate_context->has_authorization( account );
+}
+
 DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
    wasm_interface::get().current_validate_context->require_scope( scope );
 }
@@ -269,7 +276,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,dests
 
    int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
 
-   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
+//   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
    memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
    return minlen;
 }
@@ -383,7 +390,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 
          FC_ASSERT( getFunctionType(call)->parameters.size() == 2 );
 
-         idump((current_validate_context->msg.code)(current_validate_context->msg.type)(current_validate_context->code));
+  //       idump((current_validate_context->msg.code)(current_validate_context->msg.type)(current_validate_context->code));
          std::vector<Value> args = { Value(uint64_t(current_validate_context->msg.code)),
                                      Value(uint64_t(current_validate_context->msg.type)) };
 
@@ -402,9 +409,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       }
    } FC_CAPTURE_AND_RETHROW( (name)(current_validate_context->msg.type) ) }
 
-   void  wasm_interface::vm_precondition() { vm_call("precondition" ); } 
-   void  wasm_interface::vm_apply()        { vm_call("apply" );        }
-   void  wasm_interface::vm_validate()     { vm_call("validate");       }
+   void  wasm_interface::vm_apply()        { vm_call("apply" );          }
 
    void  wasm_interface::vm_onInit()
    { try {
@@ -432,22 +437,25 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    } FC_CAPTURE_AND_RETHROW() }
 
    void wasm_interface::validate( message_validate_context& c ) {
-
+      /*
       current_validate_context       = &c;
       current_precondition_context   = nullptr;
       current_apply_context          = nullptr;
 
       load( c.code, c.db );
       vm_validate();
+      */
    }
    void wasm_interface::precondition( precondition_validate_context& c ) {
    try {
 
+      /*
       current_validate_context       = &c;
       current_precondition_context   = &c;
 
       load( c.code, c.db );
       vm_precondition();
+      */
 
    } FC_CAPTURE_AND_RETHROW() }
 

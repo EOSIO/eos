@@ -100,19 +100,19 @@ void apply_staked_setproducer(apply_context& context) {
    auto producer = db.find<producer_object, by_owner>(update.name);
 
    if (producer)
-      db.modify(*producer, [&update](producer_object& p) {
+      db.modify(*producer, [&](producer_object& p) {
          p.signing_key = update.key;
          p.configuration = update.configuration;
       });
    else {
-      db.create<producer_object>([&update](producer_object& p) {
+      db.create<producer_object>([&](producer_object& p) {
          p.owner = update.name;
          p.signing_key = update.key;
          p.configuration = update.configuration;
       });
       auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
-      db.create<ProducerVotesObject>([name = update.name, raceTime](ProducerVotesObject& pvo) {
-         pvo.ownerName = name;
+      db.create<ProducerVotesObject>([&](ProducerVotesObject& pvo) {
+         pvo.ownerName = update.name;
          pvo.startNewRaceLap(raceTime);
       });
    }

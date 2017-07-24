@@ -46,6 +46,7 @@ class ProducerVotesObject : public chainbase::object<chain::producer_votes_objec
    void updateVotes(types::ShareType deltaVotes, types::UInt128 currentRaceTime);
    /// @brief Get the number of votes this producer has received
    types::ShareType getVotes() const { return race.speed; }
+   pair<types::ShareType,id_type> getVoteOrder()const { return std::tie( race.speed, id ); }
 
    /**
     * These fields are used for the producer scheduling algorithm which uses a virtual race to ensure that runner-up
@@ -100,6 +101,9 @@ class ProducerVotesObject : public chainbase::object<chain::producer_votes_objec
 
    void startNewRaceLap(types::UInt128 currentRaceTime) { race.update(race.speed, 0, currentRaceTime); }
    types::UInt128 projectedRaceFinishTime() const { return race.projectedFinishTime; }
+
+   typedef std::pair<types::UInt128,id_type> rft_order_type;
+   rft_order_type projectedRaceFinishTimeOrder() const { return std::tie(race.projectedFinishTime,id); }
 };
 
 /**
@@ -194,12 +198,22 @@ using ProducerVotesMultiIndex = chainbase::shared_multi_index_container<
          member<ProducerVotesObject, types::AccountName, &ProducerVotesObject::ownerName>
       >,
       ordered_non_unique<tag<byVotes>,
-         const_mem_fun<ProducerVotesObject, types::ShareType, &ProducerVotesObject::getVotes>,
-         std::greater<types::ShareType>
-      >,
-      ordered_non_unique<tag<byProjectedRaceFinishTime>,
-         const_mem_fun<ProducerVotesObject, types::UInt128, &ProducerVotesObject::projectedRaceFinishTime>
+         const_mem_fun<ProducerVotesObject, std::pair<types::ShareType,ProducerVotesObject::id_type>, &ProducerVotesObject::getVoteOrder>,
+         std::greater< std::pair<types::ShareType, ProducerVotesObject::id_type> >
+       >,
+      ordered_unique<tag<byProjectedRaceFinishTime>,
+         const_mem_fun<ProducerVotesObject, ProducerVotesObject::rft_order_type, &ProducerVotesObject::projectedRaceFinishTimeOrder>
       >
+/*
+   For some reason this does not compile, so I simulate it by adding a new method
+      ordered_unique<tag<byVotes>,
+         composite_key<
+            const_mem_fun<ProducerVotesObject, types::ShareType, &ProducerVotesObject::getVotes>,
+            member<ProducerVotesObject, ProducerVotesObject::id_type, &ProducerVotesObject::id>
+         >,
+         composite_key_compare< std::greater<types::ShareType>, std::less<ProducerVotesObject::id_type> >
+      >*//*,
+      */
    >
 >;
 

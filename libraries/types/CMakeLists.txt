@@ -4,6 +4,7 @@ add_library( eos_types
              Asset.cpp
              PublicKey.cpp
              TypeParser.cpp
+             AbiSerializer.cpp
              native.cpp
              ${HEADERS}
              "${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp"

@@ -93,7 +93,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.scope = sort_names( {"inita", "initb"} );
       trx.messages[0].recipients = {"inita", config::EosContractName};
 
-      types::transfer trans = { "inita", "initb", Asset(100), "transfer 100" };
+      types::transfer trans = { "inita", "initb", (100)/*, "transfer 100"*/ };
 
       UInt64 value(5);
       auto packed = fc::raw::pack(value);

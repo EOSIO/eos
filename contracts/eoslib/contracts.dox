@@ -21,31 +21,22 @@
 
   @subsection programentry Entry Points
 
-  EOS.IO applications have three potential starting points that behave like `main` in traditional applications:
+  EOS.IO applications have a `apply` which is like `main` in traditional applications:
 
   ```
   extern "C" {
-     void validate( uint64_t code, uint64_t action );
-     void precondition( uint64_t code, uint64_t action );
+     void init();
      void apply( uint64_t code, uint64_t action );
   }
   ```
 
-  Each of these entry points is give the arguments `code` and `action` which uniquely identify every event in
-  the system. For example, code could be a `currency` contract and action could be `transfer`.  This event (code,action)
+  `main` is give the arguments `code` and `action` which uniquely identify every event in
+  the system. For example, `code` could be a *currency* contract and `action` could be *transfer*.  This event (code,action)
   may be passed to several contracts including the `sender` and `receiver`.  It is up to your application to figure
   out what to do in response to such an event.
 
-  Each handler has a different level of access to blockchain state:
-
-  - **validate** can only access the data on the message itself
-  - **precondition** only has read access to the database and message
-  - **apply** has read/write access to the database
-
-  These three different handlers enable EOS.IO to maximize the amount of potential parallelism possible and it may
-  make sense to move computationaly expensive validations to either precondition or validate. That said, most developers
-  can postpone learning about `validate` and `precondition` as anything that can be done in those entry points can also
-  be performed in `apply`.
+  `init` is another entry point that is called once immediately after loading the code. It is where you should perform
+  one-time initialization of state.
 
 
 ### Example Apply Entry Handler

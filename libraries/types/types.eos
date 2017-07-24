@@ -51,11 +51,28 @@ struct BlockchainConfiguration
    minEosBalance     ShareType
    maxTrxLifetime    UInt32
 
+struct TypeDef 
+   newTypeName TypeName
+   type        TypeName
+
+struct Action
+   action Name
+   type   TypeName
+
+struct Table
+   table Name
+   type  TypeName
+
+struct Abi
+   types   TypeDef[]
+   structs Struct[]
+   actions Action[]
+   tables  Table[]
+
 struct transfer
    from      AccountName  # may not be the message.sender if message.sender has delegated authority by from
    to        AccountName
-   amount    Asset
-   memo      String
+   amount    UInt64
 
 struct lock
    from      AccountName
@@ -83,6 +100,7 @@ struct setcode
    vmtype          UInt8        # the virtual machine type
    vmversion       UInt8        # the virtual machine version
    code            Bytes        # the apply
+   abi             Abi          # the interface description of the code
 
 
 struct setproducer

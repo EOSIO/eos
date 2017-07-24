@@ -62,7 +62,7 @@ namespace eos { namespace types {
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 1;
       if( c >= '1' && c <= '5' )
-         return (c - '1') + 26;
+         return (c - '1') + 27;
       return 0;
    }
 
