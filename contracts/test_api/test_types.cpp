@@ -1,11 +1,8 @@
-#include <eoslib/types.hpp>
-
-#include "test_api.hpp"
-#include "test_types.hpp"
-
 #include <eoslib/eos.hpp>
 
-unsigned int test_types::test1() {
+#include "test_api.hpp"
+
+unsigned int test_types::types_size() {
    
    WASM_ASSERT( sizeof(int64_t) == 8, "int64_t size != 8");
    WASM_ASSERT( sizeof(uint64_t) ==  8, "uint64_t size != 8");
@@ -23,7 +20,7 @@ unsigned int test_types::test1() {
    return WASM_TEST_PASS;
 }
 
-unsigned int test_types::test2() {
+unsigned int test_types::char_to_symbol() {
    
    WASM_ASSERT( eos::char_to_symbol('a') ==  1, "eos::char_to_symbol('a') !=  1");
    WASM_ASSERT( eos::char_to_symbol('b') ==  2, "eos::char_to_symbol('b') !=  2");
@@ -65,7 +62,7 @@ unsigned int test_types::test2() {
    return WASM_TEST_PASS;  
 }
 
-unsigned int test_types::test3() {
+unsigned int test_types::string_to_name() {
 
    WASM_ASSERT( eos::string_to_name("a") == N(a) , "eos::string_to_name(a)" );
    WASM_ASSERT( eos::string_to_name("ba") == N(ba) , "eos::string_to_name(ba)" );
@@ -80,8 +77,8 @@ unsigned int test_types::test3() {
    WASM_ASSERT( eos::string_to_name("kjihgfedcba") == N(kjihgfedcba) , "eos::string_to_name(kjihgfedcba)" );
    WASM_ASSERT( eos::string_to_name("lkjihgfedcba") == N(lkjihgfedcba) , "eos::string_to_name(lkjihgfedcba)" );
    WASM_ASSERT( eos::string_to_name("mlkjihgfedcba") == N(mlkjihgfedcba) , "eos::string_to_name(mlkjihgfedcba)" );
-   WASM_ASSERT( eos::string_to_name("1mlkjihgfedcba") == N(2mlkjihgfedcba) , "eos::string_to_name(2mlkjihgfedcba)" );
-   WASM_ASSERT( eos::string_to_name("55mlkjihgfedcba") == N(14mlkjihgfedcba) , "eos::string_to_name(14mlkjihgfedcba)" );
+   WASM_ASSERT( eos::string_to_name("mlkjihgfedcba1") == N(mlkjihgfedcba2) , "eos::string_to_name(mlkjihgfedcba2)" );
+   WASM_ASSERT( eos::string_to_name("mlkjihgfedcba55") == N(mlkjihgfedcba14) , "eos::string_to_name(mlkjihgfedcba14)" );
    
    WASM_ASSERT( eos::string_to_name("azAA34") == N(azBB34) , "eos::string_to_name N(azBB34)" );
    WASM_ASSERT( eos::string_to_name("AZaz12Bc34") == N(AZaz12Bc34) , "eos::string_to_name AZaz12Bc34" );
@@ -90,12 +87,12 @@ unsigned int test_types::test3() {
    return WASM_TEST_PASS;
 }
 
-unsigned int test_types::test4() {
+unsigned int test_types::name_class() {
 
    WASM_ASSERT ( eos::Name(eos::string_to_name("azAA34")).value == N(azAA34), "eos::Name != N(azAA34)" );
    WASM_ASSERT ( eos::Name(eos::string_to_name("AABBCC")).value == 0, "eos::Name != N(0)" );
-   WASM_ASSERT ( eos::Name(eos::string_to_name("AA11")).value == N(11)<<(5*2), "eos::Name != N(AA11)" );
-   WASM_ASSERT ( eos::Name(eos::string_to_name("11AA")).value == N(11), "eos::Name != N(11AA)" );
+   WASM_ASSERT ( eos::Name(eos::string_to_name("AA11")).value == N(AA11), "eos::Name != N(AA11)" );
+   WASM_ASSERT ( eos::Name(eos::string_to_name("11AA")).value == N(11), "eos::Name != N(11)" );
    WASM_ASSERT ( eos::Name(eos::string_to_name("22BBCCXXAA")).value == N(22), "eos::Name != N(22)" );
    WASM_ASSERT ( eos::Name(eos::string_to_name("AAAbbcccdd")) == eos::Name(eos::string_to_name("AAAbbcccdd")), "eos::Name == eos::Name" );
 

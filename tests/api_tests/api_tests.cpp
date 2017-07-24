@@ -1,4 +1,14 @@
+#include <algorithm>
+#include <random>
+#include <iostream>
+#include <vector>
+#include <iterator>
+#include <sstream>
+#include <numeric>
+
 #include <boost/test/unit_test.hpp>
+#include <boost/iostreams/concepts.hpp>
+#include <boost/iostreams/stream_buffer.hpp>
 
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
@@ -22,13 +32,13 @@
 #include <Runtime/Runtime.h>
 
 #include <test_api/test_api.hpp>
-#include <test_api/test_types.hpp>
-#include <test_api/test_message.hpp>
-
 FC_REFLECT( dummy_message, (a)(b)(c) );
+FC_REFLECT( u128_msg, (values) );
 
 using namespace eos;
 using namespace chain;
+
+namespace bio = boost::iostreams;
 
 BOOST_AUTO_TEST_SUITE(api_tests)
 
@@ -88,10 +98,14 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
       }
 } FC_LOG_AND_RETHROW( ) }
 
-uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg ) {
+uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<char>& data, const vector<AccountName>& scope = {N(test_api)}) {
    eos::chain::SignedTransaction trx;
-   trx.scope = {msg.code};
+   trx.scope = scope;
    
+   //msg.data.clear();
+   vector<char>& dest = *(vector<char> *)(&msg.data);
+   std::copy(data.begin(), data.end(), std::back_inserter(dest));
+    
    trx.emplaceMessage(msg);
    
    trx.expiration = chain.head_block_time() + 100;
@@ -126,25 +140,63 @@ string readFile2(const string &fileName)
     return string(bytes.data(), fileSize);
 }
 
-#define TEST_METHOD(C, N) ((uint64_t(C::test_id)<<32) | N)
+#define TEST_METHOD(CLASS, METHOD) ( (uint64_t(DJBH(#CLASS))<<32) | uint32_t(DJBH(#METHOD)) )
 
-#define CALL_TEST_FUNCTION(TYPE, REC, AUTH) CallFunction(chain, Message{"test_api", REC, AUTH, TYPE})
-#define CALL_TEST_FUNCTION2(TYPE, REC, AUTH, DATA) CallFunction(chain, Message{"test_api", REC, AUTH, TYPE, DATA})
+#define CALL_TEST_FUNCTION(TYPE, REC, AUTH, DATA) CallFunction(chain, Message{"test_api", REC, AUTH, TYPE}, DATA)
+#define CALL_TEST_FUNCTION_SCOPE(TYPE, REC, AUTH, DATA, SCOPE) CallFunction(chain, Message{"test_api", REC, AUTH, TYPE}, DATA, SCOPE)
 
-bool is_access_violation(Runtime::Exception const & e) { return e.cause == Runtime::Exception::Cause::accessViolation; }
+bool is_access_violation(fc::unhandled_exception const & e) {
+   try {
+      std::rethrow_exception(e.get_inner_exception());
+    }
+    catch (const Runtime::Exception& e) {
+      return e.cause == Runtime::Exception::Cause::accessViolation;
+    } catch (...) {
+
+    }
+   return false;
+}
+
 bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
+bool is_tx_missing_scope(tx_missing_scope const& e) { return true; }
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
+
+std::vector<std::string> capture;
+
+struct MySink : public bio::sink
+{
+
+   std::streamsize write(const char* s, std::streamsize n)
+   {
+      std::string tmp;
+      tmp.assign(s, n);
+      capture.push_back(tmp);
+      std::cout << "stream : [" << tmp << "]" << std::endl;
+      return n;
+   }
+};
+uint32_t last_fnc_err = 0;
+#define CAPTURE(STREAM, EXEC) \
+   {\
+      capture.clear(); \
+      bio::stream_buffer<MySink> sb; sb.open(MySink()); \
+      std::streambuf *oldbuf = std::STREAM.rdbuf(&sb); \
+      last_fnc_err = EXEC; \
+      std::STREAM.rdbuf(oldbuf); \
+   }
+
 
 BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 { try {
 
       auto test_api_wast = readFile2("/home/matu/Documents/Dev/eos/contracts/test_api/test_api.wast");
-      std::cout << test_api_wast << std::endl;
+      //std::cout << test_api_wast << std::endl;
 
       Make_Blockchain(chain);
       chain.produce_blocks(2);
       Make_Account(chain, test_api);
+      Make_Account(chain, another);
       Make_Account(chain, acc1);
       Make_Account(chain, acc2);
       Make_Account(chain, acc3);
@@ -153,66 +205,166 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 
       //Set test code
       SetCode(chain, "test_api", test_api_wast.c_str());
+      SetCode(chain, "another", test_api_wast.c_str());
 
       //Test types
-      for(int i=1; i<=test_types::total_tests(); i++)
-         BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_types, i), {}, {} ) == WASM_TEST_PASS, "test_types::test"<<i<<"()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_types, types_size),     {}, {}, {} ) == WASM_TEST_PASS, "test_types::types_size()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_types, char_to_symbol), {}, {}, {} ) == WASM_TEST_PASS, "test_types::char_to_symbol()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_types, string_to_name), {}, {}, {} ) == WASM_TEST_PASS, "test_types::string_to_name()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_types, name_class),     {}, {}, {} ) == WASM_TEST_PASS, "test_types::name_class()" );
 
       //Test message
       dummy_message dummy13{DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION2( TEST_METHOD(test_message, 1), {}, {}, dummy13) == WASM_TEST_PASS, "test_message::test1()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, read_message), {}, {}, fc::raw::pack(dummy13) ) == WASM_TEST_PASS, "test_message::read_message()" );
 
-      // std::vector<char> bytes64k((1<<16));
-      // BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION2( TEST_METHOD(test_message, 2), {}, {}, bytes64k) == WASM_TEST_PASS, "test_message::test2()" );
+      std::vector<char> raw_bytes((1<<16));
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, read_message_to_0), {}, {}, raw_bytes) == WASM_TEST_PASS, "test_message::read_message_to_0()" );
 
-      // BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION2( TEST_METHOD(test_message, 3), {}, {}, bytes64k), 
-      //    Runtime::Exception, is_access_violation );
+      raw_bytes.resize((1<<16)+1);
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, read_message_to_0), {}, {}, raw_bytes), 
+         fc::unhandled_exception, is_access_violation );
 
-      // BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION2( TEST_METHOD(test_message, 4), {}, {}, bytes64k), 
-      //    Runtime::Exception, is_access_violation );
+      raw_bytes.resize(1);
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, read_message_to_64k), {}, {}, raw_bytes) == WASM_TEST_PASS, "test_message::read_message_to_64k()" );
 
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 5), {}, {}), 
+      raw_bytes.resize(2);
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, read_message_to_64k), {}, {}, raw_bytes), 
+         fc::unhandled_exception, is_access_violation );
+      
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_notice), {}, {}, {}), 
          tx_missing_recipient, is_tx_missing_recipient );
 
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 5), sort_names({"acc1"}), {}), 
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_notice), sort_names({"acc1"}), {}, {}), 
+         tx_missing_recipient, is_tx_missing_recipient );
+      
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_notice), sort_names({"acc2"}), {}, {}), 
          tx_missing_recipient, is_tx_missing_recipient );
 
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 5), sort_names({"acc2"}), {}), 
-         tx_missing_recipient, is_tx_missing_recipient );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_notice), sort_names({"acc1","acc2"}), {}, {}) == WASM_TEST_PASS, "test_message::require_notice()");
 
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 5), sort_names({"acc1","acc2"}), {}) == WASM_TEST_PASS, "test_message::test5()");
-
-
-
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 6), {}, {}), 
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_auth), {}, {}, {}), 
          tx_missing_auth, is_tx_missing_auth );
-
+      
       auto a3only = vector<types::AccountPermission>{{"acc3","active"}};
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 6), {}, a3only), 
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_auth), {}, a3only, {}), 
          tx_missing_auth, is_tx_missing_auth );
 
       auto a4only = vector<types::AccountPermission>{{"acc4","active"}};
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 6), {}, a4only),
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_auth), {}, a4only, {}),
          tx_missing_auth, is_tx_missing_auth );
 
       auto a3a4 = vector<types::AccountPermission>{{"acc3","active"}, {"acc4","active"}};
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 6), {}, a3a4 ) == WASM_TEST_PASS, "test_message::test6()");
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, require_auth), {}, a3a4, {} ) == WASM_TEST_PASS, "test_message::require_auth()");
 
-      
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 7), {}, {}),
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_message, assert_false), {}, {}, {}),
          fc::assert_exception, is_assert_exception );
 
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, 8), {}, {} ) == WASM_TEST_PASS, "test_message::test8()");
-
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, assert_true), {}, {}, {} ) == WASM_TEST_PASS, "test_message::assert_true()");
 
       chain.produce_blocks(1);
       
       uint32_t now = chain.head_block_time().sec_since_epoch();
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION2( TEST_METHOD(test_message, 9), {}, {}, now) == WASM_TEST_PASS, "test_message::test9()");
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, now), {}, {}, fc::raw::pack(now)) == WASM_TEST_PASS, "test_message::now()");
 
       chain.produce_blocks(1);
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION2( TEST_METHOD(test_message, 9), {}, {}, now) == WASM_TEST_FAIL, "test_message::test9()");
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_message, now), {}, {}, fc::raw::pack(now)) == WASM_TEST_FAIL, "test_message::now()");
 
+      //Test print
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD(test_print, test_prints), {}, {}, {}) );
+      
+      BOOST_CHECK_EQUAL( last_fnc_err , WASM_TEST_PASS);
+      BOOST_CHECK_EQUAL( capture.size() , 3);
+      BOOST_CHECK_EQUAL( (capture[0] == "ab" && capture[1] == "c" && capture[2] == "efg") , true);
+
+      auto U64Str = [](uint64_t v) -> std::string { 
+         std::stringstream s;
+         s << v;
+         return s.str();
+      };
+
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD(test_print, test_printi), {}, {}, {}) );
+      BOOST_CHECK_EQUAL( capture.size() , 3);
+      BOOST_CHECK_EQUAL( capture[0], U64Str(0) );
+      BOOST_CHECK_EQUAL( capture[1], U64Str(556644) );
+      BOOST_CHECK_EQUAL( capture[2], U64Str(-1) );
+
+      auto U128Str = [](uint128_t value) -> std::string { 
+        fc::uint128_t v(value>>64, uint64_t(value) );
+        return fc::variant(v).get_string();
+      };
+
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD(test_print, test_printi128), {}, {}, {}) );
+      BOOST_CHECK_EQUAL( capture.size() , 3);
+      BOOST_CHECK_EQUAL( capture[0], U128Str(-1));
+      BOOST_CHECK_EQUAL( capture[1], U128Str(0));
+      BOOST_CHECK_EQUAL( capture[2], U128Str(87654323456));
+
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD(test_print, test_printn), {}, {}, {}) );
+      BOOST_CHECK_EQUAL( capture.size() , 8);
+      BOOST_CHECK_EQUAL( (
+         capture[0] == "abcde" && 
+         capture[1] == "ab.de"  && 
+         capture[2] == "1q1q1q" &&
+         capture[3] == "abcdefghijk" &&
+         capture[4] == "abcdefghijkl" &&
+         capture[5] == "abcdefghijklm" &&
+         capture[6] == "abcdefghijklm" &&
+         capture[7] == "abcdefghijklm" 
+      ), true);
+
+      //Test math
+      std::random_device rd;
+      std::mt19937_64 gen(rd());
+      std::uniform_int_distribution<unsigned long long> dis;
+
+      for(int i=0; i<10; i++) {
+         u128_msg msg;
+         msg.values[0] = dis(gen); msg.values[0] <<= 64; msg.values[0] |= dis(gen);
+         msg.values[1] = dis(gen); msg.values[1] <<= 64; msg.values[1] |= dis(gen);
+         msg.values[2] = msg.values[0] * msg.values[1];
+         BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_math, test_multeq_i128), {}, {}, fc::raw::pack(msg) ) == WASM_TEST_PASS, "test_math::test_multeq_i128()" );
+      }
+
+      for(int i=0; i<10; i++) {
+         u128_msg msg;
+         msg.values[0] = dis(gen); msg.values[0] <<= 64; msg.values[0] |= dis(gen);
+         msg.values[1] = dis(gen); msg.values[1] <<= 64; msg.values[1] |= dis(gen);
+         msg.values[2] = msg.values[0] / msg.values[1];
+         BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_math, test_diveq_i128), {}, {}, fc::raw::pack(msg) ) == WASM_TEST_PASS, "test_math::test_diveq_i128()" );
+      }
+
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_math, test_diveq_i128_by_0), {}, {}, {} ),
+         fc::assert_exception, is_assert_exception );
+
+      //Test db
+      const auto& idx = chain_db.get_index<key_value_index, by_scope_key>();
+
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_db, key_i64_general), {}, {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_general()" );
+      BOOST_CHECK_EQUAL( std::distance(idx.begin(), idx.end()) , 4);
+      
+      auto itr = idx.lower_bound( boost::make_tuple( N(test_api), N(test_api), N(test_table)) );
+
+      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(alice)); ++itr;
+      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(bob)); ++itr;
+      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(carol)); ++itr;
+      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(dave));
+
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_db, key_i64_remove_all), {}, {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_remove_all()" );
+      BOOST_CHECK_EQUAL( std::distance(idx.begin(), idx.end()) , 0);
+
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_db, key_i64_small_load), {}, {}, {} ),
+         fc::assert_exception, is_assert_exception );
+
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD(test_db, key_i64_small_store), {}, {}, {} ),
+         fc::assert_exception, is_assert_exception );
+
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD(test_db, key_i64_store_scope), {}, {}, {}, {N(another)} ),
+         tx_missing_scope, is_tx_missing_scope );
+
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD(test_db, key_i64_remove_scope), {}, {}, {}, {N(another)} ),
+         tx_missing_scope, is_tx_missing_scope );
+
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD(test_db, key_i64_not_found), {}, {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_not_found()" );
 
 } FC_LOG_AND_RETHROW() }
 

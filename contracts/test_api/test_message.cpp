@@ -1,9 +1,8 @@
 #include <eoslib/message.hpp>
 
 #include "test_api.hpp"
-#include "test_message.hpp"
 
-unsigned int test_message::test1() {
+unsigned int test_message::read_message() {
 
    char buffer[100];
    uint32_t total = 0;
@@ -32,49 +31,44 @@ unsigned int test_message::test1() {
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::test2() {
-   uint32_t total = readMessage((void *)4, (1<<16)-4);
-   return WASM_TEST_PASS;
-}
-
-unsigned int test_message::test3() {
+unsigned int test_message::read_message_to_0() {
    uint32_t total = readMessage((void *)0, 0x7FFFFFFF);
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::test4() {
-   uint32_t total = readMessage( (void *)(1<<16), 1);
+unsigned int test_message::read_message_to_64k() {
+   uint32_t total = readMessage( (void *)((1<<16)-1), 0x7FFFFFFF);
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::test5() {
+unsigned int test_message::require_notice() {
    eos::requireNotice( N(acc1) );
    eos::requireNotice( N(acc2) );
    eos::requireNotice( N(acc1), N(acc2) );
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::test6() {
+unsigned int test_message::require_auth() {
    eos::requireAuth( N(acc3) );
    eos::requireAuth( N(acc4) );
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::test7() {
-   assert(false, "test_message::test7");
+unsigned int test_message::assert_false() {
+   assert(false, "test_message::assert_false");
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::test8() {
-   assert(true, "test_message::test8");
+unsigned int test_message::assert_true() {
+   assert(true, "test_message::assert_true");
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::test9() {
+unsigned int test_message::now() {
    uint32_t tmp = 0;
    uint32_t total = readMessage(&tmp, sizeof(uint32_t));
    WASM_ASSERT( total == sizeof(uint32_t), "total == sizeof(uint32_t)");
-   WASM_ASSERT( tmp == now(), "tmp == now()" );
+   WASM_ASSERT( tmp == ::now(), "tmp == now()" );
    return WASM_TEST_PASS;
 }
 
