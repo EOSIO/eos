@@ -129,21 +129,34 @@ namespace eos {
 
                my->server.set_http_handler([&](connection_hdl hdl) {
                   auto con = my->server.get_con_from_hdl(hdl);
-                  ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
-                  ilog("${body}", ("body", con->get_request_body()));
+                  try {
+                     ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
+                     ilog("${body}", ("body", con->get_request_body()));
 
-                  auto body = con->get_request_body();
-                  auto resource = con->get_uri()->get_resource();
-                  auto handler_itr = my->url_handlers.find(resource);
-                  if(handler_itr != my->url_handlers.end()) {
-                     handler_itr->second(resource, body, [con,this](int code, string body) {
-                        con->set_body(body);
-                        con->set_status(websocketpp::http::status_code::value(code));
-                     });
-                  } else {
-                     wlog("404 - not found: ${ep}", ("ep",resource));
-                     con->set_body("Unknown Endpoint");
-                     con->set_status(websocketpp::http::status_code::not_found);
+                     auto body = con->get_request_body();
+                     auto resource = con->get_uri()->get_resource();
+                     auto handler_itr = my->url_handlers.find(resource);
+                     if(handler_itr != my->url_handlers.end()) {
+                        handler_itr->second(resource, body, [con,this](int code, string body) {
+                           con->set_body(body);
+                           con->set_status(websocketpp::http::status_code::value(code));
+                        });
+                     } else {
+                        wlog("404 - not found: ${ep}", ("ep",resource));
+                        con->set_body("Unknown Endpoint");
+                        con->set_status(websocketpp::http::status_code::not_found);
+                     }
+                  } catch( const fc::exception& e ) {
+                     elog( "http: ${e}", ("e",e.to_detail_string()));
+                        con->set_body(e.to_detail_string());
+                        con->set_status(websocketpp::http::status_code::internal_server_error);
+                  } catch( const std::exception& e ) {
+                     elog( "http: ${e}", ("e",e.what()));
+                        con->set_body(e.what());
+                        con->set_status(websocketpp::http::status_code::internal_server_error);
+                  } catch( ... ) {
+                        con->set_body("unknown exception");
+                        con->set_status(websocketpp::http::status_code::internal_server_error);
                   }
                });
 
@@ -153,6 +166,10 @@ namespace eos {
 
                my->http_ios.run();
                ilog("http io service exit");
+            } catch ( const fc::exception& e ){
+               elog( "http: ${e}", ("e",e.to_detail_string()));
+            } catch ( const std::exception& e ){
+               elog( "http: ${e}", ("e",e.what()));
             } catch (...) {
                 elog("error thrown from http io service");
             }

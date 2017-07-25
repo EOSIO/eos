@@ -23,6 +23,7 @@ fc::variant call( const std::string& server, uint16_t port,
                   const std::string& path,
                   const fc::variant& postdata ) 
 { try {
+   idump((postdata));
 
     std::string postjson;
     if( !postdata.is_null() )

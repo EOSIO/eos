@@ -50,7 +50,9 @@ void chain_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       CHAIN_RO_CALL(get_info),
       CHAIN_RO_CALL(get_block),
+      CHAIN_RO_CALL(get_account),
       CHAIN_RO_CALL(get_table_rows_i64),
+      CHAIN_RO_CALL(abi_json_to_bin),
       CHAIN_RW_CALL(push_block),
       CHAIN_RW_CALL(push_transaction)
    });

@@ -13,6 +13,7 @@ namespace eos {
    using std::unique_ptr;
    using namespace appbase;
    using chain::Name;
+   using fc::optional;
 
 namespace chain_apis {
 struct empty{};
@@ -27,15 +28,48 @@ public:
    using get_info_params = empty;
 
    struct get_info_results {
-      uint32_t head_block_num;
-      uint32_t last_irreversible_block_num;
-      chain::block_id_type head_block_id;
-      fc::time_point_sec head_block_time;
-      types::AccountName head_block_producer;
-      string recent_slots;
-      double participation_rate;
+      uint32_t              head_block_num = 0;
+      uint32_t              last_irreversible_block_num = 0;
+      chain::block_id_type  head_block_id;
+      fc::time_point_sec    head_block_time;
+      types::AccountName    head_block_producer;
+      string                recent_slots;
+      double                participation_rate = 0;
    };
    get_info_results get_info(const get_info_params&) const;
+
+   struct producer_info {
+      Name                       name;
+   };
+
+   struct get_account_results {
+      Name                       name;
+      uint64_t                   eos_balance       = 0;
+      uint64_t                   staked_balance    = 0;
+      uint64_t                   unstaking_balance = 0;
+      fc::time_point_sec         last_unstaking_time;
+      optional<producer_info>    producer;
+      optional<types::Abi>       abi;
+   };
+   struct get_account_params {
+      Name name;
+   };
+   get_account_results get_account( const get_account_params& params )const;
+
+   struct abi_json_to_bin_params {
+      Name         code;
+      Name         action;
+      fc::variant  args;
+   };
+   struct abi_json_to_bin_result {
+      vector<char>   binargs;
+      vector<Name>   required_scope;
+      vector<Name>   required_auth;
+   };
+      
+   abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
+
+
 
    struct get_block_params {
       string block_num_or_id;
@@ -138,3 +172,8 @@ FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_params,
            (json)(scope)(code)(table)(lower_bound)(upper_bound)(limit) );
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_result,
            (rows)(more) );
+FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(producer)(abi) )
+FC_REFLECT( eos::chain_apis::read_only::get_account_params, (name) )
+FC_REFLECT( eos::chain_apis::read_only::producer_info, (name) )
+FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
+FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )

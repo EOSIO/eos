@@ -7,6 +7,8 @@
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
+#include <eos/native_contract/staked_balance_objects.hpp>
+#include <eos/native_contract/balance_object.hpp>
 #include <eos/native_contract/genesis_state.hpp>
 #include <eos/types/AbiSerializer.hpp>
 
@@ -258,6 +260,39 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
    auto ptrx = db.push_transaction(params);
    auto pretty_trx = db.transaction_to_variant( ptrx );
    return read_write::push_transaction_results{ params.id(), pretty_trx };
+}
+
+read_only::get_account_results read_only::get_account( const get_account_params& params )const {
+   using namespace native::eos;
+
+   get_account_results result;
+   result.name = params.name;
+
+   const auto& d = db.get_database();
+   const auto& accnt          = d.get<account_object,by_name>( params.name );
+   const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
+   const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
+
+   if( accnt.abi.size() > 4 ) {
+      eos::types::Abi abi;
+      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
+      fc::raw::unpack( ds, abi );
+      result.abi = std::move(abi);
+   }
+
+   result.eos_balance          = balance.balance;
+   result.staked_balance       = staked_balance.stakedBalance;
+   result.unstaking_balance    = staked_balance.unstakingBalance;
+   result.last_unstaking_time  = staked_balance.lastUnstakingTime;
+
+
+   return result;
+}
+read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const {
+   abi_json_to_bin_result result;
+   idump((params));
+   result.binargs = db.message_to_binary( params.code, params.action, params.args );
+   return result;
 }
 
 } // namespace chain_apis

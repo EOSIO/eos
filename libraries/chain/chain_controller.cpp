@@ -1083,6 +1083,8 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
             if( data.is_string() ) {
                GET_FIELD( vo, data, result.messages[i] );
             } else if ( data.is_object() ) {
+               result.messages[i].data = message_to_binary( result.messages[i].code, result.messages[i].type, data ); 
+               /*
                const auto& code_account = _db.get<account_object,by_name>( result.messages[i].code );
                if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
                   fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
@@ -1091,6 +1093,7 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
                   types::AbiSerializer abis( abi );
                   result.messages[i].data = abis.variantToBinary( abis.getActionType( result.messages[i].type ), data );
                }
+               */
             }
          }
       }
@@ -1100,6 +1103,19 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
    }
    return result;
 #undef GET_FIELD
+}
+
+vector<char> chain_controller::message_to_binary( Name code, Name type, const fc::variant& obj )const {
+   wdump((obj));
+   const auto& code_account = _db.get<account_object,by_name>( code );
+   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+      eos::types::Abi abi;
+      fc::raw::unpack( ds, abi );
+      types::AbiSerializer abis( abi );
+      return abis.variantToBinary( abis.getActionType( type ), obj );
+   }
+   return vector<char>();
 }
 
 fc::variant  chain_controller::transaction_to_variant( const ProcessedTransaction& trx )const {

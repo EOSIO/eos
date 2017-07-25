@@ -1,5 +1,6 @@
 #include <eos/types/AbiSerializer.hpp>
 #include <fc/io/raw.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 namespace eos { namespace types {
 
@@ -35,6 +36,8 @@ namespace eos { namespace types {
    }
 
    bool AbiSerializer::isType( const TypeName& type )const {
+      static const std::set<TypeName> native = {"Name","UInt64"};
+      if( native.find(type) != native.end() ) return true;
       if( typedefs.find(type) != typedefs.end() ) return isType( typedefs.find(type)->second );
       if( structs.find(type) != structs.end() ) return true;
       return false;
@@ -49,7 +52,7 @@ namespace eos { namespace types {
 
    void AbiSerializer::validate()const {
       for( const auto& t : typedefs ) { try {
-         FC_ASSERT( isType( t.second ) );
+         FC_ASSERT( isType( t.second ), "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
          if( s.second.base != TypeName() )
@@ -59,11 +62,11 @@ namespace eos { namespace types {
          } FC_CAPTURE_AND_RETHROW( (field) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
-        FC_ASSERT( isType( a.second ) );
+        FC_ASSERT( isType( a.second ), "", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
 
       for( const auto& t : tables ) { try {
-        FC_ASSERT( isType( t.second ) );
+        FC_ASSERT( isType( t.second ), "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 

@@ -11,6 +11,15 @@
 #include <eos/utilities/key_conversion.hpp>
 #include <boost/range/algorithm/sort.hpp>
 
+#include <Inline/BasicTypes.h>
+#include <IR/Module.h>
+#include <IR/Validate.h>
+#include <WAST/WAST.h>
+#include <WASM/WASM.h>
+#include <Runtime/Runtime.h>
+
+#include <fc/io/fstream.hpp>
+
 
 using namespace std;
 using namespace eos;
@@ -23,6 +32,41 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    names.erase( itr, names.end() );
    return names;
 }
+
+vector<uint8_t> assemble_wast( const std::string& wast ) {
+   //   std::cout << "\n" << wast << "\n";
+   IR::Module module;
+   std::vector<WAST::Error> parseErrors;
+   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
+   if(parseErrors.size())
+   {
+      // Print any parse errors;
+      std::cerr << "Error parsing WebAssembly text file:" << std::endl;
+      for(auto& error : parseErrors)
+      {
+         std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
+         std::cerr << error.locus.sourceLine << std::endl;
+         std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
+      }
+      FC_ASSERT( !"error parsing wast" );
+   }
+
+   try
+   {
+      // Serialize the WebAssembly module.
+      Serialization::ArrayOutputStream stream;
+      WASM::serialize(stream,module);
+      return stream.getBytes();
+   }
+   catch(Serialization::FatalSerializationException exception)
+   {
+      std::cerr << "Error serializing WebAssembly binary file:" << std::endl;
+      std::cerr << exception.message << std::endl;
+      throw;
+   }
+}
+
+
 
 fc::variant call( const std::string& server, uint16_t port, 
                   const std::string& path,
@@ -105,10 +149,70 @@ int main( int argc, char** argv ) {
       FC_ASSERT( args.size() == 3 );
       std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/get_block", fc::mutable_variant_object( "block_num_or_id", args[2]) ) );
    }
+   else if( command == "exec" ) {
+      FC_ASSERT( args.size() >= 7 );
+      Name code   = args[2];
+      Name action = args[3];
+      auto& json   = args[4];
+
+      auto result = call( "localhost", 8888, "/v1/chain/abi_json_to_bin", fc::mutable_variant_object( "code", code )("action",action)("args", fc::json::from_string(json)) );
+      std::cout << fc::json::to_pretty_string(result) << "\n";
+
+      SignedTransaction trx;
+      //trx.scope = { config::EosContractName, code };
+      trx.messages.resize(1);
+      auto& msg = trx.messages.back();
+      msg.code = code;
+      msg.type = action;
+      msg.authorization = fc::json::from_string( args[6] ).as<vector<types::AccountPermission>>();
+      msg.data = result.get_object()["binargs"].as<Bytes>();
+      trx.scope = fc::json::from_string( args[5] ).as<vector<Name>>();
+
+      auto trx_result = push_transaction( trx );
+      std::cout << fc::json::to_pretty_string( trx_result ) <<"\n";
+
+   } else if( command == "account" ) {
+      FC_ASSERT( args.size() == 3 );
+      std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/get_account", fc::mutable_variant_object( "name", args[2] ) ) );
+   }
    else if( command == "push-trx" ) {
       std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/push_transaction", 
                                                      fc::json::from_string(args[2])) );
-   } else if( command == "transfer" ) {
+   } else if ( command == "setcode" ) {
+      if( args.size() == 2 ) {
+         std::cout << "usage: "<<args[0] << " " << args[1] <<" ACCOUNT FILE.WAST FILE.ABI\n";
+         return -1;
+      }
+      Name account(args[2]);
+      const auto& wast_file = args[3];
+      std::string wast;
+
+      FC_ASSERT( fc::exists(wast_file) );
+      fc::read_file_contents( wast_file, wast );
+      auto wasm = assemble_wast( wast );
+
+
+      
+      types::setcode handler;
+      handler.account = account;
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+      if( args.size() == 5 ) {
+         handler.abi = fc::json::from_file( args[4] ).as<types::Abi>();
+      }
+
+      SignedTransaction trx;
+      trx.scope = { config::EosContractName, account };
+      trx.emplaceMessage( config::EosContractName,
+                          vector<types::AccountPermission>{ {account,"active"} },
+                          "setcode", handler );
+
+      std::cout << fc::json::to_pretty_string( push_transaction(trx)  );
+
+   }else if( command == "transfer" ) {
+      FC_ASSERT( args.size() == 5 );
+
       Name sender(args[2]);
       Name recipient(args[3]);
       uint64_t amount = fc::variant(argv[4]).as_uint64();

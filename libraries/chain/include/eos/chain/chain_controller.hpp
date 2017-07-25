@@ -122,6 +122,11 @@ namespace eos { namespace chain {
           */
          fc::variant       transaction_to_variant( const ProcessedTransaction& trx )const;
 
+         /**
+          *  Usees the ABI for code::type to convert a JSON object (variant) into hex
+          */
+         vector<char>       message_to_binary( Name code, Name type, const fc::variant& obj )const;
+
 
          /**
           *  Calculate the percent of block production slots that were missed in the
