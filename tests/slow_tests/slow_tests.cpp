@@ -29,6 +29,7 @@
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/block_summary_object.hpp>
+#include <eos/chain/wasm_interface.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -45,6 +46,7 @@
 
 #include <currency/currency.wast.hpp>
 #include <exchange/exchange.wast.hpp>
+#include <infinite/infinite.wast.hpp>
 
 using namespace eos;
 using namespace chain;
@@ -522,8 +524,8 @@ R"(
   (export "uint64_unpack" (func $uint64_unpack))
   (export "String_unpack" (func $String_unpack))
   (export "Transfer_unpack" (func $Transfer_unpack))
-  (export "onInit" (func $onInit))
-  (export "onApply_Transfer_simplecoin" (func $onApply_Transfer_simplecoin))
+  (export "init" (func $init))
+  (export "apply_simplecoin_transfer" (func $apply_simplecoin_transfer))
   (func $malloc (param $0 i32) (result i32)
     (local $1 i32)
     (i32.store offset=8208
@@ -834,7 +836,7 @@ R"(
       )
     )
   )
-  (func $onInit
+  (func $init
     (call $assert
       (i32.const 1)
       (i32.const 8240)
@@ -862,7 +864,7 @@ R"(
       (i32.const 8)
     )
   )
-  (func $onApply_Transfer_simplecoin
+  (func $apply_simplecoin_transfer
     (local $0 i32)
     (local $1 i32)
     (local $2 i64)
@@ -1121,6 +1123,56 @@ R"(
         BOOST_FAIL("Serialization::FatalSerializationException does not inherit from std::exception");
       } catch (...) {
         // empty throw expected, since
+      }
+} FC_LOG_AND_RETHROW() }
+
+//Test account script float rejection
+BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
+{ try {
+      Make_Blockchain(chain);
+      chain.produce_blocks(10);
+      Make_Account(chain, currency);
+      chain.produce_blocks(1);
+
+
+      types::setcode handler;
+      handler.account = "currency";
+
+      auto wasm = assemble_wast( infinite_wast );
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = {"currency"};
+         trx.messages.resize(1);
+         trx.messages[0].code = config::EosContractName;
+         trx.setMessage(0, "setcode", handler);
+         trx.expiration = chain.head_block_time() + 100;
+         trx.set_reference_block(chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
+      }
+
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = sort_names({"currency","inita"});
+         trx.emplaceMessage("currency",
+                            vector<types::AccountPermission>{ {"currency","active"} },
+                            "transfer", types::transfer{"currency", "inita", 1});
+         trx.expiration = chain.head_block_time() + 100;
+         trx.set_reference_block(chain.head_block_id());
+         try
+         {
+            wlog("starting long transaction");
+            chain.push_transaction(trx);
+            BOOST_FAIL("transaction should have failed with checktime_exceeded");
+         }
+         catch (const eos::chain::checktime_exceeded& check)
+         {
+            wlog("checktime_exceeded caught");
+         }
       }
 } FC_LOG_AND_RETHROW() }
 
