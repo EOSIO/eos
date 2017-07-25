@@ -568,6 +568,7 @@ void chain_controller::process_message( const ProcessedTransaction& trx, Account
    apply_message(apply_ctx);
 
    output.notify.reserve( apply_ctx.notified.size() );
+   wdump((output));
 
    for( uint32_t i = 0; i < apply_ctx.notified.size(); ++i ) {
       try {
@@ -1056,12 +1057,12 @@ void chain_controller::set_apply_handler( const AccountName& contract, const Acc
 chain_initializer_interface::~chain_initializer_interface() {}
 
 
-SignedTransaction chain_controller::transaction_from_variant( const fc::variant& v )const {
+ProcessedTransaction chain_controller::transaction_from_variant( const fc::variant& v )const {
    const variant_object& vo = v.get_object();
 #define GET_FIELD( VO, FIELD, RESULT ) \
    if( VO.contains(#FIELD) ) fc::from_variant( VO[#FIELD], RESULT.FIELD )
 
-   SignedTransaction result;
+   ProcessedTransaction result;
    GET_FIELD( vo, refBlockNum, result );
    GET_FIELD( vo, refBlockPrefix, result );
    GET_FIELD( vo, expiration, result );
@@ -1094,11 +1095,14 @@ SignedTransaction chain_controller::transaction_from_variant( const fc::variant&
          }
       }
    }
+   if( vo.contains( "output" ) ) {
+      const vector<variant>& outputs = vo["output"].get_array();
+   }
    return result;
 #undef GET_FIELD
 }
 
-fc::variant  chain_controller::transaction_to_variant( const SignedTransaction& trx )const {
+fc::variant  chain_controller::transaction_to_variant( const ProcessedTransaction& trx )const {
 #define SET_FIELD( MVO, OBJ, FIELD ) MVO(#FIELD, OBJ.FIELD)
 
     fc::mutable_variant_object trx_mvo;
@@ -1120,11 +1124,16 @@ fc::variant  chain_controller::transaction_to_variant( const SignedTransaction& 
 
        const auto& code_account = _db.get<account_object,by_name>( msg.code );
        if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-          fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-          eos::types::Abi abi;
-          fc::raw::unpack( ds, abi );
-          types::AbiSerializer abis( abi );
-          msg_mvo( "data", abis.binaryToVariant( abis.getActionType( msg.type ), msg.data ) );
+          try {
+             fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+             eos::types::Abi abi;
+             fc::raw::unpack( ds, abi );
+             types::AbiSerializer abis( abi );
+             msg_mvo( "data", abis.binaryToVariant( abis.getActionType( msg.type ), msg.data ) );
+             msg_mvo( "hex_data", msg.data );
+          } catch ( ... ) {
+            SET_FIELD( msg_mvo, msg, data );
+          }
        }
        else {
          SET_FIELD( msg_mvo, msg, data );
@@ -1132,6 +1141,15 @@ fc::variant  chain_controller::transaction_to_variant( const SignedTransaction& 
        msgsv[i] = std::move( msgs[i] );
     }
     trx_mvo( "messages", std::move(msgsv) );
+
+    /* TODO: recursively process generated transactions 
+    vector<fc::mutable_variant_object> outs( trx.messages.size() );
+    for( uint32_t i = 0; i < trx.output.size(); ++i ) {
+       auto& out_mvo = outs[i];
+       auto& out = trx.outputs[i];
+    }
+    */
+    trx_mvo( "output", fc::variant( trx.output ) );
 
     return fc::variant( std::move( trx_mvo ) );
 #undef SET_FIELD

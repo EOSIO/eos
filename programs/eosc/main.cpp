@@ -37,13 +37,13 @@ eos::chain_apis::read_only::get_info_results get_info() {
   return call( "localhost", 8888, "/v1/chain/get_info" ).as<eos::chain_apis::read_only::get_info_results>();
 }
 
-std::pair<fc::variant,fc::variant> push_transaction( SignedTransaction& trx ) {
+fc::variant push_transaction( SignedTransaction& trx ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100; 
     trx.set_reference_block(info.head_block_id);
     boost::sort( trx.scope );
 
-    return std::make_pair( call( "localhost", 8888, "/v1/chain/push_transaction", trx ), fc::variant(trx) );
+    return call( "localhost", 8888, "/v1/chain/push_transaction", trx );
 }
 
 
@@ -122,7 +122,7 @@ int main( int argc, char** argv ) {
       trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100; 
       trx.set_reference_block(info.head_block_id);
 
-      std::cout << fc::json::to_pretty_string( fc::variant( std::make_pair( trx, call( "localhost", 8888, "/v1/chain/push_transaction", trx ) ) ) );
+      std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/push_transaction", trx ) );
    } else if (command == "create" ) {
       if( args[2] == "account" ) {
          if( args.size() < 7 ) {

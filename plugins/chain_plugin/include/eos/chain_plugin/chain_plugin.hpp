@@ -85,7 +85,8 @@ public:
 
    using push_transaction_params = chain::SignedTransaction;
    struct push_transaction_results {
-      chain::transaction_id_type transaction_id;
+      chain::transaction_id_type  transaction_id;
+      fc::variant                 processed;
    };
    push_transaction_results push_transaction(const push_transaction_params& params);
 };
@@ -132,7 +133,7 @@ FC_REFLECT(eos::chain_apis::read_only::get_info_results,
 FC_REFLECT(eos::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT_DERIVED( eos::chain_apis::read_only::get_block_results, (eos::chain::signed_block), (id)(block_num)(refBlockPrefix) );
-FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_id) )
+FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_params,
            (json)(scope)(code)(table)(lower_bound)(upper_bound)(limit) );
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_result,

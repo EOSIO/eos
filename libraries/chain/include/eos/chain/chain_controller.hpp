@@ -114,13 +114,13 @@ namespace eos { namespace chain {
           *  This method will convert a variant to a SignedTransaction using a contract's ABI to
           *  interpret the message types.
           */
-         SignedTransaction transaction_from_variant( const fc::variant& v )const;
+         ProcessedTransaction transaction_from_variant( const fc::variant& v )const;
 
          /**
           * This method will convert a signed transaction into a human-friendly variant that can be
           * converted to JSON.  
           */
-         fc::variant       transaction_to_variant( const SignedTransaction& trx )const;
+         fc::variant       transaction_to_variant( const ProcessedTransaction& trx )const;
 
 
          /**

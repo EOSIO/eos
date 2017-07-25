@@ -255,8 +255,9 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   db.push_transaction(params);
-   return read_write::push_transaction_results{ params.id() };
+   auto ptrx = db.push_transaction(params);
+   auto pretty_trx = db.transaction_to_variant( ptrx );
+   return read_write::push_transaction_results{ params.id(), pretty_trx };
 }
 
 } // namespace chain_apis

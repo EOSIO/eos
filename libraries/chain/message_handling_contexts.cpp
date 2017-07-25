@@ -52,8 +52,10 @@ bool apply_context::has_recipient( const types::AccountName& account )const {
 }
 
 void apply_context::require_recipient(const types::AccountName& account) {
-   if( !has_recipient( account ) )
+   if( !has_recipient( account ) ) {
+      idump((account));
       notified.push_back(account);
+   }
 }
 
 bool message_validate_context::all_authorizations_used() const {
