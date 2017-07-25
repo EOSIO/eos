@@ -46,7 +46,7 @@ class ProducerVotesObject : public chainbase::object<chain::producer_votes_objec
    void updateVotes(types::ShareType deltaVotes, types::UInt128 currentRaceTime);
    /// @brief Get the number of votes this producer has received
    types::ShareType getVotes() const { return race.speed; }
-   pair<types::ShareType,id_type> getVoteOrder()const { return std::make_pair( race.speed, id ); }
+   pair<types::ShareType,id_type> getVoteOrder()const { return { race.speed, id }; }
 
    /**
     * These fields are used for the producer scheduling algorithm which uses a virtual race to ensure that runner-up
@@ -103,7 +103,7 @@ class ProducerVotesObject : public chainbase::object<chain::producer_votes_objec
    types::UInt128 projectedRaceFinishTime() const { return race.projectedFinishTime; }
 
    typedef std::pair<types::UInt128,id_type> rft_order_type;
-   rft_order_type projectedRaceFinishTimeOrder() const { return std::make_pair(race.projectedFinishTime,id); }
+   rft_order_type projectedRaceFinishTimeOrder() const { return {race.projectedFinishTime,id}; }
 };
 
 /**
