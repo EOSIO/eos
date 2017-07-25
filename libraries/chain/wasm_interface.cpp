@@ -161,11 +161,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
-   wasm_interface::get().current_validate_context->require_recipient( account );
+   wasm_interface::get().current_apply_context->require_recipient( account );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,hasRecipient,hasRecipient,i32,i64,account) {
-   return wasm_interface::get().current_validate_context->has_recipient( account );
+   return wasm_interface::get().current_apply_context->has_recipient( account );
 }
 DEFINE_INTRINSIC_FUNCTION1(env,hasAuth,hasAuth,i32,i64,account) {
    return wasm_interface::get().current_validate_context->has_authorization( account );
@@ -238,7 +238,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size
    FC_ASSERT( wasm.current_apply_context, "not in apply context" );
 
    fc::datastream<const char*> ds(buffer, trx_buffer_size );
-   eos::chain::generated_transaction gtrx;
+   eos::chain::GeneratedTransaction gtrx;
    eos::chain::Transaction& trx = gtrx;
    fc::raw::unpack( ds, trx );
 
@@ -257,7 +257,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size
  *   a per-thread global.
  **/
 
-   wasm.current_apply_context->generated.emplace_back( std::move(gtrx) );
+//   wasm.current_apply_context->generated.emplace_back( std::move(gtrx) );
 
    return 0;
 }

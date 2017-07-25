@@ -64,8 +64,7 @@ namespace eos { namespace chain {
 
    struct thread {
       vector<generated_transaction_id_type> generated_input;
-      vector<SignedTransaction>             user_input;
-      vector<generated_transaction>         output_transactions;
+      vector<ProcessedTransaction>          user_input;
 
       digest_type merkle_digest() const;
    };
@@ -82,5 +81,5 @@ namespace eos { namespace chain {
 
 FC_REFLECT(eos::chain::block_header, (previous)(timestamp)(transaction_merkle_root)(producer)(producer_changes))
 FC_REFLECT_DERIVED(eos::chain::signed_block_header, (eos::chain::block_header), (producer_signature))
-FC_REFLECT(eos::chain::thread, (generated_input)(user_input)(output_transactions))
+FC_REFLECT(eos::chain::thread, (generated_input)(user_input) )
 FC_REFLECT_DERIVED(eos::chain::signed_block, (eos::chain::signed_block_header), (cycles))

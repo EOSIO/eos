@@ -86,7 +86,7 @@ eos::chain::digest_type SignedTransaction::merkle_digest() const {
    return enc.result();
 }
 
-digest_type generated_transaction::merkle_digest() const {
+digest_type GeneratedTransaction::merkle_digest() const {
    digest_type::encoder enc;
    fc::raw::pack(enc, *this);
    return enc.result();

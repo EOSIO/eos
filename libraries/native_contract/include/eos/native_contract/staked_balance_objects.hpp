@@ -10,7 +10,7 @@
 #include <fc/static_variant.hpp>
 
 namespace native {
-namespace staked {
+namespace eos {
 
 using namespace ::eos::chain;
 namespace config = ::eos::config;
@@ -102,6 +102,6 @@ using StakedBalanceMultiIndex = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // namespace native::staked
+} } // namespace native::eos
 
-CHAINBASE_SET_INDEX_TYPE(native::staked::StakedBalanceObject, native::staked::StakedBalanceMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eos::StakedBalanceObject, native::eos::StakedBalanceMultiIndex)
