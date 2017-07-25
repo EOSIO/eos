@@ -5,5 +5,5 @@ var searchData=
   ['int32_5ft',['int32_t',['../types_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60',1,'types.h']]],
   ['int64_5ft',['int64_t',['../types_8h.html#a996e72f71b11a5bb8b3b7b6936b1516d',1,'types.h']]],
   ['iostream',['iostream',['../classeos_1_1iostream.html',1,'eos']]],
-  ['isempty',['isEmpty',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#a9054490f61b926c7392384b48e2b0ca8',1,'TOKEN_NAME::Account::isEmpty() const'],['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#a9054490f61b926c7392384b48e2b0ca8',1,'TOKEN_NAME::Account::isEmpty() const']]]
+  ['isempty',['isEmpty',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#a9054490f61b926c7392384b48e2b0ca8',1,'TOKEN_NAME::Account::isEmpty()'],['../structsystem_1_1_account.html#a52280a74e64dae585bb8d21cfd04b0f3',1,'system::Account::isEmpty()']]]
 ];

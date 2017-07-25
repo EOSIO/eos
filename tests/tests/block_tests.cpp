@@ -143,7 +143,7 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
    Name from("from"), to("to");
    uint64_t amount = 10;
 
-   eos::chain::SignedTransaction trx;
+   eos::chain::ProcessedTransaction trx;
    trx.scope = sort_names({from,to});
    trx.emplaceMessage("eos", 
                       vector<types::AccountPermission>{ {from,"active"} },

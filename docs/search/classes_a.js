@@ -8,5 +8,5 @@ var searchData=
   ['token',['token',['../structeos_1_1token.html',1,'eos']]],
   ['token_3c_20uint64_5ft_2c_20n_28currency_29_3e',['token&lt; uint64_t, N(currency)&gt;',['../structeos_1_1token.html',1,'eos']]],
   ['token_3c_20uint64_5ft_2c_20n_28eos_29_3e',['token&lt; uint64_t, N(eos)&gt;',['../structeos_1_1token.html',1,'eos']]],
-  ['transfer',['Transfer',['../struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html',1,'TOKEN_NAME::Transfer'],['../structeos_1_1_transfer.html',1,'eos::Transfer']]]
+  ['transfer',['Transfer',['../structeos_1_1_transfer.html',1,'eos::Transfer'],['../struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html',1,'TOKEN_NAME::Transfer'],['../structsystem_1_1_transfer.html',1,'system::Transfer']]]
 ];

@@ -15,6 +15,7 @@ var searchData=
   ['store_5fi128i128',['store_i128i128',['../group__dbi128i128.html#gaf4283a9f6e7845e8dd23740855386916',1,'db.h']]],
   ['store_5fi64',['store_i64',['../group__dbi64.html#gad62abe6567bdf68ebd2464e757fdced8',1,'db.h']]],
   ['storeaccount',['storeAccount',['../namespace_t_o_k_e_n___n_a_m_e.html#a9e234bedec057f2367390b88c3b73ad8',1,'TOKEN_NAME']]],
+  ['system',['system',['../namespacesystem.html',1,'']]],
   ['system_2ecpp',['system.cpp',['../system_8cpp.html',1,'']]],
   ['system_2ehpp',['system.hpp',['../system_8hpp.html',1,'']]]
 ];

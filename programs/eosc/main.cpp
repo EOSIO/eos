@@ -156,10 +156,8 @@ int main( int argc, char** argv ) {
       auto& json   = args[4];
 
       auto result = call( "localhost", 8888, "/v1/chain/abi_json_to_bin", fc::mutable_variant_object( "code", code )("action",action)("args", fc::json::from_string(json)) );
-      std::cout << fc::json::to_pretty_string(result) << "\n";
 
       SignedTransaction trx;
-      //trx.scope = { config::EosContractName, code };
       trx.messages.resize(1);
       auto& msg = trx.messages.back();
       msg.code = code;
