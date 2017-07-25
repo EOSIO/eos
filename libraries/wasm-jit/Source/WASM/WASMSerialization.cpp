@@ -7,6 +7,8 @@
 #include "IR/Types.h"
 #include "IR/Validate.h"
 
+#include <iostream>
+
 using namespace Serialization;
 
 static void throwIfNotValidUTF8(const std::string& string)
@@ -189,7 +191,12 @@ public:
       OpcodeAndImm<CallImm>* encodedOperator = (OpcodeAndImm<CallImm>*)inByteStream.advance(sizeof(OpcodeAndImm<CallImm>));
       encodedOperator->opcode = Opcode::call;
       // checktime will be the last defined import
-      encodedOperator->imm.functionIndex = module.functions.imports.size() - 1;
+      encodedOperator->imm.functionIndex = checktimeIndex(module);
+   }
+
+   static U32 checktimeIndex(const Module& module)
+   {
+      return module.functions.imports.size() - 1;
    }
 
    void setTypeSlot(const Module& module, ResultType returnType, const std::vector<ValueType>& parameterTypes)
@@ -241,6 +248,17 @@ public:
       }
    }
 
+   void adjustCallIndex(const Module& module, CallImm& imm)
+   {
+      if (imm.functionIndex >= checktimeIndex(module))
+         ++imm.functionIndex;
+   }
+
+   template<typename Imm>
+   void adjustCallIndex(const Module& , Imm& )
+   {
+   }
+
 private:
    int typeSlot;
 };
@@ -254,6 +272,8 @@ struct NoOpInjection
    template<typename Imm>
    void conditionallyAddCall(Opcode , const Imm& , const Module& , Serialization::OutputStream& ) {}
    void adjustExportIndex(Module& ) {}
+   template<typename Imm>
+   void adjustCallIndex(const Module& , Imm& ) {}
 };
 
 namespace WASM
@@ -600,6 +620,7 @@ namespace WASM
                { \
                   Imm imm; \
                   serialize(bodyStream,imm,functionDef); \
+                  injection.adjustCallIndex(module, imm); \
                   codeValidationStream.name(imm); \
                   irEncoderStream.name(imm); \
                   injection.conditionallyAddCall(opcode, imm, module, irCodeByteStream); \

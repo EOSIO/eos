@@ -19,8 +19,6 @@ namespace eos { namespace chain {
    wasm_interface::wasm_interface() {
    }
 
-   std::chrono::time_point<std::chrono::system_clock> checktimeStart;
-
 #ifdef NDEBUG
    const int CHECKTIME_LIMIT = 2000;
 #else
@@ -28,9 +26,9 @@ namespace eos { namespace chain {
 #endif
 
 DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
-   auto dur = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - checktimeStart);
-   if (dur.count() > CHECKTIME_LIMIT) {
-      wlog("checktime called ${d}", ("d", dur.count()));
+   auto dur = wasm_interface::get().current_execution_time();
+   if (dur > CHECKTIME_LIMIT) {
+      wlog("checktime called ${d}", ("d", dur));
       throw checktime_exceeded();
    }
 }
@@ -354,6 +352,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
      }
    };
 
+   int64_t wasm_interface::current_execution_time()
+   {
+      return (fc::time_point::now() - checktimeStart).count();
+   }
+
 
    char* wasm_interface::vm_allocate( int bytes ) {
       FunctionInstance* alloc_function = asFunctionNullable(getInstanceExport(current_module,"alloc"));
@@ -362,7 +365,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       std::vector<Value> invokeArgs(1);
       invokeArgs[0] = U32(bytes);
 
-      checktimeStart = std::chrono::system_clock::now();
+      checktimeStart = fc::time_point::now();
 
       auto result = Runtime::invokeFunction(alloc_function,invokeArgs);
 
@@ -399,7 +402,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
          memset( memstart + state.mem_end, 0, ((1<<16) - state.mem_end) );
          memcpy( memstart, state.init_memory.data(), state.mem_end);
 
-         checktimeStart = std::chrono::system_clock::now();
+         checktimeStart = fc::time_point::now();
 
          Runtime::invokeFunction(call,args);
       } catch( const Runtime::Exception& e ) {
@@ -421,7 +424,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
                return; /// if not found then it is a no-op
          }
 
-         checktimeStart = std::chrono::system_clock::now();
+         checktimeStart = fc::time_point::now();
 
             const FunctionType* functionType = getFunctionType(apply);
             FC_ASSERT( functionType->parameters.size() == 0 );

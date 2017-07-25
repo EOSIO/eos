@@ -1,14 +1,11 @@
 #pragma once
+#include <eos/chain/exceptions.hpp>
 #include <eos/chain/message.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
 
 namespace eos { namespace chain {
-
-struct checktime_exceeded : public fc::exception
-{
-};
 
 class  chain_controller;
 
@@ -38,6 +35,8 @@ class wasm_interface {
       void validate( message_validate_context& c );
       void precondition( precondition_validate_context& c );
 
+      int64_t current_execution_time();
+
       apply_context*                  current_apply_context        = nullptr;
       message_validate_context*       current_validate_context     = nullptr;
       precondition_validate_context*  current_precondition_context = nullptr;
@@ -60,7 +59,7 @@ class wasm_interface {
 
 
       map<AccountName, ModuleState> instances;
-
+      fc::time_point checktimeStart;
 
       wasm_interface();
 };

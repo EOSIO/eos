@@ -46,6 +46,7 @@
 
 #include <currency/currency.wast.hpp>
 #include <exchange/exchange.wast.hpp>
+#include <infinite/infinite.wast.hpp>
 
 using namespace eos;
 using namespace chain;
@@ -1136,53 +1137,50 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
 { try {
       Make_Blockchain(chain);
       chain.produce_blocks(10);
-      Make_Account(chain, simplecoin);
+      Make_Account(chain, currency);
       chain.produce_blocks(1);
 
-#include "wast/loop.wast"
 
-   types::setcode handler;
-   handler.account = "simplecoin";
+      types::setcode handler;
+      handler.account = "currency";
 
-   auto wasm = assemble_wast( wast_apply );
-   handler.code.resize(wasm.size());
-   memcpy( handler.code.data(), wasm.data(), wasm.size() );
+      auto wasm = assemble_wast( infinite_wast );
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
-   {
-      eos::chain::SignedTransaction trx;
-      trx.messages.resize(1);
-      trx.messages[0].code = config::SystemContractName;
-      trx.messages[0].recipients = {"simplecoin"};
-      trx.setMessage(0, "setcode", handler);
-      trx.expiration = chain.head_block_time() + 100;
-      trx.set_reference_block(chain.head_block_id());
-      wlog("push_transaction 1");
-      chain.push_transaction(trx);
-      wlog("produce_blocks 1");
-      chain.produce_blocks(1);
-      wlog("produce_blocks 1");
-   }
-
-
-   auto start = fc::time_point::now();
-   {
-      eos::chain::SignedTransaction trx;
-      trx.emplaceMessage("simplecoin", vector<AccountName>{"inita"},
-                         vector<types::AccountPermission>{},
-                         "transfer", types::transfer{"simplecoin", "inita", 1, "hello"});
-      trx.expiration = chain.head_block_time() + 100;
-      trx.set_reference_block(chain.head_block_id());
-      try
       {
-         wlog("starting long transaction");
+         eos::chain::SignedTransaction trx;
+         trx.scope = {"currency"};
+         trx.messages.resize(1);
+         trx.messages[0].code = config::SystemContractName;
+         trx.messages[0].recipients = {};
+         trx.setMessage(0, "setcode", handler);
+         trx.expiration = chain.head_block_time() + 100;
+         trx.set_reference_block(chain.head_block_id());
          chain.push_transaction(trx);
-         BOOST_FAIL("transaction should have failed with checktime_exceeded");
+         chain.produce_blocks(1);
       }
-      catch (const eos::chain::checktime_exceeded& check)
+
+
       {
-         wlog("checktime_exceeded caught");
+         eos::chain::SignedTransaction trx;
+         trx.scope = sort_names({"currency","inita"});
+         trx.emplaceMessage("currency", vector<AccountName>{"inita"},
+                            vector<types::AccountPermission>{ {"currency","active"} },
+                            "transfer", types::transfer{"currency", "inita", 1});
+         trx.expiration = chain.head_block_time() + 100;
+         trx.set_reference_block(chain.head_block_id());
+         try
+         {
+            wlog("starting long transaction");
+            chain.push_transaction(trx);
+            BOOST_FAIL("transaction should have failed with checktime_exceeded");
+         }
+         catch (const eos::chain::checktime_exceeded& check)
+         {
+            wlog("checktime_exceeded caught");
+         }
       }
-   }
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
