@@ -1146,8 +1146,7 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
          eos::chain::SignedTransaction trx;
          trx.scope = {"currency"};
          trx.messages.resize(1);
-         trx.messages[0].code = config::SystemContractName;
-         trx.messages[0].recipients = {};
+         trx.messages[0].code = config::EosContractName;
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -1159,7 +1158,7 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         trx.emplaceMessage("currency", vector<AccountName>{"inita"},
+         trx.emplaceMessage("currency",
                             vector<types::AccountPermission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "inita", 1});
          trx.expiration = chain.head_block_time() + 100;
