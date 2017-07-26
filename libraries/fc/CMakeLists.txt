@@ -9,17 +9,6 @@ SET( CMAKE_DEBUG_POSTFIX _debug )
 SET( BUILD_SHARED_LIBS NO )
 SET( ECC_IMPL secp256k1 CACHE STRING "secp256k1 or openssl or mixed" )
 
-
-IF(NOT "$ENV{SECP256K1_ROOT_DIR}" STREQUAL "")
-  set(SECP256K1_ROOT_DIR $ENV{SECP256K1_ROOT_DIR} )
-  set(SECP256K1_INCLUDE_DIR ${SECP256K1_ROOT_DIR}/include)
-ELSE()
-  SET( SECP256K1_INCLUDE_DIR /usr/local/include )
-  SET( SECP256K1_ROOT_DIR /usr/local )
-ENDIF()
-
-message(STATUS "Setting up SECP256K1 root and include vars to ${SECP256K1_ROOT_DIR}, ${SECP256K1_INCLUDE_DIR}")
-
 set(platformBitness 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(platformBitness 64)
@@ -30,7 +19,7 @@ SET (ORIGINAL_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 IF( ECC_IMPL STREQUAL openssl )
   SET( ECC_REST src/crypto/elliptic_impl_pub.cpp )
 ELSE( ECC_IMPL STREQUAL openssl )
-  SET( ECC_LIB secp256k1 )
+  SET( ECC_LIB ${Secp256k1_LIBRARY} gmp )
   IF( ECC_IMPL STREQUAL mixed )
     SET( ECC_REST src/crypto/elliptic_impl_priv.cpp src/crypto/elliptic_impl_pub.cpp )
   ELSE( ECC_IMPL STREQUAL mixed )
@@ -158,7 +147,7 @@ target_include_directories(fc
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${Boost_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
-    ${SECP256K1_INCLUDE_DIR}
+    ${Secp256k1_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
