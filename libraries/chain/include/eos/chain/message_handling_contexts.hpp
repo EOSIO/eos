@@ -52,6 +52,8 @@ public:
                                     uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
    int32_t load_primary_i128i128( Name scope, Name code, Name table, 
                                     uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+   int32_t load_secondary_i128i128( Name scope, Name code, Name table, 
+                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
    int32_t lowerbound_primary_i128i128( Name scope, Name code, Name table, 
                                     uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
    int32_t lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
