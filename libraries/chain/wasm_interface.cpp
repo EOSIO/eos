@@ -81,25 +81,25 @@ DEFINE_INTRINSIC_FUNCTION0(env,now,now,i32) {
    return wasm_interface::get().current_validate_context->controller.head_block_time().sec_since_epoch();
 }
 
-DEFINE_INTRINSIC_FUNCTION4(env,store_i128i128,store_i128i128,i32,i64,scope,i64,table,i32,data,i32,datalen) {
+DEFINE_INTRINSIC_FUNCTION4(env,store_i128i128,store_i128i128,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) {
+   
    static const uint32_t keylen = 2*sizeof(uint128_t);
-   FC_ASSERT( datalen >= keylen, "insufficient data passed" );
+   
+   FC_ASSERT( valuelen >= keylen, "insufficient data passed" );
 
    auto& wasm  = wasm_interface::get();
-   FC_ASSERT( wasm.current_apply_context, "not a valid apply context" );
+   FC_ASSERT( wasm.current_apply_context, "no apply context found" );
 
-   char* v     = memoryArrayPtr<char>( wasm.current_memory, data, datalen );
-
-   uint128_t*  primary   = ((uint128_t*)v);
+   char* value = memoryArrayPtr<char>( wasm.current_memory, valueptr, valuelen );
+   uint128_t*  primary = reinterpret_cast<uint128_t*>(value);
    uint128_t*  secondary = primary + 1;
+   
+   valuelen -= keylen;
+   value    += keylen;
 
-   char* value = (char*)(secondary+1);
-   uint32_t valuelen = datalen - keylen;
-   auto result = wasm_interface::get().current_apply_context->store_i128i128( 
-                Name(scope), Name(table),
-                *primary, *secondary, value, valuelen ) + keylen;
-   wdump((datalen)(valuelen)(result));
-   return result;
+   //wdump((datalen)(valuelen)(result));
+   return wasm.current_apply_context->store_i128i128( Name(scope), Name(table),
+                                                      *primary, *secondary, value, valuelen );
 }
 
 struct i128_keys {
@@ -163,15 +163,21 @@ DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
    wasm_interface::get().current_validate_context->require_scope( scope );
 }
 
-DEFINE_INTRINSIC_FUNCTION4(env,store_i64,store_i64,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) 
+DEFINE_INTRINSIC_FUNCTION4(env,store_i64,store_i64,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen)
 {
+   static const uint32_t keylen = sizeof(uint64_t);
+
+   FC_ASSERT( valuelen >= sizeof(uint64_t) );
+
    auto& wasm  = wasm_interface::get();
    FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-   FC_ASSERT( valuelen >= sizeof(uint64_t) );
 
    auto  mem   = wasm.current_memory;
    char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
    uint64_t* key = reinterpret_cast<uint64_t*>(value);
+
+   valuelen -= keylen;
+   value    += keylen;
 
    //idump((Name(scope))(Name(code))(Name(table))(Name(key))(valuelen) );
 
@@ -181,17 +187,23 @@ DEFINE_INTRINSIC_FUNCTION4(env,store_i64,store_i64,i32,i64,scope,i64,table,i32,v
 DEFINE_INTRINSIC_FUNCTION5(env,load_i64,load_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) 
 {
    //idump((Name(scope))(Name(code))(Name(table))(Name(key))(valuelen) );
-
-   FC_ASSERT( valuelen >= sizeof(uint64_t) );
+   static const uint32_t keylen = sizeof(uint64_t);
+   
+   FC_ASSERT( valuelen >= keylen );
 
    auto& wasm  = wasm_interface::get();
-   FC_ASSERT( wasm.current_validate_context, "no apply context found" );
+   FC_ASSERT( wasm.current_validate_context, "no validate context found" );
 
    auto  mem   = wasm.current_memory;
    char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
    uint64_t* key = reinterpret_cast<uint64_t*>(value);
 
-   return wasm.current_validate_context->load_i64( scope, code, table, *key, value, valuelen );
+   valuelen -= keylen;
+   value    += keylen;
+
+   auto res = wasm.current_validate_context->load_i64( scope, code, table, *key, value, valuelen );
+   if(res > 0) res += keylen;
+   return res;
 }
 
 DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i64,key) {
