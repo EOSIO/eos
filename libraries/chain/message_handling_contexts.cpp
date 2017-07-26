@@ -372,11 +372,9 @@ int32_t apply_context::store_i128i128( Name scope, Name table, uint128_t primary
    if( obj ) {
       wlog( "modify" );
       mutable_db.modify( *obj, [&]( auto& o ) {
-         o.primary_key = primary;
-         o.secondary_key = secondary;
          o.value.assign(value, valuelen);
       });
-      return valuelen;
+      return 0;
    } else {
       wlog( "new" );
       mutable_db.create<key128x128_value_object>( [&](auto& o) {
