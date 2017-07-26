@@ -21,20 +21,27 @@ namespace  eos {
     *  @ingroup types
     */
    static constexpr uint64_t string_to_name( const char* str ) {
+
       uint32_t len = 0;
       while( str[len] ) ++len;
 
       uint64_t value = 0;
 
-      for( uint32_t i = 0; i <= 12 && i < len; ++i ) {
-         value <<= 5;
-         value |= char_to_symbol( str[ len -1 - i ] );
+      for( uint32_t i = 0; i <= 12; ++i ) {
+         uint64_t c = 0;
+         if( i < len && i <= 12 ) c = char_to_symbol( str[i] );
+
+         if( i < 12 ) {
+            c &= 0x1f;
+            c <<= 64-5*(i+1);
+         }
+         else {
+            c &= 0x0f;
+         }
+
+         value |= c;
       }
 
-      if( len >= 13 ) {
-         value <<= 4;
-         value |= 0x0f & char_to_symbol( str[ 12 ] );
-      }
       return value;
    }
 

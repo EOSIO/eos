@@ -5,6 +5,7 @@
 #pragma once
 
 #include <eoslib/types.h>
+extern "C" {
 /**
  *  @defgroup database Database API
  *  @brief APIs that store and retreive data on the blockchain
@@ -160,7 +161,7 @@ int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, Tab
 int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, 
                                      const void* key, void* data, uint32_t len );
 
-int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, const void* secondary, void* data, uint32_t len );
+int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 /**
  * @param data - must point to at lest 32 bytes containing {primary,secondary}
@@ -174,4 +175,4 @@ bool remove_i128i128( AccountName scope, TableName table, const void* data );
 bool store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
 
 ///@}  dbi128i128
-
+}

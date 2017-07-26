@@ -67,26 +67,33 @@ namespace eos { namespace types {
    }
 
    static constexpr uint64_t string_to_name( const char* str ) {
+
       uint32_t len = 0;
       while( str[len] ) ++len;
 
       uint64_t value = 0;
 
-      for( uint32_t i = 0; i <= 12 && i < len; ++i ) {
-         value <<= 5;
-         value |= char_to_symbol( str[ len -1 - i ] );
+      for( uint32_t i = 0; i <= 12; ++i ) {
+         uint64_t c = 0;
+         if( i < len && i <= 12 ) c = char_to_symbol( str[i] );
+
+         if( i < 12 ) {
+            c &= 0x1f;
+            c <<= 64-5*(i+1);
+         }
+         else {
+            c &= 0x0f;
+         }
+
+         value |= c;
       }
 
-      if( len == 13 ) {
-         value <<= 4;
-         value |= 0x0f & char_to_symbol( str[ 12 ] );
-      }
       return value;
    }
    
    struct Name {
       uint64_t value = 0;
-      bool valid()const { return 0 == (value >> 60); }
+      bool valid()const { return true; }
       bool empty()const { return 0 == value; }
       bool good()const  { return !empty() && valid();  }
 
@@ -95,17 +102,9 @@ namespace eos { namespace types {
 
       void set( const char* str ) {
       try {
-         value = 0;
          const auto len = strnlen(str,14);
          FC_ASSERT( len <= 13 );
-         for( uint32_t i = 0; i <= 12 && i < len; ++i ) {
-            value <<= 5;
-            value |= char_to_symbol( str[ len -1 - i ] );
-         }
-         if( 13 == len ) {
-            value <<= 4;
-            value |= 0x0f & char_to_symbol( str[ 12 ] );
-         }
+         value = string_to_name(str);
       }FC_CAPTURE_AND_RETHROW( (str) ) }
 
       Name( uint64_t v = 0 ):value(v){
@@ -114,15 +113,15 @@ namespace eos { namespace types {
 
       explicit operator String()const {
          static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
-         String str;
+
+         String str(13,'.');
+
          uint64_t tmp = value;
-         for( uint32_t i = 0; i < 12; ++i ) {
-            char c = charmap[tmp & 0x1f ];
-            str += c;
-            tmp >>= 5;
+         for( uint32_t i = 0; i <= 12; ++i ) {
+            char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
+            str[12-i] = c;
+            tmp >>= (i == 0 ? 4 : 5);
          }
-         char c = charmap[tmp & 0x0f];
-         str += c;
 
          boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
          return str;

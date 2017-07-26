@@ -229,6 +229,32 @@ int32_t message_validate_context::load_primary_i128i128( Name scope, Name code, 
     }
     return copylen;
 }
+
+int32_t message_validate_context::load_secondary_i128i128( Name scope, Name code, Name table, 
+                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
+
+    require_scope( scope );
+    const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
+    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
+                                                   uint64_t(code), 
+                                                   uint64_t(table), 
+                                                  *secondary, uint128_t(0) ) );
+
+    if( itr == idx.end() ||
+        itr->scope != (scope) ||
+        itr->code != (code) ||
+        itr->table != (table) ||
+        itr->secondary_key != *secondary ) return -1;
+
+    *primary = itr->primary_key;
+    
+    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+    if( copylen ) {
+       itr->value.copy(value, copylen);
+    }
+    return copylen;
+}
+
 int32_t message_validate_context::lowerbound_primary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
@@ -346,11 +372,9 @@ int32_t apply_context::store_i128i128( Name scope, Name table, uint128_t primary
    if( obj ) {
       wlog( "modify" );
       mutable_db.modify( *obj, [&]( auto& o ) {
-         o.primary_key = primary;
-         o.secondary_key = secondary;
          o.value.assign(value, valuelen);
       });
-      return valuelen;
+      return 0;
    } else {
       wlog( "new" );
       mutable_db.create<key128x128_value_object>( [&](auto& o) {

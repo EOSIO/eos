@@ -8,6 +8,7 @@
 namespace eos { namespace chain {
 
 class  chain_controller;
+typedef int32_t (message_validate_context::*load_i128i128_fnc)(Name, Name, Name, uint128_t* , uint128_t*, char* , uint32_t);
 
 /**
  * @class wasm_interface
@@ -62,6 +63,8 @@ class wasm_interface {
       fc::time_point checktimeStart;
 
       wasm_interface();
+
+      int32_t load_i128i128_object( uint64_t scope, uint64_t code, uint64_t table, int32_t valueptr, int32_t valuelen, load_i128i128_fnc function );
 };
 
 

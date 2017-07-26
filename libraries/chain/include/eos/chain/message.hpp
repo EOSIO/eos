@@ -26,6 +26,10 @@ struct Message : public types::Message {
       :types::Message(code, type, authorization, Bytes()) {
       set<T>(type, std::forward<T>(value));
    }
+
+   Message(const AccountName& code, const vector<types::AccountPermission>& authorization, const types::FuncName& type)
+      :types::Message(code, type, authorization, Bytes()) {}
+
    Message(const types::Message& m) : types::Message(m) {}
 
    template<typename T>

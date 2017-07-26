@@ -1,8 +1,6 @@
 #pragma once
 
-extern "C" {
 #include <eoslib/db.h>
-}
 
 
 
