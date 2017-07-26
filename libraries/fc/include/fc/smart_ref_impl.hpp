@@ -89,7 +89,7 @@ namespace fc {
     template<typename T>
     T& smart_ref<T>::operator = ( smart_ref<T>&& u ) {
       if( &u == this ) return *impl;
-      if( impl ) delete impl;
+      delete impl;
       impl = u.impl;
       u.impl = nullptr;
       return *impl;
