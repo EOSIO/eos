@@ -1,0 +1,19 @@
+sudo: false
+dist: trusty
+language: cpp
+compiler: clang
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-4.0
+      - george-edison55-precise-backports
+    packages:
+      - cmake-data
+      - cmake
+      - clang++-4.0
+      - g++-6
+      - libssl-dev
+script:
+  - cmake -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0
+  - make -j4
