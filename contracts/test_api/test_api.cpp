@@ -1,3 +1,4 @@
+#include <eoslib/eos.hpp>
 #include "test_api.hpp"
 
 extern "C" {
@@ -7,6 +8,8 @@ extern "C" {
     }
 
    void apply( unsigned long long code, unsigned long long action ) {
+
+      //eos::print("==> CONTRACT: ", code, " ", action, "\n");
 
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
@@ -18,7 +21,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_message, read_message);
       WASM_TEST_HANDLER(test_message, read_message_to_0);
       WASM_TEST_HANDLER(test_message, read_message_to_64k);
-      WASM_TEST_HANDLER(test_message, require_notice);
+      WASM_TEST_HANDLER_EX(test_message, require_notice);
       WASM_TEST_HANDLER(test_message, require_auth);
       WASM_TEST_HANDLER(test_message, assert_false);
       WASM_TEST_HANDLER(test_message, assert_true);
@@ -43,7 +46,10 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64_store_scope);
       WASM_TEST_HANDLER(test_db, key_i64_remove_scope);
       WASM_TEST_HANDLER(test_db, key_i64_not_found);
+      WASM_TEST_HANDLER(test_db, key_i128i128_general);
 
+      //unhandled test call
+      WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }
 
 }

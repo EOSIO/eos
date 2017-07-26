@@ -15,6 +15,12 @@ typedef unsigned long long u64;
      return; \
   }
 
+#define WASM_TEST_HANDLER_EX(CLASS, METHOD) \
+  if( u32(action>>32) == DJBH(#CLASS) && u32(action) == DJBH(#METHOD) ) { \
+     WASM_TEST_ERROR_CODE = CLASS::METHOD(code, action); \
+     return; \
+  }
+
 typedef unsigned int u32;
 static constexpr u32 DJBH(const char* cp)
 {
@@ -62,7 +68,7 @@ struct test_message {
   static unsigned int read_message();
   static unsigned int read_message_to_0();
   static unsigned int read_message_to_64k();
-  static unsigned int require_notice();
+  static unsigned int require_notice(unsigned long long code, unsigned long long action);
   static unsigned int require_auth();
   static unsigned int assert_false();
   static unsigned int assert_true();
@@ -84,5 +90,7 @@ struct test_db {
    static unsigned int key_i64_store_scope();
    static unsigned int key_i64_remove_scope();
    static unsigned int key_i64_not_found();
+
+   static unsigned int key_i128i128_general();
 };
 
