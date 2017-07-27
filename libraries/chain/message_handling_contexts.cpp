@@ -9,25 +9,11 @@
 
 namespace eos { namespace chain {
 
-bool message_validate_context::has_authorization(const types::AccountName& account)const {
-
-   auto itr = boost::find_if(msg.authorization, [&account](const types::AccountPermission& ap) {
-      return ap.account == account;
-   });
-   return itr != msg.authorization.end();
-
-}
-
 void message_validate_context::require_authorization(const types::AccountName& account) {
-
-   auto itr = boost::find_if(msg.authorization, [&account](const types::AccountPermission& ap) {
-      return ap.account == account;
-   });
-
-   EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
-              "Required authorization ${auth} not found", ("auth", account));
-
-   used_authorizations[itr - msg.authorization.begin()] = true;
+#warning TODO: Look up the permission_object that account has specified to use for this message type
+   if (authChecker)
+      EOS_ASSERT(authChecker->requirePermission({account, "active"}), tx_missing_auth,
+                 "Transaction does not declare required authority '${auth}'", ("auth", account));
 }
 
 void message_validate_context::require_scope(const types::AccountName& account)const {
@@ -53,13 +39,8 @@ bool apply_context::has_recipient( const types::AccountName& account )const {
 
 void apply_context::require_recipient(const types::AccountName& account) {
    if( !has_recipient( account ) ) {
-      idump((account));
       notified.push_back(account);
    }
-}
-
-bool message_validate_context::all_authorizations_used() const {
-   return boost::algorithm::all_of_equal(used_authorizations, true);
 }
 
 int32_t message_validate_context::load_i64( Name scope, Name code, Name table, Name key, char* value, uint32_t valuelen ) {

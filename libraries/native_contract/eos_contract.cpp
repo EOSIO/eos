@@ -34,6 +34,7 @@ void validate_authority_precondition( const apply_context& context, const Author
  */
 void apply_eos_newaccount(apply_context& context) {
    auto create = context.msg.as<types::newaccount>();
+   context.require_authorization(create.creator);
 
    EOS_ASSERT( validate(create.owner), message_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), message_validate_exception, "Invalid active authority");
@@ -211,7 +212,8 @@ void apply_eos_setcode(apply_context& context) {
       a.set_abi( msg.abi );
    });
 
-   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account );
+   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account,
+                               context.authChecker);
    wasm_interface::get().init( init_context );
 }
 
@@ -240,6 +242,7 @@ void apply_eos_claim(apply_context& context) {
 
 void apply_eos_setproducer(apply_context& context) {
    auto update = context.msg.as<types::setproducer>();
+   context.require_authorization(update.name);
    EOS_ASSERT(update.name.good(), message_validate_exception, "Producer owner name cannot be empty");
 
    auto& db = context.mutable_db;

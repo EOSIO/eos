@@ -301,9 +301,8 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
 void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.emplaceMessage("currency", 
-                      vector<types::AccountPermission>{ {from,"active"} },
-                      "transfer", types::transfer{from, to, amount});
+   trx.authorizations = vector<types::AccountPermission>{{from,"active"}};
+   trx.emplaceMessage("currency", "transfer", types::transfer{from, to, amount});
 
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
@@ -314,9 +313,8 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
 void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.emplaceMessage("currency", 
-                      vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
-                      "transfer", types::transfer{from, to, amount});
+   trx.authorizations = vector<types::AccountPermission>{{from,"active"},{to,"active"}};
+   trx.emplaceMessage("currency", "transfer", types::transfer{from, to, amount});
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
    chain.push_transaction(trx);
@@ -356,9 +354,8 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         trx.emplaceMessage("currency", 
-                            vector<types::AccountPermission>{ {"currency","active"} },
-                            "transfer", types::transfer{"currency", "inita", 1+i});
+         trx.authorizations = vector<types::AccountPermission>{{"currency","active"}};
+         trx.emplaceMessage("currency", "transfer", types::transfer{"currency", "inita", 1+i});
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
          //idump((trx));
@@ -394,9 +391,8 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.emplaceMessage("exchange", 
-                      vector<types::AccountPermission>{ {seller,"active"} },
-                      "sell", b );
+   trx.authorizations = vector<types::AccountPermission>{{seller,"active"}};
+   trx.emplaceMessage("exchange", "sell", b );
    //trx.messages.back().set_packed( "sell", b);
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
@@ -412,9 +408,8 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.emplaceMessage("exchange", 
-                      vector<types::AccountPermission>{ {buyer,"active"} },
-                      "buy", b );
+   trx.authorizations = vector<types::AccountPermission>{{buyer,"active"}};
+   trx.emplaceMessage("exchange", "buy", b );
    //trx.messages.back().set_packed( "buy", b);
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
@@ -1158,9 +1153,8 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         trx.emplaceMessage("currency",
-                            vector<types::AccountPermission>{ {"currency","active"} },
-                            "transfer", types::transfer{"currency", "inita", 1});
+         trx.authorizations = vector<types::AccountPermission>{{"currency","active"}};
+         trx.emplaceMessage("currency", "transfer", types::transfer{"currency", "inita", 1});
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
          try

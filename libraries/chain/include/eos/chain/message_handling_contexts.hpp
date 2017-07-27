@@ -15,8 +15,9 @@ public:
                                      const chainbase::database& d, 
                                      const chain::Transaction& t,
                                      const chain::Message& m, 
-                                     types::AccountName c )
-      :controller(control),db(d),trx(t),msg(m),code(c),used_authorizations(msg.authorization.size(), false){}
+                                     types::AccountName c,
+                                     TransactionAuthorizationChecker* authChecker)
+      :controller(control),db(d),trx(t),msg(m),code(c),authChecker(authChecker){}
 
    /**
     * @brief Require @ref account to have approved of this message
@@ -29,14 +30,14 @@ public:
     */
    void require_authorization(const types::AccountName& account);
    void require_scope(const types::AccountName& account)const;
-   bool has_authorization( const types::AccountName& account )const;
-   bool all_authorizations_used() const;
 
    const chain_controller&      controller;
    const chainbase::database&   db;  ///< database where state is stored
    const chain::Transaction&    trx; ///< used to gather the valid read/write scopes
    const chain::Message&        msg; ///< message being applied
    types::AccountName           code; ///< the code that is currently running
+
+   TransactionAuthorizationChecker* authChecker;
 
 
    int32_t load_i64( Name scope, Name code, Name table, Name Key, char* data, uint32_t maxlen );
@@ -58,9 +59,6 @@ public:
                                     uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
    int32_t lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
                                     uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
-
-   ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
-   vector<bool>                 used_authorizations;
 };
 
 class precondition_validate_context : public message_validate_context {
@@ -69,8 +67,9 @@ public:
                                  const chainbase::database& db, 
                                  const chain::Transaction& t,
                                  const chain::Message& m, 
-                                 const types::AccountName& code)
-      :message_validate_context(con, db, t, m, code){}
+                                 const types::AccountName& code,
+                                 TransactionAuthorizationChecker* authChecker)
+      :message_validate_context(con, db, t, m, code, authChecker){}
 };
 
 class apply_context : public precondition_validate_context {
@@ -79,8 +78,9 @@ class apply_context : public precondition_validate_context {
                     chainbase::database& db, 
                     const chain::Transaction& t,
                     const chain::Message& m, 
-                    const types::AccountName& code)
-         :precondition_validate_context(con,db,t,m,code),mutable_controller(con),mutable_db(db){}
+                    const types::AccountName& code,
+                    TransactionAuthorizationChecker* authChecker)
+         :precondition_validate_context(con,db,t,m,code,authChecker),mutable_controller(con),mutable_db(db){}
 
       int32_t store_i64( Name scope, Name table, Name key, const char* data, uint32_t len);
       int32_t remove_i64( Name scope, Name table, Name key );

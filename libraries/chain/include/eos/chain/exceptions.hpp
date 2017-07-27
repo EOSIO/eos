@@ -43,6 +43,8 @@ namespace eos { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eos::chain::chain_exception, 3110000, "unknown block" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   eos::chain::transaction_exception, 3030001, "missing required authority" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   eos::chain::transaction_exception, 3030002, "signatures do not satisfy declared authorizations" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_auth,                eos::chain::transaction_exception, 3030003, "irrelevant authority included" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                 eos::chain::transaction_exception, 3030004, "irrelevant signature included" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                  eos::chain::transaction_exception, 3030005, "duplicate signature included" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_committee_approval,        eos::chain::transaction_exception, 3030006, "committee account cannot directly approve transaction" )
