@@ -16,10 +16,13 @@ endif()
 
 SET (ORIGINAL_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 
+find_package(Secp256k1 REQUIRED)
+find_package(GMP REQUIRED)
+
 IF( ECC_IMPL STREQUAL openssl )
   SET( ECC_REST src/crypto/elliptic_impl_pub.cpp )
 ELSE( ECC_IMPL STREQUAL openssl )
-  SET( ECC_LIB ${Secp256k1_LIBRARY} gmp )
+  SET( ECC_LIB ${Secp256k1_LIBRARY} ${GMP_LIBRARIES} )
   IF( ECC_IMPL STREQUAL mixed )
     SET( ECC_REST src/crypto/elliptic_impl_priv.cpp src/crypto/elliptic_impl_pub.cpp )
   ELSE( ECC_IMPL STREQUAL mixed )
@@ -45,8 +48,6 @@ IF(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
 ENDIF()
 
 find_package(OpenSSL REQUIRED)
-
-find_package(Secp256k1 REQUIRED)
 
 set( CMAKE_FIND_LIBRARY_SUFFIXES ${ORIGINAL_LIB_SUFFIXES} )
 
