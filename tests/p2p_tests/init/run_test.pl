@@ -19,27 +19,28 @@ my $prods = 21;
 my $genesis = "$eos_home/genesis.json";
 my $http_port_base = 8888;
 my $p2p_port_base = 9876;
-my $data_dir_base = "tdn";
-my $http_port_base = 8888;
-my $hostname = "localhost";
+my $data_dir_base = "ttdn";
+my $hostname = "127.0.0.1";
 my $first_pause = 45;
 my $launch_pause = 5;
 my $run_duration = 60;
 my $topo = "ring";
-my $override_gts = "now";
+my $override_gts; # = "now";
 
 if (!GetOptions("nodes=i" => \$nodes,
                 "first-pause=i" => \$first_pause,
                 "launch-pause=i" => \$launch_pause,
                 "duration=i" => \$run_duration,
+                "topo=s" => \$topo,
                 "pnodes=i" => \$pnodes)) {
-    print "usage: $ARGV[0] [--nodes=<n>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>] [--pnodes]\n";
+    print "usage: $ARGV[0] [--nodes=<n>] [--pnodes=<n>] [--topo=<ring|star>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>]\n";
     print "where:\n";
     print "--nodes=n (default = 1) sets the number of eosd instances to launch\n";
+    print "--pnodes=n (default = 1) sets the number nodes that will also be producers\n";
+    print "--topo=s (default = ring) sets the network topology to eithar a ring shape or a star shape\n";
     print "--first-pause=n (default = 45) sets the seconds delay after starting the first instance\n";
     print "--launch-pause=n (default = 5) sets the seconds delay after starting subsequent nodes\n";
     print "--duration=n (default = 60) sets the seconds delay after starting the last node before shutting down the test\n";
-    print "--pnodes=n (default = 1) sets the number nodes that will also be producers\n";
     print "\nproducer count currently fixed at $prods\n";
     exit
 }
@@ -73,7 +74,7 @@ for (my $i = 0; $i < $nodes; $i++) {
 opendir(DIR, ".") or die $!;
 while (my $d = readdir(DIR)) {
     if ($d =~ $data_dir_base) {
-        rmtree ($d);
+        rmtree ($d) or die $!;
     }
 }
 closedir(DIR);
@@ -82,14 +83,16 @@ sub write_config {
     my $i = shift;
     my $producer = shift;
     mkdir ($data_dir[$i]);
+    mkdir ($data_dir[$i]."/blocks");
+    mkdir ($data_dir[$i]."/blockchain");
 
     open (my $cfg, '>', "$data_dir[$i]/config.ini") ;
     print $cfg "genesis-json = \"$genesis\"\n";
-    print $cfg "block-log-dir = \"blocks\"\n";
+    print $cfg "block-log-dir = blocks\n";
     print $cfg "readonly = 0\n";
-    print $cfg "shared-file-dir = \"blockchain\"\n";
+    print $cfg "shared-file-dir = blockchain\n";
     print $cfg "shared-file-size = 64\n";
-    print $cfg "http-server-endpoint = 0.0.0.0:$http_port[$i]\n";
+    print $cfg "http-server-endpoint = 127.0.0.1:$http_port[$i]\n";
     print $cfg "listen-endpoint = 0.0.0.0:$p2p_port[$i]\n";
     print $cfg "public-endpoint = $hostname:$p2p_port[$i]\n";
     foreach my $peer (@peers) {
@@ -102,6 +105,7 @@ sub write_config {
         print $cfg "private-key = [\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]\n";
 
         print $cfg "plugin = eos::producer_plugin\n";
+        print $cfg "plugin = eos::chain_api_plugin\n";
 
         my $prod_ndx = ord('a') + $producer;
         my $num_prod = $pcount[$producer];
@@ -140,22 +144,26 @@ sub make_star_topology () {
  }
 
 sub launch_nodes () {
-    my $GTS = $override_gts;
-    if ($override_gts =~ "now" ) {
-        chomp ($GTS = `date -u "+%Y-%m-%dT%H:%M:%S"`);
-        my @s = split (':',$GTS);
-        $s[2] = substr ((100 + (int ($s[2]/3) * 3)),1);
-        $GTS = join (':', @s);
-        print "using genesis time stamp $GTS\n";
-    }
     my $gtsarg;
-    $gtsarg = "--genesis-timestamp=$GTS" if ($override_gts);
+    if (defined $override_gts) {
+        my $GTS = $override_gts;
+        print "$override_gts\n";
+
+        if ($override_gts =~ "now" ) {
+            chomp ($GTS = `date -u "+%Y-%m-%dT%H:%M:%S"`);
+            my @s = split (':',$GTS);
+            $s[2] = substr ((100 + (int ($s[2]/3) * 3)),1);
+            $GTS = join (':', @s);
+            print "using genesis time stamp $GTS\n";
+        }
+        $gtsarg = " --genesis-timestamp=$GTS";
+    }
 
     for (my $i = 0; $i < $nodes;  $i++) {
         my @cmdline = ($eosd,
                        $gtsarg,
-                       "--data-dir=$data_dir[$i]");
-
+                       " --data-dir=$data_dir[$i]");
+        print "starting $eosd $gtsarg --data-dir=$data_dir[$i]\n";
         $pid[$i] = fork;
         if ($pid[$i] > 0) {
             my $pause = $i == 0 ? $first_pause : $launch_pause;
@@ -210,7 +218,7 @@ else {
     elsif ( $topo =~ "star" ) { make_star_topology () or die; }
     else  { print "$topo is not a known topology" and die; }
 }
-
+exit; #sleep(1);
 launch_nodes ();
 
 kill_nodes () if ($run_duration > 0);

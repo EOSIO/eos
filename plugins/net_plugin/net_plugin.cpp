@@ -15,6 +15,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
+#include <boost/thread.hpp>
 
 namespace eos {
   using std::vector;
@@ -204,6 +205,20 @@ namespace eos {
 
   }; // class connection
 
+
+  static boost::thread_specific_ptr<transaction_id_type> last_recd_txn;
+  static net_plugin_impl *my_impl;
+
+  class last_recd_txn_guard {
+  public:
+    last_recd_txn_guard (transaction_id_type id) {
+      transaction_id_type *ptid = new transaction_id_type(id);
+      last_recd_txn.reset (ptid);
+    }
+    ~last_recd_txn_guard () {
+      last_recd_txn.reset (0);
+    }
+  };
 
   class net_plugin_impl {
   public:
@@ -578,6 +593,8 @@ namespace eos {
       dlog ("got a SignedTransacton");
       chain_controller &cc = chain_plug->chain();
       if (!cc.is_known_transaction(msg.id())) {
+        last_recd_txn_guard tls_guard(msg.id());
+
         chain_plug->accept_transaction (msg);
         forward (c, msg);
       }
@@ -664,9 +681,31 @@ namespace eos {
       c.reset ();
     }
 
-    static void pending_txn (const SignedTransaction& txn) {
-      // dlog ("got signaled of txn!");
+    void send_all_txn (const SignedTransaction&txn) {
+      dlog ("got signaled about a pending transaction");
+      if (last_recd_txn.get() && *last_recd_txn.get() == txn.id()) {
+        dlog ("skipping our received transacton");
+        return;
+      }
+
+      if (true) { //txn.get_size() <= just_send_it_max) {
+        send_all (txn);
+        return;
+      }
+
+      uint32_t psize = (pending_notify.size()+1) * sizeof (txn.id());
+      if (psize >= my_impl->just_send_it_max) {
+        notice_message nm = {vector<block_id_type>(), pending_notify};
+        send_all (nm);
+        pending_notify.clear();
+      }
+      pending_notify.push_back(txn.id());
     }
+
+    static void pending_txn (const SignedTransaction& txn) {
+      my_impl->send_all_txn (txn);
+    }
+
 
   }; // class net_plugin_impl
 
@@ -714,6 +753,7 @@ namespace eos {
   net_plugin::net_plugin()
     :my( new net_plugin_impl ) {
     handshake_initializer::info = my.get();
+    my_impl = my.get();
   }
 
   net_plugin::~net_plugin() {
@@ -818,18 +858,7 @@ namespace eos {
     } FC_CAPTURE_AND_RETHROW() }
 
     void net_plugin::broadcast_transaction (const SignedTransaction &txn) {
-      if (true) { //txn.get_size() <= my->just_send_it_max) {
-        my->send_all (txn);
-        return;
-      }
-
-      uint32_t psize = (my->pending_notify.size()+1) * sizeof (txn.id());
-      if (psize >= my->just_send_it_max) {
-        notice_message nm = {vector<block_id_type>(), my->pending_notify};
-        my->send_all (nm);
-        my->pending_notify.clear();
-      }
-      my->pending_notify.push_back(txn.id());
+      my->pending_txn (txn);
     }
 
     void net_plugin::broadcast_block (const chain::signed_block &sb) {
