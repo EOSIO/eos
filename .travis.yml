@@ -9,7 +9,7 @@ addons:
       - llvm-toolchain-trusty-4.0
     packages:
       - llvm-4.0-dev
-      - clang++-4.0
+      - clang-4.0
       - g++-6
 before_install:
   - mkdir ext
@@ -18,8 +18,9 @@ before_install:
   - cd $TRAVIS_BUILD_DIR/ext && git clone --depth=1 --single-branch git://github.com/cryptonomex/secp256k1-zkp
   - cd secp256k1-zkp && ./autogen.sh && ./configure --prefix=$TRAVIS_BUILD_DIR/ext CC=clang-4.0 CXX=clang++-4.0 && make && make install
   - cd $TRAVIS_BUILD_DIR/ext && wget https://cmake.org/files/v3.9/cmake-3.9.0-Linux-x86_64.tar.gz && tar xzf cmake-3.9.0-Linux-x86_64.tar.gz
+  - cd $TRAVIS_BUILD_DIR/ext && git clone --depth=1 --single-branch git://github.com/oci-labs/clang-WebAssembly wasm-compiler
   - cd $TRAVIS_BUILD_DIR
 script:
-  - ext/cmake-3.9.0-Linux-x86_64/bin/cmake -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext
+  - WASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config ext/cmake-3.9.0-Linux-x86_64/bin/cmake -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext
   - make -j4
   - tests/chain_test
