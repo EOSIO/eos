@@ -11,17 +11,18 @@ addons:
       - llvm-4.0-dev
       - clang-4.0
       - g++-6
+      - ninja-build
 before_install:
-  - mkdir ext
-  - git clone --recursive --depth=1 --single-branch --branch boost-1.64.0 git://github.com/boostorg/boost ext/boost
-  - "cd ext/boost && ./bootstrap.sh --prefix=$TRAVIS_BUILD_DIR/ext && ./b2 -d0 headers && echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam && ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine toolset=clang link=static install"
+  - mkdir ext && cd ext
+  - wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2 && tar xjf boost_1_64_0.tar.bz2
+  - "cd boost_1_64_0 && ./bootstrap.sh --prefix=$TRAVIS_BUILD_DIR/ext && echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam && ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine toolset=clang link=static install"
   - cd $TRAVIS_BUILD_DIR/ext && git clone --depth=1 --single-branch git://github.com/cryptonomex/secp256k1-zkp
   - cd secp256k1-zkp && ./autogen.sh && ./configure --prefix=$TRAVIS_BUILD_DIR/ext CC=clang-4.0 CXX=clang++-4.0 && make && make install
   - cd $TRAVIS_BUILD_DIR/ext && wget https://cmake.org/files/v3.9/cmake-3.9.0-Linux-x86_64.tar.gz && tar xzf cmake-3.9.0-Linux-x86_64.tar.gz
   - cd $TRAVIS_BUILD_DIR/ext && git clone --depth=1 --single-branch git://github.com/oci-labs/clang-WebAssembly wasm-compiler
   - cd $TRAVIS_BUILD_DIR
 script:
-  - WASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config ext/cmake-3.9.0-Linux-x86_64/bin/cmake -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext
-  - make -j4
+  - WASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config ext/cmake-3.9.0-Linux-x86_64/bin/cmake -G Ninja -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext
+  - ninja
   - tests/chain_test
   - tests/slow_test
