@@ -14,6 +14,7 @@ namespace eos {
    using namespace appbase;
    using chain::Name;
    using fc::optional;
+   using chain::uint128_t;
 
 namespace chain_apis {
 struct empty{};
@@ -106,6 +107,23 @@ public:
    };
 
    get_table_rows_i64_result get_table_rows_i64( const get_table_rows_i64_params& params )const;
+
+   struct get_table_rows_i128i128_primary_params {
+      bool        json = false;
+      Name        scope;
+      Name        code;
+      Name        table;
+      uint128_t   lower_bound = 0;
+      uint128_t   upper_bound = uint128_t(-1);
+      uint32_t    limit = 10;
+   };
+
+   struct get_table_rows_i128i128_primary_result {
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object 
+      bool                more; ///< true if last element in data is not the end and sizeof data() < limit
+   };
+
+   get_table_rows_i128i128_primary_result get_table_rows_i128i128_primary( const get_table_rows_i128i128_primary_params& params )const;   
 };
 
 class read_write {
@@ -171,6 +189,10 @@ FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_params,
            (json)(scope)(code)(table)(lower_bound)(upper_bound)(limit) );
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_result,
+           (rows)(more) );
+FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i128i128_primary_params,
+           (json)(scope)(code)(table)(lower_bound)(upper_bound)(limit) );
+FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i128i128_primary_result,
            (rows)(more) );
 FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(producer)(abi) )
 FC_REFLECT( eos::chain_apis::read_only::get_account_params, (name) )
