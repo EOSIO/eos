@@ -50,7 +50,7 @@ namespace exchange {
    using Accounts = Table<N(exchange),N(exchange),N(account),Account,uint64_t>;
 
    TABLE2(Bids,exchange,exchange,bids,Bid,BidsById,OrderID,BidsByPrice,Price); 
-   TABLE2(Asks,exchange,exchange,bids,Ask,AsksById,OrderID,AsksByPrice,Price); 
+   TABLE2(Asks,exchange,exchange,asks,Ask,AsksById,OrderID,AsksByPrice,Price); 
 
 
    struct BuyOrder : public Bid  { uint8_t fill_or_kill = false; };
