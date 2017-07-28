@@ -148,6 +148,7 @@ void apply_exchange_buy( BuyOrder order ) {
       print( "\n No asks found, saving buyer account and storing bid\n" );
       assert( !order.fill_or_kill, "order not completely filled" );
       Bids::store( bid );
+      buyer_account.open_orders++;
       save( buyer_account );
       return;
    }
@@ -162,6 +163,7 @@ void apply_exchange_buy( BuyOrder order ) {
       match( bid, buyer_account, lowest_ask, seller_account );
 
       if( lowest_ask.quantity == CurrencyTokens(0) ) {
+         seller_account.open_orders--;
          save( seller_account );
          save( buyer_account );
          Asks::remove( lowest_ask );
@@ -175,6 +177,7 @@ void apply_exchange_buy( BuyOrder order ) {
    }
    print( "lowest_ask >= bid.price or buyer's bid has been filled\n" );
 
+   if( bid.quantity && !order.fill_or_kill ) buyer_account.open_orders++;
    save( buyer_account );
    print( "saving buyer's account\n" );
    if( bid.quantity ) {
@@ -209,6 +212,7 @@ void apply_exchange_sell( SellOrder order ) {
       assert( !order.fill_or_kill, "order not completely filled" );
       print( "\n No bids found, saving seller account and storing ask\n" );
       Asks::store( ask );
+      seller_account.open_orders++;
       save( seller_account );
       return;
    }
@@ -220,6 +224,7 @@ void apply_exchange_sell( SellOrder order ) {
       match( highest_bid, buyer_account, ask, seller_account );
 
       if( highest_bid.quantity == EosTokens(0) ) {
+         buyer_account.open_orders--;
          save( seller_account );
          save( buyer_account );
          Bids::remove( highest_bid );
@@ -231,13 +236,49 @@ void apply_exchange_sell( SellOrder order ) {
          break; // buyer's bid should be filled
       }
    }
-
+   
+   if( ask.quantity && !order.fill_or_kill ) seller_account.open_orders++;
    save( seller_account );
    if( ask.quantity ) {
       assert( !order.fill_or_kill, "order not completely filled" );
       print( "saving ask\n" );
       Asks::store( ask );
+      return;
    }
+
+   print( "ask filled\n" );
+}
+
+void apply_exchange_cancel_buy( OrderID order ) {
+   requireAuth( order.name ); 
+
+   Bid bid_to_cancel;
+   assert( BidsById::get( order, bid_to_cancel ), "bid with this id does not exists" );
+   
+   auto buyer_account = getAccount( order.name );
+   buyer_account.eos_balance += bid_to_cancel.quantity;
+   buyer_account.open_orders--;
+
+   Bids::remove( bid_to_cancel );
+   save( buyer_account );
+
+   print( "bid removed\n" );
+}
+
+void apply_exchange_cancel_sell( OrderID order ) {
+   requireAuth( order.name ); 
+
+   Ask ask_to_cancel;
+   assert( AsksById::get( order, ask_to_cancel ), "ask with this id does not exists" );
+
+   auto seller_account = getAccount( order.name );
+   seller_account.currency_balance += ask_to_cancel.quantity;
+   seller_account.open_orders--;
+
+   Asks::remove( ask_to_cancel );
+   save( seller_account );
+
+   print( "ask removed\n" );
 }
 
 } // namespace exchange
@@ -265,6 +306,12 @@ extern "C" {
                break;
             case N(sell):
                apply_exchange_sell( currentMessage<exchange::SellOrder>() );
+               break;
+            case N(cancel_buy):
+               apply_exchange_cancel_buy( currentMessage<exchange::OrderID>() );
+               break;
+            case N(cancel_sell):
+               apply_exchange_cancel_sell( currentMessage<exchange::OrderID>() );
                break;
             default:
                assert( false, "unknown action" );
