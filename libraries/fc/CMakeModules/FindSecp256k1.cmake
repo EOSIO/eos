@@ -27,7 +27,7 @@ find_path(Secp256k1_INCLUDE_DIR
 )
 
 find_library(Secp256k1_LIBRARY
-    NAMES secp256k1
+    NAMES libsecp256k1.a secp256k1.lib secp256k1
     HINTS ${Secp256k1_ROOT_DIR}/lib
 )
 

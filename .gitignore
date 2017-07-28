@@ -1,6 +1,5 @@
 *.a
 *.sw*
-*.cmake
 *.dylib
 *.ll
 *.bc
@@ -12,6 +11,7 @@
 
 CMakeCache.txt
 CMakeFiles
+cmake_install.cmake
 Makefile
 compile_commands.json
 moc_*
@@ -32,11 +32,17 @@ libraries/wallet/Doxyfile
 libraries/wallet/api_documentation.cpp
 libraries/wallet/doxygen
 
+libraries/wasm-jit/Source/Programs/Assemble
+libraries/wasm-jit/Source/Programs/Disassemble
+libraries/wasm-jit/Source/Programs/Test
+libraries/wasm-jit/Source/Programs/wavm
+
 programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
 programs/witness_node/witness_node
 programs/data-dir
 programs/eosd/eosd
+programs/eosc/eosc
 
 tests/app_test
 tests/chain_bench
