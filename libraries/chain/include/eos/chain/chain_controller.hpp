@@ -126,6 +126,7 @@ namespace eos { namespace chain {
           *  Usees the ABI for code::type to convert a JSON object (variant) into hex
           */
          vector<char>       message_to_binary( Name code, Name type, const fc::variant& obj )const;
+         fc::variant        message_from_binary( Name code, Name type, const vector<char>& bin )const;
 
 
          /**

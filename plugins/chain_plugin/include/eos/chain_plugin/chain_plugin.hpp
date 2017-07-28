@@ -71,6 +71,20 @@ public:
    abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
 
 
+   struct abi_bin_to_json_params {
+      Name         code;
+      Name         action;
+      vector<char> binargs;
+   };
+   struct abi_bin_to_json_result {
+      fc::variant    args;
+      vector<Name>   required_scope;
+      vector<Name>   required_auth;
+   };
+      
+   abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
+
+
 
    struct get_block_params {
       string block_num_or_id;
@@ -199,3 +213,5 @@ FC_REFLECT( eos::chain_apis::read_only::get_account_params, (name) )
 FC_REFLECT( eos::chain_apis::read_only::producer_info, (name) )
 FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
+FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
+FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )

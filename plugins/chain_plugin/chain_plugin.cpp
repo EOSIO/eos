@@ -334,8 +334,12 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 }
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const {
    abi_json_to_bin_result result;
-   idump((params));
    result.binargs = db.message_to_binary( params.code, params.action, params.args );
+   return result;
+}
+read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
+   abi_bin_to_json_result result;
+   result.args = db.message_from_binary( params.code, params.action, params.binargs );
    return result;
 }
 
