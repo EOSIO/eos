@@ -22,6 +22,7 @@ namespace eos { namespace types {
       
       for( const auto& a : abi.actions )
          actions[a.action] = a.type;
+
       for( const auto& t : abi.tables )
          tables[t.table] = t.type;
 
@@ -36,7 +37,7 @@ namespace eos { namespace types {
    }
 
    bool AbiSerializer::isType( const TypeName& type )const {
-      static const std::set<TypeName> native = {"Name","UInt64"};
+      static const std::set<TypeName> native = {"Name", "UInt8", "UInt32", "UInt64", "UInt128", "Time", "String"};
       if( native.find(type) != native.end() ) return true;
       if( typedefs.find(type) != typedefs.end() ) return isType( typedefs.find(type)->second );
       if( structs.find(type) != structs.end() ) return true;
@@ -87,6 +88,7 @@ namespace eos { namespace types {
          obj( field.name, binaryToVariant( resolveType(field.type), stream ) );
       }
    }
+
    fc::variant AbiSerializer::binaryToVariant(const TypeName& type, fc::datastream<const char*>& stream )const
    {
       TypeName rtype = resolveType( type );
@@ -95,8 +97,33 @@ namespace eos { namespace types {
         fc::raw::unpack( stream, temp );
         return fc::variant(temp);
       }
+      else if( rtype == "UInt8" ) {
+        unsigned char temp;
+        fc::raw::unpack( stream, temp );
+        return fc::variant(temp);
+      }
+      else if( rtype == "UInt32" ) {
+        uint32_t temp;
+        fc::raw::unpack( stream, temp );
+        return fc::variant(temp);
+      }
       else if( rtype == "UInt64" ) {
         uint64_t temp;
+        fc::raw::unpack( stream, temp );
+        return fc::variant(temp);
+      }
+      else if( rtype == "UInt128" ) {
+        UInt128 temp;
+        fc::raw::unpack( stream, temp );
+        return fc::variant(temp);
+      }
+      else if( rtype == "Time" ) {
+        Time temp;
+        fc::raw::unpack( stream, temp );
+        return fc::variant(temp);
+      }
+      else if( rtype == "String" ) {
+        String temp;
         fc::raw::unpack( stream, temp );
         return fc::variant(temp);
       }
@@ -118,8 +145,24 @@ namespace eos { namespace types {
          fc::raw::pack( ds, var.as<Name>() );
          return;
       }
+      else if( rtype == "UInt8" ) {
+         fc::raw::pack( ds, var.as<unsigned char>() );
+         return;
+      }
+      else if( rtype == "UInt32" ) {
+         fc::raw::pack( ds, var.as<uint32_t>() );
+         return;
+      }
       else if( rtype == "UInt64" ) {
          fc::raw::pack( ds, var.as<uint64_t>() );
+         return;
+      }
+      else if( rtype == "UInt128" ) {
+         fc::raw::pack( ds, var.as<UInt128>() );
+         return;
+      }
+      else if( rtype == "Time" ) {
+         fc::raw::pack( ds, var.as<uint32_t>() );
          return;
       }
       else if( rtype == "String" ) {
@@ -144,9 +187,7 @@ namespace eos { namespace types {
       }
    }
 
-
-
-   Bytes       AbiSerializer::variantToBinary(const TypeName& type, const fc::variant& var)const {
+   Bytes AbiSerializer::variantToBinary(const TypeName& type, const fc::variant& var)const {
       if( !isType(type) )
          return var.as<Bytes>();
 

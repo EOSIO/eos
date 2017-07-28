@@ -91,8 +91,9 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.set_reference_block(chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
       trx.scope = sort_names( {"inita", "initb"} );
+      trx.authorizations = {{"inita", "active"}};
 
-      types::transfer trans = { "inita", "initb", (100)/*, "transfer 100"*/ };
+      types::transfer trans = {"inita", "initb", (100)};
 
       UInt64 value(5);
       auto packed = fc::raw::pack(value);
@@ -100,11 +101,6 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       BOOST_CHECK_EQUAL( value, unpacked );
       trx.messages[0].type = "transfer";
       trx.messages[0].code = config::EosContractName;
-      trx.setMessage(0, "transfer", trans);
-
-      auto unpack_trans = trx.messageAs<types::transfer>(0);
-
-      BOOST_REQUIRE_THROW(chain.push_transaction(trx), message_validate_exception); // "fail to notify receiver, initb and sender, inita"
       trx.setMessage(0, "transfer", trans);
       chain.push_transaction(trx);
 
