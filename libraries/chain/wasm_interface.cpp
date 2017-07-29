@@ -58,6 +58,29 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
       if(res > 0) res += keylen;
       return res;
    }
+DEFINE_INTRINSIC_FUNCTION3(env, assert_sha256,assert_sha256,none,i32,dataptr,i32,datalen,i32,hash) {
+   FC_ASSERT( datalen > 0 );
+
+   auto& wasm  = wasm_interface::get();
+   auto  mem          = wasm.current_memory;
+
+   char* data = memoryArrayPtr<char>( mem, dataptr, datalen );
+   const auto& v = memoryRef<fc::sha256>( mem, hash );
+
+   auto result = fc::sha256::hash( data, datalen );
+   FC_ASSERT( result == v, "hash miss match" );
+}
+
+DEFINE_INTRINSIC_FUNCTION3(env,sha256,sha256,none,i32,dataptr,i32,datalen,i32,hash) {
+   FC_ASSERT( datalen > 0 );
+
+   auto& wasm  = wasm_interface::get();
+   auto  mem          = wasm.current_memory;
+
+   char* data = memoryArrayPtr<char>( mem, dataptr, datalen );
+   auto& v = memoryRef<fc::sha256>( mem, hash );
+   v  = fc::sha256::hash( data, datalen );
+}
 
 DEFINE_INTRINSIC_FUNCTION2(env,multeq_i128,multeq_i128,none,i32,self,i32,other) {
    auto& wasm  = wasm_interface::get();

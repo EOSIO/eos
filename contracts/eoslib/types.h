@@ -22,4 +22,8 @@ typedef uint32_t Time;
 
 #define PACKED(X) __attribute((packed)) X
 
+struct uint256 {
+   uint64_t words[4];
+};
+
 } /// extern "C"
