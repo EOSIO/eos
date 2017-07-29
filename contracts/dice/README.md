@@ -36,5 +36,11 @@ Potential Vulnerabilities
 2. Losers may force winner to wait 5 minutes to get rewards
 3. Service providers may fail to auto-reveal on your behalf
 4. You may lose internet connectivity mid-game
+5. A blockhain reorganization could cause some havock if secrets are revealed too quickly
+    - @dice could protect users by rejecting reveals until a game creation is irreversible (about 45 seconds max)
+    - users could take risk themselves by deciding how many confirmations are required
+    - for small amounts it probably doesn't matter 
+    - under normal operation of DPOS chains there are few if any chain reorganizations
+
 
 
