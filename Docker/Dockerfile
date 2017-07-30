@@ -1,5 +1,5 @@
 FROM ubuntu
-MAINTAINER xiaobo (peterwillcn@gmail.com) # Dapao Xie (edit)
+MAINTAINER xiaobo (peterwillcn@gmail.com) # Dapao Xie (wzxiejinbin@me.com edit)
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
  && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
