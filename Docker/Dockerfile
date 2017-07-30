@@ -1,5 +1,5 @@
 FROM ubuntu
-MAINTAINER xiaobo (peterwillcn@gmail.com)
+MAINTAINER xiaobo (peterwillcn@gmail.com) # Dapao Xie (edit)
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
  && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -40,12 +40,18 @@ RUN cd /tmp && mkdir wasm-compiler && cd wasm-compiler \
   && cd llvm/tools && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git \
   && cd .. && mkdir build && cd build \
   && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../ \
-  && make -j$(nproc) install && rm -rf /tmp/wasm-compiler
+  && make -j2 install && rm -rf /tmp/wasm-compiler
+
+RUN cd /tmp && wget https://gmplib.org/download/gmp/gmp-6.1.2.tar.bz2 \
+	&& tar -xvf gmp-6.1.2.tar.bz2 && cd gmp-6.1.2 \
+	&& ./configure && make && sudo make install \
+  && make check \
+	&& rm -rf /tmp/gmp-6.1.2 
 
 RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
   && cd eos && mkdir build && cd build \
   && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
-  && make -j$(nproc) && make install \
+  && make -j2 && make install \
   && rm -rf /tmp/eos*
 
 RUN mkdir -p /opt/eos/bin/data-dir
