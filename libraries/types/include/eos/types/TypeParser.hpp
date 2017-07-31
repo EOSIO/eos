@@ -34,15 +34,13 @@ public:
     */
    void parse(std::istream& in);
 
-   string binaryToJson(const TypeName& type, const Bytes& binary);
-   Bytes  jsonToBinary(const TypeName& type, const string& json);
 };
 
 
 class SimpleSymbolTable : public AbstractSymbolTable {
 public:
    SimpleSymbolTable():
-      known({ "Field", "Struct", "Asset", "ShareType", "FixedString16", "FixedString32",
+      known({ "Field", "Struct", "Asset", "ShareType", "Name", "FixedString16", "FixedString32",
             "UInt8", "UInt16", "UInt32", "UInt64",
             "UInt128", "Checksum", "UInt256", "UInt512",
             "Int8", "Int16", "Int32", "Int64",
@@ -56,13 +54,14 @@ public:
    virtual Struct getType(TypeName name) const override;
    virtual TypeName resolveTypedef(TypeName name) const override;
 
-
    //      private:
-   set<TypeName>           known;
+   const set<TypeName>     known;
    vector<TypeName>        order;
    map<TypeName, TypeName> typedefs;
    map<TypeName, Struct>   structs;
 };
+
+
 
 }} // namespace eos::types
 

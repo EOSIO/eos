@@ -1,20 +1,19 @@
-typedef FixedString32  AccountName
-typedef FixedString16  PermissionName
+typedef Name           AccountName
+typedef Name           PermissionName
+typedef Name           FuncName
 typedef FixedString32  MessageName
 typedef FixedString32  TypeName
 
 # import account type as localtype
 
-struct Message
-   sender      AccountName # testing
-   recipient   AccountName
-   notify      AccountName[]
-   type        TypeName
-   data        Bytes
-
 struct AccountPermission
    account    AccountName
    permission PermissionName
+
+struct Message
+   code            AccountName         # the contract defining the primary code to execute for code/type
+   type            FuncName            # the action to be taken
+   data            Bytes               # opaque data processed by code
 
 struct AccountPermissionWeight
    permission   AccountPermission
@@ -24,12 +23,12 @@ struct Transaction
    refBlockNum       UInt16
    refBlockPrefix    UInt32
    expiration        Time
+   scope             AccountName[]   # the data may be accessed while processing this transaction
    messages          Message[]
-   authorization     AccountPermission[]
 
 struct SignedTransaction inherits Transaction
    signatures     Signature[]
-   authorizations AccountPermission[]
+   authorizations AccountPermission[] # The authorizations this transaction bears signatures to satisfy
 
 struct KeyPermissionWeight
    key    PublicKey
@@ -49,13 +48,43 @@ struct BlockchainConfiguration
    minEosBalance     ShareType
    maxTrxLifetime    UInt32
 
-struct Transfer
+struct TypeDef 
+   newTypeName TypeName
+   type        TypeName
+
+struct Action
+   action Name
+   type   TypeName
+
+struct Table
+   table Name
+   type  TypeName
+
+struct Abi
+   types   TypeDef[]
+   structs Struct[]
+   actions Action[]
+   tables  Table[]
+
+struct transfer
    from      AccountName  # may not be the message.sender if message.sender has delegated authority by from
    to        AccountName
-   amount    Asset
-   memo      String
+   amount    UInt64
 
-struct CreateAccount
+struct lock
+   from      AccountName
+   to        AccountName
+   amount    ShareType
+
+struct unlock
+   account   AccountName
+   amount    ShareType
+
+struct claim
+   account   AccountName
+   amount    ShareType
+
+struct newaccount
    creator   AccountName
    name      AccountName
    owner     Authority
@@ -63,36 +92,29 @@ struct CreateAccount
    recovery  Authority
    deposit   Asset
 
-struct SetMessageHandler
-   processor       AccountName  # the account that is handling the message
-   recipient       AccountName  # the account the message was sent to
-   type            TypeName     # the type of message being processed (relative to to account)
-   validate        String       # the script to validate
-   precondition    String       # the pre condition validation
-   apply           String       # the apply
+struct setcode
+   account         AccountName  # the account that is handling the message
+   vmtype          UInt8        # the virtual machine type
+   vmversion       UInt8        # the virtual machine version
+   code            Bytes        # the apply
+   abi             Abi          # the interface description of the code
 
-struct CreateProducer
+
+struct setproducer
    name           AccountName
    key            PublicKey
    configuration  BlockchainConfiguration
 
-struct UpdateProducer
-   name           AccountName
-   newKey         PublicKey
-   configuration  BlockchainConfiguration
-
 # implies message.sender account
-struct ApproveProducer
-   producer  AccountName
-   approve   Int8  # 0 or 1 
+struct okproducer
+   voter     AccountName # The account casting a vote
+   producer  AccountName # The producer being voted on
+   approve   Int8  # 1 to approve, or 0 to disapprove
 
-# implies message.sender account 
-struct SetVoteProxy
-   proxy   AccountName
+struct setproxy
+   stakeholder    AccountName # The account with stake to be proxied
+   proxy          AccountName # The account to cast votes with stakeholder's stake weight
 
-struct DefineStruct
-   scope        AccountName
-   definition   Struct
 
 struct UpdatePermission
    account     AccountName

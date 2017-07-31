@@ -4,6 +4,7 @@ add_library( eos_types
              Asset.cpp
              PublicKey.cpp
              TypeParser.cpp
+             AbiSerializer.cpp
              native.cpp
              ${HEADERS}
              "${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp"
@@ -19,7 +20,4 @@ target_link_libraries( type_generator eos_utilities fc ${CMAKE_DL_LIBS} ${PLATFO
 add_custom_command( OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp"
                     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/type_generator ${CMAKE_CURRENT_SOURCE_DIR}/types.eos ${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp
                     DEPENDS types.eos type_generator )
-
-add_executable( types_test test.cpp "${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp" )
-target_link_libraries( types_test eos_types fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}  )
 

@@ -22,6 +22,12 @@
  * THE SOFTWARE.
  */
 #pragma once
+
+#include <eos/chain/config.hpp>
+#include <eos/types/types.hpp>
+
+#include <chainbase/chainbase.hpp>
+
 #include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
@@ -36,24 +42,17 @@
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/fixed_string.hpp>
-#include <eos/types/native.hpp>
-#include <eos/types/PublicKey.hpp>
-#include <eos/types/Asset.hpp>
-#include <eos/types/generated.hpp>
 
 #include <memory>
 #include <vector>
 #include <deque>
 #include <cstdint>
-#include <eos/chain/config.hpp>
-
-#include <chainbase/chainbase.hpp>
 
 #define OBJECT_CTOR1(NAME) \
     NAME() = delete; \
     public: \
     template<typename Constructor, typename Allocator> \
-    NAME(Constructor&& c, chainbase::allocator<Allocator> a) \
+    NAME(Constructor&& c, chainbase::allocator<Allocator>) \
     { c(*this); }
 #define OBJECT_CTOR2_MACRO(x, y, field) ,field(a)
 #define OBJECT_CTOR2(NAME, FIELDS) \
@@ -64,9 +63,6 @@
     : id(0) BOOST_PP_SEQ_FOR_EACH(OBJECT_CTOR2_MACRO, _, FIELDS) \
     { c(*this); }
 #define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
-
-#define EOS_SYSTEM_CONTRACT_FUNCTIONS (Transfer)(CreateAccount)(CreateProducer)(UpdateProducer) \
-   (DefineStruct)(SetMessageHandler)
 
 namespace eos { namespace chain {
    using                               std::map;
@@ -105,11 +101,14 @@ namespace eos { namespace chain {
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
    template<typename T>
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
+   template<typename T>
+   using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-
+   using eos::types::Name;
+   using ActionName = Name;
    using eos::types::AccountName;
    using eos::types::PermissionName;
    using eos::types::Asset;
@@ -134,6 +133,21 @@ namespace eos { namespace chain {
    using eos::types::Int64;
    using eos::types::Int128;
    using eos::types::Int256;
+   using eos::types::uint128_t;
+
+   using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
+   using RoundChanges = std::map<AccountName, AccountName>;
+
+   /**
+    * @brief Calculates the difference between two @ref ProducerRound objects
+    * @param a The first round of producers
+    * @param b The second round of producers
+    * @return The properly sorted RoundChanges expressing the difference between a and b
+    *
+    * Calculates the difference between two rounds of producers, returning a @ref RoundChanges object. The returned
+    * changes are sorted in the order defined by @ref block_header
+    */
+   RoundChanges operator-(ProducerRound a, ProducerRound b);
 
    /**
     * List all object types from all namespaces here so they can
@@ -148,8 +162,8 @@ namespace eos { namespace chain {
       account_object_type,
       permission_object_type,
       action_code_object_type,
-      type_object_type,
       key_value_object_type,
+      key128x128_value_object_type,
       action_permission_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
@@ -157,14 +171,16 @@ namespace eos { namespace chain {
       transaction_object_type,
       producer_object_type,
       chain_property_object_type,
+      balance_object_type, ///< Defined by native_contract library
+      staked_balance_object_type, ///< Defined by native_contract library
+      producer_votes_object_type, ///< Defined by native_contract library
+      producer_schedule_object_type, ///< Defined by native_contract library
+      proxy_vote_object_type, ///< Defined by native_contract library
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
    class account_object;
    class producer_object;
-
-   using account_id_type  = chainbase::oid<account_object>;
-   using producer_id_type = chainbase::oid<producer_object>;
 
    using block_id_type = fc::sha256;
    using checksum_type = fc::sha256;
@@ -173,28 +189,38 @@ namespace eos { namespace chain {
    using generated_transaction_id_type = fc::sha256;
    using signature_type = fc::ecc::compact_signature;
    using weight_type = uint16_t;
+   using Bytes = types::Bytes;
 
    using public_key_type = eos::types::PublicKey;
    
 } }  // eos::chain
 
-FC_REFLECT(eos::chain::account_id_type, (_id))
-FC_REFLECT(eos::chain::producer_id_type, (_id))
+namespace fc {
+  void to_variant(const eos::chain::shared_vector<eos::types::Field>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eos::chain::shared_vector<eos::types::Field>& fields);
+  void to_variant(const eos::chain::ProducerRound& r, fc::variant& v);
+  void from_variant(const fc::variant& v, eos::chain::ProducerRound& r);
+}
 
-FC_REFLECT_ENUM( eos::chain::object_type,
-                 (null_object_type)
-                 (account_object_type)
-                 (permission_object_type)
-                 (action_code_object_type)
-                 (type_object_type)
-                 (key_value_object_type)
-                 (action_permission_object_type)
-                 (global_property_object_type)
-                 (dynamic_global_property_object_type)
-                 (block_summary_object_type)
-                 (transaction_object_type)
-                 (producer_object_type)
-                 (chain_property_object_type)
-                 (OBJECT_TYPE_COUNT)
+FC_REFLECT_ENUM(eos::chain::object_type,
+                (null_object_type)
+                (account_object_type)
+                (permission_object_type)
+                (action_code_object_type)
+                (key_value_object_type)
+                (key128x128_value_object_type)
+                (action_permission_object_type)
+                (global_property_object_type)
+                (dynamic_global_property_object_type)
+                (block_summary_object_type)
+                (transaction_object_type)
+                (producer_object_type)
+                (chain_property_object_type)
+                (balance_object_type)
+                (staked_balance_object_type)
+                (producer_votes_object_type)
+                (producer_schedule_object_type)
+                (proxy_vote_object_type)
+                (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eos::chain::void_t, )

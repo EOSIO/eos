@@ -34,10 +34,10 @@
 #include <fc/smart_ref_impl.hpp>   // required for gcc in release mode
 #include <fc/string.hpp>
 #include <fc/io/json.hpp>
-#include <eos/chain/genesis_state.hpp>
-#include <eos/chain/types.hpp>
+#include <eos/native_contract/genesis_state.hpp>
 
 using namespace eos::chain;
+using eos::native_contract::genesis_state_type;
 
 static const char generated_file_banner[] =
 "//                                   _           _    __ _ _        //\n"
@@ -54,7 +54,7 @@ static const char generated_file_banner[] =
 "// Warning: This is a generated file, any changes made here will be //\n"
 "// overwritten by the build process.  If you need to change what    //\n"
 "// is generated here, you should use the CMake variable             //\n"
-"// EOS_EGENESIS_JSON to specify an embedded genesis state.     //\n"
+"// EOS_EGENESIS_JSON to specify an embedded genesis state.          //\n"
 "//                                                                  //\n"
 ;
 
@@ -216,7 +216,7 @@ void load_genesis(
 int main( int argc, char** argv )
 { try {
    int main_return = 0;
-   boost::program_options::options_description cli_options("Eos Chain Identifier");
+   boost::program_options::options_description cli_options("EOS Chain Identifier");
    cli_options.add_options()
       ("help,h", "Print this help message and exit.")
       ("genesis-json,g", boost::program_options::value<boost::filesystem::path>(), "File to read genesis state from")

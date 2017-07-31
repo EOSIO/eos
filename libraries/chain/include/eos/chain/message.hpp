@@ -7,6 +7,7 @@ namespace eos { namespace chain {
 /**
  * @brief The message struct defines a blockchain message
  *
+#warning Outdated documentation should be fixed
  * Messages are the heart of all activity on the blockchain,
  * -- all events and actions which take place in the chain are
  * recorded as messages. Messages are sent from one account 
@@ -20,18 +21,26 @@ namespace eos { namespace chain {
  */
 struct Message : public types::Message {
    Message() = default;
-   Message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify)
-      : types::Message(sender, recipient, notify, "", {}) {}
    template<typename T>
-   Message(const AccountName& sender, const AccountName& recipient, const vector<AccountName>& notify,
-           const TypeName& type, T&& value)
-      : Message(sender, recipient, notify) {
+   Message(const AccountName& code, const types::FuncName& type, T&& value)
+      :types::Message(code, type, Bytes()) {
       set<T>(type, std::forward<T>(value));
    }
+
+   Message(const AccountName& code, const types::FuncName& type)
+      :types::Message(code, type, Bytes()) {}
+
    Message(const types::Message& m) : types::Message(m) {}
 
    template<typename T>
-   void set(const TypeName& t, const T& value) {
+   void set_packed(const types::FuncName& t, const T& value) {
+      type = t;
+      data.resize(sizeof(value));
+      memcpy( data.data(), &value, sizeof(value) );
+   }
+
+   template<typename T>
+   void set(const types::FuncName& t, const T& value) {
       type = t;
       data = fc::raw::pack(value);
    }
@@ -39,15 +48,10 @@ struct Message : public types::Message {
    T as()const {
       return fc::raw::unpack<T>(data);
    }
-   bool has_notify(const AccountName& n)const {
-      for(const auto& no : notify)
-         if(no == n) return true;
-      return false; 
-   }
 };
 
 
 
 } } // namespace eos::chain
 
-FC_REFLECT(eos::chain::Message, (sender)(recipient)(notify)(type)(data))
+FC_REFLECT_DERIVED(eos::chain::Message, (eos::types::Message), )

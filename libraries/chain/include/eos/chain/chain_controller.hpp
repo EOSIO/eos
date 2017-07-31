@@ -24,12 +24,8 @@
 #pragma once
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/account_object.hpp>
-#include <eos/chain/type_object.hpp>
-#include <eos/chain/node_property_object.hpp>
 #include <eos/chain/fork_database.hpp>
-#include <eos/chain/genesis_state.hpp>
 #include <eos/chain/block_log.hpp>
-#include <eos/chain/chain_model.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
@@ -37,62 +33,26 @@
 #include <boost/signals2/signal.hpp>
 
 #include <eos/chain/protocol.hpp>
+#include <eos/chain/message_handling_contexts.hpp>
+#include <eos/chain/chain_initializer_interface.hpp>
+#include <eos/chain/chain_administration_interface.hpp>
 
 #include <fc/log/logger.hpp>
 
 #include <map>
 
 namespace eos { namespace chain {
-
-   class chain_controller;
    using database = chainbase::database;
    using boost::signals2::signal;
-
-   class message_validate_context {
-      public:
-         message_validate_context( const Transaction& t, const Message& m )
-         :trx(t),msg(m){}
-
-         const Transaction& trx;
-         const Message&     msg;
-   };
-
-
-   class precondition_validate_context : public message_validate_context {
-      public:
-         precondition_validate_context( const database& db, const Transaction& t, const Message& m, const AccountName& r )
-         :message_validate_context(t,m),recipient(r),db(db){}
-
-
-         const AccountName& recipient;
-         const database&    db;
-   };
-
-   class apply_context : public precondition_validate_context {
-      public:
-         apply_context( database& db, const Transaction& t, const Message& m, const AccountName& recipient )
-         :precondition_validate_context(db,t,m,recipient),mutable_db(db){}
-
-         String get( String key )const;
-         void   set( String key, String value );
-         void   remove( String key );
-
-         database&    mutable_db;
-   };
-
-   typedef std::function<void( message_validate_context& )> message_validate_handler;
-   typedef std::function<void( precondition_validate_context& )>   precondition_validate_handler;
-   typedef std::function<void( apply_context& )>            apply_handler;
 
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class chain_controller
-   {
+   class chain_controller {
       public:
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          std::function<genesis_state_type()> genesis_loader);
+                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -112,28 +72,12 @@ namespace eos { namespace chain {
           */
          signal<void(const SignedTransaction&)> on_pending_transaction;
 
-         template<typename T>
-         void register_type( AccountName scope ) {
-            auto stru = eos::types::GetStruct<T>::type();
-            _db.create<type_object>([&](type_object& o) {
-               o.scope  = scope;
-               o.name   = stru.name;
-               o.base   = stru.base;
-#warning QUESTION Should we be setting o.base_scope here?
-               o.fields.reserve(stru.fields.size());
-               for( const auto& f : stru.fields )
-                  o.fields.push_back( f );
-            });
-            _db.get<type_object,by_scope_name>( boost::make_tuple(scope, stru.name) );
-         }
 
          /**
-          *  The database can override any script handler with native code.
+          *  The controller can override any script endpoint with native code.
           */
          ///@{
-         void set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v );
-         void set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v );
-         void set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v );
+         void set_apply_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, apply_handler v );
          //@}
 
          enum validation_steps
@@ -150,7 +94,8 @@ namespace eos { namespace chain {
             skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
             skip_producer_schedule_check= 1 << 10,  ///< used while reindexing
-            skip_validate               = 1 << 11 ///< used prior to checkpoint, skips validate() call on transaction
+            skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
+            skip_scope_check            = 1 << 12  ///< used to skip checks for proper scope
          };
 
          /**
@@ -163,9 +108,26 @@ namespace eos { namespace chain {
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
          const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
-         std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
+         std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork)const;
 
-         chain_model get_model()const;
+         /**
+          *  This method will convert a variant to a SignedTransaction using a contract's ABI to
+          *  interpret the message types.
+          */
+         ProcessedTransaction transaction_from_variant( const fc::variant& v )const;
+
+         /**
+          * This method will convert a signed transaction into a human-friendly variant that can be
+          * converted to JSON.  
+          */
+         fc::variant       transaction_to_variant( const ProcessedTransaction& trx )const;
+
+         /**
+          *  Usees the ABI for code::type to convert a JSON object (variant) into hex
+          */
+         vector<char>       message_to_binary( Name code, Name type, const fc::variant& obj )const;
+         fc::variant        message_from_binary( Name code, Name type, const vector<char>& bin )const;
+
 
          /**
           *  Calculate the percent of block production slots that were missed in the
@@ -178,19 +140,23 @@ namespace eos { namespace chain {
          bool before_last_checkpoint()const;
 
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         void push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
+
+
+         ProcessedTransaction push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
+         ProcessedTransaction _push_transaction( const SignedTransaction& trx );
+
+
          bool _push_block( const signed_block& b );
-         void _push_transaction( const SignedTransaction& trx );
 
          signed_block generate_block(
-            const fc::time_point_sec when,
-            producer_id_type producer,
+            fc::time_point_sec when,
+            const AccountName& producer,
             const fc::ecc::private_key& block_signing_private_key,
             uint32_t skip
             );
          signed_block _generate_block(
-            const fc::time_point_sec when,
-            producer_id_type producer,
+            fc::time_point_sec when,
+            const AccountName& producer,
             const fc::ecc::private_key& block_signing_private_key
             );
 
@@ -205,16 +171,6 @@ namespace eos { namespace chain {
          }
 
          template<typename Function>
-         auto with_producing( Function&& f ) -> decltype((*((Function*)nullptr))()) 
-         {
-            auto old_producing = _producing;
-            auto on_exit   = fc::make_scoped_exit( [&](){ _producing = old_producing; } );
-            _producing = true;
-            return f();
-         }
-
-
-         template<typename Function>
          auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))()) 
          {
             auto old_pending = std::move( _pending_transactions );
@@ -222,19 +178,16 @@ namespace eos { namespace chain {
             auto on_exit = fc::make_scoped_exit( [&](){ 
                for( const auto& t : old_pending ) {
                   try {
-                     push_transaction( t );
+                     if (!is_known_transaction(t.id()))
+                        push_transaction( t );
                   } catch ( ... ){}
                }
             });
             return f();
          }
 
-
          void pop_block();
          void clear_pending();
-
-
-
 
          /**
           * @brief Get the producer scheduled for block production in a slot.
@@ -250,7 +203,7 @@ namespace eos { namespace chain {
           *
           * Passing slot_num == 0 returns EOS_NULL_PRODUCER
           */
-         producer_id_type get_scheduled_producer(uint32_t slot_num)const;
+         AccountName get_scheduled_producer(uint32_t slot_num)const;
 
          /**
           * Get the time at which the given slot occurs.
@@ -272,41 +225,41 @@ namespace eos { namespace chain {
           */
          uint32_t get_slot_at_time(fc::time_point_sec when)const;
 
-         void update_producer_schedule();
-
-         const chain_id_type&                   get_chain_id()const;
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
-         const node_property_object&            get_node_properties()const;
+         const producer_object&                 get_producer(const AccountName& ownerName)const;
 
          time_point_sec   head_block_time()const;
          uint32_t         head_block_num()const;
          block_id_type    head_block_id()const;
-         producer_id_type head_block_producer()const;
+         AccountName      head_block_producer()const;
 
          uint32_t block_interval()const { return config::BlockIntervalSeconds; }
 
-         node_property_object& node_properties();
-
          uint32_t last_irreversible_block_num() const;
 
-         void debug_dump();
-         void apply_debug_updates();
-         void debug_update(const fc::variant_object& update);
-
-         // these were formerly private, but they have a fairly well-defined API, so let's make them public
-         void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
-         void apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
+ //  protected:
+         const chainbase::database& get_database() const { return _db; }
+         chainbase::database& get_mutable_database() { return _db; }
          
+         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
    private:
+
          /// Reset the object graph in-memory
          void initialize_indexes();
-         void initialize_genesis(std::function<genesis_state_type()> genesis_loader);
+         void initialize_chain(chain_initializer_interface& starter);
 
          void replay();
 
+         void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
          void _apply_block(const signed_block& next_block);
-         void _apply_transaction(const SignedTransaction& trx);
+
+
+         ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
+         ProcessedTransaction _apply_transaction(const SignedTransaction& trx);
+         ProcessedTransaction process_transaction( const SignedTransaction& trx );
+
+         void require_account(const AccountName& name) const;
 
          /**
           * This method validates transactions without adding it to the pending state.
@@ -318,10 +271,12 @@ namespace eos { namespace chain {
          void validate_tapos(const SignedTransaction& trx)const;
          void validate_referenced_accounts(const SignedTransaction& trx)const;
          void validate_expiration(const SignedTransaction& trx) const;
-         void validate_message_types( const SignedTransaction& trx )const;
+         void validate_scope(const SignedTransaction& trx) const;
+         void validate_authority(const SignedTransaction& trx )const;
          /// @}
 
-         void validate_message_precondition(precondition_validate_context& c)const;
+         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message,
+                              TransactionAuthorizationChecker* authChecker, MessageOutput& output);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
@@ -333,42 +288,34 @@ namespace eos { namespace chain {
          const producer_object& _validate_block_header(const signed_block& next_block)const;
          void create_block_summary(const signed_block& next_block);
 
+         void update_global_properties(const signed_block& b);
          void update_global_dynamic_data(const signed_block& b);
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
          /// @}
 
-         /**
-          * @brief Update the blockchain configuration based on the medians of producer votes
-          *
-          * Called any time the set of active producers changes or an active producer updates his votes, this method
-          * will calculate the medians of the active producers' votes on the blockchain configuration values and will
-          * set the current configuration according to those medians.
-          */
-         void update_blockchain_configuration();
-
          void spinup_db();
          void spinup_fork_db();
+
+         ProducerRound calculate_next_round(const signed_block& next_block);
 
          database&                        _db;
          fork_database&                   _fork_db;
          block_log&                       _block_log;
 
+         unique_ptr<chain_administration_interface> _admin;
+
          optional<database::session>      _pending_tx_session;
          deque<SignedTransaction>         _pending_transactions;
 
-         bool                             _producing = false;
          bool                             _pushing  = false;
          uint64_t                         _skip_flags = 0;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 
-         node_property_object             _node_property_object;
+         typedef pair<AccountName,types::Name> handler_key;
 
-         typedef pair<AccountName,TypeName> handler_key;
-         map< AccountName, map<handler_key, message_validate_handler> >        message_validate_handlers;
-         map< AccountName, map<handler_key, precondition_validate_handler> >   precondition_validate_handlers;
          map< AccountName, map<handler_key, apply_handler> >                   apply_handlers;
    };
 

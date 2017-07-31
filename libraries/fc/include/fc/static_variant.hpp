@@ -334,6 +334,9 @@ public:
     }
 
     int which() const {return _tag;}
+
+    template<typename X>
+    bool contains() const { return which() == tag<X>::value; }
 };
 
 template<typename Result>

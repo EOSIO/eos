@@ -26,58 +26,36 @@
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
-#include <eos/chain/chain_property_object.hpp>
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/action_objects.hpp>
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 
+#include <eos/chain/wasm_interface.hpp>
+
 #include <eos/types/native.hpp>
 #include <eos/types/generated.hpp>
+#include <eos/types/AbiSerializer.hpp>
+
+#include <eos/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
 
-#include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm/copy.hpp>
+#include <boost/range/algorithm_ext/is_sorted.hpp>
 #include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/adaptor/map.hpp>
 
 #include <fstream>
 #include <functional>
 #include <iostream>
 
-#include <Wren++.h>
+//#include <Wren++.h>
 
 namespace eos { namespace chain {
-
-
-String apply_context::get( String key )const {
-   const auto& obj = db.get<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
-   return String(obj.value.begin(),obj.value.end());
-}
-void apply_context::set( String key, String value ) {
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
-   if( obj ) {
-      mutable_db.modify( *obj, [&]( auto& o ) {
-         o.value.resize( value.size() );
-        // memcpy( o.value.data(), value.data(), value.size() );
-      });
-   } else {
-      mutable_db.create<key_value_object>( [&](auto& o) {
-         o.scope = recipient;
-         o.key.insert( 0, key.data(), key.size() );
-         o.value.insert( 0, value.data(), value.size() );
-      });
-   }
-}
-void apply_context::remove( String key ) {
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(recipient, key) );
-   if( obj ) {
-      mutable_db.remove( *obj );
-   }
-}
-
 
 
 bool chain_controller::is_known_block(const block_id_type& id)const
@@ -153,10 +131,6 @@ std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type
   return result;
 }
 
-chain_model chain_controller::get_model() const {
-   return chain_model(_db);
-}
-
 /**
  * Push block "may fail" in which case every partial change is unwound.  After
  * push block is successful the block is appended to the chain database on disk.
@@ -176,9 +150,9 @@ bool chain_controller::push_block(const signed_block& new_block, uint32_t skip)
 
 bool chain_controller::_push_block(const signed_block& new_block)
 { try {
-   uint32_t skip = get_node_properties().skip_flags;
+   uint32_t skip = _skip_flags;
    if (!(skip&skip_fork_db)) {
-      /// TODO: if the block is greater than the head block and before the next maitenance interval
+      /// TODO: if the block is greater than the head block and before the next maintenance interval
       // verify that the block signer is in the current set of active producers.
 
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
@@ -254,25 +228,23 @@ bool chain_controller::_push_block(const signed_block& new_block)
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-void chain_controller::push_transaction(const SignedTransaction& trx, uint32_t skip)
+ProcessedTransaction chain_controller::push_transaction(const SignedTransaction& trx, uint32_t skip)
 { try {
-   with_skip_flags(skip, [&]() {
-      with_producing([&](){
-         _db.with_write_lock([&]() {
-            _push_transaction(trx);
-         });
+   return with_skip_flags(skip, [&]() {
+      return _db.with_write_lock([&]() {
+         return _push_transaction(trx);
       });
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void chain_controller::_push_transaction(const SignedTransaction& trx) {
+ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction& trx) {
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if (!_pending_tx_session.valid())
       _pending_tx_session = _db.start_undo_session(true);
 
    auto temp_session = _db.start_undo_session(true);
-   _apply_transaction(trx);
+   auto pt = _apply_transaction(trx);
    _pending_transactions.push_back(trx);
 
    // notify_changed_objects();
@@ -280,42 +252,42 @@ void chain_controller::_push_transaction(const SignedTransaction& trx) {
    temp_session.squash();
 
    // notify anyone listening to pending transactions
-   on_pending_transaction(trx);
+   on_pending_transaction(trx); /// TODO move this to apply...
+
+   return pt;
 }
 
 
 signed_block chain_controller::generate_block(
    fc::time_point_sec when,
-   producer_id_type producer_id,
+   const AccountName& producer,
    const fc::ecc::private_key& block_signing_private_key,
    uint32_t skip /* = 0 */
    )
 { try {
-   return with_producing( [&]() {
-      return with_skip_flags( skip, [&](){
-         auto b = _db.with_write_lock( [&](){
-           return _generate_block( when, producer_id, block_signing_private_key );
-         });
-         push_block(b);
-         return b;
+   return with_skip_flags( skip, [&](){
+      auto b = _db.with_write_lock( [&](){
+         return _generate_block( when, producer, block_signing_private_key );
       });
-    });
+      push_block(b, skip);
+      return b;
+   });
 } FC_CAPTURE_AND_RETHROW( (when) ) }
 
 signed_block chain_controller::_generate_block(
    fc::time_point_sec when,
-   producer_id_type producer_id,
+   const AccountName& producer,
    const fc::ecc::private_key& block_signing_private_key
    )
 {
    try {
-   uint32_t skip = get_node_properties().skip_flags;
+   uint32_t skip = _skip_flags;
    uint32_t slot_num = get_slot_at_time( when );
    FC_ASSERT( slot_num > 0 );
-   producer_id_type scheduled_producer = get_scheduled_producer( slot_num );
-   FC_ASSERT( scheduled_producer == producer_id );
+   AccountName scheduled_producer = get_scheduled_producer( slot_num );
+   FC_ASSERT( scheduled_producer == producer );
 
-   const auto& producer_obj = _db.get(scheduled_producer);
+   const auto& producer_obj = get_producer(scheduled_producer);
 
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
@@ -391,7 +363,13 @@ signed_block chain_controller::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
 
-   pending_block.producer = static_cast<uint16_t>(producer_id._id); //pa.name.c_str(); //producer_id;
+   pending_block.producer = producer_obj.owner;
+
+   // If this block is last in a round, calculate the schedule for the new round
+   if (pending_block.block_num() % config::BlocksPerRound == 0) {
+      auto new_schedule = _admin->get_next_round(_db);
+      pending_block.producer_changes = get_global_properties().active_producers - new_schedule;
+   }
 
    if( !(skip & skip_producer_signature) )
       pending_block.sign( block_signing_private_key );
@@ -407,7 +385,7 @@ signed_block chain_controller::_generate_block(
    // push_block( pending_block, skip );
 
    return pending_block;
-} FC_CAPTURE_AND_RETHROW( (producer_id) ) }
+} FC_CAPTURE_AND_RETHROW( (producer) ) }
 
 /**
  * Removes the most recent block from the database and undoes any changes it made.
@@ -446,11 +424,10 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
    with_skip_flags(skip, [&](){ _apply_block(next_block); });
 }
 
-
 void chain_controller::_apply_block(const signed_block& next_block)
 { try {
    uint32_t next_block_num = next_block.block_num();
-   uint32_t skip = get_node_properties().skip_flags;
+   uint32_t skip = _skip_flags;
 
    FC_ASSERT((skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(),
              "", ("next_block.transaction_merkle_root", next_block.transaction_merkle_root)
@@ -475,6 +452,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
       }
    }
 
+   update_global_properties(next_block);
    update_global_dynamic_data(next_block);
    update_signing_producer(signing_producer, next_block);
    update_last_irreversible_block();
@@ -482,57 +460,58 @@ void chain_controller::_apply_block(const signed_block& next_block)
    create_block_summary(next_block);
    clear_expired_transactions();
 
-   // TODO:  figure out if we could collapse this function into
-   // update_global_dynamic_data() as perhaps these methods only need
-   // to be called for header validation?
-   update_producer_schedule();
-   if( !_node_property_object.debug_updates.empty() )
-      apply_debug_updates();
-
    // notify observers that the block has been applied
    // TODO: do this outside the write lock...? 
    applied_block( next_block ); //emit
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-void chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
+ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
 {
-   with_skip_flags( skip, [&]() { _apply_transaction(trx); });
+   return with_skip_flags( skip, [&]() { return _apply_transaction(trx); });
 }
 
 void chain_controller::validate_transaction(const SignedTransaction& trx)const {
 try {
    EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
+   validate_scope(trx);
+   validate_expiration(trx);
    validate_uniqueness(trx);
    validate_tapos(trx);
    validate_referenced_accounts(trx);
-   validate_expiration(trx);
-   validate_message_types(trx);
+   validate_authority(trx);
 
-   for (const auto& tm : trx.messages) { /// TODO: this loop can be processed in parallel
-      Message m(tm);
-      message_validate_context mvc(trx, m);
-      auto contract_handlers_itr = message_validate_handlers.find(m.recipient);
-      if (contract_handlers_itr != message_validate_handlers.end()) {
-         auto message_handler_itr = contract_handlers_itr->second.find({m.recipient, m.type});
-         if (message_handler_itr != contract_handlers_itr->second.end()) {
-            message_handler_itr->second(mvc);
-            continue;
-         }
-      }
-
-      /// TODO: dispatch to script if not handled above
-   }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
+
+void chain_controller::validate_authority( const SignedTransaction& trx )const {
+   if (_skip_flags | skip_transaction_signatures)
+      return;
+
+   auto getAuthority = [&db=_db](const types::AccountPermission& permission) {
+      auto key = boost::make_tuple(permission.account, permission.permission);
+      return db.get<permission_object, by_owner>(key).auth;
+   };
+#warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
+   auto checker = MakeAuthorityChecker(std::move(getAuthority), trx.get_signature_keys(chain_id_type{}));
+
+   for (const auto& declaredAuthority : trx.authorizations)
+      EOS_ASSERT(checker.satisfied(declaredAuthority), tx_missing_sigs,
+                 "Transaction declares authority '${auth}', but does not have signatures for it.",
+                 ("auth", declaredAuthority));
+}
+
+void chain_controller::validate_scope( const SignedTransaction& trx )const {
+   EOS_ASSERT(trx.scope.size() > 0, transaction_exception, "No scope specified by transaction" );
+   for( uint32_t i = 1; i < trx.scope.size(); ++i )
+      EOS_ASSERT( trx.scope[i-1] < trx.scope[i], transaction_exception, "Scopes must be sorted and unique" );
+}
 
 void chain_controller::validate_uniqueness( const SignedTransaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
-   auto trx_id = trx.id();
-   auto& trx_idx = _db.get_index<transaction_multi_index>();
-   EOS_ASSERT(trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end(),
-              transaction_exception, "Transaction is not unique");
+   auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
+   EOS_ASSERT(transaction == nullptr, transaction_exception, "Transaction is not unique");
 }
 
 void chain_controller::validate_tapos(const SignedTransaction& trx)const {
@@ -547,27 +526,11 @@ void chain_controller::validate_tapos(const SignedTransaction& trx)const {
 }
 
 void chain_controller::validate_referenced_accounts(const SignedTransaction& trx)const {
-   auto model = get_model();
    for(const auto& auth : trx.authorizations) {
-      model.get_account(auth.account);
+      require_account(auth.account);
    }
    for(const auto& msg : trx.messages) {
-      model.get_account(msg.sender);
-      model.get_account(msg.recipient);
-      const AccountName* previous_notify_account = nullptr;
-      for(const auto& current_notify_account : msg.notify) {
-         model.get_account(current_notify_account);
-         if(previous_notify_account) {
-            EOS_ASSERT(current_notify_account < *previous_notify_account, message_validate_exception,
-                       "Message notify accounts out of order. Possibly a bug in the wallet?");
-         }
-
-         EOS_ASSERT(current_notify_account != msg.sender, message_validate_exception,
-                    "Message sender is listed in accounts to notify. Possibly a bug in the wallet?");
-         EOS_ASSERT(current_notify_account != msg.recipient, message_validate_exception,
-                    "Message recipient is listed in accounts to notify. Possibly a bug in the wallet?");
-         previous_notify_account = &current_notify_account;
-      }
+      require_account(msg.code);
    }
 }
 
@@ -584,116 +547,169 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void chain_controller::validate_message_types(const SignedTransaction& trx)const {
-try {
-   for( const auto& msg : trx.messages ) {
+
+/**
+ *  When processing a message it needs to run:
+ *
+ *  code::precondition( message.code, message.apply )
+ *  code::apply( message.code, message.apply )
+ *
+ *  Then for each recipient it needs to run 
+ *
+ *  ````
+ *   recipient::precondition( message.code, message.apply )
+ *   recipient::apply( message.code, message.apply )
+ *  ```
+ *
+ *  The data that can be read is anything declared in trx.scope
+ *  The data that can be written is anything stored in  * / [code | recipient] / *
+ *
+ *  The order of execution of precondition and apply can impact the validity of the
+ *  entire message.
+ */
+void chain_controller::process_message( const ProcessedTransaction& trx, AccountName code, const Message& message,
+                                        TransactionAuthorizationChecker* authChecker, MessageOutput& output) {
+   apply_context apply_ctx(*this, _db, trx, message, code, authChecker);
+   apply_message(apply_ctx);
+
+   output.notify.reserve( apply_ctx.notified.size() );
+
+   for( uint32_t i = 0; i < apply_ctx.notified.size(); ++i ) {
       try {
-         _db.get<type_object, by_scope_name>( boost::make_tuple(msg.recipient, msg.type) );
-      } catch(std::out_of_range) {
-         FC_THROW_EXCEPTION(message_validate_exception, "Unrecognized message recipient and type",
-                            ("recipient", msg.recipient)("type", msg.type));
-      }
+         auto notify_code = apply_ctx.notified[i];
+         output.notify.push_back( {notify_code} );
+         process_message( trx, notify_code, message, authChecker, output.notify.back().output );
+      } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void chain_controller::validate_message_precondition( precondition_validate_context& context )const 
+   for( const auto& generated : apply_ctx.sync_transactions ) {
+      try {
+         output.sync_transactions.emplace_back( process_transaction( generated ) );
+      } FC_CAPTURE_AND_RETHROW((generated))
+   }
+
+   for( auto& asynctrx : apply_ctx.async_transactions ) {
+        output.async_transactions.emplace_back( std::move( asynctrx ) );
+   }
+}
+
+void chain_controller::apply_message(apply_context& context)
 { try {
+    /// context.code => the execution namespace
+    /// message.code / message.type => Event
     const auto& m = context.msg;
-    auto contract_handlers_itr = precondition_validate_handlers.find( context.recipient );
-    if( contract_handlers_itr != precondition_validate_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handler_itr != contract_handlers_itr->second.end() ) {
+    auto contract_handlers_itr = apply_handlers.find(context.code);
+    if (contract_handlers_itr != apply_handlers.end()) {
+       auto message_handler_itr = contract_handlers_itr->second.find({m.code, m.type});
+       if (message_handler_itr != contract_handlers_itr->second.end()) {
           message_handler_itr->second(context);
           return;
        }
     }
-    /// TODO: dispatch to script if not handled above
-} FC_CAPTURE_AND_RETHROW() }
-
-void chain_controller::apply_message( apply_context& context ) 
-{ try {
-    const auto& m = context.msg;
-    auto contract_handlers_itr = apply_handlers.find( context.recipient );
-    if( contract_handlers_itr != apply_handlers.end() ) {
-       auto message_handler_itr = contract_handlers_itr->second.find( {m.recipient, m.type} );
-       if( message_handler_itr != contract_handlers_itr->second.end() ) {
-          message_handler_itr->second(context);
-          return;
-       }
+    const auto& recipient = _db.get<account_object,by_name>(context.code);
+    if (recipient.code.size()) {
+       //idump((context.code)(context.msg.type));
+       wasm_interface::get().apply(context);
     }
-    const auto& processor = _db.get<account_object,by_name>( context.recipient ); ///TODO: rename context.recipient to context.proecssor
-    const auto& recipient = _db.get<account_object,by_name>( context.msg.recipient );
 
-    auto handler = _db.find<action_code_object,by_processor_recipient_type>( boost::make_tuple(processor.id, recipient.id, context.msg.type) );
-    if( handler ) {
-       wdump((handler->apply.c_str()));
-      wrenpp::VM vm;
-      vm.executeString( R"(
-          foreign class ApplyContext {
-             foreign get(key)
-             foreign set(key,value)
-          }
-      )");
-      vm.executeString( handler->apply.c_str() );
-      auto apply_method = vm.method( "main", "Handler", "apply(_,_)" );
-      //apply_method( context, m.data );
-      //apply_method( "context", 1 );
-      apply_method( &context, 1 );
-    }
-    /// TODO: dispatch to script if not handled above
-} FC_CAPTURE_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW((context.msg)) }
 
-
-void chain_controller::_apply_transaction(const SignedTransaction& trx)
+ProcessedTransaction chain_controller::_apply_transaction(const SignedTransaction& trx)
 { try {
    validate_transaction(trx);
 
-   // trx.messages is a vector<types::Message>, but we want a chain::Message, so go ahead and copy it into one.
-   for( Message m : trx.messages ) {
-      // apply_context will store a reference to the chain::Message argument. m must *not* be a types::Message here, or
-      // the compiler will create a temporary chain::Message out of the types::Message and pass a reference to that to
-      // ac. ac will keep the temporary reference, which will be invalid as soon as this next line finishes running.
-      apply_context ac( _db, trx, m, m.recipient );
-
-      /** TODO: pre condition validation and application can occur in parallel */
-      validate_message_precondition( ac );
-      apply_message( ac );
-
-      for( const auto& n : m.notify ) {
-         try {
-            apply_context c( _db, trx, m, n );
-            validate_message_precondition( c );
-            apply_message( c );
-         } FC_CAPTURE_AND_RETHROW( (n) ) 
-      }
-
-   }
-
    //Insert transaction into unique transactions database.
-   if( should_check_for_duplicate_transactions() )
+   if (should_check_for_duplicate_transactions())
    {
       _db.create<transaction_object>([&](transaction_object& transaction) {
          transaction.trx_id = trx.id(); /// TODO: consider caching ID
          transaction.trx = trx;
       });
    }
+
+   return process_transaction( trx );
+
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
+
+/**
+ *  @pre the transaction is assumed valid and all signatures / duplicate checks have bee performed
+ */
+ProcessedTransaction chain_controller::process_transaction( const SignedTransaction& trx ) 
+{ try {
+   // This lambda takes an AccountPermission, and returns its parent. It caches the permission_object it last returned,
+   // which allows it to simplify the database lookups when it is next used to fetch that object's parent.
+   auto getParentPermission =
+         [&index = _db.get_index<permission_index>().indices(), cache = static_cast<const permission_object*>(nullptr)]
+         (const types::AccountPermission& child) mutable -> fc::optional<types::AccountPermission> {
+      // Ensure cache points to permission_object corresponding to child
+      if (!(cache && cache->owner == child.account && cache->name == child.permission)) {
+         auto& ownerIndex = index.get<by_owner>();
+         auto itr = ownerIndex.find(boost::make_tuple(child.account, child.permission));
+         FC_ASSERT(itr != ownerIndex.end(), "Unable to find permission_object for AccountPermission '${perm}'",
+                   ("perm", child));
+         cache = &*itr;
+      }
+
+      // Make cache point to the parent of child and return result
+      if (cache) {
+         if (cache->parent._id == 0) {
+            cache = nullptr;
+            return {};
+         } else {
+            cache = &*index.get<by_id>().find(cache->parent);
+            return types::AccountPermission(cache->owner, cache->name);
+         }
+      }
+      return {};
+   };
+
+   ProcessedTransaction ptrx( trx );
+   TransactionAuthorizationChecker authChecker(trx.authorizations, getParentPermission);
+   ptrx.output.resize( trx.messages.size() );
+
+   for( uint32_t i = 0; i < ptrx.messages.size(); ++i ) {
+      process_message(ptrx, ptrx.messages[i].code, ptrx.messages[i], &authChecker, ptrx.output[i] );
+   }
+
+   EOS_ASSERT(authChecker.allPermissionsUsed(), tx_irrelevant_auth,
+              "Transaction declared an authorization it did not need");
+
+   return ptrx;
+} FC_CAPTURE_AND_RETHROW( (trx) ) }
+
+
+void chain_controller::require_account(const types::AccountName& name) const {
+   auto account = _db.find<account_object, by_name>(name);
+   FC_ASSERT(account != nullptr, "Account not found: ${name}", ("name", name));
+}
+
 const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
-   FC_ASSERT(head_block_id() == next_block.previous, "",
-             ("head_block_id",head_block_id())("next.prev",next_block.previous));
-   FC_ASSERT(head_block_time() < next_block.timestamp, "",
-             ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
-   const producer_object& producer = _db.get(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
+   EOS_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
+              ("head_block_id",head_block_id())("next.prev",next_block.previous));
+   EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
+              ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
+   if (next_block.block_num() % config::BlocksPerRound != 0) {
+      EOS_ASSERT(next_block.producer_changes.empty(), block_validate_exception,
+                 "Producer changes may only occur at the end of a round.");
+   } else {
+      using boost::is_sorted;
+      using namespace boost::adaptors;
+      EOS_ASSERT(is_sorted(keys(next_block.producer_changes)) && is_sorted(values(next_block.producer_changes)),
+                 block_validate_exception, "Producer changes are not sorted correctly",
+                 ("changes", next_block.producer_changes));
+   }
+   const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
-      FC_ASSERT(next_block.validate_signee(producer.signing_key),
-                "Incorrect block producer key: expected ${e} but got ${a}",
-                ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
+      EOS_ASSERT(next_block.validate_signee(producer.signing_key), block_validate_exception,
+                 "Incorrect block producer key: expected ${e} but got ${a}",
+                 ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
 
    if(!(skip&skip_producer_schedule_check)) {
-      FC_ASSERT(next_block.producer == producer.id, "Producer produced block at wrong time",
-                ("block producer",next_block.producer)("scheduled producer",producer.id));
+      EOS_ASSERT(next_block.producer == producer.owner, block_validate_exception,
+                 "Producer produced block at wrong time",
+                 ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
    return producer;
@@ -706,6 +722,31 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
    });
 }
 
+void chain_controller::update_global_properties(const signed_block& b) {
+   // If we're at the end of a round, update the BlockchainConfiguration, producer schedule
+   // and "producers" special account authority
+   if (b.block_num() % config::BlocksPerRound == 0) {
+      auto schedule = calculate_next_round(b);
+      auto config = _admin->get_blockchain_configuration(_db, schedule);
+
+      const auto& gpo = get_global_properties();
+      _db.modify(gpo, [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
+         gpo.active_producers = std::move(schedule);
+         gpo.configuration = std::move(config);
+      });
+
+      auto active_producers_authority = types::Authority(config::ProducersAuthorityThreshold, {}, {});
+      for(auto& name : gpo.active_producers) {
+         active_producers_authority.accounts.push_back({{name, config::ActiveName}, 1});
+      }
+
+      auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::ProducersAccountName, config::ActiveName) );
+      _db.modify(po,[active_producers_authority] (permission_object& po) {
+         po.auth = active_producers_authority;
+      });
+   }
+}
+
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
    for (const auto& i : checkpts)
       _checkpoints[i.first] = i.second;
@@ -713,22 +754,6 @@ void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& 
 
 bool chain_controller::before_last_checkpoint()const {
    return (_checkpoints.size() > 0) && (_checkpoints.rbegin()->first >= head_block_num());
-}
-
-/**
- *  This method dumps the state of the blockchain in a semi-human readable form for the
- *  purpose of tracking down funds and mismatches in currency allocation
- */
-void chain_controller::debug_dump() {
-}
-
-void debug_apply_update(chain_controller& db, const fc::variant_object& vo) {
-}
-
-void chain_controller::apply_debug_updates() {
-}
-
-void chain_controller::debug_update(const fc::variant_object& update) {
 }
 
 const global_property_object& chain_controller::get_global_properties()const {
@@ -751,22 +776,14 @@ block_id_type chain_controller::head_block_id()const {
    return get_dynamic_global_properties().head_block_id;
 }
 
-producer_id_type chain_controller::head_block_producer() const {
+types::AccountName chain_controller::head_block_producer() const {
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return head_block->producer;
    return {};
 }
 
-const chain_id_type& chain_controller::get_chain_id()const {
-   return _db.get<chain_property_object>().chain_id;
-}
-
-const node_property_object& chain_controller::get_node_properties()const {
-   return _node_property_object;
-}
-
-node_property_object& chain_controller::node_properties() {
-   return _node_property_object;
+const producer_object& chain_controller::get_producer(const types::AccountName& ownerName) const {
+   return _db.get<producer_object, by_owner>(ownerName);
 }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
@@ -776,110 +793,61 @@ uint32_t chain_controller::last_irreversible_block_num() const {
 void chain_controller::initialize_indexes() {
    _db.add_index<account_index>();
    _db.add_index<permission_index>();
-   _db.add_index<action_code_index>();
    _db.add_index<action_permission_index>();
-   _db.add_index<type_index>();
    _db.add_index<key_value_index>();
+   _db.add_index<key128x128_value_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();
    _db.add_index<block_summary_multi_index>();
    _db.add_index<transaction_multi_index>();
    _db.add_index<producer_multi_index>();
-   _db.add_index<chain_property_multi_index>();
 }
 
-void chain_controller::initialize_genesis(std::function<genesis_state_type()> genesis_loader)
+void chain_controller::initialize_chain(chain_initializer_interface& starter)
 { try {
    if (!_db.find<global_property_object>()) {
-      _db.with_write_lock([this, genesis_state = genesis_loader()] {
-         FC_ASSERT( genesis_state.initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
-         FC_ASSERT( genesis_state.initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
+      _db.with_write_lock([this, &starter] {
+         auto initial_timestamp = starter.get_chain_start_time();
+         FC_ASSERT(initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
+         FC_ASSERT(initial_timestamp.sec_since_epoch() % config::BlockIntervalSeconds == 0,
                     "Genesis timestamp must be divisible by config::BlockIntervalSeconds." );
 
-         struct auth_inhibitor {
-            auth_inhibitor(chain_controller& db) : db(db), old_flags(db.node_properties().skip_flags)
-            { db.node_properties().skip_flags |= skip_authority_check; }
-            ~auth_inhibitor()
-            { db.node_properties().skip_flags = old_flags; }
-         private:
-            chain_controller& db;
-            uint32_t old_flags;
-         } inhibitor(*this);
-
-
-         /// create the system contract
-         _db.create<account_object>([&](account_object& a) {
-            a.name = "sys";
-         });
-#define MACRO(r, data, elem) register_type<types::elem>("sys");
-         BOOST_PP_SEQ_FOR_EACH(MACRO, x, EOS_SYSTEM_CONTRACT_FUNCTIONS)
-#undef MACRO
-
-               // Create initial accounts
-               for (const auto& acct : genesis_state.initial_accounts) {
-            _db.create<account_object>([&acct](account_object& a) {
-               a.name = acct.name.c_str();
-               a.balance = acct.balance;
-               //         idump((acct.name)(a.balance));
-               //         a.active_key = acct.active_key;
-               //         a.owner_key = acct.owner_key;
-            });
-         }
-         // Create initial producers
-         std::vector<producer_id_type> initial_producers;
-         for (const auto& producer : genesis_state.initial_producers) {
-            const auto& owner = _db.get<account_object, by_name>(producer.owner_name);
-            auto id = _db.create<producer_object>([&](producer_object& w) {
-                      w.signing_key = producer.block_signing_key;
-                      w.owner = owner.id;
-         }).id;
-            initial_producers.push_back(id);
-         }
-
-         // Initialize block summary index
-#warning TODO: Figure out how to do this
-
-         chain_id_type chain_id = genesis_state.compute_chain_id();
-
          // Create global properties
-         _db.create<global_property_object>([&](global_property_object& p) {
-            p.configuration = genesis_state.initial_configuration;
-            std::copy(initial_producers.begin(), initial_producers.end(), p.active_producers.begin());
+         _db.create<global_property_object>([&starter](global_property_object& p) {
+            p.configuration = starter.get_chain_start_configuration();
+            p.active_producers = starter.get_chain_start_producers();
          });
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
-            p.time = genesis_state.initial_timestamp;
+            p.time = initial_timestamp;
             p.recent_slots_filled = uint64_t(-1);
          });
 
-         FC_ASSERT((genesis_state.immutable_parameters.min_producer_count & 1) == 1, "min_producer_count must be odd");
-
-         _db.create<chain_property_object>([&](chain_property_object& p) {
-            p.chain_id = chain_id;
-            p.immutable_parameters = genesis_state.immutable_parameters;
-         });
-
+         // Initialize block summary index
          for (int i = 0; i < 0x10000; i++)
             _db.create<block_summary_object>([&](block_summary_object&) {});
+
+         auto messages = starter.prepare_database(*this, _db);
+         std::for_each(messages.begin(), messages.end(), [&](const Message& m) { 
+            MessageOutput output;
+            ProcessedTransaction trx; /// dummy transaction required for scope validation
+            trx.scope = { config::EosContractName, "inita" };
+            std::sort(trx.scope.begin(), trx.scope.end() );
+            with_skip_flags( skip_scope_check, [&](){
+               process_message(trx,m.code,m,nullptr,output);
+            } );
+         });
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
 
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                                   std::function<genesis_state_type()> genesis_loader)
-   : _db(database), _fork_db(fork_db), _block_log(blocklog) {
-   static bool bound_apply = [](){
-      wrenpp::beginModule( "main" )
-         .bindClassReference<apply_context>( "ApplyContext" )
-            .bindFunction< decltype( &apply_context::get ), &apply_context::get >( false, "get(_)")
-            .bindFunction< decltype( &apply_context::set ), &apply_context::set >( false, "set(_,_)")
-         .endClass()
-      .endModule();
-      return true;
-   }();
+                                   chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
+   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
 
    initialize_indexes();
-   initialize_genesis(genesis_loader);
+   starter.register_types(*this, _db);
+   initialize_chain(starter);
    spinup_db();
    spinup_fork_db();
 
@@ -946,6 +914,18 @@ void chain_controller::spinup_fork_db()
    }
 }
 
+ProducerRound chain_controller::calculate_next_round(const signed_block& next_block) {
+   auto schedule = _admin->get_next_round(_db);
+   auto changes = get_global_properties().active_producers - schedule;
+   EOS_ASSERT(boost::range::equal(next_block.producer_changes, changes), block_validate_exception,
+              "Unexpected round changes in new block header",
+              ("expected changes", changes)("block changes", next_block.producer_changes));
+
+   utilities::rand::random rng(next_block.timestamp.sec_since_epoch());
+   rng.shuffle(schedule);
+   return schedule;
+}
+
 void chain_controller::update_global_dynamic_data(const signed_block& b) {
    const dynamic_global_property_object& _dgp = _db.get<dynamic_global_property_object>();
 
@@ -957,8 +937,8 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
 //      wlog("Blockchain continuing after gap of ${b} missed blocks", ("b", missed_blocks));
 
    for(uint32_t i = 0; i < missed_blocks; ++i) {
-      const auto& producer_missed = _db.get(get_scheduled_producer(i+1));
-      if(producer_missed.id != b.producer) {
+      const auto& producer_missed = get_producer(get_scheduled_producer(i+1));
+      if(producer_missed.owner != b.producer) {
          /*
          const auto& producer_account = producer_missed.producer_account(*this);
          if( (fc::time_point::now() - b.timestamp) < fc::seconds(30) )
@@ -1011,7 +991,7 @@ void chain_controller::update_last_irreversible_block()
    vector<const producer_object*> producer_objs;
    producer_objs.reserve(gpo.active_producers.size());
    std::transform(gpo.active_producers.begin(), gpo.active_producers.end(), std::back_inserter(producer_objs),
-                  [this](producer_id_type id) { return &_db.get(id); });
+                  [this](const AccountName& owner) { return &get_producer(owner); });
 
    static_assert(config::IrreversibleThresholdPercent > 0, "irreversible threshold must be nonzero");
 
@@ -1060,22 +1040,9 @@ void chain_controller::clear_expired_transactions()
       transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
 
-void chain_controller::update_blockchain_configuration() {
-   auto get_producer = [this](producer_id_type id) { return _db.get(id); };
-   auto get_votes = [](const producer_object& p) { return p.configuration; };
-   using boost::adaptors::transformed;
-
-   auto votes_range = get_global_properties().active_producers | transformed(get_producer) | transformed(get_votes);
-
-   auto medians = BlockchainConfiguration::get_median_values({votes_range.begin(), votes_range.end()});
-   _db.modify(get_global_properties(), [&medians](global_property_object& p) {
-      p.configuration = std::move(medians);
-   });
-}
-
 using boost::container::flat_set;
 
-producer_id_type chain_controller::get_scheduled_producer(uint32_t slot_num)const
+types::AccountName chain_controller::get_scheduled_producer(uint32_t slot_num)const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
@@ -1118,18 +1085,132 @@ uint32_t chain_controller::producer_participation_rate()const
    return uint64_t(config::Percent100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
 }
 
-void chain_controller::update_producer_schedule()
-{
-}
-
-void chain_controller::set_validate_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, message_validate_handler v ) {
-   message_validate_handlers[contract][std::make_pair(scope,action)] = v;
-}
-void chain_controller::set_precondition_validate_handler(  const AccountName& contract, const AccountName& scope, const TypeName& action, precondition_validate_handler v ) {
-   precondition_validate_handlers[contract][std::make_pair(scope,action)] = v;
-}
-void chain_controller::set_apply_handler( const AccountName& contract, const AccountName& scope, const TypeName& action, apply_handler v ) {
+void chain_controller::set_apply_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, apply_handler v ) {
    apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
+
+chain_initializer_interface::~chain_initializer_interface() {}
+
+
+ProcessedTransaction chain_controller::transaction_from_variant( const fc::variant& v )const {
+   const variant_object& vo = v.get_object();
+#define GET_FIELD( VO, FIELD, RESULT ) \
+   if( VO.contains(#FIELD) ) fc::from_variant( VO[#FIELD], RESULT.FIELD )
+
+   ProcessedTransaction result;
+   GET_FIELD( vo, refBlockNum, result );
+   GET_FIELD( vo, refBlockPrefix, result );
+   GET_FIELD( vo, expiration, result );
+   GET_FIELD( vo, scope, result );
+   GET_FIELD( vo, signatures, result );
+   GET_FIELD( vo, authorizations, result );
+
+   if( vo.contains( "messages" ) ) {
+      const vector<variant>& msgs = vo["messages"].get_array();
+      result.messages.resize( msgs.size() );
+      for( uint32_t i = 0; i <  msgs.size(); ++i ) {
+         const auto& vo = msgs[i].get_object();
+         GET_FIELD( vo, code, result.messages[i] );
+         GET_FIELD( vo, type, result.messages[i] );
+
+         if( vo.contains( "data" ) ) {
+            const auto& data = vo["data"];
+            if( data.is_string() ) {
+               GET_FIELD( vo, data, result.messages[i] );
+            } else if ( data.is_object() ) {
+               result.messages[i].data = message_to_binary( result.messages[i].code, result.messages[i].type, data ); 
+               /*
+               const auto& code_account = _db.get<account_object,by_name>( result.messages[i].code );
+               if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+                  fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+                  eos::types::Abi abi;
+                  fc::raw::unpack( ds, abi );
+                  types::AbiSerializer abis( abi );
+                  result.messages[i].data = abis.variantToBinary( abis.getActionType( result.messages[i].type ), data );
+               }
+               */
+            }
+         }
+      }
+   }
+   if( vo.contains( "output" ) ) {
+      const vector<variant>& outputs = vo["output"].get_array();
+   }
+   return result;
+#undef GET_FIELD
+}
+
+vector<char> chain_controller::message_to_binary( Name code, Name type, const fc::variant& obj )const {
+   const auto& code_account = _db.get<account_object,by_name>( code );
+   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+      eos::types::Abi abi;
+      fc::raw::unpack( ds, abi );
+      types::AbiSerializer abis( abi );
+      return abis.variantToBinary( abis.getActionType( type ), obj );
+   }
+   return vector<char>();
+}
+fc::variant chain_controller::message_from_binary( Name code, Name type, const vector<char>& data )const {
+   const auto& code_account = _db.get<account_object,by_name>( code );
+   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+      eos::types::Abi abi;
+      fc::raw::unpack( ds, abi );
+      types::AbiSerializer abis( abi );
+      return abis.binaryToVariant( abis.getActionType( type ), data );
+   }
+   return fc::variant();
+}
+
+fc::variant  chain_controller::transaction_to_variant( const ProcessedTransaction& trx )const {
+#define SET_FIELD( MVO, OBJ, FIELD ) MVO(#FIELD, OBJ.FIELD)
+
+    fc::mutable_variant_object trx_mvo;
+    SET_FIELD( trx_mvo, trx, refBlockNum );
+    SET_FIELD( trx_mvo, trx, refBlockPrefix );
+    SET_FIELD( trx_mvo, trx, expiration );
+    SET_FIELD( trx_mvo, trx, scope );
+    SET_FIELD( trx_mvo, trx, signatures );
+    SET_FIELD( trx_mvo, trx, authorizations );
+
+    vector<fc::mutable_variant_object> msgs( trx.messages.size() );
+    vector<fc::variant> msgsv(msgs.size());
+
+    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
+       auto& msg_mvo = msgs[i];
+       auto& msg     = trx.messages[i];
+       SET_FIELD( msg_mvo, msg, code );
+       SET_FIELD( msg_mvo, msg, type );
+
+       const auto& code_account = _db.get<account_object,by_name>( msg.code );
+       if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+          try {
+             msg_mvo( "data", message_from_binary( msg.code, msg.type, msg.data ) ); 
+             msg_mvo( "hex_data", msg.data );
+          } catch ( ... ) {
+            SET_FIELD( msg_mvo, msg, data );
+          }
+       }
+       else {
+         SET_FIELD( msg_mvo, msg, data );
+       }
+       msgsv[i] = std::move( msgs[i] );
+    }
+    trx_mvo( "messages", std::move(msgsv) );
+
+    /* TODO: recursively process generated transactions 
+    vector<fc::mutable_variant_object> outs( trx.messages.size() );
+    for( uint32_t i = 0; i < trx.output.size(); ++i ) {
+       auto& out_mvo = outs[i];
+       auto& out = trx.outputs[i];
+    }
+    */
+    trx_mvo( "output", fc::variant( trx.output ) );
+
+    return fc::variant( std::move( trx_mvo ) );
+#undef SET_FIELD
+}
+
 
 } }

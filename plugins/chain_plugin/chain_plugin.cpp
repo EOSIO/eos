@@ -2,7 +2,19 @@
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
 #include <eos/chain/exceptions.hpp>
+#include <eos/chain/producer_object.hpp>
+#include <eos/chain/config.hpp>
+#include <eos/chain/types.hpp>
+
+#include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/native_contract_chain_administrator.hpp>
+#include <eos/native_contract/staked_balance_objects.hpp>
+#include <eos/native_contract/balance_object.hpp>
+#include <eos/native_contract/genesis_state.hpp>
+#include <eos/types/AbiSerializer.hpp>
+
 #include <fc/io/json.hpp>
+#include <fc/variant.hpp>
 
 namespace eos {
 
@@ -11,17 +23,26 @@ using fc::flat_map;
 using chain::block_id_type;
 using chain::fork_database;
 using chain::block_log;
+using chain::chain_id_type;
+using chain::account_object;
+using chain::key_value_object;
+using chain::by_name;
+using chain::by_scope_key;
+using chain::uint128_t;
+
 
 class chain_plugin_impl {
 public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
+   chain::Time                      genesis_timestamp;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
    fc::optional<chain_controller>   chain;
+   chain_id_type                    chain_id;
 };
 
 
@@ -35,6 +56,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 {
    cfg.add_options()
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
+     ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -52,6 +74,21 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if(options.count("genesis-json")) {
       my->genesis_file = options.at("genesis-json").as<bfs::path>();
+   }
+   if(options.count("genesis-timestamp")) {
+     string tstr = options.at("genesis-timestamp").as<string>();
+     if (strcasecmp (tstr.c_str(), "now") == 0) {
+       my->genesis_timestamp = fc::time_point::now();
+       auto diff = my->genesis_timestamp.sec_since_epoch() % config::BlockIntervalSeconds;
+       if (diff > 0) {
+         auto delay =  (config::BlockIntervalSeconds - diff);
+         my->genesis_timestamp += delay;
+         dlog ("pausing ${s} seconds to the next interval",("s",delay));
+       }
+     }
+     else {
+       my->genesis_timestamp = chain::Time::from_iso_string (tstr);
+     }
    }
    if (options.count("block-log-dir")) {
       auto bld = options.at("block-log-dir").as<bfs::path>();
@@ -83,25 +120,36 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 }
 
-void chain_plugin::plugin_startup() {
-   auto genesis_loader = [this] {
-      if (my->genesis_file.empty())
-         return eos::chain::genesis_state_type();
-      return fc::json::from_file(my->genesis_file).as<eos::chain::genesis_state_type>();
-   };
+void chain_plugin::plugin_startup() 
+{ try {
    auto& db = app().get_plugin<database_plugin>().db();
+
+   FC_ASSERT( fc::exists( my->genesis_file ), 
+              "unable to find genesis file '${f}', check --genesis-json argument", 
+              ("f",my->genesis_file.generic_string()) );
+
+   auto genesis = fc::json::from_file(my->genesis_file).as<native_contract::genesis_state_type>();
+   if (my->genesis_timestamp.sec_since_epoch() > 0) {
+     genesis.initial_timestamp = my->genesis_timestamp;
+   }
+
+   native_contract::native_contract_chain_initializer initializer(genesis);
 
    my->fork_db = fork_database();
    my->block_logger = block_log(my->block_log_dir);
-   my->chain = chain_controller(db, *my->fork_db, *my->block_logger, genesis_loader);
+   my->chain_id = genesis.compute_chain_id();
+   my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
+                                initializer, native_contract::make_administrator());
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
       my->chain->add_checkpoints(my->loaded_checkpoints);
    }
 
-   ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
-}
+   ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
+        ("num", my->chain->head_block_num())("ts", genesis.initial_timestamp.to_iso_string()));
+
+} FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
 }
@@ -132,17 +180,105 @@ bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block
 chain_controller& chain_plugin::chain() { return *my->chain; }
 const chain::chain_controller& chain_plugin::chain() const { return *my->chain; }
 
+  void chain_plugin::get_chain_id (chain_id_type &cid)const {
+    memcpy (cid.data(), my->chain_id.data(), cid.data_size());
+  }
+
 namespace chain_apis {
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
    return {
       db.head_block_num(),
+      db.last_irreversible_block_num(),
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),
       std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
       __builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
    };
+}
+
+read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_only::get_table_rows_i64_params& p )const {
+   read_only::get_table_rows_i64_result result;
+   const auto& d = db.get_database();
+   const auto& code_account = d.get<account_object,by_name>( p.code );
+
+   types::AbiSerializer abis;
+   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+      eos::types::Abi abi;
+      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+      fc::raw::unpack( ds, abi );
+      abis.setAbi( abi );
+   }
+
+   const auto& idx = d.get_index<chain::key_value_index,by_scope_key>();
+   auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
+   auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
+
+   vector<char> data;
+
+   auto start = fc::time_point::now();
+   auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
+
+   int count = 0;
+   auto itr = lower;
+   for( itr = lower; itr != upper; ++itr ) {
+      data.resize( sizeof(uint64_t) + itr->value.size() );
+      memcpy( data.data(), &itr->key, sizeof(itr->key) );
+      memcpy( data.data()+sizeof(uint64_t), itr->value.data(), itr->value.size() );
+
+      if( p.json ) 
+         result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
+      else
+         result.rows.emplace_back( fc::variant(data) );
+      if( ++count == p.limit || fc::time_point::now() > end )
+         break;
+   }
+   if( itr != upper ) 
+      result.more = true;
+   return result;
+}
+
+read_only::get_table_rows_i128i128_primary_result read_only::get_table_rows_i128i128_primary( const read_only::get_table_rows_i128i128_primary_params& p )const {
+   read_only::get_table_rows_i128i128_primary_result result;
+   const auto& d = db.get_database();
+   const auto& code_account = d.get<account_object,by_name>( p.code );
+
+   types::AbiSerializer abis;
+   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+      eos::types::Abi abi;
+      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+      fc::raw::unpack( ds, abi );
+      abis.setAbi( abi );
+   }
+
+   const auto& idx = d.get_index<chain::key128x128_value_index,chain::by_scope_primary>();
+   auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
+   auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
+
+   vector<char> data;
+
+   auto start = fc::time_point::now();
+   auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
+
+   int count = 0;
+   auto itr = lower;
+   for( itr = lower; itr != upper; ++itr ) {
+      data.resize( sizeof(uint128_t)*2 + itr->value.size() );
+      memcpy( data.data(), &itr->primary_key, sizeof(itr->primary_key) );
+      memcpy( data.data()+sizeof(uint128_t), &itr->secondary_key, sizeof(itr->secondary_key) );
+      memcpy( data.data()+sizeof(uint128_t)*2, itr->value.data(), itr->value.size() );
+
+      if( p.json ) 
+         result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
+      else
+         result.rows.emplace_back( fc::variant(data) );
+      if( ++count == p.limit || fc::time_point::now() > end )
+         break;
+   }
+   if( itr != upper ) 
+      result.more = true;
+   return result;
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
@@ -165,8 +301,46 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   db.push_transaction(params);
-   return read_write::push_transaction_results();
+   auto ptrx = db.push_transaction(params);
+   auto pretty_trx = db.transaction_to_variant( ptrx );
+   return read_write::push_transaction_results{ params.id(), pretty_trx };
+}
+
+read_only::get_account_results read_only::get_account( const get_account_params& params )const {
+   using namespace native::eos;
+
+   get_account_results result;
+   result.name = params.name;
+
+   const auto& d = db.get_database();
+   const auto& accnt          = d.get<account_object,by_name>( params.name );
+   const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
+   const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
+
+   if( accnt.abi.size() > 4 ) {
+      eos::types::Abi abi;
+      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
+      fc::raw::unpack( ds, abi );
+      result.abi = std::move(abi);
+   }
+
+   result.eos_balance          = balance.balance;
+   result.staked_balance       = staked_balance.stakedBalance;
+   result.unstaking_balance    = staked_balance.unstakingBalance;
+   result.last_unstaking_time  = staked_balance.lastUnstakingTime;
+
+
+   return result;
+}
+read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const {
+   abi_json_to_bin_result result;
+   result.binargs = db.message_to_binary( params.code, params.action, params.args );
+   return result;
+}
+read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
+   abi_bin_to_json_result result;
+   result.args = db.message_from_binary( params.code, params.action, params.binargs );
+   return result;
 }
 
 } // namespace chain_apis

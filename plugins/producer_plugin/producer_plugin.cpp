@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include <eos/producer_plugin/producer_plugin.hpp>
+#include <eos/net_plugin/net_plugin.hpp>
 
 #include <eos/chain/producer_object.hpp>
 
@@ -37,8 +38,6 @@
 
 using std::string;
 using std::vector;
-
-namespace bpo = boost::program_options;
 
 namespace eos {
 
@@ -57,7 +56,7 @@ public:
    uint32_t _production_skip_flags = eos::chain::chain_controller::skip_nothing;
 
    std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
-   std::set<chain::producer_id_type> _producers;
+   std::set<types::AccountName> _producers;
    boost::asio::deadline_timer _timer;
 };
 
@@ -67,7 +66,7 @@ void new_chain_banner(const eos::chain::chain_controller& db)
       "*******************************\n"
       "*                             *\n"
       "*   ------ NEW CHAIN ------   *\n"
-      "*   -   Welcome to Eos!   -   *\n"
+      "*   -   Welcome to EOS!   -   *\n"
       "*   -----------------------   *\n"
       "*                             *\n"
       "*******************************\n"
@@ -92,17 +91,17 @@ void producer_plugin::set_program_options(
    boost::program_options::options_description& config_file_options)
 {
    auto default_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("nathan")));
-   string producer_id_example = fc::json::to_string(chain::producer_id_type(5));
+   string producer_id_example = fc::json::to_string("inita");
 
    auto private_key_default = std::make_pair(chain::public_key_type(default_priv_key.get_public_key()),
                                              eos::utilities::key_to_wif(default_priv_key));
 
    command_line_options.add_options()
-         ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("required-participation", bpo::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
-         ("producer-id,w", bpo::value<vector<string>>()->composing()->multitoken(),
+         ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
+         ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           ("ID of producer controlled by this node (e.g. " + producer_id_example + ", quotes are required, may specify multiple times)").c_str())
-         ("private-key", bpo::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
+         ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
                                                                                                 fc::json::to_string(private_key_default)),
           "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ;
@@ -117,13 +116,13 @@ T dejsonify(const string& s) {
 #define LOAD_VALUE_SET(options, name, container, type) \
 if( options.count(name) ) { \
    const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
-   std::transform(ops.begin(), ops.end(), std::inserter(container, container.end()), &dejsonify<type>); \
+   std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
 }
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->_options = &options;
-   LOAD_VALUE_SET(options, "producer-id", my->_producers, chain::producer_id_type)
+   LOAD_VALUE_SET(options, "producer-name", my->_producers, types::AccountName)
 
    if( options.count("private-key") )
    {
@@ -145,7 +144,7 @@ void producer_plugin::plugin_startup()
    ilog("producer plugin:  plugin_startup() begin");
    chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
 
-   if( !my->_producers.empty() )
+   if (!my->_producers.empty())
    {
       ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
       if(my->_production_enabled)
@@ -176,8 +175,6 @@ void producer_plugin_impl::schedule_production_loop() {
    if(time_to_next_second < 50000)      // we must sleep for at least 50ms
        time_to_next_second += 1000000;
 
-   fc::time_point next_wakeup(now + fc::microseconds(time_to_next_second));
-
    _timer.expires_from_now(boost::posix_time::microseconds(time_to_next_second));
    _timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
 }
@@ -202,33 +199,35 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
    switch(result)
    {
-      case block_production_condition::produced:
-         ilog("Generated block #${n} with timestamp ${t} at time ${c}", (capture));
-         break;
-      case block_production_condition::not_synced:
-         ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
-         break;
-      case block_production_condition::not_my_turn:
-//         ilog("Not producing block because it isn't my turn");
-         break;
-      case block_production_condition::not_time_yet:
-//         ilog("Not producing block because slot has not yet arrived");
-         break;
-      case block_production_condition::no_private_key:
-         ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
-         break;
-      case block_production_condition::low_participation:
-         elog("Not producing block because node appears to be on a minority fork with only ${pct}% producer participation", (capture) );
-         break;
-      case block_production_condition::lag:
-         elog("Not producing block because node didn't wake up within 500ms of the slot time.");
-         break;
-      case block_production_condition::consecutive:
-         elog("Not producing block because the last block was generated by the same producer.\nThis node is probably disconnected from the network so block production has been disabled.\nDisable this check with --allow-consecutive option.");
-         break;
-      case block_production_condition::exception_producing_block:
-         elog( "exception prodcing block" );
-         break;
+   case block_production_condition::produced: {
+      auto producer = app().get_plugin<chain_plugin>().chain().head_block_producer();
+      ilog("${p} generated block #${n} with timestamp ${t} at time ${c}", ("p", producer)(capture));
+      break;
+   }
+   case block_production_condition::not_synced:
+      ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
+      break;
+   case block_production_condition::not_my_turn:
+      //         ilog("Not producing block because it isn't my turn");
+      break;
+   case block_production_condition::not_time_yet:
+      //         ilog("Not producing block because slot has not yet arrived");
+      break;
+   case block_production_condition::no_private_key:
+      ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
+      break;
+   case block_production_condition::low_participation:
+      elog("Not producing block because node appears to be on a minority fork with only ${pct}% producer participation", (capture) );
+      break;
+   case block_production_condition::lag:
+      elog("Not producing block because node didn't wake up within 500ms of the slot time.");
+      break;
+   case block_production_condition::consecutive:
+      elog("Not producing block because the last block was generated by the same producer.\nThis node is probably disconnected from the network so block production has been disabled.\nDisable this check with --allow-consecutive option.");
+      break;
+   case block_production_condition::exception_producing_block:
+      elog( "exception prodcing block" );
+      break;
    }
 
    schedule_production_loop();
@@ -237,7 +236,6 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
    chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
-   const auto& db = app().get_plugin<database_plugin>().db();
    fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
@@ -268,7 +266,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    //
    assert( now > chain.head_block_time() );
 
-   eos::chain::producer_id_type scheduled_producer = chain.get_scheduled_producer( slot );
+   eos::types::AccountName scheduled_producer = chain.get_scheduled_producer( slot );
    // we must control the producer scheduled to produce the next block.
    if( _producers.find( scheduled_producer ) == _producers.end() )
    {
@@ -277,7 +275,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    }
 
    fc::time_point_sec scheduled_time = chain.get_slot_time( slot );
-   eos::chain::public_key_type scheduled_key = db.get(scheduled_producer).signing_key;
+   eos::chain::public_key_type scheduled_key = chain.get_producer(scheduled_producer).signing_key;
    auto private_key_itr = _private_keys.find( scheduled_key );
 
    if( private_key_itr == _private_keys.end() )
@@ -307,7 +305,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       );
    capture("n", block.block_num())("t", block.timestamp)("c", now);
 
-//   app().get_plugin<p2p_plugin>().broadcast_block(block);
+   app().get_plugin<net_plugin>().broadcast_block(block);
    return block_production_condition::produced;
 }
 

@@ -13,7 +13,6 @@ namespace fc {
 
    bool is_utf8( const std::string& str )
    {
-      auto itr = utf8::find_invalid(str.begin(), str.end()); 
       return utf8::is_valid( str.begin(), str.end() );
    }
 

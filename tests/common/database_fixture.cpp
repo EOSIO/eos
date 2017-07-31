@@ -30,7 +30,9 @@
 
 #include <eos/utilities/tempdir.hpp>
 
-#include <eos/native_system_contract_plugin/native_system_contract_plugin.hpp>
+#include <eos/native_contract/native_contract_chain_initializer.hpp>
+#include <eos/native_contract/native_contract_chain_administrator.hpp>
+#include <eos/native_contract/objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -44,21 +46,22 @@
 uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
 namespace eos { namespace chain {
+   using namespace native::eos;
+   using namespace native;
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-   default_genesis_state.immutable_parameters.min_producer_count = config::ProducerCount;
-   for (int i = 0; i < default_genesis_state.immutable_parameters.min_producer_count; ++i) {
-      auto name = std::string("init") + fc::to_string(i);
+   for (int i = 0; i < config::BlocksPerRound; ++i) {
+      auto name = std::string("inita"); name.back()+=i;
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
-      default_genesis_state.initial_accounts.emplace_back(name, 100000, public_key, public_key);
-      key_ring[public_key] = private_key;
+      default_genesis_state.initial_accounts.emplace_back(name, 0, 100000, public_key, public_key);
+      store_private_key(private_key);
 
       private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name + ".producer"));
       public_key = private_key.get_public_key();
       default_genesis_state.initial_producers.emplace_back(name, public_key);
-      key_ring[public_key] = private_key;
+      store_private_key(private_key);
    }
 }
 
@@ -72,12 +75,16 @@ fc::path testing_fixture::get_temp_dir(std::string id) {
    return named_temp_dirs.emplace(std::make_pair(id, fc::temp_directory())).first->second.path();
 }
 
-const genesis_state_type&testing_fixture::genesis_state() const {
+const native_contract::genesis_state_type& testing_fixture::genesis_state() const {
    return default_genesis_state;
 }
 
-genesis_state_type&testing_fixture::genesis_state() {
+native_contract::genesis_state_type& testing_fixture::genesis_state() {
    return default_genesis_state;
+}
+
+void testing_fixture::store_private_key(const private_key_type& key) {
+   key_ring[key.get_public_key()] = key;
 }
 
 private_key_type testing_fixture::get_private_key(const public_key_type& public_key) const {
@@ -87,31 +94,24 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
    return itr->second;
 }
 
-testing_database::testing_database(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                                   testing_fixture& fixture, fc::optional<genesis_state_type> override_genesis_state)
-   : chain_controller(db, fork_db, blocklog, [&override_genesis_state, &fixture] {
-        if (override_genesis_state) return *override_genesis_state;
-        return fixture.genesis_state();
-     }),
-     fixture(fixture) {
-   // Install the system contract implementation
-   native_system_contract_plugin::install(*this);
-}
+testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                   chain_initializer_interface& initializer, testing_fixture& fixture)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator()),
+     fixture(fixture) {}
 
-void testing_database::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
+void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
    if (count == 0)
       return;
 
    for (int i = 0; i < count; ++i) {
       auto slot = blocks_to_miss + 1;
-      auto producer_id = get_scheduled_producer(slot);
-      const auto& producer = get_model().get(producer_id);
+      auto producer = get_producer(get_scheduled_producer(slot));
       auto private_key = fixture.get_private_key(producer.signing_key);
-      generate_block(get_slot_time(slot), producer_id, private_key, 0);
+      generate_block(get_slot_time(slot), producer.owner, private_key, 0);
    }
 }
 
-void testing_database::sync_with(testing_database& other) {
+void testing_blockchain::sync_with(testing_blockchain& other) {
    // Already in sync?
    if (head_block_id() == other.head_block_id())
       return;
@@ -119,7 +119,7 @@ void testing_database::sync_with(testing_database& other) {
    if (head_block_num() < other.head_block_num())
       return other.sync_with(*this);
 
-   auto sync_dbs = [](testing_database& a, testing_database& b) {
+   auto sync_dbs = [](testing_blockchain& a, testing_blockchain& b) {
       for (int i = 1; i <= a.head_block_num(); ++i) {
          auto block = a.fetch_block_by_number(i);
          if (block && !b.is_known_block(block->id())) {
@@ -132,33 +132,58 @@ void testing_database::sync_with(testing_database& other) {
    sync_dbs(other, *this);
 }
 
-void testing_network::connect_database(testing_database& new_database) {
-   if (databases.count(&new_database))
+types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& account) {
+   return get_database().get<BalanceObject, native::eos::byOwnerName>(account).balance;
+}
+
+types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
+   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).stakedBalance;
+}
+
+types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
+   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).unstakingBalance;
+}
+
+std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
+   const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
+   if (sbo.producerVotes.contains<ProducerSlate>()) {
+      auto range = sbo.producerVotes.get<ProducerSlate>().range();
+      return {range.begin(), range.end()};
+   }
+   return {};
+}
+
+types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountName& producerName) {
+   return get_database().get<producer_object, by_owner>(producerName).signing_key;
+}
+
+void testing_network::connect_blockchain(testing_blockchain& new_database) {
+   if (blockchains.count(&new_database))
       return;
 
    // If the network isn't empty, sync the new database with one of the old ones. The old ones are already in sync with
    // eachother, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
    // of them gets synced, it will propagate blocks to the others as well.
-   if (!databases.empty()) {
-      databases.begin()->first->sync_with(new_database);
+   if (!blockchains.empty()) {
+        blockchains.begin()->first->sync_with(new_database);
    }
 
    // The new database is now in sync with any old ones; go ahead and connect the propagation signal.
-   databases[&new_database] = new_database.applied_block.connect([this, &new_database](const signed_block& block) {
+    blockchains[&new_database] = new_database.applied_block.connect([this, &new_database](const signed_block& block) {
       propagate_block(block, new_database);
    });
 }
 
-void testing_network::disconnect_database(testing_database& leaving_database) {
-   databases.erase(&leaving_database);
+void testing_network::disconnect_database(testing_blockchain& leaving_database) {
+    blockchains.erase(&leaving_database);
 }
 
 void testing_network::disconnect_all() {
-   databases.clear();
+    blockchains.clear();
 }
 
-void testing_network::propagate_block(const signed_block& block, const testing_database& skip_db) {
-   for (const auto& pair : databases) {
+void testing_network::propagate_block(const signed_block& block, const testing_blockchain& skip_db) {
+   for (const auto& pair : blockchains) {
       if (pair.first == &skip_db) continue;
       boost::signals2::shared_connection_block blocker(pair.second);
       pair.first->push_block(block);

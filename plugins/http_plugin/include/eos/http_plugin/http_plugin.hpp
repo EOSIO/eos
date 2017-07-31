@@ -62,7 +62,7 @@ namespace eos {
 
         void add_handler(const string& url, const url_handler&);
         void add_api(const api_description& api) {
-           for (const auto& call : api)
+           for (const auto& call : api) 
               add_handler(call.first, call.second);
         }
 

@@ -32,6 +32,7 @@ namespace fc { namespace ecc {
             static const secp256k1_context_t* ctx = _get_context();
             static int init_o = init_openssl();
             (void)ctx;
+            (void)init_o;
         }
 
         class public_key_impl

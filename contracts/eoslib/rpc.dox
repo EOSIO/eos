@@ -1,0 +1,112 @@
+/**
+   @defgroup eosiorpc eosd RPC Interface
+   @brief Describes how to interface with eosd over HTTP RPC
+
+   `eosd` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
+   will explain how to use some of the APIs to get information about the blockchain and send transactions.
+
+   @section chainrpc Chain API Configuration 
+
+   Before you can query `eosd` you must first enable an API plugin. To do this add the following line to your `config.ini`
+
+   ```
+   plugin = eos::chain_api_plugin
+   ```
+
+   By default an HTTP server will start on `127.0.0.1:8888`; however, you can also change this with the following configureation line:
+
+   ```
+   http-server-endpoint = 127.0.0.1:8888
+   ```
+
+   @subsection v1chaingetinfo get_info
+   
+   The `get_info` RPC command can be found at:
+   
+   ```
+   curl http://127.0.0.1:8888/v1/chain/get_info 
+   ```
+
+   And it should return something like:
+   ```
+   { 
+      "head_block_num":449,
+      "last_irreversible_block_num": 434,
+      "head_block_id":"000001c1a0f072a5ca76831ac6c6e2988efcf162e953eb40046ec2ceca817a9f",
+      "head_block_time":"2017-07-18T21:02:24",
+      "head_block_producer":"initd",
+      "recent_slots":"0000000000000000000000000000000000000000000000000000000000001111",
+      "participation_rate":"0.06250000000000000"
+   }
+   ```
+
+   @subsection v1chaingetblock get_block
+
+@subsubsection examplegetlbock  Example get_block Usage
+   ```
+   curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":5}'
+   curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b}'
+   ```
+
+@subsubsection examplegetlbockresult  Example get_block Result
+   ```
+	 {
+		 "previous": "0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b",
+		 "timestamp": "2017-07-18T20:16:36",
+		 "transaction_merkle_root": "0000000000000000000000000000000000000000000000000000000000000000",
+		 "producer": "initf",
+		 "producer_changes": [ ],
+		 "producer_signature": "204cb94b3186c3b4a7f88be4e9db9f8af2ffdb7ef0f27a065c8177a5fcfacf876f684e59c39fb009903c0c59220b147bb07f1144df1c65d26c57b534a76dd29073",
+		 "cycles": [ ],
+ 		 "id":"000000050c0175cbf218a70131ddc3c3fab8b6e954edef77e0bfe7c36b599b1d",
+ 		 "block_num":5,
+ 		 "refBlockPrefix":27728114
+	 }
+   ```
+
+   @subsection v1chainpushtransaction push_transaction
+
+This method expects a transaction in JSON format and will attempt to apply it to the blockchain, 
+
+<b>Success Response</b>
+<p>
+On success it will return HTTP 200 and the transaction ID.
+</p>
+
+```
+ 
+{ 
+   'transaction_id' : "..." 
+}
+ 
+
+```
+
+Just because the transaction is pushed locally does not mean that the transaction has been incorporated into a block.
+
+
+<b>Error Response</b>
+<p>
+If an error occurs it will return either HTTP 400 (Invalid arguments) or 500 (Internal Server Error) 
+</p>
+
+```
+ 
+HTTP/1.1 500 Internal Server Error
+Content-Length: 1466
+
+...error message...
+ 
+```
+
+@subsection examplepushtrx Example push_transaction Usage
+This example assumes a transfer operation. The `refBlockNum` and `refBlockPrefix` are provided as a result of `/v1/chain/get_block`
+
+```
+curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '{"refBlockNum":"5","refBlockPrefix":"27728114","expiration":"2017-07-18T22:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"c9252a0000000000050f14dc29000000d00700000000000008454f530000000000"}],"signatures":[],"authorizations":[]}'
+```
+
+
+
+
+*/

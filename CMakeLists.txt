@@ -8,7 +8,7 @@ INCLUDE( VersionMacros )
 INCLUDE( SetupTargetMacros )
 
 set( BLOCKCHAIN_NAME "Eos" )
-set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_CXX_STANDARD 17 )
 
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
 set( GUI_CLIENT_EXECUTABLE_NAME eos )
@@ -60,7 +60,7 @@ IF( WIN32 )
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
 
-FIND_PACKAGE(Boost 1.57 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 # For Boost 1.53 on windows, coroutine was not in BOOST_LIBRARYDIR and do not need it to build,  but if boost versin >= 1.54, find coroutine otherwise will cause link errors
 IF(NOT "${Boost_VERSION}" MATCHES "1.53(.*)")
    SET(BOOST_LIBRARIES_TEMP ${Boost_LIBRARIES})
@@ -113,7 +113,8 @@ else( WIN32 ) # Apple AND Linux
     if( APPLE )
         # Apple Specific Options Here
         message( STATUS "Configuring Eos on OS X" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-deprecated-declarations" )
+#set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++14 -Wall -Wno-invalid-partial-specialization -Wno-deprecated-declarations" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++14 -Wall -Wno-deprecated-declarations" )
     else( APPLE )
         # Linux Specific Options Here
         message( STATUS "Configuring Eos on Linux" )
@@ -156,6 +157,18 @@ set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analys
 
 if(ENABLE_COVERAGE_TESTING)
     SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+endif()
+
+include(wasm)
+if(WASM_TOOLCHAIN)
+  message(STATUS "Using WASM clang => " ${WASM_CLANG})
+  message(STATUS "Using WASM llc => " ${WASM_LLC})
+  message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
+  add_subdirectory(contracts)
+else()
+  message(STATUS "-------------------------------------------------------------------")
+  message(STATUS "No WASM compiler could be found ... (skiping building of contracts)")
+  message(STATUS "-------------------------------------------------------------------")
 endif()
 
 add_subdirectory( libraries )

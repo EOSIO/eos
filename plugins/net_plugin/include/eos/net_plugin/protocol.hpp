@@ -6,12 +6,17 @@ namespace eos {
    using namespace chain;
    using namespace fc;
 
+  using node_id_type = fc::sha256;
+
    struct handshake_message {
       int16_t         network_version = 0;
-      fc::sha256      chain_id; ///< used to identify chain
-      fc::sha256      node_id; ///< used to identify peers and prevent self-connect
-      uint64_t        last_irreversible_block_num = 0;
+      chain_id_type   chain_id; ///< used to identify chain
+      node_id_type    node_id; ///< used to identify peers and prevent self-connect
+      string          p2p_address;
+      uint32_t        last_irreversible_block_num = 0;
       block_id_type   last_irreversible_block_id;
+      uint32_t        head_num = 0;
+      block_id_type   head_id;
       string          os;
       string          agent;
    };
@@ -19,50 +24,67 @@ namespace eos {
    struct notice_message {
       vector<transaction_id_type> known_trx;
       vector<block_id_type>       known_blocks;
+      vector<node_id_type>        known_to;
+   };
+
+
+   struct request_message {
+      vector<transaction_id_type> req_trx;
+      vector<block_id_type>       req_blocks;
    };
 
    struct block_summary_message {
       signed_block                block;
       vector<transaction_id_type> trx_ids;
+      vector<node_id_type>        known_to;
+
    };
 
    struct sync_request_message {
-      uint64_t start_block;
-      uint64_t end_block;
+      uint32_t start_block;
+      uint32_t end_block;
    };
 
    struct peer_message {
-      vector<fc::ip::endpoint> peers;
+     vector<node_id_type> peers;
    };
 
    using net_message = static_variant<handshake_message,
                                       peer_message,
                                       notice_message,
+                                      request_message,
                                       sync_request_message,
                                       block_summary_message,
                                       SignedTransaction,
                                       signed_block>;
+
+  using forward_message = static_variant<peer_message,
+                                         notice_message,
+                                         block_summary_message>;
 
 } // namespace eos
 
 
 FC_REFLECT( eos::handshake_message,
             (network_version)(chain_id)(node_id)
-            (last_irreversible_block_num)(last_irreversible_block_num)
+            (p2p_address)
+            (last_irreversible_block_num)(last_irreversible_block_id)
+            (head_num)(head_id)
             (os)(agent) )
 
 FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
-FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
+FC_REFLECT( eos::notice_message, (known_trx)(known_blocks)(known_to) )
+FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
 FC_REFLECT( eos::peer_message, (peers) )
 
-/** 
+/**
  *
 Goals of Network Code
 1. low latency to minimize missed blocks and potentially reduce block interval
 2. minimize redundant data between blocks and transactions.
 3. enable rapid sync of a new node
-4. update to new boost / fc 
+4. update to new boost / fc
 
 
 
@@ -90,23 +112,23 @@ State:
          wait for new validated block, transaction, or peer signal from network fiber
       } else {
          we assume peer is in sync mode in which case it is operating on a
-         request / response basis 
+         request / response basis
 
          wait for notice of sync from the read loop
       }
 
 
-    read loop 
+    read loop
       if hello message
          verify that peers Last Ir Block is in our state or disconnect, they are on fork
          verify peer network protocol
 
       if notice message update list of transactions known by remote peer
-      if trx message then insert into global state as unvalidated 
+      if trx message then insert into global state as unvalidated
       if blk summary message then insert into global state *if* we know of all dependent transactions
          else close connection
 
-   
+
     if my head block < the LIB of a peer and my head block age > block interval * round_size/2 then
     enter sync mode...
         divide the block numbers you need to fetch among peers and send fetch request
@@ -116,5 +138,16 @@ State:
 
      Once you have caught up to all peers, notify all peers of your head block so they know that you
      know the LIB and will start sending you real time tranasctions
+
+parallel fetches, request in groups
+
+
+only relay transactions to peers if we don't already know about it.
+
+send a notification rather than a transaction if the txn is > 3mtu size.
+
+
+
+
 
 */

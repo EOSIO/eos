@@ -6,6 +6,9 @@
 #include <fc/reflect/variant.hpp>
 
 namespace fc {
+  void to_variant(const eos::types::Name& c, fc::variant& v) { v = std::string(c); }
+  void from_variant(const fc::variant& v, eos::types::Name& check) { check = v.get_string(); }
+
   void to_variant(const std::vector<eos::types::Field>& c, fc::variant& v) {
      fc::mutable_variant_object mvo; mvo.reserve(c.size());
      for(const auto& f : c) {

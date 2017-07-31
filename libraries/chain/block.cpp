@@ -96,8 +96,10 @@ namespace eos { namespace chain {
    }
 
    digest_type thread::merkle_digest() const {
-      vector<digest_type> ids = generated_input;
+      vector<digest_type> ids;// = generated_input;
+      /*
       ids.reserve( ids.size() + user_input.size() + output_transactions.size() );
+      */
 
       for( const auto& trx : user_input )
          ids.push_back( trx.digest() );
@@ -107,9 +109,9 @@ namespace eos { namespace chain {
        *  a second time. This is because the transaction has not been confirmed as
        *  "valid and applied" just "produced".  Later, when this transaction is included
        *  as part of "generated input" its ID will be used without the extra hash.
-       */
       for( const auto& trx : output_transactions )
          ids.push_back( digest_type::hash(trx.merkle_digest()) );
+       */
 
 
       return merkle(ids);

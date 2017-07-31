@@ -96,10 +96,24 @@ namespace eos {
 
    void http_plugin::plugin_initialize(const variables_map& options) {
       if(options.count("http-server-endpoint")) {
+        #if 0
          auto lipstr = options.at("http-server-endpoint").as< string >();
          auto fcep = fc::ip::endpoint::from_string(lipstr);
          my->listen_endpoint = tcp::endpoint(boost::asio::ip::address_v4::from_string((string)fcep.get_address()), fcep.port());
-         ilog("configured http to listen on ${ep}", ("ep", fcep));
+        #endif
+         auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
+         if( options.count( "http-server-endpoint" ) ) {
+           auto lipstr =  options.at("http-server-endpoint").as< string >();
+           auto host = lipstr.substr( 0, lipstr.find(':') );
+           auto port = lipstr.substr( host.size()+1, lipstr.size() );
+           idump((host)(port));
+           tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+           my->listen_endpoint = *resolver->resolve( query);
+           ilog("configured http to listen on ${h}:${p}", ("h",host)("p",port));
+         }
+
+         // uint32_t addr = my->listen_endpoint->address().to_v4().to_ulong();
+         // auto fcep = fc::ip::endpoint (addr,my->listen_endpoint->port());
       }
    }
 
@@ -115,21 +129,34 @@ namespace eos {
 
                my->server.set_http_handler([&](connection_hdl hdl) {
                   auto con = my->server.get_con_from_hdl(hdl);
-                  ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
-                  ilog("${body}", ("body", con->get_request_body()));
+                  try {
+                     ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
+                     ilog("${body}", ("body", con->get_request_body()));
 
-                  auto body = con->get_request_body();
-                  auto resource = con->get_uri()->get_resource();
-                  auto handler_itr = my->url_handlers.find(resource);
-                  if(handler_itr != my->url_handlers.end()) {
-                     handler_itr->second(resource, body, [con,this](int code, string body) {
-                        con->set_body(body);
-                        con->set_status(websocketpp::http::status_code::value(code));
-                     });
-                  } else {
-                     wlog("404 - not found: ${ep}", ("ep",resource));
-                     con->set_body("Unknown Endpoint");
-                     con->set_status(websocketpp::http::status_code::not_found);
+                     auto body = con->get_request_body();
+                     auto resource = con->get_uri()->get_resource();
+                     auto handler_itr = my->url_handlers.find(resource);
+                     if(handler_itr != my->url_handlers.end()) {
+                        handler_itr->second(resource, body, [con,this](int code, string body) {
+                           con->set_body(body);
+                           con->set_status(websocketpp::http::status_code::value(code));
+                        });
+                     } else {
+                        wlog("404 - not found: ${ep}", ("ep",resource));
+                        con->set_body("Unknown Endpoint");
+                        con->set_status(websocketpp::http::status_code::not_found);
+                     }
+                  } catch( const fc::exception& e ) {
+                     elog( "http: ${e}", ("e",e.to_detail_string()));
+                        con->set_body(e.to_detail_string());
+                        con->set_status(websocketpp::http::status_code::internal_server_error);
+                  } catch( const std::exception& e ) {
+                     elog( "http: ${e}", ("e",e.what()));
+                        con->set_body(e.what());
+                        con->set_status(websocketpp::http::status_code::internal_server_error);
+                  } catch( ... ) {
+                        con->set_body("unknown exception");
+                        con->set_status(websocketpp::http::status_code::internal_server_error);
                   }
                });
 
@@ -139,6 +166,10 @@ namespace eos {
 
                my->http_ios.run();
                ilog("http io service exit");
+            } catch ( const fc::exception& e ){
+               elog( "http: ${e}", ("e",e.to_detail_string()));
+            } catch ( const std::exception& e ){
+               elog( "http: ${e}", ("e",e.what()));
             } catch (...) {
                 elog("error thrown from http io service");
             }
@@ -158,6 +189,7 @@ namespace eos {
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
+      ilog( "add api url: ${c}", ("c",url) );
       my->http_ios.post([=](){
         my->url_handlers.insert(std::make_pair(url,handler));
       });

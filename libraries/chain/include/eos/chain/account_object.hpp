@@ -29,44 +29,25 @@
 
 namespace eos { namespace chain {
 
-   struct shared_authority {
-      shared_authority( chainbase::allocator<char> alloc )
-      :accounts(alloc),keys(alloc)
-      {}
+   class account_object : public chainbase::object<account_object_type, account_object> {
+      OBJECT_CTOR(account_object,(code)(abi))
 
-      shared_authority& operator=(const Authority& a) {
-         threshold = a.threshold;
-         accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
-         keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
-         return *this;
+      id_type             id;
+      AccountName         name;
+      uint8_t             vm_type      = 0;
+      uint8_t             vm_version   = 0;
+      fc::sha256          code_version;
+      Time                creation_date;
+      shared_vector<char> code;
+      shared_vector<char> abi;
+
+      void set_abi( const eos::types::Abi& _abi ) {
+         abi.resize( fc::raw::pack_size( _abi ) );
+         fc::datastream<char*> ds( abi.data(), abi.size() );
+         fc::raw::pack( ds, _abi );
       }
-      shared_authority& operator=(Authority&& a) {
-         threshold = a.threshold;
-         accounts.reserve(a.accounts.size());
-         for (auto& p : a.accounts)
-            accounts.emplace_back(std::move(p));
-         keys.reserve(a.keys.size());
-         for (auto& p : a.keys)
-            keys.emplace_back(std::move(p));
-         return *this;
-      }
-
-      UInt32                                        threshold = 0;
-      shared_vector<types::AccountPermissionWeight> accounts;
-      shared_vector<types::KeyPermissionWeight>     keys;
    };
-   
-   class account_object : public chainbase::object<account_object_type, account_object>
-   {
-      OBJECT_CTOR(account_object)
-
-      id_type           id;
-      AccountName       name;
-      Asset             balance;
-      UInt64            votes                  = 0;
-      UInt64            converting_votes       = 0;
-      Time              last_vote_conversion;
-   };
+   using account_id_type = account_object::id_type;
 
    struct by_name;
    using account_index = chainbase::shared_multi_index_container<
@@ -77,46 +58,10 @@ namespace eos { namespace chain {
       >
    >;
 
-   class permission_object : public chainbase::object<permission_object_type, permission_object>
-   {
-      OBJECT_CTOR(permission_object, (auth) )
-
-      id_type           id;
-      account_id_type   owner; ///< the account this permission belongs to
-      id_type           parent; ///< parent permission 
-      PermissionName    name;
-      shared_authority  auth; ///< TODO
-   };
-
-
-
-   struct by_parent;
-   struct by_owner;
-   using permission_index = chainbase::shared_multi_index_container<
-      permission_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<permission_object, permission_object::id_type, &permission_object::id>>,
-         ordered_unique<tag<by_parent>, 
-            composite_key< permission_object,
-               member<permission_object, permission_object::id_type, &permission_object::parent>,
-               member<permission_object, permission_object::id_type, &permission_object::id>
-            >
-         >,
-         ordered_unique<tag<by_owner>, 
-            composite_key< permission_object,
-               member<permission_object, account_object::id_type, &permission_object::owner>,
-               member<permission_object, PermissionName, &permission_object::name>,
-               member<permission_object, permission_object::id_type, &permission_object::id>
-            >
-         >,
-         ordered_unique<tag<by_name>, member<permission_object, PermissionName, &permission_object::name> >
-      >
-   >;
-
 } } // eos::chain
 
 CHAINBASE_SET_INDEX_TYPE(eos::chain::account_object, eos::chain::account_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_index)
 
-FC_REFLECT(eos::chain::account_object, (id)(name)(balance)(votes)(converting_votes)(last_vote_conversion) )
-FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name) )
+FC_REFLECT(chainbase::oid<eos::chain::account_object>, (_id))
+
+FC_REFLECT(eos::chain::account_object, (id)(name)(vm_type)(vm_version)(code_version)(code)(creation_date))

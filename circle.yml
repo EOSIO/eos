@@ -1,0 +1,13 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  override:
+    - cd ~/eos/Docker && docker build -t eosio/eos .
+
+test:
+  pre:
+    - sleep 5
+  override:
+    - docker run eosio/eos

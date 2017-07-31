@@ -16,10 +16,13 @@ endif()
 
 SET (ORIGINAL_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 
+find_package(Secp256k1 REQUIRED)
+find_package(GMP REQUIRED)
+
 IF( ECC_IMPL STREQUAL openssl )
   SET( ECC_REST src/crypto/elliptic_impl_pub.cpp )
 ELSE( ECC_IMPL STREQUAL openssl )
-  SET( ECC_LIB secp256k1 )
+  SET( ECC_LIB ${Secp256k1_LIBRARY} ${GMP_LIBRARIES} )
   IF( ECC_IMPL STREQUAL mixed )
     SET( ECC_REST src/crypto/elliptic_impl_priv.cpp src/crypto/elliptic_impl_pub.cpp )
   ELSE( ECC_IMPL STREQUAL mixed )
@@ -145,6 +148,7 @@ target_include_directories(fc
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${Boost_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
+    ${Secp256k1_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -164,5 +168,3 @@ IF(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 ELSE()
   SET (OPENSSL_CONF_TARGET ${CMAKE_CURRENT_BINARY_DIR})
 ENDIF()
-
-

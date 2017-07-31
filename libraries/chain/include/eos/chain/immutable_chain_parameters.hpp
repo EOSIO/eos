@@ -31,13 +31,5 @@
 
 namespace eos { namespace chain {
 
-struct immutable_chain_parameters
-{
-   uint16_t min_producer_count = config::ProducerCount;
-};
-
 } } // eos::chain
 
-FC_REFLECT( eos::chain::immutable_chain_parameters,
-   (min_producer_count)
-)
