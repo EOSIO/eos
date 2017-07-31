@@ -54,7 +54,7 @@ RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
   && cd eos && mkdir build && cd build \
   && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j2 && make install \
-  && cp -a ./contracts /opt/eos/contracts \
+  && cp -a ../contracts /opt/eos/contracts \
   && rm -rf /tmp/eos*
 
 COPY config.ini genesis.json /
