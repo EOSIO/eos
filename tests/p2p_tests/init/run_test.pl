@@ -19,28 +19,31 @@ my $prods = 21;
 my $genesis = "$eos_home/genesis.json";
 my $http_port_base = 8888;
 my $p2p_port_base = 9876;
-my $data_dir_base = "ttdn";
+my $data_dir_base = "tdn";
 my $hostname = "127.0.0.1";
-my $first_pause = 45;
-my $launch_pause = 5;
+my $first_pause = 0;
+my $launch_pause = 0;
 my $run_duration = 60;
 my $topo = "ring";
-my $override_gts; # = "now";
+my $override_gts = "";
+my $no_delay=0;
 
 if (!GetOptions("nodes=i" => \$nodes,
                 "first-pause=i" => \$first_pause,
                 "launch-pause=i" => \$launch_pause,
                 "duration=i" => \$run_duration,
                 "topo=s" => \$topo,
+                "time-stamp=s" => \$override_gts,
                 "pnodes=i" => \$pnodes)) {
-    print "usage: $ARGV[0] [--nodes=<n>] [--pnodes=<n>] [--topo=<ring|star>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>]\n";
+    print "usage: $ARGV[0] [--nodes=<n>] [--pnodes=<n>] [--topo=<ring|star>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>] [--time-stamp=<time> \n";
     print "where:\n";
     print "--nodes=n (default = 1) sets the number of eosd instances to launch\n";
     print "--pnodes=n (default = 1) sets the number nodes that will also be producers\n";
     print "--topo=s (default = ring) sets the network topology to eithar a ring shape or a star shape\n";
-    print "--first-pause=n (default = 45) sets the seconds delay after starting the first instance\n";
-    print "--launch-pause=n (default = 5) sets the seconds delay after starting subsequent nodes\n";
+    print "--first-pause=n (default = 0) sets the seconds delay after starting the first instance\n";
+    print "--launch-pause=n (default = 0) sets the seconds delay after starting subsequent nodes\n";
     print "--duration=n (default = 60) sets the seconds delay after starting the last node before shutting down the test\n";
+    print "--time-stamp=s (defsult \"\") sets the timestsmp in UTC for the genesis block. use \"now\" to mean the current time.\n";
     print "\nproducer count currently fixed at $prods\n";
     exit
 }
@@ -64,6 +67,9 @@ my @data_dir;
 my @p2p_port;
 my @http_port;
 my @peers;
+$launch_pause = 0 if ($no_delay);
+$first_pause = 0 if ($no_delay);
+
 my $rhost = $hostname; # from a list for multihost tests
 for (my $i = 0; $i < $nodes; $i++) {
     $p2p_port[$i] = $p2p_port_base + $i;
@@ -82,6 +88,7 @@ closedir(DIR);
 sub write_config {
     my $i = shift;
     my $producer = shift;
+
     mkdir ($data_dir[$i]);
     mkdir ($data_dir[$i]."/blocks");
     mkdir ($data_dir[$i]."/blockchain");
@@ -117,13 +124,20 @@ sub write_config {
     close $cfg;
 }
 
+#connect each producer to the one ahead in the list, last to the first
+#if bidir set then double connect to the one behind as well
+sub make_ring_topology  {
+    my $bidir = shift;
+    if ($nodes == 1) {
+        write_config (0,0);
+        return 1;
+    }
 
-sub make_ring_topology () {
     for (my $i = 0; $i < $nodes; $i++) {
         my $pi = $i if ($i < $pnodes);
         my $rport = ($i == $nodes - 1) ? $p2p_port_base : $p2p_port[$i] + 1;
         $peers[0] = "$rhost:$rport";
-        if ($nodes > 2) {
+        if ($nodes > 2 && $bidir) {
             $rport = $p2p_port[$i] - 1;
             $rport += $nodes if ($i == 0);
             $peers[1] = "$rhost:$rport";
@@ -133,21 +147,43 @@ sub make_ring_topology () {
     return 1;
 }
 
-sub make_grid_topology () {
-    print "Sorry, the grid topology is not yet implemented\n";
-    return 0;
-}
+#connect each producer to three others, index+1, index + 1 + delta, index + 2(1 + delta)
+#delta determined by total number of producer nodes. between 4 and 7, delta = pnodes-4
+sub make_star_topology {
+    if ($pnodes < 4) {
+        return make_ring_topology(0);
+    }
+    my $numconn = 3;
+    my @ports;
+    my $delta = $pnodes > 6 ? 4 : $pnodes - $numconn;
+    for (my $i = 0; $i < $nodes; $i++) {
+        my $pi = $i if ($i < $pnodes);
+        $ports[0] = $p2p_port[$i];
+        for (my $d = 1; $d <= $numconn; $d++) {
+            my $rind = ($i + ($d) * ($delta)) % $nodes;
+            $rind++ if ($rind == $i);
+            my $rport = $p2p_port[$rind];
+            for (my $chk = 0; $chk < $d; $chk++) {
+                if ($rport == $ports[$chk]) {
+                    $rport++;
+                    $chk = -1;
+                }
+            }
+            $ports[$d] = $rport;
+            $peers[$d-1] = "$rhost:$rport";
+        }
 
-sub make_star_topology () {
-    print "Sorry, the star topology is not yet implemented\n";
-    return 0;
+        write_config ($i, $pi);
+    }
+
+    return 1;
  }
 
-sub launch_nodes () {
+sub launch_nodes {
     my $gtsarg;
-    if (defined $override_gts) {
+    if ($override_gts) {
         my $GTS = $override_gts;
-        print "$override_gts\n";
+        print "override gts = $override_gts\n";
 
         if ($override_gts =~ "now" ) {
             chomp ($GTS = `date -u "+%Y-%m-%dT%H:%M:%S"`);
@@ -156,14 +192,13 @@ sub launch_nodes () {
             $GTS = join (':', @s);
             print "using genesis time stamp $GTS\n";
         }
-        $gtsarg = " --genesis-timestamp=$GTS";
+        $gtsarg = "--genesis-timestamp=$GTS";
     }
 
     for (my $i = 0; $i < $nodes;  $i++) {
         my @cmdline = ($eosd,
                        $gtsarg,
-                       " --data-dir=$data_dir[$i]");
-        print "starting $eosd $gtsarg --data-dir=$data_dir[$i]\n";
+                       "--data-dir=$data_dir[$i]");
         $pid[$i] = fork;
         if ($pid[$i] > 0) {
             my $pause = $i == 0 ? $first_pause : $launch_pause;
@@ -183,7 +218,7 @@ sub launch_nodes () {
             open ERROR, '>', "$data_dir[$i]/stderr.txt" or die $!;
             STDOUT->fdopen ( \*OUTPUT, 'w') or die $!;
             STDERR->fdopen ( \*ERROR, 'w') or die $!;
-
+            print "$cmdline[0], $cmdline[1], $cmdline[2]\n";
             exec @cmdline;
             print "child terminating now\n";
             exit;
@@ -195,7 +230,7 @@ sub launch_nodes () {
     }
 }
 
-sub kill_nodes () {
+sub kill_nodes {
     print "all nodes launched, network running for $run_duration seconds\n";
     sleep ($run_duration);
 
@@ -209,16 +244,10 @@ sub kill_nodes () {
 ###################################################
 # main
 
-if ($nodes == 1) {
-    write_config (0);
-}
-else {
-    if    ( $topo =~ "ring" ) { make_ring_topology () or die; }
-    elsif ( $topo =~ "grid" ) { make_grid_topology () or die; }
-    elsif ( $topo =~ "star" ) { make_star_topology () or die; }
-    else  { print "$topo is not a known topology" and die; }
-}
-exit; #sleep(1);
+if    ( $topo =~ "ring" ) { make_ring_topology (1) or die; }
+elsif ( $topo =~ "star" ) { make_star_topology () or die; }
+else  { print "$topo is not a known topology" and die; }
+
 launch_nodes ();
 
 kill_nodes () if ($run_duration > 0);

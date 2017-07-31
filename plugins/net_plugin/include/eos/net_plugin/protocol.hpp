@@ -6,10 +6,12 @@ namespace eos {
    using namespace chain;
    using namespace fc;
 
+  using node_id_type = fc::sha256;
+
    struct handshake_message {
       int16_t         network_version = 0;
       chain_id_type   chain_id; ///< used to identify chain
-      fc::sha256      node_id; ///< used to identify peers and prevent self-connect
+      node_id_type    node_id; ///< used to identify peers and prevent self-connect
       string          p2p_address;
       uint32_t        last_irreversible_block_num = 0;
       block_id_type   last_irreversible_block_id;
@@ -22,6 +24,7 @@ namespace eos {
    struct notice_message {
       vector<transaction_id_type> known_trx;
       vector<block_id_type>       known_blocks;
+      vector<node_id_type>        known_to;
    };
 
 
@@ -33,6 +36,8 @@ namespace eos {
    struct block_summary_message {
       signed_block                block;
       vector<transaction_id_type> trx_ids;
+      vector<node_id_type>        known_to;
+
    };
 
    struct sync_request_message {
@@ -41,7 +46,7 @@ namespace eos {
    };
 
    struct peer_message {
-     vector<fc::ip::endpoint> peers;
+     vector<node_id_type> peers;
    };
 
    using net_message = static_variant<handshake_message,
@@ -52,6 +57,10 @@ namespace eos {
                                       block_summary_message,
                                       SignedTransaction,
                                       signed_block>;
+
+  using forward_message = static_variant<peer_message,
+                                         notice_message,
+                                         block_summary_message>;
 
 } // namespace eos
 
@@ -64,7 +73,7 @@ FC_REFLECT( eos::handshake_message,
             (os)(agent) )
 
 FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
-FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
+FC_REFLECT( eos::notice_message, (known_trx)(known_blocks)(known_to) )
 FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
 FC_REFLECT( eos::peer_message, (peers) )
