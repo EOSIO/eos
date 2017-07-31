@@ -18,7 +18,7 @@ void message_validate_context::require_authorization(const types::AccountName& a
 
 void message_validate_context::require_scope(const types::AccountName& account)const {
    auto itr = boost::find_if(trx.scope, [&account](const auto& scope) {
-      return scope == account;
+      return;
    });
 
    if( controller.should_check_scope() ) {
