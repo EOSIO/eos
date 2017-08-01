@@ -4,6 +4,7 @@ file(GLOB HEADERS "include/eos/chain/*.hpp")
 add_library( eos_chain
              chain_controller.cpp
              wasm_interface.cpp
+             block_schedule.cpp
 
              fork_database.cpp
 

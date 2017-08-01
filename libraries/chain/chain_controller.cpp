@@ -26,6 +26,7 @@
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
+#include <eos/chain/block_schedule.hpp>
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/action_objects.hpp>
@@ -292,11 +293,7 @@ signed_block chain_controller::_generate_block(
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
 
-   static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = get_global_properties().configuration.maxBlockSize;
-   size_t total_block_size = max_block_header_size;
-
-   signed_block pending_block;
+   auto schedule = block_schedule::by_threading_conflicts(_pending_transactions, get_global_properties());
 
    //
    // The following code throws away existing pending_tx_session and
@@ -312,43 +309,72 @@ signed_block chain_controller::_generate_block(
    _pending_tx_session.reset();
    _pending_tx_session = _db.start_undo_session(true);
 
-   uint64_t postponed_tx_count = 0;
-   // pop pending state (reset to head block state)
-   for( const SignedTransaction& tx : _pending_transactions )
-   {
-      size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
-
-      // postpone transaction if it would make block too big
-      if( new_total_size >= maximum_block_size )
-      {
-         postponed_tx_count++;
-         continue;
-      }
-
+   auto process_one = [this](SignedTransaction const *tx, database &db) -> optional<ProcessedTransaction> {
       try
       {
-         auto temp_session = _db.start_undo_session(true);
-         _apply_transaction(tx);
-         temp_session.squash();
+        auto temp_session = db.start_undo_session(true);
+        auto ptx = _apply_transaction(*tx);
+        temp_session.squash();
 
-         total_block_size += fc::raw::pack_size(tx);
-         if (pending_block.cycles.empty()) {
-            pending_block.cycles.resize(1);
-            pending_block.cycles.back().resize(1);
-         }
-         pending_block.cycles.back().back().user_input.emplace_back(tx);
-#warning TODO: Populate generated blocks with generated transactions
+        return optional<ProcessedTransaction>(ptx);
       }
       catch ( const fc::exception& e )
       {
-         // Do nothing, transaction will not be re-applied
-         wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-         wlog( "The transaction was ${t}", ("t", tx) );
+        // Do nothing, transaction will not be re-applied
+        wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+        wlog( "The transaction was ${t}", ("t", *tx) );
       }
+
+      return optional<ProcessedTransaction>();
+   };
+
+   signed_block pending_block;
+   pending_block.cycles.reserve(schedule.cycles.size());
+
+   size_t invalid_transaction_count = 0;
+   size_t valid_transaction_count = 0;
+
+   for (const auto &c : schedule.cycles) {
+     cycle block_cycle;
+     block_cycle.reserve(c.size());
+
+     for (const auto &t : c) {
+       thread block_thread;
+       block_thread.generated_input.reserve(t.generated_input.size());
+       for (const auto &trx : t.generated_input) {
+#warning TODO: Process generated transaction
+       }
+
+       block_thread.user_input.reserve(t.user_input.size());
+       for (const auto &trx : t.user_input) {
+         auto processed = process_one(trx, _db);
+         if (processed) {
+            block_thread.user_input.emplace_back(*processed);
+            valid_transaction_count++;
+         } else {
+            invalid_transaction_count++;
+         }
+       }
+
+       if (!(block_thread.generated_input.empty() && block_thread.user_input.empty())) {
+          block_cycle.emplace_back(std::move(block_thread));
+       }
+     }
+
+     if (!block_cycle.empty()) {
+        pending_block.cycles.emplace_back(std::move(block_cycle));
+     }
    }
+   
+   size_t postponed_tx_count = _pending_transactions.size() - valid_transaction_count - invalid_transaction_count;
    if( postponed_tx_count > 0 )
    {
       wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
+   }
+
+   if( invalid_transaction_count > 0 )
+   {
+      wlog( "Postponed ${n} transactions errors when processing", ("n", invalid_transaction_count) );
    }
 
    _pending_tx_session.reset();
