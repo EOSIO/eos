@@ -124,7 +124,7 @@ void create_account( const vector<string>& args ) {
 /**
  *   Usage:
  *
- *   eocs create wallet walletname  ***PASS1*** ***PASS2*** 
+ *   eosc create wallet walletname  ***PASS1*** ***PASS2*** 
  *   eosc unlock walletname  ***PASSWORD*** 
  *   eosc wallets -> prints list of wallets with * next to currently unlocked
  *   eosc keys -> prints list of private keys
