@@ -48,13 +48,15 @@ RUN cd /tmp && wget https://gmplib.org/download/gmp/gmp-6.1.2.tar.bz2 \
   && make check \
 	&& rm -rf /tmp/gmp-6.1.2 
 
+RUN mkdir -p /opt/eos/bin/data-dir
+
 RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
   && cd eos && mkdir build && cd build \
   && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j2 && make install \
+  && cp -a ../contracts /opt/eos/contracts \
   && rm -rf /tmp/eos*
 
-RUN mkdir -p /opt/eos/bin/data-dir
 COPY config.ini genesis.json /
 COPY entrypoint.sh /sbin
 RUN cd /opt/eos/bin && chmod +x /sbin/entrypoint.sh
