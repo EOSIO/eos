@@ -94,3 +94,10 @@ struct test_db {
    static unsigned int key_i128i128_general();
 };
 
+struct test_crypto {
+   static unsigned int test_sha256();
+   static unsigned int sha256_no_data();
+   static unsigned int asert_sha256_false();
+   static unsigned int asert_sha256_true();
+   static unsigned int asert_no_data();
+};
