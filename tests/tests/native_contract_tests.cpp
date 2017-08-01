@@ -99,9 +99,10 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       auto unpacked = fc::raw::unpack<UInt64>(packed);
       BOOST_CHECK_EQUAL( value, unpacked );
       trx.messages[0].type = "transfer";
+      trx.messages[0].authorization = {{"inita", "active"}};
       trx.messages[0].code = config::EosContractName;
       trx.setMessage(0, "transfer", trans);
-      chain.push_transaction(trx);
+      chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
 
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000 - 100));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("initb"), Asset(100000 + 100));
@@ -118,10 +119,10 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 { try {
       Make_Blockchain(chain)
+      Make_Account(chain, producer);
       chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
 
-      Make_Account(chain, producer);
       Make_Producer(chain, producer, producer_public_key);
 
       while (chain.head_block_num() < 3) {
@@ -237,10 +238,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
    try {
       Make_Blockchain(chain)
-      chain.produce_blocks();
-
       Make_Account(chain, joe);
       Make_Account(chain, bob);
+      chain.produce_blocks();
+
       Make_Producer(chain, joe);
       Approve_Producer(chain, bob, joe, true);
       // Produce blocks up to, but not including, the last block in the round
@@ -274,10 +275,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
    try {
       Make_Blockchain(chain)
-      chain.produce_blocks();
-
       Make_Account(chain, joe);
       Make_Account(chain, bob);
+      chain.produce_blocks();
+
       Make_Producer(chain, joe);
       Approve_Producer(chain, bob, joe, true);
       chain.produce_blocks();
@@ -332,11 +333,11 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
 
       auto run = [this](std::vector<Action> actions) {
          Make_Blockchain(chain)
-         chain.produce_blocks();
-
          Make_Account(chain, stakeholder);
          Make_Account(chain, proxy);
          Make_Account(chain, producer);
+         chain.produce_blocks();
+
          Make_Producer(chain, producer);
 
          for (auto& action : actions)

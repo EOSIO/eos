@@ -10,7 +10,9 @@
 namespace eos { namespace chain {
 
 void apply_context::require_authorization(const types::AccountName& account) {
-#warning TODO
+   auto itr = boost::find_if(msg.authorization, [&account](const auto& auth) { return auth.account == account; });
+   EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
+              "Transaction is missing required authorization from ${acct}", ("acct", account));
 }
 
 void apply_context::require_scope(const types::AccountName& account)const {

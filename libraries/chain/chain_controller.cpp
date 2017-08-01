@@ -504,7 +504,6 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
                        ("auth", declaredAuthority));
          }
       }
-   ilog("Auth check passed");
 }
 
 ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
