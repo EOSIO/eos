@@ -5,13 +5,15 @@ namespace eos { namespace types {
 
 using std::map;
 using std::string;
+using std::function;
+using std::pair;
 
 /**
  *  Describes the binary representation message and table contents so that it can
  *  be converted to and from JSON.
  */
 struct AbiSerializer {
-   AbiSerializer(){}
+   AbiSerializer(){ configureTypes(); }
    AbiSerializer( const Abi& abi );
    void setAbi( const Abi& abi );
 
@@ -19,6 +21,12 @@ struct AbiSerializer {
    map<TypeName, Struct>   structs;
    map<Name,TypeName>      actions;
    map<Name,TypeName>      tables;
+
+   typedef std::function<fc::variant(fc::datastream<const char*>&)>  pack_function;
+   typedef std::function<void(const fc::variant&, fc::datastream<char*>&)>  unpack_function;
+   
+   map<TypeName, pair<pack_function, unpack_function>> native_types;
+   void configureTypes();
 
    void validate()const;
 

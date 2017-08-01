@@ -4,8 +4,187 @@
 
 namespace eos { namespace types {
 
+   template <typename T>
+   inline fc::variant variantFromStream(fc::datastream<const char*>& stream) {
+      T temp;
+      fc::raw::unpack( stream, temp );
+      return fc::variant(temp);
+   }
+
    AbiSerializer::AbiSerializer( const Abi& abi ) {
+      configureTypes();
       setAbi(abi);
+   }
+
+   void AbiSerializer::configureTypes() {
+
+      native_types.emplace("UInt8", std::make_pair( []( auto& stream ) -> auto  {
+            return variantFromStream<uint8_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<uint8_t>() );
+         }
+      ));
+
+      native_types.emplace("UInt16", std::make_pair( []( auto& stream ) -> auto  { 
+            return variantFromStream<uint16_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<uint16_t>() );
+         }
+      ));
+
+      native_types.emplace("UInt32", std::make_pair( []( auto& stream ) -> auto  { 
+            return variantFromStream<uint32_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<uint32_t>() );
+         }
+      ));
+
+      native_types.emplace("UInt64", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<uint64_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<uint64_t>() );
+         }
+      ));
+
+      native_types.emplace("UInt128", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<UInt128>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<UInt128>() );
+         }
+      ));
+
+      native_types.emplace("UInt256", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<UInt256>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<UInt256>() );
+         }
+      ));
+
+      native_types.emplace("Int8", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<int8_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<int8_t>() );
+         }
+      ));
+
+      native_types.emplace("Int16", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<int16_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<int16_t>() );
+         }
+      ));
+
+      native_types.emplace("Int32", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<int32_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<int32_t>() );
+         }
+      ));
+
+      native_types.emplace("Int64", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<int64_t>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<int64_t>() );
+         }
+      ));
+
+      // native_types.emplace("Int128", std::make_pair(
+      //    []( auto& stream ) -> auto  {
+      //       return variantFromStream<__int128>(stream);
+      //    },
+      //    []( const fc::variant& var, fc::datastream<char*>& ds ){
+      //       fc::raw::pack( ds, var.as<__int128>() );
+      //    }
+      // ));
+
+      // native_types.emplace("Int256", std::make_pair(
+      //    []( auto& stream ) -> auto  {
+      //       return variantFromStream<Int256>(stream);
+      //    },
+      //    []( const fc::variant& var, fc::datastream<char*>& ds ){
+      //       fc::raw::pack( ds, var.as<Int256>() );
+      //    }
+      // ));
+
+      native_types.emplace("Name", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<Name>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<Name>() );
+         }
+      ));
+
+      native_types.emplace("Time", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<Time>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<Time>() );
+         }
+      ));
+
+      // native_types.emplace("String", std::make_pair(
+      //    []( auto& stream ) -> auto  {
+      //       return variantFromStream<String>(stream);
+      //    },
+      //    []( const fc::variant& var, fc::datastream<char*>& ds ){
+      //       fc::raw::pack( ds, var.as<String>() );
+      //    }
+      // ));
+
+      native_types.emplace("Checksum", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<Checksum>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<Checksum>() );
+         }
+      ));
+
+      native_types.emplace("Signature", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<Signature>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<Signature>() );
+         }
+      ));
+
+      native_types.emplace("FixedString32", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<FixedString32>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<FixedString32>() );
+         }
+      ));
+
+      native_types.emplace("FixedString16", std::make_pair(
+         []( auto& stream ) -> auto  {
+            return variantFromStream<FixedString16>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds ){
+            fc::raw::pack( ds, var.as<FixedString16>() );
+         }
+      ));
    }
 
    void AbiSerializer::setAbi( const Abi& abi ) {
@@ -37,16 +216,14 @@ namespace eos { namespace types {
    }
 
    bool AbiSerializer::isType( const TypeName& type )const {
-      static const std::set<TypeName> native = {"Name", "UInt8", "UInt32", "UInt64", "UInt128", "Time", "String"};
-      if( native.find(type) != native.end() ) return true;
+      if( native_types.find(type) != native_types.end() ) return true;
       if( typedefs.find(type) != typedefs.end() ) return isType( typedefs.find(type)->second );
       if( structs.find(type) != structs.end() ) return true;
       return false;
    }
 
    const Struct& AbiSerializer::getStruct( const TypeName& type )const {
-      if( typedefs.find(type) != typedefs.end() ) return getStruct( typedefs.find(type)->second );
-      auto itr = structs.find(type);
+      auto itr = structs.find( resolveType(type) );
       FC_ASSERT( itr != structs.end(), "Unknown struct ${type}", ("type",type) );
       return itr->second;
    }
@@ -82,7 +259,6 @@ namespace eos { namespace types {
       const auto& st = getStruct( type );
       if( st.base != TypeName() ) {
          binaryToVariant( resolveType(st.base), stream, obj );
-         return;
       }
       for( const auto& field : st.fields ) {
          obj( field.name, binaryToVariant( resolveType(field.type), stream ) );
@@ -92,41 +268,11 @@ namespace eos { namespace types {
    fc::variant AbiSerializer::binaryToVariant(const TypeName& type, fc::datastream<const char*>& stream )const
    {
       TypeName rtype = resolveType( type );
-      if( rtype == "Name" ) {
-        Name temp;
-        fc::raw::unpack( stream, temp );
-        return fc::variant(temp);
+      auto native_type = native_types.find(rtype);
+      if( native_type != native_types.end() ) {
+         return native_type->second.first(stream);
       }
-      else if( rtype == "UInt8" ) {
-        unsigned char temp;
-        fc::raw::unpack( stream, temp );
-        return fc::variant(temp);
-      }
-      else if( rtype == "UInt32" ) {
-        uint32_t temp;
-        fc::raw::unpack( stream, temp );
-        return fc::variant(temp);
-      }
-      else if( rtype == "UInt64" ) {
-        uint64_t temp;
-        fc::raw::unpack( stream, temp );
-        return fc::variant(temp);
-      }
-      else if( rtype == "UInt128" ) {
-        UInt128 temp;
-        fc::raw::unpack( stream, temp );
-        return fc::variant(temp);
-      }
-      else if( rtype == "Time" ) {
-        Time temp;
-        fc::raw::unpack( stream, temp );
-        return fc::variant(temp);
-      }
-      else if( rtype == "String" ) {
-        String temp;
-        fc::raw::unpack( stream, temp );
-        return fc::variant(temp);
-      }
+      
       fc::mutable_variant_object mvo;
       binaryToVariant( rtype, stream, mvo );
       return fc::variant( std::move(mvo) );
@@ -141,33 +287,9 @@ namespace eos { namespace types {
    {
       auto rtype = resolveType(type);
 
-      if( rtype == "Name" ) {
-         fc::raw::pack( ds, var.as<Name>() );
-         return;
-      }
-      else if( rtype == "UInt8" ) {
-         fc::raw::pack( ds, var.as<unsigned char>() );
-         return;
-      }
-      else if( rtype == "UInt32" ) {
-         fc::raw::pack( ds, var.as<uint32_t>() );
-         return;
-      }
-      else if( rtype == "UInt64" ) {
-         fc::raw::pack( ds, var.as<uint64_t>() );
-         return;
-      }
-      else if( rtype == "UInt128" ) {
-         fc::raw::pack( ds, var.as<UInt128>() );
-         return;
-      }
-      else if( rtype == "Time" ) {
-         fc::raw::pack( ds, var.as<uint32_t>() );
-         return;
-      }
-      else if( rtype == "String" ) {
-         fc::raw::pack( ds, var.as<String>() );
-         return;
+      auto native_type = native_types.find(rtype);
+      if( native_type != native_types.end() ) {
+         native_type->second.second(var, ds);
       } else {
          const auto& st = getStruct( rtype );
          const auto& vo = var.get_object();
