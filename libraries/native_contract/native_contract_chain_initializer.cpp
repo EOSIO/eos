@@ -85,6 +85,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    };
    for (const auto& acct : genesis.initial_accounts) {
       chain::Message message(config::EosContractName,
+                             vector<types::AccountPermission>{{config::EosContractName, "active"}},
                              "newaccount", types::newaccount(config::EosContractName, acct.name,
                                                              KeyAuthority(acct.owner_key),
                                                              KeyAuthority(acct.active_key),
@@ -92,7 +93,8 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
                                                              acct.staking_balance));
       messages_to_process.emplace_back(std::move(message));
       if (acct.liquid_balance > 0) {
-         message = chain::Message(config::EosContractName, 
+         message = chain::Message(config::EosContractName,
+                                  vector<types::AccountPermission>{{config::EosContractName, "active"}},
                                   "transfer", types::transfer(config::EosContractName, acct.name,
                                                               acct.liquid_balance.amount/*, "Genesis Allocation"*/));
          messages_to_process.emplace_back(std::move(message));
@@ -101,7 +103,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
 
    // Create initial producers
    auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
-      return chain::Message(config::EosContractName, 
+      return chain::Message(config::EosContractName, vector<types::AccountPermission>{{p.owner_name, "active"}},
                             "setproducer", types::setproducer(p.owner_name, p.block_signing_key, config));
    });
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));

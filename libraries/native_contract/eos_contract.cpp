@@ -212,8 +212,7 @@ void apply_eos_setcode(apply_context& context) {
       a.set_abi( msg.abi );
    });
 
-   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account,
-                               context.authChecker);
+   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account );
    wasm_interface::get().init( init_context );
 }
 

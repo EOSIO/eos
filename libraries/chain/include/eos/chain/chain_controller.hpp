@@ -275,8 +275,7 @@ namespace eos { namespace chain {
          void validate_authority(const SignedTransaction& trx )const;
          /// @}
 
-         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message,
-                              TransactionAuthorizationChecker* authChecker, MessageOutput& output);
+         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message, MessageOutput& output);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }

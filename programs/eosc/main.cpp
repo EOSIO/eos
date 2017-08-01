@@ -108,8 +108,8 @@ void create_account( const vector<string>& args ) {
 
       SignedTransaction trx;
       trx.scope = sort_names({creator,eosaccnt}); 
-      trx.authorizations = vector<types::AccountPermission>{{creator,"active"}};
-      trx.emplaceMessage(config::EosContractName, 
+      trx.emplaceMessage(config::EosContractName,
+                         vector<types::AccountPermission>{{creator, "active"}},
                          "newaccount", types::newaccount{creator, newaccount, owner_auth, 
                                                          active_auth, recovery_auth, deposit}); 
 
@@ -159,10 +159,10 @@ int main( int argc, char** argv ) {
 
       SignedTransaction trx;
       trx.messages.resize(1);
-      trx.authorizations = fc::json::from_string( args[6] ).as<vector<types::AccountPermission>>();
       auto& msg = trx.messages.back();
       msg.code = code;
       msg.type = action;
+      msg.authorization = fc::json::from_string( args[6] ).as<vector<types::AccountPermission>>();
       msg.data = result.get_object()["binargs"].as<Bytes>();
       trx.scope = fc::json::from_string( args[5] ).as<vector<Name>>();
 
@@ -202,8 +202,8 @@ int main( int argc, char** argv ) {
 
       SignedTransaction trx;
       trx.scope = { config::EosContractName, account };
-      trx.authorizations = vector<types::AccountPermission>{{account,"active"}};
       trx.emplaceMessage( config::EosContractName,
+                          vector<types::AccountPermission>{ {account,"active"} },
                           "setcode", handler );
 
       std::cout << fc::json::to_pretty_string( push_transaction(trx)  );
@@ -217,8 +217,9 @@ int main( int argc, char** argv ) {
 
       SignedTransaction trx;
       trx.scope = sort_names({sender,recipient}); 
-      trx.authorizations = vector<types::AccountPermission>{{sender,"active"}};
-      trx.emplaceMessage(config::EosContractName,  "transfer", types::transfer{sender, recipient, amount});
+      trx.emplaceMessage(config::EosContractName, 
+                         vector<types::AccountPermission>{ {sender,"active"} }, 
+                         "transfer", types::transfer{sender, recipient, amount/*, memo*/}); 
       auto info = get_info();
       trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100; 
       trx.set_reference_block(info.head_block_id);

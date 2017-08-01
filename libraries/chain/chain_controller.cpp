@@ -567,9 +567,8 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
  *  The order of execution of precondition and apply can impact the validity of the
  *  entire message.
  */
-void chain_controller::process_message( const ProcessedTransaction& trx, AccountName code, const Message& message,
-                                        TransactionAuthorizationChecker* authChecker, MessageOutput& output) {
-   apply_context apply_ctx(*this, _db, trx, message, code, authChecker);
+void chain_controller::process_message( const ProcessedTransaction& trx, AccountName code, const Message& message, MessageOutput& output) {
+   apply_context apply_ctx(*this, _db, trx, message, code);
    apply_message(apply_ctx);
 
    output.notify.reserve( apply_ctx.notified.size() );
@@ -578,7 +577,7 @@ void chain_controller::process_message( const ProcessedTransaction& trx, Account
       try {
          auto notify_code = apply_ctx.notified[i];
          output.notify.push_back( {notify_code} );
-         process_message( trx, notify_code, message, authChecker, output.notify.back().output );
+         process_message( trx, notify_code, message, output.notify.back().output );
       } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
 
@@ -637,43 +636,12 @@ ProcessedTransaction chain_controller::_apply_transaction(const SignedTransactio
  */
 ProcessedTransaction chain_controller::process_transaction( const SignedTransaction& trx ) 
 { try {
-   // This lambda takes an AccountPermission, and returns its parent. It caches the permission_object it last returned,
-   // which allows it to simplify the database lookups when it is next used to fetch that object's parent.
-   auto getParentPermission =
-         [&index = _db.get_index<permission_index>().indices(), cache = static_cast<const permission_object*>(nullptr)]
-         (const types::AccountPermission& child) mutable -> fc::optional<types::AccountPermission> {
-      // Ensure cache points to permission_object corresponding to child
-      if (!(cache && cache->owner == child.account && cache->name == child.permission)) {
-         auto& ownerIndex = index.get<by_owner>();
-         auto itr = ownerIndex.find(boost::make_tuple(child.account, child.permission));
-         FC_ASSERT(itr != ownerIndex.end(), "Unable to find permission_object for AccountPermission '${perm}'",
-                   ("perm", child));
-         cache = &*itr;
-      }
-
-      // Make cache point to the parent of child and return result
-      if (cache) {
-         if (cache->parent._id == 0) {
-            cache = nullptr;
-            return {};
-         } else {
-            cache = &*index.get<by_id>().find(cache->parent);
-            return types::AccountPermission(cache->owner, cache->name);
-         }
-      }
-      return {};
-   };
-
    ProcessedTransaction ptrx( trx );
-   TransactionAuthorizationChecker authChecker(trx.authorizations, getParentPermission);
    ptrx.output.resize( trx.messages.size() );
 
    for( uint32_t i = 0; i < ptrx.messages.size(); ++i ) {
-      process_message(ptrx, ptrx.messages[i].code, ptrx.messages[i], &authChecker, ptrx.output[i] );
+      process_message(ptrx, ptrx.messages[i].code, ptrx.messages[i], ptrx.output[i] );
    }
-
-   EOS_ASSERT(authChecker.allPermissionsUsed(), tx_irrelevant_auth,
-              "Transaction declared an authorization it did not need");
 
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
@@ -830,11 +798,11 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
          auto messages = starter.prepare_database(*this, _db);
          std::for_each(messages.begin(), messages.end(), [&](const Message& m) { 
             MessageOutput output;
-            ProcessedTransaction trx; /// dummy transaction required for scope validation
+            ProcessedTransaction trx; /// dummy tranaction required for scope validation
             trx.scope = { config::EosContractName, "inita" };
             std::sort(trx.scope.begin(), trx.scope.end() );
             with_skip_flags( skip_scope_check, [&](){
-               process_message(trx,m.code,m,nullptr,output);
+               process_message(trx,m.code,m,output); 
             } );
          });
       });
@@ -1103,7 +1071,6 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
    GET_FIELD( vo, expiration, result );
    GET_FIELD( vo, scope, result );
    GET_FIELD( vo, signatures, result );
-   GET_FIELD( vo, authorizations, result );
 
    if( vo.contains( "messages" ) ) {
       const vector<variant>& msgs = vo["messages"].get_array();
@@ -1112,6 +1079,7 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
          const auto& vo = msgs[i].get_object();
          GET_FIELD( vo, code, result.messages[i] );
          GET_FIELD( vo, type, result.messages[i] );
+         GET_FIELD( vo, authorization, result.messages[i] );
 
          if( vo.contains( "data" ) ) {
             const auto& data = vo["data"];
@@ -1172,7 +1140,6 @@ fc::variant  chain_controller::transaction_to_variant( const ProcessedTransactio
     SET_FIELD( trx_mvo, trx, expiration );
     SET_FIELD( trx_mvo, trx, scope );
     SET_FIELD( trx_mvo, trx, signatures );
-    SET_FIELD( trx_mvo, trx, authorizations );
 
     vector<fc::mutable_variant_object> msgs( trx.messages.size() );
     vector<fc::variant> msgsv(msgs.size());
@@ -1182,6 +1149,7 @@ fc::variant  chain_controller::transaction_to_variant( const ProcessedTransactio
        auto& msg     = trx.messages[i];
        SET_FIELD( msg_mvo, msg, code );
        SET_FIELD( msg_mvo, msg, type );
+       SET_FIELD( msg_mvo, msg, authorization );
 
        const auto& code_account = _db.get<account_object,by_name>( msg.code );
        if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi

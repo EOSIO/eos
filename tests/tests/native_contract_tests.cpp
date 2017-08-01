@@ -91,9 +91,8 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.set_reference_block(chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
       trx.scope = sort_names( {"inita", "initb"} );
-      trx.authorizations = {{"inita", "active"}};
 
-      types::transfer trans = {"inita", "initb", (100)};
+      types::transfer trans = { "inita", "initb", (100) };
 
       UInt64 value(5);
       auto packed = fc::raw::pack(value);

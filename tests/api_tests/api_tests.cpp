@@ -99,10 +99,9 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
       }
 } FC_LOG_AND_RETHROW( ) }
 
-uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<types::AccountPermission>& auths, const vector<char>& data, const vector<AccountName>& scope = {N(test_api)}) {
+uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<char>& data, const vector<AccountName>& scope = {N(test_api)}) {
    static int expiration = 1;
    eos::chain::SignedTransaction trx;
-   trx.authorizations = auths;
    trx.scope = scope;
    
    //msg.data.clear();
@@ -149,8 +148,8 @@ uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) ); 
 } 
 
-#define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, Message{"test_api", TYPE}, AUTH, DATA)
-#define CALL_TEST_FUNCTION_SCOPE(TYPE, AUTH, DATA, SCOPE) CallFunction(chain, Message{"test_api", TYPE}, AUTH, DATA, SCOPE)
+#define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, Message{"test_api", AUTH, TYPE}, DATA)
+#define CALL_TEST_FUNCTION_SCOPE(TYPE, AUTH, DATA, SCOPE) CallFunction(chain, Message{"test_api", AUTH, TYPE}, DATA, SCOPE)
 
 bool is_access_violation(fc::unhandled_exception const & e) {
    try {
@@ -230,23 +229,23 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_to_0"), {}, raw_bytes) == WASM_TEST_PASS, "test_message::read_message_to_0()" );
 
       raw_bytes.resize((1<<16)+1);
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_to_0"), {}, raw_bytes),
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_to_0"), {}, raw_bytes), 
          fc::unhandled_exception, is_access_violation );
 
       raw_bytes.resize(1);
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_to_64k"), {}, raw_bytes) == WASM_TEST_PASS, "test_message::read_message_to_64k()" );
 
       raw_bytes.resize(2);
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_to_64k"), {}, raw_bytes),
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_to_64k"), {}, raw_bytes), 
          fc::unhandled_exception, is_access_violation );
       
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_notice"), {}, raw_bytes) == WASM_TEST_PASS, "test_message::require_notice()" );
 
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), {}, {}),
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), {}, {}), 
          tx_missing_auth, is_tx_missing_auth );
       
       auto a3only = vector<types::AccountPermission>{{"acc3","active"}};
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), a3only, {}),
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), a3only, {}), 
          tx_missing_auth, is_tx_missing_auth );
 
       auto a4only = vector<types::AccountPermission>{{"acc4","active"}};

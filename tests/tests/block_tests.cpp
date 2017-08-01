@@ -145,8 +145,9 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
 
    eos::chain::ProcessedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.authorizations = vector<types::AccountPermission>{{from,"active"}};
-   trx.emplaceMessage("eos", "transfer", types::transfer{from, to, amount});
+   trx.emplaceMessage("eos", 
+                      vector<types::AccountPermission>{ {from,"active"} },
+                      "transfer", types::transfer{from, to, amount/*, ""*/});
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
 
@@ -155,11 +156,13 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
    auto from_var = chain.transaction_from_variant( var );
    auto _process  = fc::raw::pack( from_var );
 
+   /*
    idump((trx));
    idump((var));
    idump((from_var));
    idump((original));
    idump((_process));
+   */
    FC_ASSERT( original == _process, "Transaction seralization not reversible" );
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
