@@ -28,18 +28,36 @@ endif()
 
 macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
 
-  # add_definitions( -DDebug )
-  # get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
-  
   set(outfiles "")
   foreach(srcfile ${SOURCE_FILES})
     
     get_filename_component(outfile ${srcfile} NAME)
     get_filename_component(infile ${srcfile} ABSOLUTE)
 
+    # -ffreestanding
+    #   Assert that compilation targets a freestanding environment.
+    #   This implies -fno-builtin. A freestanding environment is one in which the standard library may not exist, and program startup may not necessarily be at main.
+    #   The most obvious example is an OS kernel.
+
+    # -nostdlib
+    #   Do not use the standard system startup files or libraries when linking.
+    #   No startup files and only the libraries you specify are passed to the linker, and options specifying linkage of the system libraries, such as -static-libgcc or -shared-libgcc, are ignored.
+    #   The compiler may generate calls to memcmp, memset, memcpy and memmove.
+    #   These entries are usually resolved by entries in libc. These entry points should be supplied through some other mechanism when this option is specified.
+
+    # -fno-threadsafe-statics
+    #   Do not emit the extra code to use the routines specified in the C++ ABI for thread-safe initialization of local statics.
+    #   You can use this option to reduce code size slightly in code that doesn’t need to be thread-safe.
+
+    # -fno-rtti
+    #   Disable generation of information about every class with virtual functions for use by the C++ run-time type identification features (dynamic_cast and typeid).
+
+    # -fno-exceptions
+    #   Disable the generation of extra code needed to propagate exceptions
+
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
-      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -fno-builtin -ffreestanding -nostdlib -I ${INCLUDE_FOLDERS} -fno-threadsafe-statics -fno-rtti -fno-exceptions -c ${infile} -o ${outfile}.bc
+      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS} -c ${infile} -o ${outfile}.bc
       IMPLICIT_DEPENDS CXX ${infile}
       COMMENT "Building LLVM bitcode ${outfile}.bc"
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
