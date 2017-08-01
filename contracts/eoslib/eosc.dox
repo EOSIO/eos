@@ -33,20 +33,28 @@
 
 In order to create an account you will need two new keys: owener and active. You can ask eosc to create some keys for you:
 
+This will be your owner key,
 ```
 ./eosc create key
 public: EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq
 private: 5JKbLfCXgcafDQVwHMm3shHt6iRWgrr9adcmt6vX3FNjAEtJGaT
 ```
 
+And this will be your active key,
+```
+./eosc create key
+public: EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+private: 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
+```
+
 @note eosc does not save the generated private key.  
 
 Next we will create the account `tester`, but because all accounts need to be created by an existing account we will ask the `inita` account
-to create `tester`.  `inita` was specified in the genesis file.
+to create `tester` using the owner and active keys created above.  `inita` was specified in the genesis file.
 
 
 ```
-./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS6KdkmwhPyc2wxN9SAFwo2PU2h74nWs7urN1uRduAwkcns2uXsa
+./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 {
   "transaction_id": "6acd2ece68c4b86c1fa209c3989235063384020781f2c67bbb80bc8d540ca120",
   "processed": {
@@ -204,7 +212,7 @@ In this section we will use `eosc` to create and publish a currency contract. Yo
 The first step is to create an account for currency. We will have the `tester` account create the `currency` account.
 
 ```
-./eosc create account tester currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS6KdkmwhPyc2wxN9SAFwo2PU2h74nWs7urN1uRduAwkcns2uXsa
+./eosc create account tester currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 ```
 
 The next step is to publish the contract (.wast) and its abi (.abi)
