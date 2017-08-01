@@ -16,6 +16,7 @@ unsigned int test_types::types_size() {
    WASM_ASSERT( sizeof(TokenName) ==  8, "TokenName size !=  8");
    WASM_ASSERT( sizeof(TableName) ==  8, "TableName size !=  8");
    WASM_ASSERT( sizeof(Time) ==  4, "Time size !=  4");
+   WASM_ASSERT( sizeof(uint256) == 32, "uint256 != 32" );
 
    return WASM_TEST_PASS;
 }

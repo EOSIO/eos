@@ -41,13 +41,13 @@ unsigned int test_message::read_message_to_64k() {
    return WASM_TEST_PASS;
 }
 
-unsigned int test_message::require_notice(unsigned long long code, unsigned long long action) {
-   if( code == N(test_api) ) {
+unsigned int test_message::require_notice() {
+   if( currentCode() == N(test_api) ) {
       eos::requireNotice( N(acc1) );
       eos::requireNotice( N(acc2) );
       eos::requireNotice( N(acc1), N(acc2) );
       return WASM_TEST_FAIL;
-   } else if ( code == N(acc1) || code == N(acc2) ) {
+   } else if ( currentCode() == N(acc1) || currentCode() == N(acc2) ) {
       return WASM_TEST_PASS;
    }
    return WASM_TEST_FAIL;
