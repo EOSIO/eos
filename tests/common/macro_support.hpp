@@ -68,10 +68,10 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
       trx.scope = sort_names({#sender,#recipient}); \
       trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{ {#sender,"active"} }, \
-                         "transfer", types::transfer{#sender, #recipient, Amount.amount/*, memo*/}); \
+                         "transfer", types::transfer{#sender, #recipient, Amount.amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx); \
+      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
       BOOST_TEST_CHECKPOINT("Transfered " << Amount << " from " << #sender << " to " << #recipient); \
    }
 #define XFER4(chain, sender, recipient, amount) XFER5(chain, sender, recipient, amount, "")
@@ -147,7 +147,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define UPPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( {#owner, "eos"} ); \
+      trx.scope = sort_names( {owner, "eos"} ); \
       trx.emplaceMessage(config::EosContractName,  \
                          vector<types::AccountPermission>{}, \
                          "setproducer", types::setproducer{owner, key, cfg}); \

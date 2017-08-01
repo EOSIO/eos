@@ -199,11 +199,10 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
       Make_Blockchain(chain);
+      Make_Account(chain, newguy);
       chain.produce_blocks(10);
 
-      Make_Account(chain, newguy);
       Transfer_Asset(chain, inita, newguy, Asset(100));
-
       Transfer_Asset(chain, newguy, inita, Asset(1));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
@@ -213,7 +212,7 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK(chain.fetch_block_by_number(11).valid());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.empty());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.front().empty());
-      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 3);
+      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
 } FC_LOG_AND_RETHROW() }

@@ -116,7 +116,7 @@ namespace eos { namespace chain {
       /**
        * Removes all messages, signatures, and authorizations
        */
-      void clear() { messages.clear(); signatures.clear(); authorizations.clear(); }
+      void clear() { messages.clear(); signatures.clear(); }
 
       digest_type merkle_digest()const;
    };

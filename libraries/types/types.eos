@@ -29,7 +29,6 @@ struct Transaction
 
 struct SignedTransaction inherits Transaction
    signatures     Signature[]
-   authorizations AccountPermission[] # The authorizations this transaction bears signatures to satisfy
 
 struct KeyPermissionWeight
    key    PublicKey

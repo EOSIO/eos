@@ -289,7 +289,8 @@ protected:
  */
 #define Make_Key(name) auto name ## _private_key = private_key_type::regenerate(fc::digest(#name "_private_key")); \
    store_private_key(name ## _private_key); \
-   PublicKey name ## _public_key = name ## _private_key.get_public_key();
+   PublicKey name ## _public_key = name ## _private_key.get_public_key(); \
+   BOOST_TEST_CHECKPOINT("Created key " #name "_public_key");
 
 /**
  * @brief Key_Authority is a shorthand way to create an inline Authority based on a key

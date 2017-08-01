@@ -24,6 +24,7 @@
 #pragma once
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/account_object.hpp>
+#include <eos/chain/permission_object.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
 
@@ -93,7 +94,7 @@ namespace eos { namespace chain {
             skip_merkle_check           = 1 << 7,  ///< used while reindexing
             skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_producer_schedule_check= 1 << 10,  ///< used while reindexing
+            skip_producer_schedule_check= 1 << 10, ///< used while reindexing
             skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
             skip_scope_check            = 1 << 12  ///< used to skip checks for proper scope
          };
@@ -254,6 +255,7 @@ namespace eos { namespace chain {
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
          void _apply_block(const signed_block& next_block);
 
+         void check_transaction_authorization(const SignedTransaction& trx)const;
 
          ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
          ProcessedTransaction _apply_transaction(const SignedTransaction& trx);
@@ -262,7 +264,7 @@ namespace eos { namespace chain {
          void require_account(const AccountName& name) const;
 
          /**
-          * This method validates transactions without adding it to the pending state.
+          * This method performs some consistency checks on a transaction.
           * @return true if the transaction would validate
           */
          void validate_transaction(const SignedTransaction& trx)const;
@@ -272,8 +274,19 @@ namespace eos { namespace chain {
          void validate_referenced_accounts(const SignedTransaction& trx)const;
          void validate_expiration(const SignedTransaction& trx) const;
          void validate_scope(const SignedTransaction& trx) const;
-         void validate_authority(const SignedTransaction& trx )const;
          /// @}
+
+         /**
+          * @brief Find the lowest authority level required for @ref authorizer_account to authorize a message of the
+          * specified type
+          * @param authorizer_account The account authorizing the message
+          * @param code_account The account which publishes the contract that handles the message
+          * @param type The type of message
+          * @return
+          */
+         const permission_object& lookup_minimum_permission(types::AccountName authorizer_account,
+                                                            types::AccountName code_account,
+                                                            types::FuncName type) const;
 
          void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message, MessageOutput& output);
          void apply_message(apply_context& c);
