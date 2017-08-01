@@ -21,7 +21,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_message, read_message);
       WASM_TEST_HANDLER(test_message, read_message_to_0);
       WASM_TEST_HANDLER(test_message, read_message_to_64k);
-      WASM_TEST_HANDLER_EX(test_message, require_notice);
+      WASM_TEST_HANDLER(test_message, require_notice);
       WASM_TEST_HANDLER(test_message, require_auth);
       WASM_TEST_HANDLER(test_message, assert_false);
       WASM_TEST_HANDLER(test_message, assert_true);
@@ -47,6 +47,13 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64_remove_scope);
       WASM_TEST_HANDLER(test_db, key_i64_not_found);
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
+
+      //test crypto
+      WASM_TEST_HANDLER(test_crypto, test_sha256);
+      WASM_TEST_HANDLER(test_crypto, sha256_no_data);
+      WASM_TEST_HANDLER(test_crypto, asert_sha256_false);
+      WASM_TEST_HANDLER(test_crypto, asert_sha256_true);
+      WASM_TEST_HANDLER(test_crypto, asert_no_data);
 
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
