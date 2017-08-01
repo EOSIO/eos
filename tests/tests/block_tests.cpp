@@ -170,6 +170,28 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
    }
 }
 
+BOOST_FIXTURE_TEST_CASE(irrelevant_auth, testing_fixture) {
+   try {
+   Make_Blockchain(chain)
+   Make_Account(chain, joe);
+   chain.produce_blocks();
+
+   ProcessedTransaction trx;
+   trx.scope = sort_names({"joe", "inita"});
+   trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{"inita", "active"}},
+                      "transfer", types::transfer{"inita", "joe", 50});
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+   chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
+
+   chain.clear_pending();
+   chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
+   chain.clear_pending();
+
+   trx.messages.front().authorization.emplace_back(types::AccountPermission{"initb", "active"});
+   BOOST_CHECK_THROW(chain.push_transaction(trx, chain_controller::skip_transaction_signatures), tx_irrelevant_auth);
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(name_test) {
    using eos::types::Name;
    Name temp;

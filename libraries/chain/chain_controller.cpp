@@ -604,6 +604,11 @@ void chain_controller::process_message( const ProcessedTransaction& trx, Account
    apply_context apply_ctx(*this, _db, trx, message, code);
    apply_message(apply_ctx);
 
+   // process_message recurses for each notified account, but we only want to run this check at the top level
+   if (code == message.code && (_skip_flags & skip_authority_check) == false)
+      EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
+                 "Message declared an authority it did not need", ("message", message));
+
    output.notify.reserve( apply_ctx.notified.size() );
 
    for( uint32_t i = 0; i < apply_ctx.notified.size(); ++i ) {
@@ -832,11 +837,10 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
          std::for_each(messages.begin(), messages.end(), [&](const Message& m) { 
             MessageOutput output;
             ProcessedTransaction trx; /// dummy tranaction required for scope validation
-            trx.scope = { config::EosContractName, "inita" };
             std::sort(trx.scope.begin(), trx.scope.end() );
-            with_skip_flags( skip_scope_check, [&](){
+            with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check, [&](){
                process_message(trx,m.code,m,output); 
-            } );
+            });
          });
       });
    }
