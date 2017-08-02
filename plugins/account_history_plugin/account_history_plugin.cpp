@@ -55,7 +55,7 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
    auto itr = by_trx_idx.find( transaction_id );
    if( itr != by_trx_idx.end() )
    {
-      auto block = chain_plug->chain().fetch_block_by_id_backwards(itr->block_id);
+      auto block = chain_plug->chain().fetch_block_by_id(itr->block_id);
       if (block.valid())
       {
          for (const auto& cycle : block->cycles)
