@@ -116,17 +116,17 @@ struct setproxy
    proxy          AccountName # The account to cast votes with stakeholder's stake weight
 
 
-struct UpdatePermission
+struct updateauth
    account     AccountName
    permission  PermissionName
    parent      PermissionName
    authority   Authority
 
-struct DeletePermission
+struct deleteauth
    account AccountName
    permission PermissionName
 
-struct linkauth
+struct linkauth # Specify a particular required permission for account to approve specified message type
    account     AccountName # The account to require permissions for
    code        AccountName # The contract to require permissions to invoke
    type        FuncName

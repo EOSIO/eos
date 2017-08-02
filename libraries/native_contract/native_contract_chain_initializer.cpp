@@ -48,6 +48,8 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_APP_HANDLER( eos, eos, setproducer );
    SET_APP_HANDLER( eos, eos, setproxy );
    SET_APP_HANDLER( eos, eos, setcode );
+   SET_APP_HANDLER( eos, eos, updateauth );
+   SET_APP_HANDLER( eos, eos, deleteauth );
    SET_APP_HANDLER( eos, eos, linkauth );
    SET_APP_HANDLER( eos, eos, unlinkauth );
 }

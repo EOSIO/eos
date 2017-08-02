@@ -361,9 +361,71 @@ void apply_eos_setproxy(apply_context& context) {
    */
 }
 
+void apply_eos_updateauth(apply_context& context) {
+   auto update = context.msg.as<types::updateauth>();
+   EOS_ASSERT(!update.permission.empty(), message_validate_exception, "Cannot create authority with empty name");
+   EOS_ASSERT(validate(update.authority), message_validate_exception,
+              "Invalid authority: ${auth}", ("auth", update.authority));
+   if (update.permission == "active")
+      EOS_ASSERT(update.parent == "owner", message_validate_exception, "Cannot change active authority's parent");
+   if (update.permission == "owner")
+      EOS_ASSERT(update.parent.empty(), message_validate_exception, "Cannot change owner authority's parent");
+
+   auto& db = context.mutable_db;
+   context.require_authorization(update.account);
+
+   db.get<account_object, by_name>(update.account);
+   auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
+   for (auto accountPermission : update.authority.accounts) {
+      db.get<account_object, by_name>(accountPermission.permission.account);
+      db.get<permission_object, by_owner>(boost::make_tuple(accountPermission.permission.account,
+                                                            accountPermission.permission.permission));
+   }
+
+   const auto& permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+   if (permission) {
+      db.modify(*permission, [&update, parent = parent.id](permission_object& po) {
+         po.auth = update.authority;
+         po.parent = parent;
+      });
+   } else {
+      db.create<permission_object>([&update, parent = parent.id](permission_object& po) {
+         po.name = update.permission;
+         po.owner = update.account;
+         po.auth = update.authority;
+         po.parent = parent;
+      });
+   }
+}
+
+void apply_eos_deleteauth(apply_context& context) {
+   auto remove = context.msg.as<types::deleteauth>();
+   EOS_ASSERT(remove.permission != "active", message_validate_exception, "Cannot delete active authority");
+   EOS_ASSERT(remove.permission != "owner", message_validate_exception, "Cannot delete owner authority");
+
+   auto& db = context.mutable_db;
+   context.require_authorization(remove.account);
+   const auto& permission = db.get<permission_object, by_owner>(boost::make_tuple(remove.account, remove.permission));
+
+   { // Check for children
+      const auto& index = db.get_index<permission_index, by_parent>();
+      auto range = index.equal_range(permission.id);
+      EOS_ASSERT(range.first == range.second, message_precondition_exception,
+                 "Cannot delete an authority which has children. Delete the children first");
+   }
+
+   { // Check for links to this permission
+      const auto& index = db.get_index<permission_link_index, by_permission_name>();
+      auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
+      EOS_ASSERT(range.first == range.second, message_precondition_exception,
+                 "Cannot delete a linked authority. Unlink the authority first");
+   }
+
+   db.remove(permission);
+}
+
 void apply_eos_linkauth(apply_context& context) {
    auto requirement = context.msg.as<types::linkauth>();
-
    EOS_ASSERT(!requirement.requirement.empty(), message_validate_exception, "Required permission cannot be empty");
 
    context.require_authorization(requirement.account);
