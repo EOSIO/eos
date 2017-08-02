@@ -141,7 +141,15 @@ int main( int argc, char** argv ) {
    for( uint32_t i = 0; i < argc; ++i ) {
       args[i] = string(argv[i]);
    }
-   const auto& command = args[1];
+   string command = "help";
+
+   if( args.size() > 1 ) {
+      command = args[1];
+   }                                                                                                                               
+   if( command == "help" ) {
+      std::cout << "Command list: info, block, exec, account, push-trx, setcode, transfer, create, import, unlock, lock, and do\n";
+      return -1;                                                                                                                   
+   }                                                                                                                               
    if( command == "info" ) {
       std::cout << fc::json::to_pretty_string( get_info() );
    }
