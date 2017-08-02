@@ -1,5 +1,7 @@
 # Eos
 
+[![Build Status](https://travis-ci.org/EOSIO/eos.svg?branch=master)](https://travis-ci.org/EOSIO/eos)
+
 Welcome to the EOS.IO source code repository!
 
 ## Getting Started
@@ -101,6 +103,17 @@ Start docker
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
 docker-compose -f docker-compose.yml up
+```
+
+Run example contracts
+
+```
+cd /data/store/eos/contracts/exchange
+docker exec docker_eos_1 eosc setcode exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
+
+cd /data/store/eos/contracts/currency 
+docker exec docker_eos_1 eosc setcode currency contracts/currency/currency.wast contracts/currency/currency.abi
+
 ```
 
 Done
