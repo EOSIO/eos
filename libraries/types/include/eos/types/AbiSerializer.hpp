@@ -13,7 +13,7 @@ using std::pair;
  *  be converted to and from JSON.
  */
 struct AbiSerializer {
-   AbiSerializer(){ configureTypes(); }
+   AbiSerializer(){ configureBuiltInTypes(); }
    AbiSerializer( const Abi& abi );
    void setAbi( const Abi& abi );
 
@@ -22,17 +22,20 @@ struct AbiSerializer {
    map<Name,TypeName>      actions;
    map<Name,TypeName>      tables;
 
-   typedef std::function<fc::variant(fc::datastream<const char*>&)>  pack_function;
-   typedef std::function<void(const fc::variant&, fc::datastream<char*>&)>  unpack_function;
+   typedef std::function<fc::variant(fc::datastream<const char*>&, bool)>  unpack_function;
+   typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool)>  pack_function;
    
-   map<TypeName, pair<pack_function, unpack_function>> native_types;
-   void configureTypes();
+   map<TypeName, pair<unpack_function, pack_function>> built_in_types;
+   void configureBuiltInTypes();
 
    void validate()const;
 
    TypeName resolveType( const TypeName& t )const;
+   bool isArray( const TypeName& type )const;
    bool isType( const TypeName& type )const;
    bool isStruct( const TypeName& type )const;
+
+   TypeName arrayType( const TypeName& type )const;
 
    const Struct& getStruct( const TypeName& type )const;
 
