@@ -12,6 +12,7 @@ addons:
       - clang-4.0
       - g++-6
       - ninja-build
+      - libgmp-dev
 before_install:
   - mkdir ext && cd ext
   - wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2 && tar xjf boost_1_64_0.tar.bz2
@@ -25,4 +26,3 @@ script:
   - WASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config ext/cmake-3.9.0-Linux-x86_64/bin/cmake -G Ninja -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext
   - ninja -j4
   - tests/chain_test
-  - tests/slow_test
