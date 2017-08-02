@@ -81,20 +81,25 @@ AuthorityChecker<F> MakeAuthorityChecker(F&& pta, const flat_set<public_key_type
 }
 
 /**
- *  Makes sure all keys are unique and sorted and all account permissions are unique and sorted
+ * Makes sure all keys are unique and sorted and all account permissions are unique and sorted and that authority can
+ * be satisfied
  */
 inline bool validate( types::Authority& auth ) {
    const types::KeyPermissionWeight* prev = nullptr;
+   decltype(auth.threshold) totalWeight = 0;
+
    for( const auto& k : auth.keys ) {
       if( !prev ) prev = &k;
       else if( prev->key < k.key ) return false;
+      totalWeight += k.weight;
    }
    const types::AccountPermissionWeight* pa = nullptr;
    for( const auto& a : auth.accounts ) {
       if( !pa ) pa = &a;
       else if( pa->permission < a.permission ) return false;
+      totalWeight += a.weight;
    }
-   return true;
+   return totalWeight >= auth.threshold;
 }
 
 } } // namespace eos::chain
