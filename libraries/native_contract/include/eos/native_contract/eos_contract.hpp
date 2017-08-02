@@ -19,6 +19,7 @@ void apply_eos_setproducer(chain::apply_context&);
 void apply_eos_setproxy(chain::apply_context&);
 void apply_eos_setcode(chain::apply_context&);
 void apply_eos_linkauth(chain::apply_context&);
+void apply_eos_unlinkauth(chain::apply_context&);
 
 } // namespace eos
 } // namespace native

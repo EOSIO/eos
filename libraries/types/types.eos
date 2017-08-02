@@ -131,3 +131,8 @@ struct linkauth
    code        AccountName # The contract to require permissions to invoke
    type        FuncName
    requirement PermissionName # The permission name to require
+
+struct unlinkauth
+   account     AccountName # The account to require permissions for
+   code        AccountName # The contract to require permissions to invoke
+   type        FuncName

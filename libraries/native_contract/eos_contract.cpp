@@ -378,7 +378,7 @@ void apply_eos_linkauth(apply_context& context) {
    
    if (link) {
       EOS_ASSERT(link->required_permission != requirement.requirement, message_precondition_exception,
-                 "Attempting to update required authority, but new requirement is same as old.");
+                 "Attempting to update required authority, but new requirement is same as old");
       db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
          link.required_permission = requirement;
       });
@@ -390,6 +390,15 @@ void apply_eos_linkauth(apply_context& context) {
          link.required_permission = requirement.requirement;
       });
    }
+}
+
+void apply_eos_unlinkauth(apply_context& context) {
+   auto& db = context.mutable_db;
+   auto unlink = context.msg.as<types::unlinkauth>();
+   auto linkKey = boost::make_tuple(unlink.account, unlink.code, unlink.type);
+   auto link = db.find<permission_link_object, by_message_type>(linkKey);
+   EOS_ASSERT(link != nullptr, message_precondition_exception, "Attempting to unlink authority, but no link found");
+   db.remove(*link);
 }
 
 } // namespace eos
