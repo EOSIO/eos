@@ -264,6 +264,9 @@ int main( int argc, char** argv ) {
 
    } else if( command == "do" ) {
 
+   } else if( command == "transaction" ) {
+      FC_ASSERT( args.size() == 3 );
+      std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/account_history/get_transaction", fc::mutable_variant_object( "transaction_id", args[2]) ) );
    }
    } catch ( const fc::exception& e ) {
       std::cerr << e.to_detail_string() <<"\n";
