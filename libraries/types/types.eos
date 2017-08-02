@@ -127,7 +127,7 @@ struct DeletePermission
    permission PermissionName
 
 struct requirepermission
-   account     AccountName
-   code        AccountName
-   type        FuncName
-   requirement PermissionName
+   account     AccountName # The account to require permissions for
+   code        AccountName # The contract to require permissions to invoke
+   type        FuncName # The message type to require permissions to invoke (if empty, all message types for contract)
+   requirement PermissionName # The permission name to require

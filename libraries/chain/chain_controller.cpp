@@ -31,6 +31,7 @@
 #include <eos/chain/action_objects.hpp>
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
+#include <eos/chain/permission_link_object.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
 
@@ -533,9 +534,20 @@ const permission_object& chain_controller::lookup_minimum_permission(types::Acco
                                                                     types::AccountName code_account,
                                                                     types::FuncName type) const {
    try {
-#warning TODO: Define messages/contracts/index for users to specify which authority levels correspond to which message types
-      // ... and look up the real minimum permission
-      return _db.get<permission_object, by_owner>(boost::make_tuple(authorizer_account, "active"));
+      // First look up a specific link for this message type
+      auto key = boost::make_tuple(authorizer_account, code_account, type);
+      auto link = _db.find<permission_link_object, by_message_type>(key);
+      // If no specific link found, check for a contract-wide default
+      if (link == nullptr) {
+         get<2>(key) = "";
+         link = _db.find<permission_link_object, by_message_type>(key);
+      }
+
+      // If no specific or default link found, use active permission
+      auto permissionKey = boost::make_tuple<AccountName, PermissionName>(authorizer_account, "active");
+      if (link != nullptr)
+         get<1>(permissionKey) = link->required_permission;
+      return _db.get<permission_object, by_owner>(permissionKey);
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(code_account)(type))
 }
 
@@ -799,6 +811,7 @@ uint32_t chain_controller::last_irreversible_block_num() const {
 void chain_controller::initialize_indexes() {
    _db.add_index<account_index>();
    _db.add_index<permission_index>();
+   _db.add_index<permission_link_index>();
    _db.add_index<action_permission_index>();
    _db.add_index<key_value_index>();
    _db.add_index<key128x128_value_index>();

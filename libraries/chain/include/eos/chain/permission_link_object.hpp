@@ -38,14 +38,26 @@ namespace eos { namespace chain {
     * permission_link_object for his account with "currency" as the code account, "transfer" as the message_type, and
     * "money" as the required_permission. After this, in order to validate, any message to "currency" of type
     * "transfer" that requires joe's approval would require signatures sufficient to satisfy joe's "money" authority.
+    *
+    * Accounts may set links to individual message types, or may set default permission requirements for all messages
+    * to a given contract. To set the default for all messages to a given contract, set @ref message_type to the empty
+    * string. When looking up which permission to use, if a link is found for a particular {account, code,
+    * message_type} triplet, then the required_permission from that link is used. If no such link is found, but a link
+    * is found for {account, code, ""}, then the required_permission from that link is used. If no such link is found,
+    * account's active authority is used.
     */
    class permission_link_object : public chainbase::object<permission_link_object_type, permission_link_object> {
       OBJECT_CTOR(permission_link_object)
 
       id_type        id;
+      /// The account which is defining its permission requirements
       AccountName    account;
+      /// The contract which account requires @ref required_permission to invoke
       AccountName    code;
+      /// The message type which account requires @ref required_permission to invoke
+      /// May be empty; if so, it sets a default @ref required_permission for all messages to @ref code
       FuncName       message_type;
+      /// The permission level which @ref account requires for the specified message types
       PermissionName required_permission;
    };
 
