@@ -129,5 +129,5 @@ struct DeletePermission
 struct linkauth
    account     AccountName # The account to require permissions for
    code        AccountName # The contract to require permissions to invoke
-   type        FuncName # The message type to require permissions to invoke (if empty, all message types for contract)
-   requirement PermissionName # The permission name to require (if empty, use default permission requirement)
+   type        FuncName
+   requirement PermissionName # The permission name to require

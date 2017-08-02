@@ -1,12 +1,13 @@
 #include <eos/native_contract/eos_contract.hpp>
-#include <eos/native_contract/balance_object.hpp>
 
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/message.hpp>
-#include <eos/chain/account_object.hpp>
 #include <eos/chain/exceptions.hpp>
 
+#include <eos/chain/account_object.hpp>
+#include <eos/native_contract/balance_object.hpp>
 #include <eos/chain/permission_object.hpp>
+#include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/global_property_object.hpp>
 #include <eos/native_contract/staked_balance_objects.hpp>
 #include <eos/native_contract/producer_objects.hpp>
@@ -360,8 +361,36 @@ void apply_eos_setproxy(apply_context& context) {
    */
 }
 
+void apply_eos_linkauth(apply_context& context) {
+   auto requirement = context.msg.as<types::linkauth>();
 
-///@}
+   EOS_ASSERT(!requirement.requirement.empty(), message_validate_exception, "Required permission cannot be empty");
+
+   context.require_authorization(requirement.account);
+   
+   auto& db = context.mutable_db;
+   db.get<account_object, by_name>(requirement.account);
+   db.get<account_object, by_name>(requirement.code);
+   db.get<permission_object, by_name>(requirement.requirement);
+   
+   auto linkKey = boost::make_tuple(requirement.account, requirement.code, requirement.type);
+   auto link = db.find<permission_link_object, by_message_type>(linkKey);
+   
+   if (link) {
+      EOS_ASSERT(link->required_permission != requirement.requirement, message_precondition_exception,
+                 "Attempting to update required authority, but new requirement is same as old.");
+      db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
+         link.required_permission = requirement;
+      });
+   } else {
+      db.create<permission_link_object>([&requirement](permission_link_object& link) {
+         link.account = requirement.account;
+         link.code = requirement.code;
+         link.message_type = requirement.type;
+         link.required_permission = requirement.requirement;
+      });
+   }
+}
 
 } // namespace eos
 } // namespace native
