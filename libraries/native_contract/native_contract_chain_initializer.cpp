@@ -48,6 +48,7 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_APP_HANDLER( eos, eos, setproducer );
    SET_APP_HANDLER( eos, eos, setproxy );
    SET_APP_HANDLER( eos, eos, setcode );
+   SET_APP_HANDLER( eos, eos, linkauth );
 }
 
 std::vector<chain::Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
