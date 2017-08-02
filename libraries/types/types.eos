@@ -125,3 +125,9 @@ struct UpdatePermission
 struct DeletePermission
    account AccountName
    permission PermissionName
+
+struct requirepermission
+   account     AccountName
+   code        AccountName
+   type        FuncName
+   requirement PermissionName

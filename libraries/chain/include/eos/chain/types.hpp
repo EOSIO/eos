@@ -118,6 +118,7 @@ namespace eos { namespace chain {
    using eos::types::Transaction;
    using eos::types::PermissionName;
    using eos::types::TypeName;
+   using eos::types::FuncName;
    using eos::types::Time;
    using eos::types::Field;
    using eos::types::String;
@@ -161,6 +162,7 @@ namespace eos { namespace chain {
       null_object_type,
       account_object_type,
       permission_object_type,
+      permission_link_object_type,
       action_code_object_type,
       key_value_object_type,
       key128x128_value_object_type,
@@ -206,6 +208,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (null_object_type)
                 (account_object_type)
                 (permission_object_type)
+                (permission_link_object_type)
                 (action_code_object_type)
                 (key_value_object_type)
                 (key128x128_value_object_type)
