@@ -392,6 +392,8 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
 
    Make_Key(k1);
    Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key));
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "spending", Key_Authority(k1_public_key)),
+                     message_validate_exception);
    Set_Authority(chain, alice, "spending", "owner", Key_Authority(k1_public_key));
    Delete_Authority(chain, alice, "spending");
 } FC_LOG_AND_RETHROW() }

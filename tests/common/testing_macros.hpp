@@ -171,7 +171,7 @@
 #define Make_Account(...) BOOST_PP_OVERLOAD(MKACCT, __VA_ARGS__)(__VA_ARGS__)
 
 /**
- * @brief Shorthand way to create or update a named authority on an account
+ * @brief Shorthand way to create or update named authority on an account
  *
  * @code{.cpp}
  * // Add a new authority named "money" to account "alice" as a child of her active authority
@@ -181,7 +181,12 @@
  */
 #define Set_Authority(...) BOOST_PP_OVERLOAD(SETAUTH, __VA_ARGS__)(__VA_ARGS__)
 /**
- * @brief Shorthand way to delete a named authority from an account
+ * @brief Shorthand way to delete named authority from an account
+ *
+ * @code{.cpp}
+ * // Delete authority named "money" from account "alice"
+ * Delete_Authority(chain, alice, "money");
+ * @endcode
  */
 #define Delete_Authority(...) BOOST_PP_OVERLOAD(DELAUTH, __VA_ARGS__)(__VA_ARGS__)
 

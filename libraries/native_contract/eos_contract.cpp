@@ -364,6 +364,8 @@ void apply_eos_setproxy(apply_context& context) {
 void apply_eos_updateauth(apply_context& context) {
    auto update = context.msg.as<types::updateauth>();
    EOS_ASSERT(!update.permission.empty(), message_validate_exception, "Cannot create authority with empty name");
+   EOS_ASSERT(update.permission != update.parent, message_validate_exception,
+              "Cannot set an authority as its own parent");
    EOS_ASSERT(validate(update.authority), message_validate_exception,
               "Invalid authority: ${auth}", ("auth", update.authority));
    if (update.permission == "active")

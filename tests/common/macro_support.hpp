@@ -80,7 +80,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
       trx.scope = {#account}; \
       trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
-                         "updateauth", types::updateauth{#account, #authname, parentname, auth}); \
+                         "updateauth", types::updateauth{#account, authname, parentname, auth}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
@@ -93,7 +93,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
       trx.scope = {#account}; \
       trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
-                         "deleteauth", types::deleteauth{#account, #authname}); \
+                         "deleteauth", types::deleteauth{#account, authname}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
       chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
