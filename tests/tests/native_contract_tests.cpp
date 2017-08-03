@@ -384,4 +384,16 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
    } FC_LOG_AND_RETHROW()
 }
 
+BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
+   try {
+   Make_Blockchain(chain)
+   Make_Account(chain, alice);
+   chain.produce_blocks();
+
+   Make_Key(k1);
+   Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key));
+   Set_Authority(chain, alice, "spending", "owner", Key_Authority(k1_public_key));
+   Delete_Authority(chain, alice, "spending");
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

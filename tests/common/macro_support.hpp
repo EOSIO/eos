@@ -74,6 +74,32 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define MKACCT7(chain, name, creator, deposit, owner, active, recovery) \
    MKACCT_IMPL(chain, name, creator, owner, active, recovery, deposit)
 
+#define SETAUTH5(chain, account, authname, parentname, auth) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.scope = {#account}; \
+      trx.emplaceMessage(config::EosContractName, \
+                         vector<types::AccountPermission>{{#account,"active"}}, \
+                         "updateauth", types::updateauth{#account, #authname, parentname, auth}); \
+      trx.expiration = chain.head_block_time() + 100; \
+      trx.set_reference_block(chain.head_block_id()); \
+      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      BOOST_TEST_CHECKPOINT("Set " << #account << "'s " << authname << " authority."); \
+   }
+
+#define DELAUTH3(chain, account, authname) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.scope = {#account}; \
+      trx.emplaceMessage(config::EosContractName, \
+                         vector<types::AccountPermission>{{#account,"active"}}, \
+                         "deleteauth", types::deleteauth{#account, #authname}); \
+      trx.expiration = chain.head_block_time() + 100; \
+      trx.set_reference_block(chain.head_block_id()); \
+      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      BOOST_TEST_CHECKPOINT("Deleted " << #account << "'s " << authname << " authority."); \
+   }
+
 #define XFER5(chain, sender, recipient, Amount, memo) \
    { \
       eos::chain::SignedTransaction trx; \
