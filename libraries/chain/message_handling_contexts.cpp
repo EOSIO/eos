@@ -9,11 +9,11 @@
 
 namespace eos { namespace chain {
 
-void message_validate_context::require_authorization(const types::AccountName& account) {
+void apply_context::require_authorization(const types::AccountName& account) {
 #warning TODO
 }
 
-void message_validate_context::require_scope(const types::AccountName& account)const {
+void apply_context::require_scope(const types::AccountName& account)const {
    auto itr = boost::find_if(trx.scope, [&account](const auto& scope) {
       return scope == account;
    });
@@ -24,23 +24,20 @@ void message_validate_context::require_scope(const types::AccountName& account)c
    }
 }
 
-bool apply_context::has_recipient( const types::AccountName& account )const {
-   if( msg.code == account ) return true;
+void apply_context::require_recipient(const types::AccountName& account) {
+   if (account == msg.code)
+      return;
 
    auto itr = boost::find_if(notified, [&account](const auto& recipient) {
       return recipient == account;
    });
 
-   return itr != notified.end();
-}
-
-void apply_context::require_recipient(const types::AccountName& account) {
-   if( !has_recipient( account ) ) {
+   if( itr == notified.end() ) {
       notified.push_back(account);
    }
 }
 
-int32_t message_validate_context::load_i64( Name scope, Name code, Name table, Name key, char* value, uint32_t valuelen ) {
+int32_t apply_context::load_i64( Name scope, Name code, Name table, Name key, char* value, uint32_t valuelen ) {
    require_scope( scope );
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
@@ -56,7 +53,7 @@ int32_t message_validate_context::load_i64( Name scope, Name code, Name table, N
    return copylen;
 }
 
-int32_t message_validate_context::back_primary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::back_primary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
    return -1;
@@ -89,7 +86,7 @@ int32_t message_validate_context::back_primary_i128i128( Name scope, Name code, 
     */
 }
 
-int32_t message_validate_context::back_secondary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::back_secondary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
     require_scope( scope );
@@ -120,7 +117,7 @@ int32_t message_validate_context::back_secondary_i128i128( Name scope, Name code
 }
 
 
-int32_t message_validate_context::front_primary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::front_primary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
     require_scope( scope );
@@ -149,7 +146,7 @@ int32_t message_validate_context::front_primary_i128i128( Name scope, Name code,
     }
     return copylen;
 }
-int32_t message_validate_context::front_secondary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::front_secondary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
     require_scope( scope );
@@ -183,7 +180,7 @@ int32_t message_validate_context::front_secondary_i128i128( Name scope, Name cod
 }
 
 
-int32_t message_validate_context::load_primary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::load_primary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
     require_scope( scope );
@@ -208,7 +205,7 @@ int32_t message_validate_context::load_primary_i128i128( Name scope, Name code, 
     return copylen;
 }
 
-int32_t message_validate_context::load_secondary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::load_secondary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
     require_scope( scope );
@@ -233,7 +230,7 @@ int32_t message_validate_context::load_secondary_i128i128( Name scope, Name code
     return copylen;
 }
 
-int32_t message_validate_context::lowerbound_primary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::lowerbound_primary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
    require_scope( scope );
@@ -258,7 +255,7 @@ int32_t message_validate_context::lowerbound_primary_i128i128( Name scope, Name 
    return copylen;
 }
 
-int32_t message_validate_context::lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
                                  uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
    require_scope( scope );
