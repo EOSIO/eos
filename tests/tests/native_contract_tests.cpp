@@ -390,12 +390,26 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
    Make_Account(chain, alice);
    chain.produce_blocks();
 
+   BOOST_CHECK_THROW(Delete_Authority(chain, alice, "active"), message_validate_exception);
+   BOOST_CHECK_THROW(Delete_Authority(chain, alice, "owner"), message_validate_exception);
+
    Make_Key(k1);
    Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key));
    BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "spending", Key_Authority(k1_public_key)),
                      message_validate_exception);
-   Set_Authority(chain, alice, "spending", "owner", Key_Authority(k1_public_key));
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "owner", Key_Authority(k1_public_key)),
+                     message_precondition_exception);
    Delete_Authority(chain, alice, "spending");
+
+   chain.produce_blocks();
+
+   Set_Authority(chain, alice, "trading", "active", Key_Authority(k1_public_key));
+   Set_Authority(chain, alice, "spending", "trading", Key_Authority(k1_public_key));
+   BOOST_CHECK_THROW(Delete_Authority(chain, alice, "trading"), message_precondition_exception);
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "trading", "spending", Key_Authority(k1_public_key)),
+                     message_precondition_exception);
+   Delete_Authority(chain, alice, "spending");
+   Delete_Authority(chain, alice, "trading");
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

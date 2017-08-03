@@ -377,15 +377,17 @@ void apply_eos_updateauth(apply_context& context) {
    context.require_authorization(update.account);
 
    db.get<account_object, by_name>(update.account);
-   auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
    for (auto accountPermission : update.authority.accounts) {
       db.get<account_object, by_name>(accountPermission.permission.account);
       db.get<permission_object, by_owner>(boost::make_tuple(accountPermission.permission.account,
                                                             accountPermission.permission.permission));
    }
 
-   const auto& permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+   auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+   auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
    if (permission) {
+      EOS_ASSERT(parent.id == permission->parent, message_precondition_exception,
+                 "Changing parent authority is not currently supported");
       db.modify(*permission, [&update, parent = parent.id](permission_object& po) {
          po.auth = update.authority;
          po.parent = parent;

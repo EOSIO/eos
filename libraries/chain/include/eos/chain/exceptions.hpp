@@ -52,6 +52,7 @@ namespace eos { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_scope,                  eos::chain::transaction_exception, 3030008, "missing required scope" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_recipient,              eos::chain::transaction_exception, 3030009, "missing required recipient" )
    FC_DECLARE_DERIVED_EXCEPTION( checktime_exceeded,                eos::chain::transaction_exception, 3030010, "allotted processing time was exceeded" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                      eos::chain::transaction_exception, 3030011, "duplicate transaction" )
 
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eos::chain::utility_exception, 3060001, "invalid pts address" )
    FC_DECLARE_DERIVED_EXCEPTION( insufficient_feeds,                eos::chain::chain_exception, 37006, "insufficient feeds" )
