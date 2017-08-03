@@ -1,3 +1,7 @@
+#pragma once
+
+#include <fc/crypto/digest.hpp>
+
 /**
  * @file Contains support macros for the testcase helper macros. These macros are implementation details, and thus
  * should not be used directly. Use their frontends instead.
@@ -29,6 +33,14 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    names.erase( itr, names.end() );
    return names;
 }
+
+#define Complex_Authority_macro_Key(r, data, key_bubble) \
+   data.keys.emplace_back(BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(2, 0, key_bubble), _public_key), \
+                          BOOST_PP_TUPLE_ELEM(2, 1, key_bubble));
+#define Complex_Authority_macro_Account(r, data, account_bubble) \
+   data.accounts.emplace_back(types::AccountPermission{BOOST_PP_TUPLE_ELEM(3, 0, account_bubble), \
+                                                       BOOST_PP_TUPLE_ELEM(3, 1, account_bubble)}, \
+                              BOOST_PP_TUPLE_ELEM(3, 2, account_bubble));
 
 #define MKACCT_IMPL(chain, name, creator, active, owner, recovery, deposit) \
    { \
