@@ -139,27 +139,27 @@ DEFINE_INTRINSIC_FUNCTION3(env,remove_i128i128,remove_i128i128,i32,i64,scope,i64
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,load_primary_i128i128,load_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return load_i128i128_object(scope, code, table, valueptr, valuelen, &message_validate_context::load_primary_i128i128);
+   return load_i128i128_object(scope, code, table, valueptr, valuelen, &apply_context::load_primary_i128i128);
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,load_secondary_i128i128,load_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return load_i128i128_object(scope, code, table, valueptr, valuelen, &message_validate_context::load_secondary_i128i128);
+   return load_i128i128_object(scope, code, table, valueptr, valuelen, &apply_context::load_secondary_i128i128);
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,back_primary_i128i128,back_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return load_i128i128_object(scope, code, table, valueptr, valuelen, &message_validate_context::back_primary_i128i128);
+   return load_i128i128_object(scope, code, table, valueptr, valuelen, &apply_context::back_primary_i128i128);
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,front_primary_i128i128,front_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return load_i128i128_object(scope, code, table, valueptr, valuelen, &message_validate_context::front_primary_i128i128);
+   return load_i128i128_object(scope, code, table, valueptr, valuelen, &apply_context::front_primary_i128i128);
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,back_secondary_i128i128,back_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return load_i128i128_object(scope, code, table, valueptr, valuelen, &message_validate_context::back_secondary_i128i128);
+   return load_i128i128_object(scope, code, table, valueptr, valuelen, &apply_context::back_secondary_i128i128);
 }
 
 DEFINE_INTRINSIC_FUNCTION5(env,front_secondary_i128i128,front_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return load_i128i128_object(scope, code, table, valueptr, valuelen, &message_validate_context::front_secondary_i128i128);
+   return load_i128i128_object(scope, code, table, valueptr, valuelen, &apply_context::front_secondary_i128i128);
 }
 
 DEFINE_INTRINSIC_FUNCTION0(env,currentCode,currentCode,i64) {
@@ -458,7 +458,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       }
    } FC_CAPTURE_AND_RETHROW() }
 
-   void wasm_interface::validate( message_validate_context& c ) {
+   void wasm_interface::validate( apply_context& c ) {
       /*
       current_validate_context       = &c;
       current_precondition_context   = nullptr;
@@ -468,7 +468,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       vm_validate();
       */
    }
-   void wasm_interface::precondition( precondition_validate_context& c ) {
+   void wasm_interface::precondition( apply_context& c ) {
    try {
 
       /*
