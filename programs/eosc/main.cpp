@@ -10,7 +10,7 @@
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/utilities/key_conversion.hpp>
 #include <boost/range/algorithm/sort.hpp>
-
+#include <boost/algorithm/string/split.hpp>
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>
@@ -26,6 +26,17 @@ using namespace eos;
 using namespace eos::chain;
 using namespace eos::utilities;
 
+string program = "eosc";
+string host = "localhost";
+uint32_t port = 8888;
+
+string func_base = "/v1/chain";
+string push_txn_func = func_base + "/push_transaction";
+string json_to_bin_func = func_base + "/abi_json_to_bin";
+string get_block_func = func_base + "/get_block";
+string get_account_func = func_base + "/get_account";
+
+
 inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    std::sort( names.begin(), names.end() );
    auto itr = std::unique( names.begin(), names.end() );
@@ -34,7 +45,6 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 }
 
 vector<uint8_t> assemble_wast( const std::string& wast ) {
-   //   std::cout << "\n" << wast << "\n";
    IR::Module module;
    std::vector<WAST::Error> parseErrors;
    WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
@@ -68,37 +78,42 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
 
 
 
-fc::variant call( const std::string& server, uint16_t port, 
+fc::variant call( const std::string& server, uint16_t port,
                   const std::string& path,
                   const fc::variant& postdata = fc::variant() );
 
 template<typename T>
-fc::variant call( const std::string& server, uint16_t port, 
+fc::variant call( const std::string& server, uint16_t port,
                   const std::string& path,
                   const T& v ) { return call( server, port, path, fc::variant(v) ); }
 
+template<typename T>
+fc::variant call( const std::string& path,
+                  const T& v ) { return call( host, port, path, fc::variant(v) ); }
+
 eos::chain_apis::read_only::get_info_results get_info() {
-  return call( "localhost", 8888, "/v1/chain/get_info" ).as<eos::chain_apis::read_only::get_info_results>();
+  return call(host, port,  "/v1/chain/get_info" ).as<eos::chain_apis::read_only::get_info_results>();
 }
 
 fc::variant push_transaction( SignedTransaction& trx ) {
     auto info = get_info();
-    trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100; 
+    trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
     trx.set_reference_block(info.head_block_id);
     boost::sort( trx.scope );
 
-    return call( "localhost", 8888, "/v1/chain/push_transaction", trx );
+    return call( push_txn_func, trx );
 }
 
 
-void create_account( const vector<string>& args ) {
-      Name creator(args[3]);
-      Name newaccount(args[4]);
+void create_account( const vector<string>& cmd_line ) {
+
+      Name creator(cmd_line[2]);
+      Name newaccount(cmd_line[3]);
       Name eosaccnt(config::EosContractName);
       Name staked("staked");
 
-      public_key_type owner_key(args[5]);
-      public_key_type active_key(args[6]);
+      public_key_type owner_key(cmd_line[4]);
+      public_key_type active_key(cmd_line[5]);
 
       auto owner_auth   = eos::chain::Authority{1, {{owner_key, 1}}, {}};
       auto active_auth  = eos::chain::Authority{1, {{active_key, 1}}, {}};
@@ -107,168 +122,347 @@ void create_account( const vector<string>& args ) {
       uint64_t deposit = 1;
 
       SignedTransaction trx;
-      trx.scope = sort_names({creator,eosaccnt}); 
+      trx.scope = sort_names({creator,eosaccnt});
       trx.authorizations = vector<types::AccountPermission>{{creator,"active"}};
-      trx.emplaceMessage(config::EosContractName, 
-                         "newaccount", types::newaccount{creator, newaccount, owner_auth, 
-                                                         active_auth, recovery_auth, deposit}); 
+      trx.emplaceMessage(config::EosContractName,
+                         "newaccount", types::newaccount{creator, newaccount, owner_auth,
+                                                         active_auth, recovery_auth, deposit});
 
-      std::cout << fc::json::to_pretty_string( push_transaction(trx)  );
+      std::cout << fc::json::to_pretty_string( push_transaction(trx) ) << std::endl;
+
+
+}
+
+static const char escape = '\\';
+static const string quote = "'\"";
+
+bool is_quote (const string &line, size_t pos) {
+  if (pos == 0 || pos == string::npos)
+    return (pos == 0);
+
+  if (line[pos-1] == escape) {
+    return (pos == 1) ? false : line[pos-2] == escape;
+  }
+return true;
 }
 
 
+char tokenize (vector<string> &cmd_line, char tic) {
+  string line;
+  bool in_quote = (tic != '\0');
+  std::getline(std::cin,line);
+  size_t tic_pos = 0;
+  size_t quote_end = 0;
+  if (in_quote) {
+    size_t last = cmd_line.size() - 1;
+    cmd_line[last] += "\n";
+    for (quote_end = line.find (tic);
+         !is_quote (line,quote_end) && quote_end != string::npos;
+         quote_end = line.find (tic, quote_end + 1));
+
+    if (quote_end == string::npos) {
+      cmd_line[last] += line;
+      return tic;
+    }
+
+    in_quote = false;
+    if (quote_end > 0) {
+      cmd_line[last] += line.substr(0, quote_end);
+    }
+    tic_pos = ++quote_end;
+    tic = '\0';
+  }
+  for (; tic_pos < line.length(); tic_pos++) {
+    if (line[tic_pos] == escape) {
+      line.erase(tic_pos,1);
+      continue;
+    }
+    if (quote.find (line[tic_pos]) != string::npos) {
+      tic = line[tic_pos];
+      vector<string> wrap;
+      string sub = line.substr(quote_end,tic_pos-1);
+      split (wrap, sub, boost::is_any_of(" \t"));
+      for (auto &w : wrap) {
+        cmd_line.emplace_back("");
+        cmd_line[cmd_line.size()-1].swap(w);
+      }
+
+      for (quote_end = line.find (tic,tic_pos+1);
+           quote_end != string::npos && !is_quote(line,quote_end);
+           quote_end = line.find(tic,quote_end + 1));
+
+      if (quote_end == string::npos) {
+        in_quote = true;
+        cmd_line.push_back(line.substr (tic_pos+1));
+        break;
+      }
+      if (quote_end == tic_pos+1) {
+        cmd_line.push_back("");
+      }
+      else {
+        size_t len = quote_end - (tic_pos+1);
+        cmd_line.push_back(line.substr (tic_pos+1, len));
+      }
+      tic_pos = quote_end++;
+    }
+  }
+
+  if (in_quote) {
+    return tic;
+  }
+  if (quote_end == 0 && cmd_line.size() == 0) {
+    split (cmd_line, line, boost::is_any_of(" \t"));
+  }
+  else {
+    vector<string> wrap;
+    string sub = line.substr(quote_end,tic_pos-1);
+    split (wrap, sub, boost::is_any_of(" \t"));
+    for (auto &w : wrap) {
+      if (w.length()) {
+        cmd_line.emplace_back("");
+        cmd_line[cmd_line.size()-1].swap(w);
+      }
+    }
+  }
+  return '\0';
+}
 
 
+int send_command (const vector<string> &args);
 
 
 /**
  *   Usage:
  *
- *   eosc create wallet walletname  ***PASS1*** ***PASS2*** 
- *   eosc unlock walletname  ***PASSWORD*** 
+ *   eosc - [optional command] < script
+ *     or *   eocs create wallet walletname  ***PASS1*** ***PASS2***
+ *   eosc unlock walletname  ***PASSWORD***
+ *   eosc create wallet walletname  ***PASS1*** ***PASS2***
+ *   eosc unlock walletname  ***PASSWORD***
  *   eosc wallets -> prints list of wallets with * next to currently unlocked
  *   eosc keys -> prints list of private keys
  *   eosc importkey privatekey -> loads keys
  *   eosc accounts -> prints list of accounts that reference key
  *   eosc lock
  *   eosc do contract action { from to amount }
- *   eosc transfer from to amount memo  => aliaze for eosc 
- *   eosc create account creator 
+ *   eosc transfer from to amount memo  => aliaze for eosc
+ *   eosc create account creator
+ *
+ *  if reading from a script all lines are allE parsed before any are sent
+ *  reading from the console, lines are acted on directly.
  */
+
 int main( int argc, char** argv ) {
-   try {
-   vector<string> args(argc);
-   for( uint32_t i = 0; i < argc; ++i ) {
-      args[i] = string(argv[i]);
-   }
-   string command = "help";
+  program = argv[0];
+  vector<string> cmd;
+  vector<string> options;
+  bool is_cmd=false;
+  bool from_stdin=false;
+  uint32_t cycles=1;
+  vector<vector<string> > script;
 
-   if( args.size() > 1 ) {
-      command = args[1];
-   }                                                                                                                               
-   if( command == "help" ) {
-      std::cout << "Command list: info, block, exec, account, push-trx, setcode, transfer, create, import, unlock, lock, and do\n";
-      return -1;                                                                                                                   
-   }                                                                                                                               
-   if( command == "info" ) {
-      std::cout << fc::json::to_pretty_string( get_info() );
-   }
-   else if( command == "block" ) {
-      FC_ASSERT( args.size() == 3 );
-      std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/get_block", fc::mutable_variant_object( "block_num_or_id", args[2]) ) );
-   }
-   else if( command == "exec" ) {
-      FC_ASSERT( args.size() >= 7 );
-      Name code   = args[2];
-      Name action = args[3];
-      auto& json   = args[4];
-
-      auto result = call( "localhost", 8888, "/v1/chain/abi_json_to_bin", fc::mutable_variant_object( "code", code )("action",action)("args", fc::json::from_string(json)) );
-
-      SignedTransaction trx;
-      trx.messages.resize(1);
-      trx.authorizations = fc::json::from_string( args[6] ).as<vector<types::AccountPermission>>();
-      auto& msg = trx.messages.back();
-      msg.code = code;
-      msg.type = action;
-      msg.data = result.get_object()["binargs"].as<Bytes>();
-      trx.scope = fc::json::from_string( args[5] ).as<vector<Name>>();
-
-      auto trx_result = push_transaction( trx );
-      std::cout << fc::json::to_pretty_string( trx_result ) <<"\n";
-
-   } else if( command == "account" ) {
-      FC_ASSERT( args.size() == 3 );
-      std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/get_account", fc::mutable_variant_object( "name", args[2] ) ) );
-   }
-   else if( command == "push-trx" ) {
-      std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/push_transaction", 
-                                                     fc::json::from_string(args[2])) );
-   } else if ( command == "setcode" ) {
-      if( args.size() == 2 ) {
-         std::cout << "usage: "<<args[0] << " " << args[1] <<" ACCOUNT FILE.WAST FILE.ABI\n";
-         return -1;
+  for( uint32_t i = 1; i < argc; ++i ) {
+    is_cmd |= (*argv[i] != '-');
+    if (!is_cmd) {
+      from_stdin |= (*(argv[i]+1) == '\0');
+      if (!from_stdin) {
+        options.push_back(string(argv[i]));
+        options.push_back(string(argv[++i]));
       }
-      Name account(args[2]);
-      const auto& wast_file = args[3];
-      std::string wast;
+    }
+    else {
+      cmd.push_back(string(argv[i]));
+    }
+  }
 
-      FC_ASSERT( fc::exists(wast_file) );
-      fc::read_file_contents( wast_file, wast );
-      auto wasm = assemble_wast( wast );
-
-
-      
-      types::setcode handler;
-      handler.account = account;
-      handler.code.resize(wasm.size());
-      memcpy( handler.code.data(), wasm.data(), wasm.size() );
-
-      if( args.size() == 5 ) {
-         handler.abi = fc::json::from_file( args[4] ).as<types::Abi>();
+  try {
+    if (cmd.size()) {
+      int res = 0;
+      if ((res = send_command(cmd)) != 0) {
+        return res;
       }
+    }
+  } catch ( const fc::exception& e ) {
+    std::cerr << e.to_detail_string() << std::endl;
+    return 0;
+  }
 
-      SignedTransaction trx;
-      trx.scope = { config::EosContractName, account };
-      trx.authorizations = vector<types::AccountPermission>{{account,"active"}};
-      trx.emplaceMessage( config::EosContractName,
-                          "setcode", handler );
 
-      std::cout << fc::json::to_pretty_string( push_transaction(trx)  );
+  bool console = isatty(0);
 
-   }else if( command == "transfer" ) {
-      FC_ASSERT( args.size() == 5 );
-
-      Name sender(args[2]);
-      Name recipient(args[3]);
-      uint64_t amount = fc::variant(argv[4]).as_uint64();
-
-      SignedTransaction trx;
-      trx.scope = sort_names({sender,recipient}); 
-      trx.authorizations = vector<types::AccountPermission>{{sender,"active"}};
-      trx.emplaceMessage(config::EosContractName,  "transfer", types::transfer{sender, recipient, amount});
-      auto info = get_info();
-      trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100; 
-      trx.set_reference_block(info.head_block_id);
-
-      std::cout << fc::json::to_pretty_string( call( "localhost", 8888, "/v1/chain/push_transaction", trx ) );
-   } else if (command == "create" ) {
-      if( args[2] == "account" ) {
-         if( args.size() < 7 ) {
-            std::cerr << "usage: " << args[0] << " create account CREATOR NEWACCOUNT OWNERKEY ACTIVEKEY\n";
-            return -1;
-         }
-         create_account( args );
-      }
-      else if( args[2] == "key" ) {
-         auto priv = fc::ecc::private_key::generate();
-         auto pub = public_key_type( priv.get_public_key() );
-
-         std::cout << "public: " << string(pub) <<"\n";
-         std::cout << "private: " << key_to_wif(priv.get_secret()) <<"\n";
-      }
-   } else if( command == "import" ) {
-      if( args[2] == "key" ) {
-        auto secret = wif_to_key( args[3] ); //fc::variant( args[3] ).as<fc::ecc::private_key_secret>();
-        if( !secret ) {
-           std::cerr << "invalid WIF private key\n";
-           return -1;
+  if (from_stdin) {
+    char tic = '\0';
+    vector<string> cmd_line;
+    if (console) {
+      std::cout << "press ^d when done" << std::endl;
+    }
+    while (std::cin.good()) {
+      if (tic == '\0') {
+        cmd_line.clear();
+        if (console) {
+          std::cout << "enter command: " << std::flush;
         }
-        auto priv = fc::ecc::private_key::regenerate(*secret);
-        auto pub = public_key_type( priv.get_public_key() );
-        std::cout << "public: " << string(pub) <<"\n";
       }
-   }else if( command == "unlock" ) {
 
-   } else if( command == "lock" ) {
 
-   } else if( command == "do" ) {
+      tic = tokenize(cmd_line, tic);
+      if (tic != '\0') {
+        continue;
+      }
 
-   }
-   } catch ( const fc::exception& e ) {
-      std::cerr << e.to_detail_string() <<"\n";
-   }
-   std::cout << "\n";
+      if (!console) {
+        script.push_back (cmd_line);
+      }
+      else {
+        send_command (cmd_line);
+      }
+    }
+  }
 
-   return 0;
+  try {
+    int res = 0;
+    while (cycles--) {
+      for (auto scmd : script) {
+        if ((res = send_command (scmd)) != 0) {
+          return res;
+        }
+      }
+    }
+  } catch ( const fc::exception& e ) {
+    std::cerr << e.to_detail_string() << std::endl;
+  }
+  return 0;
+}
+
+int send_command (const vector<string> &cmd_line)
+{
+  const auto& command = cmd_line[0];
+  if( command == "help" ) {
+    std::cout << "Command list: info, block, exec, account, push-trx, setcode, transfer, create, import, unlock, lock, and do\n";
+    return -1;
+  }
+
+  else if( command == "info" ) {
+    std::cout << fc::json::to_pretty_string( get_info() ) << std::endl;
+  }
+  else if( command == "block" ) {
+    FC_ASSERT( cmd_line.size() == 2 );
+    auto arg=fc::mutable_variant_object( "block_num_or_id", cmd_line[1]);
+    std::cout << fc::json::to_pretty_string( call (get_block_func, arg)) << std::endl;
+  }
+  else if( command == "exec" ) {
+    FC_ASSERT( cmd_line.size() >= 6 );
+    Name code   = cmd_line[1];
+    Name action = cmd_line[2];
+    auto& json   = cmd_line[3];
+    auto arg= fc::mutable_variant_object( "code", code )("action",action)("cmd_line", fc::json::from_string(json));
+    auto result = call( json_to_bin_func, arg);
+
+
+    SignedTransaction trx;
+    trx.messages.resize(1);
+    trx.authorizations = fc::json::from_string( cmd_line[5] ).as<vector<types::AccountPermission>>();
+    auto& msg = trx.messages.back();
+    msg.code = code;
+    msg.type = action;
+    msg.data = result.get_object()["bincmd_line"].as<Bytes>();
+    trx.scope = fc::json::from_string( cmd_line[4] ).as<vector<Name>>();
+
+    auto trx_result = push_transaction( trx );
+    std::cout << fc::json::to_pretty_string( trx_result ) << std::endl;
+
+  } else if( command == "account" ) {
+    FC_ASSERT( cmd_line.size() == 2 );
+    std::cout << fc::json::to_pretty_string( call( get_account_func,
+                                                   fc::mutable_variant_object( "name", cmd_line[1] ) ) ) << std::endl;
+  }
+  else if( command == "push-trx" ) {
+    auto trx_result = call (push_txn_func, fc::json::from_string( cmd_line[1]));
+    std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+  } else if ( command == "setcode" ) {
+    if( cmd_line.size() == 1 ) {
+      std::cout << "usage: "<< program << " " << command <<" ACCOUNT FILE.WAST FILE.ABI" << std::endl;
+      return -1;
+    }
+    Name account(cmd_line[1]);
+    const auto& wast_file = cmd_line[2];
+    std::string wast;
+
+    FC_ASSERT( fc::exists(wast_file) );
+    fc::read_file_contents( wast_file, wast );
+    auto wasm = assemble_wast( wast );
+
+
+
+    types::setcode handler;
+    handler.account = account;
+    handler.code.resize(wasm.size());
+    memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+    if( cmd_line.size() == 4 ) {
+      handler.abi = fc::json::from_file( cmd_line[3] ).as<types::Abi>();
+    }
+
+    SignedTransaction trx;
+    trx.scope = { config::EosContractName, account };
+    trx.authorizations = vector<types::AccountPermission>{{account,"active"}};
+    trx.emplaceMessage( config::EosContractName,
+                        "setcode", handler );
+
+    std::cout << fc::json::to_pretty_string( push_transaction(trx)  ) << std::endl;
+
+  } else if( command == "transfer" ) {
+    FC_ASSERT( cmd_line.size() == 4 );
+
+    Name sender(cmd_line[1]);
+    Name recipient(cmd_line[2]);
+    uint64_t amount = fc::variant(cmd_line[3]).as_uint64();
+
+    SignedTransaction trx;
+    trx.scope = sort_names({sender,recipient});
+    trx.authorizations = vector<types::AccountPermission>{{sender,"active"}};
+    trx.emplaceMessage(config::EosContractName,  "transfer", types::transfer{sender, recipient, amount});
+    auto info = get_info();
+    trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
+    trx.set_reference_block(info.head_block_id);
+
+    std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
+  }
+  else if (command == "create" ) {
+    if( cmd_line[1] == "account" ) {
+      if( cmd_line.size() < 6 ) {
+        std::cerr << "usage: " << program << " create account CREATOR NEWACCOUNT OWNERKEY ACTIVEKEY\n";
+        return -1;
+      }
+      create_account( cmd_line );
+    }
+    else if( cmd_line[1] == "key" ) {
+      auto priv = fc::ecc::private_key::generate();
+      auto pub = public_key_type( priv.get_public_key() );
+
+      std::cout << "public: " << string(pub) <<"\n";
+      std::cout << "private: " << key_to_wif(priv.get_secret()) << std::endl;
+    }
+    else {
+      std::cerr << "create doesn't recognize object " << cmd_line[1] << std::endl;
+    }
+  } else if( command == "import" ) {
+    if( cmd_line[1] == "key" ) {
+      auto secret = wif_to_key( cmd_line[2] ); //fc::variant( cmd_line[2] ).as<fc::ecc::private_key_secret>();
+      if( !secret ) {
+        std::cerr << "invalid WIF private key" << std::endl;;
+        return -1;
+      }
+      auto priv = fc::ecc::private_key::regenerate(*secret);
+      auto pub = public_key_type( priv.get_public_key() );
+      std::cout << "public: " << string(pub) << std::endl;;
+    }
+  }else if( command == "unlock" ) {
+
+  } else if( command == "lock" ) {
+
+  } else if( command == "do" ) {
+
+  }
+  return 0;
 }
