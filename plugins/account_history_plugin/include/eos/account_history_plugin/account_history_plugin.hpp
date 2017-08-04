@@ -1,13 +1,11 @@
 #pragma once
 #include <appbase/application.hpp>
-#include <eos/chain/chain_controller.hpp>
 
 #include <eos/chain_plugin/chain_plugin.hpp>
 
 namespace fc { class variant; }
 
 namespace eos {
-   using chain::chain_controller;
    using chain::transaction_id_type;
    using std::shared_ptr;
    using namespace appbase;

@@ -1,35 +1,46 @@
 #include <eos/account_history_plugin/account_history_plugin.hpp>
-#include <eos/chain/fork_database.hpp>
-#include <eos/chain/block_log.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/producer_object.hpp>
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/config.hpp>
+#include <eos/chain/exceptions.hpp>
+#include <eos/chain/transaction.hpp>
 #include <eos/chain/types.hpp>
 
+#include <fc/crypto/sha256.hpp>
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
-
-#include <fc/log/logger.hpp>
+#include <eos/chain/multi_index_includes.hpp>
 
 namespace eos {
 
-using namespace eos;
 using chain::block_id_type;
 using chain::ProcessedTransaction;
 using chain::signed_block;
 using boost::multi_index_container;
+using chain::transaction_id_type;
 using namespace boost::multi_index;
 
-struct block_data {
-   block_id_type block_id;
+class transaction_history_object : public chainbase::object<chain::transaction_history_object_type, transaction_history_object> {
+   OBJECT_CTOR(transaction_history_object)
+
+   id_type             id;
+   block_id_type       block_id;
    transaction_id_type transaction_id;
 };
+
+struct by_id;
+struct by_trx_id;
+using transaction_history_multi_index = chainbase::shared_multi_index_container<
+   transaction_history_object,
+   indexed_by<
+      ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_history_object, transaction_history_object::id_type, id)>,
+      hashed_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_history_object, transaction_id_type, transaction_id), std::hash<transaction_id_type>>
+   >
+>;
+
+typedef chainbase::generic_index<transaction_history_multi_index> transaction_history_index;
 
 class account_history_plugin_impl {
 public:
@@ -38,24 +49,28 @@ public:
    chain_plugin* chain_plug;
 private:
 
-   struct trx_id;
-   typedef multi_index_container<
-      block_data,
-      indexed_by<
-         hashed_unique<tag<trx_id>, member<block_data, transaction_id_type, &block_data::transaction_id>, std::hash<transaction_id_type>>
-      >
-   > block_multi_index_type;
-
-   block_multi_index_type _block_index;
+   optional<block_id_type> find_block_id(const transaction_id_type& transaction_id) const;
 };
+
+optional<block_id_type> account_history_plugin_impl::find_block_id(const transaction_id_type& transaction_id) const
+{
+   const auto& db = chain_plug->chain().get_database();
+   optional<block_id_type> block_id;
+   db.with_read_lock( [&]() {
+      const auto& trx_idx = db.get_index<transaction_history_multi_index, by_trx_id>();
+      auto transaction_history = trx_idx.find( transaction_id );
+      if (transaction_history != trx_idx.end())
+         block_id = transaction_history->block_id;
+   } );
+   return block_id;
+}
 
 ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
 {
-   const auto& by_trx_idx = _block_index.get<trx_id>();
-   auto itr = by_trx_idx.find( transaction_id );
-   if( itr != by_trx_idx.end() )
+   auto block_id = find_block_id(transaction_id);
+   if( block_id.valid() )
    {
-      auto block = chain_plug->chain().fetch_block_by_id(itr->block_id);
+      auto block = chain_plug->chain().fetch_block_by_id(*block_id);
       if (block.valid())
       {
          for (const auto& cycle : block->cycles)
@@ -66,7 +81,7 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
       }
 
       // ERROR in indexing logic
-      std::string msg = "transaction_id=" + transaction_id.str() + " indexed with block_id=" + itr->block_id.str() + ", but ";
+      std::string msg = "transaction_id=" + transaction_id.str() + " indexed with block_id=" + block_id->str() + ", but ";
       if (!block)
          msg += "block was not found";
       else
@@ -81,11 +96,16 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
 
 void account_history_plugin_impl::applied_block(const signed_block& block)
 {
-   auto block_id = block.id();
+   const auto block_id = block.id();
+   auto& db = chain_plug->chain().get_mutable_database();
    for (const auto& cycle : block.cycles)
       for (const auto& thread : cycle)
-         for (const auto& trx : thread.user_input)
-            _block_index.insert({block_id, trx.id()});
+         for (const auto& trx : thread.user_input) {
+            db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
+               transaction_history.block_id = block_id;
+               transaction_history.transaction_id = trx.id();
+            });
+         }
 }
 
 
@@ -109,6 +129,9 @@ void account_history_plugin::plugin_initialize(const variables_map& options)
 void account_history_plugin::plugin_startup()
 {
    my->chain_plug = app().find_plugin<chain_plugin>();
+   auto& db = my->chain_plug->chain().get_mutable_database();
+   db.add_index<transaction_history_multi_index>();
+
    my->chain_plug->chain().applied_block.connect ([&impl = my](const signed_block& block) {
       impl->applied_block(block);
    });
@@ -128,3 +151,7 @@ read_only::get_transaction_results read_only::get_transaction(const read_only::g
 
 } // namespace account_history_apis
 } // namespace eos
+
+CHAINBASE_SET_INDEX_TYPE( eos::transaction_history_object, eos::transaction_history_multi_index )
+
+FC_REFLECT( eos::transaction_history_object, (block_id)(transaction_id) )
