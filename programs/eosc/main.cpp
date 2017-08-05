@@ -11,6 +11,7 @@
 #include <eos/utilities/key_conversion.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/algorithm/string/split.hpp>
+
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>
@@ -19,7 +20,6 @@
 #include <Runtime/Runtime.h>
 
 #include <fc/io/fstream.hpp>
-
 
 using namespace std;
 using namespace eos;
@@ -31,6 +31,7 @@ string host = "localhost";
 uint32_t port = 8888;
 
 string func_base = "/v1/chain";
+string get_info_func = func_base + "/get_info";
 string push_txn_func = func_base + "/push_transaction";
 string json_to_bin_func = func_base + "/abi_json_to_bin";
 string get_block_func = func_base + "/get_block";
@@ -92,7 +93,7 @@ fc::variant call( const std::string& path,
                   const T& v ) { return call( host, port, path, fc::variant(v) ); }
 
 eos::chain_apis::read_only::get_info_results get_info() {
-  return call(host, port,  "/v1/chain/get_info" ).as<eos::chain_apis::read_only::get_info_results>();
+  return call(host, port, get_info_func ).as<eos::chain_apis::read_only::get_info_results>();
 }
 
 fc::variant push_transaction( SignedTransaction& trx ) {
@@ -146,8 +147,13 @@ bool is_quote (const string &line, size_t pos) {
 return true;
 }
 
+/**
+ * read in the next line of text and split into whitespace separated
+ * words, allowing for quoted strings which can span multiple lines
+ * if necessary
+ **/
 
-char tokenize (vector<string> &cmd_line, char tic) {
+char read_line_and_split (vector<string> &cmd_line, char tic) {
   string line;
   bool in_quote = (tic != '\0');
   std::getline(std::cin,line);
@@ -228,111 +234,6 @@ char tokenize (vector<string> &cmd_line, char tic) {
 }
 
 
-int send_command (const vector<string> &args);
-
-
-/**
- *   Usage:
- *
- *   eosc - [optional command] < script
- *     or *   eocs create wallet walletname  ***PASS1*** ***PASS2***
- *   eosc unlock walletname  ***PASSWORD***
- *   eosc create wallet walletname  ***PASS1*** ***PASS2***
- *   eosc unlock walletname  ***PASSWORD***
- *   eosc wallets -> prints list of wallets with * next to currently unlocked
- *   eosc keys -> prints list of private keys
- *   eosc importkey privatekey -> loads keys
- *   eosc accounts -> prints list of accounts that reference key
- *   eosc lock
- *   eosc do contract action { from to amount }
- *   eosc transfer from to amount memo  => aliaze for eosc
- *   eosc create account creator
- *
- *  if reading from a script all lines are allE parsed before any are sent
- *  reading from the console, lines are acted on directly.
- */
-
-int main( int argc, char** argv ) {
-  program = argv[0];
-  vector<string> cmd;
-  vector<string> options;
-  bool is_cmd=false;
-  bool from_stdin=false;
-  uint32_t cycles=1;
-  vector<vector<string> > script;
-
-  for( uint32_t i = 1; i < argc; ++i ) {
-    is_cmd |= (*argv[i] != '-');
-    if (!is_cmd) {
-      from_stdin |= (*(argv[i]+1) == '\0');
-      if (!from_stdin) {
-        options.push_back(string(argv[i]));
-        options.push_back(string(argv[++i]));
-      }
-    }
-    else {
-      cmd.push_back(string(argv[i]));
-    }
-  }
-
-  try {
-    if (cmd.size()) {
-      int res = 0;
-      if ((res = send_command(cmd)) != 0) {
-        return res;
-      }
-    }
-  } catch ( const fc::exception& e ) {
-    std::cerr << e.to_detail_string() << std::endl;
-    return 0;
-  }
-
-
-  bool console = isatty(0);
-
-  if (from_stdin) {
-    char tic = '\0';
-    vector<string> cmd_line;
-    if (console) {
-      std::cout << "press ^d when done" << std::endl;
-    }
-    while (std::cin.good()) {
-      if (tic == '\0') {
-        cmd_line.clear();
-        if (console) {
-          std::cout << "enter command: " << std::flush;
-        }
-      }
-
-
-      tic = tokenize(cmd_line, tic);
-      if (tic != '\0') {
-        continue;
-      }
-
-      if (!console) {
-        script.push_back (cmd_line);
-      }
-      else {
-        send_command (cmd_line);
-      }
-    }
-  }
-
-  try {
-    int res = 0;
-    while (cycles--) {
-      for (auto scmd : script) {
-        if ((res = send_command (scmd)) != 0) {
-          return res;
-        }
-      }
-    }
-  } catch ( const fc::exception& e ) {
-    std::cerr << e.to_detail_string() << std::endl;
-  }
-  return 0;
-}
 
 int send_command (const vector<string> &cmd_line)
 {
@@ -463,6 +364,108 @@ int send_command (const vector<string> &cmd_line)
 
   } else if( command == "do" ) {
 
+  }
+  return 0;
+}
+
+
+/**
+ *   Usage:
+ *
+ *   eosc - [optional command] < script
+ *     or *   eocs create wallet walletname  ***PASS1*** ***PASS2***
+ *   eosc unlock walletname  ***PASSWORD***
+ *   eosc create wallet walletname  ***PASS1*** ***PASS2***
+ *   eosc unlock walletname  ***PASSWORD***
+ *   eosc wallets -> prints list of wallets with * next to currently unlocked
+ *   eosc keys -> prints list of private keys
+ *   eosc importkey privatekey -> loads keys
+ *   eosc accounts -> prints list of accounts that reference key
+ *   eosc lock
+ *   eosc do contract action { from to amount }
+ *   eosc transfer from to amount memo  => aliaze for eosc
+ *   eosc create account creator
+ *
+ *  if reading from a script all lines are allE parsed before any are sent
+ *  reading from the console, lines are acted on directly.
+ */
+
+int main( int argc, char** argv ) {
+  vector<string> cmd;
+  bool is_cmd=false;
+  bool from_stdin=false;
+  bool batch=false;
+  uint32_t cycles=1;
+  vector<vector<string> > script;
+  program = argv[0];
+
+  for( uint32_t i = 1; i < argc; ++i ) {
+    is_cmd |= (*argv[i] != '-');
+    if (!is_cmd) {
+      from_stdin |= (*(argv[i]+1) == '\0');
+      if (!from_stdin) {
+        // TODO: parse arguments, --batch=<1|0> --cycles=<n> --input=<1|0>
+      }
+    }
+    else {
+      cmd.push_back(string(argv[i]));
+    }
+  }
+
+  try {
+    if (cmd.size()) {
+      int res = 0;
+      if ((res = send_command(cmd)) != 0) {
+        return res;
+      }
+    }
+  } catch ( const fc::exception& e ) {
+    std::cerr << e.to_detail_string() << std::endl;
+    return 0;
+  }
+
+  bool console = isatty(0);
+
+  if (from_stdin) {
+    char tic = '\0';
+    vector<string> cmd_line;
+    if (console) {
+      std::cout << "press ^d when done" << std::endl;
+    }
+    while (std::cin.good()) {
+      if (tic == '\0') {
+        cmd_line.clear();
+        if (console) {
+          std::cout << "enter command: " << std::flush;
+        }
+      }
+
+
+      tic = read_line_and_split(cmd_line, tic);
+      if (tic != '\0') {
+        continue;
+      }
+
+      if (!console || batch) {
+        script.push_back (cmd_line);
+      }
+      else {
+        send_command (cmd_line);
+      }
+    }
+  }
+
+  try {
+    int res = 0;
+    while (cycles--) {
+      for (auto scmd : script) {
+        if ((res = send_command (scmd)) != 0) {
+          return res;
+        }
+      }
+    }
+  } catch ( const fc::exception& e ) {
+    std::cerr << e.to_detail_string() << std::endl;
   }
   return 0;
 }
