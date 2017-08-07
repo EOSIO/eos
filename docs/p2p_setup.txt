@@ -1,0 +1,42 @@
+This document describes how to use the new start_testnet.pl script to provision and launch a number of eosd nodes to form a test network.
+
+These nodes my exist all on local host, or they may be distributed across a cluster of hosts, assuming you have ssh access to each host. EOS must be built or installed on each.
+
+There is a new app, launcher, which is able to configure and deploy an arbitrary number of test net nodes.
+
+usage:
+start_testnet.pl [--nodes=<n>] [--pnodes=<n>] [--topo=<"ring"|"star"|filename>] [--time-stamp=<time>]
+
+where:
+--nodes=n (default = 1) sets the number of eosd instances to launch
+--pnodes=n (default = 1) sets the number nodes that will also be producers
+--topo=s (default = ring) sets the network topology to either a ring shape or a star shape
+--time-stamp=s (default "") sets the timestamp in UTC for the genesis block. use "now" to mean the current time.
+
+
+node topology file:
+
+node <alias>
+  eos-root-dir
+  data-dir
+  hostname/ip
+  p2p-port
+  https-port
+  ws-port
+  peer-list [<alias>, <alias>, ...]
+  producers [<name>, <name>, ...]
+  want-producers (yes/no)
+
+node <alias>
+...
+-----------------------
+
+To deploy
+
+
+
+
+-----------------------
+Functionality that remains to be implemented: caching signed transactions then purging them on a schedule. Sending summaries of blocks rather than whole blocks. Optimizing the routing between nodes. Failover during new node synchronization if a peer fails to respond timely enough.
+
+Also need to prepare tests that are distributed, deterministic, and repeatable.
