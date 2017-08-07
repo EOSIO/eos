@@ -156,34 +156,34 @@ int32_t previous_primary_i128i128( AccountName scope, AccountName code, TableNam
 
 int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
-int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                      const void* key, void* data, uint32_t len );
-int32_t lower_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                     const void* key, void* data, uint32_t len );
+int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 int32_t front_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t back_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t next_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t previous_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
-
-int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                      const void* key, void* data, uint32_t len );
-int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                     const void* key, void* data, uint32_t len );
+int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 /**
  * @param data - must point to at lest 32 bytes containing {primary,secondary}
  *
- * @return true if the record was removed, false if no record was found
+ * @return 1 if a record was removed, and 0 if no record with key was found
  */
-bool remove_i128i128( AccountName scope, TableName table, const void* data );
+int32_t remove_i128i128( AccountName scope, TableName table, const void* data );
 /**
- * Creates or updates a record and returns true if successful
+ * @return 1 if a new record was created, 0 if an existing record was updated
  */
-bool store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
+int32_t store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
+
+/**
+ * @return 1 if the record was updated, 0 if no record with key was found
+ */
+int32_t update_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
 
 ///@}  dbi128i128
 }
