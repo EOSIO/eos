@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include <eos/chain/block_schedule.hpp>
+#include <eos/chain/block.hpp>
 
 namespace eos { namespace chain {
 

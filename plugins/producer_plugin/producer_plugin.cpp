@@ -54,6 +54,7 @@ public:
    bool _production_enabled = false;
    uint32_t _required_producer_participation = 33 * config::Percent1;
    uint32_t _production_skip_flags = eos::chain::chain_controller::skip_nothing;
+   eos::chain::block_schedule::factory _production_scheduler = eos::chain::block_schedule::by_threading_conflicts;
 
    std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
    std::set<types::AccountName> _producers;
@@ -301,6 +302,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       scheduled_time,
       scheduled_producer,
       private_key_itr->second,
+      _production_scheduler,
       _production_skip_flags
       );
    capture("n", block.block_num())("t", block.timestamp)("c", now);

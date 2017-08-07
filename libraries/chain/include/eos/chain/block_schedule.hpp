@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <eos/chain/chain_controller.hpp>
+#include <eos/chain/global_property_object.hpp>
 #include <eos/chain/transaction.hpp>
 
 namespace eos { namespace chain {
@@ -40,6 +40,7 @@ namespace eos { namespace chain {
     */
    struct block_schedule
    {
+      typedef block_schedule (*factory)(vector<pending_transaction> const &, const global_property_object&);
       vector<cycle_schedule> cycles;
 
       // Algorithms

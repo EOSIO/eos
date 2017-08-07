@@ -26,7 +26,6 @@
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
-#include <eos/chain/block_schedule.hpp>
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/action_objects.hpp>
@@ -263,12 +262,13 @@ signed_block chain_controller::generate_block(
    fc::time_point_sec when,
    const AccountName& producer,
    const fc::ecc::private_key& block_signing_private_key,
+   block_schedule::factory scheduler, /* = block_schedule::by_threading_conflits */
    uint32_t skip /* = 0 */
    )
 { try {
    return with_skip_flags( skip, [&](){
       auto b = _db.with_write_lock( [&](){
-         return _generate_block( when, producer, block_signing_private_key );
+         return _generate_block( when, producer, block_signing_private_key, scheduler );
       });
       push_block(b, skip);
       return b;
@@ -278,7 +278,8 @@ signed_block chain_controller::generate_block(
 signed_block chain_controller::_generate_block(
    fc::time_point_sec when,
    const AccountName& producer,
-   const fc::ecc::private_key& block_signing_private_key
+   const fc::ecc::private_key& block_signing_private_key,
+   block_schedule::factory scheduler
    )
 {
    try {
@@ -306,7 +307,7 @@ signed_block chain_controller::_generate_block(
       pending.emplace_back(pending_transaction {&st});
    }
 
-   auto schedule = block_schedule::by_threading_conflicts(pending, get_global_properties());
+   auto schedule = scheduler(pending, get_global_properties());
 
    //
    // The following code throws away existing pending_tx_session and
