@@ -8,8 +8,6 @@
 namespace eos { namespace chain {
 
 class  chain_controller;
-typedef int32_t (apply_context::*load_i128i128_fnc)(Name, Name, Name, uint128_t* , uint128_t*, char* , uint32_t);
-
 /**
  * @class wasm_interface
  *
@@ -64,7 +62,11 @@ class wasm_interface {
 
       wasm_interface();
 
-      int32_t load_i128i128_object( uint64_t scope, uint64_t code, uint64_t table, int32_t valueptr, int32_t valuelen, load_i128i128_fnc function );
+      template <typename Function>
+      int32_t validate_i128i128(int32_t valueptr, int32_t valuelen, Function&& func);
+      
+      template <typename Function>
+      int32_t validate_i64(int32_t valueptr, int32_t valuelen, Function&& func);
 };
 
 
