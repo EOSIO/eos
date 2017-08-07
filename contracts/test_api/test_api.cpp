@@ -46,6 +46,8 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64_store_scope);
       WASM_TEST_HANDLER(test_db, key_i64_remove_scope);
       WASM_TEST_HANDLER(test_db, key_i64_not_found);
+      WASM_TEST_HANDLER(test_db, key_i64_front_back);
+
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
 
       //test crypto
