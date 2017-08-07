@@ -169,6 +169,7 @@ namespace eos { namespace chain {
       dynamic_global_property_object_type,
       block_summary_object_type,
       transaction_object_type,
+      generated_transaction_object_type,
       producer_object_type,
       chain_property_object_type,
       balance_object_type, ///< Defined by native_contract library
@@ -214,6 +215,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (dynamic_global_property_object_type)
                 (block_summary_object_type)
                 (transaction_object_type)
+                (generated_transaction_object_type)
                 (producer_object_type)
                 (chain_property_object_type)
                 (balance_object_type)

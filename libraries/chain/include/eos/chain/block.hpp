@@ -63,7 +63,7 @@ namespace eos { namespace chain {
    };
 
    struct thread {
-      vector<generated_transaction_id_type> generated_input;
+      vector<ProcessedGeneratedTransaction> generated_input;
       vector<ProcessedTransaction>          user_input;
 
       digest_type merkle_digest() const;

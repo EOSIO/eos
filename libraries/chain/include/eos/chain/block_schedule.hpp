@@ -26,10 +26,10 @@
 #include <eos/chain/transaction.hpp>
 
 namespace eos { namespace chain {
+   using pending_transaction = static_variant<SignedTransaction const *, GeneratedTransaction const *>;
 
    struct thread_schedule {
-      vector<generated_transaction_id_type> generated_input;
-      vector<SignedTransaction const *> user_input;
+      vector<pending_transaction const *> transactions;
    };
 
    using cycle_schedule = vector<thread_schedule>;
@@ -49,16 +49,23 @@ namespace eos { namespace chain {
        * falling back on cycles
        * @return the block scheduler
        */
-      static block_schedule by_threading_conflicts(deque<SignedTransaction> const &transactions, const global_property_object& properties);
+      static block_schedule by_threading_conflicts(vector<pending_transaction> const &transactions, const global_property_object& properties);
 
       /**
        * A greedy scheduler that attempts uses future cycles to resolve scope contention
        * @return the block scheduler
        */
-      static block_schedule by_cycling_conflicts(deque<SignedTransaction> const &transactions, const global_property_object& properties);
+      static block_schedule by_cycling_conflicts(vector<pending_transaction> const &transactions, const global_property_object& properties);
+   };
+
+   struct scope_extracting_visitor : public fc::visitor<vector<AccountName> const &> {
+      template <typename T>
+      vector<AccountName> const & operator()(const T &trx_p) const {
+         return trx_p->scope;
+      }
    };
 
 } } // eos::chain
 
-FC_REFLECT(eos::chain::thread_schedule, (generated_input)(user_input) )
+FC_REFLECT(eos::chain::thread_schedule, (transactions))
 FC_REFLECT(eos::chain::block_schedule, (cycles))

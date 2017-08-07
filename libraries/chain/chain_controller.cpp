@@ -30,6 +30,7 @@
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/action_objects.hpp>
+#include <eos/chain/generated_transaction_object.hpp>
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 
@@ -258,7 +259,6 @@ ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction
    return pt;
 }
 
-
 signed_block chain_controller::generate_block(
    fc::time_point_sec when,
    const AccountName& producer,
@@ -293,7 +293,20 @@ signed_block chain_controller::_generate_block(
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
 
-   auto schedule = block_schedule::by_threading_conflicts(_pending_transactions, get_global_properties());
+  
+   auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_trx_id>();
+
+   vector<pending_transaction> pending;
+   pending.reserve(generated.size() + _pending_transactions.size());
+   for (auto const &gt: generated) {
+      pending.emplace_back(pending_transaction {&gt.trx});
+   }
+   
+   for(auto const &st: _pending_transactions) {
+      pending.emplace_back(pending_transaction {&st});
+   }
+
+   auto schedule = block_schedule::by_threading_conflicts(pending, get_global_properties());
 
    //
    // The following code throws away existing pending_tx_session and
@@ -309,25 +322,6 @@ signed_block chain_controller::_generate_block(
    _pending_tx_session.reset();
    _pending_tx_session = _db.start_undo_session(true);
 
-   auto process_one = [this](SignedTransaction const *tx, database &db) -> optional<ProcessedTransaction> {
-      try
-      {
-        auto temp_session = db.start_undo_session(true);
-        auto ptx = _apply_transaction(*tx);
-        temp_session.squash();
-
-        return optional<ProcessedTransaction>(ptx);
-      }
-      catch ( const fc::exception& e )
-      {
-        // Do nothing, transaction will not be re-applied
-        wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-        wlog( "The transaction was ${t}", ("t", *tx) );
-      }
-
-      return optional<ProcessedTransaction>();
-   };
-
    signed_block pending_block;
    pending_block.cycles.reserve(schedule.cycles.size());
 
@@ -340,23 +334,42 @@ signed_block chain_controller::_generate_block(
 
      for (const auto &t : c) {
        thread block_thread;
-       block_thread.generated_input.reserve(t.generated_input.size());
-       for (const auto &trx : t.generated_input) {
-#warning TODO: Process generated transaction
-       }
-
-       block_thread.user_input.reserve(t.user_input.size());
-       for (const auto &trx : t.user_input) {
-         auto processed = process_one(trx, _db);
-         if (processed) {
-            block_thread.user_input.emplace_back(*processed);
-            valid_transaction_count++;
-         } else {
-            invalid_transaction_count++;
-         }
+       block_thread.user_input.reserve(t.transactions.size());
+       block_thread.generated_input.reserve(t.transactions.size());
+       for (const auto &trx : t.transactions) {
+          try
+          {
+             auto temp_session = _db.start_undo_session(true);
+             if (trx->contains<SignedTransaction const *>()) {
+                auto processed = _apply_transaction(*trx->get<SignedTransaction const *>());
+                block_thread.user_input.emplace_back(processed);
+             } else if (trx->contains<GeneratedTransaction const *>()) {
+                #warning TODO: Process generated transaction
+                // auto processed = _apply_transaction(*trx->get<GeneratedTransaction const *>());
+                // block_thread.generated_input.emplace_back(processed);
+             } else {
+                FC_THROW_EXCEPTION(tx_scheduling_exception, "Unknown transaction type in block_schedule");
+             }
+             
+             temp_session.squash();
+             valid_transaction_count++;
+          }
+          catch ( const fc::exception& e )
+          {
+             // Do nothing, transaction will not be re-applied
+             wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+             if (trx->contains<SignedTransaction const *>()) {
+                wlog( "The transaction was ${t}", ("t", *trx->get<SignedTransaction const *>()) );
+             } else if (trx->contains<GeneratedTransaction const *>()) {
+                wlog( "The transaction was ${t}", ("t", *trx->get<GeneratedTransaction const *>()) );
+             } 
+             invalid_transaction_count++;
+          }
        }
 
        if (!(block_thread.generated_input.empty() && block_thread.user_input.empty())) {
+          block_thread.generated_input.shrink_to_fit();
+          block_thread.user_input.shrink_to_fit();
           block_cycle.emplace_back(std::move(block_thread));
        }
      }
@@ -473,7 +486,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
 #warning TODO: Process generated transaction
          }
          for(const auto& trx : thread.user_input ) {
-            apply_transaction(trx);
+            _apply_transaction(trx);
          }
       }
    }
@@ -827,6 +840,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<dynamic_global_property_multi_index>();
    _db.add_index<block_summary_multi_index>();
    _db.add_index<transaction_multi_index>();
+   _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
 }
 
@@ -1064,6 +1078,13 @@ void chain_controller::clear_expired_transactions()
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
    while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.rbegin()->trx.expiration) )
       transaction_idx.remove(*dedupe_index.rbegin());
+
+   //Look for expired transactions in the pending generated list, and remove them.
+   //Transactions must have expired by at least two forking windows in order to be removed.
+   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   const auto& generated_index = generated_transaction_idx.indices().get<generated_transaction_object::by_expiration>();
+   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->trx.expiration) )
+      generated_transaction_idx.remove(*generated_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
 
 using boost::container::flat_set;

@@ -45,13 +45,22 @@ public:
    };
 
 protected:
-   auto create_pending( std::initializer_list<test_transaction> const &transactions ) {
-      std::deque<SignedTransaction> result;
+   auto create_transactions( std::initializer_list<test_transaction> const &transactions ) {
+      std::vector<SignedTransaction> result;
       for (auto const &t: transactions) {
          SignedTransaction st;
          st.scope.reserve(t.scopes.size());
          st.scope.insert(st.scope.end(), t.scopes.begin(), t.scopes.end());
          result.emplace_back(st);
+      }
+      return result;
+   }
+
+   auto create_pending( std::vector<SignedTransaction> const &transactions ) {
+      std::vector<pending_transaction> result;
+      for (auto const &t: transactions) {
+         auto const *ptr = &t;
+         result.emplace_back(ptr);
       }
       return result;
    }
@@ -63,7 +72,8 @@ public:
    template<typename SCHED_FN, typename ...VALIDATORS>
    void schedule_and_validate(SCHED_FN sched_fn, std::initializer_list<test_transaction> const &transactions, VALIDATORS ...validators) {
       try {
-         auto pending = create_pending(transactions);
+         auto signed_transactions = create_transactions(transactions);
+         auto pending = create_pending(signed_transactions);
          auto schedule = sched_fn(pending, properties_policy.properties);
          validate(schedule, validators...);
       } FC_LOG_AND_RETHROW()
@@ -120,8 +130,7 @@ static uint transaction_count(block_schedule const &schedule) {
    uint result = 0;
    for (auto const &c : schedule.cycles) {
       for (auto const &t: c) {
-         result += t.generated_input.size();
-         result += t.user_input.size();
+         result += t.transactions.size();
       }
    }
 
@@ -132,18 +141,17 @@ static uint cycle_count(block_schedule const &schedule) {
    return schedule.cycles.size();
 }
 
+
+
 static bool schedule_is_valid(block_schedule const &schedule) {
    for (auto const &c : schedule.cycles) {
       std::vector<bool> scope_in_use;
       for (auto const &t: c) {
          std::set<size_t> thread_bits;
          size_t max_bit = 0;
-         for(auto const &gi: t.generated_input) {
-            #warning TODO: Process generated transaction
-         }
-
-         for(auto const &ui: t.user_input) {
-            for (auto const &s : ui->scope) {
+         for(auto pt: t.transactions) {
+            auto scopes = pt->visit(scope_extracting_visitor());
+            for (auto const &s : scopes) {
                size_t bit = boost::numeric_cast<size_t>((uint64_t)s);
                thread_bits.emplace(bit);
                max_bit = std::max(max_bit, bit);

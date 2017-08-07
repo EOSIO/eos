@@ -45,7 +45,7 @@ typedef std::hash<decltype(AccountName::value)> account_hash;
 static account_hash account_hasher;
 
 struct schedule_entry {
-   schedule_entry(uint _cycle, uint _thread, SignedTransaction const * _transaction) 
+   schedule_entry(uint _cycle, uint _thread, pending_transaction const * _transaction) 
       : cycle(_cycle)
       , thread(_thread)
       , transaction(_transaction) 
@@ -53,7 +53,7 @@ struct schedule_entry {
 
    uint cycle;
    uint thread;
-   SignedTransaction const *transaction;
+   pending_transaction const *transaction;
 
    friend bool operator<( schedule_entry const &l, schedule_entry const &r ) {
       if (l.cycle < r.cycle) {
@@ -92,7 +92,7 @@ static block_schedule from_entries(vector<schedule_entry> &entries) {
       // allocations, we cannot emplace_back as that would reverse
       // the transactions in a thread
       auto &thread = cycle.at(entry.thread);
-      thread.user_input.emplace(thread.user_input.begin(), entry.transaction);
+      thread.transactions.emplace(thread.transactions.begin(), entry.transaction);
    }
 
    return result;
@@ -100,7 +100,7 @@ static block_schedule from_entries(vector<schedule_entry> &entries) {
 
 template<typename CONTAINER>
 auto initialize_pointer_vector(CONTAINER const &c) {
-   vector<SignedTransaction const *> result;
+   vector<pending_transaction const *> result;
    result.reserve(c.size());
    for (auto const &t : c) {
       result.emplace_back(&t);
@@ -109,12 +109,20 @@ auto initialize_pointer_vector(CONTAINER const &c) {
    return result;
 }
 
+struct transaction_size_visitor : public fc::visitor<size_t>
+{
+   template <typename T>
+   size_t operator()(const T &trx_p) const {
+      return fc::raw::pack_size(*trx_p);
+   }
+};
+
 struct block_size_skipper {
    size_t current_size;
    size_t const max_size;
 
-   bool should_skip(SignedTransaction const *t) const {
-      size_t transaction_size = fc::raw::pack_size(*t);
+   bool should_skip(pending_transaction const *t) const {
+      size_t transaction_size = t->visit(transaction_size_visitor());
       // postpone transaction if it would make block too big
       if( transaction_size + current_size > max_size ) {
          return true;
@@ -123,8 +131,8 @@ struct block_size_skipper {
       }
    }
 
-   void apply(SignedTransaction const *t) {
-      size_t transaction_size = fc::raw::pack_size(*t);
+   void apply(pending_transaction const *t) {
+      size_t transaction_size =  t->visit(transaction_size_visitor());
       current_size += transaction_size;
    }
 };
@@ -136,7 +144,7 @@ auto make_skipper(const global_property_object &properties) {
 }
 
 block_schedule block_schedule::by_threading_conflicts(
-   deque<SignedTransaction> const &transactions,
+   vector<pending_transaction> const &transactions,
    const global_property_object &properties
    )
 {
@@ -150,7 +158,7 @@ block_schedule block_schedule::by_threading_conflicts(
    schedule.reserve(transactions.size());
 
    auto current = initialize_pointer_vector(transactions);
-   vector<SignedTransaction const *> postponed;
+   vector<pending_transaction const *> postponed;
    postponed.reserve(transactions.size());
 
    vector<uint> txs_per_thread;
@@ -170,8 +178,9 @@ block_schedule block_schedule::by_threading_conflicts(
 
          auto assigned_to = optional<uint>();
          bool postpone = false;
+         auto scopes = t->visit(scope_extracting_visitor());
 
-         for (const auto &a : t->scope) {
+         for (const auto &a : scopes) {
             uint hash_index = account_hasher(a) % HASH_SIZE;
             if (assigned_to && assigned_threads[hash_index] && assigned_to != assigned_threads[hash_index]) {
                postpone = true;
@@ -192,7 +201,7 @@ block_schedule block_schedule::by_threading_conflicts(
             }
 
             if (txs_per_thread[*assigned_to] < MAX_TXS_PER_THREAD) {
-               for (const auto &a : t->scope)
+               for (const auto &a : scopes)
                {
                   uint hash_index = account_hasher(a) % HASH_SIZE;
                   assigned_threads[hash_index] = assigned_to;
@@ -220,7 +229,7 @@ block_schedule block_schedule::by_threading_conflicts(
 }
 
 block_schedule block_schedule::by_cycling_conflicts(
-    deque<SignedTransaction> const &transactions,
+    vector<pending_transaction> const &transactions,
     const global_property_object &properties
     )
 {
@@ -231,7 +240,7 @@ block_schedule block_schedule::by_cycling_conflicts(
    schedule.reserve(transactions.size());
 
    auto current = initialize_pointer_vector(transactions);
-   vector<SignedTransaction const *> postponed;
+   vector<pending_transaction const *> postponed;
    postponed.reserve(transactions.size());
 
    int cycle = 0;
@@ -246,8 +255,9 @@ block_schedule block_schedule::by_cycling_conflicts(
             continue;
          }
 
+         auto scopes = t->visit(scope_extracting_visitor());
          bool u = false;
-         for (const auto &a : t->scope) {
+         for (const auto &a : scopes) {
             uint hash_index = account_hasher(a) % HASH_SIZE;
             if (used[hash_index]) {
                u = true;
@@ -257,7 +267,7 @@ block_schedule block_schedule::by_cycling_conflicts(
          }
 
          if (!u) {
-            for (const auto &a : t->scope) {
+            for (const auto &a : scopes) {
                uint hash_index = account_hasher(a) % HASH_SIZE;
                used[hash_index] = true;
             }
