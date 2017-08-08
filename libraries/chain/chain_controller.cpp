@@ -341,12 +341,12 @@ signed_block chain_controller::_generate_block(
           try
           {
              auto temp_session = _db.start_undo_session(true);
-             if (trx->contains<SignedTransaction const *>()) {
-                auto processed = _apply_transaction(*trx->get<SignedTransaction const *>());
+             if (trx.contains<SignedTransaction const *>()) {
+                auto processed = _apply_transaction(*trx.get<SignedTransaction const *>());
                 block_thread.user_input.emplace_back(processed);
-             } else if (trx->contains<GeneratedTransaction const *>()) {
+             } else if (trx.contains<GeneratedTransaction const *>()) {
                 #warning TODO: Process generated transaction
-                // auto processed = _apply_transaction(*trx->get<GeneratedTransaction const *>());
+                // auto processed = _apply_transaction(*trx.get<GeneratedTransaction const *>());
                 // block_thread.generated_input.emplace_back(processed);
              } else {
                 FC_THROW_EXCEPTION(tx_scheduling_exception, "Unknown transaction type in block_schedule");
@@ -359,10 +359,10 @@ signed_block chain_controller::_generate_block(
           {
              // Do nothing, transaction will not be re-applied
              wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-             if (trx->contains<SignedTransaction const *>()) {
-                wlog( "The transaction was ${t}", ("t", *trx->get<SignedTransaction const *>()) );
-             } else if (trx->contains<GeneratedTransaction const *>()) {
-                wlog( "The transaction was ${t}", ("t", *trx->get<GeneratedTransaction const *>()) );
+             if (trx.contains<SignedTransaction const *>()) {
+                wlog( "The transaction was ${t}", ("t", *trx.get<SignedTransaction const *>()) );
+             } else if (trx.contains<GeneratedTransaction const *>()) {
+                wlog( "The transaction was ${t}", ("t", *trx.get<GeneratedTransaction const *>()) );
              } 
              invalid_transaction_count++;
           }

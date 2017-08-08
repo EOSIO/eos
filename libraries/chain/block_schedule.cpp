@@ -93,7 +93,7 @@ static block_schedule from_entries(vector<schedule_entry> &entries) {
       // allocations, we cannot emplace_back as that would reverse
       // the transactions in a thread
       auto &thread = cycle.at(entry.thread);
-      thread.transactions.emplace(thread.transactions.begin(), entry.transaction);
+      thread.transactions.emplace(thread.transactions.begin(), *entry.transaction);
    }
 
    return result;

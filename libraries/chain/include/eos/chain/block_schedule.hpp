@@ -29,7 +29,7 @@ namespace eos { namespace chain {
    using pending_transaction = static_variant<SignedTransaction const *, GeneratedTransaction const *>;
 
    struct thread_schedule {
-      vector<pending_transaction const *> transactions;
+      vector<pending_transaction> transactions;
    };
 
    using cycle_schedule = vector<thread_schedule>;
@@ -57,6 +57,56 @@ namespace eos { namespace chain {
        * @return the block scheduler
        */
       static block_schedule by_cycling_conflicts(vector<pending_transaction> const &transactions, const global_property_object& properties);
+
+      /*
+       * templated meta schedulers for fuzzing
+       */
+      template<typename NEXT>
+      struct shuffled_functor {
+         shuffled_functor(NEXT &&_next) : next(_next){};
+
+         block_schedule operator()(vector<pending_transaction> const &transactions, const global_property_object& properties) {
+            std::random_device rd;
+            std::mt19937 rng(rd());
+            auto copy = std::vector<pending_transaction>(transactions);
+            std::shuffle(copy.begin(), copy.end(), rng);
+            return next(copy, properties);
+         }
+
+         NEXT &&next;
+      };
+
+      template<typename NEXT> 
+      static shuffled_functor<NEXT> shuffled(NEXT &&next) {
+         return shuffled_functor<NEXT>(next);
+      }
+
+      template<int NUM, int DEN, typename NEXT>
+      struct lossy_functor {
+         lossy_functor(NEXT &&_next) : next(_next){};
+         
+         block_schedule operator()(vector<pending_transaction> const &transactions, const global_property_object& properties) {
+            std::random_device rd;
+            std::mt19937 rng(rd());
+            std::uniform_real_distribution<> dist(0, 1);
+            double const cutoff = (double)NUM / (double)DEN;
+
+            auto copy = std::vector<pending_transaction>();
+            copy.reserve(transactions.size());
+            std::copy_if (transactions.begin(), transactions.end(), copy.begin(), [&](pending_transaction const& trx){
+               return dist(rng) >= cutoff;
+            });
+
+            return next(copy, properties);
+         }
+
+         NEXT &&next;
+      };
+
+      template<int NUM, int DEN, typename NEXT> 
+      static lossy_functor<NUM, DEN, NEXT> lossy(NEXT &&next) {
+         return lossy_functor<NUM, DEN, NEXT>(next);
+      }
    };
 
    struct scope_extracting_visitor : public fc::visitor<vector<AccountName> const &> {

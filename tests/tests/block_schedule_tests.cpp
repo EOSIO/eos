@@ -149,8 +149,8 @@ static bool schedule_is_valid(block_schedule const &schedule) {
       for (auto const &t: c) {
          std::set<size_t> thread_bits;
          size_t max_bit = 0;
-         for(auto pt: t.transactions) {
-            auto scopes = pt->visit(scope_extracting_visitor());
+         for(auto const &pt: t.transactions) {
+            auto scopes = pt.visit(scope_extracting_visitor());
             for (auto const &s : scopes) {
                size_t bit = boost::numeric_cast<size_t>((uint64_t)s);
                thread_bits.emplace(bit);
@@ -260,6 +260,72 @@ BOOST_FIXTURE_TEST_CASE(small_block, compose_fixture<small_block_properties>) {
       EXPECT(schedule_is_valid),
       EXPECT(std::less<uint>, transaction_count, 21)
    );
+}
+
+BOOST_FIXTURE_TEST_CASE(no_conflicts_shuffled, default_fixture) {
+   // stochastically verify that the order of non-conflicting transactions
+   // does not affect the ability to schedule them in a single cycle
+   for (int i = 0; i < 3000; i++) {      
+      schedule_and_validate(
+         block_schedule::shuffled(block_schedule::by_threading_conflicts),
+         {
+            {0x1ULL, 0x2ULL},
+            {0x3ULL, 0x4ULL},
+            {0x5ULL, 0x6ULL},
+            {0x7ULL, 0x8ULL},
+            {0x9ULL, 0xAULL},
+            {0xBULL, 0xCULL},
+            {0xDULL, 0xEULL},
+            {0x11ULL, 0x12ULL},
+            {0x13ULL, 0x14ULL},
+            {0x15ULL, 0x16ULL},
+            {0x17ULL, 0x18ULL},
+            {0x19ULL, 0x1AULL},
+            {0x1BULL, 0x1CULL},
+            {0x1DULL, 0x1EULL},
+            {0x21ULL, 0x22ULL},
+            {0x23ULL, 0x24ULL},
+            {0x25ULL, 0x26ULL},
+            {0x27ULL, 0x28ULL},
+            {0x29ULL, 0x2AULL},
+            {0x2BULL, 0x2CULL},
+            {0x2DULL, 0x2EULL},
+         },
+         EXPECT(schedule_is_valid),
+         EXPECT(transaction_count, 21),
+         EXPECT(cycle_count, 1)
+      );
+   }
+}
+
+BOOST_FIXTURE_TEST_CASE(some_conflicts_shuffled, default_fixture) {
+   // stochastically verify that the order of conflicted transactions
+   // does not affect the ability to schedule them in multiple cycles
+   for (int i = 0; i < 3000; i++) {      
+      schedule_and_validate(
+         block_schedule::shuffled(block_schedule::by_threading_conflicts),
+         {
+            {0x1ULL, 0x2ULL},
+            {0x3ULL, 0x2ULL},
+            {0x5ULL, 0x1ULL},
+            {0x7ULL, 0x1ULL},
+            {0x1ULL, 0x7ULL},
+            {0x11ULL, 0x12ULL},
+            {0x13ULL, 0x12ULL},
+            {0x15ULL, 0x11ULL},
+            {0x17ULL, 0x11ULL},
+            {0x11ULL, 0x17ULL},
+            {0x21ULL, 0x22ULL},
+            {0x23ULL, 0x22ULL},
+            {0x25ULL, 0x21ULL},
+            {0x27ULL, 0x21ULL},
+            {0x21ULL, 0x27ULL}
+         },
+         EXPECT(schedule_is_valid),
+         EXPECT(transaction_count, 15),
+         EXPECT(std::greater<uint>, cycle_count, 1)
+      );
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
