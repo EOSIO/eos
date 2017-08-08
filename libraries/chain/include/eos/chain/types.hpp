@@ -171,7 +171,7 @@ namespace eos { namespace chain {
       transaction_object_type,
       producer_object_type,
       chain_property_object_type,
-      transaction_history_object_type,
+      transaction_history_object_type, ///< Defined by account history plugin library
       balance_object_type, ///< Defined by native_contract library
       staked_balance_object_type, ///< Defined by native_contract library
       producer_votes_object_type, ///< Defined by native_contract library

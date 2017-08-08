@@ -1,4 +1,5 @@
 #include <eos/account_history_plugin/account_history_plugin.hpp>
+#include <eos/account_history_plugin/account_history_object.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/config.hpp>
 #include <eos/chain/exceptions.hpp>
@@ -13,6 +14,8 @@
 #include <boost/multi_index/mem_fun.hpp>
 #include <eos/chain/multi_index_includes.hpp>
 
+namespace fc { class variant; }
+
 namespace eos {
 
 using chain::block_id_type;
@@ -21,26 +24,6 @@ using chain::signed_block;
 using boost::multi_index_container;
 using chain::transaction_id_type;
 using namespace boost::multi_index;
-
-class transaction_history_object : public chainbase::object<chain::transaction_history_object_type, transaction_history_object> {
-   OBJECT_CTOR(transaction_history_object)
-
-   id_type             id;
-   block_id_type       block_id;
-   transaction_id_type transaction_id;
-};
-
-struct by_id;
-struct by_trx_id;
-using transaction_history_multi_index = chainbase::shared_multi_index_container<
-   transaction_history_object,
-   indexed_by<
-      ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_history_object, transaction_history_object::id_type, id)>,
-      hashed_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_history_object, transaction_id_type, transaction_id), std::hash<transaction_id_type>>
-   >
->;
-
-typedef chainbase::generic_index<transaction_history_multi_index> transaction_history_index;
 
 class account_history_plugin_impl {
 public:
@@ -151,7 +134,3 @@ read_only::get_transaction_results read_only::get_transaction(const read_only::g
 
 } // namespace account_history_apis
 } // namespace eos
-
-CHAINBASE_SET_INDEX_TYPE( eos::transaction_history_object, eos::transaction_history_multi_index )
-
-FC_REFLECT( eos::transaction_history_object, (block_id)(transaction_id) )
