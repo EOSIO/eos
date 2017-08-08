@@ -189,6 +189,28 @@
  * @endcode
  */
 #define Delete_Authority(...) BOOST_PP_OVERLOAD(DELAUTH, __VA_ARGS__)(__VA_ARGS__)
+/**
+ * @brief Shorthand way to link named authority with a contract/message type
+ *
+ * @code{.cpp}
+ * // Link alice's "money" authority with eos::transfer
+ * Link_Authority(chain, alice, "money", eos, "transfer");
+ * // Set alice's "native" authority as default for eos contract
+ * Link_Authority(chain, alice, "money", eos);
+ * @endcode
+ */
+#define Link_Authority(...) BOOST_PP_OVERLOAD(LINKAUTH, __VA_ARGS__)(__VA_ARGS__)
+/**
+ * @brief Shorthand way to unlink named authority from a contract/message type
+ *
+ * @code{.cpp}
+ * // Unlink alice's authority for eos::transfer
+ * Unlink_Authority(chain, alice, eos, "transfer");
+ * // Unset alice's default authority for eos contract
+ * Unlink_Authority(chain, alice, eos);
+ * @endcode
+ */
+#define Unlink_Authority(...) BOOST_PP_OVERLOAD(UNLINKAUTH, __VA_ARGS__)(__VA_ARGS__)
 
 /**
  * @brief Shorthand way to transfer funds

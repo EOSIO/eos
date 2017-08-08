@@ -3,6 +3,7 @@
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/permission_object.hpp>
+#include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 
 #include <eos/native_contract/producer_objects.hpp>
@@ -460,6 +461,34 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
       auto spending = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
       BOOST_CHECK_EQUAL(trading, nullptr);
       BOOST_CHECK_EQUAL(spending, nullptr);
+   }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
+   Make_Blockchain(chain);
+   Make_Account(chain, alice);
+   chain.produce_blocks();
+
+   Make_Key(spending);
+   Make_Key(scud);
+
+   Set_Authority(chain, alice, "spending", "active", Key_Authority(spending_public_key));
+   Set_Authority(chain, alice, "scud", "spending", Key_Authority(scud_public_key));
+   Link_Authority(chain, alice, "spending", eos, "transfer");
+
+   {
+      auto obj = chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"));
+      BOOST_CHECK_NE(obj, nullptr);
+      BOOST_CHECK_EQUAL(obj->account, "alice");
+      BOOST_CHECK_EQUAL(obj->code, "eos");
+      BOOST_CHECK_EQUAL(obj->message_type, "transfer");
+   }
+
+   Unlink_Authority(chain, alice, eos, "transfer");
+
+   {
+      auto obj = chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"));
+      BOOST_CHECK_EQUAL(obj, nullptr);
    }
 } FC_LOG_AND_RETHROW() }
 

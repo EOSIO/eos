@@ -461,6 +461,9 @@ void apply_eos_linkauth(apply_context& context) {
 void apply_eos_unlinkauth(apply_context& context) {
    auto& db = context.mutable_db;
    auto unlink = context.msg.as<types::unlinkauth>();
+
+   context.require_authorization(unlink.account);
+
    auto linkKey = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = db.find<permission_link_object, by_message_type>(linkKey);
    EOS_ASSERT(link != nullptr, message_precondition_exception, "Attempting to unlink authority, but no link found");

@@ -100,6 +100,35 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
       BOOST_TEST_CHECKPOINT("Deleted " << #account << "'s " << authname << " authority."); \
    }
 
+#define LINKAUTH5(chain, account, authname, codeacct, messagetype) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.scope = {#account}; \
+      trx.emplaceMessage(config::EosContractName, \
+                         vector<types::AccountPermission>{{#account,"active"}}, \
+                         "linkauth", types::linkauth{#account, #codeacct, messagetype, authname}); \
+      trx.expiration = chain.head_block_time() + 100; \
+      trx.set_reference_block(chain.head_block_id()); \
+      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      BOOST_TEST_CHECKPOINT("Link " << #codeacct << "::" << messagetype << " to " << #account \
+                            << "'s " << authname << " authority."); \
+   }
+#define LINKAUTH4(chain, account, authname, codeacct) LINKAUTH5(chain, account, authname, codeacct, "")
+
+#define UNLINKAUTH4(chain, account, codeacct, messagetype) \
+   { \
+      eos::chain::SignedTransaction trx; \
+      trx.scope = {#account}; \
+      trx.emplaceMessage(config::EosContractName, \
+                         vector<types::AccountPermission>{{#account,"active"}}, \
+                         "unlinkauth", types::unlinkauth{#account, #codeacct, messagetype}); \
+      trx.expiration = chain.head_block_time() + 100; \
+      trx.set_reference_block(chain.head_block_id()); \
+      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      BOOST_TEST_CHECKPOINT("Unlink " << #codeacct << "::" << messagetype << " from " << #account); \
+   }
+#define LINKAUTH3(chain, account, codeacct) LINKAUTH5(chain, account, codeacct, "")
+
 #define XFER5(chain, sender, recipient, Amount, memo) \
    { \
       eos::chain::SignedTransaction trx; \
