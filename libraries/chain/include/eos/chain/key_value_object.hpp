@@ -91,7 +91,8 @@ namespace eos { namespace chain {
                member<key128x128_value_object, AccountName, &key128x128_value_object::table>,
                member<key128x128_value_object, uint128_t, &key128x128_value_object::secondary_key>,
                member<key128x128_value_object, uint128_t, &key128x128_value_object::primary_key>
-            >
+            >,
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint128_t>,std::less<uint128_t> >
          >
       >
    >;

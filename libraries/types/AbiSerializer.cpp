@@ -4,6 +4,10 @@
 
 namespace eos { namespace types {
 
+   using boost::algorithm::ends_with;
+   using std::vector;
+   using std::string;
+
    template <typename T>
    inline fc::variant variantFromStream(fc::datastream<const char*>& stream) {
       T temp;
@@ -11,180 +15,94 @@ namespace eos { namespace types {
       return fc::variant(temp);
    }
 
+   template <typename T>
+   auto packUnpack() {
+      return std::make_pair<AbiSerializer::unpack_function, AbiSerializer::pack_function>( 
+         []( fc::datastream<const char*>& stream, bool is_array) -> fc::variant  {
+            if( is_array )
+               return variantFromStream<vector<T>>(stream);
+            return variantFromStream<T>(stream);
+         },
+         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array ){
+            if( is_array )
+               fc::raw::pack( ds, var.as<vector<T>>() );
+            else
+               fc::raw::pack( ds,  var.as<T>());
+         }
+      );
+   }
+
    AbiSerializer::AbiSerializer( const Abi& abi ) {
-      configureTypes();
+      configureBuiltInTypes();
       setAbi(abi);
    }
 
-   void AbiSerializer::configureTypes() {
+   void AbiSerializer::configureBuiltInTypes() {
+      //PublicKey.hpp
+      built_in_types.emplace("PublicKey",     packUnpack<PublicKey>());
 
-      native_types.emplace("UInt8", std::make_pair( []( auto& stream ) -> auto  {
-            return variantFromStream<uint8_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<uint8_t>() );
-         }
-      ));
-
-      native_types.emplace("UInt16", std::make_pair( []( auto& stream ) -> auto  { 
-            return variantFromStream<uint16_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<uint16_t>() );
-         }
-      ));
-
-      native_types.emplace("UInt32", std::make_pair( []( auto& stream ) -> auto  { 
-            return variantFromStream<uint32_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<uint32_t>() );
-         }
-      ));
-
-      native_types.emplace("UInt64", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<uint64_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<uint64_t>() );
-         }
-      ));
-
-      native_types.emplace("UInt128", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<UInt128>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<UInt128>() );
-         }
-      ));
-
-      native_types.emplace("UInt256", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<UInt256>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<UInt256>() );
-         }
-      ));
-
-      native_types.emplace("Int8", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<int8_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<int8_t>() );
-         }
-      ));
-
-      native_types.emplace("Int16", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<int16_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<int16_t>() );
-         }
-      ));
-
-      native_types.emplace("Int32", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<int32_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<int32_t>() );
-         }
-      ));
-
-      native_types.emplace("Int64", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<int64_t>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<int64_t>() );
-         }
-      ));
-
-      // native_types.emplace("Int128", std::make_pair(
-      //    []( auto& stream ) -> auto  {
-      //       return variantFromStream<__int128>(stream);
-      //    },
-      //    []( const fc::variant& var, fc::datastream<char*>& ds ){
-      //       fc::raw::pack( ds, var.as<__int128>() );
-      //    }
-      // ));
-
-      // native_types.emplace("Int256", std::make_pair(
-      //    []( auto& stream ) -> auto  {
-      //       return variantFromStream<Int256>(stream);
-      //    },
-      //    []( const fc::variant& var, fc::datastream<char*>& ds ){
-      //       fc::raw::pack( ds, var.as<Int256>() );
-      //    }
-      // ));
-
-      native_types.emplace("Name", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<Name>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<Name>() );
-         }
-      ));
-
-      native_types.emplace("Time", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<Time>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<Time>() );
-         }
-      ));
-
-      // native_types.emplace("String", std::make_pair(
-      //    []( auto& stream ) -> auto  {
-      //       return variantFromStream<String>(stream);
-      //    },
-      //    []( const fc::variant& var, fc::datastream<char*>& ds ){
-      //       fc::raw::pack( ds, var.as<String>() );
-      //    }
-      // ));
-
-      native_types.emplace("Checksum", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<Checksum>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<Checksum>() );
-         }
-      ));
-
-      native_types.emplace("Signature", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<Signature>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<Signature>() );
-         }
-      ));
-
-      native_types.emplace("FixedString32", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<FixedString32>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<FixedString32>() );
-         }
-      ));
-
-      native_types.emplace("FixedString16", std::make_pair(
-         []( auto& stream ) -> auto  {
-            return variantFromStream<FixedString16>(stream);
-         },
-         []( const fc::variant& var, fc::datastream<char*>& ds ){
-            fc::raw::pack( ds, var.as<FixedString16>() );
-         }
-      ));
+      //Asset.hpp
+      built_in_types.emplace("Asset",         packUnpack<Asset>());
+      built_in_types.emplace("Price",         packUnpack<Price>());
+     
+      //native.hpp
+      built_in_types.emplace("String",        packUnpack<String>());
+      built_in_types.emplace("Time",          packUnpack<Time>());
+      built_in_types.emplace("Signature",     packUnpack<Signature>());
+      built_in_types.emplace("Checksum",      packUnpack<Checksum>());
+      built_in_types.emplace("FieldName",     packUnpack<FieldName>());
+      built_in_types.emplace("FixedString32", packUnpack<FixedString32>());
+      built_in_types.emplace("FixedString16", packUnpack<FixedString16>());
+      built_in_types.emplace("TypeName",      packUnpack<TypeName>());
+      built_in_types.emplace("Bytes",         packUnpack<Bytes>());
+      built_in_types.emplace("UInt8",         packUnpack<uint8_t>());
+      built_in_types.emplace("UInt16",        packUnpack<uint16_t>());
+      built_in_types.emplace("UInt32",        packUnpack<uint32_t>());
+      built_in_types.emplace("UInt64",        packUnpack<uint64_t>());
+      built_in_types.emplace("UInt128",       packUnpack<UInt128>());
+      built_in_types.emplace("UInt256",       packUnpack<UInt256>());
+      built_in_types.emplace("Int8",          packUnpack<int8_t>());
+      built_in_types.emplace("Int16",         packUnpack<int16_t>());
+      built_in_types.emplace("Int32",         packUnpack<int32_t>());
+      built_in_types.emplace("Int64",         packUnpack<int64_t>());
+      //built_in_types.emplace("Int128",      packUnpack<Int128>());
+      //built_in_types.emplace("Int256",      packUnpack<Int256>());
+      //built_in_types.emplace("uint128_t",   packUnpack<uint128_t>());
+      built_in_types.emplace("Name",          packUnpack<Name>());
+      built_in_types.emplace("Field",         packUnpack<Field>());
+      built_in_types.emplace("Struct",        packUnpack<Struct>());
+      built_in_types.emplace("Fields",        packUnpack<Fields>());
+      
+      //generated.hpp
+      built_in_types.emplace("AccountName",             packUnpack<AccountName>());
+      built_in_types.emplace("PermissionName",          packUnpack<PermissionName>());
+      built_in_types.emplace("FuncName",                packUnpack<FuncName>());
+      built_in_types.emplace("MessageName",             packUnpack<MessageName>());
+      //built_in_types.emplace("TypeName",              packUnpack<TypeName>());
+      built_in_types.emplace("AccountPermission",       packUnpack<AccountPermission>());
+      built_in_types.emplace("Message",                 packUnpack<Message>());
+      built_in_types.emplace("AccountPermissionWeight", packUnpack<AccountPermissionWeight>());
+      built_in_types.emplace("Transaction",             packUnpack<Transaction>());
+      built_in_types.emplace("SignedTransaction",       packUnpack<SignedTransaction>());
+      built_in_types.emplace("KeyPermissionWeight",     packUnpack<KeyPermissionWeight>());
+      built_in_types.emplace("Authority",               packUnpack<Authority>());
+      built_in_types.emplace("BlockchainConfiguration", packUnpack<BlockchainConfiguration>());
+      built_in_types.emplace("TypeDef",                 packUnpack<TypeDef>());
+      built_in_types.emplace("Action",                  packUnpack<Action>());
+      built_in_types.emplace("Table",                   packUnpack<Table>());
+      built_in_types.emplace("Abi",                     packUnpack<Abi>());
+      built_in_types.emplace("transfer",                packUnpack<transfer>());
+      built_in_types.emplace("lock",                    packUnpack<lock>());
+      built_in_types.emplace("unlock",                  packUnpack<unlock>());
+      built_in_types.emplace("claim",                   packUnpack<claim>());
+      built_in_types.emplace("newaccount",              packUnpack<newaccount>());
+      built_in_types.emplace("setcode",                 packUnpack<setcode>());
+      built_in_types.emplace("setproducer",             packUnpack<setproducer>());
+      built_in_types.emplace("okproducer",              packUnpack<okproducer>());
+      built_in_types.emplace("setproxy",                packUnpack<setproxy>());
+      built_in_types.emplace("updateauth",              packUnpack<updateauth>());
+      built_in_types.emplace("deleteauth",              packUnpack<deleteauth>());
+      
    }
 
    void AbiSerializer::setAbi( const Abi& abi ) {
@@ -214,9 +132,19 @@ namespace eos { namespace types {
       FC_ASSERT( actions.size() == abi.actions.size() );
       FC_ASSERT( tables.size() == abi.tables.size() );
    }
+   
+   bool AbiSerializer::isArray( const TypeName& type )const {
+      return ends_with(string(type), "[]");
+   }
 
-   bool AbiSerializer::isType( const TypeName& type )const {
-      if( native_types.find(type) != native_types.end() ) return true;
+   TypeName AbiSerializer::arrayType( const TypeName& type )const {
+      if( !isArray(type) ) return type;
+      return TypeName(string(type).substr(0, type.size()-2));
+   }
+
+   bool AbiSerializer::isType( const TypeName& rtype )const {
+      auto type = arrayType(rtype);
+      if( built_in_types.find(type) != built_in_types.end() ) return true;
       if( typedefs.find(type) != typedefs.end() ) return isType( typedefs.find(type)->second );
       if( structs.find(type) != structs.end() ) return true;
       return false;
@@ -268,9 +196,9 @@ namespace eos { namespace types {
    fc::variant AbiSerializer::binaryToVariant(const TypeName& type, fc::datastream<const char*>& stream )const
    {
       TypeName rtype = resolveType( type );
-      auto native_type = native_types.find(rtype);
-      if( native_type != native_types.end() ) {
-         return native_type->second.first(stream);
+      auto btype = built_in_types.find( arrayType(rtype) );
+      if( btype != built_in_types.end() ) {
+         return btype->second.first(stream, isArray(rtype));
       }
       
       fc::mutable_variant_object mvo;
@@ -287,10 +215,11 @@ namespace eos { namespace types {
    {
       auto rtype = resolveType(type);
 
-      auto native_type = native_types.find(rtype);
-      if( native_type != native_types.end() ) {
-         native_type->second.second(var, ds);
+      auto btype = built_in_types.find(arrayType(rtype));
+      if( btype != built_in_types.end() ) {
+         btype->second.second(var, ds, isArray(rtype));
       } else {
+         
          const auto& st = getStruct( rtype );
          const auto& vo = var.get_object();
 
@@ -310,8 +239,9 @@ namespace eos { namespace types {
    }
 
    Bytes AbiSerializer::variantToBinary(const TypeName& type, const fc::variant& var)const {
-      if( !isType(type) )
+      if( !isType(type) ) {
          return var.as<Bytes>();
+      }
 
       Bytes temp( 1024*1024 );
       fc::datastream<char*> ds(temp.data(), temp.size() );

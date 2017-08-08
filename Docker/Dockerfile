@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM ubuntu:16.04
 MAINTAINER xiaobo (peterwillcn@gmail.com)
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \

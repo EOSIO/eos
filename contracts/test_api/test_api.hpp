@@ -84,6 +84,7 @@ struct test_db {
    static unsigned int key_i64_store_scope();
    static unsigned int key_i64_remove_scope();
    static unsigned int key_i64_not_found();
+   static unsigned int key_i64_front_back();
 
    static unsigned int key_i128i128_general();
 };

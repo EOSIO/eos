@@ -108,7 +108,7 @@ uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, con
    vector<char>& dest = *(vector<char> *)(&msg.data);
    std::copy(data.begin(), data.end(), std::back_inserter(dest));
 
-   std::cout << "MANDO: " << msg.code << " " << msg.type << std::endl;
+   //std::cout << "MANDO: " << msg.code << " " << msg.type << std::endl;
    trx.emplaceMessage(msg);
    
    trx.expiration = chain.head_block_time() + expiration++;
@@ -196,8 +196,8 @@ uint32_t last_fnc_err = 0;
 BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 { try {
 
-      std::string test_api_wast_str(test_api_wast);
-      //auto test_api_wast = readFile2("/home/matu/Documents/Dev/eos/contracts/test_api/test_api.wast");
+      //std::string test_api_wast_str(test_api_wast);
+      auto test_api_wast_str = readFile2("/home/matu/Documents/Dev/eos/contracts/test_api/test_api.wast");
       //std::cout << test_api_wast << std::endl;
 
       Make_Blockchain(chain);
@@ -364,6 +364,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          tx_missing_scope, is_tx_missing_scope );
 
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i64_not_found"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_not_found()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i64_front_back"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_front_back()" );
 
       //Test db (i128i128)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i128i128_general"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i128i128_general()" );

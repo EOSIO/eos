@@ -83,6 +83,11 @@ extern "C" {
 int32_t store_i64( AccountName scope, TableName table, const void* data, uint32_t datalen );
 
 /**
+ * @return 1 if the record was updated, 0 if no record with key was found
+ */
+int32_t update_i64( AccountName scope, TableName table, const void* data, uint32_t datalen );
+
+/**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
  *  @param code  - identifies the code that controls write-access to the data
  *  @param table - the ID/name of the table within the scope/code context to query
@@ -94,11 +99,17 @@ int32_t store_i64( AccountName scope, TableName table, const void* data, uint32_
 int32_t load_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
 int32_t front_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
 int32_t back_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t next_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t previous_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t lower_bound_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t upper_bound_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
 
 /**
+ *  @param data - must point to at lest 8 bytes containing primary key
+ *
  *  @return 1 if a record was removed, and 0 if no record with key was found
  */
-int32_t remove_i64( AccountName scope, TableName table, uint64_t key );
+int32_t remove_i64( AccountName scope, TableName table, void* data );
 
 ///@} db_i64
 
@@ -145,34 +156,34 @@ int32_t previous_primary_i128i128( AccountName scope, AccountName code, TableNam
 
 int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
-int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                      const void* key, void* data, uint32_t len );
-int32_t lower_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                     const void* key, void* data, uint32_t len );
+int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 int32_t front_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t back_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t next_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t previous_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
-
-int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                      const void* key, void* data, uint32_t len );
-int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, 
-                                     const void* key, void* data, uint32_t len );
+int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 /**
  * @param data - must point to at lest 32 bytes containing {primary,secondary}
  *
- * @return true if the record was removed, false if no record was found
+ * @return 1 if a record was removed, and 0 if no record with key was found
  */
-bool remove_i128i128( AccountName scope, TableName table, const void* data );
+int32_t remove_i128i128( AccountName scope, TableName table, const void* data );
 /**
- * Creates or updates a record and returns true if successful
+ * @return 1 if a new record was created, 0 if an existing record was updated
  */
-bool store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
+int32_t store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
+
+/**
+ * @return 1 if the record was updated, 0 if no record with key was found
+ */
+int32_t update_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
 
 ///@}  dbi128i128
 }
