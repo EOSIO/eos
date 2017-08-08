@@ -206,7 +206,7 @@ struct topology {
     cli.add_options()
     ("nodes",bpo::value<int>()->default_value(1),"total number of nodes to generate")
     ("pnodes,p",bpo::value<int>()->default_value(1),"number of nodes that are producers")
-    ("topo,t",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" or give a filename for custom")
+    ("shape,a",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>(),"set the path to genesis.json")
     ("savefile,s",bpo::value<bf::path>(),"save a copy of the generated topology in this file");
   }
@@ -216,8 +216,8 @@ struct topology {
       total_nodes = vmap["nodes"].as<int>();
     if (vmap.count("pnodes"))
       prod_nodes = vmap["pnodes"].as<int>();
-    if (vmap.count("topo"))
-      shape = vmap["topo"].as<string>();
+    if (vmap.count("shape"))
+      shape = vmap["shape"].as<string>();
     if (vmap.count("genesis"))
       genesis = vmap["genesis"].as<string>();
     if (vmap.count("savefile"))
@@ -230,6 +230,7 @@ struct topology {
   }
 
   void generate (vector <eos::eosd_def> &network) {
+    define_nodes (network);
     if (shape == "ring") {
       make_ring (network);
     }
@@ -239,6 +240,20 @@ struct topology {
     else {
       make_custom (network);
     }
+    for (auto &node: network) {
+      write_config_file(node);
+    }
+    if (!save_file.empty()) {
+      bf::ofstream sf(save_file);
+      if (sf.good()) {
+        cerr << "could not open " << save_file << " for writing" << endl;
+        exit (-1);
+      }
+      // write json encoded network definition to save file
+      // string foo = fc::json::to_pretty_string (network);
+      // sf.close();
+    }
+
   }
 
   void define_nodes (vector <eos::eosd_def> &network) {
@@ -248,10 +263,9 @@ struct topology {
       network.emplace_back();
       auto &node = network.back();
       ostringstream namer;
-      namer << node.data_dir_base << i;// << "/";
+      namer << node.data_dir_base << i;
       node.data_dir += namer.str();
 
-      cout << "node " << i << " dd = " << node.data_dir << endl;
       node.p2p_port += i;
       node.http_port += i;
       if (i < prod_nodes) {
@@ -288,7 +302,6 @@ struct topology {
                << " " << strerror(ec.value()) << endl;
           exit (-1);
         }
-        cerr << "count = " << count << " remove all success" << endl;
       }
       if (!bf::create_directory (node.data_dir, ec) && ec.value()) {
         cerr << "could not create new directory: " << node.data_dir
@@ -336,7 +349,6 @@ struct topology {
   }
 
   void make_ring (vector <eos::eosd_def> &network) {
-    define_nodes (network);
     if (total_nodes > 2) {
       for (size_t i = 0; i < network.size(); i++) {
         size_t front = (i + 1) % total_nodes;
@@ -349,24 +361,9 @@ struct topology {
       network[0].peers.push_back (network[1].p2p_endpoint());
       network[1].peers.push_back (network[0].p2p_endpoint());
     }
-    for (auto &node: network) {
-      write_config_file(node);
-    }
-    if (!save_file.empty()) {
-      bf::ofstream sf(save_file);
-      if (sf.good()) {
-        cerr << "could not open " << save_file << " for writing" << endl;
-        exit (-1);
-      }
-      // write json encoded network definition to save file
-      // string foo = fc::json::to_pretty_string (network);
-      // sf.close();
-    }
   }
 
   void make_star (vector <eos::eosd_def> &network) {
-    define_nodes (network);
-
     if (total_nodes < 4) {
       make_ring (network);
       return;
@@ -394,15 +391,9 @@ struct topology {
             }
           }
         }
+        network[i].peers.push_back (peer);
       }
     }
-    for (auto &node: network) {
-      write_config_file(node);
-    }
-    if (!save_file.empty()) {
-
-    }
-
   }
 
   void make_custom (vector <eos::eosd_def> &network) {
