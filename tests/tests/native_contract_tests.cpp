@@ -394,22 +394,73 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
    BOOST_CHECK_THROW(Delete_Authority(chain, alice, "owner"), message_validate_exception);
 
    Make_Key(k1);
+   Make_Key(k2);
    Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key));
+
+   {
+      auto obj = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_NE(obj, nullptr);
+      BOOST_CHECK_EQUAL(obj->owner, "alice");
+      BOOST_CHECK_EQUAL(obj->name, "spending");
+      BOOST_CHECK_EQUAL(chain_db.get(obj->parent).owner, "alice");
+      BOOST_CHECK_EQUAL(chain_db.get(obj->parent).name, "active");
+   }
+
    BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "spending", Key_Authority(k1_public_key)),
                      message_validate_exception);
    BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "owner", Key_Authority(k1_public_key)),
                      message_precondition_exception);
    Delete_Authority(chain, alice, "spending");
 
+   {
+      auto obj = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_EQUAL(obj, nullptr);
+   }
+
    chain.produce_blocks();
 
    Set_Authority(chain, alice, "trading", "active", Key_Authority(k1_public_key));
-   Set_Authority(chain, alice, "spending", "trading", Key_Authority(k1_public_key));
+   Set_Authority(chain, alice, "spending", "trading", Key_Authority(k2_public_key));
+
+   {
+      auto trading = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"));
+      auto spending = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_NE(trading, nullptr);
+      BOOST_CHECK_NE(spending, nullptr);
+      BOOST_CHECK_EQUAL(trading->owner, "alice");
+      BOOST_CHECK_EQUAL(spending->owner, "alice");
+      BOOST_CHECK_EQUAL(trading->name, "trading");
+      BOOST_CHECK_EQUAL(spending->name, "spending");
+      BOOST_CHECK_EQUAL(spending->parent, trading->id);
+      BOOST_CHECK_EQUAL(chain_db.get(trading->parent).owner, "alice");
+      BOOST_CHECK_EQUAL(chain_db.get(trading->parent).name, "active");
+
+      // Abort if this gets run; it shouldn't get run in this test
+      auto PermissionToAuthority = [](auto)->Authority{abort();};
+
+      auto tradingChecker = MakeAuthorityChecker(PermissionToAuthority, {k1_public_key});
+      auto spendingChecker = MakeAuthorityChecker(PermissionToAuthority, {k2_public_key});
+
+      BOOST_CHECK(tradingChecker.satisfied(trading->auth));
+      BOOST_CHECK(spendingChecker.satisfied(spending->auth));
+      BOOST_CHECK(!spendingChecker.satisfied(trading->auth));
+      BOOST_CHECK(!tradingChecker.satisfied(spending->auth));
+   }
+
    BOOST_CHECK_THROW(Delete_Authority(chain, alice, "trading"), message_precondition_exception);
    BOOST_CHECK_THROW(Set_Authority(chain, alice, "trading", "spending", Key_Authority(k1_public_key)),
                      message_precondition_exception);
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key)),
+                     message_precondition_exception);
    Delete_Authority(chain, alice, "spending");
    Delete_Authority(chain, alice, "trading");
+
+   {
+      auto trading = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"));
+      auto spending = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_EQUAL(trading, nullptr);
+      BOOST_CHECK_EQUAL(spending, nullptr);
+   }
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

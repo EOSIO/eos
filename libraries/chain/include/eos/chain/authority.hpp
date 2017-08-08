@@ -43,7 +43,7 @@ struct shared_authority {
 template<typename F>
 class AuthorityChecker {
    F PermissionToAuthority;
-   const flat_set<public_key_type>& signingKeys;
+   flat_set<public_key_type> signingKeys;
 
 public:
    AuthorityChecker(F PermissionToAuthority, const flat_set<public_key_type>& signingKeys)
@@ -55,12 +55,13 @@ public:
    template<typename AuthorityType>
    bool satisfied(const AuthorityType& authority) const {
       UInt32 weight = 0;
-      for (const auto& kpw : authority.keys)
+      for (const auto& kpw : authority.keys) {
          if (signingKeys.count(kpw.key)) {
             weight += kpw.weight;
             if (weight >= authority.threshold)
                return true;
          }
+      }
       for (const auto& apw : authority.accounts)
 //#warning TODO: Recursion limit? Yes: implement as producer-configurable parameter 
          if (satisfied(apw.permission)) {
