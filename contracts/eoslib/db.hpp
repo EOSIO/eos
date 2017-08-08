@@ -56,18 +56,49 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
     static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
        return load_primary_i128i128( scope, code, table, data, len );
     }
-    static int32_t front_secondary( AccountName scope, AccountName code, TableName table, void* data, uint32_t len ) {
-       return front_secondary_i128i128( scope, code, table,  data, len );
+    static int32_t next_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return next_primary_i128i128( scope, code, table, data, len );
     }
-    static int32_t back_secondary( AccountName scope, AccountName code, TableName table, void* data, uint32_t len ) {
-       return back_secondary_i128i128( scope, code, table,  data, len );
+    static int32_t previous_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return previous_primary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t upper_bound_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return upper_bound_primary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t lower_bound_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return lower_bound_primary_i128i128( scope, code, table, data, len );
     }
 
-    static bool remove( uint64_t scope, uint64_t table, const void* data ) {
+    static int32_t front_secondary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return front_secondary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t back_secondary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return back_secondary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t load_secondary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return load_secondary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t next_secondary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return next_secondary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t previous_secondary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return previous_secondary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t upper_bound_secondary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return upper_bound_secondary_i128i128( scope, code, table, data, len );
+    }
+    static int32_t lower_bound_secondary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return lower_bound_secondary_i128i128( scope, code, table, data, len );
+    }
+
+    static int32_t remove( uint64_t scope, uint64_t table, const void* data ) {
        return remove_i128i128( scope, table, data );
     }
-    static bool store( AccountName scope, TableName table, const void* data, uint32_t len ) {
+    static int32_t store( AccountName scope, TableName table, const void* data, uint32_t len ) {
        return store_i128i128( scope, table, data, len );
+    }
+    static int32_t update( AccountName scope, TableName table, const void* data, uint32_t len ) {
+       return update_i128i128( scope, table, data, len );
     }
 };
 
@@ -79,14 +110,30 @@ struct table_impl<sizeof(uint64_t),0> {
     static int32_t back_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
        return back_i64( scope, code, table, data, len );
     }
-    static bool remove( uint64_t scope, uint64_t table, const void* data ) {
-       return remove_i64( scope, table, *((uint64_t*)data) );
-    }
     static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
        return load_i64( scope, code, table, data, len );
     }
-    static bool store( AccountName scope, TableName table, const void* data, uint32_t len ) {
+    static int32_t next( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return next_i64( scope, code, table, data, len );
+    }
+    static int32_t previous( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return previous_i64( scope, code, table, data, len );
+    }
+    static int32_t lower_bound( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return lower_bound_i64( scope, code, table, data, len );
+    }
+    static int32_t upper_bound( uint64_t scope, uint64_t code, uint64_t table, void* data, uint32_t len ) {
+       return upper_bound_i64( scope, code, table, data, len );
+    }
+
+    static int32_t remove( uint64_t scope, uint64_t table, const void* data ) {
+       return remove_i64( scope, table, (uint64_t*)data);
+    }
+    static int32_t store( AccountName scope, TableName table, const void* data, uint32_t len ) {
        return store_i64( scope, table, data, len );
+    }
+    static int32_t update( AccountName scope, TableName table, const void* data, uint32_t len ) {
+       return update_i64( scope, table, data, len );
     }
 };
 
@@ -142,7 +189,7 @@ struct Table {
          return impl::upper_bound_primary( scope, code, table, &p &r, sizeof(Record) ) == sizeof(Record);
       }
       static bool remove( const Record& r, uint64_t s = scope ) {
-         return impl::remove( s, table, &r );
+         return impl::remove( s, table, &r ) != 0;
       }
    };
 
@@ -169,7 +216,7 @@ struct Table {
          return impl::upper_bound_secondary( s, code, table, &p &r, sizeof(Record) ) == sizeof(Record);
       }
       static bool remove( const Record& r, uint64_t s = scope ) {
-         return impl::remove( s, table, &r );
+         return impl::remove( s, table, &r ) != 0;
       }
    };
 
@@ -182,8 +229,12 @@ struct Table {
       assert( impl::store( s, table, &r, sizeof(r) ), "error storing record" );
       return true;
    }
+   static bool update( const Record& r, uint64_t s = scope ) {
+      assert( impl::update( s, table, &r, sizeof(r) ), "error updating record" );
+      return true;
+   }
    static bool remove( const Record& r, uint64_t s = scope ) {
-      return impl::remove( s, table, &r );
+      return impl::remove( s, table, &r ) != 0;
    }
 };
 
@@ -232,7 +283,7 @@ struct Table<scope,code,table,Record,PrimaryType,void> {
          return impl::upper_bound_primary( scope, code, table, &p &r, sizeof(Record) ) == sizeof(Record);
       }
       static bool remove( const Record& r ) {
-         return impl::remove( scope, table, &r );
+         return impl::remove( scope, table, &r ) != 0;
       }
    };
 
@@ -249,11 +300,15 @@ struct Table<scope,code,table,Record,PrimaryType,void> {
    }
 
    static bool store( const Record& r, uint64_t s = scope ) {
-      return impl::store( s, table, &r, sizeof(r) );
+      return impl::store( s, table, &r, sizeof(r) ) != 0;
+   }
+
+   static bool update( const Record& r, uint64_t s = scope ) {
+      return impl::update( s, table, &r, sizeof(r) ) != 0;
    }
 
    static bool remove( const Record& r, uint64_t s = scope ) {
-      return impl::remove( s, table, &r );
+      return impl::remove( s, table, &r ) != 0;
    }
 
 };
