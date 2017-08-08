@@ -64,12 +64,8 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
       }
 
       // ERROR in indexing logic
-      std::string msg = "transaction_id=" + transaction_id.str() + " indexed with block_id=" + block_id->str() + ", but ";
-      if (!block)
-         msg += "block was not found";
-      else
-         msg += "transaction was not found in the block";
-      BOOST_THROW_EXCEPTION( std::runtime_error( msg ) );
+      FC_ASSERT(block, "Transaction with ID ${tid} was indexed as being in block ID ${bid}, but no such block was found", ("tid", transaction_id)("bid", block_id));
+      FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block_id));
    }
 
 #warning TODO: lookup of recent transactions
