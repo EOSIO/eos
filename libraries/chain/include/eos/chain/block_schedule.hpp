@@ -25,6 +25,8 @@
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/transaction.hpp>
 
+#include <random>
+
 namespace eos { namespace chain {
    using pending_transaction = static_variant<SignedTransaction const *, GeneratedTransaction const *>;
 
