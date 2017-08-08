@@ -26,6 +26,7 @@
 #include <eos/chain/transaction.hpp>
 
 #include <random>
+#include <set>
 
 namespace eos { namespace chain {
    using pending_transaction = static_variant<SignedTransaction const *, GeneratedTransaction const *>;
@@ -111,10 +112,15 @@ namespace eos { namespace chain {
       }
    };
 
-   struct scope_extracting_visitor : public fc::visitor<vector<AccountName> const &> {
+   struct scope_extracting_visitor : public fc::visitor<std::set<AccountName>> {
       template <typename T>
-      vector<AccountName> const & operator()(const T &trx_p) const {
-         return trx_p->scope;
+      std::set<AccountName> operator()(const T &trx_p) const {
+         std::set<AccountName> unique_names(trx_p->scope.begin(), trx_p->scope.end());
+         for (auto const &m : trx_p->messages) {
+            unique_names.insert(m.code);
+         }
+
+         return unique_names;
       }
    };
 
