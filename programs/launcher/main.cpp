@@ -65,7 +65,7 @@ namespace eos {
       bp::child c(cmdl.str(), bp::std_out > reout, bp::std_err > reerr );
       bf::path pidfile = data_dir / "eosd.pid";
       bf::ofstream pidf (pidfile);
-      pidf << c.id() << endl;
+      pidf << c.id() << flush;
       pidf.close();
 
       if(!c.running()) {
@@ -202,6 +202,33 @@ struct topology {
   bf::path genesis = "./genesis.json";
   bf::path save_file = "./testnet.json";
 
+  void set_options (bpo::options_description &cli) {
+    cli.add_options()
+    ("nodes",bpo::value<int>()->default_value(1),"total number of nodes to generate")
+    ("pnodes,p",bpo::value<int>()->default_value(1),"number of nodes that are producers")
+    ("topo,t",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" or give a filename for custom")
+    ("genesis,g",bpo::value<bf::path>(),"set the path to genesis.json")
+    ("savefile,s",bpo::value<bf::path>(),"save a copy of the generated topology in this file");
+  }
+
+  void initialize (const variables_map &vmap) {
+    if (vmap.count("nodes"))
+      total_nodes = vmap["nodes"].as<int>();
+    if (vmap.count("pnodes"))
+      prod_nodes = vmap["pnodes"].as<int>();
+    if (vmap.count("topo"))
+      shape = vmap["topo"].as<string>();
+    if (vmap.count("genesis"))
+      genesis = vmap["genesis"].as<string>();
+    if (vmap.count("savefile"))
+      save_file = vmap["savefile"].as<bf::path>();
+
+    if (prod_nodes > producers)
+      prod_nodes = producers;
+    if (prod_nodes > total_nodes)
+      total_nodes = prod_nodes;
+  }
+
   void generate (vector <eos::eosd_def> &network) {
     if (shape == "ring") {
       make_ring (network);
@@ -214,12 +241,12 @@ struct topology {
     }
   }
 
-  void define_nodes (vector <eos::eosd_def> &nodes) {
+  void define_nodes (vector <eos::eosd_def> &network) {
     int per_node = producers / prod_nodes;
     int extra = producers % prod_nodes;
     for (int i = 0; i < total_nodes; i++) {
-      nodes.emplace_back();
-      auto &node = nodes.back();
+      network.emplace_back();
+      auto &node = network.back();
       ostringstream namer;
       namer << node.data_dir_base << i;// << "/";
       node.data_dir += namer.str();
@@ -308,21 +335,21 @@ struct topology {
     node.copy_config_file ();
   }
 
-  void make_ring (vector <eos::eosd_def> &nodes) {
-    define_nodes (nodes);
+  void make_ring (vector <eos::eosd_def> &network) {
+    define_nodes (network);
     if (total_nodes > 2) {
-      for (size_t i = 0; i < nodes.size(); i++) {
+      for (size_t i = 0; i < network.size(); i++) {
         size_t front = (i + 1) % total_nodes;
         size_t rear = (i > 0 ? i : total_nodes) - 1;
-        nodes[i].peers.push_back (nodes[front].p2p_endpoint());
-        nodes[i].peers.push_back (nodes[rear].p2p_endpoint());
+        network[i].peers.push_back (network[front].p2p_endpoint());
+        network[i].peers.push_back (network[rear].p2p_endpoint());
       }
     }
     else if (total_nodes == 2) {
-      nodes[0].peers.push_back (nodes[1].p2p_endpoint());
-      nodes[1].peers.push_back (nodes[0].p2p_endpoint());
+      network[0].peers.push_back (network[1].p2p_endpoint());
+      network[1].peers.push_back (network[0].p2p_endpoint());
     }
-    for (auto &node: nodes) {
+    for (auto &node: network) {
       write_config_file(node);
     }
     if (!save_file.empty()) {
@@ -331,17 +358,17 @@ struct topology {
         cerr << "could not open " << save_file << " for writing" << endl;
         exit (-1);
       }
-      //    sf << fc::json::to_pretty_string (nodes) << endl;
-      sf.close();
       // write json encoded network definition to save file
+      // string foo = fc::json::to_pretty_string (network);
+      // sf.close();
     }
   }
 
-  void make_star (vector <eos::eosd_def> &nodes) {
-    define_nodes (nodes);
+  void make_star (vector <eos::eosd_def> &network) {
+    define_nodes (network);
 
     if (total_nodes < 4) {
-      make_ring (nodes);
+      make_ring (network);
       return;
     }
     size_t links = 3;
@@ -356,12 +383,12 @@ struct topology {
         if (i == ndx) {
           ++ndx;
         }
-        string peer = nodes[ndx].p2p_endpoint();
+        string peer = network[ndx].p2p_endpoint();
         for (bool found = true; found; ) {
           found = false;
-          for (auto &p : nodes[i].peers) {
+          for (auto &p : network[i].peers) {
             if (p == peer) {
-              peer = nodes[++ndx].p2p_endpoint();
+              peer = network[++ndx].p2p_endpoint();
               found = true;
               break;
             }
@@ -369,16 +396,16 @@ struct topology {
         }
       }
     }
-    for (auto &node: nodes) {
+    for (auto &node: network) {
       write_config_file(node);
     }
     if (!save_file.empty()) {
-      // write json encoded network definition to save file
+
     }
 
   }
 
-  void make_custom (vector <eos::eosd_def> &nodes) {
+  void make_custom (vector <eos::eosd_def> &network) {
     // read "shape" file as a json struct containing the network definition
   }
 
@@ -393,33 +420,20 @@ int main (int argc, char *argv[]) {
   vector <eos::eosd_def> testnet;
   string gts;
 
+  top.set_options(opts);
+
   opts.add_options()
-    ("nodes",bpo::value<int>()->default_value(1),"total number of nodes to generate")
-    ("pnodes,p",bpo::value<int>()->default_value(1),"number of nodes that are producers")
-    ("topo,t",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" or give a filename for custom")
-    ("timestamp,i",bpo::value<string>(),"set the timestamp for the first block. Use \"now\" to indicate the current time")
-    ("genesis,g",bpo::value<bf::path>(),"set the path to genesis.json")
-    ("savefile,s",bpo::value<bf::path>(),"save a copy of the generated topology in this file");
+    ("timestamp,i",bpo::value<string>(),"set the timestamp for the first block. Use \"now\" to indicate the current time");
 
   bpo::store(bpo::parse_command_line(argc, argv, opts), vmap);
-  if (vmap.count("nodes"))
-    top.total_nodes = vmap["nodes"].as<int>();
-  if (vmap.count("pnodes"))
-    top.prod_nodes = vmap["pnodes"].as<int>();
-  if (vmap.count("topo"))
-    top.shape = vmap["topo"].as<string>();
-  if (vmap.count("genesis"))
-    top.genesis = vmap["genesis"].as<string>();
-  if (vmap.count("savefile"))
-    top.save_file = vmap["savefile"].as<bf::path>();
   if (vmap.count("timestamp"))
     gts = vmap["timestamp"].as<string>();
 
+  top.initialize(vmap);
   top.generate(testnet);
 
   for (auto node : testnet) {
     node.launch(gts);
-    sleep(4);
   }
 
   return 0;
