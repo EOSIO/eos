@@ -8,7 +8,7 @@ INCLUDE( VersionMacros )
 INCLUDE( SetupTargetMacros )
 
 set( BLOCKCHAIN_NAME "Eos" )
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 14 )
 
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
 set( GUI_CLIENT_EXECUTABLE_NAME eos )
