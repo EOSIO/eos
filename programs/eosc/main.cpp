@@ -30,12 +30,15 @@ string program = "eosc";
 string host = "localhost";
 uint32_t port = 8888;
 
-string func_base = "/v1/chain";
-string get_info_func = func_base + "/get_info";
-string push_txn_func = func_base + "/push_transaction";
-string json_to_bin_func = func_base + "/abi_json_to_bin";
-string get_block_func = func_base + "/get_block";
-string get_account_func = func_base + "/get_account";
+const string chain_func_base = "/v1/chain";
+const string get_info_func = chain_func_base + "/get_info";
+const string push_txn_func = chain_func_base + "/push_transaction";
+const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
+const string get_block_func = chain_func_base + "/get_block";
+const string get_account_func = chain_func_base + "/get_account";
+
+const string account_history_func_base = "/v1/account_history";
+const string get_transaction_func = account_history_func_base + "/get_transaction";
 
 
 inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
@@ -364,6 +367,10 @@ int send_command (const vector<string> &cmd_line)
 
   } else if( command == "do" ) {
 
+  } else if( command == "transaction" ) {
+     FC_ASSERT( cmd_line.size() == 2 );
+     auto arg= fc::mutable_variant_object( "transaction_id", cmd_line[1]);
+     std::cout << fc::json::to_pretty_string( call( get_transaction_func, arg) ) << std::endl;
   }
   return 0;
 }
@@ -439,7 +446,6 @@ int main( int argc, char** argv ) {
           std::cout << "enter command: " << std::flush;
         }
       }
-
 
       tic = read_line_and_split(cmd_line, tic);
       if (tic != '\0') {
