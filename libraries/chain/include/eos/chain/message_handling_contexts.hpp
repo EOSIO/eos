@@ -20,29 +20,106 @@ class apply_context {
                     TransactionAuthorizationChecker* authChecker)
          :controller(con),db(db),trx(t),msg(m),code(code),mutable_controller(con),mutable_db(db),authChecker(authChecker){}
 
-      int32_t store_i64( Name scope, Name table, Name key, const char* data, uint32_t len);
-      int32_t remove_i64( Name scope, Name table, Name key );
-      int32_t remove_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary );
-      int32_t store_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary,
-                              const char* data, uint32_t len );
+      int32_t store_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t len);
 
-      int32_t load_i64( Name scope, Name code, Name table, Name Key, char* data, uint32_t maxlen );
+      int32_t update_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t len);
+
+      int32_t remove_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t len);
+
+      int32_t load_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+  
+      int32_t front_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+
+      int32_t back_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+
+      int32_t next_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
       
-      int32_t front_primary_i128i128( Name scope, Name code, Name table, 
-                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
-      int32_t back_primary_i128i128( Name scope, Name code, Name table, 
-                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
-      int32_t front_secondary_i128i128( Name scope, Name code, Name table, 
-                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
-      int32_t back_secondary_i128i128( Name scope, Name code, Name table, 
-                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      int32_t previous_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+
+      int32_t lower_bound_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+
+      int32_t upper_bound_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+
+   
+      int32_t store_i128i128( Name scope, Name code, Name table, uint128_t* primary, uint128_t* secondary,
+                              char* data, uint32_t len );
+
+      int32_t update_i128i128( Name scope, Name code, Name table, uint128_t* primary, uint128_t* secondary,
+                              char* data, uint32_t len );
+
+      int32_t remove_i128i128( Name scope, Name code, Name table, uint128_t *primary, uint128_t *secondary,
+                              char* data, uint32_t len );
+
+      template <typename T>
+      int32_t load_i128i128( Name scope, Name code, Name table, uint128_t* primary, 
+                              uint128_t* secondary, char* value, uint32_t valuelen );
+
+      template <typename T>
+      int32_t front_i128i128( Name scope, Name code, Name table, uint128_t* primary, 
+                               uint128_t* secondary, char* value, uint32_t valuelen );
+
+      template <typename T>
+      int32_t back_i128i128( Name scope, Name code, Name table, uint128_t* primary,
+                              uint128_t* secondary, char* value, uint32_t valuelen );
+
+      template <typename T>
+      int32_t next_i128i128( Name scope, Name code, Name table, uint128_t* primary, 
+                              uint128_t* secondary, char* value, uint32_t valuelen );
+
+      template <typename T>
+      int32_t previous_i128i128( Name scope, Name code, Name table, uint128_t* primary, 
+                              uint128_t* secondary, char* value, uint32_t valuelen );
+      
+      template <typename T>
+      int32_t lower_bound_i128i128( Name scope, Name code, Name table, 
+                                     uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen );
+
+      template <typename T>
+      int32_t upper_bound_i128i128( Name scope, Name code, Name table, 
+                           uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen );
+   
+      
       int32_t load_primary_i128i128( Name scope, Name code, Name table, 
                                        uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t front_primary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t back_primary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t next_primary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t previous_primary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t lower_bound_primary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t upper_bound_primary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+   
       int32_t load_secondary_i128i128( Name scope, Name code, Name table, 
                                        uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
-      int32_t lowerbound_primary_i128i128( Name scope, Name code, Name table, 
+      
+      int32_t front_secondary_i128i128( Name scope, Name code, Name table, 
                                        uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
-      int32_t lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
+      
+      int32_t back_secondary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t next_secondary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t previous_secondary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      
+      int32_t lower_bound_secondary_i128i128( Name scope, Name code, Name table, 
+                                       uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+
+      int32_t upper_bound_secondary_i128i128( Name scope, Name code, Name table, 
                                        uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
 
       void require_authorization(const types::AccountName& account);
