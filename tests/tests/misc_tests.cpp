@@ -9,6 +9,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "../common/testing_macros.hpp"
+
 namespace eos {
 using namespace chain;
 
@@ -79,45 +81,46 @@ BOOST_AUTO_TEST_CASE(deterministic_distributions)
 
 BOOST_AUTO_TEST_CASE(authority_checker)
 { try {
-   #define KEY(x) auto x = fc::ecc::private_key::regenerate(fc::sha256::hash(#x)).get_public_key()
-
-   KEY(a);
-   KEY(b);
-   KEY(c);
+   Make_Key(a);
+   auto& a = a_public_key;
+   Make_Key(b);
+   auto& b = b_public_key;
+   Make_Key(c);
+   auto& c = c_public_key;
 
    auto GetNullAuthority = [](auto){return Authority();};
 
-   Authority A(2, {{a, 1}, {b, 1}}, {});
+   auto A = Complex_Authority(2, ((a,1))((b,1)),);
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a, b}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a, b, c}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, c}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {b, c}).satisfied(A));
 
-   A = Authority(3, {{a,1},{b,1},{c,1}}, {});
+   A = Complex_Authority(3, ((a,1))((b,1))((c,1)),);
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {c, b, a}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, b}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, c}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {b, c}).satisfied(A));
 
-   A = Authority(1, {{a, 1}, {b, 1}}, {});
+   A = Complex_Authority(1, ((a, 1))((b, 1)),);
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {b}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {c}).satisfied(A));
 
-   A = Authority(1, {{a, 2}, {b, 1}}, {});
+   A = Complex_Authority(1, ((a, 2))((b, 1)),);
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {b}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {c}).satisfied(A));
 
-   auto GetCAuthority = [c](auto){return Authority(1, {{c, 1}}, {});};
+   auto GetCAuthority = [c_public_key](auto){return Complex_Authority(1, ((c, 1)),);};
 
-   A = Authority(2, {{a, 2}, {b, 1}}, {{{"hello", "world"}, 1}});
+   A = Complex_Authority(2, ((a, 2))((b, 1)), (("hello", "world", 1)));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {b,c}).satisfied(A));
 
-   A = Authority(2, {{a, 1}, {b, 1}}, {{{"hello", "world"}, 1}});
+   A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 1)));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
@@ -125,7 +128,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {b,c}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,c}).satisfied(A));
 
-   A = Authority(2, {{a, 1}, {b, 1}}, {{{"hello", "world"}, 2}});
+   A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 2)));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,b}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));

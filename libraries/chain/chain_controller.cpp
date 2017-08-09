@@ -31,6 +31,7 @@
 #include <eos/chain/action_objects.hpp>
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
+#include <eos/chain/permission_link_object.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
 
@@ -244,6 +245,7 @@ ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction
       _pending_tx_session = _db.start_undo_session(true);
 
    auto temp_session = _db.start_undo_session(true);
+   check_transaction_authorization(trx);
    auto pt = _apply_transaction(trx);
    _pending_transactions.push_back(trx);
 
@@ -328,6 +330,7 @@ signed_block chain_controller::_generate_block(
       try
       {
          auto temp_session = _db.start_undo_session(true);
+         check_transaction_authorization(tx);
          _apply_transaction(tx);
          temp_session.squash();
 
@@ -434,6 +437,11 @@ void chain_controller::_apply_block(const signed_block& next_block)
              ("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()));
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
+   
+   for (const auto& cycle : next_block.cycles)
+      for (const auto& thread : cycle)
+         for (const auto& trx : thread.user_input)
+            check_transaction_authorization(trx);
 
    /* We do not need to push the undo state for each transaction
     * because they either all apply and are valid or the
@@ -466,6 +474,39 @@ void chain_controller::_apply_block(const signed_block& next_block)
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
+void chain_controller::check_transaction_authorization(const SignedTransaction& trx)const {
+   if ((_skip_flags & skip_transaction_signatures) && (_skip_flags & skip_authority_check)) {
+      ilog("Skipping auth and sigs checks");
+      return;
+   }
+
+   auto getPermission = [&db=_db](const types::AccountPermission& permission) {
+      auto key = boost::make_tuple(permission.account, permission.permission);
+      return db.get<permission_object, by_owner>(key);
+   };
+   auto getAuthority = [&getPermission](const types::AccountPermission& permission) {
+      return getPermission(permission).auth;
+   };
+#warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
+   auto checker = MakeAuthorityChecker(std::move(getAuthority), trx.get_signature_keys(chain_id_type{}));
+
+   for (const auto& message : trx.messages)
+      for (const auto& declaredAuthority : message.authorization) {
+         const auto& minimumPermission = lookup_minimum_permission(declaredAuthority.account,
+                                                                   message.code, message.type);
+         if ((_skip_flags & skip_authority_check) == false) {
+            const auto& index = _db.get_index<permission_index>().indices();
+            EOS_ASSERT(getPermission(declaredAuthority).satisfies(minimumPermission, index), tx_irrelevant_auth,
+                       "Message declares irrelevant authority '${auth}'", ("auth", declaredAuthority));
+         }
+         if ((_skip_flags & skip_transaction_signatures) == false) {
+            EOS_ASSERT(checker.satisfied(declaredAuthority), tx_missing_sigs,
+                       "Transaction declares authority '${auth}', but does not have signatures for it.",
+                       ("auth", declaredAuthority));
+         }
+      }
+}
+
 ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
 {
    return with_skip_flags( skip, [&]() { return _apply_transaction(trx); });
@@ -480,26 +521,8 @@ try {
    validate_uniqueness(trx);
    validate_tapos(trx);
    validate_referenced_accounts(trx);
-   validate_authority(trx);
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
-
-void chain_controller::validate_authority( const SignedTransaction& trx )const {
-   if (_skip_flags | skip_transaction_signatures)
-      return;
-
-   auto getAuthority = [&db=_db](const types::AccountPermission& permission) {
-      auto key = boost::make_tuple(permission.account, permission.permission);
-      return db.get<permission_object, by_owner>(key).auth;
-   };
-#warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
-   auto checker = MakeAuthorityChecker(std::move(getAuthority), trx.get_signature_keys(chain_id_type{}));
-
-   for (const auto& declaredAuthority : trx.authorizations)
-      EOS_ASSERT(checker.satisfied(declaredAuthority), tx_missing_sigs,
-                 "Transaction declares authority '${auth}', but does not have signatures for it.",
-                 ("auth", declaredAuthority));
-}
 
 void chain_controller::validate_scope( const SignedTransaction& trx )const {
    EOS_ASSERT(trx.scope.size() > 0, transaction_exception, "No scope specified by transaction" );
@@ -507,11 +530,32 @@ void chain_controller::validate_scope( const SignedTransaction& trx )const {
       EOS_ASSERT( trx.scope[i-1] < trx.scope[i], transaction_exception, "Scopes must be sorted and unique" );
 }
 
+const permission_object& chain_controller::lookup_minimum_permission(types::AccountName authorizer_account,
+                                                                    types::AccountName code_account,
+                                                                    types::FuncName type) const {
+   try {
+      // First look up a specific link for this message type
+      auto key = boost::make_tuple(authorizer_account, code_account, type);
+      auto link = _db.find<permission_link_object, by_message_type>(key);
+      // If no specific link found, check for a contract-wide default
+      if (link == nullptr) {
+         get<2>(key) = "";
+         link = _db.find<permission_link_object, by_message_type>(key);
+      }
+
+      // If no specific or default link found, use active permission
+      auto permissionKey = boost::make_tuple<AccountName, PermissionName>(authorizer_account, "active");
+      if (link != nullptr)
+         get<1>(permissionKey) = link->required_permission;
+      return _db.get<permission_object, by_owner>(permissionKey);
+   } FC_CAPTURE_AND_RETHROW((authorizer_account)(code_account)(type))
+}
+
 void chain_controller::validate_uniqueness( const SignedTransaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
    auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
-   EOS_ASSERT(transaction == nullptr, transaction_exception, "Transaction is not unique");
+   EOS_ASSERT(transaction == nullptr, tx_duplicate, "Transaction is not unique");
 }
 
 void chain_controller::validate_tapos(const SignedTransaction& trx)const {
@@ -526,11 +570,12 @@ void chain_controller::validate_tapos(const SignedTransaction& trx)const {
 }
 
 void chain_controller::validate_referenced_accounts(const SignedTransaction& trx)const {
-   for(const auto& auth : trx.authorizations) {
-      require_account(auth.account);
-   }
-   for(const auto& msg : trx.messages) {
+   for (const auto& scope : trx.scope)
+      require_account(scope);
+   for (const auto& msg : trx.messages) {
       require_account(msg.code);
+      for (const auto& auth : msg.authorization)
+         require_account(auth.account);
    }
 }
 
@@ -567,10 +612,16 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
  *  The order of execution of precondition and apply can impact the validity of the
  *  entire message.
  */
-void chain_controller::process_message( const ProcessedTransaction& trx, AccountName code, const Message& message,
-                                        TransactionAuthorizationChecker* authChecker, MessageOutput& output) {
-   apply_context apply_ctx(*this, _db, trx, message, code, authChecker);
+void chain_controller::process_message(const ProcessedTransaction& trx, AccountName code,
+                                       const Message& message, MessageOutput& output) {
+   apply_context apply_ctx(*this, _db, trx, message, code);
    apply_message(apply_ctx);
+
+   // process_message recurses for each notified account, but we only want to run this check at the top level
+   if (code == message.code && (_skip_flags & skip_authority_check) == false)
+      EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
+                 "Message declared authorities it did not need: ${unused}",
+                 ("unused", apply_ctx.unused_authorizations())("message", message));
 
    output.notify.reserve( apply_ctx.notified.size() );
 
@@ -578,7 +629,7 @@ void chain_controller::process_message( const ProcessedTransaction& trx, Account
       try {
          auto notify_code = apply_ctx.notified[i];
          output.notify.push_back( {notify_code} );
-         process_message( trx, notify_code, message, authChecker, output.notify.back().output );
+         process_message( trx, notify_code, message, output.notify.back().output );
       } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
 
@@ -637,43 +688,12 @@ ProcessedTransaction chain_controller::_apply_transaction(const SignedTransactio
  */
 ProcessedTransaction chain_controller::process_transaction( const SignedTransaction& trx ) 
 { try {
-   // This lambda takes an AccountPermission, and returns its parent. It caches the permission_object it last returned,
-   // which allows it to simplify the database lookups when it is next used to fetch that object's parent.
-   auto getParentPermission =
-         [&index = _db.get_index<permission_index>().indices(), cache = static_cast<const permission_object*>(nullptr)]
-         (const types::AccountPermission& child) mutable -> fc::optional<types::AccountPermission> {
-      // Ensure cache points to permission_object corresponding to child
-      if (!(cache && cache->owner == child.account && cache->name == child.permission)) {
-         auto& ownerIndex = index.get<by_owner>();
-         auto itr = ownerIndex.find(boost::make_tuple(child.account, child.permission));
-         FC_ASSERT(itr != ownerIndex.end(), "Unable to find permission_object for AccountPermission '${perm}'",
-                   ("perm", child));
-         cache = &*itr;
-      }
-
-      // Make cache point to the parent of child and return result
-      if (cache) {
-         if (cache->parent._id == 0) {
-            cache = nullptr;
-            return {};
-         } else {
-            cache = &*index.get<by_id>().find(cache->parent);
-            return types::AccountPermission(cache->owner, cache->name);
-         }
-      }
-      return {};
-   };
-
    ProcessedTransaction ptrx( trx );
-   TransactionAuthorizationChecker authChecker(trx.authorizations, getParentPermission);
    ptrx.output.resize( trx.messages.size() );
 
    for( uint32_t i = 0; i < ptrx.messages.size(); ++i ) {
-      process_message(ptrx, ptrx.messages[i].code, ptrx.messages[i], &authChecker, ptrx.output[i] );
+      process_message(ptrx, ptrx.messages[i].code, ptrx.messages[i], ptrx.output[i] );
    }
-
-   EOS_ASSERT(authChecker.allPermissionsUsed(), tx_irrelevant_auth,
-              "Transaction declared an authorization it did not need");
 
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
@@ -793,6 +813,7 @@ uint32_t chain_controller::last_irreversible_block_num() const {
 void chain_controller::initialize_indexes() {
    _db.add_index<account_index>();
    _db.add_index<permission_index>();
+   _db.add_index<permission_link_index>();
    _db.add_index<action_permission_index>();
    _db.add_index<key_value_index>();
    _db.add_index<key128x128_value_index>();
@@ -830,12 +851,11 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
          auto messages = starter.prepare_database(*this, _db);
          std::for_each(messages.begin(), messages.end(), [&](const Message& m) { 
             MessageOutput output;
-            ProcessedTransaction trx; /// dummy transaction required for scope validation
-            trx.scope = { config::EosContractName, "inita" };
+            ProcessedTransaction trx; /// dummy tranaction required for scope validation
             std::sort(trx.scope.begin(), trx.scope.end() );
-            with_skip_flags( skip_scope_check, [&](){
-               process_message(trx,m.code,m,nullptr,output);
-            } );
+            with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check, [&](){
+               process_message(trx,m.code,m,output); 
+            });
          });
       });
    }
@@ -1103,7 +1123,6 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
    GET_FIELD( vo, expiration, result );
    GET_FIELD( vo, scope, result );
    GET_FIELD( vo, signatures, result );
-   GET_FIELD( vo, authorizations, result );
 
    if( vo.contains( "messages" ) ) {
       const vector<variant>& msgs = vo["messages"].get_array();
@@ -1112,6 +1131,7 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
          const auto& vo = msgs[i].get_object();
          GET_FIELD( vo, code, result.messages[i] );
          GET_FIELD( vo, type, result.messages[i] );
+         GET_FIELD( vo, authorization, result.messages[i] );
 
          if( vo.contains( "data" ) ) {
             const auto& data = vo["data"];
@@ -1172,7 +1192,6 @@ fc::variant  chain_controller::transaction_to_variant( const ProcessedTransactio
     SET_FIELD( trx_mvo, trx, expiration );
     SET_FIELD( trx_mvo, trx, scope );
     SET_FIELD( trx_mvo, trx, signatures );
-    SET_FIELD( trx_mvo, trx, authorizations );
 
     vector<fc::mutable_variant_object> msgs( trx.messages.size() );
     vector<fc::variant> msgsv(msgs.size());
@@ -1182,6 +1201,7 @@ fc::variant  chain_controller::transaction_to_variant( const ProcessedTransactio
        auto& msg     = trx.messages[i];
        SET_FIELD( msg_mvo, msg, code );
        SET_FIELD( msg_mvo, msg, type );
+       SET_FIELD( msg_mvo, msg, authorization );
 
        const auto& code_account = _db.get<account_object,by_name>( msg.code );
        if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi

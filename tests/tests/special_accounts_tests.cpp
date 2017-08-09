@@ -86,15 +86,19 @@ BOOST_FIXTURE_TEST_CASE(producers_authority, testing_fixture)
 { try {
 
       Make_Blockchain(chain)
-      chain.produce_blocks();
 
       Make_Account(chain, alice);
       Make_Account(chain, bob);
       Make_Account(chain, charlie);
 
-      Make_Account(chain, newproducer1); Make_Producer(chain, newproducer1);
-      Make_Account(chain, newproducer2); Make_Producer(chain, newproducer2);
-      Make_Account(chain, newproducer3); Make_Producer(chain, newproducer3);
+      Make_Account(chain, newproducer1);
+      Make_Account(chain, newproducer2);
+      Make_Account(chain, newproducer3);
+      chain.produce_blocks();
+
+      Make_Producer(chain, newproducer1);
+      Make_Producer(chain, newproducer2);
+      Make_Producer(chain, newproducer3);
 
       Approve_Producer(chain, alice, newproducer1, true);
       Approve_Producer(chain, bob, newproducer2, true);

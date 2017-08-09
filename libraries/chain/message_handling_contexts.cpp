@@ -6,14 +6,17 @@
 
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/range/algorithm/find_if.hpp>
+#include <boost/range/combine.hpp>
+#include <boost/range/adaptor/filtered.hpp>
+#include <boost/range/adaptor/transformed.hpp>
 
 namespace eos { namespace chain {
 
 void apply_context::require_authorization(const types::AccountName& account) {
-#warning TODO: Look up the permission_object that account has specified to use for this message type
-   if (authChecker)
-      EOS_ASSERT(authChecker->requirePermission({account, "active"}), tx_missing_auth,
-                 "Transaction does not declare required authority '${auth}'", ("auth", account));
+   auto itr = boost::find_if(msg.authorization, [&account](const auto& auth) { return auth.account == account; });
+   EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
+              "Transaction is missing required authorization from ${acct}", ("acct", account));
+   used_authorizations[itr - msg.authorization.begin()] = true;
 }
 
 void apply_context::require_scope(const types::AccountName& account)const {
@@ -27,20 +30,34 @@ void apply_context::require_scope(const types::AccountName& account)const {
    }
 }
 
-bool apply_context::has_recipient( const types::AccountName& account )const {
-   if( msg.code == account ) return true;
+void apply_context::require_recipient(const types::AccountName& account) {
+   if (account == msg.code)
+      return;
 
    auto itr = boost::find_if(notified, [&account](const auto& recipient) {
       return recipient == account;
    });
 
-   return itr != notified.end();
-}
-
-void apply_context::require_recipient(const types::AccountName& account) {
-   if( !has_recipient( account ) ) {
+   if (itr == notified.end()) {
       notified.push_back(account);
    }
+}
+
+bool apply_context::all_authorizations_used() const {
+   return boost::algorithm::all_of_equal(used_authorizations, true);
+}
+
+vector<types::AccountPermission> apply_context::unused_authorizations() const {
+   auto RemoveUsed = boost::adaptors::filtered([](const auto& tuple) {
+      return !boost::get<0>(tuple);
+   });
+   auto ToPermission = boost::adaptors::transformed([](const auto& tuple) {
+      return boost::get<1>(tuple);
+   });
+
+   // zip the parallel arrays, filter out the used authorizations, and return just the permissions that are left
+   auto range = boost::combine(used_authorizations, msg.authorization) | RemoveUsed | ToPermission;
+   return {range.begin(), range.end()};
 }
 
 //
@@ -51,9 +68,9 @@ int32_t apply_context::load_i64( Name scope, Name code, Name table, uint64_t *ke
    require_scope( scope );
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
+                                                            AccountName(scope),
+                                                            AccountName(code),
+                                                            AccountName(table),
                                                             AccountName(*key) ) );
    if( obj == nullptr ) { return -1; }
    auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
@@ -67,9 +84,9 @@ int32_t apply_context::remove_i64( Name scope, Name code, Name table, uint64_t *
    require_scope( scope );
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
+                                                            AccountName(scope),
+                                                            AccountName(code),
+                                                            AccountName(table),
                                                             AccountName(*key) ) );
    if( obj ) {
       mutable_db.remove( *obj );
@@ -82,9 +99,9 @@ int32_t apply_context::store_i64( Name scope, Name code, Name table, uint64_t *k
    require_scope( scope );
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
+                                                            AccountName(scope),
+                                                            AccountName(code),
+                                                            AccountName(table),
                                                             AccountName(*key) ) );
    if( obj ) {
       mutable_db.modify( *obj, [&]( auto& o ) {
@@ -107,9 +124,9 @@ int32_t apply_context::update_i64( Name scope, Name code, Name table, uint64_t *
    require_scope( scope );
 
    const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
+                                                            AccountName(scope),
+                                                            AccountName(code),
+                                                            AccountName(table),
                                                             AccountName(*key) ) );
    if( !obj ) return 0;
 
@@ -155,7 +172,7 @@ int32_t apply_context::back_i64( Name scope, Name code, Name table, uint64_t *ke
    if( itr->scope != scope ||
        itr->code  != code  ||
        itr->table != table) return -1;
-   
+
    *key = itr->key;
    auto copylen = std::min<size_t>(itr->value.size(),valuelen);
    if( copylen ) {
@@ -175,14 +192,14 @@ int32_t apply_context::next_i64( Name scope, Name code, Name table, uint64_t *ke
        itr->code  != code  ||
        itr->table != table ||
        uint64_t(itr->key) != *key ) return -1;
-   
+
    ++itr;
 
    if( itr == idx.end() ||
        itr->scope != scope ||
        itr->code  != code  ||
        itr->table != table ) return -1;
-   
+
    *key = itr->key;
    auto copylen = std::min<size_t>(itr->value.size(),valuelen);
    if( copylen ) {
@@ -203,13 +220,13 @@ int32_t apply_context::previous_i64( Name scope, Name code, Name table, uint64_t
        itr->code  != code  ||
        itr->table != table ||
        uint64_t(itr->key) != *key ) return -1;
-   
+
    --itr;
 
    if( itr->scope != scope ||
        itr->code  != code  ||
        itr->table != table ) return -1;
-   
+
    *key = itr->key;
    auto copylen = std::min<size_t>(itr->value.size(),valuelen);
    if( copylen ) {
@@ -228,7 +245,7 @@ int32_t apply_context::lower_bound_i64( Name scope, Name code, Name table, uint6
        itr->scope != scope ||
        itr->code  != code  ||
        itr->table != table) return -1;
-   
+
    *key = itr->key;
    auto copylen = std::min<size_t>(itr->value.size(),valuelen);
    if( copylen ) {
@@ -247,7 +264,7 @@ int32_t apply_context::upper_bound_i64( Name scope, Name code, Name table, uint6
        itr->scope != scope ||
        itr->code  != code  ||
        itr->table != table) return -1;
-   
+
    *key = itr->key;
    auto copylen = std::min<size_t>(itr->value.size(),valuelen);
    if( copylen ) {
@@ -302,9 +319,9 @@ int32_t apply_context::back_i128i128( Name scope, Name code, Name table, uint128
    require_scope( scope );
 
    const auto& idx = db.get_index<key128x128_value_index,T>();
-   auto itr = idx.upper_bound( boost::make_tuple( AccountName(scope), 
-                                                  AccountName(code), 
-                                                  table, 
+   auto itr = idx.upper_bound( boost::make_tuple( AccountName(scope),
+                                                  AccountName(code),
+                                                  table,
                                                   uint128_t(-1), uint128_t(-1) ) );
 
    if( std::distance(idx.begin(), itr) == 0 ) return -1;
@@ -317,7 +334,7 @@ int32_t apply_context::back_i128i128( Name scope, Name code, Name table, uint128
 
     *primary   = itr->primary_key;
     *secondary = itr->secondary_key;
-    
+
     auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
     if( copylen ) {
        itr->value.copy(value, copylen);
@@ -326,14 +343,14 @@ int32_t apply_context::back_i128i128( Name scope, Name code, Name table, uint128
 }
 
 template <typename T>
-int32_t apply_context::front_i128i128( Name scope, Name code, Name table, uint128_t* primary, 
+int32_t apply_context::front_i128i128( Name scope, Name code, Name table, uint128_t* primary,
                                        uint128_t* secondary, char* value, uint32_t valuelen ) {
    require_scope( scope );
 
    const auto& idx = db.get_index<key128x128_value_index,T>();
-   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
+   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope),
+                                                  uint64_t(code),
+                                                  uint64_t(table),
                                                   uint128_t(0), uint128_t(0) ) );
    if( itr == idx.end() ||
        itr->scope != scope ||
@@ -342,7 +359,7 @@ int32_t apply_context::front_i128i128( Name scope, Name code, Name table, uint12
 
     *primary   = itr->primary_key;
     *secondary = itr->secondary_key;
-    
+
     auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
     if( copylen ) {
        itr->value.copy(value, copylen);
@@ -351,16 +368,16 @@ int32_t apply_context::front_i128i128( Name scope, Name code, Name table, uint12
 }
 
 template <typename T>
-int32_t apply_context::load_i128i128( Name scope, Name code, Name table, uint128_t* primary, 
+int32_t apply_context::load_i128i128( Name scope, Name code, Name table, uint128_t* primary,
                                     uint128_t* secondary, char* value, uint32_t valuelen ) {
    require_scope( scope );
 
    auto key = i128i128_Key<T>::get_first(primary, secondary);
 
    const auto& idx = db.get_index<key128x128_value_index,T>();
-   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
+   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope),
+                                                  uint64_t(code),
+                                                  uint64_t(table),
                                                   *key, uint128_t(0) ) );
    if( itr == idx.end() ||
        itr->scope != scope ||
@@ -370,7 +387,7 @@ int32_t apply_context::load_i128i128( Name scope, Name code, Name table, uint128
 
     *primary   = itr->primary_key;
     *secondary = itr->secondary_key;
-    
+
     auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
     if( copylen ) {
        itr->value.copy(value, copylen);
@@ -379,17 +396,17 @@ int32_t apply_context::load_i128i128( Name scope, Name code, Name table, uint128
 }
 
 template <typename T>
-int32_t apply_context::next_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::next_i128i128( Name scope, Name code, Name table,
                      uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
    require_scope( scope );
-   
+
    auto key1 = i128i128_Key<T>::get_first(primary, secondary);
    auto key2 = i128i128_Key<T>::get_second(primary, secondary);
 
    const auto& idx = db.get_index<key128x128_value_index,T>();
-   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
+   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope),
+                                                  uint64_t(code),
+                                                  uint64_t(table),
                                                   *key1, *key2 ) );
    if( itr == idx.end() ||
        itr->scope != scope ||
@@ -397,7 +414,7 @@ int32_t apply_context::next_i128i128( Name scope, Name code, Name table,
        itr->table != table ||
        i128i128_Key<T>::get_first(*itr) != *key1 ||
        i128i128_Key<T>::get_second(*itr) != *key2 ) return -1;
-   
+
    ++itr;
 
    if( itr == idx.end() ||
@@ -407,44 +424,7 @@ int32_t apply_context::next_i128i128( Name scope, Name code, Name table,
 
     *primary   = itr->primary_key;
     *secondary = itr->secondary_key;
-    
-    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-    if( copylen ) {
-       itr->value.copy(value, copylen);
-    }
-    return copylen;   
-}
 
-template <typename T>
-int32_t apply_context::previous_i128i128( Name scope, Name code, Name table, 
-                     uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-   require_scope( scope );
-   
-   auto key1 = i128i128_Key<T>::get_first(primary, secondary);
-   auto key2 = i128i128_Key<T>::get_second(primary, secondary);
-   
-   const auto& idx = db.get_index<key128x128_value_index,T>();
-   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
-                                                  *key1, *key2 ) );
-   if( itr == idx.end() ||
-       itr == idx.begin() ||
-       itr->scope != scope ||
-       itr->code  != code  ||
-       itr->table != table ||
-       i128i128_Key<T>::get_first(*itr) != *key1 ||
-       i128i128_Key<T>::get_second(*itr) != *key2 ) return -1;
-   
-   --itr;
-
-   if( itr->scope != scope ||
-       itr->code  != code  ||
-       itr->table != table ) return -1;
-
-    *primary   = itr->primary_key;
-    *secondary = itr->secondary_key;
-    
     auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
     if( copylen ) {
        itr->value.copy(value, copylen);
@@ -453,16 +433,53 @@ int32_t apply_context::previous_i128i128( Name scope, Name code, Name table,
 }
 
 template <typename T>
-int32_t apply_context::lower_bound_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::previous_i128i128( Name scope, Name code, Name table,
+                     uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
+   require_scope( scope );
+
+   auto key1 = i128i128_Key<T>::get_first(primary, secondary);
+   auto key2 = i128i128_Key<T>::get_second(primary, secondary);
+
+   const auto& idx = db.get_index<key128x128_value_index,T>();
+   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope),
+                                                  uint64_t(code),
+                                                  uint64_t(table),
+                                                  *key1, *key2 ) );
+   if( itr == idx.end() ||
+       itr == idx.begin() ||
+       itr->scope != scope ||
+       itr->code  != code  ||
+       itr->table != table ||
+       i128i128_Key<T>::get_first(*itr) != *key1 ||
+       i128i128_Key<T>::get_second(*itr) != *key2 ) return -1;
+
+   --itr;
+
+   if( itr->scope != scope ||
+       itr->code  != code  ||
+       itr->table != table ) return -1;
+
+    *primary   = itr->primary_key;
+    *secondary = itr->secondary_key;
+
+    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+    if( copylen ) {
+       itr->value.copy(value, copylen);
+    }
+    return copylen;
+}
+
+template <typename T>
+int32_t apply_context::lower_bound_i128i128( Name scope, Name code, Name table,
                      uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
    require_scope( scope );
 
    auto key = i128i128_Key<T>::get_first(primary, secondary);
 
    const auto& idx = db.get_index<key128x128_value_index,T>();
-   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
+   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope),
+                                                  uint64_t(code),
+                                                  uint64_t(table),
                                                   *key, uint128_t(0) ) );
    if( itr == idx.end() ||
        itr->scope != scope ||
@@ -471,26 +488,26 @@ int32_t apply_context::lower_bound_i128i128( Name scope, Name code, Name table,
 
     *primary   = itr->primary_key;
     *secondary = itr->secondary_key;
-    
+
     auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
     if( copylen ) {
        itr->value.copy(value, copylen);
     }
-    return copylen;   
+    return copylen;
 }
 
 template <typename T>
-int32_t apply_context::upper_bound_i128i128( Name scope, Name code, Name table, 
+int32_t apply_context::upper_bound_i128i128( Name scope, Name code, Name table,
                      uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
 
    require_scope( scope );
 
    auto key = i128i128_Key<T>::get_first(primary, secondary);
-   
+
    const auto& idx = db.get_index<key128x128_value_index,T>();
-   auto itr = idx.upper_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
+   auto itr = idx.upper_bound( boost::make_tuple( uint64_t(scope),
+                                                  uint64_t(code),
+                                                  uint64_t(table),
                                                   *key, (unsigned __int128)(-1) ) );
    if( itr == idx.end() ||
        itr->scope != scope ||
@@ -499,7 +516,7 @@ int32_t apply_context::upper_bound_i128i128( Name scope, Name code, Name table,
 
     *primary   = itr->primary_key;
     *secondary = itr->secondary_key;
-    
+
     auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
     if( copylen ) {
        itr->value.copy(value, copylen);
@@ -511,9 +528,9 @@ int32_t apply_context::remove_i128i128( Name scope, Name code, Name table, uint1
    require_scope( scope );
 
    const auto* obj = db.find<key128x128_value_object,by_scope_primary>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
+                                                            AccountName(scope),
+                                                            AccountName(code),
+                                                            AccountName(table),
                                                             *primary, *secondary) );
    if( obj ) {
       mutable_db.remove( *obj );
@@ -526,9 +543,9 @@ int32_t apply_context::store_i128i128( Name scope, Name code, Name table, uint12
                                        char* value, uint32_t valuelen ) {
    require_scope( scope );
    const auto* obj = db.find<key128x128_value_object,by_scope_primary>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
+                                                            AccountName(scope),
+                                                            AccountName(code),
+                                                            AccountName(table),
                                                             *primary, *secondary ) );
    //idump(( *((fc::uint128_t*)primary)) );
    //idump(( *((fc::uint128_t*)secondary)) );
@@ -556,9 +573,9 @@ int32_t apply_context::update_i128i128( Name scope, Name code, Name table, uint1
                                        char* value, uint32_t valuelen ) {
    require_scope( scope );
    const auto* obj = db.find<key128x128_value_object,by_scope_primary>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
+                                                            AccountName(scope),
+                                                            AccountName(code),
+                                                            AccountName(table),
                                                             *primary, *secondary ) );
    if( !obj ) {
       return 0;

@@ -270,9 +270,6 @@ DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
    wasm_interface::get().current_apply_context->require_recipient( account );
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,hasRecipient,hasRecipient,i32,i64,account) {
-   return wasm_interface::get().current_apply_context->has_recipient( account );
-}
 DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
    wasm_interface::get().current_validate_context->require_scope( scope );
 }

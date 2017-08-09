@@ -100,8 +100,8 @@ namespace eos { namespace types {
       built_in_types.emplace("setproducer",             packUnpack<setproducer>());
       built_in_types.emplace("okproducer",              packUnpack<okproducer>());
       built_in_types.emplace("setproxy",                packUnpack<setproxy>());
-      built_in_types.emplace("UpdatePermission",        packUnpack<UpdatePermission>());
-      built_in_types.emplace("DeletePermission",        packUnpack<DeletePermission>());
+      built_in_types.emplace("updateauth",              packUnpack<updateauth>());
+      built_in_types.emplace("deleteauth",              packUnpack<deleteauth>());
       
    }
 
