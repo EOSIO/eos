@@ -612,14 +612,16 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
  *  The order of execution of precondition and apply can impact the validity of the
  *  entire message.
  */
-void chain_controller::process_message( const ProcessedTransaction& trx, AccountName code, const Message& message, MessageOutput& output) {
+void chain_controller::process_message(const ProcessedTransaction& trx, AccountName code,
+                                       const Message& message, MessageOutput& output) {
    apply_context apply_ctx(*this, _db, trx, message, code);
    apply_message(apply_ctx);
 
    // process_message recurses for each notified account, but we only want to run this check at the top level
    if (code == message.code && (_skip_flags & skip_authority_check) == false)
       EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
-                 "Message declared an authority it did not need", ("message", message));
+                 "Message declared authorities it did not need: ${unused}",
+                 ("unused", apply_ctx.unused_authorizations())("message", message));
 
    output.notify.reserve( apply_ctx.notified.size() );
 

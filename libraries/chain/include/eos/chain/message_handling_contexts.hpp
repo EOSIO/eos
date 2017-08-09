@@ -136,6 +136,7 @@ public:
    void require_recipient(const types::AccountName& account);
 
    bool all_authorizations_used() const;
+   vector<types::AccountPermission> unused_authorizations() const;
 
    const chain_controller&      controller;
    const chainbase::database&   db;  ///< database where state is stored

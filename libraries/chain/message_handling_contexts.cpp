@@ -6,6 +6,9 @@
 
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/range/algorithm/find_if.hpp>
+#include <boost/range/combine.hpp>
+#include <boost/range/adaptor/filtered.hpp>
+#include <boost/range/adaptor/transformed.hpp>
 
 namespace eos { namespace chain {
 
@@ -42,6 +45,19 @@ void apply_context::require_recipient(const types::AccountName& account) {
 
 bool apply_context::all_authorizations_used() const {
    return boost::algorithm::all_of_equal(used_authorizations, true);
+}
+
+vector<types::AccountPermission> apply_context::unused_authorizations() const {
+   auto RemoveUsed = boost::adaptors::filtered([](const auto& tuple) {
+      return !boost::get<0>(tuple);
+   });
+   auto ToPermission = boost::adaptors::transformed([](const auto& tuple) {
+      return boost::get<1>(tuple);
+   });
+
+   // zip the parallel arrays, filter out the used authorizations, and return just the permissions that are left
+   auto range = boost::combine(used_authorizations, msg.authorization) | RemoveUsed | ToPermission;
+   return {range.begin(), range.end()};
 }
 
 //
