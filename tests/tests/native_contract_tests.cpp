@@ -34,6 +34,7 @@ BOOST_FIXTURE_TEST_CASE(create_account, testing_fixture)
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000));
 
       Make_Account(chain, joe, inita, Asset(1000));
+      chain.produce_blocks();
       Transfer_Asset(chain, inita, joe, Asset(1000));
 
       { // test in the pending state
