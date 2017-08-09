@@ -246,6 +246,7 @@ ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction
       _pending_tx_session = _db.start_undo_session(true);
 
    auto temp_session = _db.start_undo_session(true);
+   validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
    auto pt = _apply_transaction(trx);
    _pending_transactions.push_back(trx);
@@ -331,6 +332,7 @@ signed_block chain_controller::_generate_block(
       try
       {
          auto temp_session = _db.start_undo_session(true);
+         validate_referenced_accounts(tx);
          check_transaction_authorization(tx);
          _apply_transaction(tx);
          temp_session.squash();
@@ -441,8 +443,10 @@ void chain_controller::_apply_block(const signed_block& next_block)
    
    for (const auto& cycle : next_block.cycles)
       for (const auto& thread : cycle)
-         for (const auto& trx : thread.user_input)
+         for (const auto& trx : thread.user_input) {
+            validate_referenced_accounts(trx);
             check_transaction_authorization(trx);
+         }
 
    /* We do not need to push the undo state for each transaction
     * because they either all apply and are valid or the
@@ -524,7 +528,6 @@ try {
    validate_expiration(trx);
    validate_uniqueness(trx);
    validate_tapos(trx);
-   validate_referenced_accounts(trx);
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
