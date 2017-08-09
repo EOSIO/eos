@@ -12,7 +12,8 @@ struct AccountPermission
 
 struct Message
    code            AccountName         # the contract defining the primary code to execute for code/type
-   type            FuncName            # the action to be taken
+   type            FuncName            # the action to be taken 
+   authorization   AccountPermission[] # the accounts and permission levels provided
    data            Bytes               # opaque data processed by code
 
 struct AccountPermissionWeight
@@ -28,7 +29,6 @@ struct Transaction
 
 struct SignedTransaction inherits Transaction
    signatures     Signature[]
-   authorizations AccountPermission[] # The authorizations this transaction bears signatures to satisfy
 
 struct KeyPermissionWeight
    key    PublicKey
@@ -116,12 +116,23 @@ struct setproxy
    proxy          AccountName # The account to cast votes with stakeholder's stake weight
 
 
-struct UpdatePermission
+struct updateauth
    account     AccountName
    permission  PermissionName
    parent      PermissionName
    authority   Authority
 
-struct DeletePermission
+struct deleteauth
    account AccountName
    permission PermissionName
+
+struct linkauth # Specify a particular required permission for account to approve specified message type
+   account     AccountName # The account to require permissions for
+   code        AccountName # The contract to require permissions to invoke
+   type        FuncName
+   requirement PermissionName # The permission name to require
+
+struct unlinkauth
+   account     AccountName # The account to require permissions for
+   code        AccountName # The contract to require permissions to invoke
+   type        FuncName

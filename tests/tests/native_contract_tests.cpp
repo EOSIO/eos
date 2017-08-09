@@ -3,6 +3,7 @@
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/permission_object.hpp>
+#include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 
 #include <eos/native_contract/producer_objects.hpp>
@@ -91,18 +92,18 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.set_reference_block(chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
       trx.scope = sort_names( {"inita", "initb"} );
-      trx.authorizations = {{"inita", "active"}};
 
-      types::transfer trans = {"inita", "initb", (100)};
+      types::transfer trans = { "inita", "initb", (100) };
 
       UInt64 value(5);
       auto packed = fc::raw::pack(value);
       auto unpacked = fc::raw::unpack<UInt64>(packed);
       BOOST_CHECK_EQUAL( value, unpacked );
       trx.messages[0].type = "transfer";
+      trx.messages[0].authorization = {{"inita", "active"}};
       trx.messages[0].code = config::EosContractName;
       trx.setMessage(0, "transfer", trans);
-      chain.push_transaction(trx);
+      chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
 
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000 - 100));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("initb"), Asset(100000 + 100));
@@ -119,10 +120,10 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_creation, testing_fixture)
 { try {
       Make_Blockchain(chain)
+      Make_Account(chain, producer);
       chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
 
-      Make_Account(chain, producer);
       Make_Producer(chain, producer, producer_public_key);
 
       while (chain.head_block_num() < 3) {
@@ -238,10 +239,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
    try {
       Make_Blockchain(chain)
-      chain.produce_blocks();
-
       Make_Account(chain, joe);
       Make_Account(chain, bob);
+      chain.produce_blocks();
+
       Make_Producer(chain, joe);
       Approve_Producer(chain, bob, joe, true);
       // Produce blocks up to, but not including, the last block in the round
@@ -275,10 +276,10 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
    try {
       Make_Blockchain(chain)
-      chain.produce_blocks();
-
       Make_Account(chain, joe);
       Make_Account(chain, bob);
+      chain.produce_blocks();
+
       Make_Producer(chain, joe);
       Approve_Producer(chain, bob, joe, true);
       chain.produce_blocks();
@@ -333,11 +334,11 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
 
       auto run = [this](std::vector<Action> actions) {
          Make_Blockchain(chain)
-         chain.produce_blocks();
-
          Make_Account(chain, stakeholder);
          Make_Account(chain, proxy);
          Make_Account(chain, producer);
+         chain.produce_blocks();
+
          Make_Producer(chain, producer);
 
          for (auto& action : actions)
@@ -383,5 +384,112 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
       */
    } FC_LOG_AND_RETHROW()
 }
+
+BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
+   try {
+   Make_Blockchain(chain)
+   Make_Account(chain, alice);
+   chain.produce_blocks();
+
+   BOOST_CHECK_THROW(Delete_Authority(chain, alice, "active"), message_validate_exception);
+   BOOST_CHECK_THROW(Delete_Authority(chain, alice, "owner"), message_validate_exception);
+
+   Make_Key(k1);
+   Make_Key(k2);
+   Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key));
+
+   {
+      auto obj = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_NE(obj, nullptr);
+      BOOST_CHECK_EQUAL(obj->owner, "alice");
+      BOOST_CHECK_EQUAL(obj->name, "spending");
+      BOOST_CHECK_EQUAL(chain_db.get(obj->parent).owner, "alice");
+      BOOST_CHECK_EQUAL(chain_db.get(obj->parent).name, "active");
+   }
+
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "spending", Key_Authority(k1_public_key)),
+                     message_validate_exception);
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "owner", Key_Authority(k1_public_key)),
+                     message_precondition_exception);
+   Delete_Authority(chain, alice, "spending");
+
+   {
+      auto obj = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_EQUAL(obj, nullptr);
+   }
+
+   chain.produce_blocks();
+
+   Set_Authority(chain, alice, "trading", "active", Key_Authority(k1_public_key));
+   Set_Authority(chain, alice, "spending", "trading", Key_Authority(k2_public_key));
+
+   {
+      auto trading = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"));
+      auto spending = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_NE(trading, nullptr);
+      BOOST_CHECK_NE(spending, nullptr);
+      BOOST_CHECK_EQUAL(trading->owner, "alice");
+      BOOST_CHECK_EQUAL(spending->owner, "alice");
+      BOOST_CHECK_EQUAL(trading->name, "trading");
+      BOOST_CHECK_EQUAL(spending->name, "spending");
+      BOOST_CHECK_EQUAL(spending->parent, trading->id);
+      BOOST_CHECK_EQUAL(chain_db.get(trading->parent).owner, "alice");
+      BOOST_CHECK_EQUAL(chain_db.get(trading->parent).name, "active");
+
+      // Abort if this gets run; it shouldn't get run in this test
+      auto PermissionToAuthority = [](auto)->Authority{abort();};
+
+      auto tradingChecker = MakeAuthorityChecker(PermissionToAuthority, {k1_public_key});
+      auto spendingChecker = MakeAuthorityChecker(PermissionToAuthority, {k2_public_key});
+
+      BOOST_CHECK(tradingChecker.satisfied(trading->auth));
+      BOOST_CHECK(spendingChecker.satisfied(spending->auth));
+      BOOST_CHECK(!spendingChecker.satisfied(trading->auth));
+      BOOST_CHECK(!tradingChecker.satisfied(spending->auth));
+   }
+
+   BOOST_CHECK_THROW(Delete_Authority(chain, alice, "trading"), message_precondition_exception);
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "trading", "spending", Key_Authority(k1_public_key)),
+                     message_precondition_exception);
+   BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key)),
+                     message_precondition_exception);
+   Delete_Authority(chain, alice, "spending");
+   Delete_Authority(chain, alice, "trading");
+
+   {
+      auto trading = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"));
+      auto spending = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
+      BOOST_CHECK_EQUAL(trading, nullptr);
+      BOOST_CHECK_EQUAL(spending, nullptr);
+   }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
+   Make_Blockchain(chain);
+   Make_Account(chain, alice);
+   chain.produce_blocks();
+
+   Make_Key(spending);
+   Make_Key(scud);
+
+   Set_Authority(chain, alice, "spending", "active", Key_Authority(spending_public_key));
+   Set_Authority(chain, alice, "scud", "spending", Key_Authority(scud_public_key));
+   Link_Authority(chain, alice, "spending", eos, "transfer");
+
+   {
+      auto obj = chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"));
+      BOOST_CHECK_NE(obj, nullptr);
+      BOOST_CHECK_EQUAL(obj->account, "alice");
+      BOOST_CHECK_EQUAL(obj->code, "eos");
+      BOOST_CHECK_EQUAL(obj->message_type, "transfer");
+   }
+
+   Unlink_Authority(chain, alice, eos, "transfer");
+
+   {
+      auto obj = chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"));
+      BOOST_CHECK_EQUAL(obj, nullptr);
+   }
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

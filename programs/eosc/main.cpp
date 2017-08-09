@@ -127,10 +127,9 @@ void create_account( const vector<string>& cmd_line ) {
 
       SignedTransaction trx;
       trx.scope = sort_names({creator,eosaccnt});
-      trx.authorizations = vector<types::AccountPermission>{{creator,"active"}};
-      trx.emplaceMessage(config::EosContractName,
-                         "newaccount", types::newaccount{creator, newaccount, owner_auth,
-                                                         active_auth, recovery_auth, deposit});
+      trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
+                         types::newaccount{creator, newaccount, owner_auth,
+                                           active_auth, recovery_auth, deposit});
 
       std::cout << fc::json::to_pretty_string( push_transaction(trx) ) << std::endl;
 
@@ -265,10 +264,10 @@ int send_command (const vector<string> &cmd_line)
 
     SignedTransaction trx;
     trx.messages.resize(1);
-    trx.authorizations = fc::json::from_string( cmd_line[5] ).as<vector<types::AccountPermission>>();
     auto& msg = trx.messages.back();
     msg.code = code;
     msg.type = action;
+    msg.authorization = fc::json::from_string( cmd_line[5] ).as<vector<types::AccountPermission>>();
     msg.data = result.get_object()["bincmd_line"].as<Bytes>();
     trx.scope = fc::json::from_string( cmd_line[4] ).as<vector<Name>>();
 
@@ -309,8 +308,7 @@ int send_command (const vector<string> &cmd_line)
 
     SignedTransaction trx;
     trx.scope = { config::EosContractName, account };
-    trx.authorizations = vector<types::AccountPermission>{{account,"active"}};
-    trx.emplaceMessage( config::EosContractName,
+    trx.emplaceMessage( config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
                         "setcode", handler );
 
     std::cout << fc::json::to_pretty_string( push_transaction(trx)  ) << std::endl;
@@ -324,8 +322,8 @@ int send_command (const vector<string> &cmd_line)
 
     SignedTransaction trx;
     trx.scope = sort_names({sender,recipient});
-    trx.authorizations = vector<types::AccountPermission>{{sender,"active"}};
-    trx.emplaceMessage(config::EosContractName,  "transfer", types::transfer{sender, recipient, amount});
+    trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
+                       types::transfer{sender, recipient, amount});
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
     trx.set_reference_block(info.head_block_id);

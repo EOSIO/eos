@@ -145,8 +145,9 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
 
    eos::chain::ProcessedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.authorizations = vector<types::AccountPermission>{{from,"active"}};
-   trx.emplaceMessage("eos", "transfer", types::transfer{from, to, amount});
+   trx.emplaceMessage("eos", 
+                      vector<types::AccountPermission>{ {from,"active"} },
+                      "transfer", types::transfer{from, to, amount/*, ""*/});
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
 
@@ -155,17 +156,41 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
    auto from_var = chain.transaction_from_variant( var );
    auto _process  = fc::raw::pack( from_var );
 
+   /*
    idump((trx));
    idump((var));
    idump((from_var));
    idump((original));
    idump((_process));
+   */
    FC_ASSERT( original == _process, "Transaction seralization not reversible" );
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
       throw;
    }
 }
+
+BOOST_FIXTURE_TEST_CASE(irrelevant_auth, testing_fixture) {
+   try {
+   Make_Blockchain(chain)
+   Make_Account(chain, joe);
+   chain.produce_blocks();
+
+   ProcessedTransaction trx;
+   trx.scope = sort_names({"joe", "inita"});
+   trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{"inita", "active"}},
+                      "transfer", types::transfer{"inita", "joe", 50});
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+   chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
+
+   chain.clear_pending();
+   chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
+   chain.clear_pending();
+
+   trx.messages.front().authorization.emplace_back(types::AccountPermission{"initb", "active"});
+   BOOST_CHECK_THROW(chain.push_transaction(trx, chain_controller::skip_transaction_signatures), tx_irrelevant_auth);
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(name_test) {
    using eos::types::Name;
@@ -196,11 +221,10 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
       Make_Blockchain(chain);
+      Make_Account(chain, newguy);
       chain.produce_blocks(10);
 
-      Make_Account(chain, newguy);
       Transfer_Asset(chain, inita, newguy, Asset(100));
-
       Transfer_Asset(chain, newguy, inita, Asset(1));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
@@ -210,7 +234,7 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK(chain.fetch_block_by_number(11).valid());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.empty());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.front().empty());
-      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 3);
+      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
 } FC_LOG_AND_RETHROW() }

@@ -147,8 +147,8 @@ const char* my_abi = R"=====(
         "okproducer_arr":"okproducer[]",
         "setproxy":"setproxy",
         "setproxy_arr":"setproxy[]",
-        "uperm":"UpdatePermission",
-        "uperm_arr":"UpdatePermission[]",
+        "uauth":"updateauth",
+        "uauth_arr":"updateauth[]",
       }
     }
   ],
@@ -479,7 +479,7 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "stakeholder" : "sholder2",
         "proxy" : "proxyname2"
       }],
-      "uperm":{
+      "uauth":{
         "account" : "acc1",
         "permission" : "perm1",
         "parent" : "parent1",
@@ -489,7 +489,7 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
          "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
        }
       },
-      "uperm_arr": [{
+      "uauth_arr": [{
         "account" : "acc1",
         "permission" : "perm1",
         "parent" : "parent1",
