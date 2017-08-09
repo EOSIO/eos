@@ -5,6 +5,7 @@
 #include <eos/chain/permission_object.hpp>
 #include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/key_value_object.hpp>
+#include <eos/chain/authority_checker.hpp>
 
 #include <eos/native_contract/producer_objects.hpp>
 

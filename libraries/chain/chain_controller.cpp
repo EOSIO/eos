@@ -32,6 +32,7 @@
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/permission_link_object.hpp>
+#include <eos/chain/authority_checker.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
 
@@ -505,6 +506,9 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
                        ("auth", declaredAuthority));
          }
       }
+
+   EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
+              "Transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
 }
 
 ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)

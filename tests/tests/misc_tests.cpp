@@ -1,5 +1,5 @@
 #include <eos/chain/BlockchainConfiguration.hpp>
-#include <eos/chain/authority.hpp>
+#include <eos/chain/authority_checker.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
 #include <eos/utilities/rand.hpp>
@@ -88,13 +88,39 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    Make_Key(c);
    auto& c = c_public_key;
 
-   auto GetNullAuthority = [](auto){return Authority();};
+   auto GetNullAuthority = [](auto){abort(); return Authority();};
 
    auto A = Complex_Authority(2, ((a,1))((b,1)),);
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a, b}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a, b, c}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, c}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {b, c}).satisfied(A));
+   {
+      auto checker = MakeAuthorityChecker(GetNullAuthority, {a, b});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 0);
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetNullAuthority, {a, c});
+      BOOST_CHECK(!checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 2);
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetNullAuthority, {a, b, c});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(a), 1);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(b), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetNullAuthority, {b, c});
+      BOOST_CHECK(!checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
+   }
 
    A = Complex_Authority(3, ((a,1))((b,1))((c,1)),);
    BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {c, b, a}).satisfied(A));
@@ -115,10 +141,44 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    auto GetCAuthority = [c_public_key](auto){return Complex_Authority(1, ((c, 1)),);};
 
    A = Complex_Authority(2, ((a, 2))((b, 1)), (("hello", "world", 1)));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {b,c}).satisfied(A));
+   {
+      auto checker = MakeAuthorityChecker(GetCAuthority, {a});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(checker.all_keys_used());
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetCAuthority, {b});
+      BOOST_CHECK(!checker.satisfied(A));
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().count(b), 1);
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetCAuthority, {c});
+      BOOST_CHECK(!checker.satisfied(A));
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetCAuthority, {b,c});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 0);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(b), 1);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetCAuthority, {b,c,a});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 1);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(a), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 2);
+      BOOST_CHECK_EQUAL(checker.unused_keys().count(b), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
+   }
 
    A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 1)));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
@@ -127,12 +187,60 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,b}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {b,c}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,c}).satisfied(A));
+   {
+      auto checker = MakeAuthorityChecker(GetCAuthority, {a,b,c});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
+   }
 
    A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 2)));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,b}).satisfied(A));
    BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
    BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
+   {
+      auto checker = MakeAuthorityChecker(GetCAuthority, {a,b,c});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 1);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 2);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
+   }
+
+   Make_Key(d);
+   auto& d = d_public_key;
+   Make_Key(e);
+   auto& e = e_public_key;
+
+   auto GetAuthority = [d_public_key, e] (const types::AccountPermission& perm) {
+      if (perm.account == "top")
+         return Complex_Authority(2, ((d, 1)), (("bottom", "bottom", 1)));
+      return Key_Authority(e);
+   };
+
+   A = Complex_Authority(5, ((a, 2))((b, 2))((c, 2)), (("top", "top", 5)));
+   {
+      auto checker = MakeAuthorityChecker(GetAuthority, {a,b,c,d,e});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 3);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(d), 1);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(e), 1);
+   }
+   {
+      auto checker = MakeAuthorityChecker(GetAuthority, {a,b,c,e});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.used_keys().size(), 3);
+      BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(a), 1);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(b), 1);
+      BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
+   }
 } FC_LOG_AND_RETHROW() }
 
 /// Test creating the wallet
