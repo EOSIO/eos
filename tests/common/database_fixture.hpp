@@ -119,6 +119,7 @@ public:
 
    void store_private_key(const private_key_type& key);
    private_key_type get_private_key(const public_key_type& public_key) const;
+   flat_set<public_key_type> available_keys() const;
 
 protected:
    std::vector<fc::temp_directory> anonymous_temp_dirs;
@@ -178,8 +179,27 @@ public:
    /// @brief Get the specified block producer's signing key
    PublicKey get_block_signing_key(const AccountName& producerName);
 
+   /// @brief Attempt to sign the provided transaction using the keys available to the testing_fixture
+   void sign_transaction(SignedTransaction& trx);
+
+   /// @brief Override push_transaction to apply testing policies
+   ProcessedTransaction push_transaction(SignedTransaction trx, uint32_t skip_flags = 0);
+
+   /// @brief Set whether testing_blockchain::push_transaction checks signatures by default
+   /// @param skip_sigs If true, push_transaction will skip signature checks; otherwise, no changes will be made
+   void set_skip_transaction_signature_checking(bool skip_sigs) {
+      skip_trx_sigs = skip_sigs;
+   }
+   /// @brief Set whether testing_blockchain::push_transaction attempts to sign transactions or not
+   void set_auto_sign_transactions(bool auto_sign) {
+      auto_sign_trxs = auto_sign;
+   }
+
 protected:
+   chainbase::database& db;
    testing_fixture& fixture;
+   bool skip_trx_sigs = true;
+   bool auto_sign_trxs = false;
 };
 
 using boost::signals2::scoped_connection;
