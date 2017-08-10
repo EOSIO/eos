@@ -39,7 +39,8 @@ void account_history_api_plugin::plugin_startup() {
    auto rw_api = app().get_plugin<account_history_plugin>().get_read_write_api();
 
    app().get_plugin<http_plugin>().add_api({
-      CHAIN_RO_CALL(get_transaction)
+      CHAIN_RO_CALL(get_transaction),
+      CHAIN_RO_CALL(get_transactions)
    });
 }
 
