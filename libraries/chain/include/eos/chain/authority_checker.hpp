@@ -68,7 +68,7 @@ class AuthorityChecker {
          return totalWeight;
       }
       UInt32 operator()(const types::AccountPermissionWeight& permission) {
-         //TODO: Recursion limit? Yes: implement as producer-configurable parameter
+         //TODO #66: Recursion limit? Yes: implement as producer-configurable parameter
          if (checker.satisfied(permission.permission))
             totalWeight += permission.weight;
          return totalWeight;
