@@ -55,10 +55,10 @@
       "action": "sell",
       "type": "SellOrder"
     },{
-      "action": "cancel_buy",
+      "action": "cancelbuy",
       "type": "OrderID"
     },{
-      "action": "cancel_sell",
+      "action": "cancelsell",
       "type": "OrderID"
     }
   ],

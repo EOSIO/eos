@@ -307,10 +307,10 @@ extern "C" {
             case N(sell):
                apply_exchange_sell( currentMessage<exchange::SellOrder>() );
                break;
-            case N(cancel_buy):
+            case N(cancelbuy):
                apply_exchange_cancel_buy( currentMessage<exchange::OrderID>() );
                break;
-            case N(cancel_sell):
+            case N(cancelsell):
                apply_exchange_cancel_sell( currentMessage<exchange::OrderID>() );
                break;
             default:
