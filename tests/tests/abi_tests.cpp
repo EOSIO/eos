@@ -212,8 +212,8 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
       "int32_arr"         : [132,133],
       "int64"             : 164,
       "int64_arr"         : [164,165],
-      "name"              : "name6",
-      "name_arr"          : ["name7","name8"],
+      "name"              : "xname1",
+      "name_arr"          : ["xname2","xname3"],
       "field"             : {"name1":"type1"},
       "field_arr"         : {"name2":"type2", "name3":"type3"},
       "struct"            : {"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} },
@@ -230,8 +230,8 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
       "messagename_arr"   : ["msg1","msg2"],
       "apermission" : {"account":"acc1","permission":"permname1"},
       "apermission_arr": [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}],
-      "message"           : {"code":"0102", "type":"type1", "data":"445566"},
-      "message_arr"       : [{"code":"0102", "type":"type1", "data":"445566"},{"code":"2233", "type":"type2", "data":""}],
+      "message"           : {"code":"a1b2", "type":"type1", "data":"445566"},
+      "message_arr"       : [{"code":"a1b2", "type":"type1", "data":"445566"},{"code":"2233", "type":"type2", "data":""}],
       "apweight": {"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},
       "apweight_arr": [{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}],
       "transaction"       : { 
@@ -239,7 +239,7 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "refBlockPrefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
-        "messages":[{"code":"0102", "type":"type1", "data":"445566"}]
+        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}]
       },
       "transaction_arr": [
       { 
@@ -247,7 +247,7 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "refBlockPrefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
-        "messages":[{"code":"0102", "type":"type1", "data":"445566"}]
+        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}]
       },
       { 
         "refBlockNum":"2",
@@ -261,7 +261,7 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "refBlockPrefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
-        "messages":[{"code":"0102", "type":"type1", "data":"445566"}],
+        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
         "signatures" : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
         "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
       },
@@ -270,7 +270,7 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "refBlockPrefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
-        "messages":[{"code":"0102", "type":"type1", "data":"445566"}],
+        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
         "signatures" : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
         "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
       },{
@@ -278,7 +278,7 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "refBlockPrefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
-        "messages":[{"code":"0102", "type":"type1", "data":"445566"}],
+        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
         "signatures" : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
         "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
       }],
