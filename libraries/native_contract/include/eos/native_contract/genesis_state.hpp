@@ -75,7 +75,8 @@ struct genesis_state_type {
       config::DefaultElectedPay,
       config::DefaultRunnerUpPay,
       config::DefaultMinEosBalance,
-      config::DefaultMaxTrxLifetime
+      config::DefaultMaxTrxLifetime,
+      config::DefaultAuthDepthLimit
    };
    vector<initial_account_type>             initial_accounts;
    vector<initial_producer_type>            initial_producers;

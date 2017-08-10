@@ -47,6 +47,7 @@ struct BlockchainConfiguration
    runnerUpPay       ShareType
    minEosBalance     ShareType
    maxTrxLifetime    UInt32
+   authDepthLimit    UInt16
 
 struct TypeDef 
    newTypeName TypeName

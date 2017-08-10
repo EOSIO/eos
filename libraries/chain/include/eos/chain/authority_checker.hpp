@@ -47,6 +47,7 @@ using MetaPermissionSet = boost::container::flat_multiset<MetaPermission, MetaPe
 template<typename F>
 class AuthorityChecker {
    F PermissionToAuthority;
+   UInt16 recursionDepthLimit;
    vector<public_key_type> signingKeys;
    vector<bool> usedKeys;
 
@@ -54,10 +55,11 @@ class AuthorityChecker {
       using result_type = UInt32;
 
       AuthorityChecker& checker;
+      UInt16 recursionDepth;
       UInt32 totalWeight = 0;
 
-      WeightTallyVisitor(AuthorityChecker& checker)
-         : checker(checker) {}
+      WeightTallyVisitor(AuthorityChecker& checker, UInt16 recursionDepth)
+         : checker(checker), recursionDepth(recursionDepth) {}
 
       UInt32 operator()(const types::KeyPermissionWeight& permission) {
          auto itr = boost::find(checker.signingKeys, permission.key);
@@ -68,25 +70,30 @@ class AuthorityChecker {
          return totalWeight;
       }
       UInt32 operator()(const types::AccountPermissionWeight& permission) {
-         //TODO: Recursion limit? Yes: implement as producer-configurable parameter
-         if (checker.satisfied(permission.permission))
+         if (recursionDepth < checker.recursionDepthLimit
+             && checker.satisfied(permission.permission, recursionDepth + 1))
             totalWeight += permission.weight;
          return totalWeight;
       }
    };
 
 public:
-   AuthorityChecker(F PermissionToAuthority, const flat_set<public_key_type>& signingKeys)
+   AuthorityChecker(F PermissionToAuthority, UInt16 recursionDepthLimit, const flat_set<public_key_type>& signingKeys)
       : PermissionToAuthority(PermissionToAuthority),
+        recursionDepthLimit(recursionDepthLimit),
         signingKeys(signingKeys.begin(), signingKeys.end()),
         usedKeys(signingKeys.size(), false)
    {}
 
-   bool satisfied(const types::AccountPermission& permission) {
-      return satisfied(PermissionToAuthority(permission));
+   bool satisfied(const types::AccountPermission& permission, UInt16 depth = 0) {
+      return satisfied(PermissionToAuthority(permission), depth);
    }
    template<typename AuthorityType>
-   bool satisfied(const AuthorityType& authority) {
+   bool satisfied(const AuthorityType& authority, UInt16 depth = 0) {
+      // This check is redundant, since WeightTallyVisitor did it too, but I'll leave it here for future-proofing
+      if (depth > recursionDepthLimit)
+         return false;
+
       // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
       auto KeyReverter = fc::make_scoped_exit([this, keys = usedKeys] () mutable {
          usedKeys = keys;
@@ -98,7 +105,7 @@ public:
       permissions.insert(authority.accounts.begin(), authority.accounts.end());
 
       // Check all permissions, from highest weight to lowest, seeing if signingKeys satisfies them or not
-      WeightTallyVisitor visitor(*this);
+      WeightTallyVisitor visitor(*this, depth);
       for (const auto& permission : permissions)
          // If we've got enough weight, to satisfy the authority, return!
          if (permission.visit(visitor) >= authority.threshold) {
@@ -120,8 +127,9 @@ public:
 };
 
 template<typename F>
-AuthorityChecker<F> MakeAuthorityChecker(F&& pta, const flat_set<public_key_type>& signingKeys) {
-   return AuthorityChecker<F>(std::forward<F>(pta), signingKeys);
+AuthorityChecker<F> MakeAuthorityChecker(F&& pta, UInt16 recursionDepthLimit,
+                                         const flat_set<public_key_type>& signingKeys) {
+   return AuthorityChecker<F>(std::forward<F>(pta), recursionDepthLimit, signingKeys);
 }
 
 }} // namespace eos::chain
