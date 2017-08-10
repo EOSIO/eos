@@ -432,6 +432,9 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
 
 void chain_controller::_apply_block(const signed_block& next_block)
 { try {
+   auto UnsetApplyingBlock = fc::make_scoped_exit([this] { _currently_applying_block = false; });
+   _currently_applying_block = true;
+
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = _skip_flags;
 
@@ -836,6 +839,10 @@ void chain_controller::initialize_indexes() {
 
 void chain_controller::initialize_chain(chain_initializer_interface& starter)
 { try {
+   // Behave as though we are applying a block during chain initialization (it's the genesis block!)
+   auto UnsetApplyingBlock = fc::make_scoped_exit([this] { _currently_applying_block = false; });
+   _currently_applying_block = true;
+
    if (!_db.find<global_property_object>()) {
       _db.with_write_lock([this, &starter] {
          auto initial_timestamp = starter.get_chain_start_time();
