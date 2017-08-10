@@ -25,6 +25,7 @@ extern "C" {
    void printi( uint64_t value );
 
    void printi128( const uint128_t* value );
+   void printd(uint64_t value);
    /**
     * Prints a 64 bit names as base32 encoded string
     */

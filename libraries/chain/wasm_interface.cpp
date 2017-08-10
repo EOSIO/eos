@@ -1,4 +1,5 @@
 #include <boost/function.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include <eos/chain/wasm_interface.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include "Platform/Platform.h"
@@ -16,6 +17,7 @@
 namespace eos { namespace chain {
    using namespace IR;
    using namespace Runtime;
+   typedef boost::multiprecision::cpp_dec_float_50 DOUBLE;
 
    wasm_interface::wasm_interface() {
    }
@@ -153,6 +155,54 @@ DEFINE_INTRINSIC_FUNCTION2(env,diveq_i128,diveq_i128,none,i32,self,i32,other) {
    v /= o;
 }
 
+DEFINE_INTRINSIC_FUNCTION2(env,double_add,double_add,i64,i64,a,i64,b) {
+   DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+            + DOUBLE(*reinterpret_cast<double *>(&b));
+   double res = c.convert_to<double>();
+   return *reinterpret_cast<uint64_t *>(&res);
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,double_mult,double_mult,i64,i64,a,i64,b) {
+   DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+            * DOUBLE(*reinterpret_cast<double *>(&b));
+   double res = c.convert_to<double>();
+   return *reinterpret_cast<uint64_t *>(&res);
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,double_div,double_div,i64,i64,a,i64,b) {
+   auto divisor = DOUBLE(*reinterpret_cast<double *>(&b));
+   FC_ASSERT( divisor != 0, "divide by zero" );
+
+   DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
+   double res = c.convert_to<double>();
+   return *reinterpret_cast<uint64_t *>(&res);
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,double_lt,double_lt,i32,i64,a,i64,b) {
+   return DOUBLE(*reinterpret_cast<double *>(&a))
+        < DOUBLE(*reinterpret_cast<double *>(&b));
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,double_eq,double_eq,i32,i64,a,i64,b) {
+   return DOUBLE(*reinterpret_cast<double *>(&a))
+       == DOUBLE(*reinterpret_cast<double *>(&b));
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,double_gt,double_gt,i32,i64,a,i64,b) {
+   return DOUBLE(*reinterpret_cast<double *>(&a))
+        > DOUBLE(*reinterpret_cast<double *>(&b));
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,double_to_i64,double_to_i64,i64,i64,a) {
+   return DOUBLE(*reinterpret_cast<double *>(&a))
+          .convert_to<uint64_t>();
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
+   double res = DOUBLE(a).convert_to<double>();
+   return *reinterpret_cast<uint64_t *>(&res);
+}
+
 DEFINE_INTRINSIC_FUNCTION0(env,now,now,i32) {
    return wasm_interface::get().current_validate_context->controller.head_block_time().sec_since_epoch();
 }
@@ -263,6 +313,9 @@ DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) {
 
 DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
   std::cerr << uint64_t(val);
+}
+DEFINE_INTRINSIC_FUNCTION1(env,printd,printd,none,i64,val) {
+  std::cerr << DOUBLE(*reinterpret_cast<double *>(&val));
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {

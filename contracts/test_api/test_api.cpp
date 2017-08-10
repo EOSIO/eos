@@ -37,6 +37,9 @@ extern "C" {
       WASM_TEST_HANDLER(test_math, test_multeq_i128);
       WASM_TEST_HANDLER(test_math, test_diveq_i128);
       WASM_TEST_HANDLER(test_math, test_diveq_i128_by_0);
+      WASM_TEST_HANDLER(test_math, test_double_api);
+      WASM_TEST_HANDLER(test_math, test_double_api_div_0);
+
 
       //test db
       WASM_TEST_HANDLER(test_db, key_i64_general);
