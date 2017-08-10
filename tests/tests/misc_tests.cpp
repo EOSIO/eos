@@ -1,5 +1,6 @@
 #include <eos/chain/BlockchainConfiguration.hpp>
 #include <eos/chain/authority_checker.hpp>
+#include <eos/chain/authority.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
 #include <eos/utilities/rand.hpp>
@@ -240,6 +241,18 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.used_keys().count(a), 1);
       BOOST_CHECK_EQUAL(checker.used_keys().count(b), 1);
       BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
+   }
+
+   A = Complex_Authority(2, ((a, 1))((b, 1))((c, 1)),);
+   auto B = Complex_Authority(1, ((b, 1))((c, 1)),);
+   {
+      auto checker = MakeAuthorityChecker(GetNullAuthority, {a,b,c});
+      BOOST_CHECK(validate(A));
+      BOOST_CHECK(validate(B));
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(checker.satisfied(B));
+      BOOST_CHECK(!checker.all_keys_used());
+      BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
    }
 } FC_LOG_AND_RETHROW() }
 
