@@ -427,14 +427,16 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
       if (_checkpoints.rbegin()->first >= block_num)
          skip = ~0;// WE CAN SKIP ALMOST EVERYTHING
    }
-   with_skip_flags(skip, [&](){ _apply_block(next_block); });
+
+   with_applying_block([&] {
+      with_skip_flags(skip, [&] {
+         _apply_block(next_block);
+      });
+   });
 }
 
 void chain_controller::_apply_block(const signed_block& next_block)
 { try {
-   auto UnsetApplyingBlock = fc::make_scoped_exit([this] { _currently_applying_block = false; });
-   _currently_applying_block = true;
-
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = _skip_flags;
 
@@ -839,10 +841,6 @@ void chain_controller::initialize_indexes() {
 
 void chain_controller::initialize_chain(chain_initializer_interface& starter)
 { try {
-   // Behave as though we are applying a block during chain initialization (it's the genesis block!)
-   auto UnsetApplyingBlock = fc::make_scoped_exit([this] { _currently_applying_block = false; });
-   _currently_applying_block = true;
-
    if (!_db.find<global_property_object>()) {
       _db.with_write_lock([this, &starter] {
          auto initial_timestamp = starter.get_chain_start_time();
@@ -883,7 +881,12 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
 
    initialize_indexes();
    starter.register_types(*this, _db);
-   initialize_chain(starter);
+
+   // Behave as though we are applying a block during chain initialization (it's the genesis block!)
+   with_applying_block([&] {
+      initialize_chain(starter);
+   });
+
    spinup_db();
    spinup_fork_db();
 
