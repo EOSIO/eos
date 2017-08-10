@@ -25,6 +25,7 @@
 #include <eos/types/types.hpp>
 
 namespace eos { namespace config {
+using types::UInt16;
 using types::UInt32;
 using types::UInt64;
 using types::UInt128;
@@ -59,6 +60,7 @@ const static ShareType DefaultElectedPay = Asset(100).amount;
 const static ShareType DefaultRunnerUpPay = Asset(75).amount;
 const static ShareType DefaultMinEosBalance = Asset(100).amount;
 const static UInt32 DefaultMaxTrxLifetime = 60*60;
+const static UInt16 DefaultAuthDepthLimit = 6;
 const static UInt32 ProducersAuthorityThreshold = 14;
 
 const static int BlocksPerRound = 21;

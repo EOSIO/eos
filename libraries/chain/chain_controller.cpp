@@ -485,6 +485,7 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
       return;
    }
 
+
    auto getPermission = [&db=_db](const types::AccountPermission& permission) {
       auto key = boost::make_tuple(permission.account, permission.permission);
       return db.get<permission_object, by_owner>(key);
@@ -492,8 +493,9 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
    auto getAuthority = [&getPermission](const types::AccountPermission& permission) {
       return getPermission(permission).auth;
    };
+   auto depthLimit = get_global_properties().configuration.authDepthLimit;
 #warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
-   auto checker = MakeAuthorityChecker(std::move(getAuthority), trx.get_signature_keys(chain_id_type{}));
+   auto checker = MakeAuthorityChecker(std::move(getAuthority), depthLimit, trx.get_signature_keys(chain_id_type{}));
 
    for (const auto& message : trx.messages)
       for (const auto& declaredAuthority : message.authorization) {

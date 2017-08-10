@@ -21,28 +21,28 @@ BOOST_AUTO_TEST_SUITE(misc_tests)
 BOOST_AUTO_TEST_CASE(median_properties_test)
 { try {
       vector<BlockchainConfiguration> votes{
-         {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   },
-         {10000 , 100   , 4096  , Asset(3333   ).amount, Asset(27109  ).amount, Asset(10   ).amount, 100   },
-         {2048  , 1500  , 1000  , Asset(5432   ).amount, Asset(2000   ).amount, Asset(50   ).amount, 1500  },
-         {100   , 25    , 1024  , Asset(90000  ).amount, Asset(0      ).amount, Asset(433  ).amount, 25    },
-         {1024  , 1000  , 100   , Asset(10     ).amount, Asset(50     ).amount, Asset(200  ).amount, 1000  },
+         {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   , 6},
+         {10000 , 100   , 4096  , Asset(3333   ).amount, Asset(27109  ).amount, Asset(10   ).amount, 100   , 6},
+         {2048  , 1500  , 1000  , Asset(5432   ).amount, Asset(2000   ).amount, Asset(50   ).amount, 1500  , 6},
+         {100   , 25    , 1024  , Asset(90000  ).amount, Asset(0      ).amount, Asset(433  ).amount, 25    , 6},
+         {1024  , 1000  , 100   , Asset(10     ).amount, Asset(50     ).amount, Asset(200  ).amount, 1000  , 6},
       };
       BlockchainConfiguration medians{
-         1024, 512, 1024, Asset(5000).amount, Asset(2000).amount, Asset(100).amount, 512
+         1024, 512, 1024, Asset(5000).amount, Asset(2000).amount, Asset(100).amount, 512, 6
       };
 
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 
-      votes.emplace_back(BlockchainConfiguration{1, 1, 1, 1, 1, 1, 1});
-      votes.emplace_back(BlockchainConfiguration{1, 1, 1, 1, 1, 1, 1});
-      medians = BlockchainConfiguration {1024, 100, 1000, Asset(3333).amount, Asset(50).amount, Asset(50).amount, 100};
+      votes.emplace_back(BlockchainConfiguration{1, 1, 1, 1, 1, 1, 1, 1});
+      votes.emplace_back(BlockchainConfiguration{1, 1, 1, 1, 1, 1, 1, 1});
+      medians = BlockchainConfiguration {1024, 100, 1000, Asset(3333).amount, Asset(50).amount, Asset(50).amount, 100, 6};
 
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values({medians}), medians);
 
       votes.erase(votes.begin() + 2);
       votes.erase(votes.end() - 1);
-      medians = BlockchainConfiguration {1024, 100, 1024, Asset(3333).amount, Asset(50).amount, Asset(100).amount, 100};
+      medians = BlockchainConfiguration {1024, 100, 1024, Asset(3333).amount, Asset(50).amount, Asset(100).amount, 100, 6};
       BOOST_CHECK_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 } FC_LOG_AND_RETHROW() }
 
@@ -93,21 +93,21 @@ BOOST_AUTO_TEST_CASE(authority_checker)
 
    auto A = Complex_Authority(2, ((a,1))((b,1)),);
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, {a, b});
+      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a, b});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 0);
    }
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, {a, c});
+      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a, c});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 2);
    }
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, {a, b, c});
+      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a, b, c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -117,52 +117,52 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, {b, c});
+      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {b, c});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
    }
 
    A = Complex_Authority(3, ((a,1))((b,1))((c,1)),);
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {c, b, a}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {a, c}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {b, c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {c, b, a}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {a, b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {a, c}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {b, c}).satisfied(A));
 
    A = Complex_Authority(1, ((a, 1))((b, 1)),);
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {c}).satisfied(A));
 
    A = Complex_Authority(1, ((a, 2))((b, 1)),);
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {a}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, {b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, {c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {c}).satisfied(A));
 
    auto GetCAuthority = [c_public_key](auto){return Complex_Authority(1, ((c, 1)),);};
 
    A = Complex_Authority(2, ((a, 2))((b, 1)), (("hello", "world", 1)));
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, {a});
+      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {a});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, {b});
+      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {b});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
       BOOST_CHECK_EQUAL(checker.unused_keys().count(b), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, {c});
+      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {c});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
       BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, {b,c});
+      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {b,c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, {b,c,a});
+      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {b,c,a});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 1);
@@ -182,14 +182,14 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    }
 
    A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 1)));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,b}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {b,c}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,c}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {b}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {a,b}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {b,c}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {a,c}).satisfied(A));
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, {a,b,c});
+      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {a,b,c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -198,12 +198,12 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    }
 
    A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 2)));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {a,b}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, {c}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {a}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, {b}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {a,b}).satisfied(A));
+   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {c}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {b}).satisfied(A));
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, {a,b,c});
+      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {a,b,c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 1);
@@ -224,12 +224,12 @@ BOOST_AUTO_TEST_CASE(authority_checker)
 
    A = Complex_Authority(5, ((a, 2))((b, 2))((c, 2)), (("top", "top", 5)));
    {
-      auto checker = MakeAuthorityChecker(GetAuthority, {d, e});
+      auto checker = MakeAuthorityChecker(GetAuthority, 2, {d, e});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
    }
    {
-      auto checker = MakeAuthorityChecker(GetAuthority, {a,b,c,d,e});
+      auto checker = MakeAuthorityChecker(GetAuthority, 2, {a,b,c,d,e});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.used_keys().count(e), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetAuthority, {a,b,c,e});
+      auto checker = MakeAuthorityChecker(GetAuthority, 2, {a,b,c,e});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 3);
@@ -247,11 +247,14 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.used_keys().count(b), 1);
       BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
    }
+   BOOST_CHECK(MakeAuthorityChecker(GetAuthority, 1, {a,b,c}).satisfied(A));
+   // Fails due to short recursion depth limit
+   BOOST_CHECK(!MakeAuthorityChecker(GetAuthority, 1, {d,e}).satisfied(A));
 
    A = Complex_Authority(2, ((a, 1))((b, 1))((c, 1)),);
    auto B = Complex_Authority(1, ((b, 1))((c, 1)),);
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, {a,b,c});
+      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a,b,c});
       BOOST_CHECK(validate(A));
       BOOST_CHECK(validate(B));
       BOOST_CHECK(checker.satisfied(A));
