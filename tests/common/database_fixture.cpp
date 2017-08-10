@@ -171,7 +171,8 @@ void testing_blockchain::sign_transaction(SignedTransaction& trx) {
       auto key = boost::make_tuple(permission.account, permission.permission);
       return db.get<permission_object, by_owner>(key).auth;
    };
-   auto checker = MakeAuthorityChecker(GetAuthority, fixture.available_keys());
+   auto checker = MakeAuthorityChecker(GetAuthority, get_global_properties().configuration.authDepthLimit,
+                                       fixture.available_keys());
 
    for (const auto& message : trx.messages)
       for (const auto& authorization : message.authorization)
