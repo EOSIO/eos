@@ -33,6 +33,7 @@
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/permission_link_object.hpp>
+#include <eos/chain/authority_checker.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
 
@@ -246,6 +247,7 @@ ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction
       _pending_tx_session = _db.start_undo_session(true);
 
    auto temp_session = _db.start_undo_session(true);
+   validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
    auto pt = _apply_transaction(trx);
    _pending_transactions.push_back(trx);
@@ -345,6 +347,7 @@ signed_block chain_controller::_generate_block(
              auto temp_session = _db.start_undo_session(true);
              if (trx.contains<SignedTransaction const *>()) {
                 auto const &t = *trx.get<SignedTransaction const *>();
+                validate_referenced_accounts(t);
                 check_transaction_authorization(t);
                 auto processed = _apply_transaction(t);
                 block_thread.user_input.emplace_back(processed);
@@ -481,8 +484,10 @@ void chain_controller::_apply_block(const signed_block& next_block)
    
    for (const auto& cycle : next_block.cycles)
       for (const auto& thread : cycle)
-         for (const auto& trx : thread.user_input)
+         for (const auto& trx : thread.user_input) {
+            validate_referenced_accounts(trx);
             check_transaction_authorization(trx);
+         }
 
    /* We do not need to push the undo state for each transaction
     * because they either all apply and are valid or the
@@ -546,6 +551,9 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
                        ("auth", declaredAuthority));
          }
       }
+
+   EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
+              "Transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
 }
 
 ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
@@ -561,7 +569,6 @@ try {
    validate_expiration(trx);
    validate_uniqueness(trx);
    validate_tapos(trx);
-   validate_referenced_accounts(trx);
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 

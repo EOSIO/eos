@@ -4,11 +4,10 @@
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/chain_controller.hpp>
 
+#include <eos/utilities/parallel_markers.hpp>
+
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/range/algorithm/find_if.hpp>
-#include <boost/range/combine.hpp>
-#include <boost/range/adaptor/filtered.hpp>
-#include <boost/range/adaptor/transformed.hpp>
 
 namespace eos { namespace chain {
 
@@ -48,15 +47,7 @@ bool apply_context::all_authorizations_used() const {
 }
 
 vector<types::AccountPermission> apply_context::unused_authorizations() const {
-   auto RemoveUsed = boost::adaptors::filtered([](const auto& tuple) {
-      return !boost::get<0>(tuple);
-   });
-   auto ToPermission = boost::adaptors::transformed([](const auto& tuple) {
-      return boost::get<1>(tuple);
-   });
-
-   // zip the parallel arrays, filter out the used authorizations, and return just the permissions that are left
-   auto range = boost::combine(used_authorizations, msg.authorization) | RemoveUsed | ToPermission;
+   auto range = utilities::FilterDataByMarker(msg.authorization, used_authorizations, false);
    return {range.begin(), range.end()};
 }
 

@@ -27,6 +27,7 @@
 
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/producer_object.hpp>
+#include <eos/chain/authority_checker.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -36,6 +37,8 @@
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
+
+#include <boost/range/adaptor/map.hpp>
 
 #include <iostream>
 #include <iomanip>
@@ -94,9 +97,15 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
    return itr->second;
 }
 
+flat_set<public_key_type> testing_fixture::available_keys() const {
+   auto range = key_ring | boost::adaptors::map_keys;
+   return {range.begin(), range.end()};
+}
+
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& initializer, testing_fixture& fixture)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator()),
+     db(db),
      fixture(fixture) {}
 
 void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
@@ -155,6 +164,34 @@ std::set<types::AccountName> testing_blockchain::get_approved_producers(const ty
 
 types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountName& producerName) {
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
+}
+
+void testing_blockchain::sign_transaction(SignedTransaction& trx) {
+   auto GetAuthority = [this](const types::AccountPermission& permission) {
+      auto key = boost::make_tuple(permission.account, permission.permission);
+      return db.get<permission_object, by_owner>(key).auth;
+   };
+   auto checker = MakeAuthorityChecker(GetAuthority, fixture.available_keys());
+
+   for (const auto& message : trx.messages)
+      for (const auto& authorization : message.authorization)
+         if (!checker.satisfied(authorization))
+            elog("Attempting to automatically sign transaction, but testing_fixture doesn't have the keys!");
+
+   for (const auto& key : checker.used_keys())
+      // TODO: Use a real chain_id here
+      trx.sign(fixture.get_private_key(key), chain_id_type{});
+}
+
+ProcessedTransaction testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
+   if (skip_trx_sigs)
+      skip_flags |= chain_controller::skip_transaction_signatures;
+
+   if (auto_sign_trxs) {
+      sign_transaction(trx);
+   }
+
+   return chain_controller::push_transaction(trx, skip_flags);
 }
 
 void testing_network::connect_blockchain(testing_blockchain& new_database) {

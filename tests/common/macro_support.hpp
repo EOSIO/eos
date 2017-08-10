@@ -51,7 +51,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "newaccount", types::newaccount{#creator, #name, owner, active, recovery, deposit}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Created account " << #name); \
    }
 #define MKACCT2(chain, name) \
@@ -83,7 +83,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "updateauth", types::updateauth{#account, authname, parentname, auth}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Set " << #account << "'s " << authname << " authority."); \
    }
 
@@ -96,7 +96,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "deleteauth", types::deleteauth{#account, authname}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Deleted " << #account << "'s " << authname << " authority."); \
    }
 
@@ -109,7 +109,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "linkauth", types::linkauth{#account, #codeacct, messagetype, authname}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Link " << #codeacct << "::" << messagetype << " to " << #account \
                             << "'s " << authname << " authority."); \
    }
@@ -124,7 +124,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "unlinkauth", types::unlinkauth{#account, #codeacct, messagetype}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Unlink " << #codeacct << "::" << messagetype << " from " << #account); \
    }
 #define LINKAUTH3(chain, account, codeacct) LINKAUTH5(chain, account, codeacct, "")
@@ -138,7 +138,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "transfer", types::transfer{#sender, #recipient, Amount.amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Transfered " << Amount << " from " << #sender << " to " << #recipient); \
    }
 #define XFER4(chain, sender, recipient, amount) XFER5(chain, sender, recipient, amount, "")
@@ -151,7 +151,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                         "lock", types::lock{#sender, #recipient, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Staked " << amount << " to " << #recipient); \
    }
 #define STAKE3(chain, account, amount) STAKE4(chain, account, account, amount)
@@ -165,7 +165,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "unlock", types::unlock{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Begin unstake " << amount << " to " << #account); \
    }
 
@@ -177,7 +177,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "claim", types::claim{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Finish unstake " << amount << " to " << #account); \
    }
 
@@ -190,7 +190,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "setproducer", types::setproducer{#owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Create producer " << #owner); \
    }
 #define MKPDCR3(chain, owner, key) MKPDCR4(chain, owner, key, BlockchainConfiguration{});
@@ -207,7 +207,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "okproducer", types::okproducer{#voter, #producer, approved? 1 : 0}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Set producer approval from " << #voter << " for " << #producer << " to " << approved); \
    }
 
@@ -220,7 +220,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
                          "setproducer", types::setproducer{owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
-      chain.push_transaction(trx, chain_controller::skip_transaction_signatures); \
+      chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Update producer " << owner); \
    }
 #define UPPDCR3(chain, owner, key) UPPDCR4(chain, owner, key, chain.get_producer(owner).configuration)
