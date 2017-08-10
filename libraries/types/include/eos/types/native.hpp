@@ -105,11 +105,10 @@ namespace eos { namespace types {
          const auto len = strnlen(str,14);
          FC_ASSERT( len <= 13 );
          value = string_to_name(str);
+         FC_ASSERT( toString() == String(str), "name not properly normalized", ("name",String(str))("normalized",toString())  );
       }FC_CAPTURE_AND_RETHROW( (str) ) }
 
-      Name( uint64_t v = 0 ):value(v){
-      //   FC_ASSERT( !(v>>(5*12)), "invalid name id" );
-      }
+      Name( uint64_t v = 0 ):value(v){}
 
       explicit operator String()const {
          static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
