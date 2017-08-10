@@ -38,7 +38,7 @@ inline bool operator< (const types::AccountPermission& a, const types::AccountPe
  * Makes sure all keys are unique and sorted and all account permissions are unique and sorted and that authority can
  * be satisfied
  */
-inline bool validate( types::Authority& auth ) {
+inline bool validate(const types::Authority& auth) {
    const types::KeyPermissionWeight* prev = nullptr;
    decltype(auth.threshold) totalWeight = 0;
 
