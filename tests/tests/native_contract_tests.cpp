@@ -400,6 +400,10 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
    Make_Key(k2);
    Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key));
 
+   // Ensure authority doesn't appear until next block
+   BOOST_CHECK_EQUAL((chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"))), nullptr);
+   chain.produce_blocks();
+
    {
       auto obj = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
       BOOST_CHECK_NE(obj, nullptr);
@@ -414,6 +418,8 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
    BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "owner", Key_Authority(k1_public_key)),
                      message_precondition_exception);
    Delete_Authority(chain, alice, "spending");
+   BOOST_CHECK_NE((chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"))), nullptr);
+   chain.produce_blocks();
 
    {
       auto obj = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"));
@@ -423,7 +429,11 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
    chain.produce_blocks();
 
    Set_Authority(chain, alice, "trading", "active", Key_Authority(k1_public_key));
+   BOOST_CHECK_EQUAL((chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"))), nullptr);
+   chain.produce_blocks();
    Set_Authority(chain, alice, "spending", "trading", Key_Authority(k2_public_key));
+   BOOST_CHECK_EQUAL((chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"))), nullptr);
+   chain.produce_blocks();
 
    {
       auto trading = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"));
@@ -456,7 +466,11 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
    BOOST_CHECK_THROW(Set_Authority(chain, alice, "spending", "active", Key_Authority(k1_public_key)),
                      message_precondition_exception);
    Delete_Authority(chain, alice, "spending");
+   BOOST_CHECK_NE((chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "spending"))), nullptr);
+   chain.produce_blocks();
    Delete_Authority(chain, alice, "trading");
+   BOOST_CHECK_NE((chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"))), nullptr);
+   chain.produce_blocks();
 
    {
       auto trading = chain_db.find<permission_object, by_owner>(boost::make_tuple("alice", "trading"));
@@ -475,8 +489,14 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    Make_Key(scud);
 
    Set_Authority(chain, alice, "spending", "active", Key_Authority(spending_public_key));
+   chain.produce_blocks();
    Set_Authority(chain, alice, "scud", "spending", Key_Authority(scud_public_key));
+   chain.produce_blocks();
    Link_Authority(chain, alice, "spending", eos, "transfer");
+   BOOST_CHECK_EQUAL(
+           (chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"))),
+            nullptr);
+   chain.produce_blocks();
 
    {
       auto obj = chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"));
@@ -487,6 +507,10 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    }
 
    Unlink_Authority(chain, alice, eos, "transfer");
+   BOOST_CHECK_NE(
+            (chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"))),
+            nullptr);
+   chain.produce_blocks();
 
    {
       auto obj = chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"));

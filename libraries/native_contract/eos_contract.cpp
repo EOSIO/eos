@@ -1,5 +1,6 @@
 #include <eos/native_contract/eos_contract.hpp>
 
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/message.hpp>
 #include <eos/chain/exceptions.hpp>
@@ -56,19 +57,20 @@ void apply_eos_newaccount(apply_context& context) {
       a.name = create.name;
       a.creation_date = db.get(dynamic_global_property_object::id_type()).time;
    });
-   const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
-      p.name = "owner";
-      p.parent = 0;
-      p.owner = new_account.name;
-      p.auth = std::move(create.owner);
-   });
-   db.create<permission_object>([&create, &owner_permission](permission_object& p) {
-      p.name = "active";
-      p.parent = owner_permission.id;
-      p.owner = owner_permission.owner;
-      p.auth = std::move(create.active);
-   });
-
+   if (context.controller.is_applying_block()) {
+      const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
+         p.name = "owner";
+         p.parent = 0;
+         p.owner = new_account.name;
+         p.auth = std::move(create.owner);
+      });
+      db.create<permission_object>([&create, &owner_permission](permission_object& p) {
+         p.name = "active";
+         p.parent = owner_permission.id;
+         p.owner = owner_permission.owner;
+         p.auth = std::move(create.active);
+      });
+   }
 
    const auto& creatorBalance = context.mutable_db.get<BalanceObject, byOwnerName>(create.creator);
 
@@ -388,11 +390,12 @@ void apply_eos_updateauth(apply_context& context) {
    if (permission) {
       EOS_ASSERT(parent.id == permission->parent, message_precondition_exception,
                  "Changing parent authority is not currently supported");
-      db.modify(*permission, [&update, parent = parent.id](permission_object& po) {
-         po.auth = update.authority;
-         po.parent = parent;
-      });
-   } else {
+      if (context.controller.is_applying_block())
+         db.modify(*permission, [&update, parent = parent.id](permission_object& po) {
+            po.auth = update.authority;
+            po.parent = parent;
+         });
+   } else if (context.controller.is_applying_block()) {
       db.create<permission_object>([&update, parent = parent.id](permission_object& po) {
          po.name = update.permission;
          po.owner = update.account;
@@ -425,7 +428,8 @@ void apply_eos_deleteauth(apply_context& context) {
                  "Cannot delete a linked authority. Unlink the authority first");
    }
 
-   db.remove(permission);
+   if (context.controller.is_applying_block())
+      db.remove(permission);
 }
 
 void apply_eos_linkauth(apply_context& context) {
@@ -445,10 +449,11 @@ void apply_eos_linkauth(apply_context& context) {
    if (link) {
       EOS_ASSERT(link->required_permission != requirement.requirement, message_precondition_exception,
                  "Attempting to update required authority, but new requirement is same as old");
-      db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
-         link.required_permission = requirement;
-      });
-   } else {
+      if (context.controller.is_applying_block())
+         db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
+            link.required_permission = requirement;
+         });
+   } else if (context.controller.is_applying_block()) {
       db.create<permission_link_object>([&requirement](permission_link_object& link) {
          link.account = requirement.account;
          link.code = requirement.code;
@@ -467,7 +472,8 @@ void apply_eos_unlinkauth(apply_context& context) {
    auto linkKey = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = db.find<permission_link_object, by_message_type>(linkKey);
    EOS_ASSERT(link != nullptr, message_precondition_exception, "Attempting to unlink authority, but no link found");
-   db.remove(*link);
+   if (context.controller.is_applying_block())
+      db.remove(*link);
 }
 
 } // namespace eos

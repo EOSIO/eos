@@ -73,6 +73,11 @@ namespace eos { namespace chain {
           */
          signal<void(const SignedTransaction&)> on_pending_transaction;
 
+         /**
+          * @brief Check whether the controller is currently applying a block or not
+          * @return True if the controller is now applying a block; false otherwise
+          */
+         bool is_applying_block()const { return _currently_applying_block; }
 
          /**
           *  The controller can override any script endpoint with native code.
@@ -255,6 +260,15 @@ namespace eos { namespace chain {
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
          void _apply_block(const signed_block& next_block);
 
+         template<typename Function>
+         auto with_applying_block(Function&& f) -> decltype((*((Function*)nullptr))()) {
+            auto on_exit = fc::make_scoped_exit([this](){
+               _currently_applying_block = false;
+            });
+            _currently_applying_block = true;
+            return f();
+         }
+
          void check_transaction_authorization(const SignedTransaction& trx)const;
 
          ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
@@ -321,7 +335,7 @@ namespace eos { namespace chain {
          optional<database::session>      _pending_tx_session;
          deque<SignedTransaction>         _pending_transactions;
 
-         bool                             _pushing  = false;
+         bool                             _currently_applying_block = false;
          uint64_t                         _skip_flags = 0;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
