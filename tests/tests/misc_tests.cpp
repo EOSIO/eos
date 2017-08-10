@@ -224,6 +224,11 @@ BOOST_AUTO_TEST_CASE(authority_checker)
 
    A = Complex_Authority(5, ((a, 2))((b, 2))((c, 2)), (("top", "top", 5)));
    {
+      auto checker = MakeAuthorityChecker(GetAuthority, {d, e});
+      BOOST_CHECK(checker.satisfied(A));
+      BOOST_CHECK(checker.all_keys_used());
+   }
+   {
       auto checker = MakeAuthorityChecker(GetAuthority, {a,b,c,d,e});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
