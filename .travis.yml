@@ -27,3 +27,4 @@ script:
   - ninja -j4
   - tests/chain_test
   - tests/slow_test
+  - tests/api_test
