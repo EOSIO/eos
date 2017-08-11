@@ -171,7 +171,10 @@ BOOST_FIXTURE_TEST_CASE(multiindex, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(tapos_wrap, testing_fixture)
 { try {
       Make_Blockchain(chain)
+      Make_Account(chain, system);
       Make_Account(chain, acct);
+      chain.produce_blocks(1);
+      Transfer_Asset(chain, inita, system, Asset(1000) );
       Transfer_Asset(chain, system, acct, Asset(5));
       Stake_Asset(chain, acct, Asset(5).amount);
       wlog("Hang on, this will take a minute...");
@@ -185,6 +188,9 @@ BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
    // Create account sam with default balance of 100, and stake 55 of it
    Make_Blockchain(chain);
    Make_Account(chain, sam);
+
+   chain.produce_blocks();
+
    Transfer_Asset(chain, inita, sam, Asset(55) );
 
    // MakeAccount should start sam out with some staked balance
@@ -426,6 +432,7 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
    try {
       Make_Blockchain(chain);
       chain.produce_blocks(2);
+      Make_Account(chain, system);
       Make_Account(chain, currency);
       Make_Account(chain, exchange);
       chain.produce_blocks(1);
