@@ -95,7 +95,7 @@ FC_REFLECT( keypair, (public_key)(wif_private_key) )
 
   FC_REFLECT( eosd_def,
               (genesis)(eos_root_dir)(data_dir)(hostname)(public_name)
-              (p2p_port)(http_port)(filesize)(keys)(peers)(producers) )
+              (p2p_port)(http_port)(filesize)(keys)(peers)(producers)(remote) )
 
   FC_REFLECT( testnet_def,
               (ssh_helper)(nodes))
@@ -207,7 +207,8 @@ struct topology {
       aliases.push_back(key);
       node.genesis = genesis.string();
       node.data_dir = data_dir_base + dex;
-      node.public_name = node.hostname = "127.0.0.1";
+      node.hostname = "127.0.0.1";
+      node.public_name = "localhost";
       node.remote = false;
       node.p2p_port += i;
       node.http_port += i;
