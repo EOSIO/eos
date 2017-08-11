@@ -99,7 +99,7 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
       }
 } FC_LOG_AND_RETHROW( ) }
 
-uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<char>& data, const vector<AccountName>& scope = {N(test_api)}) {
+uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<char>& data, const vector<AccountName>& scope = {N(testapi)}) {
    static int expiration = 1;
    eos::chain::SignedTransaction trx;
    trx.scope = scope;
@@ -148,8 +148,8 @@ uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) ); 
 } 
 
-#define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, Message{"test_api", AUTH, TYPE}, DATA)
-#define CALL_TEST_FUNCTION_SCOPE(TYPE, AUTH, DATA, SCOPE) CallFunction(chain, Message{"test_api", AUTH, TYPE}, DATA, SCOPE)
+#define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, Message{"testapi", AUTH, TYPE}, DATA)
+#define CALL_TEST_FUNCTION_SCOPE(TYPE, AUTH, DATA, SCOPE) CallFunction(chain, Message{"testapi", AUTH, TYPE}, DATA, SCOPE)
 
 bool is_access_violation(fc::unhandled_exception const & e) {
    try {
@@ -192,17 +192,28 @@ uint32_t last_fnc_err = 0;
       std::STREAM.rdbuf(oldbuf); \
    }
 
+void send_set_code_message(testing_blockchain& chain, types::setcode& handler, AccountName account)
+{
+   eos::chain::SignedTransaction trx;
+   handler.account = account;
+   trx.scope = { account };
+   trx.messages.resize(1);
+   trx.messages[0].code = config::EosContractName;
+   trx.setMessage(0, "setcode", handler);
+   trx.expiration = chain.head_block_time() + 100;
+   trx.set_reference_block(chain.head_block_id());
+   chain.push_transaction(trx);
+   chain.produce_blocks(1);
+}
 
 BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 { try {
 
-      //std::string test_api_wast_str(test_api_wast);
-      auto test_api_wast_str = readFile2("/home/matu/Documents/Dev/eos/contracts/test_api/test_api.wast");
-      //std::cout << test_api_wast << std::endl;
+      auto wasm = assemble_wast( test_api_wast );
 
       Make_Blockchain(chain);
       chain.produce_blocks(2);
-      Make_Account(chain, test_api);
+      Make_Account(chain, testapi);
       Make_Account(chain, another);
       Make_Account(chain, acc1);
       Make_Account(chain, acc2);
@@ -211,9 +222,13 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       chain.produce_blocks(1);
 
       //Set test code
-      SetCode(chain, "test_api", test_api_wast_str.c_str());
-      SetCode(chain, "acc1", test_api_wast_str.c_str());
-      SetCode(chain, "acc2", test_api_wast_str.c_str());
+      types::setcode handler;
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+      send_set_code_message(chain, handler, "testapi");
+      send_set_code_message(chain, handler, "acc1");
+      send_set_code_message(chain, handler, "acc2");
 
       //Test types
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_types", "types_size"),     {}, {} ) == WASM_TEST_PASS, "test_types::types_size()" );
@@ -341,7 +356,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i64_general"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_general()" );
       BOOST_CHECK_EQUAL( std::distance(idx.begin(), idx.end()) , 4);
       
-      auto itr = idx.lower_bound( boost::make_tuple( N(test_api), N(test_api), N(test_table)) );
+      auto itr = idx.lower_bound( boost::make_tuple( N(testapi), N(testapi), N(test_table)) );
 
       BOOST_CHECK_EQUAL((uint64_t)itr->key, N(alice)); ++itr;
       BOOST_CHECK_EQUAL((uint64_t)itr->key, N(bob)); ++itr;
