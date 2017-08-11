@@ -32,6 +32,12 @@ void StakedBalanceObject::beginUnstakingTokens(ShareType amount, chainbase::data
    });
 }
 
+void StakedBalanceObject::finishUnstakingTokens(ShareType amount, chainbase::database& db) const {
+   db.modify(*this, [&amount](StakedBalanceObject& sbo) {
+      sbo.unstakingBalance -= amount;
+   });
+}
+
 void StakedBalanceObject::propagateVotes(ShareType stakeDelta, chainbase::database& db) const {
    if (producerVotes.contains<ProducerSlate>())
       // This account votes for producers directly; update their stakes

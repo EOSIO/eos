@@ -94,21 +94,6 @@ void apply_eos_newaccount(apply_context& context) {
 }
 
 /**
- *  This method is called when the claim message is delivered to @staked 
- *  staked::validate_staked_claim must require that @eos be notified.
- *
- *  This method trusts that staked::precondition_staked_claim verifies that claim.amount is
- *  available.
- */
-void apply_staked_claim(apply_context& context) {
-   auto claim = context.msg.as<types::claim>();
-   const auto& claimant = context.db.get<BalanceObject, byOwnerName>(claim.account);
-   context.mutable_db.modify(claimant, [&claim](BalanceObject& a) {
-      a.balance += claim.amount;
-   });
-}
-
-/**
  *
  * @ingroup native_eos
  * @defgroup eos_eos_transfer eos::eos_transfer
@@ -230,16 +215,19 @@ void apply_eos_claim(apply_context& context) {
    EOS_ASSERT(balance != nullptr, message_precondition_exception,
               "Could not find staked balance for ${name}", ("name", claim.account));
    auto balanceReleaseTime = balance->lastUnstakingTime + config::StakedBalanceCooldownSeconds;
-   auto now = context.db.get(dynamic_global_property_object::id_type()).time;
+   auto now = context.controller.head_block_time();
    EOS_ASSERT(now >= balanceReleaseTime, message_precondition_exception,
               "Cannot claim balance until ${releaseDate}", ("releaseDate", balanceReleaseTime));
    EOS_ASSERT(balance->unstakingBalance >= claim.amount, message_precondition_exception,
               "Cannot claim ${claimAmount} as only ${available} is available for claim",
               ("claimAmount", claim.amount)("available", balance->unstakingBalance));
 
-   context.mutable_db.modify(context.db.get<StakedBalanceObject, byOwnerName>(claim.account),
-                             [&claim](StakedBalanceObject& sbo) {
-      sbo.unstakingBalance -= claim.amount;
+   const auto& stakedBalance = context.db.get<StakedBalanceObject, byOwnerName>(claim.account);
+   stakedBalance.finishUnstakingTokens(claim.amount, context.mutable_db);
+
+   const auto& liquidBalance = context.db.get<BalanceObject, byOwnerName>(claim.account);
+   context.mutable_db.modify(liquidBalance, [&claim](BalanceObject& a) {
+      a.balance += claim.amount;
    });
 }
 
