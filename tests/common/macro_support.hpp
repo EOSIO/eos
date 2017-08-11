@@ -45,7 +45,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define MKACCT_IMPL(chain, name, creator, active, owner, recovery, deposit) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names({ #creator, "eos" }); \
+      trx.scope = sort_names({ #creator, config::EosContractName }); \
       trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{{#creator, "active"}}, \
                          "newaccount", types::newaccount{#creator, #name, owner, active, recovery, deposit}); \
@@ -146,7 +146,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define STAKE4(chain, sender, recipient, amount) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( { #sender, #recipient, "eos" } ); \
+      trx.scope = sort_names( { #sender, #recipient, config::EosContractName } ); \
       trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{}, \
                         "lock", types::lock{#sender, #recipient, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
@@ -159,7 +159,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define BEGIN_UNSTAKE3(chain, account, amount) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( { "eos" } ); \
+      trx.scope = sort_names( { config::EosContractName } ); \
       trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{}, \
                          "unlock", types::unlock{#account, amount}); \
@@ -172,7 +172,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define FINISH_UNSTAKE3(chain, account, amount) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( { "eos", #account } ); \
+      trx.scope = sort_names( { config::EosContractName, #account } ); \
       trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{}, \
                          "claim", types::claim{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
@@ -184,7 +184,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define MKPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( {#owner, "eos"} ); \
+      trx.scope = sort_names( {#owner, config::EosContractName} ); \
       trx.emplaceMessage(config::EosContractName, \
                          vector<types::AccountPermission>{{#owner, "active"}}, \
                          "setproducer", types::setproducer{#owner, key, cfg}); \
@@ -201,7 +201,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define APPDCR4(chain, voter, producer, approved) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( {#voter, "eos"} ); \
+      trx.scope = sort_names( {#voter, config::EosContractName} ); \
       trx.emplaceMessage(config::EosContractName,  \
                          vector<types::AccountPermission>{{#voter, "active"}}, \
                          "okproducer", types::okproducer{#voter, #producer, approved? 1 : 0}); \
@@ -214,7 +214,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 #define UPPDCR4(chain, owner, key, cfg) \
    { \
       eos::chain::SignedTransaction trx; \
-      trx.scope = sort_names( {owner, "eos"} ); \
+      trx.scope = sort_names( {owner, config::EosContractName} ); \
       trx.emplaceMessage(config::EosContractName,  \
                          vector<types::AccountPermission>{{owner, "active"}}, \
                          "setproducer", types::setproducer{owner, key, cfg}); \
