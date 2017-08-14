@@ -192,25 +192,13 @@ uint32_t last_fnc_err = 0;
       std::STREAM.rdbuf(oldbuf); \
    }
 
-void send_set_code_message(testing_blockchain& chain, types::setcode& handler, AccountName account)
-{
-   eos::chain::SignedTransaction trx;
-   handler.account = account;
-   trx.scope = { account };
-   trx.messages.resize(1);
-   trx.messages[0].code = config::EosContractName;
-   trx.messages[0].authorization.emplace_back(types::AccountPermission{account,"active"});
-   trx.setMessage(0, "setcode", handler);
-   trx.expiration = chain.head_block_time() + 100;
-   trx.set_reference_block(chain.head_block_id());
-   chain.push_transaction(trx);
-   chain.produce_blocks(1);
-}
 
 BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 { try {
 
-      auto wasm = assemble_wast( test_api_wast );
+      std::string testapi_wast_str(test_api_wast);
+      //auto testapi_wast_str = readFile2("/home/matu/Documents/Dev/eos/contracts/test_api/test_api.wast");
+      //std::cout << testapi_wast << std::endl;
 
       Make_Blockchain(chain);
       chain.produce_blocks(2);
@@ -223,13 +211,9 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       chain.produce_blocks(1);
 
       //Set test code
-      types::setcode handler;
-      handler.code.resize(wasm.size());
-      handler.code.assign(wasm.begin(), wasm.end());
-
-      send_set_code_message(chain, handler, "testapi");
-      send_set_code_message(chain, handler, "acc1");
-      send_set_code_message(chain, handler, "acc2");
+      SetCode(chain, "testapi", testapi_wast_str.c_str());
+      SetCode(chain, "acc1", testapi_wast_str.c_str());
+      SetCode(chain, "acc2", testapi_wast_str.c_str());
 
       //Test types
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_types", "types_size"),     {}, {} ) == WASM_TEST_PASS, "test_types::types_size()" );
