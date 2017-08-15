@@ -6,7 +6,12 @@
   @section intro Introduction to EOSC
   
   `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
-  have a local copy of `eosd` running and configured to load the 'eos::chain_api_plugin'.  
+  have a local copy of `eosd` running and configured to load the 'eos::chain_api_plugin'. Currently, `eosc` does not
+  sign transactions, so in order for these instructions to work, `eosd` needs to be run with --skip-transaction-signatures.
+
+  ...
+  ./eosd --skip-transaction-signatures
+  ...
 
   ```
   # Plugin(s) to enable, may be specified multiple times
