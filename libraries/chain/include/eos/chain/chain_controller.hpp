@@ -302,7 +302,8 @@ namespace eos { namespace chain {
                                                             types::AccountName code_account,
                                                             types::FuncName type) const;
 
-         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message, MessageOutput& output);
+         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message,
+                              MessageOutput& output, apply_context* parent_context = nullptr);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
