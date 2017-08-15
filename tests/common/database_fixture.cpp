@@ -166,7 +166,7 @@ types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountN
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
-void testing_blockchain::sign_transaction(SignedTransaction& trx) {
+void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
    auto GetAuthority = [this](const types::AccountPermission& permission) {
       auto key = boost::make_tuple(permission.account, permission.permission);
       return db.get<permission_object, by_owner>(key).auth;

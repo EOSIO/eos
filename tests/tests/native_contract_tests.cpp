@@ -483,6 +483,7 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
 BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    Make_Blockchain(chain);
    Make_Account(chain, alice);
+   Make_Account(chain, bob);
    chain.produce_blocks();
 
    Make_Key(spending);
@@ -505,6 +506,35 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
       BOOST_CHECK_EQUAL(obj->code, "eos");
       BOOST_CHECK_EQUAL(obj->message_type, "transfer");
    }
+
+   Transfer_Asset(chain, inita, alice, Asset(1000));
+   chain.set_auto_sign_transactions(false);
+   chain.set_skip_transaction_signature_checking(false);
+   chain.set_hold_transactions_for_review(true);
+
+   Transfer_Asset(chain, alice, bob, Asset(10));
+   BOOST_CHECK_THROW(chain.review_transaction([&chain](SignedTransaction& trx, auto) {
+                        trx.messages.front().authorization = {{"alice", "scud"}};
+                        chain.sign_transaction(trx);
+                        return true;
+                     }), tx_irrelevant_auth);
+   chain.review_transaction([&chain](SignedTransaction& trx, auto) {
+      trx.messages.front().authorization = {{"alice", "spending"}};
+      trx.signatures.clear();
+      chain.sign_transaction(trx);
+      return true;
+   });
+   chain.review_transaction([&chain](SignedTransaction& trx, auto) {
+      trx.messages.front().authorization = {{"alice", "active"}};
+      trx.signatures.clear();
+      chain.sign_transaction(trx);
+      return true;
+   });
+
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("bob"), Asset(20));
+
+   chain.set_skip_transaction_signature_checking(true);
+   chain.set_hold_transactions_for_review(false);
 
    Unlink_Authority(chain, alice, eos, "transfer");
    BOOST_CHECK_NE(

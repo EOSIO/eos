@@ -180,7 +180,7 @@ public:
    PublicKey get_block_signing_key(const AccountName& producerName);
 
    /// @brief Attempt to sign the provided transaction using the keys available to the testing_fixture
-   void sign_transaction(SignedTransaction& trx);
+   void sign_transaction(SignedTransaction& trx) const;
 
    /// @brief Override push_transaction to apply testing policies
    /// If transactions are being held for review, transaction will be held after testing policies are applied
