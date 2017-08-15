@@ -224,7 +224,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       //Set test code
       types::setcode handler;
       handler.code.resize(wasm.size());
-      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+      handler.code.assign(wasm.begin(), wasm.end());
 
       send_set_code_message(chain, handler, "testapi");
       send_set_code_message(chain, handler, "acc1");
