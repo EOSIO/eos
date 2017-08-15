@@ -21,9 +21,9 @@ namespace eos { namespace chain {
    }
 
 #ifdef NDEBUG
-   const int CHECKTIME_LIMIT = 2000;
+   const int CHECKTIME_LIMIT = 3000;
 #else
-   const int CHECKTIME_LIMIT = 12000;
+   const int CHECKTIME_LIMIT = 18000;
 #endif
 
 DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {

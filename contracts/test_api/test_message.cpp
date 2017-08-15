@@ -7,7 +7,7 @@ unsigned int test_message::read_message() {
    char buffer[100];
    uint32_t total = 0;
 
-   WASM_ASSERT( currentCode() == N(test_api),  "currentCode() == N(test_api)" );
+   WASM_ASSERT( currentCode() == N(testapi),  "currentCode() == N(testapi)" );
 
    WASM_ASSERT(messageSize() == sizeof(dummy_message), "messageSize() == sizeof(dummy_message)");
 
@@ -42,7 +42,7 @@ unsigned int test_message::read_message_to_64k() {
 }
 
 unsigned int test_message::require_notice() {
-   if( currentCode() == N(test_api) ) {
+   if( currentCode() == N(testapi) ) {
       eos::requireNotice( N(acc1) );
       eos::requireNotice( N(acc2) );
       eos::requireNotice( N(acc1), N(acc2) );
