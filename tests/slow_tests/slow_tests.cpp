@@ -428,7 +428,6 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
 }
 
 BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
-  try {
    try {
       Make_Blockchain(chain);
       chain.produce_blocks(2);
@@ -446,8 +445,6 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
       TransferCurrency( chain, "currency", "inita", 1000 );
       TransferCurrency( chain, "currency", "initb", 2000 );
 
-      Transfer_Asset(chain, system, inita, Asset(50));
-      Transfer_Asset(chain, system, initb, Asset(50));
       chain.produce_blocks(1);
       ilog( "transfering funds to the exchange" );
       TransferCurrency( chain, "inita", "exchange", 1000 );
@@ -471,23 +468,21 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
       chain.produce_blocks(1);
 
       wlog( "start buy and sell" );
-      SellCurrency( chain, "initb", "exchange", 1, 100, .5 );
-      SellCurrency( chain, "initb", "exchange", 1, 100, .75 );
-      SellCurrency( chain, "initb", "exchange", 1, 100, .85 );
+      uint64_t order_num = 1;
+      SellCurrency( chain, "initb", "exchange", order_num++, 100, .5 );
+      SellCurrency( chain, "initb", "exchange", order_num++, 100, .75 );
+      SellCurrency( chain, "initb", "exchange", order_num++, 100, .85 );
       //BOOST_REQUIRE_THROW( SellCurrency( chain, "initb", "exchange", 1, 100, .5 ), fc::exception ); // order id already exists
       //SellCurrency( chain, "initb", "exchange", 2, 100, .75 );
 
 //      BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ); 
-      BuyCurrency( chain, "initb", "exchange", 1, 50, .5 ); 
+      BuyCurrency( chain, "initb", "exchange", order_num++, 50, .5 );
       //BOOST_REQUIRE_THROW( BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ), fc::exception );  // order id already exists
 
       /// this should buy 5 from initb order 2 at a price of .75
       //BuyCurrency( chain, "initb", "exchange", 2, 50, .8 ); 
 
    } FC_LOG_AND_RETHROW() 
-  }catch(...) {
-     elog( "unexpected exception" );
-  }
 }
 
 //Test account script float rejection
