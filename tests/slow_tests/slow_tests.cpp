@@ -296,6 +296,7 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
          trx.scope = {account};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{account,"active"});
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -349,6 +350,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          trx.scope = {"currency"};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());
@@ -1113,6 +1115,7 @@ R"(
       trx.scope = {"simplecoin"};
       trx.messages.resize(1);
       trx.messages[0].code = config::EosContractName;
+      trx.messages[0].authorization.emplace_back(types::AccountPermission{"simplecoin","active"});
       trx.setMessage(0, "setcode", handler);
       trx.expiration = chain.head_block_time() + 100;
       trx.set_reference_block(chain.head_block_id());
@@ -1149,6 +1152,7 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
          trx.scope = {"currency"};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
          trx.setMessage(0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          trx.set_reference_block(chain.head_block_id());

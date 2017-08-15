@@ -147,7 +147,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( { #sender, #recipient, config::EosContractName } ); \
-      trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{}, \
+      trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{#sender, "active"}}, \
                         "lock", types::lock{#sender, #recipient, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
@@ -161,7 +161,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( { config::EosContractName } ); \
       trx.emplaceMessage(config::EosContractName, \
-                         vector<types::AccountPermission>{}, \
+                         vector<types::AccountPermission>{{#account, "active"}}, \
                          "unlock", types::unlock{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \
@@ -173,7 +173,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( { config::EosContractName, #account } ); \
-      trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{}, \
+      trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{#account, "active"}}, \
                          "claim", types::claim{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
       trx.set_reference_block(chain.head_block_id()); \

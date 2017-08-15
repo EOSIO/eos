@@ -199,6 +199,7 @@ void send_set_code_message(testing_blockchain& chain, types::setcode& handler, A
    trx.scope = { account };
    trx.messages.resize(1);
    trx.messages[0].code = config::EosContractName;
+   trx.messages[0].authorization.emplace_back(types::AccountPermission{account,"active"});
    trx.setMessage(0, "setcode", handler);
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());

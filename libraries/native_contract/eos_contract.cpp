@@ -149,6 +149,8 @@ void apply_eos_lock(apply_context& context) {
    context.require_recipient(lock.to);
    context.require_recipient(lock.from);
 
+   context.require_authorization(lock.from);
+
    const auto& locker = context.db.get<BalanceObject, byOwnerName>(lock.from);
 
    EOS_ASSERT( locker.balance >= lock.amount, message_precondition_exception, 
@@ -164,6 +166,8 @@ void apply_eos_lock(apply_context& context) {
 
 void apply_eos_unlock(apply_context& context) {
    auto unlock = context.msg.as<types::unlock>();
+
+   context.require_authorization(unlock.account);
 
    EOS_ASSERT(unlock.amount >= 0, message_validate_exception, "Unlock amount cannot be negative");
 
@@ -210,6 +214,8 @@ void apply_eos_claim(apply_context& context) {
    auto claim = context.msg.as<types::claim>();
 
    EOS_ASSERT(claim.amount > 0, message_validate_exception, "Claim amount must be positive");
+
+   context.require_authorization(claim.account);
 
    auto balance = context.db.find<StakedBalanceObject, byOwnerName>(claim.account);
    EOS_ASSERT(balance != nullptr, message_precondition_exception,
