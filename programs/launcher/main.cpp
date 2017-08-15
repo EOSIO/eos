@@ -6,6 +6,8 @@
 #include <math.h>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ip/host_name.hpp>
 #include <boost/program_options.hpp>
 #include <boost/process/child.hpp>
 #include <boost/process/system.hpp>
@@ -14,14 +16,85 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <fc/io/json.hpp>
+#include <fc/network/ip.hpp>
 #include <fc/reflect/variant.hpp>
+#include <ifaddrs.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <net/if.h>
 
 using namespace std;
 namespace bf = boost::filesystem;
 namespace bp = boost::process;
 namespace bpo = boost::program_options;
+using boost::asio::ip::tcp;
+using boost::asio::ip::host_name;
 using bpo::options_description;
 using bpo::variables_map;
+
+struct localIdentity {
+  vector <fc::ip::address> addrs;
+  vector <string> names;
+
+  void initialize () {
+    names.push_back ("localhost");
+    boost::system::error_code ec;
+    string hn = host_name (ec);
+    if (ec.value() != boost::system::errc::success) {
+      cerr << "unable to retrieve host name: " << ec.message() << endl;
+    }
+    else {
+      cerr << "adding hostname " << hn << endl;
+      names.push_back (hn);
+      if (hn.find ('.') != string::npos) {
+        names.push_back (hn.substr (0,hn.find('.')));
+        cerr << "adding hostname " << hn.substr (0,hn.find('.')) << endl;
+      }
+    }
+
+    ifaddrs *ifap = 0;
+    if (::getifaddrs (&ifap) == 0) {
+      for (ifaddrs *p_if = ifap; p_if != 0; p_if = p_if->ifa_next) {
+        if (p_if->ifa_addr != 0 &&
+            p_if->ifa_addr->sa_family == AF_INET &&
+            (p_if->ifa_flags & IFF_UP) == IFF_UP) {
+          sockaddr_in *ifaddr = reinterpret_cast<sockaddr_in *>(p_if->ifa_addr);
+          int32_t in_addr = ntohl(ifaddr->sin_addr.s_addr);
+
+          if (in_addr != 0) {
+            fc::ip::address ifa(in_addr);
+            addrs.push_back (ifa);
+            cout << "found interface " << (string)ifa << endl;
+          }
+        }
+      }
+      ::freeifaddrs (ifap);
+    }
+    else {
+      cerr << "unable to query local ip interfaces" << endl;
+      addrs.push_back (fc::ip::address("127.0.0.1"));
+    }
+  }
+
+  bool contains (const string &name) const {
+    try {
+      fc::ip::address test(name);
+      for (const auto &a : addrs) {
+        if (a == test)
+          return true;
+      }
+    }
+    catch (...) {
+      // not an ip address
+      for (const auto n : names) {
+        if (n == name)
+          return true;
+      }
+    }
+    return false;
+  }
+
+} local_id;
 
 
 struct keypair {
@@ -51,15 +124,16 @@ struct eosd_def {
       peers(),
       producers(),
       onhost_set(false),
-      onhost(true)
+      onhost(true),
+      localaddrs()
   {}
 
   bool on_host () {
     if (! onhost_set) {
       onhost_set = true;
-      onhost = (hostname == "localhost" || hostname == "127.0.0.1");
+      onhost = local_id.contains (hostname);
     }
-    return onhost_set;
+    return onhost;
   }
 
   string p2p_endpoint () {
@@ -88,7 +162,7 @@ private:
   string p2p_endpoint_str;
   bool onhost_set;
   bool onhost;
-
+  vector<fc::ip::address> localaddrs;
 };
 
 struct remote_deploy {
@@ -489,6 +563,8 @@ launcher_def::launch (eosd_def &node, string &gts) {
     format_ssh (cmd, node.hostname, info.kill_cmd);
   }
   else {
+    cerr << "spawning child, " << eosdcmd << endl;
+
     bp::child c(eosdcmd, bp::std_out > reout, bp::std_err > reerr );
 
     bf::ofstream pidout (pidf);
@@ -563,6 +639,8 @@ int main (int argc, char *argv[]) {
   string gts;
   launch_modes mode;
   bool do_kill;
+
+  local_id.initialize();
   top.set_options(opts);
 
   opts.add_options()
