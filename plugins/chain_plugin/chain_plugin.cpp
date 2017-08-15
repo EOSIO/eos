@@ -36,6 +36,7 @@ public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    chain::Time                      genesis_timestamp;
+   uint32_t                         skip_flags = chain_controller::skip_nothing;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -66,6 +67,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain database and replay all blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
+         ("skip-transaction-signatures", bpo::bool_switch()->default_value(false),
+          "Disable Transaction signature verification. ONLY for TESTING.")
          ;
 }
 
@@ -106,6 +109,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ilog("Resync requested: wiping blocks");
       app().get_plugin<database_plugin>().wipe_database();
       fc::remove_all(my->block_log_dir);
+   }
+   if (options.at("skip-transaction-signatures").as<bool>()) {
+      ilog("Setting skip_transaction_signatures");
+      elog("Setting skip_transaction_signatures\n"
+           "\n"
+           "***************************************\n"
+           "*                                     *\n"
+           "*   -- CHAIN IGNORING SIGNATURES --   *\n"
+           "*   -         TEST MODE           -   *\n"
+           "*   -------------------------------   *\n"
+           "*                                     *\n"
+           "***************************************\n");
+
+      my->skip_flags |= chain_controller::skip_transaction_signatures;
    }
 
    if(options.count("checkpoint"))
@@ -154,6 +171,10 @@ void chain_plugin::plugin_startup()
 void chain_plugin::plugin_shutdown() {
 }
 
+chain_apis::read_write chain_plugin::get_read_write_api() {
+   return chain_apis::read_write(chain(), my->skip_flags);
+}
+
 bool chain_plugin::accept_block(const chain::signed_block& block, bool currently_syncing) {
    if (currently_syncing && block.block_num() % 10000 == 0) {
       ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
@@ -166,7 +187,10 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
 }
 
 void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
-   chain().push_transaction(trx);
+   if (my->skip_flags & chain_controller::skip_transaction_signatures) {
+      wlog("skip_transaction_signatures enabled");
+   }
+   chain().push_transaction(trx, my->skip_flags);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block_id) {
@@ -301,7 +325,10 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   auto ptrx = db.push_transaction(params);
+   if (skip_flags & chain_controller::skip_transaction_signatures) {
+      wlog("skip_transaction_signatures enabled");
+   }
+   auto ptrx = db.push_transaction(params, skip_flags);
    auto pretty_trx = db.transaction_to_variant( ptrx );
    return read_write::push_transaction_results{ params.id(), pretty_trx };
 }
