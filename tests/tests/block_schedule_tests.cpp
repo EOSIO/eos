@@ -31,23 +31,73 @@ using namespace eos;
 using namespace chain;
 
 /*
+ * templated meta schedulers for fuzzing 
+ */
+template<typename NEXT>
+struct shuffled_functor {
+   shuffled_functor(NEXT &&_next) : next(_next){};
+
+   block_schedule operator()(const vector<pending_transaction>& transactions, const global_property_object& properties) {
+      std::random_device rd;
+      std::mt19937 rng(rd());
+      auto copy = std::vector<pending_transaction>(transactions);
+      std::shuffle(copy.begin(), copy.end(), rng);
+      return next(copy, properties);
+   }
+
+   NEXT &&next;
+};
+
+template<typename NEXT> 
+static shuffled_functor<NEXT> shuffled(NEXT &&next) {
+   return shuffled_functor<NEXT>(next);
+}
+
+template<int NUM, int DEN, typename NEXT>
+struct lossy_functor {
+   lossy_functor(NEXT &&_next) : next(_next){};
+   
+   block_schedule operator()(const vector<pending_transaction>& transactions, const global_property_object& properties) {
+      std::random_device rd;
+      std::mt19937 rng(rd());
+      std::uniform_real_distribution<> dist(0, 1);
+      double const cutoff = (double)NUM / (double)DEN;
+
+      auto copy = std::vector<pending_transaction>();
+      copy.reserve(transactions.size());
+      std::copy_if (transactions.begin(), transactions.end(), copy.begin(), [&](const pending_transaction& trx){
+         return dist(rng) >= cutoff;
+      });
+
+      return next(copy, properties);
+   }
+
+   NEXT &&next;
+};
+
+template<int NUM, int DEN, typename NEXT> 
+static lossy_functor<NUM, DEN, NEXT> lossy(NEXT &&next) {
+   return lossy_functor<NUM, DEN, NEXT>(next);
+}
+
+/*
  * Policy based Fixtures for chain properties
  */
 class common_fixture {
 public:
    struct test_transaction {
-      test_transaction(std::initializer_list<AccountName> const &_scopes)
+      test_transaction(const std::initializer_list<AccountName>& _scopes)
          : scopes(_scopes)
       {
       }
 
-      std::initializer_list<AccountName> const &scopes;
+      const std::initializer_list<AccountName>& scopes;
    };
 
 protected:
-   auto create_transactions( std::initializer_list<test_transaction> const &transactions ) {
+   auto create_transactions( const std::initializer_list<test_transaction>& transactions ) {
       std::vector<SignedTransaction> result;
-      for (auto const &t: transactions) {
+      for (const auto& t: transactions) {
          SignedTransaction st;
          st.scope.reserve(t.scopes.size());
          st.scope.insert(st.scope.end(), t.scopes.begin(), t.scopes.end());
@@ -56,11 +106,10 @@ protected:
       return result;
    }
 
-   auto create_pending( std::vector<SignedTransaction> const &transactions ) {
+   auto create_pending( const std::vector<SignedTransaction>& transactions ) {
       std::vector<pending_transaction> result;
-      for (auto const &t: transactions) {
-         auto const *ptr = &t;
-         result.emplace_back(ptr);
+      for (const auto& t: transactions) {
+         result.emplace_back(std::reference_wrapper<SignedTransaction const> {t});
       }
       return result;
    }
@@ -70,7 +119,7 @@ template<typename PROPERTIES_POLICY>
 class compose_fixture: public common_fixture {
 public:
    template<typename SCHED_FN, typename ...VALIDATORS>
-   void schedule_and_validate(SCHED_FN sched_fn, std::initializer_list<test_transaction> const &transactions, VALIDATORS ...validators) {
+   void schedule_and_validate(SCHED_FN sched_fn, const std::initializer_list<test_transaction>& transactions, VALIDATORS ...validators) {
       try {
          auto signed_transactions = create_transactions(transactions);
          auto pending = create_pending(signed_transactions);
@@ -81,12 +130,12 @@ public:
 
 private:
    template<typename VALIDATOR>
-   void validate(block_schedule const &schedule, VALIDATOR validator) {
+   void validate(const block_schedule& schedule, VALIDATOR validator) {
       validator(schedule);
    }
 
    template<typename VALIDATOR, typename ...VALIDATORS>
-   void validate(block_schedule const &schedule, VALIDATOR validator, VALIDATORS ... others) {
+   void validate(const block_schedule& schedule, VALIDATOR validator, VALIDATORS ... others) {
       validate(schedule, validator);
       validate(schedule, others...);
    }
@@ -95,7 +144,7 @@ private:
    PROPERTIES_POLICY properties_policy;
 };
 
-static void null_global_property_object_constructor(global_property_object const &)
+static void null_global_property_object_constructor(const global_property_object& )
 {}
 
 static chainbase::allocator<global_property_object> null_global_property_object_allocator(nullptr);
@@ -126,10 +175,10 @@ typedef compose_fixture<default_properties> default_fixture;
 /*
  * Evaluators for expect
  */
-static uint transaction_count(block_schedule const &schedule) {
+static uint transaction_count(const block_schedule& schedule) {
    uint result = 0;
-   for (auto const &c : schedule.cycles) {
-      for (auto const &t: c) {
+   for (const auto& c : schedule.cycles) {
+      for (const auto& t: c) {
          result += t.transactions.size();
       }
    }
@@ -137,21 +186,21 @@ static uint transaction_count(block_schedule const &schedule) {
    return result;
 }
 
-static uint cycle_count(block_schedule const &schedule) {
+static uint cycle_count(const block_schedule& schedule) {
    return schedule.cycles.size();
 }
 
 
 
-static bool schedule_is_valid(block_schedule const &schedule) {
-   for (auto const &c : schedule.cycles) {
+static bool schedule_is_valid(const block_schedule& schedule) {
+   for (const auto& c : schedule.cycles) {
       std::vector<bool> scope_in_use;
-      for (auto const &t: c) {
+      for (const auto& t: c) {
          std::set<size_t> thread_bits;
          size_t max_bit = 0;
-         for(auto const &pt: t.transactions) {
+         for(const auto& pt: t.transactions) {
             auto scopes = pt.visit(scope_extracting_visitor());
-            for (auto const &s : scopes) {
+            for (const auto& s : scopes) {
                size_t bit = boost::numeric_cast<size_t>((uint64_t)s);
                thread_bits.emplace(bit);
                max_bit = std::max(max_bit, bit);
@@ -267,7 +316,7 @@ BOOST_FIXTURE_TEST_CASE(no_conflicts_shuffled, default_fixture) {
    // does not affect the ability to schedule them in a single cycle
    for (int i = 0; i < 3000; i++) {      
       schedule_and_validate(
-         block_schedule::shuffled(block_schedule::by_threading_conflicts),
+         shuffled(block_schedule::by_threading_conflicts),
          {
             {0x1ULL, 0x2ULL},
             {0x3ULL, 0x4ULL},
@@ -303,7 +352,7 @@ BOOST_FIXTURE_TEST_CASE(some_conflicts_shuffled, default_fixture) {
    // does not affect the ability to schedule them in multiple cycles
    for (int i = 0; i < 3000; i++) {      
       schedule_and_validate(
-         block_schedule::shuffled(block_schedule::by_threading_conflicts),
+         shuffled(block_schedule::by_threading_conflicts),
          {
             {0x1ULL, 0x2ULL},
             {0x3ULL, 0x2ULL},

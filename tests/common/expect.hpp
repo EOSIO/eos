@@ -25,40 +25,40 @@
 
 namespace eos { namespace test {
 
-template<typename PRED, typename EVAL, typename T>
+template<typename Pred, typename Eval, typename T>
 struct expector {
-   expector(EVAL _eval, T const &_expected, char const * const _msg)
+   expector(Eval _eval, const T& _expected, const char* const _msg)
       : expected(_expected)
       , eval(_eval)
       , msg(_msg)
    {}
 
-   template<typename INPUT>
-   void operator() (INPUT const &input) {
+   template<typename Input>
+   void operator() (const Input& input) {
       BOOST_TEST_INFO(msg);
       auto actual = eval(input);
-      BOOST_CHECK_EQUAL(PRED()(actual, expected), true);
+      BOOST_CHECK_EQUAL(Pred()(actual, expected), true);
    }
 
    T expected;
-   EVAL eval;
+   Eval eval;
    char const * const msg;
 };
 
 
-template<typename PRED, typename EVAL, typename T>
-auto expect(EVAL &&eval, T expected, char const * const msg) {
-   return expector<PRED, EVAL, T>(eval, expected, msg);
+template<typename Pred, typename Eval, typename T>
+auto expect(Eval&& eval, T expected, char const * const msg) {
+   return expector<Pred, Eval, T>(eval, expected, msg);
 }
 
-template<typename EVAL, typename T>
-auto expect(EVAL &&eval, T expected, char const * const msg) {
-   return expector<std::equal_to<T>, EVAL, T>(eval, expected, msg);
+template<typename Eval, typename T>
+auto expect(Eval&& eval, T expected, char const * const msg) {
+   return expector<std::equal_to<T>, Eval, T>(eval, expected, msg);
 }
 
-template<typename EVAL>
-auto expect(EVAL &&eval, char const * const msg) {
-   return expector<std::equal_to<bool>, EVAL, bool>(eval, true, msg);
+template<typename Eval>
+auto expect(Eval&& eval, char const * const msg) {
+   return expector<std::equal_to<bool>, Eval, bool>(eval, true, msg);
 }
 
 #define _NUM_ARGS(A,B,C,N, ...) N

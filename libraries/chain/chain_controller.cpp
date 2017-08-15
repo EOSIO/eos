@@ -303,12 +303,12 @@ signed_block chain_controller::_generate_block(
 
    vector<pending_transaction> pending;
    pending.reserve(generated.size() + _pending_transactions.size());
-   for (auto const &gt: generated) {
-      pending.emplace_back(pending_transaction {&gt.trx});
+   for (const auto& gt: generated) {
+      pending.emplace_back(std::reference_wrapper<const GeneratedTransaction> {gt.trx});
    }
    
-   for(auto const &st: _pending_transactions) {
-      pending.emplace_back(pending_transaction {&st});
+   for(const auto& st: _pending_transactions) {
+      pending.emplace_back(std::reference_wrapper<const SignedTransaction> {st});
    }
 
    auto schedule = scheduler(pending, get_global_properties());
@@ -345,15 +345,14 @@ signed_block chain_controller::_generate_block(
           try
           {
              auto temp_session = _db.start_undo_session(true);
-             if (trx.contains<SignedTransaction const *>()) {
-                auto const &t = *trx.get<SignedTransaction const *>();
+             if (trx.contains<std::reference_wrapper<const SignedTransaction>>()) {
+                const auto& t = trx.get<std::reference_wrapper<const SignedTransaction>>().get();
                 validate_referenced_accounts(t);
                 check_transaction_authorization(t);
                 auto processed = _apply_transaction(t);
                 block_thread.user_input.emplace_back(processed);
-             } else if (trx.contains<GeneratedTransaction const *>()) {
-                #warning TODO: Process generated transaction
-                // auto processed = _apply_transaction(*trx.get<GeneratedTransaction const *>());
+             } else if (trx.contains<std::reference_wrapper<const GeneratedTransaction>>()) {
+                // auto processed = _apply_transaction(trx.get<std::reference_wrapper<const GeneratedTransaction>>().get());
                 // block_thread.generated_input.emplace_back(processed);
              } else {
                 FC_THROW_EXCEPTION(tx_scheduling_exception, "Unknown transaction type in block_schedule");
@@ -366,10 +365,10 @@ signed_block chain_controller::_generate_block(
           {
              // Do nothing, transaction will not be re-applied
              wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-             if (trx.contains<SignedTransaction const *>()) {
-                wlog( "The transaction was ${t}", ("t", *trx.get<SignedTransaction const *>()) );
-             } else if (trx.contains<GeneratedTransaction const *>()) {
-                wlog( "The transaction was ${t}", ("t", *trx.get<GeneratedTransaction const *>()) );
+             if (trx.contains<std::reference_wrapper<const SignedTransaction>>()) {
+                wlog( "The transaction was ${t}", ("t", trx.get<std::reference_wrapper<const SignedTransaction>>().get()) );
+             } else if (trx.contains<std::reference_wrapper<const GeneratedTransaction>>()) {
+                wlog( "The transaction was ${t}", ("t", trx.get<std::reference_wrapper<const GeneratedTransaction>>().get()) );
              } 
              invalid_transaction_count++;
           }
@@ -503,7 +502,6 @@ void chain_controller::_apply_block(const signed_block& next_block)
    for (const auto& cycle : next_block.cycles) {
       for (const auto& thread : cycle) {
          for(const auto& trx : thread.generated_input ) {
-#warning TODO: Process generated transaction
          }
          for(const auto& trx : thread.user_input ) {
             _apply_transaction(trx);
