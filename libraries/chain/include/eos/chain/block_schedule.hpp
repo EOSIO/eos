@@ -67,10 +67,6 @@ namespace eos { namespace chain {
       std::set<AccountName> operator()(std::reference_wrapper<const T> trx) const {
          const auto& t = trx.get();
          std::set<AccountName> unique_names(t.scope.begin(), t.scope.end());
-         for (const auto& m : t.messages) {
-            unique_names.insert(m.code);
-         }
-
          return unique_names;
       }
    };
