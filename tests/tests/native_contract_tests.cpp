@@ -539,11 +539,12 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    BOOST_CHECK_EQUAL(chain.get_liquid_balance("bob"), Asset(20));
 
    SignedTransaction backup;
-   // Now we'll unlink the transfer authority, but we'll use the scud authority to do it. First, this should fail, but
-   // back up the transaction for later
-   Unlink_Authority(chain, alice, eos, "transfer");
+   // Now we'll lock some funds, but we'll use the scud authority to do it. First, this should fail, but back up the
+   // transaction for later
+   Stake_Asset(chain, alice, 100);
    BOOST_CHECK_THROW(chain.review_transaction([&chain, &backup](SignedTransaction& trx, auto) {
                         trx.messages.front().authorization = {{"alice", "scud"}};
+                        trx.scope = {"alice", config::EosContractName};
                         chain.sign_transaction(trx);
                         backup = trx;
                         return true;
@@ -555,15 +556,13 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    // And now the backed up transaction should succeed, because scud is sufficient authority for all except "transfer"
    chain.chain_controller::push_transaction(backup);
 
-   // Check the unlink worked
-   BOOST_CHECK_NE(
-            (chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"))),
-            nullptr);
-   chain.produce_blocks();
-
-   BOOST_CHECK_EQUAL(
-            (chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"))),
-            nullptr);
+   // But transfers with scud authority should still not work, because there's an overriding link to spending
+   Transfer_Asset(chain, alice, bob, Asset(10));
+   BOOST_CHECK_THROW(chain.review_transaction([&chain](SignedTransaction& trx, auto) {
+                        trx.messages.front().authorization = {{"alice", "scud"}};
+                        chain.sign_transaction(trx);
+                        return true;
+                     }), tx_irrelevant_auth);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
