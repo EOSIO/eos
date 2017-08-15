@@ -80,6 +80,20 @@ producer-name = initu
 plugin = eos::producer_plugin
 ```
 
+When running eosd in the docker container you need to instruct the cpp socket to accept connections from all interfaces.  Adjust any address you plan to use by changing from `127.0.0.1` to `0.0.0.0`.
+
+For example:
+
+```
+# The local IP and port to listen for incoming http connections.
+http-server-endpoint = 0.0.0.0:8888
+```
+
+After starting the Docker this can be tested from container's host machine:
+```bash
+curl http://127.0.0.1:8888/v1/chain/get_info
+```
+
 Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, these instructions will be updated to show how to create an example multi-node testnet.
 
 ### Run in docker

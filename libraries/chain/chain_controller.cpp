@@ -468,7 +468,12 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
       if (_checkpoints.rbegin()->first >= block_num)
          skip = ~0;// WE CAN SKIP ALMOST EVERYTHING
    }
-   with_skip_flags(skip, [&](){ _apply_block(next_block); });
+
+   with_applying_block([&] {
+      with_skip_flags(skip, [&] {
+         _apply_block(next_block);
+      });
+   });
 }
 
 void chain_controller::_apply_block(const signed_block& next_block)
@@ -918,7 +923,12 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
 
    initialize_indexes();
    starter.register_types(*this, _db);
-   initialize_chain(starter);
+
+   // Behave as though we are applying a block during chain initialization (it's the genesis block!)
+   with_applying_block([&] {
+      initialize_chain(starter);
+   });
+
    spinup_db();
    spinup_fork_db();
 
