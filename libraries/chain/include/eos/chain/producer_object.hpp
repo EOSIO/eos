@@ -49,8 +49,12 @@ using producer_multi_index = chainbase::shared_multi_index_container<
    indexed_by<
       ordered_unique<tag<by_id>, member<producer_object, producer_object::id_type, &producer_object::id>>,
       ordered_unique<tag<by_owner>, member<producer_object, AccountName, &producer_object::owner>>,
-#warning using ordered_non_unique is not deterministic
-      ordered_non_unique<tag<by_key>, member<producer_object, public_key_type, &producer_object::signing_key>>
+      ordered_unique<tag<by_key>,
+         composite_key<producer_object,
+            member<producer_object, public_key_type, &producer_object::signing_key>,
+            member<producer_object, producer_object::id_type, &producer_object::id>
+         >
+      >
    >
 >;
 

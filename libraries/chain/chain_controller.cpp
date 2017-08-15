@@ -646,35 +646,10 @@ void chain_controller::validate_expiration(const SignedTransaction& trx) const
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 
-/**
- *  When processing a message it needs to run:
- *
- *  code::precondition( message.code, message.apply )
- *  code::apply( message.code, message.apply )
- *
- *  Then for each recipient it needs to run 
- *
- *  ````
- *   recipient::precondition( message.code, message.apply )
- *   recipient::apply( message.code, message.apply )
- *  ```
- *
- *  The data that can be read is anything declared in trx.scope
- *  The data that can be written is anything stored in  * / [code | recipient] / *
- *
- *  The order of execution of precondition and apply can impact the validity of the
- *  entire message.
- */
 void chain_controller::process_message(const ProcessedTransaction& trx, AccountName code,
-                                       const Message& message, MessageOutput& output) {
+                                       const Message& message, MessageOutput& output, apply_context* parent_context) {
    apply_context apply_ctx(*this, _db, trx, message, code);
    apply_message(apply_ctx);
-
-   // process_message recurses for each notified account, but we only want to run this check at the top level
-   if (code == message.code && (_skip_flags & skip_authority_check) == false)
-      EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
-                 "Message declared authorities it did not need: ${unused}",
-                 ("unused", apply_ctx.unused_authorizations())("message", message));
 
    output.notify.reserve( apply_ctx.notified.size() );
 
@@ -682,7 +657,7 @@ void chain_controller::process_message(const ProcessedTransaction& trx, AccountN
       try {
          auto notify_code = apply_ctx.notified[i];
          output.notify.push_back( {notify_code} );
-         process_message( trx, notify_code, message, output.notify.back().output );
+         process_message(trx, notify_code, message, output.notify.back().output, &apply_ctx);
       } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
 
@@ -693,8 +668,20 @@ void chain_controller::process_message(const ProcessedTransaction& trx, AccountN
    }
 
    for( auto& asynctrx : apply_ctx.async_transactions ) {
-        output.async_transactions.emplace_back( std::move( asynctrx ) );
+     output.async_transactions.emplace_back( std::move( asynctrx ) );
    }
+
+   // propagate used_authorizations up the context chain
+   if (parent_context != nullptr)
+      for (int i = 0; i < apply_ctx.used_authorizations.size(); ++i)
+         if (apply_ctx.used_authorizations[i])
+            parent_context->used_authorizations[i] = true;
+
+   // process_message recurses for each notified account, but we only want to run this check at the top level
+   if (parent_context == nullptr && (_skip_flags & skip_authority_check) == false)
+      EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
+                 "Message declared authorities it did not need: ${unused}",
+                 ("unused", apply_ctx.unused_authorizations())("message", message));
 }
 
 void chain_controller::apply_message(apply_context& context)
