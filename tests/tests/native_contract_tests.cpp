@@ -508,22 +508,27 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    }
 
    Transfer_Asset(chain, inita, alice, Asset(1000));
+   // Take off the training wheels, we're gonna fully validate transactions now
    chain.set_auto_sign_transactions(false);
    chain.set_skip_transaction_signature_checking(false);
    chain.set_hold_transactions_for_review(true);
 
+   // This won't run yet; it'll get held for review
    Transfer_Asset(chain, alice, bob, Asset(10));
+   // OK, set the above transfer's authorization level to scud and check that it fails
    BOOST_CHECK_THROW(chain.review_transaction([&chain](SignedTransaction& trx, auto) {
                         trx.messages.front().authorization = {{"alice", "scud"}};
                         chain.sign_transaction(trx);
                         return true;
                      }), tx_irrelevant_auth);
+   // OK, now set the auth level to spending, and it should succeed
    chain.review_transaction([&chain](SignedTransaction& trx, auto) {
       trx.messages.front().authorization = {{"alice", "spending"}};
       trx.signatures.clear();
       chain.sign_transaction(trx);
       return true;
    });
+   // Finally, set it to active, it should still succeed
    chain.review_transaction([&chain](SignedTransaction& trx, auto) {
       trx.messages.front().authorization = {{"alice", "active"}};
       trx.signatures.clear();
@@ -533,19 +538,32 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
 
    BOOST_CHECK_EQUAL(chain.get_liquid_balance("bob"), Asset(20));
 
-   chain.set_skip_transaction_signature_checking(true);
-   chain.set_hold_transactions_for_review(false);
-
+   SignedTransaction backup;
+   // Now we'll unlink the transfer authority, but we'll use the scud authority to do it. First, this should fail, but
+   // back up the transaction for later
    Unlink_Authority(chain, alice, eos, "transfer");
+   BOOST_CHECK_THROW(chain.review_transaction([&chain, &backup](SignedTransaction& trx, auto) {
+                        trx.messages.front().authorization = {{"alice", "scud"}};
+                        chain.sign_transaction(trx);
+                        backup = trx;
+                        return true;
+                     }), tx_irrelevant_auth);
+   // Now set the default authority to scud...
+   Link_Authority(chain, alice, "scud", eos);
+   chain.review_transaction([&chain](SignedTransaction& trx, auto) { chain.sign_transaction(trx); return true; });
+   chain.produce_blocks();
+   // And now the backed up transaction should succeed, because scud is sufficient authority for all except "transfer"
+   chain.chain_controller::push_transaction(backup);
+
+   // Check the unlink worked
    BOOST_CHECK_NE(
             (chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"))),
             nullptr);
    chain.produce_blocks();
 
-   {
-      auto obj = chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"));
-      BOOST_CHECK_EQUAL(obj, nullptr);
-   }
+   BOOST_CHECK_EQUAL(
+            (chain_db.find<permission_link_object, by_message_type>(boost::make_tuple("alice", "eos", "transfer"))),
+            nullptr);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
