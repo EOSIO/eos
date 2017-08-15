@@ -201,6 +201,10 @@ bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block
    return chain().get_block_id_for_num(chain::block_header::num_from_id(block_id)) == block_id;
 }
 
+bool chain_plugin::skip_transaction_signatures() const {
+   return my->skip_flags & chain_controller::skip_transaction_signatures;
+}
+
 chain_controller& chain_plugin::chain() { return *my->chain; }
 const chain::chain_controller& chain_plugin::chain() const { return *my->chain; }
 

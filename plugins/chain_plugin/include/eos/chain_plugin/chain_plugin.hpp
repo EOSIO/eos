@@ -180,6 +180,9 @@ public:
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
+   // return true if --skip-transaction-signatures passed to eosd
+   bool skip_transaction_signatures() const;
+
    // Only call this after plugin_startup()!
    chain_controller& chain();
    // Only call this after plugin_startup()!

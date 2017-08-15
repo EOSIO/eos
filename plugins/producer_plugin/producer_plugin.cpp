@@ -239,6 +239,10 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
+   if (app().get_plugin<chain_plugin>().skip_transaction_signatures()) {
+      //wlog("skip_transaction_signatures enabled");
+      _production_skip_flags |= chain_controller::skip_transaction_signatures;
+   }
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {
