@@ -183,7 +183,18 @@ public:
    void sign_transaction(SignedTransaction& trx);
 
    /// @brief Override push_transaction to apply testing policies
-   ProcessedTransaction push_transaction(SignedTransaction trx, uint32_t skip_flags = 0);
+   /// If transactions are being held for review, transaction will be held after testing policies are applied
+   fc::optional<ProcessedTransaction> push_transaction(SignedTransaction trx, uint32_t skip_flags = 0);
+   /// @brief Review and optionally push last held transaction
+   /// @tparam F A callable with signature `bool f(SignedTransaction&, uint32_t&)`
+   /// @param reviewer Callable which inspects and potentially alters the held transaction and skip flags, and returns
+   /// whether it should be pushed or not
+   template<typename F>
+   fc::optional<ProcessedTransaction> review_transaction(F&& reviewer) {
+      if (reviewer(review_storage.first, review_storage.second))
+         return chain_controller::push_transaction(review_storage.first, review_storage.second);
+      return {};
+   }
 
    /// @brief Set whether testing_blockchain::push_transaction checks signatures by default
    /// @param skip_sigs If true, push_transaction will skip signature checks; otherwise, no changes will be made
@@ -194,12 +205,18 @@ public:
    void set_auto_sign_transactions(bool auto_sign) {
       auto_sign_trxs = auto_sign;
    }
+   /// @brief Set whether testing_blockchain::push_transaction holds transactions for review or not
+   void set_hold_transactions_for_review(bool hold_trxs) {
+      hold_for_review = hold_trxs;
+   }
 
 protected:
    chainbase::database& db;
    testing_fixture& fixture;
+   std::pair<SignedTransaction, uint32_t> review_storage;
    bool skip_trx_sigs = true;
    bool auto_sign_trxs = false;
+   bool hold_for_review = false;
 };
 
 using boost::signals2::scoped_connection;
