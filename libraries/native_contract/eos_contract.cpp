@@ -195,6 +195,8 @@ void apply_eos_setcode(apply_context& context) {
    auto& db = context.mutable_db;
    auto  msg = context.msg.as<types::setcode>();
 
+   context.require_authorization(msg.account);
+
    FC_ASSERT( msg.vmtype == 0 );
    FC_ASSERT( msg.vmversion == 0 );
 
