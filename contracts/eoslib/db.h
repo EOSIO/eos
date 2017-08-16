@@ -149,25 +149,22 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
  *  @{
  */
 
+int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t front_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t back_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t next_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t previous_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
-
-int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
-
 int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t lower_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
+int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t front_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t back_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t next_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t previous_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
-
 int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
-int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
 
 /**
  * @param data - must point to at lest 32 bytes containing {primary,secondary}
@@ -186,4 +183,81 @@ int32_t store_i128i128( AccountName scope, TableName table, const void* data, ui
 int32_t update_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
 
 ///@}  dbi128i128
+
+/**
+ *  @defgroup dbi64i64i64 Triple 64 bit Index Table
+ *  @brief Interface to a database table with 64 bit primary, secondary and tertiary keys and arbitary binary data value.
+ *  @ingroup databaseC 
+ *
+ *  @param scope - the account where table data will be found
+ *  @param code  - the code which owns the table
+ *  @param table - the name of the table where record is stored
+ *  @param data  - a pointer to memory that is at least 32 bytes long 
+ *  @param len   - the length of data, must be greater than or equal to 32 bytes
+ *
+ *  @return the total number of bytes read or -1 for "not found" or "end" where bytes 
+ *  read includes 24 bytes of the key  
+ *
+ *  These methods assume a database table with records of the form:
+ *
+ *  ```
+ *     struct Record {
+ *        uint64  primary;
+ *        uint64  secondary;
+ *        uint64  tertiary;
+ *        ... arbitrary data ...
+ *     };
+ *
+ *  ```
+ *
+ *  You can iterate over these indicies with primary index sorting records by { primary, secondary, tertiary },
+ *  the secondary index sorting records by { secondary, tertiary } and the tertiary index sorting records by
+ *  { tertiary }.
+ *
+ *  @see Table class in C++ API
+ * 
+ *  @{
+ */
+
+int32_t load_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+
+int32_t load_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+
+int32_t load_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+
+/**
+ * @param data - must point to at lest 24 bytes containing {primary,secondary,tertiary}
+ *
+ * @return 1 if a record was removed, and 0 if no record with key was found
+ */
+int32_t remove_i64i64i64( AccountName scope, TableName table, const void* data );
+/**
+ * @return 1 if a new record was created, 0 if an existing record was updated
+ */
+int32_t store_i64i64i64( AccountName scope, TableName table, const void* data, uint32_t len );
+
+/**
+ * @return 1 if the record was updated, 0 if no record with key was found
+ */
+int32_t update_i64i64i64( AccountName scope, TableName table, const void* data, uint32_t len );
+
+///@}  dbi64i64i64
 }

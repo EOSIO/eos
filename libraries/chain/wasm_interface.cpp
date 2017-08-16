@@ -33,10 +33,10 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
       throw checktime_exceeded();
    }
 }
-   template <typename Function>
-   int32_t validate_i128i128(int32_t valueptr, int32_t valuelen, Function&& func) {
+   template <typename Function, typename KeyType, int numberOfKeys>
+   int32_t validate(int32_t valueptr, int32_t valuelen, Function func) {
       
-      static const uint32_t keylen = 2*sizeof(uint128_t);
+      static const uint32_t keylen = numberOfKeys*sizeof(KeyType);
       
       FC_ASSERT( valuelen >= keylen, "insufficient data passed" );
 
@@ -44,59 +44,73 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
       FC_ASSERT( wasm.current_apply_context, "no apply context found" );
 
       char* value = memoryArrayPtr<char>( wasm.current_memory, valueptr, valuelen );
-      uint128_t*  primary = reinterpret_cast<uint128_t*>(value);
-      uint128_t*  secondary = primary + 1;
+      KeyType*  keys = reinterpret_cast<KeyType*>(value);
       
       valuelen -= keylen;
       value    += keylen;
 
-      return func(wasm.current_apply_context, primary, secondary, value, valuelen);
+      return func(wasm.current_apply_context, keys, value, valuelen);
    }
 
-   template <typename Function>
-   int32_t validate_i64(int32_t valueptr, int32_t valuelen, Function&& func) {
+#define READ_RECORD(READFUNC, INDEX, SCOPE) \
+   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
+      auto res = ctx->READFUNC<INDEX, SCOPE>( Name(scope), Name(code), Name(table), keys, data, datalen); \
+      if (res >= 0) res += INDEX::value_type::number_of_keys*sizeof(INDEX::value_type::key_type); \
+      return res; \
+   }; \
+   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, valuelen, lambda);
 
-      static const uint32_t keylen = sizeof(uint64_t);
-      
-      FC_ASSERT( valuelen >= keylen );
+#define UPDATE_RECORD(UPDATEFUNC, INDEX, DATASIZE) \
+   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
+      return ctx->UPDATEFUNC<INDEX::value_type>( Name(scope), Name(ctx->code.value), Name(table), keys, data, datalen); \
+   }; \
+   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
 
-      auto& wasm  = wasm_interface::get();
-      FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-
-      auto  mem   = wasm.current_memory;
-      char* value = memoryArrayPtr<char>( mem, valueptr, valuelen);
-      uint64_t* key = reinterpret_cast<uint64_t*>(value);
-
-      valuelen -= keylen;
-      value    += keylen;
-      
-      return func(wasm.current_apply_context, key, value, valuelen);
+#define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX) \
+   DEFINE_INTRINSIC_FUNCTION4(env,store_##OBJTYPE,store_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
+      UPDATE_RECORD(store_record, INDEX, valuelen); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION4(env,update_##OBJTYPE,update_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
+      UPDATE_RECORD(update_record, INDEX, valuelen); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION3(env,remove_##OBJTYPE,remove_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr) { \
+      UPDATE_RECORD(remove_record, INDEX, sizeof(typename INDEX::value_type::key_type)*INDEX::value_type::number_of_keys); \
    }
 
-#define READ_i64_OBJ(func_name) \
-   validate_i64(valueptr, valuelen, [&](apply_context* ctx, uint64_t* key, char *data, uint32_t datalen) -> int32_t { \
-      auto res = ctx->func_name( Name(scope), Name(code), Name(table), key, data, datalen); \
-      if (res >= 0) res += sizeof(uint64_t); \
-      return res; \
-   });
+#define DEFINE_RECORD_READ_FUNCTIONS(OBJTYPE, FUNCPREFIX, INDEX, SCOPE) \
+   DEFINE_INTRINSIC_FUNCTION5(env,load_##FUNCPREFIX##OBJTYPE,load_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
+      READ_RECORD(load_record, INDEX, SCOPE); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION5(env,front_##FUNCPREFIX##OBJTYPE,front_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
+      READ_RECORD(front_record, INDEX, SCOPE); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION5(env,back_##FUNCPREFIX##OBJTYPE,back_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
+      READ_RECORD(back_record, INDEX, SCOPE); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION5(env,next_##FUNCPREFIX##OBJTYPE,next_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
+      READ_RECORD(next_record, INDEX, SCOPE); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION5(env,previous_##FUNCPREFIX##OBJTYPE,previous_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
+      READ_RECORD(previous_record, INDEX, SCOPE); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION5(env,lower_bound_##FUNCPREFIX##OBJTYPE,lower_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
+      READ_RECORD(lower_bound_record, INDEX, SCOPE); \
+   } \
+   DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_##FUNCPREFIX##OBJTYPE,upper_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
+      READ_RECORD(upper_bound_record, INDEX, SCOPE); \
+   }
 
-#define UPDATE_i64_OBJ(func_name, data_size) \
-   validate_i64(valueptr, data_size, [&](apply_context* ctx, uint64_t* key, char *data, uint32_t datalen) -> int32_t { \
-      return ctx->func_name( Name(scope), Name(ctx->code.value), Name(table), key, data, datalen); \
-   });
+DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index);
+DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
 
-#define READ_i128i128_OBJ(func_name) \
-   validate_i128i128(valueptr, valuelen, [&](apply_context* ctx, uint128_t* primary, uint128_t* secondary, char *data, uint32_t datalen) -> int32_t { \
-      auto res = ctx->func_name( Name(scope), Name(code), Name(table), primary, secondary, data, datalen); \
-      if (res >= 0) res += 2*sizeof(uint128_t); \
-      return res; \
-   });
+DEFINE_RECORD_UPDATE_FUNCTIONS(i128i128, key128x128_value_index);
+DEFINE_RECORD_READ_FUNCTIONS(i128i128, primary_,   key128x128_value_index, by_scope_primary);
+DEFINE_RECORD_READ_FUNCTIONS(i128i128, secondary_, key128x128_value_index, by_scope_secondary);
 
-#define UPDATE_i128i128_OBJ(func_name, data_size) \
-   validate_i128i128(valueptr, data_size, [&](apply_context* ctx, uint128_t* primary, uint128_t* secondary, char *data, uint32_t datalen) -> int32_t { \
-      return ctx->func_name( Name(scope), Name(ctx->code.value), Name(table), primary, secondary, data, datalen); \
-   });
-
+DEFINE_RECORD_UPDATE_FUNCTIONS(i64i64i64, key64x64x64_value_index);
+DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, primary_,   key64x64x64_value_index, by_scope_primary);
+DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, secondary_, key64x64x64_value_index, by_scope_secondary);
+DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, tertiary_,  key64x64x64_value_index, by_scope_tertiary);
 
 DEFINE_INTRINSIC_FUNCTION3(env, assert_sha256,assert_sha256,none,i32,dataptr,i32,datalen,i32,hash) {
    FC_ASSERT( datalen > 0 );
@@ -130,7 +144,6 @@ DEFINE_INTRINSIC_FUNCTION2(env,multeq_i128,multeq_i128,none,i32,self,i32,other) 
    v *= o;
 }
 
-
 DEFINE_INTRINSIC_FUNCTION2(env,diveq_i128,diveq_i128,none,i32,self,i32,other) {
    auto& wasm  = wasm_interface::get();
    auto  mem          = wasm.current_memory;
@@ -142,119 +155,6 @@ DEFINE_INTRINSIC_FUNCTION2(env,diveq_i128,diveq_i128,none,i32,self,i32,other) {
 
 DEFINE_INTRINSIC_FUNCTION0(env,now,now,i32) {
    return wasm_interface::get().current_validate_context->controller.head_block_time().sec_since_epoch();
-}
-
-DEFINE_INTRINSIC_FUNCTION4(env,store_i64,store_i64,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) {
-   return UPDATE_i64_OBJ(store_i64, valuelen);
-}
-
-DEFINE_INTRINSIC_FUNCTION4(env,update_i64,update_i64,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) {
-   return UPDATE_i64_OBJ(update_i64, valuelen);
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env,remove_i64,remove_i64,i32,i64,scope,i64,table,i32,valueptr) {
-   return UPDATE_i64_OBJ(remove_i64, sizeof(uint64_t));
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,load_i64,load_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i64_OBJ(load_i64);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,front_i64,front_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i64_OBJ(front_i64);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,back_i64,back_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i64_OBJ(back_i64);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,next_i64,next_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i64_OBJ(next_i64);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,previous_i64,previous_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i64_OBJ(previous_i64);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,lower_bound_i64,lower_bound_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i64_OBJ(lower_bound_i64);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_i64,upper_bound_i64,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i64_OBJ(upper_bound_i64);
-}
-
-struct i128_keys {
-   uint128_t primary;
-   uint128_t secondary;
-};
-
-DEFINE_INTRINSIC_FUNCTION4(env,store_i128i128,store_i128i128,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) {
-   return UPDATE_i128i128_OBJ(store_i128i128, valuelen);
-}
-
-DEFINE_INTRINSIC_FUNCTION4(env,update_i128i128,update_i128i128,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) {
-   return UPDATE_i128i128_OBJ(update_i128i128, valuelen);
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env,remove_i128i128,remove_i128i128,i32,i64,scope,i64,table,i32,valueptr) {
-   return UPDATE_i128i128_OBJ(remove_i128i128, 2*sizeof(uint128_t));
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,load_primary_i128i128,load_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(load_primary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,front_primary_i128i128,front_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(front_primary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,back_primary_i128i128,back_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(back_primary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,next_primary_i128i128,next_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(next_primary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,previous_primary_i128i128,previous_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(previous_primary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_primary_i128i128,upper_bound_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(upper_bound_primary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,lower_bound_primary_i128i128,lower_bound_primary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(lower_bound_primary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,load_secondary_i128i128,load_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(load_secondary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,back_secondary_i128i128,back_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(back_secondary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,front_secondary_i128i128,front_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(front_secondary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,next_secondary_i128i128,next_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(next_secondary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,previous_secondary_i128i128,previous_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(previous_secondary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_secondary_i128i128,upper_bound_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(upper_bound_secondary_i128i128);
-}
-
-DEFINE_INTRINSIC_FUNCTION5(env,lower_bound_secondary_i128i128,lower_bound_secondary_i128i128,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-   return READ_i128i128_OBJ(lower_bound_secondary_i128i128);
 }
 
 DEFINE_INTRINSIC_FUNCTION0(env,currentCode,currentCode,i64) {

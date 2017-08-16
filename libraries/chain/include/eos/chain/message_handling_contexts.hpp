@@ -3,6 +3,7 @@
 #include <eos/chain/message.hpp>
 #include <eos/chain/transaction.hpp>
 #include <eos/types/types.hpp>
+#include <eos/chain/record_functions.hpp>
 
 namespace chainbase { class database; }
 
@@ -20,107 +21,244 @@ public:
       : controller(con), db(db), trx(t), msg(m), code(code), mutable_controller(con),
         mutable_db(db), used_authorizations(msg.authorization.size(), false){}
 
-   int32_t store_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t len);
+   template <typename ObjectType>
+   int32_t store_record( Name scope, Name code, Name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
 
-   int32_t update_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t len);
+      auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
+      const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
 
-   int32_t remove_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t len);
+      if( obj ) {
+         //wlog( "modify" );
+         mutable_db.modify( *obj, [&]( auto& o ) {
+            o.value.assign(value, valuelen);
+         });
+         return 0;
+      } else {
+         //wlog( "new" );
+         mutable_db.create<ObjectType>( [&](auto& o) {
+            o.scope = scope;
+            o.code  = code;
+            o.table = table;
+            key_helper<ObjectType>::set(o, keys);
+            o.value.insert( 0, value, valuelen );
+         });
+         return 1;
+      }
+   }
 
-   int32_t load_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+   template <typename ObjectType>
+   int32_t update_record( Name scope, Name code, Name table, typename ObjectType::key_type *keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
+      
+      auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
+      const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
 
-   int32_t front_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+      if( !obj ) {
+         return 0;
+      }
 
-   int32_t back_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+      mutable_db.modify( *obj, [&]( auto& o ) {
+         if( valuelen > o.value.size() ) {
+            o.value.resize(valuelen);
+         }
+         memcpy(o.value.data(), value, valuelen);
+      });
 
-   int32_t next_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+      return 1;
+   }
 
-   int32_t previous_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+   template <typename ObjectType>
+   int32_t remove_record( Name scope, Name code, Name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
 
-   int32_t lower_bound_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+      auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
+      const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
+      if( obj ) {
+         mutable_db.remove( *obj );
+         return 1;
+      }
+      return 0;
+   }
 
-   int32_t upper_bound_i64( Name scope, Name code, Name table, uint64_t *key, char* data, uint32_t maxlen );
+   template <typename IndexType, typename Scope>
+   int32_t load_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
 
+      const auto& idx = db.get_index<IndexType, Scope>();
+      auto tuple = load_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
+      auto itr = idx.lower_bound(tuple);
 
-   int32_t store_i128i128( Name scope, Name code, Name table, uint128_t* primary, uint128_t* secondary,
-                           char* data, uint32_t len );
+      if( itr == idx.end() ||
+          itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ||
+          !load_record_compare<typename IndexType::value_type, Scope>::compare(*itr, keys)) return -1;
 
-   int32_t update_i128i128( Name scope, Name code, Name table, uint128_t* primary, uint128_t* secondary,
-                            char* data, uint32_t len );
+       key_helper<typename IndexType::value_type>::set(keys, *itr);
 
-   int32_t remove_i128i128( Name scope, Name code, Name table, uint128_t *primary, uint128_t *secondary,
-                            char* data, uint32_t len );
+       auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+       if( copylen ) {
+          itr->value.copy(value, copylen);
+       }
+       return copylen;
+   }
 
-   template <typename T>
-   int32_t load_i128i128( Name scope, Name code, Name table, uint128_t* primary,
-                          uint128_t* secondary, char* value, uint32_t valuelen );
+   template <typename IndexType, typename Scope>
+   int32_t front_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
 
-   template <typename T>
-   int32_t front_i128i128( Name scope, Name code, Name table, uint128_t* primary,
-                           uint128_t* secondary, char* value, uint32_t valuelen );
+      const auto& idx = db.get_index<IndexType, Scope>();
+      auto tuple = front_record_tuple<typename IndexType::value_type>::get(scope, code, table);
 
-   template <typename T>
-   int32_t back_i128i128( Name scope, Name code, Name table, uint128_t* primary,
-                          uint128_t* secondary, char* value, uint32_t valuelen );
+      auto itr = idx.lower_bound( tuple );
+      if( itr == idx.end() ||
+          itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ) return -1;
 
-   template <typename T>
-   int32_t next_i128i128( Name scope, Name code, Name table, uint128_t* primary,
-                          uint128_t* secondary, char* value, uint32_t valuelen );
+      key_helper<typename IndexType::value_type>::set(keys, *itr);
 
-   template <typename T>
-   int32_t previous_i128i128( Name scope, Name code, Name table, uint128_t* primary,
-                              uint128_t* secondary, char* value, uint32_t valuelen );
+      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+      if( copylen ) {
+         itr->value.copy(value, copylen);
+      }
+      return copylen;
+   }
 
-   template <typename T>
-   int32_t lower_bound_i128i128( Name scope, Name code, Name table,
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen );
+   template <typename IndexType, typename Scope>
+   int32_t back_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
 
-   template <typename T>
-   int32_t upper_bound_i128i128( Name scope, Name code, Name table,
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen );
+      const auto& idx = db.get_index<IndexType, Scope>();
+      auto tuple = back_record_tuple<typename IndexType::value_type>::get(scope, code, table);
+      auto itr = idx.upper_bound(tuple);
 
+      if( std::distance(idx.begin(), itr) == 0 ) return -1;
 
-   int32_t load_primary_i128i128( Name scope, Name code, Name table,
-                                  uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      --itr;
 
-   int32_t front_primary_i128i128( Name scope, Name code, Name table,
-                                   uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      if( itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ) return -1;
 
-   int32_t back_primary_i128i128( Name scope, Name code, Name table,
-                                  uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      key_helper<typename IndexType::value_type>::set(keys, *itr);
 
-   int32_t next_primary_i128i128( Name scope, Name code, Name table,
-                                  uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+      if( copylen ) {
+         itr->value.copy(value, copylen);
+      }
+      return copylen;
+   }
 
-   int32_t previous_primary_i128i128( Name scope, Name code, Name table,
-                                      uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+   template <typename IndexType, typename Scope>
+   int32_t next_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
 
-   int32_t lower_bound_primary_i128i128( Name scope, Name code, Name table,
-                                         uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      const auto& idx = db.get_index<IndexType, Scope>();
+      auto tuple = next_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
 
-   int32_t upper_bound_primary_i128i128( Name scope, Name code, Name table,
-                                         uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      auto itr = idx.lower_bound(tuple);
 
+      if( itr == idx.end() ||
+          itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ||
+          !key_helper<typename IndexType::value_type>::compare(*itr, keys) ) { 
+        return -1;
+      }
 
-   int32_t load_secondary_i128i128( Name scope, Name code, Name table,
-                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      ++itr;
 
-   int32_t front_secondary_i128i128( Name scope, Name code, Name table,
-                                     uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      if( itr == idx.end() ||
+          itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ) { 
+        return -1;
+      }
 
-   int32_t back_secondary_i128i128( Name scope, Name code, Name table,
-                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      key_helper<typename IndexType::value_type>::set(keys, *itr);
+      
+      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+      if( copylen ) {
+         itr->value.copy(value, copylen);
+      }
+      return copylen;
+   }
 
-   int32_t next_secondary_i128i128( Name scope, Name code, Name table,
-                                    uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+   template <typename IndexType, typename Scope>
+   int32_t previous_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
 
-   int32_t previous_secondary_i128i128( Name scope, Name code, Name table,
-                                        uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      const auto& idx = db.get_index<IndexType, Scope>();
+      auto tuple = next_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
+      auto itr = idx.lower_bound(tuple);
+      
+      if( itr == idx.end() ||
+          itr == idx.begin() ||
+          itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ||
+          !key_helper<typename IndexType::value_type>::compare(*itr, keys) ) return -1;
 
-   int32_t lower_bound_secondary_i128i128( Name scope, Name code, Name table,
-                                           uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      --itr;
 
-   int32_t upper_bound_secondary_i128i128( Name scope, Name code, Name table,
-                                           uint128_t* primary, uint128_t* secondary, char* data, uint32_t maxlen );
+      if( itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ) return -1;
+
+      key_helper<typename IndexType::value_type>::set(keys, *itr);
+
+      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+      if( copylen ) {
+         itr->value.copy(value, copylen);
+      }
+      return copylen;
+   }
+
+   template <typename IndexType, typename Scope>
+   int32_t lower_bound_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
+
+      const auto& idx = db.get_index<IndexType, Scope>();
+      auto tuple = lower_bound_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
+      auto itr = idx.lower_bound(tuple);
+
+      if( itr == idx.end() ||
+          itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table) return -1;
+
+      key_helper<typename IndexType::value_type>::set(keys, *itr);
+
+      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+      if( copylen ) {
+         itr->value.copy(value, copylen);
+      }
+      return copylen;
+   }
+
+   template <typename IndexType, typename Scope>
+   int32_t upper_bound_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+      require_scope( scope );
+
+      const auto& idx = db.get_index<IndexType, Scope>();
+      auto tuple = upper_bound_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
+      auto itr = idx.upper_bound(tuple);
+
+      if( itr == idx.end() ||
+          itr->scope != scope ||
+          itr->code  != code  ||
+          itr->table != table ) return -1;
+
+      key_helper<typename IndexType::value_type>::set(keys, *itr);
+
+      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
+      if( copylen ) {
+         itr->value.copy(value, copylen);
+      }
+      return copylen;
+   }
 
    /**
     * @brief Require @ref account to have approved of this message

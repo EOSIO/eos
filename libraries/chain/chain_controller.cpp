@@ -818,6 +818,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<action_permission_index>();
    _db.add_index<key_value_index>();
    _db.add_index<key128x128_value_index>();
+   _db.add_index<key64x64x64_value_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();

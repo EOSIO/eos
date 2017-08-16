@@ -76,29 +76,6 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
    }
 }
 
-void SetCode( testing_blockchain& chain, AccountName account, const char* wast ) {
-   try {
-      types::setcode handler;
-      handler.account = account;
-
-      auto wasm = assemble_wast( wast );
-      handler.code.resize(wasm.size());
-      memcpy( handler.code.data(), wasm.data(), wasm.size() );
-
-      {
-         eos::chain::SignedTransaction trx;
-         trx.scope = {account};
-         trx.messages.resize(1);
-         trx.messages[0].code = config::EosContractName;
-         //trx.messages[0].recipients = {account};
-         trx.setMessage(0, "setcode", handler);
-         trx.expiration = chain.head_block_time() + 100;
-         trx.set_reference_block(chain.head_block_id());
-         chain.push_transaction(trx);
-         chain.produce_blocks(1);
-      }
-} FC_LOG_AND_RETHROW( ) }
-
 uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<char>& data, const vector<AccountName>& scope = {N(testapi)}) {
    static int expiration = 1;
    eos::chain::SignedTransaction trx;
@@ -198,8 +175,8 @@ void send_set_code_message(testing_blockchain& chain, types::setcode& handler, A
    handler.account = account;
    trx.scope = { account };
    trx.messages.resize(1);
+   trx.messages[0].authorization = {{account,"active"}};
    trx.messages[0].code = config::EosContractName;
-   trx.messages[0].authorization.emplace_back(types::AccountPermission{account,"active"});
    trx.setMessage(0, "setcode", handler);
    trx.expiration = chain.head_block_time() + 100;
    trx.set_reference_block(chain.head_block_id());
@@ -209,7 +186,7 @@ void send_set_code_message(testing_blockchain& chain, types::setcode& handler, A
 
 BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 { try {
-
+      //auto wasm = assemble_wast( readFile2("/home/matu/Documents/Dev/eos/contracts/test_api/test_api.wast").c_str() );
       auto wasm = assemble_wast( test_api_wast );
 
       Make_Blockchain(chain);
@@ -225,7 +202,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       //Set test code
       types::setcode handler;
       handler.code.resize(wasm.size());
-      handler.code.assign(wasm.begin(), wasm.end());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       send_set_code_message(chain, handler, "testapi");
       send_set_code_message(chain, handler, "acc1");
@@ -352,17 +329,17 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          fc::assert_exception, is_assert_exception );
 
       //Test db (i64)
-      const auto& idx = chain_db.get_index<key_value_index, by_scope_key>();
+      const auto& idx = chain_db.get_index<key_value_index, by_scope_primary>();
 
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i64_general"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_general()" );
       BOOST_CHECK_EQUAL( std::distance(idx.begin(), idx.end()) , 4);
       
       auto itr = idx.lower_bound( boost::make_tuple( N(testapi), N(testapi), N(test_table)) );
 
-      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(alice)); ++itr;
-      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(bob)); ++itr;
-      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(carol)); ++itr;
-      BOOST_CHECK_EQUAL((uint64_t)itr->key, N(dave));
+      BOOST_CHECK_EQUAL((uint64_t)itr->primary_key, N(alice)); ++itr;
+      BOOST_CHECK_EQUAL((uint64_t)itr->primary_key, N(bob)); ++itr;
+      BOOST_CHECK_EQUAL((uint64_t)itr->primary_key, N(carol)); ++itr;
+      BOOST_CHECK_EQUAL((uint64_t)itr->primary_key, N(dave));
 
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i64_remove_all"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i64_remove_all()" );
       BOOST_CHECK_EQUAL( std::distance(idx.begin(), idx.end()) , 0);
@@ -384,6 +361,9 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 
       //Test db (i128i128)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i128i128_general"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i128i128_general()" );
+
+      //Test db (i64i64i64)
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i64i64i64_general"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i64i64i64_general()" );
 
       //Test crypto
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_crypto", "test_sha256"), {}, {} ) == WASM_TEST_PASS, "test_crypto::test_sha256()" );

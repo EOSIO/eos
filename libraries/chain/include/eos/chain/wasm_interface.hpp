@@ -61,12 +61,6 @@ class wasm_interface {
       fc::time_point checktimeStart;
 
       wasm_interface();
-
-      template <typename Function>
-      int32_t validate_i128i128(int32_t valueptr, int32_t valuelen, Function&& func);
-      
-      template <typename Function>
-      int32_t validate_i64(int32_t valueptr, int32_t valuelen, Function&& func);
 };
 
 

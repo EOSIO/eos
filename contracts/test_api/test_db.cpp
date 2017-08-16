@@ -4,6 +4,18 @@
 
 #include "test_api.hpp"
 
+int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};
+int secondary[11]    = {7,0,1,3,6,9,2,4,5,10,8};
+int tertiary[11]     = {0,1,2,3,4,5,6,7,8,9,10};
+
+int primary_lb[11]   = {0,0,0,3,3,3,6,7,7,9,9};
+int secondary_lb[11] = {0,0,2,0,2,2,0,7,8,0,2};
+int tertiary_lb[11]  = {0,1,2,3,4,5,6,7,8,9,10};
+
+int primary_ub[11]   = {3,3,3,6,6,6,7,9,9,-1,-1};
+int secondary_ub[11] = {2,2,8,2,8,8,2,0,-1,2,8};
+int tertiary_ub[11]  = {1,2,3,4,5,6,7,8,9,10,-1};
+
 #pragma pack(push, 1)
 struct TestModel {
    AccountName   name;
@@ -30,6 +42,18 @@ struct TestModel128x2 {
 struct TestModel128x2_V2 : TestModel128x2 {
   uint64_t  new_field;
 };
+
+struct TestModel3xi64 {
+  uint64_t a;
+  uint64_t b;
+  uint64_t c;
+  uint64_t table;
+};
+
+struct TestModel3xi64_V2 : TestModel3xi64 {
+  uint64_t new_field;
+};
+
 #pragma pack(pop)
 
 extern "C" {
@@ -481,6 +505,200 @@ unsigned int store_set_in_table(uint64_t table_name)
   return WASM_TEST_PASS;
 }
 
+unsigned int store_set_in_table(TestModel3xi64* records, int len, uint64_t table_name) {
+  uint32_t res = 0;
+  for( int i = 0; i < len; ++i ) {
+    TestModel3xi64 *tmp = records+i;
+    tmp->table = table_name;
+    res = store_i64i64i64(currentCode(),  table_name, tmp,  sizeof(TestModel3xi64));
+    WASM_ASSERT(res == 1, "store_set_in_table" );
+  }
+  return res;
+}
+
+unsigned int test_db::key_i64i64i64_general() {
+  
+  uint32_t res = 0;
+
+  TestModel3xi64 records[] = {
+    {1, 1,  0, N()}, // 0
+    {1, 1,  1, N()}, // 1
+    {1, 2,  2, N()}, // 2
+    {2, 1,  3, N()}, // 3
+    {2, 2,  4, N()}, // 4
+    {2, 2,  5, N()}, // 5
+    {3, 1,  6, N()}, // 6
+    {4, 0,  7, N()}, // 7
+    {4, 5,  8, N()}, // 8
+    {5, 1,  9, N()}, // 9
+    {5, 2, 10, N()}, //10
+  };
+
+  store_set_in_table(records, sizeof(records)/sizeof(records[0]), N(table0));
+  store_set_in_table(records, sizeof(records)/sizeof(records[0]), N(table1));
+  store_set_in_table(records, sizeof(records)/sizeof(records[0]), N(table2));
+
+  #define CALL(F, O, I, T, V) F##_##I##_##O(currentCode(), currentCode(), T, &V, sizeof(V))
+
+  #define LOAD(I, O, T, V) CALL(load, O, I, T, V)
+  #define FRONT(I, O, T, V) CALL(front, O, I, T, V)
+  #define BACK(I, O, T, V) CALL(back, O, I, T, V)
+  #define NEXT(I, O, T, V) CALL(next, O, I, T, V)
+  #define PREV(I, O, T, V) CALL(previous, O, I, T, V)
+  #define UPPER(I, O, T, V) CALL(upper_bound, O, I, T, V)
+  #define LOWER(I, O, T, V) CALL(lower_bound, O, I, T, V)
+
+  #define LOGME 0
+  #define BS(X) ((X) ? "true" : "false")
+  #define TABLE1_ASSERT(I, V, msg) \
+    if(LOGME) {\
+      eos::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, " ("); \
+      eos::print(BS(res == sizeof(V)), " ", BS(records[I].a == V.a), " ", BS(records[I].b == V.b), " ", BS(records[I].c == V.c), " => ", N(table1), ")\n"); \
+    } \
+    WASM_ASSERT( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
+     records[I].c == V.c /*&& records[I].table == uint64_t(N(table1))*/, msg);
+
+  #define LOAD_OK(I, O, T, INX, MSG) \
+    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    res = LOAD(I, O, T, tmp); \
+    TABLE1_ASSERT(INX, tmp, MSG)}
+
+  #define LOAD_ER(I, O, T, MSG) \
+    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    res = LOAD(I, O, T, tmp); \
+    WASM_ASSERT(res == -1, MSG)}
+
+  #define FRONT_OK(I, O, T, INX, MSG) \
+    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    res = FRONT(I, O, T, tmp); \
+    TABLE1_ASSERT(INX, tmp, MSG)}
+
+  #define BACK_OK(I, O, T, INX, MSG) \
+    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    res = BACK(I, O, T, tmp); \
+    TABLE1_ASSERT(INX, tmp, MSG)}
+
+  TestModel3xi64 V;
+
+  V={0}; LOAD_ER(primary, i64i64i64, N(table1), "i64x3 LOAD primary fail 0");
+  V={1}; LOAD_OK(primary, i64i64i64, N(table1), 0, "i64x3 LOAD primary 1");
+  V={2}; LOAD_OK(primary, i64i64i64, N(table1), 3, "i64x3 LOAD primary 2");
+  V={3}; LOAD_OK(primary, i64i64i64, N(table1), 6, "i64x3 LOAD primary 3");
+  V={4}; LOAD_OK(primary, i64i64i64, N(table1), 7, "i64x3 LOAD primary 4");
+  V={5}; LOAD_OK(primary, i64i64i64, N(table1), 9, "i64x3 LOAD primary 5");
+  V={6}; LOAD_ER(primary, i64i64i64, N(table1), "i64x3 LOAD primary fail 6");
+  
+  V={11,0}; LOAD_OK(secondary, i64i64i64, N(table1), 7, "i64x3 LOAD secondary 0");
+  V={11,1}; LOAD_OK(secondary, i64i64i64, N(table1), 0, "i64x3 LOAD secondary 1");
+  V={11,2}; LOAD_OK(secondary, i64i64i64, N(table1), 2, "i64x3 LOAD secondary 2");
+  V={11,3}; LOAD_ER(secondary, i64i64i64, N(table1), "i64x3 LOAD secondary fail 3");
+  V={11,4}; LOAD_ER(secondary, i64i64i64, N(table1), "i64x3 LOAD secondary fail 4");
+  V={11,5}; LOAD_OK(secondary, i64i64i64, N(table1), 8, "i64x3 LOAD secondary 5");
+  V={11,6}; LOAD_ER(secondary, i64i64i64, N(table1), "i64x3 LOAD secondary fail 6");
+
+  V={11,12,0}; LOAD_OK(tertiary, i64i64i64, N(table1),  0, "i64x3 LOAD tertiary 0");
+  V={11,12,1}; LOAD_OK(tertiary, i64i64i64, N(table1),  1, "i64x3 LOAD tertiary 1");
+  V={11,12,2}; LOAD_OK(tertiary, i64i64i64, N(table1),  2, "i64x3 LOAD tertiary 2");
+  V={11,12,3}; LOAD_OK(tertiary, i64i64i64, N(table1),  3, "i64x3 LOAD tertiary 3");
+  V={11,12,4}; LOAD_OK(tertiary, i64i64i64, N(table1),  4, "i64x3 LOAD tertiary 4");
+  V={11,12,5}; LOAD_OK(tertiary, i64i64i64, N(table1),  5, "i64x3 LOAD tertiary 5");
+  V={11,12,6}; LOAD_OK(tertiary, i64i64i64, N(table1),  6, "i64x3 LOAD tertiary 6");
+  V={11,12,7}; LOAD_OK(tertiary, i64i64i64, N(table1),  7, "i64x3 LOAD tertiary 7");
+  V={11,12,8}; LOAD_OK(tertiary, i64i64i64, N(table1),  8, "i64x3 LOAD tertiary 8");
+  V={11,12,9}; LOAD_OK(tertiary, i64i64i64, N(table1),  9, "i64x3 LOAD tertiary 9");
+  V={11,12,10}; LOAD_OK(tertiary, i64i64i64, N(table1), 10, "i64x3 LOAD tertiary 10");
+  V={11,12,11}; LOAD_ER(tertiary, i64i64i64, N(table1), "i64x3 LOAD tertiary fail 11");
+
+  #define NEXT_ALL(I, O, T) \
+  { \
+    auto n = sizeof(I)/sizeof(I[0]); \
+    auto j = 0; \
+    do { \
+      eos::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
+      res = NEXT(I, i64i64i64, N(table1), tmp);\
+      if(j+1<n){ TABLE1_ASSERT(I[j+1], tmp, "i64x3 NEXT " #I " ok "); } \
+      else { WASM_ASSERT(res == -1, "i64x3 NEXT " #I " fail "); }\
+    } while(++j<n); \
+  }
+
+  #define PREV_ALL(I, O, T) \
+  { \
+    auto n = sizeof(I)/sizeof(I[0]); \
+    auto j = n-1; \
+    do { \
+      eos::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
+      res = PREV(I, i64i64i64, N(table1), tmp);\
+      if(j>0){ TABLE1_ASSERT(I[j-1], tmp, "i64x3 PREV " #I " ok "); } \
+      else { WASM_ASSERT(res == -1, "i64x3 PREV " #I " fail "); }\
+    } while(--j>0); \
+  }
+
+  PREV_ALL(primary,   i64i64i64, N(table1));
+  PREV_ALL(secondary, i64i64i64, N(table1));
+  PREV_ALL(tertiary,  i64i64i64, N(table1));
+
+  FRONT_OK(primary, i64i64i64, N(table1), primary[0],   "i64x3 FRONT primary");
+  FRONT_OK(secondary, i64i64i64, N(table1), secondary[0], "i64x3 FRONT secondary");
+  FRONT_OK(tertiary, i64i64i64, N(table1), tertiary[0], "i64x3 FRONT tertiary");
+
+  BACK_OK(primary, i64i64i64, N(table1), primary[10],   "i64x3 BACK primary");
+  BACK_OK(secondary, i64i64i64, N(table1), secondary[10], "i64x3 BACK secondary");
+  BACK_OK(tertiary, i64i64i64, N(table1), tertiary[10], "i64x3 BACK tertiary");
+
+  #define LOWER_ALL(I, O, T) \
+  { \
+    auto n = sizeof(I##_lb)/sizeof(I##_lb[0]); \
+    auto j = 0; \
+    do { \
+      eos::remove_reference<decltype(records[0])>::type tmp = records[j]; \
+      res = LOWER(I, i64i64i64, N(table1), tmp);\
+      TABLE1_ASSERT(I##_lb[j], tmp, "i64x3 LOWER " #I " ok ");\
+    } while(++j<n); \
+  }
+
+  LOWER_ALL(primary,   i64i64i64, N(table1));
+  LOWER_ALL(secondary, i64i64i64, N(table1));
+  LOWER_ALL(tertiary,  i64i64i64, N(table1));
+
+  #define UPPER_ALL(I, O, T) \
+  { \
+    auto n = sizeof(I##_ub)/sizeof(I##_ub[0]); \
+    auto j = 0; \
+    do { \
+      eos::remove_reference<decltype(records[0])>::type tmp = records[j]; \
+      res = UPPER(I, i64i64i64, N(table1), tmp);\
+      if(res == -1) { WASM_ASSERT(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
+      else { TABLE1_ASSERT(I##_ub[j], tmp, "i64x3 UPPER " #I " ok "); } \
+    } while(++j<n); \
+  }
+
+  UPPER_ALL(primary,   i64i64i64, N(table1));
+  UPPER_ALL(secondary, i64i64i64, N(table1));
+  UPPER_ALL(tertiary,  i64i64i64, N(table1));
+
+  TestModel3xi64_V2 v2;
+  v2.a = records[6].a;
+
+  res = LOAD(primary, i64i64i64, N(table1), v2);
+  WASM_ASSERT(res == sizeof(TestModel3xi64), "load v2");
+
+  v2.new_field = 555;
+
+  res = update_i64i64i64(currentCode(),  N(table1), &v2, sizeof(TestModel3xi64_V2));
+  WASM_ASSERT(res == 1, "store v2");  
+
+  res = LOAD(primary, i64i64i64, N(table1), v2);
+  WASM_ASSERT(res == sizeof(TestModel3xi64_V2), "load v2 updated");
+
+  res = remove_i64i64i64(currentCode(),  N(table1), &v2);
+  WASM_ASSERT(res == 1, "load v2 updated");
+
+  res = LOAD(primary, i64i64i64, N(table1), v2);
+  WASM_ASSERT(res == -1, "load not found");
+
+  return WASM_TEST_PASS;
+}
+
 unsigned int test_db::key_i128i128_general() {
 
   uint32_t res = 0;
@@ -665,4 +883,4 @@ unsigned int test_db::key_i128i128_general() {
   return WASM_TEST_PASS;
 }
 
-  //eos::print("xxxx ", res, " ", tmp2.name, " ", uint64_t(tmp2.age), " ", tmp2.phone, " ", tmp2.new_field, "\n");
+//eos::print("xxxx ", res, " ", tmp2.name, " ", uint64_t(tmp2.age), " ", tmp2.phone, " ", tmp2.new_field, "\n");

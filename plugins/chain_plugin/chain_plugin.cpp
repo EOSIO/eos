@@ -27,7 +27,7 @@ using chain::chain_id_type;
 using chain::account_object;
 using chain::key_value_object;
 using chain::by_name;
-using chain::by_scope_key;
+using chain::by_scope_primary;
 using chain::uint128_t;
 
 
@@ -211,7 +211,7 @@ read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_o
       abis.setAbi( abi );
    }
 
-   const auto& idx = d.get_index<chain::key_value_index,by_scope_key>();
+   const auto& idx = d.get_index<chain::key_value_index,by_scope_primary>();
    auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
    auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
 
@@ -224,7 +224,7 @@ read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_o
    auto itr = lower;
    for( itr = lower; itr != upper; ++itr ) {
       data.resize( sizeof(uint64_t) + itr->value.size() );
-      memcpy( data.data(), &itr->key, sizeof(itr->key) );
+      memcpy( data.data(), &itr->primary_key, sizeof(itr->primary_key) );
       memcpy( data.data()+sizeof(uint64_t), itr->value.data(), itr->value.size() );
 
       if( p.json ) 
