@@ -126,8 +126,8 @@ namespace eos {
     sync_request_index             in_sync_state;
     sync_request_index             out_sync_state;
     socket_ptr                     socket;
-    std::set<node_id_type>         shared_peers;
-    node_id_type                   peer_id;
+    std::set<fc::ip::endpoint>     shared_peers;
+
     uint32_t                       pending_message_size;
     vector<char>                   pending_message_buffer;
 
@@ -220,8 +220,6 @@ namespace eos {
     }
   };
 
-
-
   class net_plugin_impl {
   public:
     unique_ptr<tcp::acceptor> acceptor;
@@ -233,16 +231,13 @@ namespace eos {
     std::set<tcp::endpoint>       resolved_seed_nodes;
     std::set<fc::ip::endpoint>    learned_nodes;
 
-    // cache of blocks received out of order due to parallel sync requests
-
     std::set<socket_ptr>          pending_sockets;
-    std::set<connection_ptr>      unknown_connections;
-    std::map<node_id_type, connection_ptr >    connections;
+    std::set< connection_ptr >    connections;
     bool                          done = false;
 
     int16_t         network_version = 0;
     chain_id_type   chain_id; ///< used to identify chain
-    node_id_type    node_id; ///< used to identify peers and prevent self-connect
+    fc::sha256      node_id; ///< used to identify peers and prevent self-connect
 
     std::string user_agent_name;
     chain_plugin* chain_plug;
@@ -314,7 +309,7 @@ namespace eos {
         ilog( "starting network loop" );
         while( !done ) {
           for( auto itr = connections.begin(); itr != connections.end(); ) {
-            auto con = *itr.second();
+            auto con = *itr;
             if( !con->socket->is_open() )  {
               close(con);
               itr = connections.begin();
@@ -329,7 +324,7 @@ namespace eos {
 
 
     void start_session( connection_ptr con ) {
-      unknown_connections.insert (con);
+      connections.insert (con);
       uint32_t mtu = 1300; // need a way to query this
       if (mtu < just_send_it_max) {
         just_send_it_max = mtu;
@@ -337,6 +332,7 @@ namespace eos {
       start_read_message( con );
 
       con->send_handshake();
+      send_peer_message(*con);
 
       // for now, we can just use the application main loop.
       //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
@@ -396,8 +392,9 @@ namespace eos {
       peer_message pm;
       pm.peers.resize(connections.size());
       for (auto &c : connections) {
-        if (conn.shared_peers.find(c.first) == conn.shared_peers.end()) {
-          pm.peers.push_back(c.first);
+        fc::ip::endpoint remote = asio_to_fc(c->socket->remote_endpoint());
+        if (conn.shared_peers.find(remote) == conn.shared_peers.end()) {
+          pm.peers.push_back(remote);
         }
       }
       if (!pm.peers.empty()) {
@@ -408,49 +405,41 @@ namespace eos {
     //    template<typename T>
     void send_all (const SignedTransaction &msg) {
       for (auto &c : connections) {
-        if (c.second->out_sync_state.size() == 0) {
-          const auto& bs = c.second->trx_state.find(msg.id());
-          if (bs == c.second->trx_state.end()) {
-            c.second->trx_state.insert((transaction_state){msg.id(),true,true,(uint32_t)-1,
+        ilog ("send_all bsm: peer in_sync ${insiz} out_sync ${outsiz}", ("insiz",c->in_sync_state.size())("outsiz",c->out_sync_state.size()));
+        if (c->out_sync_state.size() == 0) {
+          const auto& bs = c->trx_state.find(msg.id());
+          if (bs == c->trx_state.end()) {
+            c->trx_state.insert((transaction_state){msg.id(),true,true,(uint32_t)-1,
                   fc::time_point(),fc::time_point()});
           }
-          c.second->send(msg);
+          c->send(msg);
         }
       }
     }
 
     void send_all (const block_summary_message &msg) {
       for (auto &c : connections) {
-        ilog ("send_all bsm: peer in_sync ${insiz} out_sync ${outsiz}", ("insiz",c.second->in_sync_state.size())("outsiz",c.second->out_sync_state.size()));
-        const auto& bs = c.second->block_state.find(msg.block.id());
-        if (bs == c.second->block_state.end()) {
-          c.second->block_state.insert ((block_state){msg.block.id(),true,true,fc::time_point()});
-          if (c.second->out_sync_state.size() == 0)
-            c.second->send(msg);
+        ilog ("send_all bsm: peer in_sync ${insiz} out_sync ${outsiz}", ("insiz",c->in_sync_state.size())("outsiz",c->out_sync_state.size()));
+        const auto& bs = c->block_state.find(msg.block.id());
+        if (bs == c->block_state.end()) {
+          c->block_state.insert ((block_state){msg.block.id(),true,true,fc::time_point()});
+          if (c->out_sync_state.size() == 0)
+            c->send(msg);
         }
       }
     }
 
     void send_all (const notice_message &msg) {
       for (auto &c : connections) {
-        bool skip = true;
-        if (c.second->out_sync_state.size() == 0) {
-          skip = false;
-          for (const auto& f : msg.known_to) {
-            if (f == c.first) {
-              skip = true;
-              break;
-            }
-          }
-        }
-        if (!skip) {
+        ilog ("send_all nm: peer in_sync ${insiz} out_sync ${outsiz}", ("insiz",c->in_sync_state.size())("outsiz",c->out_sync_state.size()));
+        if (c->out_sync_state.size() == 0) {
           for (const auto& b : msg.known_blocks) {
-            const auto& bs = c.second->block_state.find(b);
-            if (bs == c.second->block_state.end()) {
-              c.second->block_state.insert ((block_state){b,false,true,fc::time_point()});
+            const auto& bs = c->block_state.find(b);
+            if (bs == c->block_state.end()) {
+              c->block_state.insert ((block_state){b,false,true,fc::time_point()});
             }
           }
-          c.second->send(msg);
+          c->send(msg);
         }
       }
     }
@@ -467,17 +456,17 @@ namespace eos {
           span = lastSpan;
         }
         sync_state req = {low+1, low+span, low, time_point::now() };
-        cx.second->in_sync_state.insert (req);
+        cx->in_sync_state.insert (req);
         sync_request_message srm = {req.start_block, req.end_block };
-        cx.second->send (srm);
+        cx->send (srm);
         low += span;
       }
     }
 
     void forward (connection_ptr source, const net_message &msg) {
       for (auto c : connections ) {
-        if (c.second != source) {
-          c.second->send (msg);
+        if (c != source) {
+          c->send (msg);
         }
       }
     }
@@ -499,10 +488,6 @@ namespace eos {
         close (c);
         return;
       }
-      unknown_connections.erase(c);
-      c->peer_id = msg.node_id;
-      connections.insert(std::pair<node_id_type, connection_ptr>(msg.node_id, c));
-      send_peer_message (*c);
 
       chain_controller& cc = chain_plug->chain();
       uint32_t head = cc.head_block_num ();
@@ -514,21 +499,22 @@ namespace eos {
 
     void handle_message (connection_ptr c, const peer_message &msg) {
       dlog ("got a peer message with ${pc}", ("pc", msg.peers.size()));
-      for (auto id : msg.peers) {
-        c->shared_peers.insert (id);
-        if (id == node_id) {
+      for (auto fcep : msg.peers) {
+        c->shared_peers.insert (fcep);
+        tcp::endpoint ep = fc_to_asio (fcep);
+        if (ep == listen_endpoint) {
           continue;
         }
-#if 0
+
         if (resolved_seed_nodes.find(ep) == resolved_seed_nodes.end() &&
             learned_nodes.find (fcep) == learned_nodes.end()) {
           learned_nodes.insert (fcep);
         }
-#endif
       }
     }
 
     void handle_message (connection_ptr c, const notice_message &msg) {
+      dlog ("got a notice message");
       notice_message fwd;
       request_message req;
       for (const auto& b : msg.known_blocks) {
@@ -550,46 +536,27 @@ namespace eos {
         }
       }
       if (fwd.known_blocks.size() > 0 || fwd.known_trx.size() > 0) {
-        fwd.known_to = msg.known_to;
-        fwd.known_to.push_back(node_id);
         forward (c, fwd);
         c->send(req);
       }
     }
 
     void handle_message (connection_ptr c, const request_message &msg) {
+      dlog ("got a request_message");
 #warning ("TODO: implement handling a request_message")
-      chain_controller &cc = chain_plug->chain();
-      for (const auto& b : msg.req_blocks) {
-        optional<signed_block> blk = cc.fetch_block_by_id(b);
-        if (blk) {
-          c->send(*blk);
-          c->block_state.insert((block_state){b,true,true,fc::time_point()});
-        }
-      }
-
-      for (const auto& t : msg.req_trx) {
-        try {
-          const SignedTransaction &trx = cc.get_recent_transaction (t);
-          c->send(trx);
-          c->trx_state.insert((transaction_state){t,true,true,(uint32_t)-1,
-                fc::time_point(),fc::time_point()});
-        } catch (const assert_exception &ex) {
-          // received
-          elog ("  caught assertion #${n}",("n",t));
-          // close (c);
-        }
-      }
 
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
+      dlog ("got a sync request message for blocks ${s} to ${e}",
+           ("s",msg.start_block)("e", msg.end_block));
       sync_state req = {msg.start_block,msg.end_block,msg.start_block-1,time_point::now()};
       c->out_sync_state.insert (req);
       c->write_block_backlog ();
     }
 
     void handle_message (connection_ptr c, const block_summary_message &msg) {
+      dlog ("got a block summary message blkid = ${b}", ("b",msg.block.id()));
 #warning ("TODO: reconstruct actual block from cached transactions")
       const auto& itr = c->block_state.get<by_id>();
       auto bs = itr.find(msg.block.id());
@@ -604,9 +571,6 @@ namespace eos {
           value.is_known= true;
           c->block_state.insert (std::move(value));
           forward (c, msg);
-        }
-        else {
-          dlog ("not forwarding known block");
         }
       }
       chain_controller &cc = chain_plug->chain();
@@ -626,6 +590,7 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const SignedTransaction &msg) {
+      dlog ("got a SignedTransacton");
       chain_controller &cc = chain_plug->chain();
       if (!cc.is_known_transaction(msg.id())) {
         last_recd_txn_guard tls_guard(msg.id());
@@ -633,16 +598,15 @@ namespace eos {
         chain_plug->accept_transaction (msg);
         forward (c, msg);
       }
-      else {
-        dlog ("ignoring known SignedTransacton");
-      }
     }
 
     void handle_message (connection_ptr c, const signed_block &msg) {
+      uint32_t bn = msg.block_num();
+      dlog ("got a signed_block, num = ${n}", ("n", bn));
       chain_controller &cc = chain_plug->chain();
 
       if (cc.is_known_block(msg.id())) {
-        dlog ("ignoring known block");
+        // dlog ("block id ${id} is known", ("id", msg.id()) );
         return;
       }
       uint32_t num = 0;
@@ -665,7 +629,7 @@ namespace eos {
         elog ("unable to accpt block #${n}",("n",num));
         close (c);
       } catch (const assert_exception &ex) {
-        elog ("unable to accept block on assertion #${n}",("n",num));
+        elog ("unable to accept block cuz my asserts! #${n}",("n",num));
         close (c);
       }
     }
@@ -679,7 +643,6 @@ namespace eos {
       template <typename T>
       void operator()(const T &msg) const
       {
-        idump((msg));
         impl.handle_message (c, msg);
       }
     };
@@ -714,7 +677,7 @@ namespace eos {
     void close( connection_ptr c ) {
       if( c->socket )
         c->socket->close();
-      connections.erase( c->peer_id );
+      connections.erase( c );
       c.reset ();
     }
 
@@ -884,8 +847,8 @@ namespace eos {
         ilog( "close ${s} connections", ("s",my->connections.size()) );
         auto cons = my->connections;
         for( auto con : cons ) {
-          con.second->socket->close();
-          my->close (con.second);
+          con->socket->close();
+          my->close (con);
         }
 
         idump((my->connections.size()));
@@ -895,12 +858,10 @@ namespace eos {
     } FC_CAPTURE_AND_RETHROW() }
 
     void net_plugin::broadcast_transaction (const SignedTransaction &txn) {
-      wdump( (txn.id()) );
       my->pending_txn (txn);
     }
 
     void net_plugin::broadcast_block (const chain::signed_block &sb) {
-      wdump( (sb.id()) );
       vector<transaction_id_type> trxs;
       if (!sb.cycles.empty()) {
         for (const auto& cyc : sb.cycles) {
@@ -914,7 +875,7 @@ namespace eos {
 
       vector<block_id_type> blks;
       blks.push_back (sb.id());
-      notice_message nm = {my->pending_notify, blks};
+      notice_message nm = {blks, my->pending_notify};
       my->send_all (nm);
 
       block_summary_message bsm = {sb, trxs};

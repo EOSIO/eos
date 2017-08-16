@@ -43,6 +43,7 @@ programs/witness_node/witness_node
 programs/data-dir
 programs/eosd/eosd
 programs/eosc/eosc
+programs/launcher/launcher
 
 tests/app_test
 tests/chain_bench
@@ -66,3 +67,5 @@ object_database/*
 
 build/*
 build-debug/*
+
+tn_data_*
