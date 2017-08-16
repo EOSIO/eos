@@ -114,13 +114,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ilog("Setting skip_transaction_signatures");
       elog("Setting skip_transaction_signatures\n"
            "\n"
-           "***************************************\n"
-           "*                                     *\n"
-           "*   -- CHAIN IGNORING SIGNATURES --   *\n"
-           "*   -         TEST MODE           -   *\n"
-           "*   -------------------------------   *\n"
-           "*                                     *\n"
-           "***************************************\n");
+           "**************************************\n"
+           "*                                    *\n"
+           "*   -- EOSD IGNORING SIGNATURES --   *\n"
+           "*   -         TEST MODE          -   *\n"
+           "*   ------------------------------   *\n"
+           "*                                    *\n"
+           "**************************************\n");
 
       my->skip_flags |= chain_controller::skip_transaction_signatures;
    }
@@ -187,9 +187,6 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
 }
 
 void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
-   if (my->skip_flags & chain_controller::skip_transaction_signatures) {
-      wlog("skip_transaction_signatures enabled");
-   }
    chain().push_transaction(trx, my->skip_flags);
 }
 
@@ -201,7 +198,7 @@ bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block
    return chain().get_block_id_for_num(chain::block_header::num_from_id(block_id)) == block_id;
 }
 
-bool chain_plugin::skip_transaction_signatures() const {
+bool chain_plugin::is_skipping_transaction_signatures() const {
    return my->skip_flags & chain_controller::skip_transaction_signatures;
 }
 
@@ -329,9 +326,6 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   if (skip_flags & chain_controller::skip_transaction_signatures) {
-      wlog("skip_transaction_signatures enabled");
-   }
    auto ptrx = db.push_transaction(params, skip_flags);
    auto pretty_trx = db.transaction_to_variant( ptrx );
    return read_write::push_transaction_results{ params.id(), pretty_trx };
