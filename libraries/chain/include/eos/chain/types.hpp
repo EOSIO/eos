@@ -179,6 +179,7 @@ namespace eos { namespace chain {
       producer_votes_object_type, ///< Defined by native_contract library
       producer_schedule_object_type, ///< Defined by native_contract library
       proxy_vote_object_type, ///< Defined by native_contract library
+      key64x64x64_value_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -226,6 +227,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (producer_votes_object_type)
                 (producer_schedule_object_type)
                 (proxy_vote_object_type)
+                (key64x64x64_value_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eos::chain::void_t, )

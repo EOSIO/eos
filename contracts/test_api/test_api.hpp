@@ -87,6 +87,7 @@ struct test_db {
    static unsigned int key_i64_front_back();
 
    static unsigned int key_i128i128_general();
+   static unsigned int key_i64i64i64_general();
 };
 
 struct test_crypto {
