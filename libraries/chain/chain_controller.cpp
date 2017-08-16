@@ -509,7 +509,8 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
          if ((_skip_flags & skip_authority_check) == false) {
             const auto& index = _db.get_index<permission_index>().indices();
             EOS_ASSERT(getPermission(declaredAuthority).satisfies(minimumPermission, index), tx_irrelevant_auth,
-                       "Message declares irrelevant authority '${auth}'", ("auth", declaredAuthority));
+                       "Message declares irrelevant authority '${auth}'; minimum authority is ${min}",
+                       ("auth", declaredAuthority)("min", minimumPermission.name));
          }
          if ((_skip_flags & skip_transaction_signatures) == false) {
             EOS_ASSERT(checker.satisfied(declaredAuthority), tx_missing_sigs,
@@ -518,8 +519,9 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
          }
       }
 
-   EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
-              "Transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
+   if ((_skip_flags & skip_transaction_signatures) == false)
+      EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
+                 "Transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
 }
 
 ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
