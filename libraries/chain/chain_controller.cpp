@@ -326,6 +326,7 @@ signed_block chain_controller::_generate_block(
       if( new_total_size >= maximum_block_size )
       {
          postponed_tx_count++;
+         ++itr;
          continue;
       }
 

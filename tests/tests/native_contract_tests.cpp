@@ -508,6 +508,7 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    }
 
    Transfer_Asset(chain, inita, alice, Asset(1000));
+   chain.produce_blocks();
    // Take off the training wheels, we're gonna fully validate transactions now
    chain.set_auto_sign_transactions(false);
    chain.set_skip_transaction_signature_checking(false);
