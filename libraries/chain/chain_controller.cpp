@@ -318,8 +318,8 @@ signed_block chain_controller::_generate_block(
 
    uint64_t postponed_tx_count = 0;
    // pop pending state (reset to head block state)
-   for( const SignedTransaction& tx : _pending_transactions )
-   {
+   for (auto itr = _pending_transactions.begin(); itr != _pending_transactions.end(); ) {
+      auto& tx = *itr;
       size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
 
       // postpone transaction if it would make block too big
@@ -344,12 +344,15 @@ signed_block chain_controller::_generate_block(
          }
          pending_block.cycles.back().back().user_input.emplace_back(tx);
 #warning TODO: Populate generated blocks with generated transactions
+
+         ++itr;
       }
       catch ( const fc::exception& e )
       {
-         // Do nothing, transaction will not be re-applied
-         wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+         // Do nothing, and discard transaction so it will not be re-applied
+         elog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
          wlog( "The transaction was ${t}", ("t", tx) );
+         itr = _pending_transactions.erase(itr);
       }
    }
    if( postponed_tx_count > 0 )
@@ -450,7 +453,9 @@ void chain_controller::_apply_block(const signed_block& next_block)
       for (const auto& thread : cycle)
          for (const auto& trx : thread.user_input) {
             validate_referenced_accounts(trx);
-            check_transaction_authorization(trx);
+            // Check authorization, and allow irrelevant signatures.
+            // If the block producer let it slide, we'll roll with it.
+            check_transaction_authorization(trx, true);
          }
 
    /* We do not need to push the undo state for each transaction
@@ -484,7 +489,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-void chain_controller::check_transaction_authorization(const SignedTransaction& trx)const {
+void chain_controller::check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures)const {
    if ((_skip_flags & skip_transaction_signatures) && (_skip_flags & skip_authority_check)) {
       ilog("Skipping auth and sigs checks");
       return;
@@ -519,7 +524,7 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
          }
       }
 
-   if ((_skip_flags & skip_transaction_signatures) == false)
+   if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                  "Transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
 }
