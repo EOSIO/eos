@@ -10,6 +10,7 @@
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/utilities/key_conversion.hpp>
 #include <boost/range/algorithm/sort.hpp>
+#include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/split.hpp>
 
 #include <Inline/BasicTypes.h>
@@ -20,6 +21,8 @@
 #include <Runtime/Runtime.h>
 
 #include <fc/io/fstream.hpp>
+
+#include "CLI11.hpp"
 
 using namespace std;
 using namespace eos;
@@ -109,31 +112,20 @@ fc::variant push_transaction( SignedTransaction& trx ) {
 }
 
 
-void create_account( const vector<string>& cmd_line ) {
-
-      Name creator(cmd_line[2]);
-      Name newaccount(cmd_line[3]);
-      Name eosaccnt(config::EosContractName);
-      Name staked("staked");
-
-      public_key_type owner_key(cmd_line[4]);
-      public_key_type active_key(cmd_line[5]);
-
-      auto owner_auth   = eos::chain::Authority{1, {{owner_key, 1}}, {}};
-      auto active_auth  = eos::chain::Authority{1, {{active_key, 1}}, {}};
+void create_account(Name creator, Name newaccount, public_key_type owner, public_key_type active) {
+      auto owner_auth   = eos::chain::Authority{1, {{owner, 1}}, {}};
+      auto active_auth  = eos::chain::Authority{1, {{active, 1}}, {}};
       auto recovery_auth = eos::chain::Authority{1, {}, {{{creator, "active"}, 1}}};
 
       uint64_t deposit = 1;
 
       SignedTransaction trx;
-      trx.scope = sort_names({creator,eosaccnt});
+      trx.scope = sort_names({creator,config::EosContractName});
       transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
-                         types::newaccount{creator, newaccount, owner_auth,
-                                           active_auth, recovery_auth, deposit});
+                                           types::newaccount{creator, newaccount, owner_auth,
+                                                             active_auth, recovery_auth, deposit});
 
-      std::cout << fc::json::to_pretty_string( push_transaction(trx) ) << std::endl;
-
-
+      std::cout << fc::json::to_pretty_string(push_transaction(trx)) << std::endl;
 }
 
 static const char escape = '\\';
@@ -329,25 +321,6 @@ int send_command (const vector<string> &cmd_line)
     transaction_helpers::set_reference_block(trx, info.head_block_id);
 
     std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
-  }
-  else if (command == "create" ) {
-    if( cmd_line[1] == "account" ) {
-      if( cmd_line.size() < 6 ) {
-        std::cerr << "usage: " << program << " create account CREATOR NEWACCOUNT OWNERKEY ACTIVEKEY\n";
-        return -1;
-      }
-      create_account( cmd_line );
-    }
-    else if( cmd_line[1] == "key" ) {
-      auto priv = fc::ecc::private_key::generate();
-      auto pub = public_key_type( priv.get_public_key() );
-
-      std::cout << "public: " << string(pub) <<"\n";
-      std::cout << "private: " << key_to_wif(priv.get_secret()) << std::endl;
-    }
-    else {
-      std::cerr << "create doesn't recognize object " << cmd_line[1] << std::endl;
-    }
   } else if( command == "import" ) {
     if( cmd_line[1] == "key" ) {
       auto secret = wif_to_key( cmd_line[2] ); //fc::variant( cmd_line[2] ).as<fc::ecc::private_key_secret>();
@@ -413,6 +386,126 @@ int send_command (const vector<string> &cmd_line)
  */
 
 int main( int argc, char** argv ) {
+   CLI::App app{"Command Line Interface to Eos Daemon"};
+   app.require_subcommand();
+
+   // Info subcommand
+   {
+   }
+
+   // Create subcommand
+   {
+      auto create = app.add_subcommand("create", "Create various items, on and off the blockchain", false);
+      create->require_subcommand();
+
+      // create key
+      create->add_subcommand("key", "Create a new keypair and print the public and private keys")->set_callback([] {
+         auto privateKey = fc::ecc::private_key::generate();
+         std::cout << "Private key: " << key_to_wif(privateKey.get_secret()) << "\n";
+         std::cout << "Public key:  " << string(public_key_type(privateKey.get_public_key())) << std::endl;
+      });
+
+      // create account
+      {
+         string creator;
+         string name;
+         string ownerKey;
+         string activeKey;
+         auto createAccount = create->add_subcommand("account", "Create a new account on the blockchain", false);
+         createAccount->add_option("creator", creator, "The name of the account creating the new account")->required();
+         createAccount->add_option("name", name, "The name of the new account")->required();
+         createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
+         createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
+         createAccount->set_callback([&] {
+            create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey));
+         });
+      }
+   }
+
+   // Get subcommand
+   {
+      auto get = app.add_subcommand("get", "Retrieve various items and information from the blockchain", false);
+      get->require_subcommand();
+
+      // get info
+      get->add_subcommand("info", "Get current blockchain information")->set_callback([] {
+         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+      });
+
+      // get block
+      {
+         string blockArg;
+         auto getBlock = get->add_subcommand("block", "Retrieve a full block from the blockchain", false);
+         getBlock->add_option("<block>", blockArg, "The number or ID of the block to retrieve")->required();
+         getBlock->set_callback([&blockArg] {
+            auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
+            std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+         });
+      }
+
+      // get account
+      {
+         string accountName;
+         auto getAccount = get->add_subcommand("account", "Retrieve an account from the blockchain", false);
+         getAccount->add_option("name", accountName, "The name of the account to retrieve")->required();
+         getAccount->set_callback([&] {
+            std::cout << fc::json::to_pretty_string(call(get_account_func,
+                                                         fc::mutable_variant_object("name", accountName)))
+                      << std::endl;
+         });
+      }
+   }
+
+   // Exec subcommand
+   {
+      vector<string> permissions = {"joe@active"};
+      string contract = "exchange";
+      string action = "deposit";
+      string data;
+      vector<string> scopes = {"joe", "exchange"};
+      auto execSubcommand = app.add_subcommand("exec", "Execute an arbitrary message on the blockchain");
+      execSubcommand->add_option("contract", contract,
+                                 "The account providing the contract to execute", true)->required();
+      execSubcommand->add_option("action", action, "The action to execute on the contract", true)->required();
+      execSubcommand->add_option("data", data, "The arguments to the contract")->required();
+      execSubcommand->add_option("-p,--permission", permissions, "An account and permission level to authorize", true);
+      execSubcommand->add_option("-s,--scope", scopes, "An account in scope for this operation", true);
+      execSubcommand->set_callback([&] {
+         ilog("Converting argument to binary...");
+         auto arg= fc::mutable_variant_object
+                   ("code", contract)
+                   ("action",action)
+                   ("cmd_line", fc::json::from_string(data));
+         auto result = call(json_to_bin_func, arg);
+
+         auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
+            vector<string> pieces;
+            boost::split(pieces, p, boost::is_any_of("@"));
+            FC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+            return types::AccountPermission(pieces[0], pieces[1]);
+         });
+
+         SignedTransaction trx;
+         transaction_helpers::emplace_message(trx, contract, vector<types::AccountPermission>{fixedPermissions.front(),
+                                                                                              fixedPermissions.back()},
+                                              action, result.get_object()["bincmd_line"].as<Bytes>());
+         trx.scope.assign(scopes.begin(), scopes.end());
+         ilog("Transaction result: ${r}", ("r", push_transaction(trx)));
+      });
+   }
+
+   try {
+       app.parse(argc, argv);
+   } catch (const CLI::ParseError &e) {
+       return app.exit(e);
+   } catch (const fc::exception& e) {
+      elog("Failed with error: ${e}", ("e", e.to_detail_string()));
+      return 1;
+   }
+
+   return 0;
+   // ---------------------------------- FORGET THIS STUFF:
+
   vector<string> cmd;
   bool is_cmd=false;
   bool from_stdin=false;
