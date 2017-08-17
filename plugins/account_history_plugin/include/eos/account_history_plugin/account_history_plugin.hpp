@@ -35,13 +35,18 @@ public:
    };
 
    get_transaction_results get_transaction(const get_transaction_params& params) const;
-
    struct get_transactions_params {
       chain::AccountName  account_name;
-      optional<chain::transaction_id_type> after_transaction_id;
+      optional<uint32_t>  start_seq;
+      optional<uint32_t>  stop_seq;
+   };
+   struct ordered_transaction_results {
+      uint32_t                    seq_num;
+      chain::transaction_id_type  transaction_id;
+      fc::variant                 transaction;
    };
    struct get_transactions_results {
-      vector<get_transaction_results>      transactions;
+      vector<ordered_transaction_results>      transactions;
    };
 
    get_transactions_results get_transactions(const get_transactions_params& params) const;
@@ -80,5 +85,6 @@ private:
 FC_REFLECT(eos::account_history_apis::empty, )
 FC_REFLECT(eos::account_history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eos::account_history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
-FC_REFLECT(eos::account_history_apis::read_only::get_transactions_params, (account_name)(after_transaction_id) )
+FC_REFLECT(eos::account_history_apis::read_only::get_transactions_params, (account_name)(start_seq)(stop_seq) )
+FC_REFLECT(eos::account_history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
 FC_REFLECT(eos::account_history_apis::read_only::get_transactions_results, (transactions) )

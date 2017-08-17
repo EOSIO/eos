@@ -28,7 +28,7 @@ using namespace boost::multi_index;
 class account_history_plugin_impl {
 public:
    ProcessedTransaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
-   vector<account_history_apis::read_only::get_transaction_results> get_transactions(const AccountName&  account_name, const optional<chain::transaction_id_type>& after_transaction_id) const;
+   vector<account_history_apis::read_only::ordered_transaction_results> get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const;
    void applied_block(const signed_block&);
 
    chain_plugin* chain_plug;
@@ -38,6 +38,7 @@ public:
 private:
 
    optional<block_id_type> find_block_id(const transaction_id_type& transaction_id) const;
+   ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const block_id_type& block_id) const;
    bool scope_relevant(const eos::types::Vector<AccountName>& scope);
 };
@@ -56,19 +57,23 @@ optional<block_id_type> account_history_plugin_impl::find_block_id(const transac
    return block_id;
 }
 
-ProcessedTransaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::block_id_type& block_id) const
+ProcessedTransaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
 {
-   auto block = chain_plug->chain().fetch_block_by_id(block_id);
-   FC_ASSERT(block, "Transaction with ID ${tid} was indexed as being in block ID ${bid}, but no such block was found", ("tid", transaction_id)("bid", block_id));
-
-   for (const auto& cycle : block->cycles)
+   for (const auto& cycle : block.cycles)
       for (const auto& thread : cycle)
          for (const auto& trx : thread.user_input)
             if (trx.id() == transaction_id)
                return trx;
 
    // ERROR in indexing logic
-   FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block_id));
+   FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block.id()));
+}
+
+ProcessedTransaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::block_id_type& block_id) const
+{
+   auto block = chain_plug->chain().fetch_block_by_id(block_id);
+   FC_ASSERT(block, "Transaction with ID ${tid} was indexed as being in block ID ${bid}, but no such block was found", ("tid", transaction_id)("bid", block_id));
+   return find_transaction(transaction_id, *block);
 }
 
 ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
@@ -84,36 +89,87 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
                       "Could not find transaction for: ${id}", ("id", transaction_id.str()));
 }
 
-vector<account_history_apis::read_only::get_transaction_results> account_history_plugin_impl::get_transactions(const AccountName&  account_name, const optional<chain::transaction_id_type>& after_transaction_id) const
+vector<account_history_apis::read_only::ordered_transaction_results> account_history_plugin_impl::get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const
 {
    const auto& db = chain_plug->chain().get_database();
-   typedef std::map<transaction_id_type, block_id_type> transaction_map;
-   transaction_map transactions;
+   struct block_comp
+   {
+      bool operator()(const block_id_type& a, const block_id_type& b)
+      {
+         return chain::block_header::num_from_id(a) < chain::block_header::num_from_id(b);
+      }
+   };
+   std::multimap<block_id_type, transaction_id_type, block_comp> block_transaction_ids;
 
    db.with_read_lock( [&]() {
       const auto& account_idx = db.get_index<transaction_history_multi_index, by_account_name>();
       auto range = account_idx.equal_range( account_name );
       for (auto transaction_history = range.first; transaction_history != range.second; ++transaction_history)
       {
-         transactions.emplace(std::make_pair(transaction_history->transaction_id, transaction_history->block_id));
+         block_transaction_ids.emplace(std::make_pair(transaction_history->block_id, transaction_history->transaction_id));
       }
    } );
-   vector<account_history_apis::read_only::get_transaction_results> results;
-   transaction_map::const_iterator trans;
-   if (after_transaction_id.valid())
+
+   vector<ProcessedTransaction> transaction_order;
+   auto block_transaction = block_transaction_ids.cbegin();
+
+   // keep iterating through each equal range
+   while (block_transaction != block_transaction_ids.cend())
    {
-      trans = transactions.find(*after_transaction_id);
-      if (trans != transactions.cend())
-         ++trans;
+      optional<signed_block> block;
+      db.with_read_lock( [&]() {
+         block = chain_plug->chain().fetch_block_by_id(block_transaction->first);
+      } );
+      FC_ASSERT(block, "Transaction with ID ${tid} was indexed as being in block ID ${bid}, but no such block was found", ("tid", block_transaction->second)("bid", block_transaction->first));
+
+      std::set<transaction_id_type> trans_ids_for_block;
+      auto range = block_transaction_ids.equal_range(block_transaction->first);
+      for (block_transaction = range.first; block_transaction != range.second; ++block_transaction)
+      {
+         trans_ids_for_block.insert(block_transaction->second);
+      }
+
+      int count = 0;
+      for (const auto& cycle : block->cycles)
+         for (const auto& thread : cycle)
+            for (const auto& trx : thread.user_input)
+               if(trans_ids_for_block.count(trx.id()))
+                  transaction_order.emplace_back(trx);
+   }
+
+   typedef vector<account_history_apis::read_only::ordered_transaction_results> Results;
+   int64_t rbegin, rend;
+   const int64_t size = transaction_order.size();
+   if (!start_seq)
+   {
+      rbegin = size - 1;
+      rend = -1;
    }
    else
-      trans = transactions.cbegin();
-
-   for(; trans != transactions.end() && results.size() < transactions_limit; ++trans)
    {
-      const auto trx = find_transaction(trans->first, trans->second);
+      rbegin = size - *start_seq - 1;
+
+      // asking for a sequence that doesn't exist
+      if (rbegin < 0)
+         return Results();
+
+      if (!stop_seq)
+         rend = -1;
+      else
+      {
+         rend = size - *stop_seq - 2;
+         if (rend < -1)
+            rend = -1;
+      }
+   }
+
+   Results results;
+   for(int64_t index = rbegin; index > rend; --index)
+   {
+      const auto& trx = transaction_order[index];
       const auto pretty_trx = chain_plug->chain().transaction_to_variant(trx);
-      results.emplace_back(account_history_apis::read_only::get_transaction_results{trans->first, pretty_trx});
+      const uint32_t seq_num = size - index - 1;
+      results.emplace_back(account_history_apis::read_only::ordered_transaction_results{seq_num, trx.id(), pretty_trx});
    }
 
    return results;
@@ -208,7 +264,7 @@ read_only::get_transaction_results read_only::get_transaction(const read_only::g
 
 read_only::get_transactions_results read_only::get_transactions(const read_only::get_transactions_params& params) const
 {
-   return { account_history->get_transactions(params.account_name, params.after_transaction_id) };
+   return { account_history->get_transactions(params.account_name, params.start_seq, params.stop_seq) };
 }
 
 } // namespace account_history_apis

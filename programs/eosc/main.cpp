@@ -241,7 +241,7 @@ int send_command (const vector<string> &cmd_line)
 {
   const auto& command = cmd_line[0];
   if( command == "help" ) {
-    std::cout << "Command list: info, block, exec, account, push-trx, setcode, transfer, create, import, unlock, lock, and do\n";
+    std::cout << "Command list: info, block, exec, account, push-trx, setcode, transfer, create, import, unlock, lock, do, transaction, and transactions\n";
     return -1;
   }
 
@@ -374,15 +374,17 @@ int send_command (const vector<string> &cmd_line)
      auto arg= fc::mutable_variant_object( "transaction_id", cmd_line[1]);
      std::cout << fc::json::to_pretty_string( call( get_transaction_func, arg) ) << std::endl;
   } else if( command == "transactions" ) {
-     if( cmd_line.size() < 2 || cmd_line.size() > 3 )
+     if( cmd_line.size() < 2 || cmd_line.size() > 4 )
      {
-        std::cerr << "usage: " << program << " transactions ACCOUNT_TO_LOOKUP [AFTER_TRANSACTION_ID]\n";
+        std::cerr << "usage: " << program << " transactions ACCOUNT_TO_LOOKUP [START_SEQUENCE [STOP_SEQUENCE]]\n";
         return -1;
      }
      chain::AccountName account_name(cmd_line[1]);
-     auto arg = (cmd_line.size() == 3)
-           ? fc::mutable_variant_object( "account_name", account_name)("after_transaction_id", cmd_line[2])
-           : fc::mutable_variant_object( "account_name", account_name);
+     auto arg = (cmd_line.size() == 2)
+           ? fc::mutable_variant_object( "account_name", account_name)
+           : (cmd_line.size() == 3)
+             ? fc::mutable_variant_object( "account_name", account_name)("start_seq", cmd_line[2])
+             : fc::mutable_variant_object( "account_name", account_name)("start_seq", cmd_line[2])("stop_seq", cmd_line[3]);
      std::cout << fc::json::to_pretty_string( call( get_transactions_func, arg) ) << std::endl;
   }
   return 0;
