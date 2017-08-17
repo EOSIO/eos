@@ -191,6 +191,10 @@ public:
          // http://en.wikipedia.org/wiki/Most_vexing_parse
          //
          ofstream outfile{ wallet_filename };
+         if (!outfile) {
+            elog("Unable to open file: ${fn}", ("fn", wallet_filename));
+            FC_THROW("Unable to open file: ${fn}", ("fn", wallet_filename));
+         }
          outfile.write( data.c_str(), data.length() );
          outfile.flush();
          outfile.close();
@@ -322,6 +326,11 @@ pair<public_key_type,string> wallet_api::get_private_key_from_password( string a
    auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
    auto priv = fc::ecc::private_key::regenerate( secret );
    return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
+}
+
+void wallet_api::set_wallet_filename(string wallet_filename)
+{
+   my->_wallet_filename = wallet_filename;
 }
 
 } } // eos::wallet

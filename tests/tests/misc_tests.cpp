@@ -285,6 +285,9 @@ BOOST_AUTO_TEST_CASE(wallet_test)
    wallet.unlock("pass");
    BOOST_CHECK(!wallet.is_locked());
 
+   wallet.set_wallet_filename("test");
+   BOOST_CHECK_EQUAL("test", wallet.get_wallet_filename());
+
    BOOST_CHECK_EQUAL(0, wallet.list_keys().size());
 
    auto priv = fc::ecc::private_key::generate();
