@@ -30,7 +30,7 @@ int main(int argc, char** argv)
       app().register_plugin<account_history_api_plugin>();
       app().register_plugin<wallet_plugin>();
       app().register_plugin<wallet_api_plugin>();
-      if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
+      if(!app().initialize(argc, argv))
          return -1;
       app().startup();
       app().exec();
