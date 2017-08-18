@@ -24,25 +24,38 @@ using chain::signed_block;
 using boost::multi_index_container;
 using chain::transaction_id_type;
 using namespace boost::multi_index;
+using ordered_transaction_results = account_history_apis::read_only::ordered_transaction_results;
+using get_transactions_results = account_history_apis::read_only::get_transactions_results;
 
 class account_history_plugin_impl {
 public:
    ProcessedTransaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
-   vector<account_history_apis::read_only::ordered_transaction_results> get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const;
+   get_transactions_results get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const;
    void applied_block(const signed_block&);
 
    chain_plugin* chain_plug;
-   static const int DEFAULT_TRANSACTION_LIMIT;
-   int transactions_limit = DEFAULT_TRANSACTION_LIMIT;
+   static const int64_t DEFAULT_TRANSACTION_TIME_LIMIT;
+   int64_t transactions_time_limit = DEFAULT_TRANSACTION_TIME_LIMIT;
    std::set<AccountName> filter_on;
+
 private:
+   struct block_comp
+   {
+      bool operator()(const block_id_type& a, const block_id_type& b) const
+      {
+         return chain::block_header::num_from_id(a) > chain::block_header::num_from_id(b);
+      }
+   };
+   typedef std::multimap<block_id_type, transaction_id_type, block_comp> block_transaction_id_map;
 
    optional<block_id_type> find_block_id(const transaction_id_type& transaction_id) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const block_id_type& block_id) const;
    bool scope_relevant(const eos::types::Vector<AccountName>& scope);
+   get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
+   bool time_exceeded(const fc::time_point& start_time) const;
 };
-const int account_history_plugin_impl::DEFAULT_TRANSACTION_LIMIT = 100;
+const int64_t account_history_plugin_impl::DEFAULT_TRANSACTION_TIME_LIMIT = 3000;
 
 optional<block_id_type> account_history_plugin_impl::find_block_id(const transaction_id_type& transaction_id) const
 {
@@ -89,18 +102,12 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
                       "Could not find transaction for: ${id}", ("id", transaction_id.str()));
 }
 
-vector<account_history_apis::read_only::ordered_transaction_results> account_history_plugin_impl::get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const
+get_transactions_results account_history_plugin_impl::get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const
 {
+   fc::time_point start_time = fc::time_point::now();
    const auto& db = chain_plug->chain().get_database();
-   struct block_comp
-   {
-      bool operator()(const block_id_type& a, const block_id_type& b)
-      {
-         return chain::block_header::num_from_id(a) < chain::block_header::num_from_id(b);
-      }
-   };
-   std::multimap<block_id_type, transaction_id_type, block_comp> block_transaction_ids;
 
+   block_transaction_id_map block_transaction_ids;
    db.with_read_lock( [&]() {
       const auto& account_idx = db.get_index<transaction_history_multi_index, by_account_name>();
       auto range = account_idx.equal_range( account_name );
@@ -110,11 +117,44 @@ vector<account_history_apis::read_only::ordered_transaction_results> account_his
       }
    } );
 
-   vector<ProcessedTransaction> transaction_order;
+   uint32_t begin, end;
+   const auto size = block_transaction_ids.size();
+   if (!start_seq)
+   {
+      begin = 0;
+      end = size;
+   }
+   else
+   {
+      begin = *start_seq;
+
+      if (!stop_seq)
+         end = size;
+      else
+      {
+         end = *stop_seq + 1;
+         if (end > size)
+            end = size;
+      }
+
+      if (begin > size - 1 || begin >= end)
+         return get_transactions_results();
+   }
+
+   return ordered_transactions(block_transaction_ids, start_time, begin, end);
+}
+
+get_transactions_results account_history_plugin_impl::ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const
+{
+   get_transactions_results results;
+   results.transactions.reserve(end - begin);
+
+   const auto& db = chain_plug->chain().get_database();
    auto block_transaction = block_transaction_ids.cbegin();
 
+   uint32_t current = 0;
    // keep iterating through each equal range
-   while (block_transaction != block_transaction_ids.cend())
+   while (block_transaction != block_transaction_ids.cend() && !time_exceeded(start_time))
    {
       optional<signed_block> block;
       db.with_read_lock( [&]() {
@@ -122,57 +162,64 @@ vector<account_history_apis::read_only::ordered_transaction_results> account_his
       } );
       FC_ASSERT(block, "Transaction with ID ${tid} was indexed as being in block ID ${bid}, but no such block was found", ("tid", block_transaction->second)("bid", block_transaction->first));
 
-      std::set<transaction_id_type> trans_ids_for_block;
       auto range = block_transaction_ids.equal_range(block_transaction->first);
+
+      std::set<transaction_id_type> trans_ids_for_block;
       for (block_transaction = range.first; block_transaction != range.second; ++block_transaction)
       {
          trans_ids_for_block.insert(block_transaction->second);
       }
 
-      int count = 0;
-      for (const auto& cycle : block->cycles)
-         for (const auto& thread : cycle)
-            for (const auto& trx : thread.user_input)
-               if(trans_ids_for_block.count(trx.id()))
-                  transaction_order.emplace_back(trx);
-   }
-
-   typedef vector<account_history_apis::read_only::ordered_transaction_results> Results;
-   int64_t rbegin, rend;
-   const int64_t size = transaction_order.size();
-   if (!start_seq)
-   {
-      rbegin = size - 1;
-      rend = -1;
-   }
-   else
-   {
-      rbegin = size - *start_seq - 1;
-
-      // asking for a sequence that doesn't exist
-      if (rbegin < 0)
-         return Results();
-
-      if (!stop_seq)
-         rend = -1;
-      else
+      const uint32_t trx_after_block = current + trans_ids_for_block.size();
+      if (trx_after_block <= begin)
       {
-         rend = size - *stop_seq - 2;
-         if (rend < -1)
-            rend = -1;
+         current = trx_after_block;
+         continue;
+      }
+      for (auto cycle = block->cycles.crbegin(); cycle != block->cycles.crend() && current < trx_after_block; ++cycle)
+      {
+         for (auto thread = cycle->crbegin(); thread != cycle->crend() && current < trx_after_block; ++thread)
+         {
+            for (auto trx = thread->user_input.crbegin(); trx != thread->user_input.crend() && current < trx_after_block; ++trx)
+            {
+               if(trans_ids_for_block.count(trx->id()))
+               {
+                  if(++current > begin)
+                  {
+                     const auto pretty_trx = chain_plug->chain().transaction_to_variant(*trx);
+                     results.transactions.emplace_back(ordered_transaction_results{(current - 1), trx->id(), pretty_trx});
+
+                     if(current >= end)
+                     {
+                        return results;
+                     }
+                  }
+
+                  // just check after finding transaction or transitioning to next block to avoid spending all our time checking
+                  if (time_exceeded(start_time))
+                  {
+                     results.time_limit_exceeded_error = true;
+                     return results;
+                  }
+               }
+            }
+         }
+      }
+
+      // just check after finding transaction or transitioning to next block to avoid spending all our time checking
+      if (time_exceeded(start_time))
+      {
+         results.time_limit_exceeded_error = true;
+         return results;
       }
    }
 
-   Results results;
-   for(int64_t index = rbegin; index > rend; --index)
-   {
-      const auto& trx = transaction_order[index];
-      const auto pretty_trx = chain_plug->chain().transaction_to_variant(trx);
-      const uint32_t seq_num = size - index - 1;
-      results.emplace_back(account_history_apis::read_only::ordered_transaction_results{seq_num, trx.id(), pretty_trx});
-   }
-
    return results;
+}
+
+bool account_history_plugin_impl::time_exceeded(const fc::time_point& start_time) const
+{
+   return (fc::time_point::now() - start_time).count() > transactions_time_limit;
 }
 
 void account_history_plugin_impl::applied_block(const signed_block& block)
@@ -222,14 +269,14 @@ void account_history_plugin::set_program_options(options_description& cli, optio
    cfg.add_options()
          ("filter_on_accounts,f", bpo::value<vector<string>>()->composing(),
           "Track only transactions whose scopes involve the listed accounts. Default is to track all transactions.")
-         ("get-transactions-limit", bpo::value<int>()->default_value(account_history_plugin_impl::DEFAULT_TRANSACTION_LIMIT),
-          "Limits the number of transactions returned for get_transactions")
+         ("get-transactions-time-limit", bpo::value<int>()->default_value(account_history_plugin_impl::DEFAULT_TRANSACTION_TIME_LIMIT),
+          "Limits the time to wait before returning for get_transactions")
          ;
 }
 
 void account_history_plugin::plugin_initialize(const variables_map& options)
 {
-   my->transactions_limit = options.at("get-transactions-limit").as<int>();
+   my->transactions_time_limit = options.at("get-transactions-time-limit").as<int>();
 
    if(options.count("filter_on_accounts"))
    {
@@ -264,7 +311,7 @@ read_only::get_transaction_results read_only::get_transaction(const read_only::g
 
 read_only::get_transactions_results read_only::get_transactions(const read_only::get_transactions_params& params) const
 {
-   return { account_history->get_transactions(params.account_name, params.start_seq, params.stop_seq) };
+   return account_history->get_transactions(params.account_name, params.start_seq, params.stop_seq);
 }
 
 } // namespace account_history_apis

@@ -46,7 +46,8 @@ public:
       fc::variant                 transaction;
    };
    struct get_transactions_results {
-      vector<ordered_transaction_results>      transactions;
+      vector<ordered_transaction_results> transactions;
+      optional<bool>                      time_limit_exceeded_error;
    };
 
    get_transactions_results get_transactions(const get_transactions_params& params) const;
@@ -87,4 +88,4 @@ FC_REFLECT(eos::account_history_apis::read_only::get_transaction_params, (transa
 FC_REFLECT(eos::account_history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
 FC_REFLECT(eos::account_history_apis::read_only::get_transactions_params, (account_name)(start_seq)(stop_seq) )
 FC_REFLECT(eos::account_history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
-FC_REFLECT(eos::account_history_apis::read_only::get_transactions_results, (transactions) )
+FC_REFLECT(eos::account_history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
