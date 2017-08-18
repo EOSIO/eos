@@ -142,8 +142,9 @@ public:
 
 class read_write {
    chain_controller& db;
+   uint32_t skip_flags;
 public:
-   read_write(chain_controller& db) : db(db) {}
+   read_write(chain_controller& db, uint32_t skip_flags) : db(db), skip_flags(skip_flags) {}
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -172,12 +173,15 @@ public:
    void plugin_shutdown();
 
    chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain()); }
-   chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain()); }
+   chain_apis::read_write get_read_write_api();
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
    void accept_transaction(const chain::SignedTransaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
+
+   // return true if --skip-transaction-signatures passed to eosd
+   bool is_skipping_transaction_signatures() const;
 
    // Only call this after plugin_startup()!
    chain_controller& chain();
