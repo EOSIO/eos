@@ -10,12 +10,12 @@ using namespace eos;
 
 #define CALL(api_name, api_handle, in_param, call_name) \
 {std::string("/v1/" #api_name "/" #call_name), \
-   [this, api_handle](string, string body, url_response_callback cb) mutable { \
+   [&api_handle](string, string body, url_response_callback cb) mutable { \
           try { \
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
              cb(200, fc::json::to_string(result)); \
-          } catch (fc::eof_exception) { \
+          } catch (fc::eof_exception&) { \
              cb(400, "Invalid arguments"); \
              elog("Unable to parse arguments: ${args}", ("args", body)); \
           } catch (fc::exception& e) { \
@@ -24,21 +24,19 @@ using namespace eos;
           } \
        }}
 
-#define RO_CALL(call_name, in_param) CALL(wallet, ro_api, in_param, call_name)
-#define RW_CALL(call_name, in_param) CALL(wallet, rw_api, in_param, call_name)
+#define W_CALL(call_name, in_param) CALL(wallet, wallet_plug, in_param, call_name)
 
 void wallet_api_plugin::plugin_startup() {
    ilog("starting wallet_api_plugin");
-   auto ro_api = app().get_plugin<wallet_plugin>().get_read_only_api();
-   auto rw_api = app().get_plugin<wallet_plugin>().get_read_write_api();
+   // lifetime of plugin is lifetime of application
+   auto& wallet_plug = app().get_plugin<wallet_plugin>();
 
    app().get_plugin<http_plugin>().add_api({
-      RW_CALL(sign_transaction, chain::Transaction)
+      W_CALL(sign_transaction, chain::Transaction)
    });
 }
 
 #undef CALL
-#undef RW_CALL
-#undef RO_CALL
+#undef W_CALL
 
 }

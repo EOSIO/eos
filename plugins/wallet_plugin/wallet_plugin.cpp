@@ -14,7 +14,4 @@ wallet_plugin::wallet_plugin()
 }
 
 
-namespace wallet_apis {
-
-} // namespace wallet_apis
 } // namespace eos
