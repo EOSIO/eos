@@ -258,7 +258,7 @@ int send_command (const vector<string> &cmd_line)
     Name code   = cmd_line[1];
     Name action = cmd_line[2];
     auto& json   = cmd_line[3];
-    auto arg= fc::mutable_variant_object( "code", code )("action",action)("cmd_line", fc::json::from_string(json));
+    auto arg= fc::mutable_variant_object( "code", code )("action",action)("args", fc::json::from_string(json));
     auto result = call( json_to_bin_func, arg);
 
 
@@ -268,7 +268,7 @@ int send_command (const vector<string> &cmd_line)
     msg.code = code;
     msg.type = action;
     msg.authorization = fc::json::from_string( cmd_line[5] ).as<vector<types::AccountPermission>>();
-    msg.data = result.get_object()["bincmd_line"].as<Bytes>();
+    msg.data = result.get_object()["binargs"].as<Bytes>();
     trx.scope = fc::json::from_string( cmd_line[4] ).as<vector<Name>>();
 
     auto trx_result = push_transaction( trx );
