@@ -260,7 +260,7 @@ The next step is to publish the contract (.wast) and its abi (.abi)
 After the contract is published it initially allocates all of the currency to the `currency` account.  So lets transfer some of it to our tester.
 
 ```
-./eosc exec currency transfer '{"from":"currency","to":"tester","amount":50}' '["currency","tester"]' '[{"account":"currency","permission":"active"}]'
+./eosc exec currency transfer '{"from":"currency","to":"tester","amount":"50"}' '["currency","tester"]' '[{"account":"currency","permission":"active"}]'
 {
   "transaction_id": "f601f2fdb26e366a19913229e4d2928778b50166811c63c7962401b11d23ef3d",
   "processed": {
@@ -320,7 +320,7 @@ The `exec` command takes the following arguments:
 Now we can transfer it from `tester` to `inita` and require the permission of `tester`.  This should drain the balance of `tester` to 0.
 
 ```
-./eosc exec currency transfer '{"from":"tester","to":"inita","amount":50}' '["inita","tester"]' '[{"account":"tester","permission":"active"}]'
+./eosc exec currency transfer '{"from":"tester","to":"inita","amount":"50"}' '["inita","tester"]' '[{"account":"tester","permission":"active"}]'
 {
   "transaction_id": "89723ee017de6dec33b46b56512042e805fbd2072810e036427896403dfc97fa",
   "processed": {
@@ -376,7 +376,7 @@ Now we can transfer it from `tester` to `inita` and require the permission of `t
 Now that `tester` has a balance of 0, if we attempt this transfer a second time it should fail:
 
 ```
-./eosc exec currency transfer '{"from":"tester","to":"inita","amount":10}' '["inita","tester"]' '[{"account":"tester","permission":"active"}]'
+./eosc exec currency transfer '{"from":"tester","to":"inita","amount":"10"}' '["inita","tester"]' '[{"account":"tester","permission":"active"}]'
 status_code == 200: Error
 : 10 assert_exception: Assert Exception
 test: assertion failed: integer underflow subtracting token balance
