@@ -1,4 +1,4 @@
-#include <eos/wallet/wallet.hpp>
+#include "include/eos/wallet_plugin/wallet.hpp"
 #include <eos/utilities/key_conversion.hpp>
 
 #include <algorithm>

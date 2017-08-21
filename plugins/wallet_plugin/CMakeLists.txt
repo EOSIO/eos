@@ -1,6 +1,8 @@
 file(GLOB HEADERS "include/eos/wallet_plugin/*.hpp")
 add_library( wallet_plugin
+             wallet.cpp
              wallet_plugin.cpp
+             wallet_manager.cpp
              ${HEADERS} )
 
 target_link_libraries( wallet_plugin eos_chain appbase )

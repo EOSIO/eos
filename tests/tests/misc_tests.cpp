@@ -4,7 +4,7 @@
 
 #include <eos/utilities/key_conversion.hpp>
 #include <eos/utilities/rand.hpp>
-#include <eos/wallet/wallet.hpp>
+#include <eos/wallet_plugin/wallet.hpp>
 
 #include <fc/io/json.hpp>
 
