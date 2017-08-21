@@ -92,7 +92,6 @@ void producer_plugin::set_program_options(
    boost::program_options::options_description& config_file_options)
 {
    auto default_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("nathan")));
-   string producer_id_example = fc::json::to_string("inita");
 
    auto private_key_default = std::make_pair(chain::public_key_type(default_priv_key.get_public_key()),
                                              eos::utilities::key_to_wif(default_priv_key));
@@ -101,7 +100,7 @@ void producer_plugin::set_program_options(
          ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
          ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          ("ID of producer controlled by this node (e.g. " + producer_id_example + ", quotes are required, may specify multiple times)").c_str())
+          ("ID of producer controlled by this node (e.g. inita; may specify multiple times)"))
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
                                                                                                 fc::json::to_string(private_key_default)),
           "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
@@ -240,6 +239,9 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
+   if (app().get_plugin<chain_plugin>().is_skipping_transaction_signatures()) {
+      _production_skip_flags |= chain_controller::skip_transaction_signatures;
+   }
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {

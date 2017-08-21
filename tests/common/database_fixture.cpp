@@ -166,7 +166,7 @@ types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountN
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
-void testing_blockchain::sign_transaction(SignedTransaction& trx) {
+void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
    auto GetAuthority = [this](const types::AccountPermission& permission) {
       auto key = boost::make_tuple(permission.account, permission.permission);
       return db.get<permission_object, by_owner>(key).auth;
@@ -184,7 +184,7 @@ void testing_blockchain::sign_transaction(SignedTransaction& trx) {
       trx.sign(fixture.get_private_key(key), chain_id_type{});
 }
 
-ProcessedTransaction testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
+fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
    if (skip_trx_sigs)
       skip_flags |= chain_controller::skip_transaction_signatures;
 
@@ -192,6 +192,10 @@ ProcessedTransaction testing_blockchain::push_transaction(SignedTransaction trx,
       sign_transaction(trx);
    }
 
+   if (hold_for_review) {
+      review_storage = std::make_pair(trx, skip_flags);
+      return {};
+   }
    return chain_controller::push_transaction(trx, skip_flags);
 }
 

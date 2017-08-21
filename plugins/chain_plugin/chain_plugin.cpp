@@ -27,7 +27,7 @@ using chain::chain_id_type;
 using chain::account_object;
 using chain::key_value_object;
 using chain::by_name;
-using chain::by_scope_key;
+using chain::by_scope_primary;
 using chain::uint128_t;
 
 
@@ -36,6 +36,7 @@ public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    chain::Time                      genesis_timestamp;
+   uint32_t                         skip_flags = chain_controller::skip_nothing;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -66,6 +67,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain database and replay all blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
+         ("skip-transaction-signatures", bpo::bool_switch()->default_value(false),
+          "Disable Transaction signature verification. ONLY for TESTING.")
          ;
 }
 
@@ -106,6 +109,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ilog("Resync requested: wiping blocks");
       app().get_plugin<database_plugin>().wipe_database();
       fc::remove_all(my->block_log_dir);
+   }
+   if (options.at("skip-transaction-signatures").as<bool>()) {
+      ilog("Setting skip_transaction_signatures");
+      elog("Setting skip_transaction_signatures\n"
+           "\n"
+           "**************************************\n"
+           "*                                    *\n"
+           "*   -- EOSD IGNORING SIGNATURES --   *\n"
+           "*   -         TEST MODE          -   *\n"
+           "*   ------------------------------   *\n"
+           "*                                    *\n"
+           "**************************************\n");
+
+      my->skip_flags |= chain_controller::skip_transaction_signatures;
    }
 
    if(options.count("checkpoint"))
@@ -154,6 +171,10 @@ void chain_plugin::plugin_startup()
 void chain_plugin::plugin_shutdown() {
 }
 
+chain_apis::read_write chain_plugin::get_read_write_api() {
+   return chain_apis::read_write(chain(), my->skip_flags);
+}
+
 bool chain_plugin::accept_block(const chain::signed_block& block, bool currently_syncing) {
    if (currently_syncing && block.block_num() % 10000 == 0) {
       ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
@@ -166,7 +187,7 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
 }
 
 void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
-   chain().push_transaction(trx);
+   chain().push_transaction(trx, my->skip_flags);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block_id) {
@@ -175,6 +196,10 @@ bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block
    // Extract the block number from block_id, and fetch that block number's ID from the database.
    // If the database's block ID matches block_id, then block_id is on the preferred chain. Otherwise, it's on a fork.
    return chain().get_block_id_for_num(chain::block_header::num_from_id(block_id)) == block_id;
+}
+
+bool chain_plugin::is_skipping_transaction_signatures() const {
+   return my->skip_flags & chain_controller::skip_transaction_signatures;
 }
 
 chain_controller& chain_plugin::chain() { return *my->chain; }
@@ -211,7 +236,7 @@ read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_o
       abis.setAbi( abi );
    }
 
-   const auto& idx = d.get_index<chain::key_value_index,by_scope_key>();
+   const auto& idx = d.get_index<chain::key_value_index,by_scope_primary>();
    auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
    auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
 
@@ -224,7 +249,7 @@ read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_o
    auto itr = lower;
    for( itr = lower; itr != upper; ++itr ) {
       data.resize( sizeof(uint64_t) + itr->value.size() );
-      memcpy( data.data(), &itr->key, sizeof(itr->key) );
+      memcpy( data.data(), &itr->primary_key, sizeof(itr->primary_key) );
       memcpy( data.data()+sizeof(uint64_t), itr->value.data(), itr->value.size() );
 
       if( p.json ) 
@@ -301,7 +326,7 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   auto ptrx = db.push_transaction(params);
+   auto ptrx = db.push_transaction(params, skip_flags);
    auto pretty_trx = db.transaction_to_variant( ptrx );
    return read_write::push_transaction_results{ params.id(), pretty_trx };
 }

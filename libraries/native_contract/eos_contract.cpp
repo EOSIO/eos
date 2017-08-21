@@ -146,6 +146,8 @@ void apply_eos_lock(apply_context& context) {
    context.require_scope(lock.from);
    context.require_scope(config::EosContractName);
 
+   context.require_authorization(lock.from);
+
    context.require_recipient(lock.to);
    context.require_recipient(lock.from);
 
