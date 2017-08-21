@@ -55,10 +55,10 @@ namespace eos { namespace types {
       built_in_types.emplace("FixedString16", packUnpack<FixedString16>());
       built_in_types.emplace("TypeName",      packUnpack<TypeName>());
       built_in_types.emplace("Bytes",         packUnpack<Bytes>());
-      built_in_types.emplace("UInt8",         packUnpack<uint8_t>());
-      built_in_types.emplace("UInt16",        packUnpack<uint16_t>());
-      built_in_types.emplace("UInt32",        packUnpack<uint32_t>());
-      built_in_types.emplace("UInt64",        packUnpack<uint64_t>());
+      built_in_types.emplace("UInt8",         packUnpack<UInt8>());
+      built_in_types.emplace("UInt16",        packUnpack<UInt16>());
+      built_in_types.emplace("UInt32",        packUnpack<UInt32>());
+      built_in_types.emplace("UInt64",        packUnpack<UInt64>());
       built_in_types.emplace("UInt128",       packUnpack<UInt128>());
       built_in_types.emplace("UInt256",       packUnpack<UInt256>());
       built_in_types.emplace("Int8",          packUnpack<int8_t>());
