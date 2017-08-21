@@ -38,6 +38,7 @@
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/chain_initializer_interface.hpp>
 #include <eos/chain/chain_administration_interface.hpp>
+#include <eos/chain/exceptions.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -282,15 +283,27 @@ namespace eos { namespace chain {
 
          /**
           * This method performs some consistency checks on a transaction.
-          * @return true if the transaction would validate
+          * @thow transaction_exception if the transaction is invalid
           */
-         void validate_transaction(const SignedTransaction& trx)const;
+         template<typename T>
+         void validate_transaction(const T& trx) const {
+         try {
+            EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
+
+            validate_scope(trx);
+            validate_expiration(trx);
+            validate_uniqueness(trx);
+            validate_tapos(trx);
+
+         } FC_CAPTURE_AND_RETHROW( (trx) ) }
+         
          /// Validate transaction helpers @{
          void validate_uniqueness(const SignedTransaction& trx)const;
-         void validate_tapos(const SignedTransaction& trx)const;
-         void validate_referenced_accounts(const SignedTransaction& trx)const;
-         void validate_expiration(const SignedTransaction& trx) const;
-         void validate_scope(const SignedTransaction& trx) const;
+         void validate_uniqueness(const GeneratedTransaction& trx)const;
+         void validate_tapos(const Transaction& trx)const;
+         void validate_referenced_accounts(const Transaction& trx)const;
+         void validate_expiration(const Transaction& trx) const;
+         void validate_scope(const Transaction& trx) const;
          /// @}
 
          /**

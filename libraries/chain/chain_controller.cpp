@@ -23,7 +23,6 @@
  */
 
 #include <eos/chain/chain_controller.hpp>
-#include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/block_summary_object.hpp>
 #include <eos/chain/global_property_object.hpp>
@@ -57,7 +56,6 @@
 #include <iostream>
 
 //#include <Wren++.h>
-
 namespace eos { namespace chain {
 
 
@@ -585,18 +583,7 @@ ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction
    return with_skip_flags( skip, [&]() { return _apply_transaction(trx); });
 }
 
-void chain_controller::validate_transaction(const SignedTransaction& trx)const {
-try {
-   EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
-
-   validate_scope(trx);
-   validate_expiration(trx);
-   validate_uniqueness(trx);
-   validate_tapos(trx);
-
-} FC_CAPTURE_AND_RETHROW( (trx) ) }
-
-void chain_controller::validate_scope( const SignedTransaction& trx )const {
+void chain_controller::validate_scope( const Transaction& trx )const {
    EOS_ASSERT(trx.scope.size() > 0, transaction_exception, "No scope specified by transaction" );
    for( uint32_t i = 1; i < trx.scope.size(); ++i )
       EOS_ASSERT( trx.scope[i-1] < trx.scope[i], transaction_exception, "Scopes must be sorted and unique" );
@@ -630,18 +617,22 @@ void chain_controller::validate_uniqueness( const SignedTransaction& trx )const 
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "Transaction is not unique");
 }
 
-void chain_controller::validate_tapos(const SignedTransaction& trx)const {
+void chain_controller::validate_uniqueness( const GeneratedTransaction& trx )const {
+   if( !should_check_for_duplicate_transactions() ) return;
+}
+
+void chain_controller::validate_tapos(const Transaction& trx)const {
    if (!should_check_tapos()) return;
 
    const auto& tapos_block_summary = _db.get<block_summary_object>((uint16_t)trx.refBlockNum);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), transaction_exception,
+   EOS_ASSERT(transaction_helpers::verify_reference_block(trx, tapos_block_summary.block_id), transaction_exception,
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 }
 
-void chain_controller::validate_referenced_accounts(const SignedTransaction& trx)const {
+void chain_controller::validate_referenced_accounts(const Transaction& trx)const {
    for (const auto& scope : trx.scope)
       require_account(scope);
    for (const auto& msg : trx.messages) {
@@ -651,7 +642,7 @@ void chain_controller::validate_referenced_accounts(const SignedTransaction& trx
    }
 }
 
-void chain_controller::validate_expiration(const SignedTransaction& trx) const
+void chain_controller::validate_expiration(const Transaction& trx) const
 { try {
    fc::time_point_sec now = head_block_time();
    const BlockchainConfiguration& chain_configuration = get_global_properties().configuration;
