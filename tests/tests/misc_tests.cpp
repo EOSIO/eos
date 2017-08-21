@@ -4,16 +4,17 @@
 
 #include <eos/utilities/key_conversion.hpp>
 #include <eos/utilities/rand.hpp>
-#include <eos/wallet_plugin/wallet.hpp>
 
 #include <fc/io/json.hpp>
 
 #include <boost/test/unit_test.hpp>
 
+using namespace eos::chain;
 #include "../common/testing_macros.hpp"
 
 namespace eos {
 using namespace chain;
+using namespace std;
 
 BOOST_AUTO_TEST_SUITE(misc_tests)
 
@@ -264,60 +265,6 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    }
 } FC_LOG_AND_RETHROW() }
 
-/// Test creating the wallet
-BOOST_AUTO_TEST_CASE(wallet_test)
-{ try {
-   using namespace eos::wallet;
-   using namespace eos::utilities;
-
-   wallet_data d;
-   d.ws_server = "test_server";
-   d.ws_port = 99;
-   d.ws_user = "bob";
-   d.ws_password = "user_pwd";
-
-   wallet_api wallet(d);
-   BOOST_CHECK(wallet.is_locked());
-
-   wallet.set_password("pass");
-   BOOST_CHECK(wallet.is_locked());
-
-   wallet.unlock("pass");
-   BOOST_CHECK(!wallet.is_locked());
-
-   wallet.set_wallet_filename("test");
-   BOOST_CHECK_EQUAL("test", wallet.get_wallet_filename());
-
-   BOOST_CHECK_EQUAL(0, wallet.list_keys().size());
-
-   auto priv = fc::ecc::private_key::generate();
-   auto pub = public_key_type( priv.get_public_key() );
-   auto wif = key_to_wif(priv.get_secret());
-   wallet.import_key(wif);
-   BOOST_CHECK_EQUAL(1, wallet.list_keys().size());
-
-   auto privCopy = wallet.get_private_key(pub);
-   BOOST_CHECK_EQUAL(wif, privCopy);
-
-   wallet.lock();
-   BOOST_CHECK(wallet.is_locked());
-   wallet.unlock("pass");
-   BOOST_CHECK_EQUAL(1, wallet.list_keys().size());
-   wallet.save_wallet_file("wallet_test.json");
-
-   wallet_data d2;
-   wallet_api wallet2(d2);
-
-   BOOST_CHECK(wallet2.is_locked());
-   wallet2.load_wallet_file("wallet_test.json");
-   BOOST_CHECK(wallet2.is_locked());
-
-   wallet2.unlock("pass");
-   BOOST_CHECK_EQUAL(1, wallet2.list_keys().size());
-
-   auto privCopy2 = wallet2.get_private_key(pub);
-   BOOST_CHECK_EQUAL(wif, privCopy2);
-} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
 

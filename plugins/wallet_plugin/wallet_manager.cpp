@@ -25,6 +25,7 @@ std::string wallet_manager::create(const std::string& name) {
    auto wallet = make_unique<wallet_api>(d);
    wallet->set_password(password);
    wallet->set_wallet_filename(wallet_filename.string());
+   wallet->unlock(password);
    wallet->save_wallet_file();
    wallets.emplace(name, std::move(wallet));
 
@@ -61,7 +62,7 @@ std::vector<std::string> wallet_manager::list_keys() const {
          result.emplace_back(i.first);
          const auto& keys = i.second->list_keys();
          for (const auto& i : keys) {
-            result.emplace_back(i.first);
+            result.emplace_back(i.second);
          }
       }
    }
