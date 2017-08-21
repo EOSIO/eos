@@ -91,18 +91,6 @@ namespace eos { namespace types {
       built_in_types.emplace("Action",                  packUnpack<Action>());
       built_in_types.emplace("Table",                   packUnpack<Table>());
       built_in_types.emplace("Abi",                     packUnpack<Abi>());
-      built_in_types.emplace("transfer",                packUnpack<transfer>());
-      built_in_types.emplace("lock",                    packUnpack<lock>());
-      built_in_types.emplace("unlock",                  packUnpack<unlock>());
-      built_in_types.emplace("claim",                   packUnpack<claim>());
-      built_in_types.emplace("newaccount",              packUnpack<newaccount>());
-      built_in_types.emplace("setcode",                 packUnpack<setcode>());
-      built_in_types.emplace("setproducer",             packUnpack<setproducer>());
-      built_in_types.emplace("okproducer",              packUnpack<okproducer>());
-      built_in_types.emplace("setproxy",                packUnpack<setproxy>());
-      built_in_types.emplace("updateauth",              packUnpack<updateauth>());
-      built_in_types.emplace("deleteauth",              packUnpack<deleteauth>());
-      
    }
 
    void AbiSerializer::setAbi( const Abi& abi ) {
