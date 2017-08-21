@@ -667,6 +667,21 @@ void from_variant( const variant& var,  std::vector<char>& vo )
 //   vo = std::vector<char>( b64.c_str(), b64.c_str() + b64.size() );
 }
 
+void to_variant( const UInt<8>& n, variant& v ) { v = uint64_t(n); }
+// TODO: warn on overflow?
+void from_variant( const variant& v, UInt<8>& n ) { n = static_cast<uint8_t>(v.as_uint64()); }
+
+void to_variant( const UInt<16>& n, variant& v ) { v = uint64_t(n); }
+// TODO: warn on overflow?
+void from_variant( const variant& v, UInt<16>& n ) { n = static_cast<uint16_t>(v.as_uint64()); }
+
+void to_variant( const UInt<32>& n, variant& v ) { v = uint64_t(n); }
+// TODO: warn on overflow?
+void from_variant( const variant& v, UInt<32>& n ) { n = static_cast<uint32_t>(v.as_uint64()); }
+
+void to_variant( const UInt<64>& n, variant& v ) { v = uint64_t(n); }
+void from_variant( const variant& v, UInt<64>& n ) { n = v.as_uint64(); }
+
 string      format_string( const string& format, const variant_object& args )
 {
    std::stringstream ss;
