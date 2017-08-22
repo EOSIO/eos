@@ -368,7 +368,7 @@ signed_block chain_controller::_generate_block(
              elog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
              if (trx.contains<std::reference_wrapper<const SignedTransaction>>()) {
                 const auto& t = trx.get<std::reference_wrapper<const SignedTransaction>>().get();
-                wlog( "The transaction was ${t}", ("t", t );
+                wlog( "The transaction was ${t}", ("t", t ) );
                 invalid_pending.emplace(t.id());
              } else if (trx.contains<std::reference_wrapper<const GeneratedTransaction>>()) {
                 wlog( "The transaction was ${t}", ("t", trx.get<std::reference_wrapper<const GeneratedTransaction>>().get()) );
