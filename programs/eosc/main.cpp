@@ -243,9 +243,9 @@ int send_command (const vector<string> &cmd_line)
     }
     Name account(cmd_line[1]);
     const auto& wast_file = cmd_line[2];
-    std::string wast;
 
     FC_ASSERT( fc::exists(wast_file) );
+    std::string wast;
     fc::read_file_contents( wast_file, wast );
     auto wasm = assemble_wast( wast );
 
@@ -377,7 +377,7 @@ int main( int argc, char** argv ) {
       {
          string blockArg;
          auto getBlock = get->add_subcommand("block", "Retrieve a full block from the blockchain", false);
-         getBlock->add_option("<block>", blockArg, "The number or ID of the block to retrieve")->required();
+         getBlock->add_option("block", blockArg, "The number or ID of the block to retrieve")->required();
          getBlock->set_callback([&blockArg] {
             auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
             std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
@@ -395,6 +395,40 @@ int main( int argc, char** argv ) {
                       << std::endl;
          });
       }
+   }
+
+   // Contract subcommand
+   {
+      string account;
+      string wastPath;
+      string abiPath;
+      auto contract = app.add_subcommand("contract", "Create or update the contract on an account");
+      contract->add_option("account", account, "The account to publish a contract for")->required();
+      contract->add_option("wast-file", wastPath, "The file containing the contract WAST")->required()
+            ->check(CLI::ExistingFile);
+      auto abi = contract->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
+                 ->check(CLI::ExistingFile);
+      contract->set_callback([&] {
+         std::string wast;
+         std::cout << "Reading WAST..." << std::endl;
+         fc::read_file_contents(wastPath, wast);
+         std::cout << "Assembling WASM..." << std::endl;
+         auto wasm = assemble_wast(wast);
+
+         types::setcode handler;
+         handler.account = account;
+         handler.code.assign(wasm.begin(), wasm.end());
+         if (abi->count())
+            handler.abi = fc::json::from_file(abiPath).as<types::Abi>();
+
+         SignedTransaction trx;
+         trx.scope = sort_names({config::EosContractName, account});
+         transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
+                            "setcode", handler);
+
+         std::cout << "Publishing contract..." << std::endl;
+         std::cout << fc::json::to_pretty_string(push_transaction(trx)) << std::endl;
+      });
    }
 
    // Transfer subcommand
@@ -421,34 +455,40 @@ int main( int argc, char** argv ) {
       });
    }
 
-   // Exec subcommand
+   // Push subcommand
    {
-      auto exec = app.add_subcommand("exec", "Execute arbitrary transactions on the blockchain", false);
-      exec->require_subcommand();
+      auto push = app.add_subcommand("push", "Push arbitrary data to the blockchain", false);
+      push->require_subcommand();
 
-      // exec message
+      // push message
       {
-         vector<string> permissions = {"joe@active"};
-         string contract = "exchange";
-         string action = "deposit";
-         string data;
-         vector<string> scopes = {"joe", "exchange"};
-         auto messageSubcommand = exec->add_subcommand("message", "Execute a transaction with a single message");
-         messageSubcommand->add_option("contract", contract,
-                                    "The account providing the contract to execute", true)->required();
-         messageSubcommand->add_option("action", action, "The action to execute on the contract", true)->required();
-         messageSubcommand->add_option("data", data, "The arguments to the contract")->required();
-         messageSubcommand->add_option("-p,--permission", permissions, "An account and permission level to authorize", true);
-         messageSubcommand->add_option("-s,--scope", scopes, "An account in scope for this operation", true);
-         messageSubcommand->set_callback([&] {
+         struct {
+            vector<string> permissions;
+            string contract;
+            string action;
+            string data;
+            vector<string> scopes;
+         } opts;
+         auto options = std::make_shared<decltype(opts)>(std::move(opts));
+         auto messageSubcommand = push->add_subcommand("message", "Push a transaction with a single message");
+         messageSubcommand->fallthrough(false);
+         messageSubcommand->add_option("contract", options->contract,
+                                       "The account providing the contract to execute", true)->required();
+         messageSubcommand->add_option("action", options->action, "The action to execute on the contract", true)
+               ->required();
+         messageSubcommand->add_option("data", options->data, "The arguments to the contract")->required();
+         messageSubcommand->add_option("-p,--permission", options->permissions,
+                                       "An account and permission level to authorize, as in 'account@permission'");
+         messageSubcommand->add_option("-s,--scope", options->scopes, "An account in scope for this operation", true);
+         messageSubcommand->set_callback([options = std::move(options)] {
             ilog("Converting argument to binary...");
             auto arg= fc::mutable_variant_object
-                      ("code", contract)
-                      ("action",action)
-                      ("cmd_line", fc::json::from_string(data));
+                      ("code", options->contract)
+                      ("action",options->action)
+                      ("args", fc::json::from_string(options->data));
             auto result = call(json_to_bin_func, arg);
 
-            auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
+            auto fixedPermissions = options->permissions | boost::adaptors::transformed([](const string& p) {
                vector<string> pieces;
                boost::split(pieces, p, boost::is_any_of("@"));
                FC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
@@ -456,19 +496,19 @@ int main( int argc, char** argv ) {
             });
 
             SignedTransaction trx;
-            transaction_helpers::emplace_message(trx, contract, vector<types::AccountPermission>{fixedPermissions.front(),
-                                                                                                 fixedPermissions.back()},
-                                                 action, result.get_object()["bincmd_line"].as<Bytes>());
-            trx.scope.assign(scopes.begin(), scopes.end());
+            transaction_helpers::emplace_message(trx, options->contract, vector<types::AccountPermission>{fixedPermissions.front(),
+                                                                                                          fixedPermissions.back()},
+                                                 options->action, result.get_object()["bincmd_line"].as<Bytes>());
+            trx.scope.assign(options->scopes.begin(), options->scopes.end());
             ilog("Transaction result: ${r}", ("r", push_transaction(trx)));
          });
       }
 
-      // exec transaction
+      // push transaction
       {
          string trxJson;
-         auto trxSubcommand = exec->add_subcommand("transaction", "Execute an arbitrary JSON transaction");
-         trxSubcommand->add_option("transaction", trxJson, "The JSON of the transaction to execute")->required();
+         auto trxSubcommand = push->add_subcommand("transaction", "Push an arbitrary JSON transaction");
+         trxSubcommand->add_option("transaction", trxJson, "The JSON of the transaction to push")->required();
          trxSubcommand->set_callback([&] {
             auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
             std::cout << fc::json::to_pretty_string(trx_result) << std::endl;

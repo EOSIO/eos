@@ -2009,7 +2009,7 @@ class App {
         for(const App_p &com : subcommands_)
             if(com->check_name(current))
                 return true;
-        if(parent_ != nullptr)
+        if(parent_ != nullptr && fallthrough_)
             return parent_->_valid_subcommand(current);
         else
             return false;
