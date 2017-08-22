@@ -128,27 +128,7 @@ const char* my_abi = R"=====(
         "table":"Table",
         "table_arr":"Table[]",
         "abi":"Abi",
-        "abi_arr":"Abi[]",
-        "transfer":"transfer",
-        "transfer_arr":"transfer[]",
-        "lock":"lock",
-        "lock_arr":"lock[]",
-        "unlock":"unlock",
-        "unlock_arr":"unlock[]",
-        "claim":"claim",
-        "claim_arr":"claim[]",
-        "newaccount":"newaccount",
-        "newaccount_arr":"newaccount[]",
-        "setcode":"setcode",
-        "setcode_arr":"setcode[]",
-        "setproducer":"setproducer",
-        "setproducer_arr":"setproducer[]",
-        "okproducer":"okproducer",
-        "okproducer_arr":"okproducer[]",
-        "setproxy":"setproxy",
-        "setproxy_arr":"setproxy[]",
-        "uauth":"updateauth",
-        "uauth_arr":"updateauth[]",
+        "abi_arr":"Abi[]"
       }
     }
   ],
@@ -156,6 +136,61 @@ const char* my_abi = R"=====(
   "tables": []
 }
 )=====";
+
+BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
+{ try {
+   
+   const char* currency_abi = R"=====(
+   {
+       "types": [],
+       "structs": [{
+       "name": "transfer",
+           "base": "",
+           "fields": {
+             "amount64": "UInt64",
+             "amount32": "UInt32",
+             "amount16": "UInt16",
+             "amount8" : "UInt8"
+           }
+         }
+       ],
+       "actions": [],
+       "tables": []
+   }
+   )=====";
+
+   auto abi = fc::json::from_string(currency_abi).as<Abi>();
+
+   AbiSerializer abis(abi);
+   abis.validate();
+
+   const char* test_data = R"=====(
+   {
+     "amount64" : 64,
+     "amount32" : 32,
+     "amount16" : 16,
+     "amount8"  : 8,
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   //std::cout << "var type =>" << var.get_type() << std::endl;
+   
+   auto bytes = abis.variantToBinary("transfer", var);
+
+   auto var2 = abis.binaryToVariant("transfer", bytes);
+   
+   std::string r = fc::json::to_string(var2);
+
+   //std::cout << r << std::endl;
+   
+   auto bytes2 = abis.variantToBinary("transfer", var2);
+
+   BOOST_CHECK_EQUAL( fc::to_hex(bytes), fc::to_hex(bytes2) );
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
 { try {
@@ -325,198 +360,6 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
         "actions" : [{"action":"action1","type":"type1"}],
         "tables" : [{"table":"table1","type":"type1"}]
-      }],
-      "transfer": {"from":"acc1", "to":"acc2", "amount":"10"},
-      "transfer_arr": [
-        {"from":"acc1", "to":"acc2", "amount":"10"},
-        {"from":"acc2", "to":"acc3", "amount":"20"}
-      ],
-      "lock": {"from":"acc1", "to":"acc2", "amount":"10"},
-      "lock_arr": [
-        {"from":"acc1", "to":"acc2", "amount":"10"},
-        {"from":"acc1", "to":"acc2", "amount":"10"},
-      ],
-      "unlock": {"account":"aaa", "amount":111},
-      "unlock_arr": [
-        {"account":"aaa", "amount":111},
-        {"account":"bbb", "amount":222}
-      ],
-      "claim": {"account":"acc1","amount":222},
-      "claim_arr": [
-        {"account":"acc2","amount":333},
-        {"account":"acc2","amount":444},
-      ],
-      "newaccount": {
-        "creator" : "cre1",
-        "name"    : "name1",
-        "owner"   : { 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "active":{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "recovery":{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "deposit" : "100.00 EOS"
-      },
-      "newaccount_arr": [{
-        "creator" : "cre1",
-        "name"    : "name1",
-        "owner"   : { 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "active":{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "recovery":{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "deposit" : "100.00 EOS"
-      },{
-        "creator" : "cre1",
-        "name"    : "name1",
-        "owner"   : { 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "active":{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "recovery":{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        },
-        "deposit" : "100.00 EOS"
-      }],
-      "setcode": {
-        "account" : "xxx",
-        "vmtype"  :  "44",
-        "vmversion" : "55",
-        "code"    : "556677",
-        "abi"     : {
-          "types" : [{"newTypeName":"new", "type":"old"}],
-          "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-          "actions" : [{"action":"action1","type":"type1"}],
-          "tables" : [{"table":"table1","type":"type1"}]
-        }
-      },
-      "setcode_arr": [{
-        "account" : "xxx",
-        "vmtype"  :   "44",
-        "vmversion" : "55",
-        "code"    : "556677",
-        "abi"     : {
-          "types" : [{"newTypeName":"new", "type":"old"}],
-          "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-          "actions" : [{"action":"action1","type":"type1"}],
-          "tables" : [{"table":"table1","type":"type1"}]
-        }
-      },{
-        "account" : "xxx",
-        "vmtype"  : "44",
-        "vmversion" : "55",
-        "code"    : "556677",
-        "abi"     : {
-          "types" : [{"newTypeName":"new", "type":"old"}],
-          "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-          "actions" : [{"action":"action1","type":"type1"}],
-          "tables" : [{"table":"table1","type":"type1"}]
-        }
-      }],
-      "setproducer": {
-        "name" : "prodname",
-        "key"  : "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-        "configuration" : {"maxBlockSize": "100","targetBlockSize" : "200", "maxStorageSize":"300","electedPay" : "400", "runnerUpPay" : "500", "minEosBalance" : "600", "maxTrxLifetime"  : "700"}
-      },
-      "setproducer_arr": [{
-        "name" : "prodname",
-        "key"  : "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-        "configuration" : {"maxBlockSize": "100","targetBlockSize" : "200", "maxStorageSize":"300","electedPay" : "400", "runnerUpPay" : "500", "minEosBalance" : "600", "maxTrxLifetime"  : "700"}
-      },{
-        "name" : "prodname2",
-        "key"  : "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-        "configuration" : {"maxBlockSize": "100","targetBlockSize" : "300", "maxStorageSize":"300","electedPay" : "400", "runnerUpPay" : "500", "minEosBalance" : "600", "maxTrxLifetime"  : "700"}
-      }],
-      "okproducer": {
-        "voter" : "voter1",
-        "producer" : "prodnme1",
-        "approve" : 1
-      },
-      "okproducer_arr": [{
-        "voter" : "voter1",
-        "producer" : "prodnme1",
-        "approve" : 1
-      },{
-        "voter" : "voter2",
-        "producer" : "prodnme2",
-        "approve" : 0
-      }],
-      "setproxy":{
-        "stakeholder" : "sholder",
-        "proxy" : "proxyname"
-      },
-      "setproxy_arr":[{
-        "stakeholder" : "sholder",
-        "proxy" : "proxyname"
-      },{
-        "stakeholder" : "sholder2",
-        "proxy" : "proxyname2"
-      }],
-      "uauth":{
-        "account" : "acc1",
-        "permission" : "perm1",
-        "parent" : "parent1",
-        "authority" : { 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-       }
-      },
-      "uauth_arr": [{
-        "account" : "acc1",
-        "permission" : "perm1",
-        "parent" : "parent1",
-        "authority" : { 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        }},{
-        "account" : "acc1",
-        "permission" : "perm1",
-        "parent" : "parent1",
-        "authority" : { 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-        }
-      }],
-      "deletepermission": {
-        "account" : "acc1",
-        "permission" : "perm1"
-      },
-      "deletepermission_arr": [{
-        "account" : "acc1",
-        "permission" : "perm1"
-      },{
-        "account" : "acc2",
-        "permission" : "perm2"
       }]
     }
    )=====";

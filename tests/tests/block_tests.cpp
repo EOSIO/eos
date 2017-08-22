@@ -574,4 +574,36 @@ BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)
       }
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(irrelevant_sig_soft_check, testing_fixture) {
+   try {
+      Make_Blockchain(chain);
+      chain.set_hold_transactions_for_review(true);
+      chain.set_skip_transaction_signature_checking(false);
+      chain.set_auto_sign_transactions(true);
+
+      // Make an account, but add an extra signature to the transaction
+      Make_Account(chain, alice);
+      // Check that it throws for irrelevant signatures
+      BOOST_CHECK_THROW(chain.review_transaction([](SignedTransaction& trx, auto) {
+                           trx.sign(fc::ecc::private_key::regenerate(fc::digest("an unknown key")), {});
+                           return true;
+                        }), tx_irrelevant_sig);
+      // Push it through with a skip flag
+      chain.review_transaction([](SignedTransaction& trx, uint32_t& skip) {
+         trx.sign(fc::ecc::private_key::regenerate(fc::digest("an unknown key")), {});
+         skip |= chain_controller::skip_transaction_signatures;
+         return true;
+      });
+
+      // Skip sig checks so we can produce a block with the oversigned transaction
+      chain.set_skip_transaction_signature_checking(true);
+      chain.produce_blocks();
+
+      // Now check that a second blockchain accepts the block with the oversigned transaction
+      Make_Blockchain(newchain);
+      Make_Network(net, (chain)(newchain));
+      BOOST_CHECK_NE((newchain_db.find<account_object, by_name>("alice")), nullptr);
+   } FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()

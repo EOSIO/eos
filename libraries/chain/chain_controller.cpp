@@ -302,6 +302,7 @@ signed_block chain_controller::_generate_block(
    auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_trx_id>();
 
    vector<pending_transaction> pending;
+   std::set<transaction_id_type> invalid_pending;
    pending.reserve(generated.size() + _pending_transactions.size());
    for (const auto& gt: generated) {
       pending.emplace_back(std::reference_wrapper<const GeneratedTransaction> {gt.trx});
@@ -364,9 +365,11 @@ signed_block chain_controller::_generate_block(
           catch ( const fc::exception& e )
           {
              // Do nothing, transaction will not be re-applied
-             wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+             elog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
              if (trx.contains<std::reference_wrapper<const SignedTransaction>>()) {
-                wlog( "The transaction was ${t}", ("t", trx.get<std::reference_wrapper<const SignedTransaction>>().get()) );
+                const auto& t = trx.get<std::reference_wrapper<const SignedTransaction>>().get();
+                wlog( "The transaction was ${t}", ("t", t );
+                invalid_pending.emplace(t.id());
              } else if (trx.contains<std::reference_wrapper<const GeneratedTransaction>>()) {
                 wlog( "The transaction was ${t}", ("t", trx.get<std::reference_wrapper<const GeneratedTransaction>>().get()) );
              } 
@@ -395,6 +398,18 @@ signed_block chain_controller::_generate_block(
    if( invalid_transaction_count > 0 )
    {
       wlog( "Postponed ${n} transactions errors when processing", ("n", invalid_transaction_count) );
+
+      // remove pending transactions determined to be bad during scheduling
+      if (invalid_pending.size() > 0) {
+         for (auto itr = _pending_transactions.begin(); itr != _pending_transactions.end(); ) {
+            auto& tx = *itr;
+            if (invalid_pending.find(tx.id()) != invalid_pending.end()) {
+               itr = _pending_transactions.erase(itr);
+            } else {
+               ++itr;
+            }
+         }
+      }
    }
 
    _pending_tx_session.reset();
@@ -490,7 +505,9 @@ void chain_controller::_apply_block(const signed_block& next_block)
       for (const auto& thread : cycle)
          for (const auto& trx : thread.user_input) {
             validate_referenced_accounts(trx);
-            check_transaction_authorization(trx);
+            // Check authorization, and allow irrelevant signatures.
+            // If the block producer let it slide, we'll roll with it.
+            check_transaction_authorization(trx, true);
          }
 
    /* We do not need to push the undo state for each transaction
@@ -523,7 +540,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-void chain_controller::check_transaction_authorization(const SignedTransaction& trx)const {
+void chain_controller::check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures)const {
    if ((_skip_flags & skip_transaction_signatures) && (_skip_flags & skip_authority_check)) {
       ilog("Skipping auth and sigs checks");
       return;
@@ -558,7 +575,7 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
          }
       }
 
-   if ((_skip_flags & skip_transaction_signatures) == false)
+   if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                  "Transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
 }
