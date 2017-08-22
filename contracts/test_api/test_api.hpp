@@ -74,6 +74,8 @@ struct test_math {
   static unsigned int test_multeq_i128();
   static unsigned int test_diveq_i128();
   static unsigned int test_diveq_i128_by_0();
+  static unsigned int test_double_api();
+  static unsigned int test_double_api_div_0();
 };
 
 struct test_db {
