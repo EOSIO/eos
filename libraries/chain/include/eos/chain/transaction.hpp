@@ -52,6 +52,9 @@ namespace eos { namespace chain {
     * @{
     */
 
+   struct ProcessedTransaction;
+   struct ProcessedGeneratedTransaction;
+
    
 
    /**
@@ -112,6 +115,8 @@ namespace eos { namespace chain {
       generated_transaction_id_type id;
 
       digest_type merkle_digest() const;
+
+      typedef ProcessedGeneratedTransaction Processed;
    };
 
    /**
@@ -144,9 +149,10 @@ namespace eos { namespace chain {
       void clear() { transaction_helpers::clear(*this); signatures.clear(); }
 
       digest_type merkle_digest() const;
+
+      typedef ProcessedTransaction Processed;
    };
 
-   struct ProcessedTransaction;
    struct NotifyOutput;
 
 

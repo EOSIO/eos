@@ -132,6 +132,13 @@ std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type
   return result;
 }
 
+const GeneratedTransaction& chain_controller::get_generated_transaction( const generated_transaction_id_type& id ) const {
+   auto& index = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_trx_id>();
+   auto itr = index.find(id);
+   FC_ASSERT(itr != index.end());
+   return itr->trx;
+}
+
 /**
  * Push block "may fail" in which case every partial change is unwound.  After
  * push block is successful the block is appended to the chain database on disk.
@@ -247,7 +254,7 @@ ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction
    auto temp_session = _db.start_undo_session(true);
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
-   auto pt = _apply_transaction(trx);
+   auto pt = apply_transaction(trx);
    _pending_transactions.push_back(trx);
 
    // notify_changed_objects();
@@ -297,7 +304,7 @@ signed_block chain_controller::_generate_block(
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
 
   
-   auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_trx_id>();
+   const auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_status>().equal_range(generated_transaction_object::PENDING);
 
    vector<pending_transaction> pending;
    std::set<transaction_id_type> invalid_pending;
@@ -348,11 +355,12 @@ signed_block chain_controller::_generate_block(
                 const auto& t = trx.get<std::reference_wrapper<const SignedTransaction>>().get();
                 validate_referenced_accounts(t);
                 check_transaction_authorization(t);
-                auto processed = _apply_transaction(t);
+                auto processed = apply_transaction(t);
                 block_thread.user_input.emplace_back(processed);
              } else if (trx.contains<std::reference_wrapper<const GeneratedTransaction>>()) {
-                // auto processed = _apply_transaction(trx.get<std::reference_wrapper<const GeneratedTransaction>>().get());
-                // block_thread.generated_input.emplace_back(processed);
+                const auto& t = trx.get<std::reference_wrapper<const GeneratedTransaction>>().get();
+                auto processed = apply_transaction(t);
+                block_thread.generated_input.emplace_back(processed);
              } else {
                 FC_THROW_EXCEPTION(tx_scheduling_exception, "Unknown transaction type in block_schedule");
              }
@@ -516,10 +524,12 @@ void chain_controller::_apply_block(const signed_block& next_block)
     */
    for (const auto& cycle : next_block.cycles) {
       for (const auto& thread : cycle) {
-         for(const auto& trx : thread.generated_input ) {
+         for(const auto& ptrx : thread.generated_input ) {
+            auto const trx = get_generated_transaction(ptrx.id);
+            apply_transaction(trx);
          }
          for(const auto& trx : thread.user_input ) {
-            _apply_transaction(trx);
+            apply_transaction(trx);
          }
       }
    }
@@ -578,11 +588,6 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
                  "Transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
 }
 
-ProcessedTransaction chain_controller::apply_transaction(const SignedTransaction& trx, uint32_t skip)
-{
-   return with_skip_flags( skip, [&]() { return _apply_transaction(trx); });
-}
-
 void chain_controller::validate_scope( const Transaction& trx )const {
    EOS_ASSERT(trx.scope.size() > 0, transaction_exception, "No scope specified by transaction" );
    for( uint32_t i = 1; i < trx.scope.size(); ++i )
@@ -621,6 +626,22 @@ void chain_controller::validate_uniqueness( const GeneratedTransaction& trx )con
    if( !should_check_for_duplicate_transactions() ) return;
 }
 
+void chain_controller::record_transaction(const SignedTransaction& trx) {
+   //Insert transaction into unique transactions database.
+    _db.create<transaction_object>([&](transaction_object& transaction) {
+        transaction.trx_id = trx.id(); /// TODO: consider caching ID
+        transaction.trx = trx;
+    });
+}
+
+void chain_controller::record_transaction(const GeneratedTransaction& trx) {
+   _db.modify( _db.get<generated_transaction_object,generated_transaction_object::by_trx_id>(trx.id), [&](generated_transaction_object& transaction) {
+      transaction.status = generated_transaction_object::PROCESSED;
+   });
+}     
+
+
+
 void chain_controller::validate_tapos(const Transaction& trx)const {
    if (!should_check_tapos()) return;
 
@@ -656,7 +677,7 @@ void chain_controller::validate_expiration(const Transaction& trx) const
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 
-void chain_controller::process_message(const ProcessedTransaction& trx, AccountName code,
+void chain_controller::process_message(const Transaction& trx, AccountName code,
                                        const Message& message, MessageOutput& output, apply_context* parent_context) {
    apply_context apply_ctx(*this, _db, trx, message, code);
    apply_message(apply_ctx);
@@ -678,7 +699,12 @@ void chain_controller::process_message(const ProcessedTransaction& trx, AccountN
    }
 
    for( auto& asynctrx : apply_ctx.async_transactions ) {
-     output.async_transactions.emplace_back( std::move( asynctrx ) );
+      _db.create<generated_transaction_object>([&](generated_transaction_object& transaction) {
+         transaction.trx = asynctrx;
+         transaction.status = generated_transaction_object::PENDING;
+      });
+
+      output.async_transactions.emplace_back( std::move( asynctrx ) );
    }
 
    // propagate used_authorizations up the context chain
@@ -715,39 +741,30 @@ void chain_controller::apply_message(apply_context& context)
 
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
 
-ProcessedTransaction chain_controller::_apply_transaction(const SignedTransaction& trx)
+template<typename T>
+typename T::Processed chain_controller::apply_transaction(const T& trx)
 { try {
    validate_transaction(trx);
-
-   //Insert transaction into unique transactions database.
-   if (should_check_for_duplicate_transactions())
-   {
-      _db.create<transaction_object>([&](transaction_object& transaction) {
-         transaction.trx_id = trx.id(); /// TODO: consider caching ID
-         transaction.trx = trx;
-      });
-   }
-
+   record_transaction(trx);
    return process_transaction( trx );
 
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-
 /**
  *  @pre the transaction is assumed valid and all signatures / duplicate checks have bee performed
  */
-ProcessedTransaction chain_controller::process_transaction( const SignedTransaction& trx ) 
+template<typename T>
+typename T::Processed chain_controller::process_transaction( const T& trx ) 
 { try {
-   ProcessedTransaction ptrx( trx );
+   typename T::Processed ptrx( trx );
    ptrx.output.resize( trx.messages.size() );
 
-   for( uint32_t i = 0; i < ptrx.messages.size(); ++i ) {
-      process_message(ptrx, ptrx.messages[i].code, ptrx.messages[i], ptrx.output[i] );
+   for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
+      process_message(trx, trx.messages[i].code, trx.messages[i], ptrx.output[i] );
    }
 
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
-
 
 void chain_controller::require_account(const types::AccountName& name) const {
    auto account = _db.find<account_object, by_name>(name);

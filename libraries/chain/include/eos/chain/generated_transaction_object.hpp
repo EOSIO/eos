@@ -45,14 +45,22 @@ namespace eos { namespace chain {
    {
          OBJECT_CTOR(generated_transaction_object)
 
+         enum status_type {
+            PENDING = 0,
+            PROCESSED
+         };
+
+
          id_type                       id;
          GeneratedTransaction          trx;
+         status_type                   status;
          
          time_point_sec get_expiration()const { return trx.expiration; }
          generated_transaction_id_type get_id() const { return trx.id; }
 
          struct by_trx_id;
          struct by_expiration;
+         struct by_status;
    };
 
    using generated_transaction_multi_index = chainbase::shared_multi_index_container<
@@ -60,7 +68,8 @@ namespace eos { namespace chain {
       indexed_by<
          ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
          hashed_unique<tag<generated_transaction_object::by_trx_id>, const_mem_fun<generated_transaction_object, generated_transaction_id_type, &generated_transaction_object::get_id>>,
-         ordered_non_unique<tag<generated_transaction_object::by_expiration>, const_mem_fun<generated_transaction_object, time_point_sec, &generated_transaction_object::get_expiration>>
+         ordered_non_unique<tag<generated_transaction_object::by_expiration>, const_mem_fun<generated_transaction_object, time_point_sec, &generated_transaction_object::get_expiration>>,
+         ordered_non_unique<tag<generated_transaction_object::by_status>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::status_type, status)>
       >
    >;
 

@@ -110,13 +110,15 @@ namespace eos { namespace chain {
           *  @return true if the block is in our fork DB or saved to disk as
           *  part of the official chain, otherwise return false
           */
-         bool                       is_known_block( const block_id_type& id )const;
-         bool                       is_known_transaction( const transaction_id_type& id )const;
-         block_id_type              get_block_id_for_num( uint32_t block_num )const;
-         optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
-         optional<signed_block>     fetch_block_by_number( uint32_t num )const;
-         const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
-         std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork)const;
+         bool                        is_known_block( const block_id_type& id )const;
+         bool                        is_known_transaction( const transaction_id_type& id )const;
+         block_id_type               get_block_id_for_num( uint32_t block_num )const;
+         optional<signed_block>      fetch_block_by_id( const block_id_type& id )const;
+         optional<signed_block>      fetch_block_by_number( uint32_t num )const;
+         const SignedTransaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
+         std::vector<block_id_type>  get_block_ids_on_fork(block_id_type head_of_fork)const;
+         const GeneratedTransaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
+
 
          /**
           *  This method will convert a variant to a SignedTransaction using a contract's ABI to
@@ -275,9 +277,11 @@ namespace eos { namespace chain {
 
          void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
 
-         ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
-         ProcessedTransaction _apply_transaction(const SignedTransaction& trx);
-         ProcessedTransaction process_transaction( const SignedTransaction& trx );
+         template<typename T>
+         typename T::Processed apply_transaction(const T& trx);
+         
+         template<typename T>
+         typename T::Processed process_transaction(const T& trx);
 
          void require_account(const AccountName& name) const;
 
@@ -304,6 +308,9 @@ namespace eos { namespace chain {
          void validate_referenced_accounts(const Transaction& trx)const;
          void validate_expiration(const Transaction& trx) const;
          void validate_scope(const Transaction& trx) const;
+
+         void record_transaction(const SignedTransaction& trx);
+         void record_transaction(const GeneratedTransaction& trx);         
          /// @}
 
          /**
@@ -318,7 +325,7 @@ namespace eos { namespace chain {
                                                             types::AccountName code_account,
                                                             types::FuncName type) const;
 
-         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message,
+         void process_message(const Transaction& trx, AccountName code, const Message& message,
                               MessageOutput& output, apply_context* parent_context = nullptr);
          void apply_message(apply_context& c);
 
