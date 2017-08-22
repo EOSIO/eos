@@ -22,7 +22,9 @@ public:
    wallet_plugin();
    wallet_plugin(const wallet_plugin&) = delete;
    wallet_plugin(wallet_plugin&&) = delete;
-   virtual ~wallet_plugin() = default;
+   wallet_plugin& operator=(const wallet_plugin&) = delete;
+   wallet_plugin& operator=(wallet_plugin&&) = delete;
+   virtual ~wallet_plugin() override = default;
 
    virtual void set_program_options(options_description& cli, options_description& cfg) override;
    void plugin_initialize(const variables_map& options);

@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    trx.scope = {sender,recipient};
    trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
                          types::transfer{sender, recipient, amount});
-   trx = wm.sign_transaction(trx);
+   trx = wm.sign_transaction(trx, chain_id_type{});
    const auto& pks = trx.get_signature_keys(chain_id_type{});
    BOOST_CHECK_EQUAL(3, pks.size());
    fc::optional<fc::ecc::private_key> optional_private_key = utilities::wif_to_key(key1);

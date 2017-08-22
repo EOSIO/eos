@@ -37,6 +37,10 @@ using namespace eos;
 #define INVOKE_R_R(api_handle, call_name, in_param) \
      auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>());
 
+#define INVOKE_R_R_R(api_handle, call_name, in_param0, in_param1) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>());
+
 #define INVOKE_R_V(api_handle, call_name) \
      auto result = api_handle.call_name();
 
@@ -61,7 +65,7 @@ void wallet_api_plugin::plugin_startup() {
 
    app().get_plugin<http_plugin>().add_api({
        CALL(wallet, wallet_mgr, sign_transaction,
-            INVOKE_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction)),
+            INVOKE_R_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction, chain::chain_id_type)),
        CALL(wallet, wallet_mgr, create,
             INVOKE_R_R(wallet_mgr, create, std::string)),
        CALL(wallet, wallet_mgr, open,

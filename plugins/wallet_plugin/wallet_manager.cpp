@@ -110,7 +110,8 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
    w->import_key(wif_key);
 }
 
-chain::SignedTransaction wallet_manager::sign_transaction(const chain::SignedTransaction& txn) const {
+chain::SignedTransaction
+wallet_manager::sign_transaction(const chain::SignedTransaction& txn, const chain::chain_id_type& id) const {
    chain::SignedTransaction stxn(txn);
 
    size_t num_sigs = 0;
@@ -123,7 +124,7 @@ chain::SignedTransaction wallet_manager::sign_transaction(const chain::SignedTra
             if (!key) {
                FC_THROW("Invalid private key in wallet ${w}", ("w", name));
             }
-            stxn.sign(*key, chain::chain_id_type{});
+            stxn.sign(*key, id);
             ++num_sigs;
          }
       }
