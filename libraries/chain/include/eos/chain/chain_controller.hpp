@@ -269,7 +269,7 @@ namespace eos { namespace chain {
             return f();
          }
 
-         void check_transaction_authorization(const SignedTransaction& trx)const;
+         void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
 
          ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
          ProcessedTransaction _apply_transaction(const SignedTransaction& trx);

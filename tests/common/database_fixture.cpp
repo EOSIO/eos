@@ -116,7 +116,8 @@ void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss)
       auto slot = blocks_to_miss + 1;
       auto producer = get_producer(get_scheduled_producer(slot));
       auto private_key = fixture.get_private_key(producer.signing_key);
-      generate_block(get_slot_time(slot), producer.owner, private_key, chain_controller::skip_transaction_signatures);
+      generate_block(get_slot_time(slot), producer.owner, private_key,
+                     skip_trx_sigs? chain_controller::skip_transaction_signatures : 0);
    }
 }
 
