@@ -2,6 +2,7 @@
 #include <eos/chain/transaction.hpp>
 #include <eos/wallet_plugin/wallet.hpp>
 #include <boost/filesystem/path.hpp>
+#include <chrono>
 
 namespace fc { class variant; }
 
@@ -10,7 +11,8 @@ namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.
 ///
-/// The name of the wallet is also used as part of the file name by wallet_api. See wallet_manager#create.
+/// The name of the wallet is also used as part of the file name by wallet_api. See wallet_manager::create.
+/// No const methods because timeout may cause lock_all() to be called.
 class wallet_manager {
 public:
    wallet_manager() = default;
@@ -24,15 +26,24 @@ public:
    /// @param p path to override default ./ location of wallet files.
    void set_dir(const boost::filesystem::path& p) { dir = p; }
 
+   /// Set the timeout for locking all wallets.
+   /// If set then after t seconds of inactivity then lock_all().
+   /// Activity is defined as any wallet_manager method call below.
+   void set_timeout(const std::chrono::seconds& t);
+
+   /// @see wallet_manager::set_timeout(const std::chrono::seconds& t)
+   /// @param secs The timeout in seconds.
+   void set_timeout(int64_t secs) { set_timeout(std::chrono::seconds(secs)); }
+
    /// Sign transaction with all the keys from all the unlocked wallets.
    /// @param txn the transaction to sign.
    /// @param id the chain_id to sign transaction with.
    /// @return txn signed
    /// @throws fc::exception if no unlocked wallets
-   chain::SignedTransaction sign_transaction(const chain::SignedTransaction& txn, const chain::chain_id_type& id) const;
+   chain::SignedTransaction sign_transaction(const chain::SignedTransaction& txn, const chain::chain_id_type& id);
 
    /// Create a new wallet.
-   /// A new wallet is created in file dir/{name}.wallet see wallet_manager#set_dir.
+   /// A new wallet is created in file dir/{name}.wallet see set_dir.
    /// The new wallet is unlocked after creation.
    /// @param name of the wallet and name of the file without ext .wallet.
    /// @return Plaintext password that is needed to unlock wallet. Caller is responsible for saving password otherwise
@@ -41,17 +52,17 @@ public:
    std::string create(const std::string& name);
 
    /// Open an existing wallet file dir/{name}.wallet.
-   /// Note this does not unlock the wallet, see wallet_manager#unlock.
+   /// Note this does not unlock the wallet, see wallet_manager::unlock.
    /// @param name of the wallet file (minus ext .wallet) to open.
    /// @throws fc::exception if unable to find/open the wallet file.
    void open(const std::string& name);
 
    /// @return A list of wallet names with " *" appended if the wallet is unlocked.
-   std::vector<std::string> list_wallets() const;
+   std::vector<std::string> list_wallets();
 
    /// @return A list of unlocked wallet names and their private keys.
    ///         Wallet name entry followed by private key entries.
-   std::vector<std::string> list_keys() const;
+   std::vector<std::string> list_keys();
 
    /// Locks all the unlocked wallets.
    void lock_all();
@@ -63,9 +74,9 @@ public:
    void lock(const std::string& name);
 
    /// Unlock the specified wallet.
-   /// The wallet remains unlocked until wallet_manager#lock is called or program exit.
+   /// The wallet remains unlocked until ::lock is called or program exit.
    /// @param name the name of the wallet to lock.
-   /// @param password the plaintext password returned from wallet_manager#create.
+   /// @param password the plaintext password returned from ::create.
    /// @throws fc::exception if wallet not found or invalid password.
    void unlock(const std::string& name, const std::string& password);
 
@@ -78,7 +89,15 @@ public:
    void import_key(const std::string& name, const std::string& wif_key);
 
 private:
+   /// Verify timeout has not occurred and reset timeout if not.
+   /// Calls lock_all() if timeout has passed.
+   void check_timeout();
+
+private:
+   using timepoint_t = std::chrono::time_point<std::chrono::system_clock>;
    std::map<std::string, std::unique_ptr<wallet_api>> wallets;
+   std::chrono::seconds timeout = std::chrono::seconds::max(); ///< how long to wait before calling lock_all()
+   mutable timepoint_t timeout_time = timepoint_t::max(); ///< when to call lock_all()
    boost::filesystem::path dir = ".";
 };
 

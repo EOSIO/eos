@@ -13,7 +13,23 @@ std::string gen_password() {
 
 }
 
+void wallet_manager::set_timeout(const std::chrono::seconds& t) {
+   timeout = t;
+   timeout_time = std::chrono::system_clock::now() + timeout;
+}
+
+void wallet_manager::check_timeout() {
+   if (timeout_time != timepoint_t::max()) {
+      const auto& now = std::chrono::system_clock::now();
+      if (now >= timeout_time + timeout) {
+         lock_all();
+      }
+      timeout_time = now + timeout;
+   }
+}
+
 std::string wallet_manager::create(const std::string& name) {
+   check_timeout();
    std::string password = gen_password();
 
    auto wallet_filename = dir / (name + file_ext);
@@ -33,6 +49,7 @@ std::string wallet_manager::create(const std::string& name) {
 }
 
 void wallet_manager::open(const std::string& name) {
+   check_timeout();
    wallet_data d;
    auto wallet = std::make_unique<wallet_api>(d);
    auto wallet_filename = dir / (name + file_ext);
@@ -43,7 +60,8 @@ void wallet_manager::open(const std::string& name) {
    wallets.emplace(name, std::move(wallet));
 }
 
-std::vector<std::string> wallet_manager::list_wallets() const {
+std::vector<std::string> wallet_manager::list_wallets() {
+   check_timeout();
    std::vector<std::string> result;
    for (const auto& i : wallets) {
       if (i.second->is_locked()) {
@@ -55,7 +73,8 @@ std::vector<std::string> wallet_manager::list_wallets() const {
    return result;
 }
 
-std::vector<std::string> wallet_manager::list_keys() const {
+std::vector<std::string> wallet_manager::list_keys() {
+   check_timeout();
    std::vector<std::string> result;
    for (const auto& i : wallets) {
       if (!i.second->is_locked()) {
@@ -70,6 +89,7 @@ std::vector<std::string> wallet_manager::list_keys() const {
 }
 
 void wallet_manager::lock_all() {
+   // no call to check_timeout since we are locking all anyway
    for (auto& i : wallets) {
       if (!i.second->is_locked()) {
          i.second->lock();
@@ -78,6 +98,7 @@ void wallet_manager::lock_all() {
 }
 
 void wallet_manager::lock(const std::string& name) {
+   check_timeout();
    if (wallets.count(name) == 0) {
       FC_THROW("Wallet not found: ${w}", ("w", name));
    }
@@ -89,6 +110,7 @@ void wallet_manager::lock(const std::string& name) {
 }
 
 void wallet_manager::unlock(const std::string& name, const std::string& password) {
+   check_timeout();
    if (wallets.count(name) == 0) {
       FC_THROW("Wallet not found: ${w}", ("w", name));
    }
@@ -100,6 +122,7 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
 }
 
 void wallet_manager::import_key(const std::string& name, const std::string& wif_key) {
+   check_timeout();
    if (wallets.count(name) == 0) {
       FC_THROW("Wallet not found: ${w}", ("w", name));
    }
@@ -111,7 +134,8 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
 }
 
 chain::SignedTransaction
-wallet_manager::sign_transaction(const chain::SignedTransaction& txn, const chain::chain_id_type& id) const {
+wallet_manager::sign_transaction(const chain::SignedTransaction& txn, const chain::chain_id_type& id) {
+   check_timeout();
    chain::SignedTransaction stxn(txn);
 
    size_t num_sigs = 0;

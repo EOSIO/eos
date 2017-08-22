@@ -6,6 +6,8 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
+#include <chrono>
+
 namespace eos { namespace detail {
   struct wallet_api_plugin_empty {};
 }}
@@ -63,7 +65,11 @@ void wallet_api_plugin::plugin_startup() {
    // lifetime of plugin is lifetime of application
    auto& wallet_mgr = app().get_plugin<wallet_plugin>().get_wallet_manager();
 
+   // TODO: http_plugin needs to add ability to restrict to localhost, once added, call here
+
    app().get_plugin<http_plugin>().add_api({
+       CALL(wallet, wallet_mgr, set_timeout,
+            INVOKE_V_R(wallet_mgr, set_timeout, int64_t)),
        CALL(wallet, wallet_mgr, sign_transaction,
             INVOKE_R_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction, chain::chain_id_type)),
        CALL(wallet, wallet_mgr, create,
