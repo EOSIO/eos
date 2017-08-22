@@ -1,5 +1,5 @@
 #include <boost/function.hpp>
-#include <boost/multiprecision/cpp_dec_float.hpp>
+#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eos/chain/wasm_interface.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include "Platform/Platform.h"
@@ -17,7 +17,7 @@
 namespace eos { namespace chain {
    using namespace IR;
    using namespace Runtime;
-   typedef boost::multiprecision::cpp_dec_float_50 DOUBLE;
+   typedef boost::multiprecision::cpp_bin_float_50 DOUBLE;
 
    wasm_interface::wasm_interface() {
    }
