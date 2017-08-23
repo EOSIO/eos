@@ -1,5 +1,5 @@
 # About
-web3js based script that generates a token distribution list. Here's a brief explanation on how this works
+web3js based script that generates a token distribution list.
 
 1. Compiles the ethereum address registry based on the LogRegister contract event.
 1. Compiles a list of orphaned tokens accidentally sent to the **token** and **crowdsale** contract. 
@@ -37,7 +37,7 @@ Some options in `src/config.js`
 
 ## User Config
 
-1. 	`NODE` Change according to configuration (default: http://localhost:8345)
+1. `NODE` Change according to configuration (default: http://localhost:8345)
 1. `CONSOLE_LOGGING` Will output logs snapshot into developer console, turn off if you want better performance (default:true)
 2. `VERBOSE_REGISTRY_LOGS` Outputs every single registrant into developer logs, very slow but works in Chrome. Will break firefox. (default:false)
 
