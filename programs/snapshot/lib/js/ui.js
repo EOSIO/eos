@@ -18,10 +18,10 @@
         title = `EOS | Snapshot ${debug.rates.percent_complete}% | ${debug.registry.accepted+debug.registry.rejected}/${debug.registry.total}`
       break
       case 'registry':
-        title = `EOS | Building Registry | ${output.registrants.length}`
+        title = `EOS | Building Registry | ${registrants.length}`
       break
       case 'reclaimer':
-        title = `EOS | Reclaimable TXs | ${output.reclaimable.length}`
+        title = `EOS | Reclaimable TXs | ${ debug.reclaimable.total }`
       break
       case 'complete':
         title = `EOS | Snapshot Complete`
@@ -68,21 +68,21 @@
     }
 
     // Dist
-    else if( output.snapshot.length ) {
+    else if( get_registrants_accepted().length ) {
       current_step = "distribute"
       display_text(`Snapshot <span>${debug.rates.percent_complete}%</span> Complete`)
     }
 
     // Reclaimables
-    else if( Object.keys(output.reclaimable).length ){
+    else if( debug.reclaimable.total ){
       current_step = "reclaimer"
-      display_text(`Found <span>${Object.keys(output.reclaimable).length}</span> Reclaimable TXs`)
+      display_text(`Found <span>${ debug.reclaimable.total }</span> Reclaimable TXs`)
     }
 
     // Registry
-    else if ( output.registrants.length ){
+    else if ( registrants.length ){
       current_step = "registry"
-      display_text(`Found <span>${output.registrants.length}</span> Registrants`)
+      display_text(`Found <span>${ registrants.length}</span> Registrants`)
       
     }
 
