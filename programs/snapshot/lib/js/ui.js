@@ -76,7 +76,7 @@
     // Reclaimables
     else if( Object.keys(output.reclaimable).length ){
       current_step = "reclaimer"
-      display_text(`Found <span>${debug.rates.percent_complete}%</span> Reclaimable TXs`)
+      display_text(`Found <span>${Object.keys(output.reclaimable).length}</span> Reclaimable TXs`)
     }
 
     // Registry
