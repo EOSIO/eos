@@ -10,12 +10,12 @@ const VERBOSE_REGISTRY_LOGS     = true
 const UI_SHOW_STATUS_EVERY      = 150
 
 //Needs to be set so all snapshots generated are the same, testnet and mainnet snapshots will be different.
-// const SS_FIRST_BLOCK            = 3904416    //Block EOS Contract was deployed at
-// const SS_LAST_BLOCK             = 4167293       //Last block to honor ethereum transactions
+const SS_FIRST_BLOCK            = 3904416    //Block EOS Contract was deployed at
+const SS_LAST_BLOCK             = 4167293       //Last block to honor ethereum transactions
 
 // //For Testing
-const SS_FIRST_BLOCK            = 4146970    //Block EOS Contract was deployed at
-const SS_LAST_BLOCK             = 4148293       //Last block to honor ethereum transactions
+// const SS_FIRST_BLOCK            = 4146970    //Block EOS Contract was deployed at
+// const SS_LAST_BLOCK             = 4148293       //Last block to honor ethereum transactions
 
 //For Web3 Init
 const CROWDSALE_ADDRESS         = "0xd0a6E6C54DbC68Db5db3A091B171A77407Ff7ccf"  //for Mapping
