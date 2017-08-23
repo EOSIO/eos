@@ -6,7 +6,7 @@ const SNAPSHOT_ENV              = "testnet"
 
 //User Options
 const CONSOLE_LOGGING           = true
-const VERBOSE_REGISTRY_LOGS     = true
+const VERBOSE_REGISTRY_LOGS     = false
 const UI_SHOW_STATUS_EVERY      = 150
 
 //Needs to be set so all snapshots generated are the same, testnet and mainnet snapshots will be different.
