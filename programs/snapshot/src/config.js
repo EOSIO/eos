@@ -5,9 +5,9 @@ const NODE                      = "http://127.0.0.1:8545"                       
 const SNAPSHOT_ENV              = "testnet"
 
 //User Options
-const CONSOLE_LOGGING           = true
-const VERBOSE_REGISTRY_LOGS     = false
-const UI_SHOW_STATUS_EVERY      = 150
+let   CONSOLE_LOGGING           = true
+let   VERBOSE_REGISTRY_LOGS     = false
+let   UI_SHOW_STATUS_EVERY      = 150
 
 //Needs to be set so all snapshots generated are the same, testnet and mainnet snapshots will be different.
 const SS_FIRST_BLOCK            = 3904416    //Block EOS Contract was deployed at
