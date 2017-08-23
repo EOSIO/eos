@@ -65,11 +65,13 @@ const distribute_tokens = ( finish ) => {
 
     if( !web3.isConnected() ) return disconnected( reconnect = iterate )
 
-    try {
+    // try {
 
       // console.time('Distribute')
       
       let registrant = registrants[index]
+
+      registrant.index = index
       
       registrant.eos = maybe_fix_key(  contract.$crowdsale.keys( registrant.eth ) ) 
       
@@ -93,7 +95,7 @@ const distribute_tokens = ( finish ) => {
         .sum()
       
       // Reject or Accept
-      if( !maybe_reject(registrant) ) accept_registrant( registrant )
+      registrant.test()
 
       status_log()
 
@@ -106,20 +108,20 @@ const distribute_tokens = ( finish ) => {
         ) 
       }, 1 )
 
-    }
+    // }
 
-    // This error is web3 related, try again and resume if successful
-    catch(e) {
-      log("error", e);   
-      if( !web3.isConnected() ) {
-        log("message",`Attempting reconnect once per second, will resume from registrant ${index}`)
-        disconnected( reconnect = iterate )
-      }
-    }
+    // // This error is web3 related, try again and resume if successful
+    // catch(e) {
+    //   log("error", e);   
+    //   if( !web3.isConnected() ) {
+    //     log("message",`Attempting reconnect once per second, will resume from registrant ${index}`)
+    //     disconnected( reconnect = iterate )
+    //   }
+    // }
 
-    finally {
-      // console.timeEnd('Distribute')
-    }
+    // finally {
+    //   // console.timeEnd('Distribute')
+    // }
 
   }
 
@@ -183,83 +185,21 @@ const distribute_tokens = ( finish ) => {
   // Some users mistakenly sent their tokens to the contract or token address. Here we recover them if it is the case. 
   const maybe_reclaim_tokens = ( registrant ) => {
     let reclaimed_balance = web3.toBigNumber(0)
-    let reclaimable_transactions = reclaimable[registrant.eth];
-    if( typeof reclaimable_transactions !== "undefined" && reclaimable_transactions.length) {
-      for( let _tx in reclaimable_transactions ) {
-        let tx = reclaimable_transactions[_tx]
+    // let reclaimable_transactions = reclaimable[registrant.eth];
+    let reclaimable_transactions = get_registrant_reclaimable( registrant.eth )
+    if(reclaimable_transactions.length) {
+      for( let tx of reclaimable_transactions ) {
+        // let tx = reclaimable_transactions[_tx]
         reclaimed_balance = tx.amount.plus( reclaimed_balance )
         tx.claim( registrant.eth )
+        tx.eos = registrant.eos
         log("success", `reclaimed ${registrant.eth} => ${registrant.eos} => ${tx.amount.div(WAD).toFormat(4)} EOS <<< tx: https://etherscan.io/tx/${tx.hash}`)
       }
       if( reclaimable_transactions.length > 1 ) 
         log("info", `Reclaimed ${ reclaimed_balance.div(WAD).toFormat(4) } EOS from ${reclaimable_transactions.length} tx for ${registrant.eth} => ${registrant.eos}`)
-      delete reclaimable[registrant.eth]
+      // delete reclaimable[registrant.eth]
     }
     return reclaimed_balance
-  }
-
-  // Reject bad keys and zero balances, elseif was fastest? :/
-  const maybe_reject = (registrant) => {
-
-    let { eos:eos_key, balance } = registrant
-    
-    //Reject 0 balances
-    if( formatEOS( balance.total ) === "0.0000" ) {
-      return reject_registrant('balance_is_zero', registrant)
-    }
-    
-    //Accept BTS and STM keys, assume advanced users and correct format
-    if(eos_key.startsWith('BTS') || eos_key.startsWith('STM')) {
-      return false //bts and steem keys are fine. 
-    }
-    
-    //Everything else
-    if(!eos_key.startsWith('EOS')) {
-      
-      //It's an empty key
-      if(eos_key.length == 0) {
-        return reject_registrant('key_is_empty', registrant)
-      }
-      
-      //It may be an EOS private key
-      else if(eos_key.startsWith('5')) { 
-        return reject_registrant('key_is_private', registrant)
-      }
-      
-      // It almost looks like an EOS key // #TODO ACTUALLY VALIDATE KEY?
-      else if(eos_key.startsWith('EOS') && eos_key.length != 53) {
-        return reject_registrant('key_is_malformed', registrant)
-      }
-      
-      // ETH address
-      else if(eos_key.startsWith('0x')) {
-        return reject_registrant('key_is_eth', registrant)
-      }
-      
-      //Reject everything else with label malformed
-      else {
-        return reject_registrant('key_is_junk', registrant)
-      }
-    }
-  }
-
-  // Push to distribution array
-  const accept_registrant = ( registrant ) => {
-    registrant.accept();
-    log("message", `[#${index}] accepted ${registrant.eth} => ${registrant.eos} => ${ registrant.balance.total.toFormat(4) }`)
-  }
-
-  // Push to rejection array, if registrant has reclaimed balance, removed from reclaimed and add back to reclaimable
-  const reject_registrant = (error, registrant) => {
-    const { eth, eos, balance } = registrant
-    
-    registrant.reject( error );
-
-    if(balance.exists('reclaimed')) 
-      log("reject", `[#${index}] rejected ${eth} => ${eos} => ${balance.total.toFormat(4)} => ${error} ( ${balance.reclaimed.toFormat(4)} reclaimed EOS tokens moved back to Reclaimable )`)
-    else 
-      log("reject", `[#${index}] rejected ${eth} => ${eos} => ${balance.total.toFormat(4)} => ${error}`)
-    return true
   }
 
   const status_log = () => {
@@ -304,9 +244,11 @@ const scan_registry = ( on_complete ) => {
         //Create new registrant and add to registrants array (global)
         registrants.push( registrant = new Registrant(log_register.args.user) ) 
 
-        let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', 0 )
+        let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', web3.toBigNumber(0) )
 
-        if(VERBOSE_REGISTRY_LOGS) registry_logs.push(`${registrant.eth} => ${log_register.args.key} (pending) => https://etherscan.io/tx/${tx.hash}`)
+        transactions.push(tx)
+
+        registry_logs.push(`${registrant.eth} => ${log_register.args.key} (pending) => https://etherscan.io/tx/${tx.hash}`)
 
         maybe_log()
 
@@ -332,7 +274,10 @@ const scan_registry = ( on_complete ) => {
     let group_msg = `${group_index}. ... ${registry_logs.length} Found, Total: ${registrants.length}`;
     log("groupCollapsed", group_msg),
     output.logs.push( group_msg ),
-    registry_logs.forEach( _log => log("message", _log ) ), 
+    registry_logs.forEach( _log => { 
+      if(VERBOSE_REGISTRY_LOGS) log("message", _log ) 
+      output.logs.push( _log )
+    }), 
     registry_logs = [],
     console.groupEnd(),
     group_index++,
@@ -357,11 +302,13 @@ const find_reclaimables = ( on_complete ) => {
 
     if(reclaimable_tx.blockNumber <= SS_LAST_BLOCK && reclaimable_tx.args.value.gt( web3.toBigNumber(0) )) {
       
-      if(typeof reclaimable[reclaimable_tx.args.from] === "undefined") reclaimable[reclaimable_tx.args.from] = []
+      // if(typeof reclaimable[reclaimable_tx.args.from] === "undefined") reclaimable[reclaimable_tx.args.from] = []
     
       let tx = new Transaction( reclaimable_tx.args.from, reclaimable_tx.transactionHash, 'transfer', reclaimable_tx.args.value )
 
-      reclaimable[tx.eth].push( tx ) 
+      transactions.push(tx)
+
+      // reclaimable[tx.eth].push( tx ) 
     
       log("error",`${tx.eth} => ${web3.toBigNumber(tx.amount).div(WAD)} https://etherscan.io/tx/${tx.hash}`)
     
@@ -389,11 +336,12 @@ const verify = ( callback ) => {
 }
 
 const exported = ( callback ) => {
+  output.reclaimable = get_transactions_reclaimable().map( tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
+  output.reclaimed   = get_transactions_reclaimed().map( tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
   output.snapshot    = get_registrants_accepted().map( registrant => { return { eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total) } } )
   output.rejects     = get_registrants_rejected().map( registrant => { return { error: registrant.error, eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total)}  } )
-  output.reclaimed   = get_transactions_reclaimed().map( tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
-  for( let registrant in reclaimable )  {
-    reclaimable[registrant].map( tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } ).forEach( tx => { output.reclaimable.push( tx ) })
-  }  
+  // for( let registrant in reclaimable )  {
+  //   reclaimable[registrant].map( tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } ).forEach( tx => { output.reclaimable.push( tx ) })
+  // }  
   callback(null, true)
 } 
