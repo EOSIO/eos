@@ -1,4 +1,4 @@
-//For debugging
+//For debugging and repurposed for gui
 const calculator = function(){
 
   let debug = {}
