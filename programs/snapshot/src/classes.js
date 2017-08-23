@@ -1,17 +1,45 @@
 class Registrant {
 
-  
   constructor( eth, eos = "", balance = 0 ){
     // let {unclaimed, wallet, recovered} = balances
     this.eth      = eth
     this.eos      = eos
     this.balance  = typeof balance == 'object' ? balance : new Balance()
+    this.accepted = null
+    this.error    = false
   }
 
-  set( key, value ){
-    this[ key ] = value;
+  accept ( callback ) {
+    this.accepted = true
   }
 
+  reject ( error ) {
+    if(!error) return;
+    this.error    = error
+    this.accepted = false
+  }
+
+  is_accepted () {
+    return this.accepted === true 
+  }
+
+}
+
+class Transaction {
+
+  constructor( eth, tx, type = "transfer", amount ) {
+    this.eth     = eth
+    this.hash    = tx
+    this.amount  = amount
+    this.claimed = false
+    this.type    = type
+  } 
+
+  claim( eth ) {
+    return ( eth == this.eth ) 
+      ? this.claimed = true
+      : log("error", `${eth} should't be claiming ${this.eth}'s transaction`)
+  }
 
 }
 
@@ -36,7 +64,7 @@ class Balance {
     this.total     = web3.toBigNumber(0)
   }
 
-  update( type, balance ){
+  set( type, balance ){
     this[ type ] = balance
     return this //chaining
   }
