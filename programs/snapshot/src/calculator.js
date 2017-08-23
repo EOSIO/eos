@@ -53,16 +53,16 @@ const calculator = function(){
 
   debug.update = function(){
       //registrants
-      this.registry.total                   = output.registrants.length
-      this.registry.accepted                = output.snapshot.length
-      this.registry.rejected                = output.rejects.length
+      this.registry.total                   = registrants.length
+      this.registry.accepted                = get_registrants_accepted().length
+      this.registry.rejected                = get_registrants_rejected().length
 
       //Rejection Token Value
       this.rejected.$key_is_empty           = this.sum_rejection( "key_is_empty" )
       this.rejected.$key_is_eth             = this.sum_rejection( "key_is_eth" ) 
       this.rejected.$key_is_malformed       = this.sum_rejection( "key_is_malformed" )
       this.rejected.$key_is_junk            = this.sum_rejection( "key_is_junk" )
-      this.rejected.$total                  = output.rejects.filter( reject => { return reject.rejected != "balance_is_zero" } ).map( reject => { return reject.balance.total }).reduce( ( acc, balance )  => balance.plus(acc), web3.toBigNumber(0)  )
+      this.rejected.$total                  = get_registrants_rejected().filter( reject => { return reject.rejected != "balance_is_zero" } ).map( reject => { return reject.balance.total }).reduce( ( acc, balance )  => balance.plus(acc), web3.toBigNumber(0)  )
       
       //Rejection Occurences
       this.rejected.balance_is_zero         = this.sum_rejection_occurences( "balance_is_zero" )
@@ -82,14 +82,13 @@ const calculator = function(){
       this.distribution.$balance_reclaimed  = this.sum_balance('reclaimed')
 
       //Distribution
-      this.distribution.$balances_missing   = this.distribution.$snapshot_supply.minus(this.distribution.$balances_found)
-      this.distribution.$balance_reclaimable     = web3.toBigNumber( 0 )
-      for( let registrant in output.reclaimable )  {
-        this.distribution.$balance_reclaimable   = this.distribution.$balance_reclaimable.plus( web3.toBigNumber( output.reclaimable[registrant].reduce( (sum, reclaimable) => { return reclaimable.amount.div(WAD).plus( sum ) }, web3.toBigNumber( 0 ) ) ) )
+      this.distribution.$balances_missing       = this.distribution.$snapshot_supply.minus(this.distribution.$balances_found)
+      this.distribution.$balance_reclaimable    = web3.toBigNumber( 0 )
+      this.reclaimable.total                    = 0
+      for( let registrant in reclaimable )  {
+        this.distribution.$balance_reclaimable  = this.distribution.$balance_reclaimable.plus( web3.toBigNumber( reclaimable[registrant].reduce( (sum, reclaim) => { return reclaim.amount.div(WAD).plus( sum ) }, web3.toBigNumber( 0 ) ) ) )
+        this.reclaimable.total += reclaimable[registrant].length
       }
-
-      //Orphans
-      this.reclaimable.total = output.reclaimable.length
 
       //Rates
       this.rates.percent_complete           = to_percent( ( this.registry.accepted + this.registry.rejected ) / this.registry.total )
@@ -118,19 +117,19 @@ const calculator = function(){
   debug.refresh = function(){ return this.update(), this }
 
   debug.sum_balance = function( balance ) {
-    return output.snapshot.map( registrant => { return registrant.balance[balance] } ).filter( balance => { return web3.toBigNumber(balance).gt(0) } ).reduce( (sum, balance) => { return balance.plus(sum) }, web3.toBigNumber(0))
+    return get_registrants_accepted().map( registrant => { return registrant.balance[balance] } ).filter( balance => { return web3.toBigNumber(balance).gt(0) } ).reduce( (sum, balance) => { return balance.plus(sum) }, web3.toBigNumber(0))
   } 
 
   debug.sum_balance_all = function() {
-    return output.snapshot.map( registrant => { return registrant.balance.total } ).filter( balance => { return web3.toBigNumber(balance).gt(0) } ).reduce( (sum, balance) => { return web3.toBigNumber(balance).plus(sum) }, web3.toBigNumber(0))    
+    return get_registrants_accepted().filter( registrant => registrant.accepted ).map( registrant => { return registrant.balance.total } ).filter( balance => { return web3.toBigNumber(balance).gt(0) } ).reduce( (sum, balance) => { return web3.toBigNumber(balance).plus(sum) }, web3.toBigNumber(0))    
   } 
 
   debug.sum_rejection = function( type ) {
-    return output.rejects.filter( reject => { return reject.error == type } ).map( reject => { return reject.balance.total }).reduce( ( acc, balance)  => balance.plus(acc), web3.toBigNumber(0)  )
+    return get_registrants_rejected().filter( reject => { return reject.error == type } ).map( reject => { return reject.balance.total }).reduce( ( acc, balance)  => balance.plus(acc), web3.toBigNumber(0)  )
   }
 
   debug.sum_rejection_occurences = function( type ) {
-    return output.rejects.filter( reject => { return reject.error == type } ).length
+    return get_registrants_rejected().filter( reject => { return reject.error == type } ).length
   }
 
   debug.output = function(){
@@ -141,10 +140,10 @@ const calculator = function(){
       _registry
         .setAlign(0, AsciiTable.RIGHT)
          .setAlign(1, AsciiTable.RIGHT)
-        .addRow('% Complete', `${this.rates.percent_complete}%`)
+        .addRow('% Complete', this.rates.percent_complete+'%')
         .addRow('Accepted',   this.registry.accepted )
-        .addRow('Rejected',      this.registry.rejected )
-        .addRow('Total',        this.registry.total )
+        .addRow('Rejected',   this.registry.rejected )
+        .addRow('Total',      this.registry.total )
         .setJustify()
 
     log("info", _registry.toString())
@@ -171,13 +170,13 @@ const calculator = function(){
       _rates
         .setAlign(0, AsciiTable.RIGHT)
          .setAlign(1, AsciiTable.RIGHT)
-        .addRow('% Registrants Accepted', `${this.rates.registrant_acceptance}%`)
-        .addRow('% of Tokens Found', `${this.rates.balances_found}%`)
-        .addRow('% of Snapshot Supply Reclaimable', `${this.rates.balance_reclaimable}%`)
-        .addRow('% of Found in Wallets', `${this.rates.balance_wallets}%`)
-        .addRow('% of Found is Unclaimed', `${this.rates.balance_unclaimed}%`)
-        .addRow('% of Found is Reclaimed', `${this.rates.balance_reclaimed}%`)
-        .addRow('% of Reclaimed Success', `${this.rates.balance_reclaimed_success}%`)
+        .addRow('% Registrants Accepted',           this.rates.registrant_acceptance+'%')
+        .addRow('% of Tokens Found',                this.rates.balances_found+'%')
+        .addRow('% of Snapshot Supply Reclaimable', this.rates.balance_reclaimable+'%')
+        .addRow('% of Found in Wallets',            this.rates.balance_wallets+'%')
+        .addRow('% of Found is Unclaimed',          this.rates.balance_unclaimed+'%')
+        .addRow('% of Found is Reclaimed',          this.rates.balance_reclaimed+'%')
+        .addRow('% of Reclaimed Success',           this.rates.balance_reclaimed_success+'%')
       
    log("info", _rates.toString())
 
@@ -191,11 +190,11 @@ const calculator = function(){
 
     log("info", _sanity.toString())
 
-    if(output.reclaimed.length) {
+    if(get_transactions_reclaimed().length) {
       let _reclaimed = new AsciiTable('Recovered')
       _reclaimed
           .setHeading(`ETH Address`, `EOS Key`, `Amount`, `TX`)
-      for( let tx of output.reclaimed ) {
+      for( let tx of get_transactions_reclaimed() ) {
         _reclaimed.addRow(tx.eth, tx.eos, tx.amount.div(WAD).toFormat(4), `http://etherscan.io/tx/${tx.tx}`)
       }
       log("info", _reclaimed.toString())
