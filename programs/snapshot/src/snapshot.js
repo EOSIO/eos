@@ -65,7 +65,7 @@ const distribute_tokens = ( finish ) => {
 
     if( !web3.isConnected() ) return disconnected( reconnect = iterate )
 
-    // try {
+    try {
 
       // console.time('Distribute')
       
@@ -108,20 +108,20 @@ const distribute_tokens = ( finish ) => {
         ) 
       }, 1 )
 
-    // }
+    }
 
-    // // This error is web3 related, try again and resume if successful
-    // catch(e) {
-    //   log("error", e);   
-    //   if( !web3.isConnected() ) {
-    //     log("message",`Attempting reconnect once per second, will resume from registrant ${index}`)
-    //     disconnected( reconnect = iterate )
-    //   }
-    // }
+    // This error is web3 related, try again and resume if successful
+    catch(e) {
+      log("error", e);   
+      if( !web3.isConnected() ) {
+        log("message",`Attempting reconnect once per second, will resume from registrant ${index}`)
+        disconnected( reconnect = iterate )
+      }
+    }
 
-    // finally {
-    //   // console.timeEnd('Distribute')
-    // }
+    finally {
+      // console.timeEnd('Distribute')
+    }
 
   }
 
@@ -301,14 +301,10 @@ const find_reclaimables = ( on_complete ) => {
   const on_result = ( reclaimable_tx ) => {  
 
     if(reclaimable_tx.blockNumber <= SS_LAST_BLOCK && reclaimable_tx.args.value.gt( web3.toBigNumber(0) )) {
-      
-      // if(typeof reclaimable[reclaimable_tx.args.from] === "undefined") reclaimable[reclaimable_tx.args.from] = []
     
       let tx = new Transaction( reclaimable_tx.args.from, reclaimable_tx.transactionHash, 'transfer', reclaimable_tx.args.value )
 
       transactions.push(tx)
-
-      // reclaimable[tx.eth].push( tx ) 
     
       log("error",`${tx.eth} => ${web3.toBigNumber(tx.amount).div(WAD)} https://etherscan.io/tx/${tx.hash}`)
     
@@ -340,8 +336,5 @@ const exported = ( callback ) => {
   output.reclaimed   = get_transactions_reclaimed().map( tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
   output.snapshot    = get_registrants_accepted().map( registrant => { return { eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total) } } )
   output.rejects     = get_registrants_rejected().map( registrant => { return { error: registrant.error, eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total)}  } )
-  // for( let registrant in reclaimable )  {
-  //   reclaimable[registrant].map( tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } ).forEach( tx => { output.reclaimable.push( tx ) })
-  // }  
   callback(null, true)
 } 
