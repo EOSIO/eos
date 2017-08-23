@@ -73,7 +73,7 @@ setInterval( () => {
   }
 
   // Reclaimables
-  else if( output.reclaimable.length ){
+  else if( Object.keys(output.reclaimable).length ){
     current_step = "reclaimer"
     display_text(`Found <span>${debug.rates.percent_complete}%</span> Reclaimable TXs`)
   }

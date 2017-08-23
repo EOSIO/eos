@@ -306,9 +306,7 @@ const scan_registry = ( on_complete ) => {
         //Create new registrant and add to output.registrants array (global)
         output.registrants.push( new Registrant(log_register.args.user) ) 
 
-        display_text(`Building Registry - ${output.registrants.length} Registrants Found - Current Block #${log_register.blockNumber} - Stopping at Block #${SS_LAST_BLOCK}`)
-
-        if(VERBOSE_REGISTRY_LOGS) registry_logs.push(`${log_register.args.user} => ${log_register.args.key} => https://etherscan.io/tx/${log_register.transactionHash}`), 
+        if(VERBOSE_REGISTRY_LOGS) registry_logs.push(`${log_register.args.user} => ${log_register.args.key} => https://etherscan.io/tx/${log_register.transactionHash}`)
 
         maybe_log()
 
@@ -364,8 +362,6 @@ const find_reclaimables = ( on_complete ) => {
       if(typeof output.reclaimable[reclaimable_tx.args.from] === "undefined") output.reclaimable[reclaimable_tx.args.from] = []
     
       output.reclaimable[reclaimable_tx.args.from].push( { eth: reclaimable_tx.args.from, tx: reclaimable_tx.transactionHash, amount: reclaimable_tx.args.value } )
-    
-      // display_text(`Searching for Reoutput.reclaimable Tokens - ${Object.keys(output.reclaimable).length} Transactions - Current Block #${output.blockNumber} - Stopping at Block #${SS_LAST_BLOCK}`)
     
       log("error",`${reclaimable_tx.args.from} => ${web3.toBigNumber(reclaimable_tx.args.value).div(WAD)} https://etherscan.io/tx/${reclaimable_tx.transactionHash}`)
     
