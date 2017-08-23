@@ -38,8 +38,7 @@ const init = () => {
       scan_registry, 
       find_reclaimables, 
       distribute_tokens, 
-      verify, 
-      download 
+      verify
     ], 
     ( error, results ) => {
       if(!error) {
@@ -386,8 +385,4 @@ const verify = ( callback ) => {
   let valid = true;
   if( ![...new Set( output.snapshot.map(registrant => registrant.eth) )].length == Object.keys(output.snapshot).length ) log("error",'Duplicate Entry Found'), valid = false
   return (valid) ? callback(null, valid) && true : callback(true) && false
-}
-
-const download = ( finish ) => {
-  setTimeout( () => { download_buttons(), finish() }, 1000 );
 }
