@@ -14,7 +14,7 @@ This project is written primarily in C++14 and uses CMake as its build system. A
 Eos has the following external dependencies, which must be installed on your system:
  - Boost 1.64
  - OpenSSL
- - LLVM 4.0 (Ubunut users must install llvm-4.0 packages from https://apt.llvm.org/)
+ - LLVM 4.0 (Ubuntu users must install llvm-4.0 packages from https://apt.llvm.org/)
  - [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 
 ```
