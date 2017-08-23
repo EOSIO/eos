@@ -21,12 +21,36 @@ const iota       = n                => repeat("x", n).split("").map((_, i) => i)
 const repeat     = (x, n)           => new Array(n + 1).join("x")
 const getTime    = ()               => new Date().getTime() / 1000
 
-const disconnected = ( callback = () => {} ) => {
-  setTimeout( () => { is_listening() ? callback() : disconnected( callback ) }, 3000);
+const get_registrants_accepted = () => {
+  return registrants.filter( registrant => registrant.accepted )
+}
+
+const get_registrants_rejected = () => {
+  return registrants.filter( registrant => registrant.accepted === false )
+}
+
+const get_registrants_unprocessed = () => {
+  return registrants.filter( registrant => registrant.accepted === null )
+}
+
+const get_transactions_claimable = () => {
+  return transactions.filter( transaction => transaction.type == 'transfer' && transaction.amount.gt(0) && !transaction.claimed )
+}
+
+const get_transactions_reclaimed = () => {
+  return transactions.filter( transaction => transaction.claimed )
+}
+
+const get_registrant_transfer = ( registrant ) => {
+  return transactions.filter( transaction => transaction.type == 'transfer' && transaction.amount.gt(0) && transaction.eth == registrant.eth )
 }
 
 const node_syncing = ( callback = () => {} ) => {
   setTimeout( () => { is_synced() ? callback() : node_syncing( callback ) }, 10000);
+}
+
+const disconnected = ( callback = () => {} ) => {
+  setTimeout( () => { is_listening() ? callback() : disconnected( callback ) }, 3000);
 }
 
 function stack_trace() {
