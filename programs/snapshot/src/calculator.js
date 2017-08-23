@@ -83,9 +83,8 @@ const calculator = function(){
 
       //Distribution
       this.distribution.$balances_missing       = this.distribution.$snapshot_supply.minus(this.distribution.$balances_found)
-      this.distribution.$balance_reclaimable    = web3.toBigNumber( 0 )
       this.reclaimable.total                    = 0
-      this.distribution.$balance_reclaimable    = get_transactions_reclaimable().reduce( (sum, tx) => { return tx.amount.plus( sum ) }, web3.toBigNumber(0) )
+      this.distribution.$balance_reclaimable    = get_transactions_reclaimable().reduce( (sum, tx) => { return tx.amount.div(WAD).plus( sum ) }, web3.toBigNumber(0) )
       this.reclaimable.total                    = get_transactions_reclaimable().length
       // for( let registrant in reclaimable )  {
       //   this.distribution.$balance_reclaimable  = this.distribution.$balance_reclaimable.plus( web3.toBigNumber( reclaimable[registrant].reduce( (sum, reclaim) => { return reclaim.amount.div(WAD).plus( sum ) }, web3.toBigNumber( 0 ) ) ) )
