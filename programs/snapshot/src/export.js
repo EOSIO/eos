@@ -89,9 +89,7 @@ const download_snapshot = () => {
 
   let filename = `eos-snapshot_${SNAPSHOT_ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`; 
 
-  let snapshot = output.snapshot.map( registrant => { return { eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total) } } )
-
-  export_csv(headers, snapshot, filename)
+  export_csv(headers, output.snapshot, filename)
 
 }
 
@@ -107,9 +105,7 @@ const download_rejects = () => {
 
   let filename = `eos-rejections_${SNAPSHOT_ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
 
-  let rejects = output.rejects.map( registrant => { return { error: registrant.error, eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total)}  } )
-
-  export_csv(headers, rejects, filename)
+  export_csv(headers, output.rejects, filename)
 
 }
 
@@ -121,16 +117,9 @@ const download_reclaimable = () => {
       ,balance:      "amount"
   };
 
-  let reclaimable_array = [];
-  for( let registrant in output.reclaimable )  {
-    output.reclaimable[registrant].forEach( tx => { reclaimable_array.push(tx) })
-  }
+  let filename = `eos-reclaimable_tx_${SNAPSHOT_ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
 
-  let filename = `eos-reclaimable_tx_${ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
-
-  let reclaimables = reclaimable_array.map( tx => { return { eth: tx.eth, tx: tx.tx, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
-
-  export_csv(headers, reclaimables,  filename); 
+  export_csv(headers, output.reclaimable,  filename); 
 
 }
 
@@ -143,9 +132,9 @@ const download_reclaimed = () => {
       ,amount:      "amount"
   };
 
-  let filename = `eos-successfully_reclaimed_tx_${ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
+  let filename = `eos-successfully_reclaimed_tx_${SNAPSHOT_ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
 
-  let reclaimed = output.reclaimed.map( tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.tx, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
+  let reclaimed = output.reclaimed.map( tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
 
   export_csv(headers, reclaimed, filename); 
  
@@ -155,7 +144,7 @@ const download_reclaimed = () => {
 
 const download_logs = () => {
 
-  let filename = `eos-logs_${ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
+  let filename = `eos-logs_${SNAPSHOT_ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
 
   export_log(output.logs, filename)
 
