@@ -1,25 +1,27 @@
-const Web3 = require('web3')
-let   web3 = new Web3( new Web3.providers.HttpProvider( NODE ) )
+// For processing
+let   registrants         = []
+      transactions        = []
+      reclaimable         = {} //index
 
-let   output                  = {}
+// For Export
+let   output              = {}
+      output.distribution = []
+      output.reclaimable  = []
+      output.reclaimed    = []
+      output.rejects      = []
+      output.logs         = []
 
-      output.registrants      = []
-      output.reclaimed        = []
-      output.rejects          = []
-      output.snapshot         = []
-      output.logs             = []
+// Ethereum
+const Web3                = require('web3')
+let   web3                = new Web3( new Web3.providers.HttpProvider( NODE ) )
 
-      output.reclaimable      = {} //index
-      
-
-let   contract = {}
+let   contract            = {}
       contract.$crowdsale = web3.eth.contract(CROWDSALE_ABI).at(CROWDSALE_ADDRESS)
       contract.$token     = web3.eth.contract(TOKEN_ABI).at(TOKEN_ADDRESS)
       contract.$utilities = web3.eth.contract(UTILITY_ABI).at(UTILITY_ADDRESS)
 
-let   step  = ""
-let   now   = getTime();
-let   debug = new calculator();
+// Debugging
+let   debug               = new calculator();
 
 window.onload = () => { init() }
 
@@ -38,7 +40,8 @@ const init = () => {
       scan_registry, 
       find_reclaimables, 
       distribute_tokens, 
-      verify
+      verify,
+      exported
     ], 
     ( error, results ) => {
       if(!error) {
@@ -56,7 +59,7 @@ const distribute_tokens = ( finish ) => {
   log('group', 'Distribution List')
   
   let   index = 0
-  const total = output.registrants.length
+  const total = registrants.length
   
   const iterate = () => {
 
@@ -66,7 +69,7 @@ const distribute_tokens = ( finish ) => {
 
       // console.time('Distribute')
       
-      let registrant = output.registrants[index]
+      let registrant = registrants[index]
       
       registrant.eos = maybe_fix_key(  contract.$crowdsale.keys( registrant.eth ) ) 
       
@@ -78,14 +81,14 @@ const distribute_tokens = ( finish ) => {
       registrant.balance
 
         // Ask token contract what this user's EOS balance is
-        .update( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ).div(WAD) ) )
+        .set( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ).div(WAD) ) )
         
         // Loop through periods and calculate unclaimed
-        .update( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ).div(WAD) )
+        .set( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ).div(WAD) )
         
         // Check reclaimable index for ethereum user, loop through tx
-        .update( 'reclaimed',   web3.toBigNumber( maybe_recover_tokens( registrant ) ).div(WAD) )
-        
+        .set( 'reclaimed',   web3.toBigNumber( maybe_reclaim_tokens( registrant ) ).div(WAD) )
+
         // wallet+unclaimed+reclaimed
         .sum()
       
@@ -178,19 +181,19 @@ const distribute_tokens = ( finish ) => {
   }
 
   // Some users mistakenly sent their tokens to the contract or token address. Here we recover them if it is the case. 
-  const maybe_recover_tokens = ( registrant ) => {
+  const maybe_reclaim_tokens = ( registrant ) => {
     let reclaimed_balance = web3.toBigNumber(0)
-    let reclaimable_transactions = output.reclaimable[registrant.eth];
+    let reclaimable_transactions = reclaimable[registrant.eth];
     if( typeof reclaimable_transactions !== "undefined" && reclaimable_transactions.length) {
-      for( let tx in reclaimable_transactions ) {
-        let recover = reclaimable_transactions[tx]
-        reclaimed_balance = recover.amount.plus( reclaimed_balance )
-        output.reclaimed.push({eth:registrant.eth, eos:registrant.eos, amount: recover.amount, tx: recover.tx})
-        log("success", `reclaimed ${registrant.eth} => ${registrant.eos} => ${recover.amount.div(WAD).toFormat(4)} EOS <<< tx: https://etherscan.io/tx/${recover.tx}`)
+      for( let _tx in reclaimable_transactions ) {
+        let tx = reclaimable_transactions[_tx]
+        reclaimed_balance = tx.amount.plus( reclaimed_balance )
+        tx.claim( registrant.eth )
+        log("success", `reclaimed ${registrant.eth} => ${registrant.eos} => ${tx.amount.div(WAD).toFormat(4)} EOS <<< tx: https://etherscan.io/tx/${tx.hash}`)
       }
       if( reclaimable_transactions.length > 1 ) 
         log("info", `Reclaimed ${ reclaimed_balance.div(WAD).toFormat(4) } EOS from ${reclaimable_transactions.length} tx for ${registrant.eth} => ${registrant.eos}`)
-      delete output.reclaimable[registrant.eth]
+      delete reclaimable[registrant.eth]
     }
     return reclaimed_balance
   }
@@ -242,20 +245,18 @@ const distribute_tokens = ( finish ) => {
 
   // Push to distribution array
   const accept_registrant = ( registrant ) => {
-    output.snapshot.push(registrant) 
+    registrant.accept();
     log("message", `[#${index}] accepted ${registrant.eth} => ${registrant.eos} => ${ registrant.balance.total.toFormat(4) }`)
   }
 
   // Push to rejection array, if registrant has reclaimed balance, removed from reclaimed and add back to reclaimable
   const reject_registrant = (error, registrant) => {
-    registrant = new RejectedRegistrant(error, registrant)
     const { eth, eos, balance } = registrant
-    output.rejects.push( registrant ) 
+    
+    registrant.reject( error );
+
     if(balance.exists('reclaimed')) 
-      output.reclaimable[eth] = [], 
-      output.reclaimed.filter( tx => tx.eth == eth ).forEach( tx => output.reclaimable[eth].push( tx ) ),
-      output.reclaimed = output.reclaimed.filter( tx => { tx.eth != registrant.eth } ), 
-      log("reject", `[#${index}] rejected ${eth} => ${eos} => ${balance.total.toFormat(4)} => ${error} ( ${registrant.balance.reclaimed.toFormat(4)} reclaimed EOS tokens moved back to Reclaimable )`)
+      log("reject", `[#${index}] rejected ${eth} => ${eos} => ${balance.total.toFormat(4)} => ${error} ( ${balance.reclaimed.toFormat(4)} reclaimed EOS tokens moved back to Reclaimable )`)
     else 
       log("reject", `[#${index}] rejected ${eth} => ${eos} => ${balance.total.toFormat(4)} => ${error}`)
     return true
@@ -284,8 +285,6 @@ const distribute_tokens = ( finish ) => {
 // Builds Registrants List
 const scan_registry = ( on_complete ) => {
 
-  step = "registry"
-
   console.group('EOS Registrant List')
 
   let registry_logs = [];
@@ -300,12 +299,14 @@ const scan_registry = ( on_complete ) => {
     if(log_register.blockNumber <= SS_LAST_BLOCK) {
 
       //check that registrant isn't already in array
-      if( registrant = output.registrants.filter(registrant => { return registrant.eth == log_register.args.user}), !registrant.length ){  
+      if( registrant = registrants.filter(registrant => { return registrant.eth == log_register.args.user}), !registrant.length ){  
         
-        //Create new registrant and add to output.registrants array (global)
-        output.registrants.push( new Registrant(log_register.args.user) ) 
+        //Create new registrant and add to registrants array (global)
+        registrants.push( registrant = new Registrant(log_register.args.user) ) 
 
-        if(VERBOSE_REGISTRY_LOGS) registry_logs.push(`${log_register.args.user} => ${log_register.args.key} => https://etherscan.io/tx/${log_register.transactionHash}`)
+        let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', 0 )
+
+        if(VERBOSE_REGISTRY_LOGS) registry_logs.push(`${registrant.eth} => ${log_register.args.key} (pending) => https://etherscan.io/tx/${tx.hash}`)
 
         maybe_log()
 
@@ -317,8 +318,8 @@ const scan_registry = ( on_complete ) => {
       debug.refresh(), 
       log_group(), 
       console.groupEnd(), 
-      log("block",`${output.registrants.length} Total Registrants`), 
-      { found: Object.keys(output.registrants).length } 
+      log("block",`${registrants.length} Total Registrants`), 
+      { found: Object.keys(registrants).length } 
     }
 
   const on_error = () => { "Web3's watcher misbehaved while chugging along in the registry" }
@@ -328,7 +329,7 @@ const scan_registry = ( on_complete ) => {
   }
 
   let log_group = () => {
-    let group_msg = `${group_index}. ... ${registry_logs.length} Found, Total: ${output.registrants.length}`;
+    let group_msg = `${group_index}. ... ${registry_logs.length} Found, Total: ${registrants.length}`;
     log("groupCollapsed", group_msg),
     output.logs.push( group_msg ),
     registry_logs.forEach( _log => log("message", _log ) ), 
@@ -346,8 +347,6 @@ const scan_registry = ( on_complete ) => {
 
 const find_reclaimables = ( on_complete ) => {
 
-  step = "reclaimable"
-
   log('group', 'Finding Reclaimable EOS Tokens')
 
   let index = 0;
@@ -358,11 +357,13 @@ const find_reclaimables = ( on_complete ) => {
 
     if(reclaimable_tx.blockNumber <= SS_LAST_BLOCK && reclaimable_tx.args.value.gt( web3.toBigNumber(0) )) {
       
-      if(typeof output.reclaimable[reclaimable_tx.args.from] === "undefined") output.reclaimable[reclaimable_tx.args.from] = []
+      if(typeof reclaimable[reclaimable_tx.args.from] === "undefined") reclaimable[reclaimable_tx.args.from] = []
     
-      output.reclaimable[reclaimable_tx.args.from].push( { eth: reclaimable_tx.args.from, tx: reclaimable_tx.transactionHash, amount: reclaimable_tx.args.value } )
+      let tx = new Transaction( reclaimable_tx.args.from, reclaimable_tx.transactionHash, 'transfer', reclaimable_tx.args.value )
+
+      reclaimable[tx.eth].push( tx ) 
     
-      log("error",`${reclaimable_tx.args.from} => ${web3.toBigNumber(reclaimable_tx.args.value).div(WAD)} https://etherscan.io/tx/${reclaimable_tx.transactionHash}`)
+      log("error",`${tx.eth} => ${web3.toBigNumber(tx.amount).div(WAD)} https://etherscan.io/tx/${tx.hash}`)
     
     }
 
@@ -371,8 +372,8 @@ const find_reclaimables = ( on_complete ) => {
   const on_success = () => { 
     debug.refresh(), 
       console.groupEnd(), 
-      log("block", `${Object.keys(output.reclaimable).length || 0} reclaimable transactions found`), 
-      { found: Object.keys(output.reclaimable).length } 
+      log("block", `${Object.keys(reclaimable).length || 0} reclaimable transactions found`), 
+      { found: Object.keys(reclaimable).length } 
   }
 
   const on_error = () => { "Something bad happened while finding reclaimables" }
@@ -383,6 +384,16 @@ const find_reclaimables = ( on_complete ) => {
 
 const verify = ( callback ) => {
   let valid = true;
-  if( ![...new Set( output.snapshot.map(registrant => registrant.eth) )].length == Object.keys(output.snapshot).length ) log("error",'Duplicate Entry Found'), valid = false
+  if( ![...new Set( get_registrants_accepted().map(registrant => registrant.eth) )].length == get_registrants_accepted().length ) log("error",'Duplicate Entry Found'), valid = false
   return (valid) ? callback(null, valid) && true : callback(true) && false
 }
+
+const exported = ( callback ) => {
+  output.snapshot    = get_registrants_accepted().map( registrant => { return { eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total) } } )
+  output.rejects     = get_registrants_rejected().map( registrant => { return { error: registrant.error, eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total)}  } )
+  output.reclaimed   = get_transactions_reclaimed().map( tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
+  for( let registrant in reclaimable )  {
+    reclaimable[registrant].map( tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } ).forEach( tx => { output.reclaimable.push( tx ) })
+  }  
+  callback(null, true)
+} 
