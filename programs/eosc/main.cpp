@@ -40,6 +40,7 @@ const string get_account_func = chain_func_base + "/get_account";
 const string account_history_func_base = "/v1/account_history";
 const string get_transaction_func = account_history_func_base + "/get_transaction";
 const string get_transactions_func = account_history_func_base + "/get_transactions";
+const string get_key_accounts_func = account_history_func_base + "/get_key_accounts";
 
 inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    std::sort( names.begin(), names.end() );
@@ -130,6 +131,15 @@ void create_account( const vector<string>& cmd_line ) {
       transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
                          types::newaccount{creator, newaccount, owner_auth,
                                            active_auth, recovery_auth, deposit});
+      if (creator == "inita")
+      {
+         fc::optional<fc::ecc::private_key> private_key = eos::utilities::wif_to_key("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3");
+         if (private_key)
+         {
+            wlog("public key ${k}",("k", private_key->get_public_key()));
+            trx.sign(*private_key, eos::chain::chain_id_type{});
+         }
+      }
 
       std::cout << fc::json::to_pretty_string( push_transaction(trx) ) << std::endl;
 
@@ -386,6 +396,15 @@ int send_command (const vector<string> &cmd_line)
              ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", cmd_line[2])
              : fc::mutable_variant_object( "account_name", account_name)("skip_seq", cmd_line[2])("num_seq", cmd_line[3]);
      std::cout << fc::json::to_pretty_string( call( get_transactions_func, arg) ) << std::endl;
+  } else if( command == "accounts" ) {
+     if( cmd_line.size() != 2 )
+     {
+        std::cerr << "usage: " << program << " accounts PUBLIC_KEY\n";
+        return -1;
+     }
+     chain::public_key_type public_key(cmd_line[1]);
+     auto arg = fc::mutable_variant_object( "public_key", public_key);
+     std::cout << fc::json::to_pretty_string( call( get_key_accounts_func, arg) ) << std::endl;
   }
   return 0;
 }
