@@ -4,6 +4,7 @@ body #wrapper { margin:22px auto; padding:33px 55px; max-width: 600px; text-alig
 
 body .status { font-size:14pt; text-transform:uppercase; color:#444;  }
 body .status span { margin:10px 0; text-transform:none; display:block; font-size:25pt; color:#fff; }
+body .status span span { color:#666; font-size:20pt; display:block; }
 
 body #wrapper > div { display:none; padding:33px 0; border-bottom:1px solid #222; margin-bottom:22px; }
 body #wrapper > div:last-child { margin-bottom:0px; border:none; }
