@@ -7,16 +7,73 @@ class Registrant {
     this.balance  = typeof balance == 'object' ? balance : new Balance()
     this.accepted = null
     this.error    = false
+    this.index    = null
   }
 
   accept ( callback ) {
     this.accepted = true
+
+    log("message", `[#${this.index}] accepted ${this.eth} => ${this.eos} => ${ this.balance.total.toFormat(4) }`)
   }
 
-  reject ( error ) {
-    if(!error) return;
-    this.error    = error
+  reject () {
     this.accepted = false
+
+    let msg = ""
+    if(this.balance.exists('reclaimed')) 
+      log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error} ( ${this.balance.reclaimed.toFormat(4)} reclaimed EOS tokens moved back to Reclaimable )`)
+    else 
+      log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error}`)
+  }
+
+  test() {
+    return this.valid() ? this.accept() : this.reject()
+  }
+
+    // Reject bad keys and zero balances, elseif was fastest? :/
+  valid() {
+
+    //Reject 0 balances
+    if( formatEOS( this.balance.total ) === "0.0000" ) {
+      this.error = 'balance_is_zero'
+    }
+    
+    //Everything else
+    else if(!this.eos.startsWith('EOS')) {
+      
+      //It's an empty key
+      if(this.eos.length == 0) {
+        this.error = 'key_is_empty'
+      }
+      
+      //It may be an EOS private key
+      else if(this.eos.startsWith('5')) { 
+        this.error = 'key_is_private'
+      }
+      
+      // It almost looks like an EOS key // #TODO ACTUALLY VALIDATE KEY?
+      else if(this.eos.startsWith('EOS') && this.eos.length != 53) {
+        this.error = 'key_is_malformed'
+      }
+      
+      // ETH address
+      else if(this.eos.startsWith('0x')) {
+        this.error = 'key_is_eth'
+      }
+      
+      //Reject everything else with label malformed
+      else {
+        this.error = 'key_is_junk'
+      }
+    }
+
+    //Accept BTS and STM keys, assume advanced users and correct format
+    if(this.eos.startsWith('BTS') || this.eos.startsWith('STM')) {
+      this.error = false
+    }
+
+    return !this.error ? true : false;
+
   }
 
   is_accepted () {
@@ -29,6 +86,7 @@ class Transaction {
 
   constructor( eth, tx, type = "transfer", amount ) {
     this.eth     = eth
+    this.eos     = null
     this.hash    = tx
     this.amount  = amount
     this.claimed = false
