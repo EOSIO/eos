@@ -33,7 +33,7 @@ const get_registrants_unprocessed = () => {
   return registrants.filter( registrant => registrant.accepted === null )
 }
 
-const get_transactions_claimable = () => {
+const get_transactions_reclaimable = () => {
   return transactions.filter( transaction => transaction.type == 'transfer' && transaction.amount.gt(0) && !transaction.claimed )
 }
 
@@ -41,8 +41,12 @@ const get_transactions_reclaimed = () => {
   return transactions.filter( transaction => transaction.claimed )
 }
 
-const get_registrant_transfer = ( registrant ) => {
-  return transactions.filter( transaction => transaction.type == 'transfer' && transaction.amount.gt(0) && transaction.eth == registrant.eth )
+const get_registrant_reclaimed = ( eth ) => {
+  return transactions.filter( tx => tx.type == 'transfer' && tx.claimed && eth == tx.eth )
+}
+
+const get_registrant_reclaimable = ( eth ) => {
+  return transactions.filter( tx => tx.type == 'transfer' && !tx.claimed && eth == tx.eth && tx.amount.gt( 0 ) )
 }
 
 const node_syncing = ( callback = () => {} ) => {
