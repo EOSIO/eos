@@ -143,6 +143,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    optional_private_key = utilities::wif_to_key(key3);
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key->get_public_key()) != pks.cend());
 
+   BOOST_CHECK_EQUAL(5, wm.list_keys().size());
    wm.set_timeout(chrono::seconds(0));
    BOOST_CHECK_EQUAL(0, wm.list_keys().size());
 

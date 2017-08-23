@@ -65,7 +65,8 @@ void wallet_api_plugin::plugin_startup() {
    // lifetime of plugin is lifetime of application
    auto& wallet_mgr = app().get_plugin<wallet_plugin>().get_wallet_manager();
 
-   // TODO: http_plugin needs to add ability to restrict to localhost, once added, call here
+   // TODO: http_plugin needs to add ability to restrict to localhost, once added add call here.
+   // TODO: For now see TODO below.
 
    app().get_plugin<http_plugin>().add_api({
        CALL(wallet, wallet_mgr, set_timeout,
@@ -90,6 +91,18 @@ void wallet_api_plugin::plugin_startup() {
             INVOKE_R_V(wallet_mgr, list_keys))
    });
 }
+
+void wallet_api_plugin::plugin_initialize(const variables_map& options) {
+   // TODO: see TODO above, this is temporary until http_plugin has option to restrict to localhost
+   if (options.count("http-server-endpoint")) {
+      const auto& lipstr = options.at("http-server-endpoint").as<string>();
+      const auto& host = lipstr.substr(0, lipstr.find(':'));
+      if (host != "localhost" && host != "127.0.0.1") {
+         FC_THROW("wallet api restricted to localhost");
+      }
+   }
+}
+
 
 #undef INVOKE_R_R
 #undef INVOKE_R_V
