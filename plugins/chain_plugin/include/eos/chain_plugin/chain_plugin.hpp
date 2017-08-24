@@ -37,6 +37,8 @@ public:
       string                recent_slots;
       double                participation_rate = 0;
    };
+
+   /** \brief Return general network information. */
    get_info_results get_info(const get_info_params&) const;
 
    struct producer_info {
@@ -55,6 +57,8 @@ public:
    struct get_account_params {
       Name name;
    };
+
+   /** \brief Fetch a blockchain account. */
    get_account_results get_account( const get_account_params& params )const;
 
    struct abi_json_to_bin_params {
@@ -67,7 +71,8 @@ public:
       vector<Name>   required_scope;
       vector<Name>   required_auth;
    };
-      
+
+   /** \brief Manually serialize json into binary.  The binayargs is usually stored in Message.data. */
    abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
 
 
@@ -103,6 +108,7 @@ public:
       uint32_t             refBlockPrefix = 0;
    };
 
+   /** \brief Fetch a block from the blockchain. */
    get_block_results get_block(const get_block_params& params) const;
 
    struct get_table_rows_i64_params {
@@ -120,6 +126,7 @@ public:
       bool                more; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
+   /** \brief Fetch smart contract data from an account. */
    get_table_rows_i64_result get_table_rows_i64( const get_table_rows_i64_params& params )const;
 
    struct get_table_rows_i128i128_primary_params {
@@ -148,6 +155,8 @@ public:
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
+
+   /** \brief Append a block to the chain database. */
    push_block_results push_block(const push_block_params& params);
 
    using push_transaction_params = chain::SignedTransaction;
@@ -155,6 +164,8 @@ public:
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
+
+   /** \brief Attempt to push the transaction into the pending queue. */
    push_transaction_results push_transaction(const push_transaction_params& params);
 };
 } // namespace chain_apis
