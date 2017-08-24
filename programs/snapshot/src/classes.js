@@ -26,8 +26,41 @@ class Registrant {
       log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error}`)
   }
 
-  test() {
+  judgement() {
     return this.valid() ? this.accept() : this.reject()
+  }
+
+  set ( key, value ) {
+    return (typeof this[`set_${key}`] === "function") ? this[`set_${key}`](value) : this
+  }
+
+  set_index ( index ) {
+    this.index = index
+    return this //for chaining
+  }
+
+  set_key ( eos_key ) {
+
+    //Might be hex, try to convert it.
+    if(eos_key.length == 106){                                    
+      let eos_key_from_hex = web3.toAscii(eos_key) 
+      if(eos_key_from_hex.startsWith('EOS') && eos_key_from_hex.length == 53) { 
+        eos_key = eos_key_from_hex
+      } 
+    }
+
+    //Might be user error
+    else if(eos_key.startsWith('key')){                            
+      let eos_key_mod = eos_key.substring(3) 
+      if(eos_key_mod.startsWith('EOS') && eos_key_mod.length == 53) {
+        eos_key = eos_key_mod
+      } 
+    }
+
+    this.eos = eos_key
+
+    return this //for chaining
+
   }
 
     // Reject bad keys and zero balances, elseif was fastest? :/
@@ -72,7 +105,7 @@ class Registrant {
       this.error = false
     }
 
-    return !this.error ? true : false;
+    return !this.error ? true : false
 
   }
 
@@ -103,18 +136,6 @@ class Transaction {
 
 }
 
-class RejectedRegistrant extends Registrant {
-  constructor( error, registrant ) {
-    
-    const { eth, eos, balance } = registrant
-    
-    super( registrant.eth, registrant.eos, registrant.balance )
-    
-    this.error             = error
-  
-  }
-}
-
 class Balance {
 
   constructor(){
@@ -127,10 +148,6 @@ class Balance {
   set( type, balance ){
     this[ type ] = balance
     return this //chaining
-  }
-
-  add( type, balance ){
-    this['type'].plus( balance )
   }
 
   readable( type = 'total' ){
