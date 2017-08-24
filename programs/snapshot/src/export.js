@@ -94,7 +94,7 @@ const download_reclaimable = () => {
 }
 
 const download_reclaimed = () => {
-  
+
   let headers = {
       eth:          "eth_address" 
       ,eos:         "eos_key"
@@ -106,8 +106,8 @@ const download_reclaimed = () => {
 
   let reclaimed = output.reclaimed
 
+  
   export_csv(headers, reclaimed, filename); 
- 
 
 }
 
@@ -125,7 +125,6 @@ const download_snapshot = () => {
 
 }
 
-
 const download_rejects = () => {
   
   let headers = {
@@ -141,7 +140,6 @@ const download_rejects = () => {
 
 }
 
-
 const download_logs = () => {
 
   let filename = `eos-logs_${SNAPSHOT_ENV}_${SS_LAST_BLOCK}-${SS_FIRST_BLOCK}`
@@ -149,6 +147,3 @@ const download_logs = () => {
   export_log(output.logs, filename)
 
 }
-
-
-
