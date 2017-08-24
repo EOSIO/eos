@@ -70,7 +70,7 @@
     // Dist
     else if( get_registrants_accepted().length ) {
       current_step = "distribute"
-      display_text(`Snapshot <span>${debug.rates.percent_complete}% <span>${debug.registry.accepted+debug.registry.rejected}/${debug.registry.total}</span></span> Complete`)
+      display_text(`Snapshot <span>${debug.rates.percent_complete}% <span>${debug.registry.accepted+debug.registry.rejected}/${debug.registry.total}</span></span>`)
     }
 
     // Reclaimables
