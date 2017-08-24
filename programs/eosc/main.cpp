@@ -283,9 +283,10 @@ int main( int argc, char** argv ) {
       });
 
       SignedTransaction trx;
-      transaction_helpers::emplace_message(trx, contract, vector<types::AccountPermission>{fixedPermissions.front(),
-                                                                                           fixedPermissions.back()},
-                                           action, result.get_object()["bincmd_line"].as<Bytes>());
+      transaction_helpers::emplace_serialized_message(trx, contract, action,
+                                                      vector<types::AccountPermission>{fixedPermissions.front(),
+                                                                                       fixedPermissions.back()},
+                                                      result.get_object()["binargs"].as<Bytes>());
       trx.scope.assign(scopes.begin(), scopes.end());
       ilog("Transaction result: ${r}", ("r", push_transaction(trx)));
    });

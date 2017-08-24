@@ -89,6 +89,10 @@ namespace eos { namespace chain {
       void emplace_message(Transaction& t, Args&&... a) {
          t.messages.emplace_back(Message(std::forward<Args>(a)...));
       }
+      template <typename... Args>
+      void emplace_serialized_message(Transaction& t, Args&&... a) {
+         t.messages.emplace_back(types::Message(std::forward<Args>(a)...));
+      }
 
       /**
        * clear all common data
