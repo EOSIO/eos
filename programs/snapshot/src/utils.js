@@ -24,8 +24,8 @@ const getTime    = ()                         => new Date().getTime() / 1000
 // Getters
 
 // Transactions
-const get_transactions_reclaimable = ()       => transactions.filter( transaction => transaction.type == 'transfer' && transaction.amount.gt(0) && !transaction.claimed )
-const get_transactions_reclaimed = ()         => transactions.filter( transaction => transaction.claimed )
+const get_transactions_reclaimable = ()       => transactions.filter( tx => tx.type == 'transfer' && tx.amount.gt(0) && (!tx.claimed ||  (tx.claimed && get_registrants_rejected().filter( registrant => registrant.eth == tx.eth ).length) ) )
+const get_transactions_reclaimed = ()         => transactions.filter( tx => tx.claimed && get_registrants_accepted().filter( registrant => registrant.eth == tx.eth ).length )
 
 // Registrant Collection
 const get_registrants_accepted = ()           => registrants.filter( registrant => registrant.accepted ) 
