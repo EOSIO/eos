@@ -5,20 +5,16 @@ let   registrants         = []
 
 // For Export
 let   output              = {}
-      output.distribution = []
+      output.snapshot     = []
+      output.rejects      = []
       output.reclaimable  = []
       output.reclaimed    = []
-      output.rejects      = []
       output.logs         = []
 
-// Ethereum
+// Web3
 const Web3                = require('web3')
-let   web3                = new Web3( new Web3.providers.HttpProvider( NODE ) )
-
+let   web3 
 let   contract            = {}
-      contract.$crowdsale = web3.eth.contract(CROWDSALE_ABI).at(CROWDSALE_ADDRESS)
-      contract.$token     = web3.eth.contract(TOKEN_ABI).at(TOKEN_ADDRESS)
-      contract.$utilities = web3.eth.contract(UTILITY_ABI).at(UTILITY_ADDRESS)
 
 // Debugging
 let   debug               = new calculator();
@@ -27,6 +23,11 @@ window.onload = () => { init() }
 
 const init = () => {
   log("large_text", 'EOS Token Distribution (testnet)')
+  let   web3            = new Web3( new Web3.providers.HttpProvider( NODE ) )
+
+  contract.$crowdsale   = web3.eth.contract(CROWDSALE_ABI).at(CROWDSALE_ADDRESS)
+  contract.$token       = web3.eth.contract(TOKEN_ABI).at(TOKEN_ADDRESS)
+  contract.$utilities   = web3.eth.contract(UTILITY_ABI).at(UTILITY_ADDRESS)
 
   if(typeof console.time === 'function')            console.time('Generated Snapshot')
   
@@ -162,7 +163,7 @@ const distribute_tokens = ( finish ) => {
         .reduce((sum, period) => period.share.plus(sum), web3.toBigNumber(0) )
 
       )
-      
+
   }
 
   // Some users mistakenly sent their tokens to the contract or token address. Here we recover them if it is the case. 
