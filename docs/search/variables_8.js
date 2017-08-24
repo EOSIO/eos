@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['name',['name',['../structexchange_1_1_order_i_d.html#ace33e68445f307e12c36b69c55edc526',1,'exchange::OrderID']]],
-  ['number',['number',['../structexchange_1_1_order_i_d.html#a7e557eea50518e99975b511f27e16eb2',1,'exchange::OrderID']]]
+  ['key',['key',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#af828b3fc2f24217280b1649078f56361',1,'TOKEN_NAME::Account::key()'],['../structinfinite_1_1_account.html#a8d8bddac673b236b04a576f15c99008c',1,'infinite::Account::key()']]]
 ];

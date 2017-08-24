@@ -1,5 +1,8 @@
 var searchData=
 [
+  ['offerbet',['OfferBet',['../structdice_1_1_offer_bet.html',1,'dice']]],
+  ['offerprimarykey',['OfferPrimaryKey',['../structdice_1_1_offer_primary_key.html',1,'dice']]],
+  ['offers',['Offers',['../namespacedice.html#aa3e3d853e1d38daff2ff1303a1d6e99e',1,'dice']]],
   ['operator_20bool',['operator bool',['../structeos_1_1token.html#a8d96a755a83893ec14fbaa4e49b99d65',1,'eos::token']]],
   ['operator_20uint64_5ft',['operator uint64_t',['../structeos_1_1uint128.html#adb13ba2866af412d30c0e3d05b5f417e',1,'eos::uint128::operator uint64_t()'],['../structeos_1_1_name.html#a0a0e724ce7e1b35aa1e5d32b32b6df0e',1,'eos::Name::operator uint64_t()']]],
   ['operator_21_3d',['operator!=',['../structeos_1_1token.html#a688813be9dc1e8f175d19ef1ffca4f6e',1,'eos::token::operator!=()'],['../structeos_1_1price.html#afb4eb2338acf95c043151f4f35b99432',1,'eos::price::operator!=()']]],
@@ -17,5 +20,6 @@ var searchData=
   ['operator_3d_3d',['operator==',['../structeos_1_1token.html#ac4ae7b7680fa4bd2c09be5c29571dd91',1,'eos::token::operator==()'],['../structeos_1_1price.html#a64a97e029f909397f7e93ae9f18c0f92',1,'eos::price::operator==()'],['../structeos_1_1_name.html#a32df73b17ea53322340af95b243e2cb6',1,'eos::Name::operator==()']]],
   ['operator_3e',['operator&gt;',['../structeos_1_1token.html#a8b91c489658673e83721c460cb922df5',1,'eos::token::operator&gt;()'],['../structeos_1_1price.html#a1d386990660f40b6cd35f5da903b9d3e',1,'eos::price::operator&gt;()']]],
   ['operator_3e_3d',['operator&gt;=',['../structeos_1_1uint128.html#a6c839778f4a9713eb58fb8f0305bc53e',1,'eos::uint128::operator&gt;=()'],['../structeos_1_1token.html#abf600f9ac9c421e3bf284577acd22547',1,'eos::token::operator&gt;=()'],['../structeos_1_1price.html#aa0f3fb89fde51f4f9b728e51b459abf6',1,'eos::price::operator&gt;=()']]],
-  ['orderid',['OrderID',['../structexchange_1_1_order_i_d.html',1,'exchange']]]
+  ['orderid',['OrderID',['../structexchange_1_1_order_i_d.html',1,'exchange']]],
+  ['owner',['owner',['../structdice_1_1_offer_primary_key.html#a9788afed35028df26a926f1d91587fa7',1,'dice::OfferPrimaryKey']]]
 ];

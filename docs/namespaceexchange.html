@@ -102,6 +102,10 @@ Functions</h2></td></tr>
 <tr class="separator:a144bb14807f5677faf9d569813f9294e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab470301ace28436a6fee53e27cd33f8f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#ab470301ace28436a6fee53e27cd33f8f">apply_exchange_sell</a> (<a class="el" href="structexchange_1_1_sell_order.html">SellOrder</a> order)</td></tr>
 <tr class="separator:ab470301ace28436a6fee53e27cd33f8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0c2d3b49abb85b4595515398851ab03b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a0c2d3b49abb85b4595515398851ab03b">apply_exchange_cancel_buy</a> (<a class="el" href="structexchange_1_1_order_i_d.html">OrderID</a> order)</td></tr>
+<tr class="separator:a0c2d3b49abb85b4595515398851ab03b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4a199b823910407b578e3e313dac5f24"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a4a199b823910407b578e3e313dac5f24">apply_exchange_cancel_sell</a> (<a class="el" href="structexchange_1_1_order_i_d.html">OrderID</a> order)</td></tr>
+<tr class="separator:a4a199b823910407b578e3e313dac5f24"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afc17cc7e1c31b58457445c5073e0e8a8"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#afc17cc7e1c31b58457445c5073e0e8a8">PACKED</a> (Bid)</td></tr>
 <tr class="separator:afc17cc7e1c31b58457445c5073e0e8a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa70ccac628e3c1c6679e6e8fbcfe6061"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#aa70ccac628e3c1c6679e6e8fbcfe6061">PACKED</a> (Ask)</td></tr>
@@ -110,8 +114,8 @@ Functions</h2></td></tr>
 <tr class="separator:aebfbd37f25d1bd71a64694a6778a02a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa22136df9deb33988a973c9f1411b935"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#aa22136df9deb33988a973c9f1411b935">TABLE2</a> (Bids, exchange, exchange, bids, Bid, BidsById, <a class="el" href="structexchange_1_1_order_i_d.html">OrderID</a>, BidsByPrice, <a class="el" href="namespaceexchange.html#a0336f5f2902c9a988382211e8b2c5902">Price</a>)</td></tr>
 <tr class="separator:aa22136df9deb33988a973c9f1411b935"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a60b5c0198309eb25115cda8ae524a557"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a60b5c0198309eb25115cda8ae524a557">TABLE2</a> (Asks, exchange, exchange, bids, Ask, AsksById, <a class="el" href="structexchange_1_1_order_i_d.html">OrderID</a>, AsksByPrice, <a class="el" href="namespaceexchange.html#a0336f5f2902c9a988382211e8b2c5902">Price</a>)</td></tr>
-<tr class="separator:a60b5c0198309eb25115cda8ae524a557"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3bba4c1d907afd3cb9bdd08533c9c9d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#af3bba4c1d907afd3cb9bdd08533c9c9d">TABLE2</a> (Asks, exchange, exchange, asks, Ask, AsksById, <a class="el" href="structexchange_1_1_order_i_d.html">OrderID</a>, AsksByPrice, <a class="el" href="namespaceexchange.html#a0336f5f2902c9a988382211e8b2c5902">Price</a>)</td></tr>
+<tr class="separator:af3bba4c1d907afd3cb9bdd08533c9c9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a578e3766846b457b7c2553ed17220f9e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_account.html">Account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a578e3766846b457b7c2553ed17220f9e">getAccount</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> owner)</td></tr>
 <tr class="separator:a578e3766846b457b7c2553ed17220f9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -209,6 +213,42 @@ Functions</h2></td></tr>
           <td class="memname">void exchange::apply_exchange_buy </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structexchange_1_1_buy_order.html">BuyOrder</a>&#160;</td>
+          <td class="paramname"><em>order</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0c2d3b49abb85b4595515398851ab03b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0c2d3b49abb85b4595515398851ab03b">&#9670;&nbsp;</a></span>apply_exchange_cancel_buy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void exchange::apply_exchange_cancel_buy </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structexchange_1_1_order_i_d.html">OrderID</a>&#160;</td>
+          <td class="paramname"><em>order</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a4a199b823910407b578e3e313dac5f24"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4a199b823910407b578e3e313dac5f24">&#9670;&nbsp;</a></span>apply_exchange_cancel_sell()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void exchange::apply_exchange_cancel_sell </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structexchange_1_1_order_i_d.html">OrderID</a>&#160;</td>
           <td class="paramname"><em>order</em></td><td>)</td>
           <td></td>
         </tr>
@@ -491,8 +531,8 @@ template&lt;typename Lambda &gt; </div>
 
 </div>
 </div>
-<a id="a60b5c0198309eb25115cda8ae524a557"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a60b5c0198309eb25115cda8ae524a557">&#9670;&nbsp;</a></span>TABLE2() <span class="overload">[2/2]</span></h2>
+<a id="af3bba4c1d907afd3cb9bdd08533c9c9d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3bba4c1d907afd3cb9bdd08533c9c9d">&#9670;&nbsp;</a></span>TABLE2() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -518,7 +558,7 @@ template&lt;typename Lambda &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">bids&#160;</td>
+          <td class="paramtype">asks&#160;</td>
           <td class="paramname">, </td>
         </tr>
         <tr>

@@ -23,7 +23,7 @@
   After starting `eosd` you should be able to query the current blockchain state like so:
 
 ```
-./eosc get info
+$ ./eosc get info
 {
  "head_block_num": 25048,
  "last_irreversible_block_num": 25027,
@@ -41,14 +41,14 @@ In order to create an account you will need two new keys: owener and active. You
 
 This will be your owner key,
 ```
-./eosc create key
+$ ./eosc create key
 public: EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq
 private: 5JKbLfCXgcafDQVwHMm3shHt6iRWgrr9adcmt6vX3FNjAEtJGaT
 ```
 
 And this will be your active key,
 ```
-./eosc create key
+$ ./eosc create key
 public: EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 private: 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
 ```
@@ -60,7 +60,7 @@ to create `tester` using the owner and active keys created above.  `inita` was s
 
 
 ```
-./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+$ ./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 {
   "transaction_id": "6acd2ece68c4b86c1fa209c3989235063384020781f2c67bbb80bc8d540ca120",
   "processed": {
@@ -96,7 +96,7 @@ to create `tester` using the owner and active keys created above.  `inita` was s
 After creating the account we can view the current account status like so:
 
 ```
-./eosc get account tester
+$ ./eosc get account tester
 {
   "name": "tester",
   "eos_balance": 0,
@@ -109,7 +109,7 @@ After creating the account we can view the current account status like so:
 You will note that there is no balance because almost all genesis EOS tokens are currently allocated to the `eos` account.
 
 ```
-./eosc get account eos
+$ ./eosc get account eos
 {
   "name": "eos",
   "eos_balance": "8999999999998100",
@@ -150,7 +150,7 @@ You will note that there is no balance because almost all genesis EOS tokens are
 We can fund our `tester` account via `eosc` with the following command:
 
 ```
-./eosc transfer eos tester 1000
+$ ./eosc transfer eos tester 1000
 {
   "transaction_id": "52b488d27ce1f72a2b29f22e5e1638fa5db5d7805565884e795733a15c6c2195",
   "processed": {
@@ -199,7 +199,7 @@ We can fund our `tester` account via `eosc` with the following command:
 Now we can verify that the funds were received.
 
 ```
-./eosc get account tester
+$ ./eosc get account tester
 {
   "name": "tester",
   "eos_balance": 1000,
@@ -218,13 +218,13 @@ In this section we will use `eosc` to create and publish a currency contract. Yo
 The first step is to create an account for currency. We will have the `tester` account create the `currency` account.
 
 ```
-./eosc create account tester currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+$ ./eosc create account tester currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 ```
 
 The next step is to publish the contract (.wast) and its abi (.abi)
 
 ```
-./eosc contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
+$ ./eosc contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
 Reading WAST...
 Assembling WASM...
 Publishing contract...
@@ -263,7 +263,7 @@ Publishing contract...
 After the contract is published it initially allocates all of the currency to the `currency` account.  So lets transfer some of it to our tester.
 
 ```
-./eosc push message currency transfer '{"from":"currency","to":"tester","quantity":50}' -s currency -s tester -p active@currency
+$ ./eosc push message currency transfer '{"from":"currency","to":"tester","quantity":50}' -s currency -s tester -p active@currency
 1589302ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
 1589304ms thread-0   main.cpp:290                  operator()           ] Transaction result:
 {
@@ -356,7 +356,7 @@ Positionals:
 Now we can transfer it from `tester` to `inita` and require the permission of `tester`.  This should drain the balance of `tester` to 0.
 
 ```
-./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
+$ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
 3116153ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
 3116154ms thread-0   main.cpp:290                  operator()           ] Transaction result:
 {
@@ -414,7 +414,7 @@ Now we can transfer it from `tester` to `inita` and require the permission of `t
 Now that `tester` has a balance of 0, if we attempt this transfer a second time it should fail:
 
 ```
-% ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
+$ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
 3543610ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
 3543615ms thread-0   main.cpp:311                  main                 ] Failed with error: 10 assert_exception: Assert Exception
 status_code == 200: Error

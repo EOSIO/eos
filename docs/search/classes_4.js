@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['iostream',['iostream',['../classeos_1_1iostream.html',1,'eos']]]
+  ['eos',['eos',['../structnative_1_1eos.html',1,'native']]]
 ];
