@@ -6,7 +6,7 @@ namespace eos {
    using namespace chain;
    using namespace fc;
 
-   struct handshake_message {
+  struct handshake_message {
       int16_t         network_version = 0;
       chain_id_type   chain_id; ///< used to identify chain
       fc::sha256      node_id; ///< used to identify peers and prevent self-connect
@@ -41,7 +41,7 @@ namespace eos {
    };
 
    struct peer_message {
-     vector<fc::ip::endpoint> peers;
+     vector<fc::sha256> peers;
    };
 
    using net_message = static_variant<handshake_message,
