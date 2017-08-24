@@ -28,7 +28,7 @@ class Registrant {
       log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error} ( ${this.balance.reclaimed.toFormat(4)} reclaimed EOS tokens moved back to Reclaimable )`)
     else 
       log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error}`)
-    
+
   }
 
   judgement() {
@@ -82,8 +82,8 @@ class Registrant {
   valid() {
 
     //Reject 0 balances
-    if( formatEOS( this.balance.total ) === "0.0000" ) {
-      this.error = 'balance_is_zero'
+    if( this.balance.total.lt(1) ) {
+      this.error = 'balance_insufficient'
     }
     
     //Everything else
