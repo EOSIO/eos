@@ -27,6 +27,8 @@ window.onload = () => { init() }
 
 const init = () => {
   log("large_text", 'EOS Token Distribution (testnet)')
+
+  if(typeof console.time === 'function')            console.time('Generated Snapshot')
   
   SS_PERIOD_ETH         = period_eth_balance()
   SS_LAST_BLOCK_TIME    = get_last_block_time()
@@ -47,6 +49,7 @@ const init = () => {
       if(!error) {
         log("success",'Distribution List Complete')
         log('block','CSV Downloads Ready')
+        if(typeof console.timeEnd === 'function')   console.timeEnd('Generated Snapshot')
       }
       debug.refresh().output()
     })
@@ -185,19 +188,15 @@ const distribute_tokens = ( finish ) => {
   // Some users mistakenly sent their tokens to the contract or token address. Here we recover them if it is the case. 
   const maybe_reclaim_tokens = ( registrant ) => {
     let reclaimed_balance = web3.toBigNumber(0)
-    // let reclaimable_transactions = reclaimable[registrant.eth];
     let reclaimable_transactions = get_registrant_reclaimable( registrant.eth )
     if(reclaimable_transactions.length) {
       for( let tx of reclaimable_transactions ) {
-        // let tx = reclaimable_transactions[_tx]
         reclaimed_balance = tx.amount.plus( reclaimed_balance )
-        tx.claim( registrant.eth )
         tx.eos = registrant.eos
-        log("success", `reclaimed ${registrant.eth} => ${registrant.eos} => ${tx.amount.div(WAD).toFormat(4)} EOS <<< tx: https://etherscan.io/tx/${tx.hash}`)
+        tx.claim( registrant.eth )
       }
       if( reclaimable_transactions.length > 1 ) 
         log("info", `Reclaimed ${ reclaimed_balance.div(WAD).toFormat(4) } EOS from ${reclaimable_transactions.length} tx for ${registrant.eth} => ${registrant.eos}`)
-      // delete reclaimable[registrant.eth]
     }
     return reclaimed_balance
   }
@@ -205,7 +204,8 @@ const distribute_tokens = ( finish ) => {
   const status_log = () => {
     if(index % UI_SHOW_STATUS_EVERY == 0 && index != 0) debug.refresh(), 
       console.group("Snapshot Status"),
-      log("success",  `Progress:      EOS ${debug.rates.percent_complete}% `),
+      log("success",  `Progress:      ${debug.rates.percent_complete}% `),
+      log("success",  `---------------------------------`),
       log("success",  `Unclaimed:     EOS ${debug.distribution.$balance_unclaimed.toFormat(4) }`),
       log("success",  `In Wallets:    EOS ${debug.distribution.$balance_wallets.toFormat(4)}`),
       log("success",  `Reclaimed:     EOS ${debug.distribution.$balance_reclaimed.toFormat(4)}`),
@@ -305,7 +305,7 @@ const find_reclaimables = ( on_complete ) => {
       let tx = new Transaction( reclaimable_tx.args.from, reclaimable_tx.transactionHash, 'transfer', reclaimable_tx.args.value )
 
       transactions.push(tx)
-    
+
       log("error",`${tx.eth} => ${web3.toBigNumber(tx.amount).div(WAD)} https://etherscan.io/tx/${tx.hash}`)
     
     }
@@ -313,10 +313,11 @@ const find_reclaimables = ( on_complete ) => {
   }
 
   const on_success = () => { 
+    let result_total = get_transactions_reclaimable().length
     debug.refresh(), 
-      console.groupEnd(), 
-      log("block", `${Object.keys(reclaimable).length || 0} reclaimable transactions found`), 
-      { found: Object.keys(reclaimable).length } 
+    console.groupEnd(), 
+    log("block", `${result_total || 0} reclaimable transactions found`), 
+    { found: result_total } 
   }
 
   const on_error = () => { "Something bad happened while finding reclaimables" }
@@ -332,9 +333,14 @@ const verify = ( callback ) => {
 }
 
 const exported = ( callback ) => {
-  output.reclaimable = get_transactions_reclaimable().map( tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
-  output.reclaimed   = get_transactions_reclaimed().map( tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) } } )
-  output.snapshot    = get_registrants_accepted().map( registrant => { return { eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total) } } )
-  output.rejects     = get_registrants_rejected().map( registrant => { return { error: registrant.error, eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total)}  } )
+  if(typeof console.time === 'function')    console.time('Compiled Data to Output Arrays')
+
+  output.reclaimable = get_transactions_reclaimable().map(      tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) }                               } )
+  output.reclaimed   = get_transactions_reclaimed().map(        tx => { return { eth: tx.eth, eos: tx.eos, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) }                  } )
+  output.snapshot    = get_registrants_accepted().map(  registrant => { return { eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total) }                          } )
+  output.rejects     = get_registrants_rejected().map(  registrant => { return { error: registrant.error, eth: registrant.eth, eos: registrant.eos, balance: formatEOS(registrant.balance.total)}  } )
+  
+  if(typeof console.timeEnd === 'function') console.timeEnd('Compiled Data to Output Arrays')
+
   callback(null, true)
 } 
