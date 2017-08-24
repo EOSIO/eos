@@ -17,13 +17,15 @@ let   web3
 let   contract            = {}
 
 // Debugging
-let   debug               = new calculator();
+let   debug               
 
 window.onload = () => { init() }
 
 const init = () => {
   log("large_text", 'EOS Token Distribution (testnet)')
-  let   web3            = new Web3( new Web3.providers.HttpProvider( NODE ) )
+  
+  web3                  = new Web3( new Web3.providers.HttpProvider( NODE ) )
+  debug                 = new calculator();
 
   contract.$crowdsale   = web3.eth.contract(CROWDSALE_ABI).at(CROWDSALE_ADDRESS)
   contract.$token       = web3.eth.contract(TOKEN_ABI).at(TOKEN_ADDRESS)
@@ -59,7 +61,6 @@ const init = () => {
 
 //Sets balances, validates registrant, adds to distribution if good  
 const distribute_tokens = ( finish ) => {
-  
   log('group', 'Distribution List')
   
   let   index = 0
@@ -76,10 +77,8 @@ const distribute_tokens = ( finish ) => {
       let registrant = registrants[index]
       
       registrant
-
         .set("index", index )
-
-        .set("key", contract.$crowdsale.keys( registrant.eth ) )
+        .set("key",   contract.$crowdsale.keys( registrant.eth ) )
       
         // Every registrant has three different balances, 
         // Wallet:      Tokens in Wallet
@@ -87,16 +86,12 @@ const distribute_tokens = ( finish ) => {
         // Reclaimed:   Tokens sent to crowdsale/token contracts
 
         .balance
-
           // Ask token contract what this user's EOS balance is
-          .set( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ).div(WAD) ) )
-          
+          .set( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ).div(WAD) ) )        
           // Loop through periods and calculate unclaimed
-          .set( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ).div(WAD) )
-          
+          .set( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ).div(WAD) )       
           // Check reclaimable index for ethereum user, loop through tx
           .set( 'reclaimed',   web3.toBigNumber( maybe_reclaim_tokens( registrant ) ).div(WAD) )
-
           // wallet+unclaimed+reclaimed
           .sum()
       
@@ -128,11 +123,9 @@ const distribute_tokens = ( finish ) => {
     finally {
       // console.timeEnd('Distribute')
     }
-
   }
 
   const sum_unclaimed = ( registrant ) => {
-
     //Find all Buys
     let buys   = contract.$utilities.userBuys(registrant.eth).map(web3.toBigNumber)
 
@@ -155,15 +148,11 @@ const distribute_tokens = ( finish ) => {
 
     return web3
       .toBigNumber(periods
-
         //Get periods by unclaimed and lte last block
         .filter((period, i) => { return i <= period_for(SS_LAST_BLOCK_TIME) && !period.claimed })
-
         //Sum the pre-calculated EOS balance of each resulting period
         .reduce((sum, period) => period.share.plus(sum), web3.toBigNumber(0) )
-
       )
-
   }
 
   // Some users mistakenly sent their tokens to the contract or token address. Here we recover them if it is the case. 
@@ -215,29 +204,26 @@ const scan_registry = ( on_complete ) => {
   let group_index = 1;
 
   const on_result = ( log_register ) => { 
-
     //Since this is a watcher, we need to be sure the result isn't new. 
     if(log_register.blockNumber <= SS_LAST_BLOCK) {
 
       //check that registrant isn't already in array
-      if( registrant = registrants.filter(registrant => { return registrant.eth == log_register.args.user}), !registrant.length ){  
-        
+      if( registrant = registrants.filter(registrant => { return registrant.eth == log_register.args.user}), !registrant.length ){    
+      
         let registrant = new Registrant(log_register.args.user)
-
-        //Create new registrant and add to registrants array (global)
         registrants.push( registrant ) 
 
-        let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', web3.toBigNumber(0) )
-
         //Add the register transaction to transactions array, may be unnecessary. 
+        let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', web3.toBigNumber(0) )
         transactions.push(tx)
 
         registry_logs.push(`${registrant.eth} => ${log_register.args.key} (pending) => https://etherscan.io/tx/${tx.hash}`)
-
+        
         //now all your snowflakes are urine...
         maybe_log()
 
       }
+
     }
   }
 
@@ -285,17 +271,11 @@ const find_reclaimables = ( on_complete ) => {
   const query = { to: ['0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0','0xd0a6E6C54DbC68Db5db3A091B171A77407Ff7ccf'] }
 
   const on_result = ( reclaimable_tx ) => {  
-
     if(reclaimable_tx.blockNumber <= SS_LAST_BLOCK && reclaimable_tx.args.value.gt( web3.toBigNumber(0) )) {
-    
       let tx = new Transaction( reclaimable_tx.args.from, reclaimable_tx.transactionHash, 'transfer', reclaimable_tx.args.value )
-
       transactions.push(tx)
-
       log("error",`${tx.eth} => ${web3.toBigNumber(tx.amount).div(WAD)} https://etherscan.io/tx/${tx.hash}`)
-    
     }
-
   }
 
   const on_success = () => { 
