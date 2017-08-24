@@ -288,7 +288,7 @@ int main( int argc, char** argv ) {
                                                                                        fixedPermissions.back()},
                                                       result.get_object()["binargs"].as<Bytes>());
       trx.scope.assign(scopes.begin(), scopes.end());
-      ilog("Transaction result: ${r}", ("r", push_transaction(trx)));
+      ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx))));
    });
 
    // push transaction
