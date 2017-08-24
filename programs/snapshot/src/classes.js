@@ -1,43 +1,59 @@
 class Registrant {
 
   constructor( eth, eos = "", balance = 0 ){
-    // let {unclaimed, wallet, recovered} = balances
+
     this.eth      = eth
     this.eos      = eos
     this.balance  = typeof balance == 'object' ? balance : new Balance()
+    
     this.accepted = null
     this.error    = false
     this.index    = null
+  
   }
+
 
   accept ( callback ) {
-    this.accepted = true
 
+    this.accepted = true
     log("message", `[#${this.index}] accepted ${this.eth} => ${this.eos} => ${ this.balance.total.toFormat(4) }`)
+  
   }
 
-  reject () {
-    this.accepted = false
 
+  reject () {
+    
+    this.accepted = false
     let msg = ""
     if(this.balance.exists('reclaimed')) 
       log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error} ( ${this.balance.reclaimed.toFormat(4)} reclaimed EOS tokens moved back to Reclaimable )`)
     else 
       log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error}`)
+  
   }
+
 
   judgement() {
+  
     return this.valid() ? this.accept() : this.reject()
+  
   }
+
 
   set ( key, value ) {
+
     return (typeof this[`set_${key}`] === "function") ? this[`set_${key}`](value) : this
+
   }
 
+
   set_index ( index ) {
+
     this.index = index
     return this //for chaining
+
   }
+
 
   set_key ( eos_key ) {
 
@@ -63,7 +79,8 @@ class Registrant {
 
   }
 
-    // Reject bad keys and zero balances, elseif was fastest? :/
+
+  // Reject bad keys and zero balances, elseif was fastest? :/
   valid() {
 
     //Reject 0 balances
@@ -115,26 +132,8 @@ class Registrant {
 
 }
 
-class Transaction {
 
-  constructor( eth, tx, type = "transfer", amount ) {
-    this.eth     = eth
-    this.eos     = null
-    this.hash    = tx
-    this.amount  = amount
-    this.claimed = false
-    this.type    = type
-  } 
 
-  claim( eth ) {
-    return ( eth == this.eth ) 
-      ? ( 
-        this.claimed = true,
-        log("success", `reclaimed ${this.eth} => ${this.eos} => ${this.amount.div(WAD).toFormat(4)} EOS <<< tx: https://etherscan.io/tx/${this.hash}`) 
-      ) : log("error", `${eth} should't be claiming ${this.eth}'s transaction`)
-  }
-
-}
 
 class Balance {
 
@@ -166,3 +165,27 @@ class Balance {
     this.total = this.wallet.plus(this.unclaimed).plus(this.reclaimed)
   }
 } 
+
+
+
+class Transaction {
+
+  constructor( eth, tx, type = "transfer", amount ) {
+    this.eth     = eth
+    this.eos     = null
+    this.hash    = tx
+    this.amount  = amount
+    this.claimed = false
+    this.type    = type
+  } 
+
+  claim( eth ) {
+    return ( eth == this.eth ) 
+      ? ( 
+        this.claimed = true,
+        log("success", `reclaimed ${this.eth} => ${this.eos} => ${this.amount.div(WAD).toFormat(4)} EOS <<< tx: https://etherscan.io/tx/${this.hash}`) 
+      ) : log("error", `${eth} should't be claiming ${this.eth}'s transaction`)
+  }
+
+}
+
