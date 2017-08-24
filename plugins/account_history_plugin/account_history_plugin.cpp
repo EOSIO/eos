@@ -1,5 +1,5 @@
 #include <eos/account_history_plugin/account_history_plugin.hpp>
-#include <eos/account_history_plugin/account_history_object.hpp>
+#include <eos/account_history_plugin/transaction_history_object.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/config.hpp>
 #include <eos/chain/exceptions.hpp>
@@ -30,7 +30,7 @@ using get_transactions_results = account_history_apis::read_only::get_transactio
 class account_history_plugin_impl {
 public:
    ProcessedTransaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
-   get_transactions_results get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const;
+   get_transactions_results get_transactions(const AccountName&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
    void applied_block(const signed_block&);
 
    chain_plugin* chain_plug;
@@ -51,7 +51,7 @@ private:
    optional<block_id_type> find_block_id(const transaction_id_type& transaction_id) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const block_id_type& block_id) const;
-   bool scope_relevant(const eos::types::Vector<AccountName>& scope);
+   bool is_scope_relevant(const eos::types::Vector<AccountName>& scope);
    get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
    bool time_exceeded(const fc::time_point& start_time) const;
 };
@@ -102,7 +102,7 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
                       "Could not find transaction for: ${id}", ("id", transaction_id.str()));
 }
 
-get_transactions_results account_history_plugin_impl::get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const
+get_transactions_results account_history_plugin_impl::get_transactions(const AccountName&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const
 {
    fc::time_point start_time = fc::time_point::now();
    const auto& db = chain_plug->chain().get_database();
@@ -119,20 +119,20 @@ get_transactions_results account_history_plugin_impl::get_transactions(const Acc
 
    uint32_t begin, end;
    const auto size = block_transaction_ids.size();
-   if (!start_seq)
+   if (!skip_seq)
    {
       begin = 0;
       end = size;
    }
    else
    {
-      begin = *start_seq;
+      begin = *skip_seq;
 
-      if (!stop_seq)
+      if (!num_seq)
          end = size;
       else
       {
-         end = *stop_seq + 1;
+         end = begin + *num_seq;
          if (end > size)
             end = size;
       }
@@ -231,7 +231,7 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
       for (const auto& thread : cycle)
          for (const auto& trx : thread.user_input)
          {
-            if (check_relevance && !scope_relevant(trx.scope))
+            if (check_relevance && !is_scope_relevant(trx.scope))
                continue;
 
             for (const auto& account_name : trx.scope)
@@ -245,7 +245,7 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
          }
 }
 
-bool account_history_plugin_impl::scope_relevant(const eos::types::Vector<AccountName>& scope)
+bool account_history_plugin_impl::is_scope_relevant(const eos::types::Vector<AccountName>& scope)
 {
    for (const AccountName& account_name : scope)
       if (filter_on.count(account_name))
@@ -311,7 +311,7 @@ read_only::get_transaction_results read_only::get_transaction(const read_only::g
 
 read_only::get_transactions_results read_only::get_transactions(const read_only::get_transactions_params& params) const
 {
-   return account_history->get_transactions(params.account_name, params.start_seq, params.stop_seq);
+   return account_history->get_transactions(params.account_name, params.skip_seq, params.num_seq);
 }
 
 } // namespace account_history_apis

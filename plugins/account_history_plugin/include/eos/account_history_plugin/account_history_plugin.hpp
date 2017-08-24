@@ -37,8 +37,8 @@ public:
    get_transaction_results get_transaction(const get_transaction_params& params) const;
    struct get_transactions_params {
       chain::AccountName  account_name;
-      optional<uint32_t>  start_seq;
-      optional<uint32_t>  stop_seq;
+      optional<uint32_t>  skip_seq;
+      optional<uint32_t>  num_seq;
    };
    struct ordered_transaction_results {
       uint32_t                    seq_num;
@@ -86,6 +86,6 @@ private:
 FC_REFLECT(eos::account_history_apis::empty, )
 FC_REFLECT(eos::account_history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eos::account_history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
-FC_REFLECT(eos::account_history_apis::read_only::get_transactions_params, (account_name)(start_seq)(stop_seq) )
+FC_REFLECT(eos::account_history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
 FC_REFLECT(eos::account_history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
 FC_REFLECT(eos::account_history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )

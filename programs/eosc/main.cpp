@@ -376,15 +376,15 @@ int send_command (const vector<string> &cmd_line)
   } else if( command == "transactions" ) {
      if( cmd_line.size() < 2 || cmd_line.size() > 4 )
      {
-        std::cerr << "usage: " << program << " transactions ACCOUNT_TO_LOOKUP [START_SEQUENCE [STOP_SEQUENCE]]\n";
+        std::cerr << "usage: " << program << " transactions ACCOUNT_TO_LOOKUP [SKIP_TO_SEQUENCE [NUMBER_OF_SEQUENCES_TO_RETURN]]\n";
         return -1;
      }
      chain::AccountName account_name(cmd_line[1]);
      auto arg = (cmd_line.size() == 2)
            ? fc::mutable_variant_object( "account_name", account_name)
            : (cmd_line.size() == 3)
-             ? fc::mutable_variant_object( "account_name", account_name)("start_seq", cmd_line[2])
-             : fc::mutable_variant_object( "account_name", account_name)("start_seq", cmd_line[2])("stop_seq", cmd_line[3]);
+             ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", cmd_line[2])
+             : fc::mutable_variant_object( "account_name", account_name)("skip_seq", cmd_line[2])("num_seq", cmd_line[3]);
      std::cout << fc::json::to_pretty_string( call( get_transactions_func, arg) ) << std::endl;
   }
   return 0;
