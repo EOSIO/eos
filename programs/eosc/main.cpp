@@ -133,204 +133,182 @@ int main( int argc, char** argv ) {
    app.require_subcommand();
 
    // Create subcommand
-   {
-      auto create = app.add_subcommand("create", "Create various items, on and off the blockchain", false);
-      create->require_subcommand();
+   auto create = app.add_subcommand("create", "Create various items, on and off the blockchain", false);
+   create->require_subcommand();
 
-      // create key
-      create->add_subcommand("key", "Create a new keypair and print the public and private keys")->set_callback([] {
-         auto privateKey = fc::ecc::private_key::generate();
-         std::cout << "Private key: " << key_to_wif(privateKey.get_secret()) << "\n";
-         std::cout << "Public key:  " << string(public_key_type(privateKey.get_public_key())) << std::endl;
-      });
+   // create key
+   create->add_subcommand("key", "Create a new keypair and print the public and private keys")->set_callback([] {
+      auto privateKey = fc::ecc::private_key::generate();
+      std::cout << "Private key: " << key_to_wif(privateKey.get_secret()) << "\n";
+      std::cout << "Public key:  " << string(public_key_type(privateKey.get_public_key())) << std::endl;
+   });
 
-      // create account
-      {
-         string creator;
-         string name;
-         string ownerKey;
-         string activeKey;
-         auto createAccount = create->add_subcommand("account", "Create a new account on the blockchain", false);
-         createAccount->add_option("creator", creator, "The name of the account creating the new account")->required();
-         createAccount->add_option("name", name, "The name of the new account")->required();
-         createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
-         createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
-         createAccount->set_callback([&] {
-            create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey));
-         });
-      }
-   }
+   // create account
+   string creator;
+   string name;
+   string ownerKey;
+   string activeKey;
+   auto createAccount = create->add_subcommand("account", "Create a new account on the blockchain", false);
+   createAccount->add_option("creator", creator, "The name of the account creating the new account")->required();
+   createAccount->add_option("name", name, "The name of the new account")->required();
+   createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
+   createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
+   createAccount->set_callback([&] {
+      create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey));
+   });
 
    // Get subcommand
-   {
-      auto get = app.add_subcommand("get", "Retrieve various items and information from the blockchain", false);
-      get->require_subcommand();
+   auto get = app.add_subcommand("get", "Retrieve various items and information from the blockchain", false);
+   get->require_subcommand();
 
-      // get info
-      get->add_subcommand("info", "Get current blockchain information")->set_callback([] {
-         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
-      });
+   // get info
+   get->add_subcommand("info", "Get current blockchain information")->set_callback([] {
+      std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+   });
 
-      // get block
-      {
-         string blockArg;
-         auto getBlock = get->add_subcommand("block", "Retrieve a full block from the blockchain", false);
-         getBlock->add_option("block", blockArg, "The number or ID of the block to retrieve")->required();
-         getBlock->set_callback([&blockArg] {
-            auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
-            std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
-         });
-      }
+   // get block
+   string blockArg;
+   auto getBlock = get->add_subcommand("block", "Retrieve a full block from the blockchain", false);
+   getBlock->add_option("block", blockArg, "The number or ID of the block to retrieve")->required();
+   getBlock->set_callback([&blockArg] {
+      auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
+      std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+   });
 
-      // get account
-      {
-         string accountName;
-         auto getAccount = get->add_subcommand("account", "Retrieve an account from the blockchain", false);
-         getAccount->add_option("name", accountName, "The name of the account to retrieve")->required();
-         getAccount->set_callback([&] {
-            std::cout << fc::json::to_pretty_string(call(get_account_func,
-                                                         fc::mutable_variant_object("name", accountName)))
-                      << std::endl;
-         });
-      }
+   // get account
+   string accountName;
+   auto getAccount = get->add_subcommand("account", "Retrieve an account from the blockchain", false);
+   getAccount->add_option("name", accountName, "The name of the account to retrieve")->required();
+   getAccount->set_callback([&] {
+      std::cout << fc::json::to_pretty_string(call(get_account_func,
+                                                   fc::mutable_variant_object("name", accountName)))
+                << std::endl;
+   });
 
-      // get transaction
-      {
-         string transactionId;
-         auto getTransaction = get->add_subcommand("transaction", "Retrieve a transaction from the blockchain", false);
-         getTransaction->add_option("id", transactionId, "ID of the transaction to retrieve")->required();
-         getTransaction->set_callback([&] {
-            auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
-            std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
-         });
-      }
-   }
+   // get transaction
+   string transactionId;
+   auto getTransaction = get->add_subcommand("transaction", "Retrieve a transaction from the blockchain", false);
+   getTransaction->add_option("id", transactionId, "ID of the transaction to retrieve")->required();
+   getTransaction->set_callback([&] {
+      auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
+      std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
+   });
 
    // Contract subcommand
-   {
-      string account;
-      string wastPath;
-      string abiPath;
-      auto contract = app.add_subcommand("contract", "Create or update the contract on an account");
-      contract->add_option("account", account, "The account to publish a contract for")->required();
-      contract->add_option("wast-file", wastPath, "The file containing the contract WAST")->required()
-            ->check(CLI::ExistingFile);
-      auto abi = contract->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
-                 ->check(CLI::ExistingFile);
-      contract->set_callback([&] {
-         std::string wast;
-         std::cout << "Reading WAST..." << std::endl;
-         fc::read_file_contents(wastPath, wast);
-         std::cout << "Assembling WASM..." << std::endl;
-         auto wasm = assemble_wast(wast);
+   string account;
+   string wastPath;
+   string abiPath;
+   auto contractSubcommand = app.add_subcommand("contract", "Create or update the contract on an account");
+   contractSubcommand->add_option("account", account, "The account to publish a contract for")->required();
+   contractSubcommand->add_option("wast-file", wastPath, "The file containing the contract WAST")->required()
+         ->check(CLI::ExistingFile);
+   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
+              ->check(CLI::ExistingFile);
+   contractSubcommand->set_callback([&] {
+      std::string wast;
+      std::cout << "Reading WAST..." << std::endl;
+      fc::read_file_contents(wastPath, wast);
+      std::cout << "Assembling WASM..." << std::endl;
+      auto wasm = assemble_wast(wast);
 
-         types::setcode handler;
-         handler.account = account;
-         handler.code.assign(wasm.begin(), wasm.end());
-         if (abi->count())
-            handler.abi = fc::json::from_file(abiPath).as<types::Abi>();
+      types::setcode handler;
+      handler.account = account;
+      handler.code.assign(wasm.begin(), wasm.end());
+      if (abi->count())
+         handler.abi = fc::json::from_file(abiPath).as<types::Abi>();
 
-         SignedTransaction trx;
-         trx.scope = sort_names({config::EosContractName, account});
-         transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
-                            "setcode", handler);
+      SignedTransaction trx;
+      trx.scope = sort_names({config::EosContractName, account});
+      transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
+                                           "setcode", handler);
 
-         std::cout << "Publishing contract..." << std::endl;
-         std::cout << fc::json::to_pretty_string(push_transaction(trx)) << std::endl;
-      });
-   }
+      std::cout << "Publishing contract..." << std::endl;
+      std::cout << fc::json::to_pretty_string(push_transaction(trx)) << std::endl;
+   });
 
    // Transfer subcommand
-   {
-      string sender;
-      string recipient;
-      uint64_t amount;
-      auto transfer = app.add_subcommand("transfer", "Transfer EOS from account to account", false);
-      transfer->add_option("sender", sender, "The account sending EOS")->required();
-      transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
-      transfer->add_option("amount", amount, "The amount of EOS to send")->required();
-      transfer->set_callback([&] {
-         SignedTransaction trx;
-         trx.scope = sort_names({sender,recipient});
-         transaction_helpers::emplace_message(trx, config::EosContractName,
-                                              vector<types::AccountPermission>{{sender,"active"}},
-                                              "transfer", types::transfer{sender, recipient, amount});
-         auto info = get_info();
-         trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
-         transaction_helpers::set_reference_block(trx, info.head_block_id);
+   string sender;
+   string recipient;
+   uint64_t amount;
+   auto transfer = app.add_subcommand("transfer", "Transfer EOS from account to account", false);
+   transfer->add_option("sender", sender, "The account sending EOS")->required();
+   transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
+   transfer->add_option("amount", amount, "The amount of EOS to send")->required();
+   transfer->set_callback([&] {
+      SignedTransaction trx;
+      trx.scope = sort_names({sender,recipient});
+      transaction_helpers::emplace_message(trx, config::EosContractName,
+                                           vector<types::AccountPermission>{{sender,"active"}},
+                                           "transfer", types::transfer{sender, recipient, amount});
+      auto info = get_info();
+      trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
+      transaction_helpers::set_reference_block(trx, info.head_block_id);
 
-         std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
-
-      });
-   }
+      std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
+   });
 
    // Push subcommand
-   {
-      auto push = app.add_subcommand("push", "Push arbitrary data to the blockchain", false);
-      push->require_subcommand();
+   auto push = app.add_subcommand("push", "Push arbitrary data to the blockchain", false);
+   push->require_subcommand();
 
-      // push message
-      {
-         struct {
-            vector<string> permissions;
-            string contract;
-            string action;
-            string data;
-            vector<string> scopes;
-         } opts;
-         auto options = std::make_shared<decltype(opts)>(std::move(opts));
-         auto messageSubcommand = push->add_subcommand("message", "Push a transaction with a single message");
-         messageSubcommand->fallthrough(false);
-         messageSubcommand->add_option("contract", options->contract,
-                                       "The account providing the contract to execute", true)->required();
-         messageSubcommand->add_option("action", options->action, "The action to execute on the contract", true)
-               ->required();
-         messageSubcommand->add_option("data", options->data, "The arguments to the contract")->required();
-         messageSubcommand->add_option("-p,--permission", options->permissions,
-                                       "An account and permission level to authorize, as in 'account@permission'");
-         messageSubcommand->add_option("-s,--scope", options->scopes, "An account in scope for this operation", true);
-         messageSubcommand->set_callback([options = std::move(options)] {
-            ilog("Converting argument to binary...");
-            auto arg= fc::mutable_variant_object
-                      ("code", options->contract)
-                      ("action",options->action)
-                      ("args", fc::json::from_string(options->data));
-            auto result = call(json_to_bin_func, arg);
+   // push message
+   vector<string> permissions;
+   string contract;
+   string action;
+   string data;
+   vector<string> scopes;
+   auto messageSubcommand = push->add_subcommand("message", "Push a transaction with a single message");
+   messageSubcommand->fallthrough(false);
+   messageSubcommand->add_option("contract", contract,
+                                 "The account providing the contract to execute", true)->required();
+   messageSubcommand->add_option("action", action, "The action to execute on the contract", true)
+         ->required();
+   messageSubcommand->add_option("data", data, "The arguments to the contract")->required();
+   messageSubcommand->add_option("-p,--permission", permissions,
+                                 "An account and permission level to authorize, as in 'account@permission'");
+   messageSubcommand->add_option("-s,--scope", scopes, "An account in scope for this operation", true);
+   messageSubcommand->set_callback([&] {
+      ilog("Converting argument to binary...");
+      auto arg= fc::mutable_variant_object
+                ("code", contract)
+                ("action", action)
+                ("args", fc::json::from_string(data));
+      auto result = call(json_to_bin_func, arg);
 
-            auto fixedPermissions = options->permissions | boost::adaptors::transformed([](const string& p) {
-               vector<string> pieces;
-               boost::split(pieces, p, boost::is_any_of("@"));
-               FC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
-               return types::AccountPermission(pieces[0], pieces[1]);
-            });
+      auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
+         vector<string> pieces;
+         boost::split(pieces, p, boost::is_any_of("@"));
+         FC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+         return types::AccountPermission(pieces[0], pieces[1]);
+      });
 
-            SignedTransaction trx;
-            transaction_helpers::emplace_message(trx, options->contract, vector<types::AccountPermission>{fixedPermissions.front(),
-                                                                                                          fixedPermissions.back()},
-                                                 options->action, result.get_object()["bincmd_line"].as<Bytes>());
-            trx.scope.assign(options->scopes.begin(), options->scopes.end());
-            ilog("Transaction result: ${r}", ("r", push_transaction(trx)));
-         });
-      }
+      SignedTransaction trx;
+      transaction_helpers::emplace_message(trx, contract, vector<types::AccountPermission>{fixedPermissions.front(),
+                                                                                           fixedPermissions.back()},
+                                           action, result.get_object()["bincmd_line"].as<Bytes>());
+      trx.scope.assign(scopes.begin(), scopes.end());
+      ilog("Transaction result: ${r}", ("r", push_transaction(trx)));
+   });
 
-      // push transaction
-      {
-         string trxJson;
-         auto trxSubcommand = push->add_subcommand("transaction", "Push an arbitrary JSON transaction");
-         trxSubcommand->add_option("transaction", trxJson, "The JSON of the transaction to push")->required();
-         trxSubcommand->set_callback([&] {
-            auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
-            std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
-         });
-      }
-   }
+   // push transaction
+   string trxJson;
+   auto trxSubcommand = push->add_subcommand("transaction", "Push an arbitrary JSON transaction");
+   trxSubcommand->add_option("transaction", trxJson, "The JSON of the transaction to push")->required();
+   trxSubcommand->set_callback([&] {
+      auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
+      std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+   });
 
    try {
        app.parse(argc, argv);
    } catch (const CLI::ParseError &e) {
        return app.exit(e);
    } catch (const fc::exception& e) {
-      elog("Failed with error: ${e}", ("e", e.to_detail_string()));
+      auto errorString = e.to_detail_string();
+      if (errorString.find("Connection refused") != string::npos)
+         elog("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port));
+      else
+         elog("Failed with error: ${e}", ("e", e.to_detail_string()));
       return 1;
    }
 

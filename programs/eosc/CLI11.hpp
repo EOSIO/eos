@@ -4,30 +4,30 @@
 // file LICENSE or https://github.com/CLIUtils/CLI11 for details.
 
 // This file was generated using MakeSingleHeader.py in CLI11/scripts
-// from: v1.1.0
+// from: v1.1.0-17-gb88f1f2
 
 // This has the complete CLI library in one file.
 
-#include <sys/stat.h>
-#include <deque>
-#include <set>
+#include <sys/types.h>
 #include <iostream>
 #include <string>
+#include <deque>
+#include <memory>
+#include <algorithm>
 #include <tuple>
-#include <locale>
+#include <iomanip>
+#include <type_traits>
 #include <functional>
 #include <numeric>
-#include <iomanip>
-#include <sys/types.h>
-#include <utility>
-#include <exception>
-#include <algorithm>
 #include <fstream>
-#include <sstream>
-#include <stdexcept>
 #include <vector>
-#include <type_traits>
-#include <memory>
+#include <locale>
+#include <set>
+#include <stdexcept>
+#include <exception>
+#include <sstream>
+#include <sys/stat.h>
+#include <utility>
 
 // From CLI/Error.hpp
 
@@ -2007,9 +2007,9 @@ class App {
 
     bool _valid_subcommand(const std::string &current) const {
         for(const App_p &com : subcommands_)
-            if(com->check_name(current))
+            if(com->check_name(current) && !*com)
                 return true;
-        if(parent_ != nullptr && fallthrough_)
+        if(parent_ != nullptr)
             return parent_->_valid_subcommand(current);
         else
             return false;
@@ -2216,6 +2216,19 @@ class App {
         }
     }
 
+    /// Count the required remaining positional arguments
+    size_t _count_remaining_required_positionals() const {
+        size_t retval = 0;
+        for(const Option_p &opt : options_)
+            if(opt->get_positional()
+               && opt->get_required()
+               && opt->get_expected() > 0
+               && static_cast<int>(opt->count()) < opt->get_expected())
+                retval = static_cast<size_t>(opt->get_expected()) - opt->count();
+
+        return retval;
+    }
+
     /// Parse a positional, go up the tree to check
     void _parse_positional(std::vector<std::string> &args) {
 
@@ -2252,6 +2265,8 @@ class App {
     ///
     /// Unlike the others, this one will always allow fallthrough
     void _parse_subcommand(std::vector<std::string> &args) {
+        if(_count_remaining_required_positionals() > 0)
+            return _parse_positional(args);
         for(const App_p &com : subcommands_) {
             if(com->check_name(args.back())) {
                 args.pop_back();
