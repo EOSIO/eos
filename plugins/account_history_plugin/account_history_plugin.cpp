@@ -55,7 +55,7 @@ private:
    get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
    bool time_exceeded(const fc::time_point& start_time) const;
 };
-const int64_t account_history_plugin_impl::DEFAULT_TRANSACTION_TIME_LIMIT = 3000;
+const int64_t account_history_plugin_impl::DEFAULT_TRANSACTION_TIME_LIMIT = 3;
 
 optional<block_id_type> account_history_plugin_impl::find_block_id(const transaction_id_type& transaction_id) const
 {
@@ -270,13 +270,13 @@ void account_history_plugin::set_program_options(options_description& cli, optio
          ("filter_on_accounts,f", bpo::value<vector<string>>()->composing(),
           "Track only transactions whose scopes involve the listed accounts. Default is to track all transactions.")
          ("get-transactions-time-limit", bpo::value<int>()->default_value(account_history_plugin_impl::DEFAULT_TRANSACTION_TIME_LIMIT),
-          "Limits the time to wait before returning for get_transactions")
+          "Limits the maximum time (in milliseconds) processing a single get_transactions call.")
          ;
 }
 
 void account_history_plugin::plugin_initialize(const variables_map& options)
 {
-   my->transactions_time_limit = options.at("get-transactions-time-limit").as<int>();
+   my->transactions_time_limit = options.at("get-transactions-time-limit").as<int>() * 1000;
 
    if(options.count("filter_on_accounts"))
    {
