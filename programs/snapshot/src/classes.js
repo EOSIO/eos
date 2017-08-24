@@ -6,9 +6,9 @@ class Registrant {
     this.eos      = eos
     this.balance  = typeof balance == 'object' ? balance : new Balance()
     
+    this.index    = null
     this.accepted = null
     this.error    = false
-    this.index    = null
   
   }
 
@@ -17,7 +17,7 @@ class Registrant {
 
     this.accepted = true
     log("message", `[#${this.index}] accepted ${this.eth} => ${this.eos} => ${ this.balance.total.toFormat(4) }`)
-  
+    this.weight_loss()
   }
 
 
@@ -30,8 +30,8 @@ class Registrant {
     else 
       log("reject", `[#${this.index}] rejected ${this.eth} => ${this.eos} => ${this.balance.total.toFormat(4)} => ${this.error}`)
   
+    this.weight_loss()
   }
-
 
   judgement() {
   
@@ -125,11 +125,6 @@ class Registrant {
     return !this.error ? true : false
 
   }
-
-  is_accepted () {
-    return this.accepted === true 
-  }
-
 }
 
 
