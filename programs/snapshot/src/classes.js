@@ -95,8 +95,10 @@ class Transaction {
 
   claim( eth ) {
     return ( eth == this.eth ) 
-      ? this.claimed = true
-      : log("error", `${eth} should't be claiming ${this.eth}'s transaction`)
+      ? ( 
+        this.claimed = true,
+        log("success", `reclaimed ${this.eth} => ${this.eos} => ${this.amount.div(WAD).toFormat(4)} EOS <<< tx: https://etherscan.io/tx/${this.hash}`) 
+      ) : log("error", `${eth} should't be claiming ${this.eth}'s transaction`)
   }
 
 }
