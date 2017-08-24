@@ -17,7 +17,6 @@ class Registrant {
 
     this.accepted = true
     log("message", `[#${this.index}] accepted ${this.eth} => ${this.eos} => ${ this.balance.total.toFormat(4) }`)
-    this.weight_loss()
   }
 
 
