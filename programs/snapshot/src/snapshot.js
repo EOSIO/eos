@@ -73,32 +73,34 @@ const distribute_tokens = ( finish ) => {
       // console.time('Distribute')
       
       let registrant = registrants[index]
-
-      registrant.index = index
       
-      registrant.eos = maybe_fix_key(  contract.$crowdsale.keys( registrant.eth ) ) 
+      registrant
+
+        .set("index", index )
+
+        .set("key", contract.$crowdsale.keys( registrant.eth ) )
       
-      // Every registrant has three different balances, 
-      // Wallet:      Tokens in Wallet
-      // Unclaimed:   Tokens in contract
-      // Reclaimed:   Tokens sent to crowdsale/token contracts
+        // Every registrant has three different balances, 
+        // Wallet:      Tokens in Wallet
+        // Unclaimed:   Tokens in contract
+        // Reclaimed:   Tokens sent to crowdsale/token contracts
 
-      registrant.balance
+        .balance
 
-        // Ask token contract what this user's EOS balance is
-        .set( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ).div(WAD) ) )
-        
-        // Loop through periods and calculate unclaimed
-        .set( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ).div(WAD) )
-        
-        // Check reclaimable index for ethereum user, loop through tx
-        .set( 'reclaimed',   web3.toBigNumber( maybe_reclaim_tokens( registrant ) ).div(WAD) )
+          // Ask token contract what this user's EOS balance is
+          .set( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ).div(WAD) ) )
+          
+          // Loop through periods and calculate unclaimed
+          .set( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ).div(WAD) )
+          
+          // Check reclaimable index for ethereum user, loop through tx
+          .set( 'reclaimed',   web3.toBigNumber( maybe_reclaim_tokens( registrant ) ).div(WAD) )
 
-        // wallet+unclaimed+reclaimed
-        .sum()
+          // wallet+unclaimed+reclaimed
+          .sum()
       
       // Reject or Accept
-      registrant.test()
+      registrant.judgement()
 
       status_log()
 
@@ -160,29 +162,7 @@ const distribute_tokens = ( finish ) => {
         .reduce((sum, period) => period.share.plus(sum), web3.toBigNumber(0) )
 
       )
-  }
-
-  //Some keys are fixable
-  const maybe_fix_key = ( eos_key ) => {
-
-    //Might be hex, convert it.
-    if(eos_key.length == 106){                                    
-      let eos_key_from_hex = web3.toAscii(eos_key) 
-      if(eos_key_from_hex.startsWith('EOS') && eos_key_from_hex.length == 53) { 
-        eos_key = eos_key_from_hex
-      } 
-    }
-
-    //Might be user error
-    else if(eos_key.startsWith('key')){                            
-      let eos_key_mod = eos_key.substring(3) 
-      if(eos_key_mod.startsWith('EOS') && eos_key_mod.length == 53) {
-        eos_key = eos_key_mod
-      } 
-    }
-
-    return eos_key
-
+      
   }
 
   // Some users mistakenly sent their tokens to the contract or token address. Here we recover them if it is the case. 
@@ -241,15 +221,19 @@ const scan_registry = ( on_complete ) => {
       //check that registrant isn't already in array
       if( registrant = registrants.filter(registrant => { return registrant.eth == log_register.args.user}), !registrant.length ){  
         
+        let registrant = new Registrant(log_register.args.user)
+
         //Create new registrant and add to registrants array (global)
-        registrants.push( registrant = new Registrant(log_register.args.user) ) 
+        registrants.push( registrant ) 
 
         let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', web3.toBigNumber(0) )
 
+        //Add the register transaction to transactions array, may be unnecessary. 
         transactions.push(tx)
 
         registry_logs.push(`${registrant.eth} => ${log_register.args.key} (pending) => https://etherscan.io/tx/${tx.hash}`)
 
+        //now all your snowflakes are urine...
         maybe_log()
 
       }
@@ -270,6 +254,7 @@ const scan_registry = ( on_complete ) => {
     return (Date.now()-message_freq > last_message) ? (log_group(), true) : false
   }
 
+  //...and you can’t even find the cat.
   let log_group = () => {
     let group_msg = `${group_index}. ... ${registry_logs.length} Found, Total: ${registrants.length}`;
     log("groupCollapsed", group_msg),
