@@ -82,14 +82,9 @@ const calculator = function(){
       this.distribution.$balance_reclaimed  = this.sum_balance('reclaimed')
 
       //Distribution
-      this.distribution.$balances_missing       = this.distribution.$snapshot_supply.minus(this.distribution.$balances_found)
-      this.reclaimable.total                    = 0
-      this.distribution.$balance_reclaimable    = get_transactions_reclaimable().reduce( (sum, tx) => { return tx.amount.div(WAD).plus( sum ) }, web3.toBigNumber(0) )
-      this.reclaimable.total                    = get_transactions_reclaimable().length
-      // for( let registrant in reclaimable )  {
-      //   this.distribution.$balance_reclaimable  = this.distribution.$balance_reclaimable.plus( web3.toBigNumber( reclaimable[registrant].reduce( (sum, reclaim) => { return reclaim.amount.div(WAD).plus( sum ) }, web3.toBigNumber( 0 ) ) ) )
-      //   this.reclaimable.total += reclaimable[registrant].length
-      // }
+      this.distribution.$balances_missing    = this.distribution.$snapshot_supply.minus(this.distribution.$balances_found)
+      this.distribution.$balance_reclaimable = get_transactions_reclaimable().reduce( (sum, tx) => { return tx.amount.div(WAD).plus( sum ) }, web3.toBigNumber(0) )
+      this.reclaimable.total                 = get_transactions_reclaimable().length
 
       //Rates
       this.rates.percent_complete           = to_percent( ( this.registry.accepted + this.registry.rejected ) / this.registry.total )
@@ -103,8 +98,13 @@ const calculator = function(){
       this.rates.balance_reclaimable_total  = to_percent( this.distribution.$balance_reclaimable.div(this.distribution.$total_supply ).toFixed(2) )
 
       //Tests
-      this.tests.balances                   = ( sum = this.distribution.$balance_wallets.plus(this.distribution.$balance_unclaimed).plus(this.distribution.$balance_reclaimed), sum.eq( this.distribution.$balances_found ) ? "OK" : `FAILED ${sum.toFixed(4)} != ${ this.distribution.$balances_found.toFixed(4) }` )
+      this.tests.balances                   = ( sum = this.distribution.$balance_wallets.plus(this.distribution.$balance_unclaimed).plus(this.distribution.$balance_reclaimed), sum.eq( this.distribution.$balances_found ) ? "PASS" : `FAIL ${sum.toFixed(4)} != ${ this.distribution.$balances_found.toFixed(4) }` )
       this.tests.precision_loss             = ( sum = this.distribution.$balance_wallets.plus(this.distribution.$balance_unclaimed).plus(this.distribution.$balance_reclaimed), sum - this.distribution.$balances_found )
+      
+      let _registrants                      = new Set()
+      this.tests.unique                     = !registrants.some( registrant => _registrants.size === _registrants.add(registrant.eth).size ) ? "PASS" : "FAIL"
+
+
   }
 
   debug.find = function(group, key){
@@ -134,6 +134,7 @@ const calculator = function(){
   }
 
   debug.output = function(){
+
     this.refresh();
 
     let _registry = new AsciiTable('Registry')
@@ -187,7 +188,7 @@ const calculator = function(){
         .setAlign(1, AsciiTable.RIGHT)
         .addRow('Balances Totaled', `${ this.tests.balances }`)
         .addRow('Precision Loss', `${ this.tests.precision_loss }`)
-        // .addRow('Balance Missing', `${ this.tests.balances_missing }`)
+        .addRow('Registrants Unique', `${ this.tests.unique }`)
 
     log("info", _sanity.toString())
 
@@ -196,7 +197,7 @@ const calculator = function(){
       _reclaimed
           .setHeading(`ETH Address`, `EOS Key`, `Amount`, `TX`)
       for( let tx of get_transactions_reclaimed() ) {
-        _reclaimed.addRow(tx.eth, tx.eos, tx.amount.div(WAD).toFormat(4), `http://etherscan.io/tx/${tx.tx}`)
+        _reclaimed.addRow(tx.eth, tx.eos, tx.amount.div(WAD).toFormat(4), `http://etherscan.io/tx/${tx.hash}`)
       }
       log("info", _reclaimed.toString())
     }
