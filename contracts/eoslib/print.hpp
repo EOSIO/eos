@@ -7,30 +7,74 @@ namespace eos {
 
    static_assert( sizeof(long) == sizeof(int), "unexpected size difference" );
 
+   /**
+    *  Prints string
+    *  @brief Prints string
+    *  @param cstr - a null terminated string
+    */
    inline void print( const char* ptr ) {
       prints(ptr);
    }
 
+   /**
+    * Prints 64 bit unsigned integer as a 64 bit unsigned integer
+    * @brief Prints integer 64 bit unsigned integer
+    * @param Value to be printed
+    */
    inline void print( uint64_t num ) {
       printi(num);
    }
+
+   /**
+    * Prints 32 bit unsigned integer as a 64 bit unsigned integer
+    * @brief Prints integer  32 bit unsigned integer
+    * @param Value to be printed
+    */
    inline void print( uint32_t num ) {
       printi(num);
    }
+
+   /**
+    * Prints integer as a 64 bit unsigned integer
+    * @brief Prints integer
+    * @param Value to be printed
+    */
    inline void print( int num ) {
       printi(num);
    }
+
+   /**
+    * Prints unsigned integer as a 64 bit unsigned integer
+    * @brief Prints unsigned integer
+    * @param Value to be printed
+    */
    inline void print( unsigned int num ) {
       printi(num);
    }
 
+   /**
+    * Prints uint128 struct as 128 bit unsigned integer
+    * @brief Prints uint128 struct
+    * @param Value to be printed
+    */
    inline void print( uint128 num ) {
       printi128((uint128_t*)&num);
    }
+
+   /**
+    * Prints 128 bit unsigned integer
+    * @brief Prints 128 bit unsigned integer
+    * @param Value to be printed
+    */
    inline void print( uint128_t num ) {
       printi128((uint128_t*)&num);
    }
 
+   /**
+    * Prints a 64 bit names as base32 encoded string
+    * @brief Prints a 64 bit names as base32 encoded string
+    * @param Value of 64 bit names to be printed
+    */
    inline void print( Name name ) {
       printn(name.value);
    }
@@ -63,6 +107,13 @@ namespace eos {
     *
     *  @{
     */
+
+    /**
+     *  Print out value / list of values
+     *  @brief Print out value  / list of values
+     *  @param a    Value to be printed
+     *  @param args Other values to be printed
+     */
    template<typename Arg, typename... Args>
    void print( Arg a, Args... args ) {
       print(a);
@@ -74,6 +125,12 @@ namespace eos {
     */
    class iostream {};
 
+   /**
+    *  Overload c++ iostream
+    *  @brief Overload c++ iostream
+    *  @param out  Output strem
+    *  @param v    Value to be printed
+    */
    template<typename T>
    inline iostream& operator<<( iostream& out, const T& v ) {
       print( v );
