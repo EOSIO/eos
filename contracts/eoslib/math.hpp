@@ -17,18 +17,31 @@ namespace eos {
    *  @{
    */
 
-  /** @brief wraps multeq_i128 from @ref mathcapi */
+  /**
+   * Multiply two 128 bit unsigned integers and assign the value to the first parameter.
+   * This wraps multeq_i128 from @ref mathcapi.
+   * @brief wraps multeq_i128 from @ref mathcapi
+   * @param self  Value to be multiplied. It will be replaced with the result
+   * @param other Value integer to be multiplied.
+   */
   inline void multeq( uint128_t& self, const uint128_t& other ) {
      multeq_i128( &self, &other );
   }
 
-  /** @brief wraps diveq_i128 from @ref mathcapi */
+  /**
+   * Divide two 128 bit unsigned integers and assign the value to the first parameter.
+   * It will throw an exception if other is zero.
+   * This wraps diveq_i128 from @ref mathcapi
+   * @brief wraps diveq_i128 from @ref mathcapi
+   * @param self  Numerator. It will be replaced with the result
+   * @param other Denominator
+   */
   inline void diveq( uint128_t& self, const uint128_t& other ) {
      diveq_i128( &self, &other );
   }
 
   /**
-   * @brief a struct that wraps uint128 integer and defines common operator overloads
+   * @brief A struct that wraps uint128 integer and defines common operator overloads
    */
   struct uint128 {
      public:
@@ -78,15 +91,24 @@ namespace eos {
   };
 
    /**
-    * Define similar to std::min()
+    * Get the smaller of the given values
+    * @brief Defined similar to std::min()
+    * @param a  Value to compare
+    * @param b  Value to compare
+    * @return The smaller of a and b. If they are equivalent, returns a
     */
    template<typename T>
    T min( const T& a, const T&b ) {
      return a < b ? a : b;
    }
+
    /**
-    * Define similar to std::max()
-    */
+    * Get the smaller of the given values.
+    * @brief Define similar to std::max()
+    * @param a  Value to compare
+    * @param b  Value to compare
+    * @return The greater of a and b. If they are equivalent, returns a
+   */
    template<typename T>
    T max( const T& a, const T&b ) {
      return a > b ? a : b;
