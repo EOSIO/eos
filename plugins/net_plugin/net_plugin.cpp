@@ -216,7 +216,8 @@ namespace eos {
     transaction_id_type id;
     fc::time_point      received;
     fc::time_point_sec  expires;
-    vector<char>        packed_transaction;
+    // vector<char>        packed_transaction; //just for the moment
+    SignedTransaction   transaction;
     uint32_t            block_num = -1; /// block transaction was included in
     bool                validated = false; /// whether or not our node has validated it
   };
@@ -243,11 +244,12 @@ namespace eos {
 
   class last_recd_txn_guard {
   public:
-    last_recd_txn_guard (transaction_id_type &id) {
-      transaction_id_type *ptid = &id; // new transaction_id_type(id);
-      last_recd_txn.reset (ptid);
+    last_recd_txn_guard(transaction_id_type tid ) {
+      last_recd_txn.reset (new transaction_id_type(tid));
     }
+
     ~last_recd_txn_guard () {
+      delete last_recd_txn.get();
       last_recd_txn.reset (0);
     }
   };
@@ -559,24 +561,35 @@ namespace eos {
         // collect a list of transactions that were found.
         // collect a second list of transaction ids that were not found but are otherwise known by some peers
         // finally, what remains are future(?) transactions
-      vector< fc::sha256 > send_now;
-      map <connection_ptr, vector < fc::sha256 > > forward_to;
-      for (const auto& t : msg.req_trx) {
+      vector< SignedTransaction > send_now;
+      map <connection_ptr, vector < transaction_id_type > > forward_to;
+      auto conn_ndx = connections.begin();
+      for (auto t: msg.req_trx) {
         auto txn = local_txns.get<by_id>().find(t);
         if (txn != local_txns.end()) {
-          send_now.push_back(t);
+          send_now.push_back(txn->transaction);
         }
         else {
-          for (auto ci : connections ) {
+          auto loop_start = conn_ndx++;
+          while (conn_ndx != loop_start) {
+            if (conn_ndx == connections.end()) {
+              conn_ndx = connections.begin();
+              continue;
+            }
+            if (conn_ndx->get() == c.get()) {
+              ++conn_ndx;
+              continue;
+            }
+            auto txn = conn_ndx->get()->trx_state.get<by_id>().find(t);
+            if (txn != conn_ndx->get()->trx_state.end()) {
+                // add to forward_to list
+            }
           }
         }
       }
 
       if (!send_now.empty()) {
       }
-
-
-
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
@@ -624,9 +637,12 @@ namespace eos {
     void handle_message (connection_ptr c, const SignedTransaction &msg) {
       chain_controller &cc = chain_plug->chain();
       if (!cc.is_known_transaction(msg.id())) {
-        last_recd_txn_guard tls_guard(msg.id_ref());
+        last_recd_txn_guard tls_guard(msg.id());
         chain_plug->accept_transaction (msg);
-        //      local_txns.insert();
+        uint16_t bn = static_cast<uint16_t>(msg.refBlockNum);
+        node_transaction_state nts = {msg.id(),time_point::now(),msg.expiration,
+                                      msg,bn, true};
+        local_txns.insert(nts);
         forward (c, msg);
       }
     }
