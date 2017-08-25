@@ -37,7 +37,7 @@ const get_registrant_reclaimed = ( eth )      => transactions.filter( tx => tx.t
 const get_registrant_reclaimable = ( eth )    => transactions.filter( tx => tx.type == 'transfer' && !tx.claimed && eth == tx.eth && tx.amount.gt( 0 ) )
 
 // Web3
-const node_syncing = ( callback = () => {} )  => setTimeout( () => { is_synced() ? callback() : node_syncing( callback ) }, 10000)
+const node_syncing = ( callback = () => {} )  => setTimeout( () => { is_synced() ? callback() : node_syncing( callback ) }, 3000)
 const disconnected = ( callback = () => {} )  => setTimeout( () => { is_listening() ? callback() : disconnected( callback ) }, 3000)
 const is_synced = ()                          => !web3.eth.syncing ? true : (web3.eth.syncing.currentBlock > SS_LAST_BLOCK ? true : false)
 
@@ -58,7 +58,7 @@ const is_listening = () => {
 
 //logger helper
 const log = ( type, msg = "" ) => {
-  if(msg.length) output.logs.push(msg)
+  if(msg.length && OUTPUT_LOGGING) output.logs.push(msg)
   if(console && console.log && CONSOLE_LOGGING && typeof logger[type] !== 'undefined') logger[type](msg)
 }
 

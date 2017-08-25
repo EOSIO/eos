@@ -24,12 +24,11 @@ const LogWatcher = ( block_first = 'latest', block_last = 'latest', contract_eve
       
       let error
 
-      start  = end
-      end   += blocks_per_call
-
       try      { 
         watcher.stopWatching()
         watcher = undefined 
+        start  = end
+        end   += blocks_per_call
         }    
       
       catch(e) { 
@@ -49,19 +48,13 @@ const LogWatcher = ( block_first = 'latest', block_last = 'latest', contract_eve
   }
 
   let error_correction = () => { 
-    adjust()
+    // adjust()
     setTimeout( poll , 5000)
   } 
 
   let reset = () => {
     start           = block_first
     end             = block_first + blocks_per_call
-  }
-
-  let adjust = () => {
-    timeout         *= 2
-    start           = start - blocks_per_call*2
-    end             = start - blocks_per_call
   }
 
   reset()

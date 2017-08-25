@@ -1,26 +1,35 @@
 body { background:#000; color:#c0c0c0; font-family:sans-serif; }
 a {color:lightblue;}
-body #wrapper { position:relative; margin:22px auto; padding:33px 55px; max-width: 600px; text-align:center; background:rgba(255,255,255,0.1); color:#c0c0c0; }
 
-body .status { font-size:14pt; text-transform:uppercase; color:#444;  }
-body .status span { margin:10px 0; text-transform:none; display:block; font-size:25pt; color:#fff; }
-body .status span span { color:#555; font-size:15pt; display:block; font-weight:normal; }
+.disconnected, .syncing                             { display:none  }
+body#disconnected #snapshot, body#syncing #snapshot { display:none  }
+body#disconnected .disconnected                     { display:block }
+body#syncing .sycning                               { display:block }
 
-body #wrapper > div { display:none; padding:33px 0; border-bottom:1px solid #222; margin-bottom:22px; }
-body #wrapper > div:last-child { margin-bottom:0px; border:none; }
+.wrapper  { position:relative; margin:22px auto; padding:33px 55px; max-width: 600px; text-align:center; color:#c0c0c0;  }
 
-body.welcome #welcome { display:none; }
+#snapshot.wrapper { background:rgba(255,255,255,0.1);  }
+.error.wrapper    { background:rgba(255,0,0,0.3); line-height:20pt; text-align:left;}
+
+.status { font-size:14pt; text-transform:uppercase; color:#444;  }
+.status > span { margin:10px 0; text-transform:none; display:block; font-size:25pt; color:#fff; }
+.status > span > span { color:#555; font-size:15pt; display:block; font-weight:normal; }
+
+#snapshot > div { display:none; padding:33px 0; border-bottom:1px solid #222; margin-bottom:22px; }
+#snapshot > div:last-child { margin-bottom:0px; border:none; }
 
 body.registry #registry,
 body.reclaimer #reclaimer,
 body.distribute #distribute,
 body.complete #complete { display:block; }
 
-body.complete #complete a.btn { font-size:10pt; font-weight:bold; background:#222; color:#bbb; border:6px solid rgba(50,50,50,0.1);  padding:16px 22px; text-decoration:none; clear:both; margin:10px 10px 0 0; display:block; }
-body.complete #complete a.btn:hover { background:#333; color:#ccc; }
+body.complete #complete div span.output               { display:block; color:#888; background:#111; padding:0; text-align:left; clear:both; }
+body.complete #complete div span.output > *           { display: inline-block; width:33.33%; margin:0; padding:12px 0; font-size:10pt;  font-weight:bold; text-align:center ;}
+body.complete #complete div span.output > span        { text-align:right; }
+body.complete #complete div span.output a.btn         { color:#bbb; text-decoration:none; }
+body.complete #complete div span.output a.btn:hover   { background:#222; color:#ccc; }
 
-
-body #wrapper > .loader { display:block; height:33px; position:relative; padding:0; } 
+body #snapshot > .loader { display:block; height:33px; position:relative; padding:0; } 
 body.complete .loader { visibility:hidden; }
 
 /*laoder, modified from https://codepen.io/woodwork/pen/YWjWzo*/
