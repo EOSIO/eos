@@ -33,6 +33,7 @@
 
 #include <boost/signals2/signal.hpp>
 
+#include <eos/chain/block_schedule.hpp>
 #include <eos/chain/protocol.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/chain_initializer_interface.hpp>
@@ -158,12 +159,14 @@ namespace eos { namespace chain {
             fc::time_point_sec when,
             const AccountName& producer,
             const fc::ecc::private_key& block_signing_private_key,
-            uint32_t skip
+            block_schedule::factory scheduler = block_schedule::by_threading_conflicts,
+            uint32_t skip = skip_nothing
             );
          signed_block _generate_block(
             fc::time_point_sec when,
             const AccountName& producer,
-            const fc::ecc::private_key& block_signing_private_key
+            const fc::ecc::private_key& block_signing_private_key,
+            block_schedule::factory scheduler
             );
 
 

@@ -328,6 +328,11 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_math", "test_diveq_i128_by_0"), {}, {} ),
          fc::assert_exception, is_assert_exception );
 
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_math", "test_double_api"), {}, {} ) == WASM_TEST_PASS, "test_math::test_double_api()" );
+
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_math", "test_double_api_div_0"), {}, {} ),
+      fc::assert_exception, is_assert_exception );
+      
       //Test db (i64)
       const auto& idx = chain_db.get_index<key_value_index, by_scope_primary>();
 

@@ -98,8 +98,8 @@ const calculator = function(){
       this.rates.balance_reclaimable_total  = to_percent( this.distribution.$balance_reclaimable.div(this.distribution.$total_supply ).toFixed(2) )
 
       //Tests
-      this.tests.balances                   = ( sum = this.distribution.$balance_wallets.plus(this.distribution.$balance_unclaimed).plus(this.distribution.$balance_reclaimed), sum.eq( this.distribution.$balances_found ) ? "PASS" : `FAIL ${sum.toFixed(4)} != ${ this.distribution.$balances_found.toFixed(4) }` )
-      this.tests.precision_loss             = ( sum = this.distribution.$balance_wallets.plus(this.distribution.$balance_unclaimed).plus(this.distribution.$balance_reclaimed), sum - this.distribution.$balances_found )
+      this.tests.balances                   = this.distribution.$balance_wallets.plus(this.distribution.$balance_unclaimed).plus(this.distribution.$balance_reclaimed).eq( this.distribution.$balances_found ) ? "PASS" : `FAIL ${sum.toFixed(4)} != ${ this.distribution.$balances_found.toFixed(4) }`
+      this.tests.precision_loss             = this.distribution.$balance_wallets.plus(this.distribution.$balance_unclaimed).plus(this.distribution.$balance_reclaimed).minus(this.distribution.$balances_found)
       
       let _registrants                      = new Set()
       this.tests.unique                     = !registrants.some( registrant => _registrants.size === _registrants.add(registrant.eth).size ) ? "PASS" : "FAIL"
@@ -115,7 +115,7 @@ const calculator = function(){
      (typeof this[group] === 'object' && typeof this[type][key] === 'undefined') ? this[type][key] = value : false
   }
 
-  debug.refresh = function(){ return this.update(), this }
+  debug.refresh = function(){ return registrants && transactions ? (this.update(), this) : this }
 
   debug.sum_balance = function( balance ) {
     return get_registrants_accepted().map( registrant => { return registrant.balance[balance] } ).filter( balance => { return web3.toBigNumber(balance).gt(0) } ).reduce( (sum, balance) => { return balance.plus(sum) }, web3.toBigNumber(0))

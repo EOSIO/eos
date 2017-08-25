@@ -1,7 +1,6 @@
 // For processing
-let   registrants         = []
+let   registrants         = [],
       transactions        = []
-      reclaimable         = {} //index
 
 // For Export
 let   output              = {}
@@ -22,37 +21,45 @@ let   debug
 window.onload = () => { init() }
 
 const init = () => {
+  console.clear()
   log("large_text", 'EOS Token Distribution (testnet)')
+  if(typeof console.time === 'function') console.time('Generated Snapshot')
   
   web3                  = new Web3( new Web3.providers.HttpProvider( NODE ) )
-  debug                 = new calculator();
 
-  contract.$crowdsale   = web3.eth.contract(CROWDSALE_ABI).at(CROWDSALE_ADDRESS)
-  contract.$token       = web3.eth.contract(TOKEN_ABI).at(TOKEN_ADDRESS)
-  contract.$utilities   = web3.eth.contract(UTILITY_ABI).at(UTILITY_ADDRESS)
-
-  if(typeof console.time === 'function')            console.time('Generated Snapshot')
-  
-  SS_PERIOD_ETH         = period_eth_balance()
-  SS_LAST_BLOCK_TIME    = get_last_block_time()
-  
   if( !web3.isConnected() ) 
     log("error", 'web3 is disconnected'), log("info", 'Please make sure you have a local ethereum node runnning on localhost:8345'), disconnected( init ) 
   else if( !is_synced() )
-    log("error", 'web3 is still syncing, retrying in 10 seconds'), node_syncing( init )
+    log("error", `web3 is still syncing, retrying in 10 seconds. Current block: ${web3.eth.syncing.currentBlock}, Required Height: ${SS_LAST_BLOCK}`), node_syncing( init )
   else
+    debug                 = new calculator(),
+
+    contract.$crowdsale   = web3.eth.contract(CROWDSALE_ABI).at(CROWDSALE_ADDRESS),
+    contract.$token       = web3.eth.contract(TOKEN_ABI).at(TOKEN_ADDRESS),
+    contract.$utilities   = web3.eth.contract(UTILITY_ABI).at(UTILITY_ADDRESS),
+    
+    SS_PERIOD_ETH         = period_eth_balance(),
+    SS_LAST_BLOCK_TIME    = get_last_block_time(),
+
     async.series([ 
       scan_registry, 
       find_reclaimables, 
       distribute_tokens, 
       verify,
-      exported
+      exporter
     ], 
     ( error, results ) => {
       if(!error) {
         log("success",'Distribution List Complete')
         log('block','CSV Downloads Ready')
         if(typeof console.timeEnd === 'function')   console.timeEnd('Generated Snapshot')
+          setTimeout( () => { // Makes downloads less glitchy
+            clearInterval(ui_refresh)
+            registrants = undefined, transactions = undefined //object literals have been generated, unset array of resource consuming referenced objects.
+
+          }, 5000 ) 
+      } else {
+        log("error", error)
       }
       debug.refresh().output()
     })
@@ -62,44 +69,32 @@ const init = () => {
 //Sets balances, validates registrant, adds to distribution if good  
 const distribute_tokens = ( finish ) => {
   log('group', 'Distribution List')
-  
   let   index = 0
   const total = registrants.length
-  
   const iterate = () => {
-
     if( !web3.isConnected() ) return disconnected( reconnect = iterate )
-
-    try {
-
-      // console.time('Distribute')
-      
+    try {  
       let registrant = registrants[index]
       
       registrant
         .set("index", index )
         .set("key",   contract.$crowdsale.keys( registrant.eth ) )
-      
         // Every registrant has three different balances, 
         // Wallet:      Tokens in Wallet
         // Unclaimed:   Tokens in contract
         // Reclaimed:   Tokens sent to crowdsale/token contracts
-
         .balance
           // Ask token contract what this user's EOS balance is
-          .set( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ).div(WAD) ) )        
+          .set( 'wallet',      web3.toBigNumber( contract.$token.balanceOf( registrant.eth ) ) )        
           // Loop through periods and calculate unclaimed
-          .set( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ).div(WAD) )       
+          .set( 'unclaimed',   web3.toBigNumber( sum_unclaimed( registrant ) ) )       
           // Check reclaimable index for ethereum user, loop through tx
-          .set( 'reclaimed',   web3.toBigNumber( maybe_reclaim_tokens( registrant ) ).div(WAD) )
+          .set( 'reclaimed',   web3.toBigNumber( maybe_reclaim_tokens( registrant ) ) )
           // wallet+unclaimed+reclaimed
           .sum()
-      
       // Reject or Accept
       registrant.judgement()
-
       status_log()
-
       // Runaway loops, calls iterate again or calls finish() callback from async
       setTimeout(() => {  
         index++,  
@@ -108,9 +103,7 @@ const distribute_tokens = ( finish ) => {
           finish(null, true) 
         ) 
       }, 1 )
-
     }
-
     // This error is web3 related, try again and resume if successful
     catch(e) {
       log("error", e);   
@@ -119,19 +112,16 @@ const distribute_tokens = ( finish ) => {
         disconnected( reconnect = iterate )
       }
     }
-
     finally {
-      // console.timeEnd('Distribute')
+
     }
   }
 
   const sum_unclaimed = ( registrant ) => {
     //Find all Buys
     let buys   = contract.$utilities.userBuys(registrant.eth).map(web3.toBigNumber)
-
     //Find Claimed Balances
     let claims = contract.$utilities.userClaims(registrant.eth)
-
     //Compile the periods, and user parameters for each period for later reduction
     const periods = iota(Number(CS_NUMBER_OF_PERIODS) + 1).map(i => {
       let period = {}
@@ -143,7 +133,6 @@ const distribute_tokens = ( finish ) => {
         : period.tokens_available.div(period.total_eth).times(period.buys)   
       period.claimed = claims && claims[i]
       return period  
-
     })
 
     return web3
@@ -208,22 +197,20 @@ const scan_registry = ( on_complete ) => {
     if(log_register.blockNumber <= SS_LAST_BLOCK) {
 
       //check that registrant isn't already in array
-      if( registrant = registrants.filter(registrant => { return registrant.eth == log_register.args.user}), !registrant.length ){    
+      if( !registrants.filter(registrant => { return registrant.eth == log_register.args.user}).length ){    
       
         let registrant = new Registrant(log_register.args.user)
         registrants.push( registrant ) 
 
         //Add the register transaction to transactions array, may be unnecessary. 
-        let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', web3.toBigNumber(0) )
-        transactions.push(tx)
+        // let tx = new Transaction( registrant.eth, log_register.transactionHash, 'register', web3.toBigNumber(0) )
+        // transactions.push(tx)
 
-        registry_logs.push(`${registrant.eth} => ${log_register.args.key} (pending) => https://etherscan.io/tx/${tx.hash}`)
+        registry_logs.push(`${registrant.eth} => ${log_register.args.key} (pending) => https://etherscan.io/tx/${log_register.transactionHash}`)
         
         //now all your snowflakes are urine...
         maybe_log()
-
       }
-
     }
   }
 
@@ -235,20 +222,18 @@ const scan_registry = ( on_complete ) => {
       { found: Object.keys(registrants).length } 
     }
 
-  const on_error = () => { "Web3's watcher misbehaved while chugging along in the registry" }
-
-  let maybe_log = () => {
-    return (Date.now()-message_freq > last_message) ? (log_group(), true) : false
-  }
+  const on_error = () => "Web3's watcher misbehaved while chugging along in the registry"
+  
+  let maybe_log = () => (Date.now()-message_freq > last_message) ? (log_group(), true) : false
 
   //...and you can’t even find the cat.
   let log_group = () => {
     let group_msg = `${group_index}. ... ${registry_logs.length} Found, Total: ${registrants.length}`;
     log("groupCollapsed", group_msg),
-    output.logs.push( group_msg ),
+    (OUTPUT_LOGGING ? output.logs.push( group_msg ) : null),
     registry_logs.forEach( _log => { 
       if(VERBOSE_REGISTRY_LOGS) log("message", _log ) 
-      output.logs.push( _log )
+      if(OUTPUT_LOGGING) output.logs.push( _log )
     }), 
     registry_logs = [],
     console.groupEnd(),
@@ -263,11 +248,8 @@ const scan_registry = ( on_complete ) => {
 //Builds list of EOS tokens sent to EOS crowdsale or token contract.
 
 const find_reclaimables = ( on_complete ) => {
-
   log('group', 'Finding Reclaimable EOS Tokens')
-
   let index = 0;
-
   const query = { to: ['0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0','0xd0a6E6C54DbC68Db5db3A091B171A77407Ff7ccf'] }
 
   const on_result = ( reclaimable_tx ) => {  
@@ -286,7 +268,7 @@ const find_reclaimables = ( on_complete ) => {
     { found: result_total } 
   }
 
-  const on_error = () => { "Something bad happened while finding reclaimables" }
+  const on_error = () => "Something bad happened while finding reclaimables"
 
   let async_watcher = LogWatcher( SS_FIRST_BLOCK, SS_LAST_BLOCK, contract.$token.Transfer, query, on_complete, on_result, on_success, on_error, 500, 5000 )
 
@@ -298,7 +280,7 @@ const verify = ( callback ) => {
   return (valid) ? callback(null, valid) && true : callback(true) && false
 }
 
-const exported = ( callback ) => {
+const exporter = ( callback ) => {
   if(typeof console.time === 'function')    console.time('Compiled Data to Output Arrays')
 
   output.reclaimable = get_transactions_reclaimable().map(      tx => { return { eth: tx.eth, tx: tx.hash, amount: formatEOS(web3.toBigNumber(tx.amount).div(WAD)) }                               } )

@@ -146,6 +146,14 @@ namespace eos { namespace chain {
       vector<MessageOutput> output;
    };
 
+   struct ProcessedGeneratedTransaction {
+      explicit ProcessedGeneratedTransaction( const generated_transaction_id_type& _id ):id(_id){}
+      explicit ProcessedGeneratedTransaction( const GeneratedTransaction& t ):id(t.id){}
+      ProcessedGeneratedTransaction(){}
+
+      generated_transaction_id_type id;
+      vector<MessageOutput> output;
+   };
    /// @} transactions group
 
 } } // eos::chain
@@ -154,4 +162,5 @@ FC_REFLECT(eos::chain::GeneratedTransaction, (id))
 FC_REFLECT_DERIVED(eos::chain::SignedTransaction, (eos::types::SignedTransaction), )
 FC_REFLECT(eos::chain::MessageOutput, (notify)(sync_transactions)(async_transactions) )
 FC_REFLECT_DERIVED(eos::chain::ProcessedTransaction, (eos::types::SignedTransaction), (output) )
+FC_REFLECT(eos::chain::ProcessedGeneratedTransaction, (id)(output) )
 FC_REFLECT(eos::chain::NotifyOutput, (name)(output) )
