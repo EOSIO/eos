@@ -42,6 +42,8 @@ namespace eos { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( black_swan_exception,              eos::chain::chain_exception, 3100000, "black swan" )
    FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eos::chain::chain_exception, 3110000, "unknown block" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eos::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
+   
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   eos::chain::transaction_exception, 3030001, "missing required authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   eos::chain::transaction_exception, 3030002, "signatures do not satisfy declared authorizations" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_auth,                eos::chain::transaction_exception, 3030003, "irrelevant authority included" )
