@@ -103,7 +103,8 @@ namespace eos { namespace chain {
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
             skip_producer_schedule_check= 1 << 10, ///< used while reindexing
             skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
-            skip_scope_check            = 1 << 12  ///< used to skip checks for proper scope
+            skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
+            skip_output_check           = 1 << 13  ///< used to skip checks for outputs in block exactly matching those created from apply
          };
 
          /**
@@ -276,6 +277,9 @@ namespace eos { namespace chain {
          }
 
          void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
+
+         template<typename T>
+         void check_transaction_output(const T& expected, const T& actual)const;
 
          template<typename T>
          typename T::Processed apply_transaction(const T& trx);

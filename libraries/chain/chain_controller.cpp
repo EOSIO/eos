@@ -496,6 +496,132 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
    });
 }
 
+template<typename T>
+void check_output(const T& expected, const T& actual) {
+   EOS_ASSERT((expected == actual), block_tx_output_exception, 
+      "Value mismatch, expected: ${expected}, actual: ${actual}", ("expected", expected)("actual", actual));
+}
+
+template<typename T>
+void check_output(const vector<T>& expected, const vector<T>& actual) {
+   EOS_ASSERT((expected.size() == actual.size()), block_tx_output_exception,
+      "Vector size mismatch, expected: ${expected}, actual: ${actual}", ("expected", expected.size())("actual", actual.size()));
+   
+   for(int idx=0; idx < expected.size(); idx++) {
+      const auto &expected_element = expected.at(idx);
+      const auto &actual_element = actual.at(idx);
+      try {
+        check_output(expected_element, actual_element);
+      } FC_RETHROW_EXCEPTIONS( warn, "at index ${idx}", ("idx", idx ) );
+   }
+}
+
+template<>
+void check_output(const types::Bytes& expected, const types::Bytes& actual) {
+   EOS_ASSERT((expected.size() == actual.size()), block_tx_output_exception,
+      "Binary blob size mismatch, expected: ${expected}, actual: ${actual}", ("expected", expected.size())("actual", actual.size()));
+
+   EOS_ASSERT((std::memcmp(expected.data(), actual.data(), expected.size()) == 0), block_tx_output_exception,
+      "Binary blob contents differ");   
+}
+
+template<>
+void check_output(const types::AccountPermission& expected, const types::AccountPermission& actual) {
+   try {
+      check_output(expected.account, actual.account);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .account");
+   try {
+      check_output(expected.permission, actual.permission);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .permission");
+}
+
+template<>
+void check_output(const types::Message& expected, const types::Message& actual) {
+   try {
+      check_output(expected.code, actual.code);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .code");
+   try {
+      check_output(expected.type, actual.type);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .type");
+   try {
+      check_output(expected.authorization, actual.authorization);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .authorization");
+   try {
+      check_output(expected.data, actual.data);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .data");
+}
+
+template<>
+void check_output(const MessageOutput& expected, const MessageOutput& actual);
+
+template<>
+void check_output(const NotifyOutput& expected, const NotifyOutput& actual) {
+   try {
+      check_output(expected.name, actual.name);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .name");
+   try {
+      check_output(expected.output, actual.output);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .output");
+}
+
+template<>
+void check_output(const Transaction& expected, const Transaction& actual) {
+   try {
+      check_output(expected.refBlockNum, actual.refBlockNum);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .refBlockNum");
+   try {
+      check_output(expected.refBlockPrefix, actual.refBlockPrefix);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .refBlockPrefix");
+   try {
+      check_output(expected.expiration, actual.expiration);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .expiration");
+   try {
+      check_output(expected.scope, actual.scope);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .scope");
+   try {
+      check_output(expected.messages, actual.messages);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .messages");
+}
+
+
+template<>
+void check_output(const ProcessedSyncTransaction& expected, const ProcessedSyncTransaction& actual) {
+   check_output<Transaction>(expected, actual);
+   try {
+      check_output(expected.output, actual.output);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .output");
+}
+
+template<>
+void check_output(const GeneratedTransaction& expected, const GeneratedTransaction& actual) {
+   try {
+      check_output(expected.id, actual.id);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .id");
+   check_output<Transaction>(expected, actual);
+}
+
+template<>
+void check_output(const MessageOutput& expected, const MessageOutput& actual) {
+   try {
+      check_output(expected.notify, actual.notify);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .notify");
+   
+   try {
+      check_output(expected.sync_transactions, actual.sync_transactions);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .sync_transactions");
+
+   try {
+     check_output(expected.async_transactions, actual.async_transactions);
+   } FC_RETHROW_EXCEPTIONS(warn, "in .async_transactions");
+}
+
+template<typename T>
+void chain_controller::check_transaction_output(const T& expected, const T& actual)const {
+   if (!(_skip_flags & skip_output_check)) {
+      check_output(expected.output, actual.output);
+   }
+}
+
 void chain_controller::_apply_block(const signed_block& next_block)
 { try {
    uint32_t next_block_num = next_block.block_num();
@@ -522,14 +648,32 @@ void chain_controller::_apply_block(const signed_block& next_block)
     * for transactions when validating broadcast transactions or
     * when building a block.
     */
-   for (const auto& cycle : next_block.cycles) {
-      for (const auto& thread : cycle) {
-         for(const auto& ptrx : thread.generated_input ) {
-            auto const trx = get_generated_transaction(ptrx.id);
-            apply_transaction(trx);
+   for (int c_idx = 0; c_idx < next_block.cycles.size(); c_idx++) {
+      const auto& cycle = next_block.cycles.at(c_idx);
+
+      for (int t_idx = 0; t_idx < cycle.size(); t_idx++) {
+         const auto& thread = cycle.at(t_idx);
+
+         for(int p_idx = 0; p_idx < thread.generated_input.size(); p_idx++ ) {
+            const auto& ptrx = thread.generated_input.at(p_idx);
+            const auto& trx = get_generated_transaction(ptrx.id);
+            auto processed = apply_transaction(trx);
+            try {
+               check_transaction_output(ptrx, processed);
+            } FC_RETHROW_EXCEPTIONS(warn, 
+               "cycle: ${c_idx}, thread: ${t_idx}, generated_input: ${p_idx}", 
+               ("c_idx", c_idx)("t_idx", t_idx)("p_idx", p_idx) );
          }
-         for(const auto& trx : thread.user_input ) {
-            apply_transaction(trx);
+
+         for(int p_idx = 0; p_idx < thread.user_input.size(); p_idx++ ) {
+            const auto& ptrx = thread.user_input.at(p_idx);
+            const SignedTransaction& trx = ptrx;
+            auto processed = apply_transaction(trx);
+            try {
+               check_transaction_output(ptrx, processed);
+            } FC_RETHROW_EXCEPTIONS(warn, 
+               "cycle: ${c_idx}, thread: ${t_idx}, user_input: ${p_idx}", 
+               ("c_idx", c_idx)("t_idx", t_idx)("p_idx", p_idx) );
          }
       }
    }
