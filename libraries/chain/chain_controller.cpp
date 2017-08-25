@@ -29,6 +29,7 @@
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/action_objects.hpp>
+#include <eos/chain/generated_transaction_object.hpp>
 #include <eos/chain/transaction_object.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/permission_link_object.hpp>
@@ -261,17 +262,17 @@ ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction
    return pt;
 }
 
-
 signed_block chain_controller::generate_block(
    fc::time_point_sec when,
    const AccountName& producer,
    const fc::ecc::private_key& block_signing_private_key,
+   block_schedule::factory scheduler, /* = block_schedule::by_threading_conflits */
    uint32_t skip /* = 0 */
    )
 { try {
    return with_skip_flags( skip, [&](){
       auto b = _db.with_write_lock( [&](){
-         return _generate_block( when, producer, block_signing_private_key );
+         return _generate_block( when, producer, block_signing_private_key, scheduler );
       });
       push_block(b, skip);
       return b;
@@ -281,7 +282,8 @@ signed_block chain_controller::generate_block(
 signed_block chain_controller::_generate_block(
    fc::time_point_sec when,
    const AccountName& producer,
-   const fc::ecc::private_key& block_signing_private_key
+   const fc::ecc::private_key& block_signing_private_key,
+   block_schedule::factory scheduler
    )
 {
    try {
@@ -296,11 +298,21 @@ signed_block chain_controller::_generate_block(
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
 
-   static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = get_global_properties().configuration.maxBlockSize;
-   size_t total_block_size = max_block_header_size;
+  
+   auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_trx_id>();
 
-   signed_block pending_block;
+   vector<pending_transaction> pending;
+   std::set<transaction_id_type> invalid_pending;
+   pending.reserve(generated.size() + _pending_transactions.size());
+   for (const auto& gt: generated) {
+      pending.emplace_back(std::reference_wrapper<const GeneratedTransaction> {gt.trx});
+   }
+   
+   for(const auto& st: _pending_transactions) {
+      pending.emplace_back(std::reference_wrapper<const SignedTransaction> {st});
+   }
+
+   auto schedule = scheduler(pending, get_global_properties());
 
    //
    // The following code throws away existing pending_tx_session and
@@ -316,49 +328,88 @@ signed_block chain_controller::_generate_block(
    _pending_tx_session.reset();
    _pending_tx_session = _db.start_undo_session(true);
 
-   uint64_t postponed_tx_count = 0;
-   // pop pending state (reset to head block state)
-   for (auto itr = _pending_transactions.begin(); itr != _pending_transactions.end(); ) {
-      auto& tx = *itr;
-      size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+   signed_block pending_block;
+   pending_block.cycles.reserve(schedule.cycles.size());
 
-      // postpone transaction if it would make block too big
-      if( new_total_size >= maximum_block_size )
-      {
-         postponed_tx_count++;
-         ++itr;
-         continue;
-      }
+   size_t invalid_transaction_count = 0;
+   size_t valid_transaction_count = 0;
 
-      try
-      {
-         auto temp_session = _db.start_undo_session(true);
-         validate_referenced_accounts(tx);
-         check_transaction_authorization(tx);
-         _apply_transaction(tx);
-         temp_session.squash();
+   for (const auto &c : schedule.cycles) {
+     cycle block_cycle;
+     block_cycle.reserve(c.size());
 
-         total_block_size += fc::raw::pack_size(tx);
-         if (pending_block.cycles.empty()) {
-            pending_block.cycles.resize(1);
-            pending_block.cycles.back().resize(1);
-         }
-         pending_block.cycles.back().back().user_input.emplace_back(tx);
-#warning TODO: Populate generated blocks with generated transactions
+     for (const auto &t : c) {
+       thread block_thread;
+       block_thread.user_input.reserve(t.transactions.size());
+       block_thread.generated_input.reserve(t.transactions.size());
+       for (const auto &trx : t.transactions) {
+          try
+          {
+             auto temp_session = _db.start_undo_session(true);
+             if (trx.contains<std::reference_wrapper<const SignedTransaction>>()) {
+                const auto& t = trx.get<std::reference_wrapper<const SignedTransaction>>().get();
+                validate_referenced_accounts(t);
+                check_transaction_authorization(t);
+                auto processed = _apply_transaction(t);
+                block_thread.user_input.emplace_back(processed);
+             } else if (trx.contains<std::reference_wrapper<const GeneratedTransaction>>()) {
+                // auto processed = _apply_transaction(trx.get<std::reference_wrapper<const GeneratedTransaction>>().get());
+                // block_thread.generated_input.emplace_back(processed);
+             } else {
+                FC_THROW_EXCEPTION(tx_scheduling_exception, "Unknown transaction type in block_schedule");
+             }
+             
+             temp_session.squash();
+             valid_transaction_count++;
+          }
+          catch ( const fc::exception& e )
+          {
+             // Do nothing, transaction will not be re-applied
+             elog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+             if (trx.contains<std::reference_wrapper<const SignedTransaction>>()) {
+                const auto& t = trx.get<std::reference_wrapper<const SignedTransaction>>().get();
+                wlog( "The transaction was ${t}", ("t", t ) );
+                invalid_pending.emplace(t.id());
+             } else if (trx.contains<std::reference_wrapper<const GeneratedTransaction>>()) {
+                wlog( "The transaction was ${t}", ("t", trx.get<std::reference_wrapper<const GeneratedTransaction>>().get()) );
+             } 
+             invalid_transaction_count++;
+          }
+       }
 
-         ++itr;
-      }
-      catch ( const fc::exception& e )
-      {
-         // Do nothing, and discard transaction so it will not be re-applied
-         elog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-         wlog( "The transaction was ${t}", ("t", tx) );
-         itr = _pending_transactions.erase(itr);
-      }
+       if (!(block_thread.generated_input.empty() && block_thread.user_input.empty())) {
+          block_thread.generated_input.shrink_to_fit();
+          block_thread.user_input.shrink_to_fit();
+          block_cycle.emplace_back(std::move(block_thread));
+       }
+     }
+
+     if (!block_cycle.empty()) {
+        pending_block.cycles.emplace_back(std::move(block_cycle));
+     }
    }
+   
+   size_t postponed_tx_count = _pending_transactions.size() - valid_transaction_count - invalid_transaction_count;
    if( postponed_tx_count > 0 )
    {
       wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
+   }
+
+   if( invalid_transaction_count > 0 )
+   {
+      wlog( "Postponed ${n} transactions errors when processing", ("n", invalid_transaction_count) );
+
+      // remove pending transactions determined to be bad during scheduling
+      if (invalid_pending.size() > 0) {
+         for (auto itr = _pending_transactions.begin(); itr != _pending_transactions.end(); ) {
+            auto& tx = *itr;
+            if (invalid_pending.find(tx.id()) != invalid_pending.end()) {
+               itr = _pending_transactions.erase(itr);
+            } else {
+               ++itr;
+            }
+         }
+      }
    }
 
    _pending_tx_session.reset();
@@ -468,10 +519,9 @@ void chain_controller::_apply_block(const signed_block& next_block)
    for (const auto& cycle : next_block.cycles) {
       for (const auto& thread : cycle) {
          for(const auto& trx : thread.generated_input ) {
-#warning TODO: Process generated transaction
          }
          for(const auto& trx : thread.user_input ) {
-            apply_transaction(trx);
+            _apply_transaction(trx);
          }
       }
    }
@@ -832,6 +882,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<dynamic_global_property_multi_index>();
    _db.add_index<block_summary_multi_index>();
    _db.add_index<transaction_multi_index>();
+   _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
 }
 
@@ -1073,6 +1124,13 @@ void chain_controller::clear_expired_transactions()
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
    while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.rbegin()->trx.expiration) )
       transaction_idx.remove(*dedupe_index.rbegin());
+
+   //Look for expired transactions in the pending generated list, and remove them.
+   //Transactions must have expired by at least two forking windows in order to be removed.
+   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   const auto& generated_index = generated_transaction_idx.indices().get<generated_transaction_object::by_expiration>();
+   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->trx.expiration) )
+      generated_transaction_idx.remove(*generated_index.rbegin());
 } FC_CAPTURE_AND_RETHROW() }
 
 using boost::container::flat_set;
