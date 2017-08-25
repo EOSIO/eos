@@ -308,8 +308,9 @@ signed_block chain_controller::_generate_block(
 
    vector<pending_transaction> pending;
    std::set<transaction_id_type> invalid_pending;
-   pending.reserve(generated.size() + _pending_transactions.size());
-   for (const auto& gt: generated) {
+   pending.reserve(std::distance(generated.first, generated.second) + _pending_transactions.size());
+   for (auto iter = generated.first; iter != generated.second; ++iter) {
+      const auto& gt = *iter;
       pending.emplace_back(std::reference_wrapper<const GeneratedTransaction> {gt.trx});
    }
    
