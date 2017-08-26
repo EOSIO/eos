@@ -32,6 +32,8 @@ void py_plugin::plugin_startup() {
     PyInit_hello();
     ilog("++++++++++++++py_plugin::plugin_startup");
     c_printf("hello,world");
+    PyRun_InteractiveLoop(stdin, "<stdin>");
+    Py_Finalize();
 }
 
 void py_plugin::plugin_shutdown() {
