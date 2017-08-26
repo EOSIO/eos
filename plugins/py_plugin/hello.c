@@ -429,6 +429,7 @@ static CYTHON_INLINE float __PYX_NAN() {
 
 #define __PYX_HAVE__hello
 #define __PYX_HAVE_API__hello
+#include "hello.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif /* _OPENMP */
@@ -836,27 +837,34 @@ int __pyx_module_is_main_hello = 0;
 /* Implementation of 'hello' */
 static const char __pyx_k_end[] = "end";
 static const char __pyx_k_file[] = "file";
+static const char __pyx_k_info[] = "info";
 static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_test[] = "__test__";
 static const char __pyx_k_hello[] = "hello";
 static const char __pyx_k_print[] = "print";
+static const char __pyx_k_get_info[] = "get_info";
 static const char __pyx_k_sayHello[] = "sayHello";
 static const char __pyx_k_hello_world[] = "hello,world";
 static const char __pyx_k_Users_newworld_dev_eos_plugins[] = "/Users/newworld/dev/eos/plugins/py_plugin/hello.pyx";
 static PyObject *__pyx_kp_s_Users_newworld_dev_eos_plugins;
 static PyObject *__pyx_n_s_end;
 static PyObject *__pyx_n_s_file;
+static PyObject *__pyx_n_s_get_info;
 static PyObject *__pyx_n_s_hello;
 static PyObject *__pyx_kp_s_hello_world;
+static PyObject *__pyx_n_s_info;
 static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_print;
 static PyObject *__pyx_n_s_sayHello;
 static PyObject *__pyx_n_s_test;
 static PyObject *__pyx_pf_5hello_sayHello(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
+static PyObject *__pyx_pf_5hello_2get_info(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
 static PyObject *__pyx_codeobj_;
+static PyObject *__pyx_tuple__2;
+static PyObject *__pyx_codeobj__3;
 
-/* "hello.pyx":4
- * #    void printf(char *)
+/* "hello.pyx":7
+ *     int get_info_ (char *result,int len)
  * 
  * def sayHello():             # <<<<<<<<<<<<<<
  *     print('hello,world')
@@ -882,17 +890,17 @@ static PyObject *__pyx_pf_5hello_sayHello(CYTHON_UNUSED PyObject *__pyx_self) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("sayHello", 0);
 
-  /* "hello.pyx":5
+  /* "hello.pyx":8
  * 
  * def sayHello():
  *     print('hello,world')             # <<<<<<<<<<<<<<
  * 
- * cdef extern char* c_printf(char *s):
+ * def get_info():
  */
-  if (__Pyx_PrintOne(0, __pyx_kp_s_hello_world) < 0) __PYX_ERR(0, 5, __pyx_L1_error)
+  if (__Pyx_PrintOne(0, __pyx_kp_s_hello_world) < 0) __PYX_ERR(0, 8, __pyx_L1_error)
 
-  /* "hello.pyx":4
- * #    void printf(char *)
+  /* "hello.pyx":7
+ *     int get_info_ (char *result,int len)
  * 
  * def sayHello():             # <<<<<<<<<<<<<<
  *     print('hello,world')
@@ -911,8 +919,79 @@ static PyObject *__pyx_pf_5hello_sayHello(CYTHON_UNUSED PyObject *__pyx_self) {
   return __pyx_r;
 }
 
-/* "hello.pyx":7
+/* "hello.pyx":10
  *     print('hello,world')
+ * 
+ * def get_info():             # <<<<<<<<<<<<<<
+ *     cdef char info[1024]
+ *     get_info_(info,1024)
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_5hello_3get_info(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyMethodDef __pyx_mdef_5hello_3get_info = {"get_info", (PyCFunction)__pyx_pw_5hello_3get_info, METH_NOARGS, 0};
+static PyObject *__pyx_pw_5hello_3get_info(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("get_info (wrapper)", 0);
+  __pyx_r = __pyx_pf_5hello_2get_info(__pyx_self);
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_5hello_2get_info(CYTHON_UNUSED PyObject *__pyx_self) {
+  char __pyx_v_info[0x400];
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("get_info", 0);
+
+  /* "hello.pyx":12
+ * def get_info():
+ *     cdef char info[1024]
+ *     get_info_(info,1024)             # <<<<<<<<<<<<<<
+ *     return info
+ * 
+ */
+  get_info_(__pyx_v_info, 0x400);
+
+  /* "hello.pyx":13
+ *     cdef char info[1024]
+ *     get_info_(info,1024)
+ *     return info             # <<<<<<<<<<<<<<
+ * 
+ * cdef extern char* c_printf(char *s):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyObject_FromString(__pyx_v_info); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 13, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "hello.pyx":10
+ *     print('hello,world')
+ * 
+ * def get_info():             # <<<<<<<<<<<<<<
+ *     cdef char info[1024]
+ *     get_info_(info,1024)
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("hello.get_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "hello.pyx":15
+ *     return info
  * 
  * cdef extern char* c_printf(char *s):             # <<<<<<<<<<<<<<
  *     sayHello()
@@ -927,13 +1006,13 @@ char *c_printf(CYTHON_UNUSED char *__pyx_v_s) {
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("c_printf", 0);
 
-  /* "hello.pyx":8
+  /* "hello.pyx":16
  * 
  * cdef extern char* c_printf(char *s):
  *     sayHello()             # <<<<<<<<<<<<<<
  * 
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_sayHello); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 8, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_sayHello); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = NULL;
   if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_2))) {
@@ -946,17 +1025,17 @@ char *c_printf(CYTHON_UNUSED char *__pyx_v_s) {
     }
   }
   if (__pyx_t_3) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 8, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 16, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   } else {
-    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 8, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 16, __pyx_L1_error)
   }
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "hello.pyx":7
- *     print('hello,world')
+  /* "hello.pyx":15
+ *     return info
  * 
  * cdef extern char* c_printf(char *s):             # <<<<<<<<<<<<<<
  *     sayHello()
@@ -1003,8 +1082,10 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_s_Users_newworld_dev_eos_plugins, __pyx_k_Users_newworld_dev_eos_plugins, sizeof(__pyx_k_Users_newworld_dev_eos_plugins), 0, 0, 1, 0},
   {&__pyx_n_s_end, __pyx_k_end, sizeof(__pyx_k_end), 0, 0, 1, 1},
   {&__pyx_n_s_file, __pyx_k_file, sizeof(__pyx_k_file), 0, 0, 1, 1},
+  {&__pyx_n_s_get_info, __pyx_k_get_info, sizeof(__pyx_k_get_info), 0, 0, 1, 1},
   {&__pyx_n_s_hello, __pyx_k_hello, sizeof(__pyx_k_hello), 0, 0, 1, 1},
   {&__pyx_kp_s_hello_world, __pyx_k_hello_world, sizeof(__pyx_k_hello_world), 0, 0, 1, 0},
+  {&__pyx_n_s_info, __pyx_k_info, sizeof(__pyx_k_info), 0, 0, 1, 1},
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
   {&__pyx_n_s_print, __pyx_k_print, sizeof(__pyx_k_print), 0, 0, 1, 1},
   {&__pyx_n_s_sayHello, __pyx_k_sayHello, sizeof(__pyx_k_sayHello), 0, 0, 1, 1},
@@ -1019,14 +1100,26 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "hello.pyx":4
- * #    void printf(char *)
+  /* "hello.pyx":7
+ *     int get_info_ (char *result,int len)
  * 
  * def sayHello():             # <<<<<<<<<<<<<<
  *     print('hello,world')
  * 
  */
-  __pyx_codeobj_ = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_Users_newworld_dev_eos_plugins, __pyx_n_s_sayHello, 4, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj_)) __PYX_ERR(0, 4, __pyx_L1_error)
+  __pyx_codeobj_ = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_Users_newworld_dev_eos_plugins, __pyx_n_s_sayHello, 7, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj_)) __PYX_ERR(0, 7, __pyx_L1_error)
+
+  /* "hello.pyx":10
+ *     print('hello,world')
+ * 
+ * def get_info():             # <<<<<<<<<<<<<<
+ *     cdef char info[1024]
+ *     get_info_(info,1024)
+ */
+  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_n_s_info); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 10, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__2);
+  __Pyx_GIVEREF(__pyx_tuple__2);
+  __pyx_codeobj__3 = (PyObject*)__Pyx_PyCode_New(0, 0, 1, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__2, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_Users_newworld_dev_eos_plugins, __pyx_n_s_get_info, 10, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__3)) __PYX_ERR(0, 10, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -1133,16 +1226,28 @@ PyMODINIT_FUNC PyInit_hello(void)
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "hello.pyx":4
- * #    void printf(char *)
+  /* "hello.pyx":7
+ *     int get_info_ (char *result,int len)
  * 
  * def sayHello():             # <<<<<<<<<<<<<<
  *     print('hello,world')
  * 
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_5hello_1sayHello, NULL, __pyx_n_s_hello); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 4, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_5hello_1sayHello, NULL, __pyx_n_s_hello); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_sayHello, __pyx_t_1) < 0) __PYX_ERR(0, 4, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_sayHello, __pyx_t_1) < 0) __PYX_ERR(0, 7, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "hello.pyx":10
+ *     print('hello,world')
+ * 
+ * def get_info():             # <<<<<<<<<<<<<<
+ *     cdef char info[1024]
+ *     get_info_(info,1024)
+ */
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_5hello_3get_info, NULL, __pyx_n_s_hello); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 10, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_get_info, __pyx_t_1) < 0) __PYX_ERR(0, 10, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "hello.pyx":1
