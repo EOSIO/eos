@@ -142,6 +142,7 @@ namespace eos {
     bool                           try_reconnect;
 
     void send_handshake ( ) {
+      dlog ("sending new handshake message" );
       handshake_message hello;
       handshake_initializer::populate(hello);
       send (hello);
@@ -245,12 +246,13 @@ namespace eos {
   class last_recd_txn_guard {
   public:
     last_recd_txn_guard(transaction_id_type tid ) {
-      last_recd_txn.reset (new transaction_id_type(tid));
+      last_recd_txn.reset (new transaction_id_type (tid));
     }
 
     ~last_recd_txn_guard () {
-      delete last_recd_txn.get();
+      dlog ("TSS Guard dtor 1");
       last_recd_txn.reset (0);
+      dlog ("TSS Guard dtor 2");
     }
   };
 
@@ -351,7 +353,6 @@ namespace eos {
       start_read_message( con );
 
       con->send_handshake( );
-      send_peer_message(*con);
 
       // for now, we can just use the application main loop.
       //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
@@ -407,16 +408,20 @@ namespace eos {
       return fc::ip::endpoint (addr,ep.port());
     }
 
-    void send_peer_message (connection &conn) {
+    void send_peer_message () {
       peer_message pm;
-      pm.peers.resize(connections.size());
       for (auto &c : connections) {
-        if (conn.shared_peers.find(c->remote_node_id) == conn.shared_peers.end()) {
-          pm.peers.push_back(c->remote_node_id);
+        if ( (c->remote_node_id._hash[0] | c->remote_node_id._hash[1] | c->remote_node_id._hash[2] | c->remote_node_id._hash[0]) == 0 ) {
+          return;
         }
+        pm.peers.push_back(c->remote_node_id);
       }
       if (!pm.peers.empty()) {
-        conn.send (pm);
+        for (auto &c : connections) {
+          if (c->out_sync_state.size() == 0) {
+            c->send(pm);
+          }
+        }
       }
     }
 
@@ -509,23 +514,48 @@ namespace eos {
       if ( msg.head_num  >  head) {
         shared_fetch (head, msg.head_num);
       }
-      c->remote_node_id = msg.node_id;
+
+      dlog ("setting remote node id = ${n}",("n", msg.node_id));
+
+      if ( c->remote_node_id != msg.node_id) {
+        if (c->try_reconnect) {
+          dlog ("adding ${pn} to resolved node list", ("pn", msg.node_id));
+          auto old_id =  resolved_nodes.find (c->remote_node_id);
+          if (old_id != resolved_nodes.end()) {
+            dlog ("first purging old id");
+            resolved_nodes.erase(old_id);
+          }
+          resolved_nodes.insert (msg.node_id);
+        }
+        else {
+          dlog ("adding ${pn} to learned node list", ("pn", msg.node_id));
+          auto old_id =  learned_nodes.find (c->remote_node_id);
+          if (old_id != learned_nodes.end()) {
+            dlog ("first purging old id");
+            learned_nodes.erase(old_id);
+          }
+          learned_nodes.insert (msg.node_id);
+        }
+
+        c->remote_node_id = msg.node_id;
+        send_peer_message();
+      }
       c->last_handshake = msg;
     }
 
     void handle_message (connection_ptr c, const peer_message &msg) {
-      dlog ("got a peer message with ${pc}", ("pc", msg.peers.size()));
+      dlog ("got a peer message with ${pc} from ${r}", ("pc", msg.peers.size())("r",c->last_handshake.p2p_address));
       c->shared_peers.clear();
       for (auto pnode : msg.peers) {
         if (pnode == node_id) {
+          dlog ("skipping self peernode");
+          continue;
+        }
+        if (pnode == c->remote_node_id) {
+          dlog ("skipping received connection's node");
           continue;
         }
         c->shared_peers.insert (pnode);
-
-        if (resolved_nodes.find (pnode) == resolved_nodes.end() &&
-            learned_nodes.find (pnode) == learned_nodes.end()) {
-          learned_nodes.insert (pnode);
-        }
       }
     }
 
@@ -558,6 +588,7 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const request_message &msg) {
+      dlog ("got a request message");
         // collect a list of transactions that were found.
         // collect a second list of transaction ids that were not found but are otherwise known by some peers
         // finally, what remains are future(?) transactions
@@ -570,9 +601,15 @@ namespace eos {
           send_now.push_back(txn->transaction);
         }
         else {
+          dlog ("request message looping through peers");
+          int cycle_count = 4;
           auto loop_start = conn_ndx++;
           while (conn_ndx != loop_start) {
             if (conn_ndx == connections.end()) {
+              if (--cycle_count == 0) {
+                dlog ("breaking out of stupid loop");
+                break;
+              }
               conn_ndx = connections.begin();
               continue;
             }
@@ -583,7 +620,9 @@ namespace eos {
             auto txn = conn_ndx->get()->trx_state.get<by_id>().find(t);
             if (txn != conn_ndx->get()->trx_state.end()) {
                 // add to forward_to list
+              break;
             }
+            ++conn_ndx;
           }
         }
       }
@@ -601,7 +640,7 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const block_summary_message &msg) {
-      // dlog ("got a block summary message blkid = ${b}", ("b",msg.block.id()));
+      dlog ("got a block summary message blkid = ${b} from peer ${p}", ("b",msg.block.id())("p", c->remote_node_id));
 #warning ("TODO: reconstruct actual block from cached transactions")
       const auto& itr = c->block_state.get<by_id>();
       auto bs = itr.find(msg.block.id());
@@ -863,6 +902,8 @@ namespace eos {
     my->chain_plug = app().find_plugin<chain_plugin>();
     my->chain_plug->get_chain_id(my->chain_id);
     fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
+    dlog("my node_id = ${n}", ("n",my->node_id));
+
     my->just_send_it_max = 1300;
   }
 
