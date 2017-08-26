@@ -3,6 +3,7 @@
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/account_object.hpp>
+#include <eos/types/AbiSerializer.hpp>
 
 #include <eos/database_plugin/database_plugin.hpp>
 
@@ -22,6 +23,13 @@ struct empty{};
 class read_only {
    const chain_controller& db;
 
+   const string KEYi64 = "i64";
+   const string KEYi128i128 = "i128i128";
+   const string KEYi64i64i64 = "i64i64i64";
+   const string PRIMARY = "primary";
+   const string SECONDARY = "secondary";
+   const string TERTIARY = "tertiary";
+   
 public:
    read_only(const chain_controller& db)
       : db(db) {}
@@ -105,39 +113,86 @@ public:
 
    get_block_results get_block(const get_block_params& params) const;
 
-   struct get_table_rows_i64_params {
+   struct get_table_rows_params {
       bool        json = false;
       Name        scope;
       Name        code;
       Name        table;
-      uint64_t    lower_bound = 0;
-      uint64_t    upper_bound = uint64_t(-1);
+      string      table_type;
+      string      table_key;
+      string      lower_bound;
+      string      upper_bound;
       uint32_t    limit = 10;
-   };
+    };
 
-   struct get_table_rows_i64_result {
+   struct get_table_rows_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object 
       bool                more; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
-   get_table_rows_i64_result get_table_rows_i64( const get_table_rows_i64_params& params )const;
+   get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
 
-   struct get_table_rows_i128i128_primary_params {
-      bool        json = false;
-      Name        scope;
-      Name        code;
-      Name        table;
-      uint128_t   lower_bound = 0;
-      uint128_t   upper_bound = uint128_t(-1);
-      uint32_t    limit = 10;
-   };
+   void copy_row(const chain::key_value_object& obj, vector<char>& data)const {
+      data.resize( sizeof(uint64_t) + obj.value.size() );
+      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
+      memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
+   }
 
-   struct get_table_rows_i128i128_primary_result {
-      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object 
-      bool                more; ///< true if last element in data is not the end and sizeof data() < limit
-   };
+   void copy_row(const chain::key128x128_value_object& obj, vector<char>& data)const {
+      data.resize( 2*sizeof(uint128_t) + obj.value.size() );
+      memcpy( data.data(), &obj.primary_key, sizeof(uint128_t) );
+      memcpy( data.data()+sizeof(uint128_t), &obj.secondary_key, sizeof(uint128_t) );
+      memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
+   }
 
-   get_table_rows_i128i128_primary_result get_table_rows_i128i128_primary( const get_table_rows_i128i128_primary_params& params )const;   
+   void copy_row(const chain::key64x64x64_value_object& obj, vector<char>& data)const {
+      data.resize( 3*sizeof(uint64_t) + obj.value.size() );
+      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
+      memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
+      memcpy( data.data()+2*sizeof(uint64_t), &obj.tertiary_key, sizeof(uint64_t) );
+      memcpy( data.data()+3*sizeof(uint64_t), obj.value.data(), obj.value.size() );
+   }
+ 
+   template <typename IndexType, typename Scope>
+   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p )const {
+      read_only::get_table_rows_result result;
+      const auto& d = db.get_database();
+      const auto& code_account = d.get<chain::account_object,chain::by_name>( p.code );
+   
+      types::AbiSerializer abis;
+      if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+         eos::types::Abi abi;
+         fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+         fc::raw::unpack( ds, abi );
+         abis.setAbi( abi );
+      }
+   
+      const auto& idx = d.get_index<IndexType, Scope>();
+      auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, boost::lexical_cast<typename IndexType::value_type::key_type>(p.lower_bound)) );
+      auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, p.table, boost::lexical_cast<typename IndexType::value_type::key_type>(p.upper_bound)) );
+   
+      vector<char> data;
+   
+      auto start = fc::time_point::now();
+      auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
+   
+      int count = 0;
+      auto itr = lower;
+      for( itr = lower; itr != upper && itr->table == p.table; ++itr ) {
+         copy_row(*itr, data);
+   
+         if( p.json ) 
+            result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
+         else
+            result.rows.emplace_back( fc::variant(data) );
+         if( ++count == p.limit || fc::time_point::now() > end )
+            break;
+      }
+      if( itr != upper ) 
+         result.more = true;
+      return result;
+   }
+      
 };
 
 class read_write {
@@ -198,20 +253,16 @@ private:
 
 FC_REFLECT(eos::chain_apis::empty, )
 FC_REFLECT(eos::chain_apis::read_only::get_info_results,
-           (head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
-           (recent_slots)(participation_rate))
+  (head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
+  (recent_slots)(participation_rate))
 FC_REFLECT(eos::chain_apis::read_only::get_block_params, (block_num_or_id))
-
+  
 FC_REFLECT_DERIVED( eos::chain_apis::read_only::get_block_results, (eos::chain::signed_block), (id)(block_num)(refBlockPrefix) );
 FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
-FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_params,
-           (json)(scope)(code)(table)(lower_bound)(upper_bound)(limit) );
-FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i64_result,
-           (rows)(more) );
-FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i128i128_primary_params,
-           (json)(scope)(code)(table)(lower_bound)(upper_bound)(limit) );
-FC_REFLECT( eos::chain_apis::read_only::get_table_rows_i128i128_primary_result,
-           (rows)(more) );
+  
+FC_REFLECT( eos::chain_apis::read_only::get_table_rows_params, (json)(table_type)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eos::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+
 FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(producer)(abi) )
 FC_REFLECT( eos::chain_apis::read_only::get_account_params, (name) )
 FC_REFLECT( eos::chain_apis::read_only::producer_info, (name) )
