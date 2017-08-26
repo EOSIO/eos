@@ -1,4 +1,5 @@
 #include <eos/account_history_plugin/account_history_plugin.hpp>
+#include <eos/account_history_plugin/account_transaction_history_object.hpp>
 #include <eos/account_history_plugin/transaction_history_object.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/config.hpp>
@@ -13,11 +14,15 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <eos/chain/multi_index_includes.hpp>
+#include <boost/range/adaptors.hpp>
+#include <boost/range/algorithm.hpp>
+#include <boost/range/algorithm_ext.hpp>
 
 namespace fc { class variant; }
 
 namespace eos {
 
+using chain::AccountName;
 using chain::block_id_type;
 using chain::ProcessedTransaction;
 using chain::signed_block;
@@ -48,7 +53,7 @@ private:
    };
    typedef std::multimap<block_id_type, transaction_id_type, block_comp> block_transaction_id_map;
 
-   optional<block_id_type> find_block_id(const transaction_id_type& transaction_id) const;
+   optional<block_id_type> find_block_id(const chainbase::database& db, const transaction_id_type& transaction_id) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const block_id_type& block_id) const;
    bool is_scope_relevant(const eos::types::Vector<AccountName>& scope);
@@ -57,16 +62,14 @@ private:
 };
 const int64_t account_history_plugin_impl::DEFAULT_TRANSACTION_TIME_LIMIT = 3;
 
-optional<block_id_type> account_history_plugin_impl::find_block_id(const transaction_id_type& transaction_id) const
+optional<block_id_type> account_history_plugin_impl::find_block_id(const chainbase::database& db, const transaction_id_type& transaction_id) const
 {
-   const auto& db = chain_plug->chain().get_database();
    optional<block_id_type> block_id;
-   db.with_read_lock( [&]() {
-      const auto& trx_idx = db.get_index<transaction_history_multi_index, by_trx_id>();
-      auto transaction_history = trx_idx.find( transaction_id );
-      if (transaction_history != trx_idx.end())
-         block_id = transaction_history->block_id;
-   } );
+   const auto& trx_idx = db.get_index<transaction_history_multi_index, by_trx_id>();
+   auto transaction_history = trx_idx.find( transaction_id );
+   if (transaction_history != trx_idx.end())
+      block_id = transaction_history->block_id;
+
    return block_id;
 }
 
@@ -91,7 +94,11 @@ ProcessedTransaction account_history_plugin_impl::find_transaction(const chain::
 
 ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
 {
-   auto block_id = find_block_id(transaction_id);
+   const auto& db = chain_plug->chain().get_database();
+   optional<block_id_type> block_id;
+   db.with_read_lock( [&]() {
+      block_id = find_block_id(db, transaction_id);
+   } );
    if( block_id.valid() )
    {
       return find_transaction(transaction_id, *block_id);
@@ -109,11 +116,13 @@ get_transactions_results account_history_plugin_impl::get_transactions(const Acc
 
    block_transaction_id_map block_transaction_ids;
    db.with_read_lock( [&]() {
-      const auto& account_idx = db.get_index<transaction_history_multi_index, by_account_name>();
+      const auto& account_idx = db.get_index<account_transaction_history_multi_index, by_account_name>();
       auto range = account_idx.equal_range( account_name );
-      for (auto transaction_history = range.first; transaction_history != range.second; ++transaction_history)
+      for (auto obj = range.first; obj != range.second; ++obj)
       {
-         block_transaction_ids.emplace(std::make_pair(transaction_history->block_id, transaction_history->transaction_id));
+         optional<block_id_type> block_id = find_block_id(db, obj->transaction_id);
+         FC_ASSERT(block_id, "Transaction with ID ${tid} was tracked for ${account}, but no corresponding block id was found", ("tid", obj->transaction_id)("account", account_name));
+         block_transaction_ids.emplace(std::make_pair(*block_id,  obj->transaction_id));
       }
    } );
 
@@ -149,17 +158,13 @@ get_transactions_results account_history_plugin_impl::ordered_transactions(const
    get_transactions_results results;
    results.transactions.reserve(end - begin);
 
-   const auto& db = chain_plug->chain().get_database();
    auto block_transaction = block_transaction_ids.cbegin();
 
    uint32_t current = 0;
    // keep iterating through each equal range
    while (block_transaction != block_transaction_ids.cend() && !time_exceeded(start_time))
    {
-      optional<signed_block> block;
-      db.with_read_lock( [&]() {
-         block = chain_plug->chain().fetch_block_by_id(block_transaction->first);
-      } );
+      optional<signed_block> block = chain_plug->chain().fetch_block_by_id(block_transaction->first);
       FC_ASSERT(block, "Transaction with ID ${tid} was indexed as being in block ID ${bid}, but no such block was found", ("tid", block_transaction->second)("bid", block_transaction->first));
 
       auto range = block_transaction_ids.equal_range(block_transaction->first);
@@ -234,12 +239,16 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
             if (check_relevance && !is_scope_relevant(trx.scope))
                continue;
 
+            db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
+               transaction_history.block_id = block_id;
+               transaction_history.transaction_id = trx.id();
+            });
+
             for (const auto& account_name : trx.scope)
             {
-               db.create<transaction_history_object>([&block_id,&trx,&account_name](transaction_history_object& transaction_history) {
-                  transaction_history.block_id = block_id;
-                  transaction_history.transaction_id = trx.id();
-                  transaction_history.account_name = account_name;
+               db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
+                  account_transaction_history.account_name = account_name;
+                  account_transaction_history.transaction_id = trx.id();
                });
             }
          }
@@ -290,6 +299,7 @@ void account_history_plugin::plugin_startup()
 {
    my->chain_plug = app().find_plugin<chain_plugin>();
    auto& db = my->chain_plug->chain().get_mutable_database();
+   db.add_index<account_transaction_history_multi_index>();
    db.add_index<transaction_history_multi_index>();
 
    my->chain_plug->chain().applied_block.connect ([&impl = my](const signed_block& block) {
