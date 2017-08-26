@@ -37,7 +37,6 @@ class account_history_plugin_impl {
 public:
    ProcessedTransaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
    get_transactions_results get_transactions(const AccountName&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
-   get_transactions_results get_transactions(const AccountName&  account_name, const optional<uint32_t>& start_seq, const optional<uint32_t>& stop_seq) const;
    vector<AccountName> get_key_accounts(const public_key_type& public_key) const;
    void applied_block(const signed_block&);
 
