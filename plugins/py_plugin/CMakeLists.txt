@@ -6,7 +6,6 @@ set(src
 add_library( py_plugin
              STATIC
              py_plugin.cpp
-             httpc.cpp
              hello.c
              ${HEADERS} )
 
