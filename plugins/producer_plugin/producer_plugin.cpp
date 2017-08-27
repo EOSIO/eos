@@ -201,7 +201,8 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    {
    case block_production_condition::produced: {
       auto producer = app().get_plugin<chain_plugin>().chain().head_block_producer();
-      ilog("${p} generated block #${n} with timestamp ${t} at time ${c}", ("p", producer)(capture));
+//	  auto result =  (producer)(capture);
+//      dlog("${p} generated block #${n} with timestamp ${t} at time ${c}", ("p", producer)(capture));
       break;
    }
    case block_production_condition::not_synced:
