@@ -29,7 +29,7 @@ int main(int argc, char** argv)
       app().register_plugin<account_history_plugin>();
       app().register_plugin<account_history_api_plugin>();
       app().register_plugin<py_plugin>();
-      if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin,account_history_api_plugin,py_plugin>(argc, argv))
          return -1;
       app().startup();
       app().exec();

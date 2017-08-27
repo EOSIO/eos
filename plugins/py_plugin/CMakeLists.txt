@@ -6,10 +6,10 @@ set(src
 add_library( py_plugin
              STATIC
              py_plugin.cpp
-             hello.c
+             eosapi.c
              ${HEADERS} )
 
-target_link_libraries( py_plugin appbase chain_api_plugin producer_plugin chain_plugin net_plugin http_plugin eos_chain fc)
+target_link_libraries( py_plugin appbase chain_api_plugin producer_plugin chain_plugin account_history_api_plugin net_plugin http_plugin eos_chain fc)
 target_include_directories( py_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "/Users/newworld/anaconda/include/python3.6m")
 
 install( TARGETS
