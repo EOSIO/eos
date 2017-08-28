@@ -93,8 +93,7 @@ namespace eos { namespace chain {
       /**
        * clear all common data
        */
-      inline
-      void clear(Transaction& t) {
+      inline void clear(Transaction& t) {
          t.messages.clear();
       }
    }
