@@ -33,8 +33,8 @@ public:
       chain::transaction_id_type  transaction_id;
       fc::variant                 transaction;
    };
-
    get_transaction_results get_transaction(const get_transaction_params& params) const;
+
    struct get_transactions_params {
       chain::AccountName  account_name;
       optional<uint32_t>  skip_seq;
@@ -51,6 +51,14 @@ public:
    };
 
    get_transactions_results get_transactions(const get_transactions_params& params) const;
+
+   struct get_key_accounts_params {
+      chain::public_key_type     public_key;
+   };
+   struct get_key_accounts_results {
+      vector<chain::AccountName> account_names;
+   };
+   get_key_accounts_results get_key_accounts(const get_key_accounts_params& params) const;
 };
 
 class read_write {
@@ -89,3 +97,5 @@ FC_REFLECT(eos::account_history_apis::read_only::get_transaction_results, (trans
 FC_REFLECT(eos::account_history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
 FC_REFLECT(eos::account_history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
 FC_REFLECT(eos::account_history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
+FC_REFLECT(eos::account_history_apis::read_only::get_key_accounts_params, (public_key) )
+FC_REFLECT(eos::account_history_apis::read_only::get_key_accounts_results, (account_names) )
