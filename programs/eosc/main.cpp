@@ -102,7 +102,7 @@ eos::chain_apis::read_only::get_info_results get_info() {
 fc::variant push_transaction( SignedTransaction& trx ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
-    transaction_helpers::set_reference_block(trx, info.head_block_id);
+    transaction_set_reference_block(trx, info.head_block_id);
     boost::sort( trx.scope );
 
     return call( push_txn_func, trx );
@@ -127,7 +127,7 @@ void create_account( const vector<string>& cmd_line ) {
 
       SignedTransaction trx;
       trx.scope = sort_names({creator,eosaccnt});
-      transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
+      transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
                          types::newaccount{creator, newaccount, owner_auth,
                                            active_auth, recovery_auth, deposit});
 
@@ -308,7 +308,7 @@ int send_command (const vector<string> &cmd_line)
 
     SignedTransaction trx;
     trx.scope = { config::EosContractName, account };
-    transaction_helpers::emplace_message(trx,  config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
+    transaction_emplace_message(trx,  config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
                         "setcode", handler );
 
     std::cout << fc::json::to_pretty_string( push_transaction(trx)  ) << std::endl;
@@ -322,11 +322,11 @@ int send_command (const vector<string> &cmd_line)
 
     SignedTransaction trx;
     trx.scope = sort_names({sender,recipient});
-    transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
+    transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
                        types::transfer{sender, recipient, amount});
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
-    transaction_helpers::set_reference_block(trx, info.head_block_id);
+    transaction_set_reference_block(trx, info.head_block_id);
 
     std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
   }

@@ -92,7 +92,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       SignedTransaction trx;
       BOOST_REQUIRE_THROW(chain.push_transaction(trx), transaction_exception); // no messages
       trx.messages.resize(1);
-      transaction_helpers::set_reference_block(trx, chain.head_block_id());
+      transaction_set_reference_block(trx, chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
       trx.scope = sort_names( {"inita", "initb"} );
 
@@ -105,7 +105,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
       trx.messages[0].type = "transfer";
       trx.messages[0].authorization = {{"inita", "active"}};
       trx.messages[0].code = config::EosContractName;
-      transaction_helpers::set_message(trx, 0, "transfer", trans);
+      transaction_set_message(trx, 0, "transfer", trans);
       chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
 
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000 - 100));

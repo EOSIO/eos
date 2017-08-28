@@ -59,43 +59,41 @@ namespace eos { namespace chain {
    
 
    /**
-    * @brief A base transaction without any explicit or implied authorizations.  
+    * @brief methods that operate on @ref eos::types::Transaction.  
     *
-    * This is a utility class for sharing common operations between inheriting types which defines
-    * additional features and requirements.
+    * These are utility methods for sharing common operations between inheriting types which define
+    * additional features and requirements based off of @ref eos::types::Transaction.
     */
-   namespace transaction_helpers {
-      /// Calculate the digest for a transaction
-      digest_type digest(const Transaction& t);
+   /// Calculate the digest for a transaction
+   digest_type transaction_digest(const Transaction& t);
 
-      void set_reference_block(Transaction& t, const block_id_type& reference_block);
+   void transaction_set_reference_block(Transaction& t, const block_id_type& reference_block);
 
-      bool verify_reference_block(const Transaction& t, const block_id_type& reference_block);
+   bool transaction_verify_reference_block(const Transaction& t, const block_id_type& reference_block);
 
-      template <typename T>
-      void set_message(Transaction& t, int index, const types::FuncName& type, T&& value) {
-         Message m(t.messages[index]);
-         m.set(type, std::forward<T>(value));
-         t.messages[index] = m;
-      }
+   template <typename T>
+   void transaction_set_message(Transaction& t, int index, const types::FuncName& type, T&& value) {
+      Message m(t.messages[index]);
+      m.set(type, std::forward<T>(value));
+      t.messages[index] = m;
+   }
 
-      template <typename T>
-      T message_as(Transaction& t, int index) {
-         Message m(t.messages[index]);
-         return m.as<T>();
-      }
+   template <typename T>
+   T transaction_message_as(Transaction& t, int index) {
+      Message m(t.messages[index]);
+      return m.as<T>();
+   }
 
-      template <typename... Args>
-      void emplace_message(Transaction& t, Args&&... a) {
-         t.messages.emplace_back(Message(std::forward<Args>(a)...));
-      }
+   template <typename... Args>
+   void transaction_emplace_message(Transaction& t, Args&&... a) {
+      t.messages.emplace_back(Message(std::forward<Args>(a)...));
+   }
 
-      /**
-       * clear all common data
-       */
-      inline void clear(Transaction& t) {
-         t.messages.clear();
-      }
+   /**
+      * clear all common data
+      */
+   inline void transaction_clear(Transaction& t) {
+      t.messages.clear();
    }
 
    /**
@@ -146,7 +144,7 @@ namespace eos { namespace chain {
       /**
        * Removes all messages, signatures, and authorizations
        */
-      void clear() { transaction_helpers::clear(*this); signatures.clear(); }
+      void clear() { transaction_clear(*this); signatures.clear(); }
 
       digest_type merkle_digest() const;
 

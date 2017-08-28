@@ -801,7 +801,7 @@ void chain_controller::validate_tapos(const Transaction& trx)const {
    const auto& tapos_block_summary = _db.get<block_summary_object>((uint16_t)trx.refBlockNum);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   EOS_ASSERT(transaction_helpers::verify_reference_block(trx, tapos_block_summary.block_id), transaction_exception,
+   EOS_ASSERT(transaction_verify_reference_block(trx, tapos_block_summary.block_id), transaction_exception,
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 }
