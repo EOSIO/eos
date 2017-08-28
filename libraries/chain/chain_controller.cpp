@@ -680,8 +680,8 @@ void chain_controller::_apply_block(const signed_block& next_block)
          auto user_path = path_cons_list(".user_input", t_path);
          for(int p_idx = 0; p_idx < thread.user_input.size(); p_idx++ ) {
             const auto& ptrx = thread.user_input.at(p_idx);
-            //const SignedTransaction& trx = ptrx;
-            auto processed = apply_transaction(ptrx);
+            const SignedTransaction& trx = ptrx;
+            auto processed = apply_transaction(trx);
             check_transaction_output(ptrx, processed, user_path(p_idx));
          }
       }
