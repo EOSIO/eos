@@ -269,13 +269,16 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
    return read_write::push_transaction_results{ pretty_input.id(), pretty_trx };
 }
 
-read_write::push_transactions_results read_write::push_transactions(const vector<read_write::push_transaction_params>& params) {
+read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
+   FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
+
    push_transactions_results result;
+   result.reserve(params.size());
    for( const auto& item : params ) {
       try {
-        result.push_back( push_transaction( item ) ); 
+        result.emplace_back( push_transaction( item ) ); 
       } catch ( const fc::exception& e ) {
-        result.push_back( read_write::push_transaction_results{ chain::transaction_id_type(), 
+        result.emplace_back( read_write::push_transaction_results{ chain::transaction_id_type(), 
                           fc::mutable_variant_object( "error", e.to_detail_string() ) } );
       }
    }
