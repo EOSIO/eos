@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['price',['Price',['../namespaceexchange.html#a0336f5f2902c9a988382211e8b2c5902',1,'exchange']]],
-  ['primary',['Primary',['../struct_table.html#ad9f8ffd200f4ec978d980c671d18f93f',1,'Table::Primary()'],['../struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4.html#af6686d4a11f2e9d38c9aa19e97633391',1,'Table&lt; scope, code, table, Record, PrimaryType, void &gt;::Primary()']]]
+  ['int128_5ft',['int128_t',['../types_8h.html#a811ec3b3c805bfd6b8ec302d59fc5a94',1,'types.h']]],
+  ['int32_5ft',['int32_t',['../types_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60',1,'types.h']]],
+  ['int64_5ft',['int64_t',['../types_8h.html#a996e72f71b11a5bb8b3b7b6936b1516d',1,'types.h']]]
 ];

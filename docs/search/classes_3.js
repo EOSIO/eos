@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['eos',['eos',['../structnative_1_1eos.html',1,'native']]]
+  ['dummy_5fmessage',['dummy_message',['../structdummy__message.html',1,'']]]
 ];

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['quote_5ftoken_5ftype',['quote_token_type',['../structeos_1_1price.html#a60368826b12afaaf30f7690c32ee2e39',1,'eos::price']]]
+  ['offers',['Offers',['../namespacedice.html#aa3e3d853e1d38daff2ff1303a1d6e99e',1,'dice']]]
 ];
