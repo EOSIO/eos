@@ -257,6 +257,9 @@ namespace eos { namespace chain {
          chainbase::database& get_mutable_database() { return _db; }
          
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
+
+
+         const deque<SignedTransaction>&  pending()const { return _pending_transactions; }
    private:
 
          /// Reset the object graph in-memory
