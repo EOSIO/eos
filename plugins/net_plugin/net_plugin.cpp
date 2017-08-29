@@ -19,9 +19,11 @@
 
 namespace eos {
   using std::vector;
+
   using boost::asio::ip::tcp;
   using boost::asio::ip::address_v4;
   using boost::asio::ip::host_name;
+
   using fc::time_point;
   using fc::time_point_sec;
   using eos::chain::transaction_id_type;
@@ -95,7 +97,6 @@ namespace eos {
 
   struct handshake_initializer {
     static void populate (handshake_message &hello);
-    static net_plugin_impl* info;
   };
 
   class connection : public std::enable_shared_from_this<connection> {
@@ -119,6 +120,8 @@ namespace eos {
       auto *rnd = remote_node_id.data();
       rnd[0] = 0;
 
+
+
     }
 
     ~connection() {
@@ -130,10 +133,13 @@ namespace eos {
     sync_request_index             in_sync_state;
     sync_request_index             out_sync_state;
     socket_ptr                     socket;
-    std::set<fc::sha256>           shared_peers;
+    set<fc::sha256>                shared_peers;
+    set<connection_ptr>            mutual_peers;
 
     uint32_t                       pending_message_size;
     vector<char>                   pending_message_buffer;
+    vector<char>                   raw_recv;
+    vector<char>                   raw_send;
 
     fc::sha256                     remote_node_id;
     handshake_message              last_handshake;
@@ -172,18 +178,18 @@ namespace eos {
       fc::raw::pack( ds, m );
 
       boost::asio::async_write( *socket, boost::asio::buffer( buffer.data(), buffer.size() ),
-                                [this,buf=std::move(buffer)]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-                                  if( ec ) {
-                                    elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
-                                  } else  {
-                                    if (!out_queue.size()) {
-                                      elog ("out_queue underflow!");
-                                    } else {
-                                      out_queue.pop_front();
-                                    }
-                                    send_next_message();
-                                  }
-                                });
+                   [this,buf=std::move(buffer)]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+                     if( ec ) {
+                       elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
+                     } else  {
+                       if (!out_queue.size()) {
+                         elog ("out_queue underflow!");
+                       } else {
+                         out_queue.pop_front();
+                       }
+                       send_next_message();
+                     }
+                   });
     }
 
    void write_block_backlog ( ) {
@@ -431,8 +437,8 @@ namespace eos {
         if (c->out_sync_state.size() == 0) {
           const auto& bs = c->trx_state.find(msg.id());
           if (bs == c->trx_state.end()) {
-            c->trx_state.insert((transaction_state){msg.id(),true,true,(uint32_t)-1,
-                  fc::time_point(),fc::time_point()});
+            c->trx_state.insert(transaction_state({msg.id(),true,true,(uint32_t)-1,
+                    fc::time_point(),fc::time_point()}));
           }
           c->send(msg);
         }
@@ -555,6 +561,12 @@ namespace eos {
           dlog ("skipping received connection's node");
           continue;
         }
+        for (auto &conn : connections) {
+          if (conn->remote_node_id == pnode) {
+            c->mutual_peers.insert (conn);
+            break;
+          }
+        }
         c->shared_peers.insert (pnode);
       }
     }
@@ -646,7 +658,7 @@ namespace eos {
       auto bs = itr.find(msg.block.id());
       if (bs == c->block_state.end()) {
         dlog ("not found, forwarding on");
-        c->block_state.insert ((block_state){msg.block.id(),true,true,fc::time_point()});
+        c->block_state.insert (block_state({msg.block.id(),true,true,fc::time_point()}));
         forward (c, msg);
       } else {
         if (!bs->is_known) {
@@ -736,28 +748,29 @@ namespace eos {
 
     void start_reading_pending_buffer( connection_ptr c ) {
       boost::asio::async_read( *c->socket,
-                               boost::asio::buffer(c->pending_message_buffer.data(),
-                                                   c->pending_message_size ),
-                               [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-                                 if( !ec ) {
-                                   try {
-                                     auto msg = fc::raw::unpack<net_message>( c->pending_message_buffer );
-                                     start_read_message( c );
+        boost::asio::buffer(c->pending_message_buffer.data(), c->pending_message_size ),
+          [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+            if( !ec ) {
+              try {
+                auto msg = fc::raw::unpack<net_message>( c->pending_message_buffer );
+                start_read_message( c );
 
-                                     msgHandler m(*this, c);
-                                     msg.visit(m);
-                                     return;
-                                   } catch ( const fc::exception& e ) {
-                                     edump((e.to_detail_string() ));
-                                   }
-                                 } else {
-                                   elog( "Error reading message from connection: ${m}", ("m", ec.message() ) );
-                                 }
-                                 close( c );
-                                 if ( c->try_reconnect ) {
-
-                                 }
-                               });
+                msgHandler m(*this, c);
+                msg.visit(m);
+                return;
+              } catch ( const fc::exception& e ) {
+                edump((e.to_detail_string() ));
+              }
+            } else {
+              elog( "Error reading message from connection: ${m}", ("m", ec.message() ) );
+            }
+            if ( c->try_reconnect ) {
+#warning ("TODO: Add reconnect logic after a read failure");
+            }
+            else {
+              close( c );
+            }
+          });
     }
 
 
@@ -798,16 +811,12 @@ namespace eos {
 
   }; // class net_plugin_impl
 
-
-
-  net_plugin_impl* handshake_initializer::info;
-
   void
   handshake_initializer::populate (handshake_message &hello) {
     hello.network_version = 0;
-    hello.chain_id = info->chain_id;
-    hello.node_id = info->node_id;
-    hello.p2p_address = info->p2p_address;
+    hello.chain_id = my_impl->chain_id;
+    hello.node_id = my_impl->node_id;
+    hello.p2p_address = my_impl->p2p_address;
 #if defined( __APPLE__ )
     hello.os = "osx";
 #elif defined( __linux__ )
@@ -817,10 +826,10 @@ namespace eos {
 #else
     hello.os = "other";
 #endif
-    hello.agent = info->user_agent_name;
+    hello.agent = my_impl->user_agent_name;
 
 
-    chain_controller& cc = info->chain_plug->chain();
+    chain_controller& cc = my_impl->chain_plug->chain();
     try {
       hello.last_irreversible_block_id = cc.get_block_id_for_num
         (hello.last_irreversible_block_num = cc.last_irreversible_block_num());
@@ -843,7 +852,6 @@ namespace eos {
 
   net_plugin::net_plugin()
     :my( new net_plugin_impl ) {
-    handshake_initializer::info = my.get();
     my_impl = my.get();
   }
 
