@@ -200,8 +200,11 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    switch(result)
    {
    case block_production_condition::produced: {
-      auto producer = app().get_plugin<chain_plugin>().chain().head_block_producer();
-      ilog("${p} generated block #${n} with timestamp ${t} at time ${c}", ("p", producer)(capture));
+      const auto& db = app().get_plugin<chain_plugin>().chain();
+      auto producer  = db.head_block_producer();
+      auto pending   = db.pending().size();
+
+      wlog("${p} generated block #${n} @ ${t} with ${count} trxs  ${pending} pending", ("p", producer)(capture)("pending",pending) );
       break;
    }
    case block_production_condition::not_synced:
@@ -307,7 +310,16 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       _production_scheduler,
       _production_skip_flags
       );
-   capture("n", block.block_num())("t", block.timestamp)("c", now);
+
+   uint32_t count = 0;
+   for( const auto& cycle : block.cycles ) {
+      for( const auto& thread : cycle ) {
+         count += thread.generated_input.size();
+         count += thread.user_input.size();
+      }
+   }
+
+   capture("n", block.block_num())("t", block.timestamp)("c", now)("count",count);
 
    app().get_plugin<net_plugin>().broadcast_block(block);
    return block_production_condition::produced;
