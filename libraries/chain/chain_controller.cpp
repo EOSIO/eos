@@ -54,6 +54,8 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <chrono>
+#include <generic.hpp>
 
 //#include <Wren++.h>
 
@@ -210,7 +212,26 @@ bool chain_controller::_push_block(const signed_block& new_block)
 
    try {
       auto session = _db.start_undo_session(true);
+      auto exec_start = std::chrono::high_resolution_clock::now();
       apply_block(new_block, skip);
+      if( (fc::time_point::now() - new_block.timestamp) < fc::seconds(60) )
+      {
+         auto exec_stop = std::chrono::high_resolution_clock::now();
+         auto exec_ms = std::chrono::duration_cast<std::chrono::milliseconds>(exec_stop - exec_start);      
+         size_t trxcount = 0;
+         for (const auto& cycle : new_block.cycles)
+   	      for (const auto& thread : cycle)
+   		      for (const auto& trx : thread.user_input) 
+                  trxcount++;
+         ilog( "producer=[${a}], blocktime=${b}, blocknum=${c}, trxcount=${d}, pendingcount=${e}, exectime_ms=${f}", 
+            ("a", new_block.producer) 
+            ("b", new_block.timestamp)
+            ("c", new_block.block_num())
+            ("d", trxcount)
+            ("e", _pending_transactions.size())
+            ("f", exec_ms.count())
+         );
+      }
       session.push();
    } catch ( const fc::exception& e ) {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
