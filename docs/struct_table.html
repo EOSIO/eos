@@ -93,6 +93,8 @@ Static Public Member Functions</h2></td></tr>
 <tr class="separator:a50bc5f57482c6a018e7eaf4e716e038c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a980d7e5d3be9cb202740bc2354ed0f03"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_table.html#a980d7e5d3be9cb202740bc2354ed0f03">store</a> (const Record &amp;r, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> s=scope)</td></tr>
 <tr class="separator:a980d7e5d3be9cb202740bc2354ed0f03"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0374ed1ad6a1c7fcb3012653fc6c1c7c"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_table.html#a0374ed1ad6a1c7fcb3012653fc6c1c7c">update</a> (const Record &amp;r, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> s=scope)</td></tr>
+<tr class="separator:a0374ed1ad6a1c7fcb3012653fc6c1c7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5bf44e6ccd8eb3cb1cae84b50afccc95"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_table.html#a5bf44e6ccd8eb3cb1cae84b50afccc95">remove</a> (const Record &amp;r, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> s=scope)</td></tr>
 <tr class="separator:a5bf44e6ccd8eb3cb1cae84b50afccc95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -241,6 +243,44 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
       <table class="memname">
         <tr>
           <td class="memname">static bool <a class="el" href="struct_table.html">Table</a>&lt; scope, code, table, Record, PrimaryType, SecondaryType &gt;::store </td>
+          <td>(</td>
+          <td class="paramtype">const Record &amp;&#160;</td>
+          <td class="paramname"><em>r</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>s</em> = <code>scope</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0374ed1ad6a1c7fcb3012653fc6c1c7c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0374ed1ad6a1c7fcb3012653fc6c1c7c">&#9670;&nbsp;</a></span>update()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typename PrimaryType , typename SecondaryType  = void&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static bool <a class="el" href="struct_table.html">Table</a>&lt; scope, code, table, Record, PrimaryType, SecondaryType &gt;::update </td>
           <td>(</td>
           <td class="paramtype">const Record &amp;&#160;</td>
           <td class="paramname"><em>r</em>, </td>

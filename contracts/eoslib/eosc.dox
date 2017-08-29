@@ -23,7 +23,7 @@
   After starting `eosd` you should be able to query the current blockchain state like so:
 
 ```
-./eosc info
+$ ./eosc get info
 {
  "head_block_num": 25048,
  "last_irreversible_block_num": 25027,
@@ -41,14 +41,14 @@ In order to create an account you will need two new keys: owener and active. You
 
 This will be your owner key,
 ```
-./eosc create key
+$ ./eosc create key
 public: EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq
 private: 5JKbLfCXgcafDQVwHMm3shHt6iRWgrr9adcmt6vX3FNjAEtJGaT
 ```
 
 And this will be your active key,
 ```
-./eosc create key
+$ ./eosc create key
 public: EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 private: 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
 ```
@@ -60,7 +60,7 @@ to create `tester` using the owner and active keys created above.  `inita` was s
 
 
 ```
-./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+$ ./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 {
   "transaction_id": "6acd2ece68c4b86c1fa209c3989235063384020781f2c67bbb80bc8d540ca120",
   "processed": {
@@ -96,7 +96,7 @@ to create `tester` using the owner and active keys created above.  `inita` was s
 After creating the account we can view the current account status like so:
 
 ```
-./eosc account tester
+$ ./eosc get account tester
 {
   "name": "tester",
   "eos_balance": 0,
@@ -109,7 +109,7 @@ After creating the account we can view the current account status like so:
 You will note that there is no balance because almost all genesis EOS tokens are currently allocated to the `eos` account.
 
 ```
-./eosc account eos
+$ ./eosc get account eos
 {
   "name": "eos",
   "eos_balance": "8999999999998100",
@@ -150,7 +150,7 @@ You will note that there is no balance because almost all genesis EOS tokens are
 We can fund our `tester` account via `eosc` with the following command:
 
 ```
-./eosc transfer eos tester 1000
+$ ./eosc transfer eos tester 1000
 {
   "transaction_id": "52b488d27ce1f72a2b29f22e5e1638fa5db5d7805565884e795733a15c6c2195",
   "processed": {
@@ -199,7 +199,7 @@ We can fund our `tester` account via `eosc` with the following command:
 Now we can verify that the funds were received.
 
 ```
-./eosc account tester
+$ ./eosc get account tester
 {
   "name": "tester",
   "eos_balance": 1000,
@@ -218,22 +218,25 @@ In this section we will use `eosc` to create and publish a currency contract. Yo
 The first step is to create an account for currency. We will have the `tester` account create the `currency` account.
 
 ```
-./eosc create account tester currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+$ ./eosc create account tester currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 ```
 
 The next step is to publish the contract (.wast) and its abi (.abi)
 
 ```
-./eosc setcode currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
+$ ./eosc contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
+Reading WAST...
+Assembling WASM...
+Publishing contract...
 {
-  "transaction_id": "738669518a8fc6935394992beec1dc4dc1b60f7d9f232b6ccd6a282619eedca9",
+  "transaction_id": "9990306e13f630a9c5436a5a0b6fb8fe2c7f3da2f342b4898a39c4a2c17dcdb3",
   "processed": {
-    "refBlockNum": "25386",
-    "refBlockPrefix": "154808726",
-    "expiration": "2017-07-25T18:03:22",
+    "refBlockNum": 1208,
+    "refBlockPrefix": 3058534156,
+    "expiration": "2017-08-24T18:29:52",
     "scope": [
-      "eos",
-      "currency"
+      "currency",
+      "eos"
     ],
     "signatures": [],
     "messages": [{
@@ -244,7 +247,7 @@ The next step is to publish the contract (.wast) and its abi (.abi)
             "permission": "active"
           }
         ],
-        "data": "a34a59dcc80000000000f7090061736d0100000001390a60037e7e7e017f60047e7e7f7f017f60017e0060057e7e7e7f7f017f60027f7f0060027f7f017f60027e7f0060017f0060000060027e7e0002760703656e7606617373657274000403656e76086c6f61645f693634000303656e760b726561644d657373616765000503656e760a72656d6f76655f693634000003656e760b7265717569726541757468000203656e760d726571756972654e6f74696365000203656e760973746f72655f6936340001030504060708090404017000000503010001077e05066d656d6f727902002a5f5a4e3863757272656e6379313273746f72654163636f756e744579524b4e535f374163636f756e74450007355f5a4e3863757272656e637932336170706c795f63757272656e63795f7472616e7366657245524b4e535f385472616e7366657245000804696e69740009056170706c79000a0aaa04043100024020012903084200510d00200042e198deead1002001411010061a0f0b200042e198deead100200129030010031a0bd30202017e017f4100410028020441206b220236020420002903002101200029030810052001100520002903001004200242e198deead10037031020024200370318200029030042a395e5e28d1942e198deead100200241106a411010011a200242e198deead10037030020024200370308200029030842a395e5e28d1942e198deead1002002411010011a200229031820002903105a4110100020022002290318200029031022017d370318200120022903087c20015a41c00010002002200229030820002903107c370308200029030021010240024020022903184200510d00200142e198deead100200241106a411010061a0c010b200142e198deead100200229031010031a0b200041086a290300210102400240200241086a2903004200510d00200142e198deead1002002411010061a0c010b200142e198deead100200229030010031a0b4100200241206a3602040b4901017f4100410028020441106b22003602042000428094ebdc03370308200042e198deead10037030042a395e5e28d1942e198deead1002000411010061a4100200041106a3602040b5701017f4100410028020441206b22023602040240200042a395e5e28d19520d00200142d48cdce99412520d0020024200370318200241086a4118100241174b41f0001000200241086a10080b4100200241206a3602040b0b8b01040041040b04900400000041100b2c696e746567657220756e646572666c6f77207375627472616374696e6720746f6b656e2062616c616e6365000041c0000b26696e7465676572206f766572666c6f7720616464696e6720746f6b656e2062616c616e6365000041f0000b1e6d6573736167652073686f72746572207468616e2065787065637465640000ec01046e616d650b06617373657274020000086c6f61645f6936340500000000000b726561644d6573736167650200000a72656d6f76655f693634030000000b726571756972654175746801000d726571756972654e6f7469636501000973746f72655f69363404000000002a5f5a4e3863757272656e6379313273746f72654163636f756e744579524b4e535f374163636f756e74450201300131355f5a4e3863757272656e637932336170706c795f63757272656e63795f7472616e7366657245524b4e535f385472616e73666572450301300131013204696e6974010130056170706c7903013001310132010b4163636f756e744e616d65044e616d6502087472616e7366657200030466726f6d0b4163636f756e744e616d6502746f0b4163636f756e744e616d6506616d6f756e740655496e743634076163636f756e740002036b65790655496e7436340762616c616e63650655496e743634015406374d91000000087472616e7366657201618c571d05000000076163636f756e74"
+        "data": "00000079b822651d0000e8150061736d0100000001390a60017e0060037e7e7f017f60047e7e7f7f017f60017f0060057e7e7e7f7f017f60027f7f0060027f7f017f60027e7f0060000060027e7e00029d010a03656e7606617373657274000503656e76086c6f61645f693634000403656e76067072696e7469000003656e76067072696e746e000003656e76067072696e7473000303656e760b726561644d657373616765000603656e760a72656d6f76655f693634000103656e760b7265717569726541757468000003656e760d726571756972654e6f74696365000003656e760973746f72655f6936340002030706000007030809040401700000050301000107cc0107066d656d6f72790200205f5a4e33656f733133726571756972654e6f74696365454e535f344e616d6545000a1e5f5a4e33656f7331317265717569726541757468454e535f344e616d6545000b345f5a4e3863757272656e6379313273746f72654163636f756e74454e33656f73344e616d6545524b4e535f374163636f756e7445000c355f5a4e3863757272656e637932336170706c795f63757272656e63795f7472616e7366657245524b4e535f385472616e7366657245000d04696e6974000e056170706c79000f0a9d0d060600200010080b0600200010070b3400024020012903084200510d0020004280808080a8d7bee3082001411010091a0f0b20004280808080a8d7bee308200110061a0b8a0604017e027f047e017f4100410028020441206b2208360204200029030821052000290300210720002903102104411010042004100241c000100442808080c887d7c8b21d100341d00010042007100341e000100420051003200029030021052000290308100820051008200029030010072000290300210142002105423b210441f00021034200210603400240024002400240024020054206560d0020032c00002202419f7f6a41ff017141194b0d01200241a0016a21020c020b420021072005420b580d020c030b200241ea016a41002002414f6a41ff01714105491b21020b2002ad42388642388721070b2007421f83200442ffffffff0f838621070b200341016a2103200542017c2105200720068421062004427b7c2204427a520d000b420021052008420037031820082006370310200142808080c887d7c8b21d4280808080a8d7bee308200841106a411010011a200041086a2903002101423b210441f00021034200210603400240024002400240024020054206560d0020032c00002202419f7f6a41ff017141194b0d01200241a0016a21020c020b420021072005420b580d020c030b200241ea016a41002002414f6a41ff01714105491b21020b2002ad42388642388721070b2007421f83200442ffffffff0f838621070b200341016a2103200542017c2105200720068421062004427b7c2204427a520d000b2008200637030020084200370308200142808080c887d7c8b21d4280808080a8d7bee3082008411010011a200841186a2203290300200041106a22022903005a418001100020032003290300200229030022057d370300200520082903087c20055a41b00110002008200829030820022903007c370308200029030021050240024020032903004200510d0020054280808080a8d7bee308200841106a411010091a0c010b20054280808080a8d7bee308200841106a10061a0b200041086a290300210502400240200841086a2903004200510d0020054280808080a8d7bee3082008411010091a0c010b20054280808080a8d7bee308200810061a0b4100200841206a3602040b980303027f057e017f4100410028020441106b220736020442002103423b210241e00121014200210403400240024002400240024020034207560d0020012c00002200419f7f6a41ff017141194b0d01200041a0016a21000c020b420021052003420b580d020c030b200041ea016a41002000414f6a41ff01714105491b21000b2000ad42388642388721050b2005421f83200242ffffffff0f838621050b200141016a2101200342017c2103200520048421042002427b7c2202427a520d000b42002103423b210241f00021014200210603400240024002400240024020034206560d0020012c00002200419f7f6a41ff017141194b0d01200041a0016a21000c020b420021052003420b580d020c030b200041ea016a41002000414f6a41ff01714105491b21000b2000ad42388642388721050b2005421f83200242ffffffff0f838621050b200141016a2101200342017c2103200520068421062002427b7c2202427a520d000b2007428094ebdc033703082007200637030020044280808080a8d7bee3082007411010091a4100200741106a3602040bb10303027f047e017f4100410028020441206b220836020442002105423b210441e00121034200210603400240024002400240024020054207560d0020032c00002202419f7f6a41ff017141194b0d01200241a0016a21020c020b420021072005420b580d020c030b200241ea016a41002002414f6a41ff01714105491b21020b2002ad42388642388721070b2007421f83200442ffffffff0f838621070b200341016a2103200542017c2105200720068421062004427b7c2204427a520d000b024020062000520d0042002105423b210441f00121034200210603400240024002400240024020054207560d0020032c00002202419f7f6a41ff017141194b0d01200241a0016a21020c020b420021072005420b580d020c030b200241ea016a41002002414f6a41ff01714105491b21020b2002ad42388642388721070b2007421f83200442ffffffff0f838621070b200341016a2103200542017c2105200720068421062004427b7c2204427a520d000b20062001520d00200842003703102008420037030820084200370318200841086a4118100541174b4180021000200841086a100d0b4100200841206a3602040b0bff010b0041040b04200500000041100b2254686973206170706561727320746f2062652061207472616e73666572206f6620000041c0000b0220000041d0000b072066726f6d20000041e0000b0520746f20000041f0000b086163636f756e7400004180010b2c696e746567657220756e646572666c6f77207375627472616374696e6720746f6b656e2062616c616e6365000041b0010b26696e7465676572206f766572666c6f7720616464696e6720746f6b656e2062616c616e6365000041e0010b0963757272656e6379000041f0010b097472616e7366657200004180020b1e6d6573736167652073686f72746572207468616e2065787065637465640000fd02046e616d651006617373657274020000086c6f61645f693634050000000000067072696e74690100067072696e746e0100067072696e747301000b726561644d6573736167650200000a72656d6f76655f693634030000000b726571756972654175746801000d726571756972654e6f7469636501000973746f72655f6936340400000000205f5a4e33656f733133726571756972654e6f74696365454e535f344e616d65450101301e5f5a4e33656f7331317265717569726541757468454e535f344e616d6545010130345f5a4e3863757272656e6379313273746f72654163636f756e74454e33656f73344e616d6545524b4e535f374163636f756e74450201300131355f5a4e3863757272656e637932336170706c795f63757272656e63795f7472616e7366657245524b4e535f385472616e73666572450901300131013201330134013501360137013804696e69740801300131013201330134013501360137056170706c7909013001310132013301340135013601370138010b4163636f756e744e616d65044e616d6502087472616e7366657200030466726f6d0b4163636f756e744e616d6502746f0b4163636f756e744e616d65087175616e746974790655496e743634076163636f756e740002036b65790655496e7436340762616c616e63650655496e74363401000000b298e982a4087472616e736665720100000080bafac608076163636f756e74"
       }
     ],
     "output": [{
@@ -260,16 +263,18 @@ The next step is to publish the contract (.wast) and its abi (.abi)
 After the contract is published it initially allocates all of the currency to the `currency` account.  So lets transfer some of it to our tester.
 
 ```
-./eosc exec currency transfer '{"from":"currency","to":"tester","amount":50}' '["currency","tester"]' '[{"account":"currency","permission":"active"}]'
+$ ./eosc push message currency transfer '{"from":"currency","to":"tester","quantity":50}' -s currency -s tester -p active@currency
+1589302ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
+1589304ms thread-0   main.cpp:290                  operator()           ] Transaction result:
 {
-  "transaction_id": "f601f2fdb26e366a19913229e4d2928778b50166811c63c7962401b11d23ef3d",
+  "transaction_id": "1c4911c0b277566dce4217edbbca0f688f7bdef761ed445ff31b31f286720057",
   "processed": {
-    "refBlockNum": "25427",
-    "refBlockPrefix": "2231248056",
-    "expiration": "2017-07-25T18:05:25",
+    "refBlockNum": 1173,
+    "refBlockPrefix": 2184027244,
+    "expiration": "2017-08-24T18:28:07",
     "scope": [
-      "tester",
-      "currency"
+      "currency",
+      "tester"
     ],
     "signatures": [],
     "messages": [{
@@ -283,9 +288,9 @@ After the contract is published it initially allocates all of the currency to th
         "data": {
           "from": "currency",
           "to": "tester",
-          "amount": 50
+          "quantity": 50
         },
-        "hex_data": "a34a59dcc8000000b44c5a24000000003200000000000000"
+        "hex_data": "00000079b822651d00000000c84267a13200000000000000"
       }
     ],
     "output": [{
@@ -306,27 +311,60 @@ After the contract is published it initially allocates all of the currency to th
 }
 ```
 
-The `exec` command takes the following arguments: 
+eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
+```
+$ ./eosc
+ERROR: RequiredError: Subcommand required
+Command Line Interface to Eos Daemon
+Usage: ./eosc [OPTIONS] SUBCOMMAND
 
-  - code   - the account whose contract code should be run
-  - action - the type of the message to pass to code
-  - data   - a JSON blob (or hex string) of the message data as defined by the ABI for the action type.
-  - scope  - a JSON array of account names which contain data that may be read or modified by `code` (in this case the sender and receiver)
-  - authorization - the account and permission level which authorized the action
+Options:
+  -h,--help                   Print this help message and exit
 
-@note at this time the blockchain is not validating signatures so anyone can do anything provided they simply declare the proper authority. In the future this will direct the wallet on which keys to use to sign it.  Also future revisions of this API may automatically detect `scope` and `authorization` via a trial run of the contract.
+Subcommands:
+  create                      Create various items, on and off the blockchain
+  get                         Retrieve various items and information from the blockchain
+  contract                    Create or update the contract on an account
+  transfer                    Transfer EOS from account to account
+  push                        Push arbitrary data to the blockchain
+```
+To get help with any particular subcommand, run it with no arguments as well:
+```
+$ ./eosc create
+ERROR: RequiredError: Subcommand required
+Create various items, on and off the blockchain
+Usage: ./eosc create SUBCOMMAND
+
+Subcommands:
+  key                         Create a new keypair and print the public and private keys
+  account                     Create a new account on the blockchain
+$ ./eosc create account
+ERROR: RequiredError: creator
+Create a new account on the blockchain
+Usage: ./eosc create account creator name OwnerKey ActiveKey
+
+Positionals:
+  creator TEXT                The name of the account creating the new account
+  name TEXT                   The name of the new account
+  OwnerKey TEXT               The owner public key for the account
+  ActiveKey TEXT              The active public key for the account
+```
+
+@note at this time the blockchain is not validating signatures so anyone can do anything provided if they simply declare the proper authority. In the future the declared authorities will direct the wallet on which keys to use to sign the transaction. Also future revisions of this API may automatically detect `scope` and `authorization` via a trial run of the contract.
 
 
 Now we can transfer it from `tester` to `inita` and require the permission of `tester`.  This should drain the balance of `tester` to 0.
 
 ```
-./eosc exec currency transfer '{"from":"tester","to":"inita","amount":50}' '["inita","tester"]' '[{"account":"tester","permission":"active"}]'
+$ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
+3116153ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
+3116154ms thread-0   main.cpp:290                  operator()           ] Transaction result:
 {
-  "transaction_id": "89723ee017de6dec33b46b56512042e805fbd2072810e036427896403dfc97fa",
+  "transaction_id": "56b9f0f3b9f43254af446c5dca02a6fcb24ebcdb506d7248947fd4d52a27972a",
   "processed": {
-    "refBlockNum": "25613",
-    "refBlockPrefix": "1970361491",
-    "expiration": "2017-07-25T18:14:43",
+    "refBlockNum": 2882,
+    "refBlockPrefix": 1880685856,
+    "expiration": "2017-08-24T19:53:34",
     "scope": [
       "inita",
       "tester"
@@ -343,9 +381,9 @@ Now we can transfer it from `tester` to `inita` and require the permission of `t
         "data": {
           "from": "tester",
           "to": "inita",
-          "amount": 50
+          "quantity": 50
         },
-        "hex_data": "b44c5a2400000000c9251a00000000003200000000000000"
+        "hex_data": "00000000c84267a1000000008040934b3200000000000000"
       }
     ],
     "output": [{
@@ -376,20 +414,16 @@ Now we can transfer it from `tester` to `inita` and require the permission of `t
 Now that `tester` has a balance of 0, if we attempt this transfer a second time it should fail:
 
 ```
-./eosc exec currency transfer '{"from":"tester","to":"inita","amount":10}' '["inita","tester"]' '[{"account":"tester","permission":"active"}]'
+$ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
+3543610ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
+3543615ms thread-0   main.cpp:311                  main                 ] Failed with error: 10 assert_exception: Assert Exception
 status_code == 200: Error
 : 10 assert_exception: Assert Exception
 test: assertion failed: integer underflow subtracting token balance
-    {"s":"integer underflow subtracting token balance","ptr":16}
-    thread-1  wasm_interface.cpp:271 assertnonei32i32
+    {"s":"integer underflow subtracting token balance","ptr":176}
+    thread-1  wasm_interface.cpp:248 assertnonei32i32
 
-    {"name":"apply","current_validate_context->msg.type":"transfer"}
-    thread-1  wasm_interface.cpp:389 vm_call
-
-    {}
-    thread-1  wasm_interface.cpp:449 apply
-...
-
-
+[...snipped...]
+```
 
 */

@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['to',['to',['../struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html#a75350616e02bd681c0e8b12ca4cf7a38',1,'TOKEN_NAME::Transfer::to()'],['../structeos_1_1_transfer.html#a034713fef29af790067be03d2f12d39b',1,'eos::Transfer::to()'],['../structsystem_1_1_transfer.html#a9c129ff0554816d5c8e8594f116dd0b0',1,'system::Transfer::to()']]],
-  ['total_5fvotes',['total_votes',['../struct_post_record.html#aca901b24573f6a0bf3e1058b197b6174',1,'PostRecord']]]
+  ['quantity',['quantity',['../struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html#a2892db9fb7756afd55846ef6979406e4',1,'TOKEN_NAME::Transfer::quantity()'],['../structeos_1_1token.html#a3daddb64094c45d8f51897aabd44ba3d',1,'eos::token::quantity()'],['../structeos_1_1_transfer.html#a7def55a64767b812debfa5fa0407b1ab',1,'eos::Transfer::quantity()'],['../structinfinite_1_1_transfer.html#a7bb1f54a3a58f42f067d9a020c900ddf',1,'infinite::Transfer::quantity()']]]
 ];

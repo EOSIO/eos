@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['system',['system',['../namespacesystem.html',1,'']]]
+  ['infinite',['infinite',['../namespaceinfinite.html',1,'']]]
 ];
