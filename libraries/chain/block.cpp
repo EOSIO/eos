@@ -102,7 +102,7 @@ namespace eos { namespace chain {
       */
 
       for( const auto& trx : user_input )
-         ids.push_back( transaction_helpers::digest(trx) );
+         ids.push_back( transaction_digest(trx) );
 
       /**
        *  When generating the merkle hash of an output transaction we hash it

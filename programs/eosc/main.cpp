@@ -43,6 +43,8 @@ const string get_account_func = chain_func_base + "/get_account";
 const string account_history_func_base = "/v1/account_history";
 const string get_transaction_func = account_history_func_base + "/get_transaction";
 const string get_transactions_func = account_history_func_base + "/get_transactions";
+const string get_key_accounts_func = account_history_func_base + "/get_key_accounts";
+const string get_controlled_accounts_func = account_history_func_base + "/get_controlled_accounts";
 
 inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    std::sort( names.begin(), names.end() );
@@ -105,7 +107,7 @@ eos::chain_apis::read_only::get_info_results get_info() {
 fc::variant push_transaction( SignedTransaction& trx ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
-    transaction_helpers::set_reference_block(trx, info.head_block_id);
+    transaction_set_reference_block(trx, info.head_block_id);
     boost::sort( trx.scope );
 
     return call( push_txn_func, trx );
@@ -121,9 +123,18 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
 
       SignedTransaction trx;
       trx.scope = sort_names({creator,config::EosContractName});
-      transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
+      transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
                                            types::newaccount{creator, newaccount, owner_auth,
                                                              active_auth, recovery_auth, deposit});
+      if (creator == "inita")
+      {
+         fc::optional<fc::ecc::private_key> private_key = eos::utilities::wif_to_key("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3");
+         if (private_key)
+         {
+            wlog("public key ${k}",("k", private_key->get_public_key()));
+            trx.sign(*private_key, eos::chain::chain_id_type{});
+         }
+      }
 
       std::cout << fc::json::to_pretty_string(push_transaction(trx)) << std::endl;
 }
@@ -185,6 +196,24 @@ int main( int argc, char** argv ) {
                 << std::endl;
    });
 
+   // get accounts
+   chain::public_key_type publicKey;
+   auto getAccounts = get->add_subcommand("accounts", "Retrieve accounts associated with a public key", false);
+   getAccounts->add_option("public_key", publicKey, "The public key to retrieve accounts for")->required();
+   getAccounts->set_callback([&] {
+      auto arg = fc::mutable_variant_object( "public_key", publicKey);
+      std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
+   });
+
+   // get servants
+   string controllingAccount;
+   auto getServants = get->add_subcommand("servants", "Retrieve accounts which are servants of a given account ", false);
+   getAccounts->add_option("account", controllingAccount, "The name of the controlling account")->required();
+   getAccounts->set_callback([&] {
+      auto arg = fc::mutable_variant_object( "accountName", controllingAccount);
+      std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
+   });
+
    // get transaction
    string transactionId;
    auto getTransaction = get->add_subcommand("transaction", "Retrieve a transaction from the blockchain", false);
@@ -219,7 +248,7 @@ int main( int argc, char** argv ) {
 
       SignedTransaction trx;
       trx.scope = sort_names({config::EosContractName, account});
-      transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
+      transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
                                            "setcode", handler);
 
       std::cout << "Publishing contract..." << std::endl;
@@ -230,19 +259,21 @@ int main( int argc, char** argv ) {
    string sender;
    string recipient;
    uint64_t amount;
+   string memo;
    auto transfer = app.add_subcommand("transfer", "Transfer EOS from account to account", false);
    transfer->add_option("sender", sender, "The account sending EOS")->required();
    transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
    transfer->add_option("amount", amount, "The amount of EOS to send")->required();
+   transfer->add_option("memo", amount, "The memo for the transfer");
    transfer->set_callback([&] {
       SignedTransaction trx;
       trx.scope = sort_names({sender,recipient});
-      transaction_helpers::emplace_message(trx, config::EosContractName,
+      transaction_emplace_message(trx, config::EosContractName,
                                            vector<types::AccountPermission>{{sender,"active"}},
-                                           "transfer", types::transfer{sender, recipient, amount});
+                                           "transfer", types::transfer{sender, recipient, amount, memo});
       auto info = get_info();
       trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
-      transaction_helpers::set_reference_block(trx, info.head_block_id);
+      transaction_set_reference_block(trx, info.head_block_id);
 
       std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
    });
@@ -283,7 +314,7 @@ int main( int argc, char** argv ) {
       });
 
       SignedTransaction trx;
-      transaction_helpers::emplace_serialized_message(trx, contract, action,
+      transaction_emplace_serialized_message(trx, contract, action,
                                                       vector<types::AccountPermission>{fixedPermissions.front(),
                                                                                        fixedPermissions.back()},
                                                       result.get_object()["binargs"].as<Bytes>());

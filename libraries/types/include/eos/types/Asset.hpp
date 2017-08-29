@@ -3,10 +3,10 @@
 #include <eos/types/native.hpp>
 
 /// eos with 8 digits of precision
-#define EOS_SYMBOL  (int64_t(8) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
+#define EOS_SYMBOL  (int64_t(5) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
 
 /// Defined to be largest power of 10 that fits in 53 bits of precision
-#define EOS_MAX_SHARE_SUPPLY   int64_t(1000000000000000ll)
+#define EOS_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
 
 namespace eos { namespace types {
 

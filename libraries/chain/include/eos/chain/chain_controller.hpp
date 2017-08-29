@@ -47,6 +47,7 @@
 namespace eos { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
+   struct path_cons_list;
 
    /**
     *   @class database
@@ -279,7 +280,7 @@ namespace eos { namespace chain {
          void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
 
          template<typename T>
-         void check_transaction_output(const T& expected, const T& actual)const;
+         void check_transaction_output(const T& expected, const T& actual, const path_cons_list& path)const;
 
          template<typename T>
          typename T::Processed apply_transaction(const T& trx);
