@@ -135,7 +135,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
       trx.scope = sort_names({#sender,#recipient}); \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{ {#sender,"active"} }, \
-                         "transfer", types::transfer{#sender, #recipient, Amount.amount}); \
+                         "transfer", types::transfer{#sender, #recipient, Amount.amount, memo}); \
       trx.expiration = chain.head_block_time() + 100; \
       transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \

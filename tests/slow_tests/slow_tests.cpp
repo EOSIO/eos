@@ -311,7 +311,7 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "currency", 
                       vector<types::AccountPermission>{ {from,"active"} },
-                      "transfer", types::transfer{from, to, amount});
+                      "transfer", types::transfer{from, to, amount,""});
 
    trx.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(trx, chain.head_block_id());
@@ -324,7 +324,7 @@ void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName 
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "currency", 
                       vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
-                      "transfer", types::transfer{from, to, amount});
+                      "transfer", types::transfer{from, to, amount,""});
    trx.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
@@ -367,7 +367,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          trx.scope = sort_names({"currency","inita"});
          transaction_emplace_message(trx, "currency", 
                             vector<types::AccountPermission>{ {"currency","active"} },
-                            "transfer", types::transfer{"currency", "inita", 1+i});
+                            "transfer", types::transfer{"currency", "inita", 1+i,""});
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
          //idump((trx));
@@ -1167,7 +1167,7 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
          trx.scope = sort_names({"currency","inita"});
          transaction_emplace_message(trx, "currency",
                             vector<types::AccountPermission>{ {"currency","active"} },
-                            "transfer", types::transfer{"currency", "inita", 1});
+                            "transfer", types::transfer{"currency", "inita", 1,""});
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
          try

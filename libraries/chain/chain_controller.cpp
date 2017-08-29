@@ -742,9 +742,17 @@ void chain_controller::check_transaction_authorization(const SignedTransaction& 
 }
 
 void chain_controller::validate_scope( const Transaction& trx )const {
-   EOS_ASSERT(trx.scope.size() > 0, transaction_exception, "No scope specified by transaction" );
+   EOS_ASSERT(trx.scope.size() + trx.readscope.size() > 0, transaction_exception, "No scope specified by transaction" );
    for( uint32_t i = 1; i < trx.scope.size(); ++i )
       EOS_ASSERT( trx.scope[i-1] < trx.scope[i], transaction_exception, "Scopes must be sorted and unique" );
+   for( uint32_t i = 1; i < trx.readscope.size(); ++i )
+      EOS_ASSERT( trx.readscope[i-1] < trx.readscope[i], transaction_exception, "Scopes must be sorted and unique" );
+
+   vector<types::AccountName> intersection;
+   std::set_intersection( trx.scope.begin(), trx.scope.end(),
+                          trx.readscope.begin(), trx.readscope.end(),
+                          std::back_inserter(intersection) );
+   FC_ASSERT( intersection.size() == 0, "a transaction may not redeclare scope in readscope" );
 }
 
 const permission_object& chain_controller::lookup_minimum_permission(types::AccountName authorizer_account,
