@@ -197,7 +197,7 @@ int main( int argc, char** argv ) {
    });
 
    // get accounts
-   chain::public_key_type publicKey;
+   string publicKey;
    auto getAccounts = get->add_subcommand("accounts", "Retrieve accounts associated with a public key", false);
    getAccounts->add_option("public_key", publicKey, "The public key to retrieve accounts for")->required();
    getAccounts->set_callback([&] {
@@ -208,8 +208,8 @@ int main( int argc, char** argv ) {
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", "Retrieve accounts which are servants of a given account ", false);
-   getAccounts->add_option("account", controllingAccount, "The name of the controlling account")->required();
-   getAccounts->set_callback([&] {
+   getServants->add_option("account", controllingAccount, "The name of the controlling account")->required();
+   getServants->set_callback([&] {
       auto arg = fc::mutable_variant_object( "accountName", controllingAccount);
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
    });
