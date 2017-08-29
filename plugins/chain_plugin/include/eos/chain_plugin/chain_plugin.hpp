@@ -168,8 +168,9 @@ public:
       }
    
       const auto& idx = d.get_index<IndexType, Scope>();
-      auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, boost::lexical_cast<typename IndexType::value_type::key_type>(p.lower_bound)) );
-      auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, p.table, boost::lexical_cast<typename IndexType::value_type::key_type>(p.upper_bound)) );
+      auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.lower_bound).as<typename IndexType::value_type::key_type>() ) );
+      auto upper = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.upper_bound).as<typename IndexType::value_type::key_type>() ) );
+  //    auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, p.table, boost::lexical_cast<typename IndexType::value_type::key_type>(p.upper_bound)) );
    
       vector<char> data;
    
