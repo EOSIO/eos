@@ -16,6 +16,14 @@ extern "C" {
   * @brief Multiply two 128 unsigned bit integers
   * @param self  Value to be multiplied. It will be replaced with the result.
   * @param other Value to be multiplied.
+  *
+  * Example:
+  * @code
+  * uint128_t self(100);
+  * uint128_t other(100);
+  * multeq_i128(self, other);
+  * printi128(self); // Output: 10000
+  * @endcode
   */
   void multeq_i128( uint128_t* self, const uint128_t* other );
   /**
@@ -24,6 +32,13 @@ extern "C" {
    * @brief Divide two 128 unsigned bit integers
    * @param self  Numerator. It will be replaced with the result
    * @param other Denominator
+   * Example:
+   * @code
+   * uint128_t self(100);
+   * uint128_t other(100);
+   * diveq_i128(self, other);
+   * printi128(self); // Output: 1
+   * @endcode
    */
   void diveq_i128 ( uint128_t* self, const uint128_t* other );
 
@@ -34,6 +49,14 @@ extern "C" {
    * @param a Value in double interpreted as 64 bit unsigned integer
    * @param b Value in double interpreted as 64 bit unsigned integer
    * @return Result of addition reinterpret_cast to 64 bit unsigned integers
+   *
+   * Example:
+   * @code
+   * uint64_t a = double_div( i64_to_double(5), i64_to_double(10) );
+   * uint64_t b = double_div( i64_to_double(5), i64_to_double(2) );
+   * uint64_t res = double_add( a, b );
+   * printd(res); // Output: 3
+   * @endcode
    */
   uint64_t double_add(uint64_t a, uint64_t b);
 
@@ -44,6 +67,14 @@ extern "C" {
    * @param a Value in double interpreted as 64 bit unsigned integer
    * @param b Value in double interpreted as 64 bit unsigned integer
    * @return Result of multiplication reinterpret_cast to 64 bit unsigned integers
+   *
+   * Example:
+   * @code
+   * uint64_t a = double_div( i64_to_double(10), i64_to_double(10) );
+   * uint64_t b = double_div( i64_to_double(5), i64_to_double(2) );
+   * uint64_t res = double_mult( a, b );
+   * printd(res); // Output: 2.5
+   * @endcode
    */
   uint64_t double_mult(uint64_t a, uint64_t b);
 
@@ -55,6 +86,12 @@ extern "C" {
    * @param a Numerator in double interpreted as 64 bit unsigned integer
    * @param b Denominator in double interpreted as 64 bit unsigned integer
    * @return Result of division reinterpret_cast to 64 bit unsigned integers
+   *
+   * Example:
+   * @code
+   * uint64_t a = double_div( i64_to_double(10), i64_to_double(100) );
+   * printd(a); // Output: 0.1
+   * @endcode
    */
   uint64_t double_div(uint64_t a, uint64_t b);
 
@@ -65,6 +102,14 @@ extern "C" {
    * @param a Value in double interpreted as 64 bit unsigned integer
    * @param b Value in double interpreted as 64 bit unsigned integer
    * @return 1 if first input is smaller than second input, 0 otherwise
+   *
+   * Example:
+   * @code
+   * uint64_t a = double_div( i64_to_double(10), i64_to_double(10) );
+   * uint64_t b = double_div( i64_to_double(5), i64_to_double(2) );
+   * uint64_t res = double_lt( a, b );
+   * printi(res); // Output: 1
+   * @endcode
    */
   uint32_t double_lt(uint64_t a, uint64_t b);
 
@@ -75,6 +120,14 @@ extern "C" {
    * @param a Value in double interpreted as 64 bit unsigned integer
    * @param b Value in double interpreted as 64 bit unsigned integer
    * @return 1 if first input is equal to second input, 0 otherwise
+   *
+   *  Example:
+   * @code
+   * uint64_t a = double_div( i64_to_double(10), i64_to_double(10) );
+   * uint64_t b = double_div( i64_to_double(5), i64_to_double(2) );
+   * uint64_t res = double_eq( a, b );
+   * printi(res); // Output: 0
+   * @endcode
    */
   uint32_t double_eq(uint64_t a, uint64_t b);
 
@@ -85,6 +138,14 @@ extern "C" {
    * @param a Value in double interpreted as 64 bit unsigned integer
    * @param b Value in double interpreted as 64 bit unsigned integer
    * @return 1 if first input is greater than second input, 0 otherwise
+   *
+   * Example:
+   * @code
+   * uint64_t a = double_div( i64_to_double(10), i64_to_double(10) );
+   * uint64_t b = double_div( i64_to_double(5), i64_to_double(2) );
+   * uint64_t res = double_gt( a, b );
+   * printi(res); // Output: 0
+   * @endcode
    */
   uint32_t double_gt(uint64_t a, uint64_t b);
 
@@ -94,6 +155,13 @@ extern "C" {
    * @brief Convert double to 64 bit unsigned integer
    * @param self Value in double interpreted as 64 bit unsigned integer
    * @return Result of conversion in 64 bit unsigned integer
+   *
+   * Example:
+   * @code
+   * uint64_t a = double_div( i64_to_double(5), i64_to_double(2) );
+   * uint64_t res = double_to_i64( a );
+   * printi(res); // Output: 2
+   * @endcode
    */
   uint64_t double_to_i64(uint64_t a);
 
@@ -103,6 +171,12 @@ extern "C" {
    * @brief Convert 64 bit unsigned integer to double (interpreted as 64 bit unsigned  integer)
    * @param self Value to be converted
    * @return Result of conversion in double (interpreted as 64 bit unsigned integer)
+   *
+   * Example:
+   * @code
+   * uint64_t res = i64_to_double( 3 );
+   * printd(res); // Output: 3
+   * @endcode
    */
   uint64_t i64_to_double(uint64_t a);
 

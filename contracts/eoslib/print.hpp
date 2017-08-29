@@ -109,10 +109,20 @@ namespace eos {
     */
 
     /**
-     *  Print out value / list of values
+     *  Print out value / list of values (except double)
      *  @brief Print out value  / list of values
      *  @param a    Value to be printed
      *  @param args Other values to be printed
+     *
+     *  Example:
+     *  @code
+     *  char *s = "Hello World!";
+     *  uint64_t unsigned_64_bit_int = 1e+18;
+     *  uint128_t unsigned_128_bit_int (87654323456);
+     *  uint64_t string_as_unsigned_64_bit = N(abcde);
+     *  print(s , unsigned_64_bit_int, unsigned_128_bit_int, string_as_unsigned_64_bit);
+     *  // Ouput: Hello World!100000000000000000087654323456abcde
+     *  @endcode
      */
    template<typename Arg, typename... Args>
    void print( Arg a, Args... args ) {
@@ -130,6 +140,16 @@ namespace eos {
     *  @brief Overload c++ iostream
     *  @param out  Output strem
     *  @param v    Value to be printed
+    *
+    *  Example:
+    *  @code
+    *  char *s = "Hello World!";
+    *  uint64_t unsigned_64_bit_int = 1e+18;
+    *  uint128_t unsigned_128_bit_int (87654323456);
+    *  uint64_t string_as_unsigned_64_bit = N(abcde);
+    *  std::out << s << " " << unsigned_64_bit_int << " "  << unsigned_128_bit_int << " " << string_as_unsigned_64_bit);
+    *  // Ouput: Hello World! 1000000000000000000 87654323456 abcde
+    *  @endcode
     */
    template<typename T>
    inline iostream& operator<<( iostream& out, const T& v ) {
