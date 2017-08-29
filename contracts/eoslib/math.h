@@ -5,7 +5,7 @@
 extern "C" {
   /**
    *  @defgroup mathcapi Math C API
-   *  @brief defines builtin math functions
+   *  @brief Defines basic mathematical operations for higher abstractions to use.
    *  @ingroup mathapi
    *
    *  @{
@@ -13,30 +13,30 @@ extern "C" {
 
  /**
   * Multiply two 128 bit unsigned integers and assign the value to the first parameter.
-  * @brief Multiply two 128 unsigned bit integers
-  * @param self  Value to be multiplied. It will be replaced with the result.
-  * @param other Value to be multiplied.
+  * @brief Multiply two 128 unsigned bit integers. Throws exception if pointers are invalid.
+  * @param self  Pointer to the value to be multiplied. It will be replaced with the result.
+  * @param other Pointer to the Value to be multiplied.
   *
   * Example:
   * @code
   * uint128_t self(100);
   * uint128_t other(100);
-  * multeq_i128(self, other);
+  * multeq_i128(&self, &other);
   * printi128(self); // Output: 10000
   * @endcode
   */
   void multeq_i128( uint128_t* self, const uint128_t* other );
   /**
    * Divide two 128 bit unsigned integers and assign the value to the first parameter.
-   * It will throw an exception if other is zero.
-   * @brief Divide two 128 unsigned bit integers
-   * @param self  Numerator. It will be replaced with the result
-   * @param other Denominator
+   * It will throw an exception if the value of other is zero.
+   * @brief Divide two 128 unsigned bit integers and throws an exception in case of invalid pointers
+   * @param self  Pointer to numerator. It will be replaced with the result
+   * @param other Pointer to denominator
    * Example:
    * @code
    * uint128_t self(100);
    * uint128_t other(100);
-   * diveq_i128(self, other);
+   * diveq_i128(&self, &other);
    * printi128(self); // Output: 1
    * @endcode
    */

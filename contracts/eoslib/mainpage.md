@@ -3,7 +3,7 @@ Welcome to the eos.io Documentation
 
 @note this documentation is under development and may be incorrect. 
 
-This documentaiton describes the APIs available to eos.io application developers. This is the best place to
+This documentation describes the APIs available to eos.io application developers. This is the best place to
 start your journey into smart contract development.
 
 ## Environment 
