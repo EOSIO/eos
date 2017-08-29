@@ -324,16 +324,20 @@ int send_command (const vector<string> &cmd_line)
     std::cout << fc::json::to_pretty_string( push_transaction(trx)  ) << std::endl;
 
   } else if( command == "transfer" ) {
-    FC_ASSERT( cmd_line.size() == 4 );
+    FC_ASSERT( cmd_line.size() >= 4 );
 
     Name sender(cmd_line[1]);
     Name recipient(cmd_line[2]);
     uint64_t amount = fc::variant(cmd_line[3]).as_uint64();
+    
+    string memo = "";
+    if( cmd_line.size() > 4 )
+       memo = cmd_line[4];
 
     SignedTransaction trx;
     trx.scope = sort_names({sender,recipient});
     transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
-                       types::transfer{sender, recipient, amount});
+                       types::transfer{sender, recipient, amount, memo});
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
     transaction_helpers::set_reference_block(trx, info.head_block_id);
