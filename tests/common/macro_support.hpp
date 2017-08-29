@@ -46,11 +46,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names({ #creator, config::EosContractName }); \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#creator, "active"}}, \
                          "newaccount", types::newaccount{#creator, #name, owner, active, recovery, deposit}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Created account " << #name); \
    }
@@ -78,11 +78,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
                          "updateauth", types::updateauth{#account, authname, parentname, auth}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Set " << #account << "'s " << authname << " authority."); \
    }
@@ -91,11 +91,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
                          "deleteauth", types::deleteauth{#account, authname}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Deleted " << #account << "'s " << authname << " authority."); \
    }
@@ -104,11 +104,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
                          "linkauth", types::linkauth{#account, #codeacct, messagetype, authname}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Link " << #codeacct << "::" << messagetype << " to " << #account \
                             << "'s " << authname << " authority."); \
@@ -119,11 +119,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
                          "unlinkauth", types::unlinkauth{#account, #codeacct, messagetype}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Unlink " << #codeacct << "::" << messagetype << " from " << #account); \
    }
@@ -133,11 +133,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names({#sender,#recipient}); \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{ {#sender,"active"} }, \
                          "transfer", types::transfer{#sender, #recipient, Amount.amount, memo}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Transfered " << Amount << " from " << #sender << " to " << #recipient); \
    }
@@ -147,10 +147,10 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( { #sender, #recipient, config::EosContractName } ); \
-      transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{#sender, "active"}}, \
+      transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{#sender, "active"}}, \
                         "lock", types::lock{#sender, #recipient, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Staked " << amount << " to " << #recipient); \
    }
@@ -160,11 +160,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( { config::EosContractName } ); \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account, "active"}}, \
                          "unlock", types::unlock{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Begin unstake " << amount << " to " << #account); \
    }
@@ -173,10 +173,10 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( { config::EosContractName, #account } ); \
-      transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{#account, "active"}}, \
+      transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{#account, "active"}}, \
                          "claim", types::claim{#account, amount}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Finish unstake " << amount << " to " << #account); \
    }
@@ -185,11 +185,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( {#owner, config::EosContractName} ); \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#owner, "active"}}, \
                          "setproducer", types::setproducer{#owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Create producer " << #owner); \
    }
@@ -202,11 +202,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( {#voter, config::EosContractName} ); \
-      transaction_helpers::emplace_message(trx, config::EosContractName,  \
+      transaction_emplace_message(trx, config::EosContractName,  \
                          vector<types::AccountPermission>{{#voter, "active"}}, \
                          "okproducer", types::okproducer{#voter, #producer, approved? 1 : 0}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Set producer approval from " << #voter << " for " << #producer << " to " << approved); \
    }
@@ -215,11 +215,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    { \
       eos::chain::SignedTransaction trx; \
       trx.scope = sort_names( {owner, config::EosContractName} ); \
-      transaction_helpers::emplace_message(trx, config::EosContractName,  \
+      transaction_emplace_message(trx, config::EosContractName,  \
                          vector<types::AccountPermission>{{owner, "active"}}, \
                          "setproducer", types::setproducer{owner, key, cfg}); \
       trx.expiration = chain.head_block_time() + 100; \
-      transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+      transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
       BOOST_TEST_CHECKPOINT("Update producer " << owner); \
    }
