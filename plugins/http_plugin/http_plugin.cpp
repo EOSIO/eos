@@ -130,8 +130,8 @@ namespace eos {
                my->server.set_http_handler([&](connection_hdl hdl) {
                   auto con = my->server.get_con_from_hdl(hdl);
                   try {
-                     ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
-                     ilog("${body}", ("body", con->get_request_body()));
+                     //ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
+                     //ilog("${body}", ("body", con->get_request_body()));
 
                      auto body = con->get_request_body();
                      auto resource = con->get_uri()->get_resource();
