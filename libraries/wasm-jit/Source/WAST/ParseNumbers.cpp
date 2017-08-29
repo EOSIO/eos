@@ -68,8 +68,10 @@ static U64 parseHexUnsignedInt(const char*& nextChar,ParseState& state,U64 maxVa
 	
 	U64 result = 0;
 	U8 hexit = 0;
-	while(tryParseHexit(nextChar,hexit))
+	while(true)
 	{
+		if(*nextChar == '_') { ++nextChar; continue; }
+		if(!tryParseHexit(nextChar,hexit)) { break; }
 		if(result > (maxValue - hexit) / 16)
 		{
 			parseErrorf(state,firstHexit,"integer literal is too large");
@@ -89,8 +91,11 @@ static U64 parseDecimalUnsignedInt(const char*& nextChar,ParseState& state,U64 m
 {
 	U64 result = 0;
 	const char* firstDigit = nextChar;
-	while(*nextChar >= '0' && *nextChar <= '9')
+	while(true)
 	{
+		if(*nextChar == '_') { ++nextChar; continue; }
+		if(*nextChar < '0' || *nextChar > '9') { break; }
+
 		const U8 digit = *nextChar - '0';
 		++nextChar;
 
@@ -98,7 +103,7 @@ static U64 parseDecimalUnsignedInt(const char*& nextChar,ParseState& state,U64 m
 		{
 			parseErrorf(state,firstDigit,"%s is too large",context);
 			result = maxValue;
-			while(*nextChar >= '0' && *nextChar <= '9') { ++nextChar; };
+			while((*nextChar >= '0' && *nextChar <= '9') || *nextChar == '_') { ++nextChar; };
 			break;
 		}
 		assert(result * 10 + digit >= result);
@@ -158,12 +163,48 @@ Float parseInfinity(const char* nextChar)
 template<typename Float>
 Float parseFloat(const char*& nextChar,ParseState& state)
 {
-	// Use David Gay's strtod to parse a floating point number.
+	// Scan the token's characters for underscores, and make a copy of it without the underscores for strtod.
 	const char* firstChar = nextChar;
-	F64 f64 = parseNonSpecialF64(nextChar,const_cast<char**>(&nextChar));
-	if(nextChar == firstChar)
+	std::string noUnderscoreString;
+	bool hasUnderscores = false;
+	while(true)
 	{
+		// Determine whether the next character is still part of the number.
+		bool isNumericChar = false;
+		switch(*nextChar)
+		{
+		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+		case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+		case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+		case '+': case '-': case 'x': case 'X': case '.': case 'p': case 'P': case '_':
+			isNumericChar = true;
+			break;
+		};
+		if(!isNumericChar) { break; }
+
+		if(*nextChar == '_' && !hasUnderscores)
+		{
+			// If this is the first underscore encountered, copy the preceding characters of the number to a std::string.
+			noUnderscoreString = std::string(firstChar,nextChar);
+			hasUnderscores = true;
+		}
+		else if(*nextChar != '_' && hasUnderscores)
+		{
+			// If an underscore has previously been encountered, copy non-underscore characters to that string.
+			noUnderscoreString += *nextChar;
+		}
+
 		++nextChar;
+	};
+
+	// Pass the underscore-free string to parseNonSpecialF64 instead of the original input string.
+	if(hasUnderscores) { firstChar = noUnderscoreString.c_str(); }
+
+	// Use David Gay's strtod to parse a floating point number.
+	char* endChar = nullptr;
+	F64 f64 = parseNonSpecialF64(firstChar,&endChar);
+	if(endChar == firstChar)
+	{
 		Errors::fatalf("strtod failed to parse number accepted by lexer");
 	}
 	if(Float(f64) < std::numeric_limits<Float>::lowest() || Float(f64) > std::numeric_limits<Float>::max())
