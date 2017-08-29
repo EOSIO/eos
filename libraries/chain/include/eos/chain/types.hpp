@@ -174,6 +174,7 @@ namespace eos { namespace chain {
       generated_transaction_object_type,
       producer_object_type,
       chain_property_object_type,
+      account_control_history_object_type, ///< Defined by account_history_plugin
       account_transaction_history_object_type, ///< Defined by account_history_plugin
       transaction_history_object_type, ///< Defined by account_history_plugin
       public_key_history_object_type, ///< Defined by account_history_plugin
@@ -225,6 +226,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (generated_transaction_object_type)
                 (producer_object_type)
                 (chain_property_object_type)
+                (account_control_history_object_type)
                 (account_transaction_history_object_type)
                 (transaction_history_object_type)
                 (public_key_history_object_type)
