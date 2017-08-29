@@ -100,7 +100,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
          message = chain::Message(config::EosContractName,
                                   vector<types::AccountPermission>{{config::EosContractName, "active"}},
                                   "transfer", types::transfer(config::EosContractName, acct.name,
-                                                              acct.liquid_balance.amount/*, "Genesis Allocation"*/));
+                                                              acct.liquid_balance.amount, "Genesis Allocation"));
          messages_to_process.emplace_back(std::move(message));
       }
    }
