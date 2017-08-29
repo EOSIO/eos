@@ -206,12 +206,17 @@ public:
    using push_block_results = empty;
    push_block_results push_block(const push_block_params& params);
 
-   using push_transaction_params = chain::SignedTransaction;
+   using push_transaction_params = fc::variant_object;
    struct push_transaction_results {
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
    push_transaction_results push_transaction(const push_transaction_params& params);
+
+
+   using push_transactions_params  = vector<push_transaction_params>;
+   using push_transactions_results = vector<push_transaction_results>;
+   push_transactions_results push_transactions(const push_transactions_params& params);
 };
 } // namespace chain_apis
 
