@@ -222,13 +222,13 @@ bool chain_controller::_push_block(const signed_block& new_block)
    	      for (const auto& thread : cycle)
    		      for (const auto& trx : thread.user_input) 
                   trxcount++;
-         ilog( "producer=[${a}], blocktime=${b}, blocknum=${c}, trxcount=${d}, pendingcount=${e}, exectime_ms=${f}", 
-            ("a", new_block.producer) 
-            ("b", new_block.timestamp)
-            ("c", new_block.block_num())
-            ("d", trxcount)
-            ("e", _pending_transactions.size())
-            ("f", exec_ms.count())
+         ilog( "producer=[${prod}], blocktime=${bktm}, blocknum=${bknu}, trxcount=${txco}, pendingcount=${pend}, exectime_ms=${extm}", 
+            ("prod", new_block.producer) 
+            ("bktm", new_block.timestamp)
+            ("bknu", new_block.block_num())
+            ("txco", trxcount)
+            ("pend", _pending_transactions.size())
+            ("extm", exec_ms.count())
          );
       }
       session.push();
