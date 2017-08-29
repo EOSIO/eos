@@ -36,6 +36,7 @@ uint32_t port = 8888;
 const string chain_func_base = "/v1/chain";
 const string get_info_func = chain_func_base + "/get_info";
 const string push_txn_func = chain_func_base + "/push_transaction";
+const string push_txns_func = chain_func_base + "/push_transactions";
 const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
 const string get_block_func = chain_func_base + "/get_block";
 const string get_account_func = chain_func_base + "/get_account";
@@ -278,6 +279,120 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
    });
 
+   // Benchmark subcommand
+   auto benchmark = app.add_subcommand( "benchmark", "Configure and execute benchmarks", false );
+   auto benchmark_setup = benchmark->add_subcommand( "setup", "Configures initial condition for benchmark" );
+   uint64_t number_of_accounts = 2;
+   benchmark_setup->add_option("accounts", number_of_accounts, "the number of accounts in transfer among")->required();
+   benchmark_setup->set_callback([&]{
+      std::cerr << "Creating " << number_of_accounts <<" accounts with initial balances\n";
+      FC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
+
+      auto info = get_info();
+
+      vector<SignedTransaction> batch;
+      batch.reserve( number_of_accounts );
+      for( uint32_t i = 0; i < number_of_accounts; ++i ) {
+        Name newaccount( Name("benchmark").value + i );
+        public_key_type owner, active;
+        Name creator("inita" );
+
+        auto owner_auth   = eos::chain::Authority{1, {{owner, 1}}, {}};
+        auto active_auth  = eos::chain::Authority{1, {{active, 1}}, {}};
+        auto recovery_auth = eos::chain::Authority{1, {}, {{{creator, "active"}, 1}}};
+        
+        uint64_t deposit = 1;
+        
+        SignedTransaction trx;
+        trx.scope = sort_names({creator,config::EosContractName});
+        transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
+                                             types::newaccount{creator, newaccount, owner_auth,
+                                                               active_auth, recovery_auth, deposit});
+
+        trx.expiration = info.head_block_time + 100; 
+        transaction_set_reference_block(trx, info.head_block_id);
+        batch.emplace_back(trx);
+      }
+      auto result = call( push_txns_func, batch );
+      std::cout << fc::json::to_pretty_string(result) << std::endl;
+   });
+
+   auto benchmark_transfer = benchmark->add_subcommand( "transfer", "executes random transfers among accounts" );
+   uint64_t number_of_transfers = 0;
+   bool loop = false;
+   benchmark_transfer->add_option("accounts", number_of_accounts, "the number of accounts in transfer among")->required();
+   benchmark_transfer->add_option("count", number_of_transfers, "the number of transfers to execute")->required();
+   benchmark_transfer->add_option("loop", loop, "whether or not to loop for ever");
+   benchmark_transfer->set_callback([&]{
+      FC_ASSERT( number_of_accounts > 1 );
+
+      std::cerr << "funding "<< number_of_accounts << " accounts from init\n";
+      auto info = get_info();
+      vector<SignedTransaction> batch;
+      batch.reserve(100);
+      for( uint32_t i = 0; i < number_of_accounts; ++i ) {
+         Name sender( "initb" );
+         Name recipient( Name("benchmark").value + i);
+         uint32_t amount = 10000;
+
+         SignedTransaction trx;
+         trx.scope = sort_names({sender,recipient});
+         transaction_emplace_message(trx, config::EosContractName,
+                                              vector<types::AccountPermission>{{sender,"active"}},
+                                              "transfer", types::transfer{sender, recipient, amount, memo});
+         trx.expiration = info.head_block_time + 100; 
+         transaction_set_reference_block(trx, info.head_block_id);
+
+         batch.emplace_back(trx);
+         if( batch.size() == 100 ) {
+            auto result = call( push_txns_func, batch );
+      //      std::cout << fc::json::to_pretty_string(result) << std::endl;
+            batch.resize(0);
+         }
+      }
+      if( batch.size() ) {
+         auto result = call( push_txns_func, batch );
+         //std::cout << fc::json::to_pretty_string(result) << std::endl;
+         batch.resize(0);
+      }
+
+
+      std::cerr << "generating random "<< number_of_transfers << " transfers among " << number_of_accounts << " benchmark accounts\n";
+      while( true ) {
+         auto info = get_info();
+         uint64_t amount = 1;
+
+         for( uint32_t i = 0; i < number_of_transfers; ++i ) {
+            SignedTransaction trx;
+
+            Name sender( Name("benchmark").value + rand() % number_of_accounts );
+            Name recipient( Name("benchmark").value + rand() % number_of_accounts );
+
+            while( recipient == sender )
+               recipient = Name( Name("benchmark").value + rand() % number_of_accounts );
+
+
+            auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
+            trx.scope = sort_names({sender,recipient});
+            transaction_emplace_message(trx, config::EosContractName,
+                                                 vector<types::AccountPermission>{{sender,"active"}},
+                                                 "transfer", types::transfer{sender, recipient, amount, memo});
+            trx.expiration = info.head_block_time + 100; 
+            transaction_set_reference_block(trx, info.head_block_id);
+
+            batch.emplace_back(trx);
+            if( batch.size() == 300 ) {
+               auto result = call( push_txns_func, batch );
+               //std::cout << fc::json::to_pretty_string(result) << std::endl;
+               batch.resize(0);
+            }
+         }
+         if( !loop ) break;
+      }
+   });
+
+   
+
    // Push subcommand
    auto push = app.add_subcommand("push", "Push arbitrary data to the blockchain", false);
    push->require_subcommand();
@@ -329,6 +444,15 @@ int main( int argc, char** argv ) {
    trxSubcommand->set_callback([&] {
       auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+   });
+
+
+   string trxsJson;
+   auto trxsSubcommand = push->add_subcommand("transactions", "Push an array of arbitrary JSON transactions");
+   trxsSubcommand->add_option("transactions", trxsJson, "The JSON array of the transactions to push")->required();
+   trxsSubcommand->set_callback([&] {
+      auto trxs_result = call(push_txn_func, fc::json::from_string(trxsJson));
+      std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
 
    try {
