@@ -25,6 +25,7 @@ struct Transaction
    refBlockPrefix    UInt32
    expiration        Time
    scope             AccountName[]   # the data may be accessed while processing this transaction
+   readscope         AccountName[]   
    messages          Message[]
 
 struct SignedTransaction inherits Transaction
@@ -71,6 +72,7 @@ struct transfer
    from      AccountName  # may not be the message.sender if message.sender has delegated authority by from
    to        AccountName
    amount    UInt64
+   memo      String
 
 struct lock
    from      AccountName

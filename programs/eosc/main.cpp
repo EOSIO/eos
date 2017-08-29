@@ -39,7 +39,8 @@ const string get_account_func = chain_func_base + "/get_account";
 
 const string account_history_func_base = "/v1/account_history";
 const string get_transaction_func = account_history_func_base + "/get_transaction";
-
+const string get_transactions_func = account_history_func_base + "/get_transactions";
+const string get_key_accounts_func = account_history_func_base + "/get_key_accounts";
 
 inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    std::sort( names.begin(), names.end() );
@@ -102,7 +103,7 @@ eos::chain_apis::read_only::get_info_results get_info() {
 fc::variant push_transaction( SignedTransaction& trx ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
-    trx.set_reference_block(info.head_block_id);
+    transaction_helpers::set_reference_block(trx, info.head_block_id);
     boost::sort( trx.scope );
 
     return call( push_txn_func, trx );
@@ -127,9 +128,18 @@ void create_account( const vector<string>& cmd_line ) {
 
       SignedTransaction trx;
       trx.scope = sort_names({creator,eosaccnt});
-      trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
+      transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
                          types::newaccount{creator, newaccount, owner_auth,
                                            active_auth, recovery_auth, deposit});
+      if (creator == "inita")
+      {
+         fc::optional<fc::ecc::private_key> private_key = eos::utilities::wif_to_key("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3");
+         if (private_key)
+         {
+            wlog("public key ${k}",("k", private_key->get_public_key()));
+            trx.sign(*private_key, eos::chain::chain_id_type{});
+         }
+      }
 
       std::cout << fc::json::to_pretty_string( push_transaction(trx) ) << std::endl;
 
@@ -241,7 +251,7 @@ int send_command (const vector<string> &cmd_line)
 {
   const auto& command = cmd_line[0];
   if( command == "help" ) {
-    std::cout << "Command list: info, block, exec, account, push-trx, setcode, transfer, create, import, unlock, lock, and do\n";
+    std::cout << "Command list: info, block, exec, account, push-trx, setcode, transfer, create, import, unlock, lock, do, transaction, and transactions\n";
     return -1;
   }
 
@@ -308,25 +318,29 @@ int send_command (const vector<string> &cmd_line)
 
     SignedTransaction trx;
     trx.scope = { config::EosContractName, account };
-    trx.emplaceMessage( config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
+    transaction_helpers::emplace_message(trx,  config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
                         "setcode", handler );
 
     std::cout << fc::json::to_pretty_string( push_transaction(trx)  ) << std::endl;
 
   } else if( command == "transfer" ) {
-    FC_ASSERT( cmd_line.size() == 4 );
+    FC_ASSERT( cmd_line.size() >= 4 );
 
     Name sender(cmd_line[1]);
     Name recipient(cmd_line[2]);
     uint64_t amount = fc::variant(cmd_line[3]).as_uint64();
+    
+    string memo = "";
+    if( cmd_line.size() > 4 )
+       memo = cmd_line[4];
 
     SignedTransaction trx;
     trx.scope = sort_names({sender,recipient});
-    trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
-                       types::transfer{sender, recipient, amount});
+    transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
+                       types::transfer{sender, recipient, amount, memo});
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
-    trx.set_reference_block(info.head_block_id);
+    transaction_helpers::set_reference_block(trx, info.head_block_id);
 
     std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
   }
@@ -366,9 +380,35 @@ int send_command (const vector<string> &cmd_line)
   } else if( command == "do" ) {
 
   } else if( command == "transaction" ) {
-     FC_ASSERT( cmd_line.size() == 2 );
+     if( cmd_line.size() != 2 )
+     {
+        std::cerr << "usage: " << program << " transaction TRANSACTION_ID\n";
+        return -1;
+     }
      auto arg= fc::mutable_variant_object( "transaction_id", cmd_line[1]);
      std::cout << fc::json::to_pretty_string( call( get_transaction_func, arg) ) << std::endl;
+  } else if( command == "transactions" ) {
+     if( cmd_line.size() < 2 || cmd_line.size() > 4 )
+     {
+        std::cerr << "usage: " << program << " transactions ACCOUNT_TO_LOOKUP [SKIP_TO_SEQUENCE [NUMBER_OF_SEQUENCES_TO_RETURN]]\n";
+        return -1;
+     }
+     chain::AccountName account_name(cmd_line[1]);
+     auto arg = (cmd_line.size() == 2)
+           ? fc::mutable_variant_object( "account_name", account_name)
+           : (cmd_line.size() == 3)
+             ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", cmd_line[2])
+             : fc::mutable_variant_object( "account_name", account_name)("skip_seq", cmd_line[2])("num_seq", cmd_line[3]);
+     std::cout << fc::json::to_pretty_string( call( get_transactions_func, arg) ) << std::endl;
+  } else if( command == "accounts" ) {
+     if( cmd_line.size() != 2 )
+     {
+        std::cerr << "usage: " << program << " accounts PUBLIC_KEY\n";
+        return -1;
+     }
+     chain::public_key_type public_key(cmd_line[1]);
+     auto arg = fc::mutable_variant_object( "public_key", public_key);
+     std::cout << fc::json::to_pretty_string( call( get_key_accounts_func, arg) ) << std::endl;
   }
   return 0;
 }

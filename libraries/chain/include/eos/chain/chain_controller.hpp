@@ -38,6 +38,7 @@
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/chain_initializer_interface.hpp>
 #include <eos/chain/chain_administration_interface.hpp>
+#include <eos/chain/exceptions.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -102,20 +103,23 @@ namespace eos { namespace chain {
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
             skip_producer_schedule_check= 1 << 10, ///< used while reindexing
             skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
-            skip_scope_check            = 1 << 12  ///< used to skip checks for proper scope
+            skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
+            skip_output_check           = 1 << 13  ///< used to skip checks for outputs in block exactly matching those created from apply
          };
 
          /**
           *  @return true if the block is in our fork DB or saved to disk as
           *  part of the official chain, otherwise return false
           */
-         bool                       is_known_block( const block_id_type& id )const;
-         bool                       is_known_transaction( const transaction_id_type& id )const;
-         block_id_type              get_block_id_for_num( uint32_t block_num )const;
-         optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
-         optional<signed_block>     fetch_block_by_number( uint32_t num )const;
-         const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
-         std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork)const;
+         bool                        is_known_block( const block_id_type& id )const;
+         bool                        is_known_transaction( const transaction_id_type& id )const;
+         block_id_type               get_block_id_for_num( uint32_t block_num )const;
+         optional<signed_block>      fetch_block_by_id( const block_id_type& id )const;
+         optional<signed_block>      fetch_block_by_number( uint32_t num )const;
+         const SignedTransaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
+         std::vector<block_id_type>  get_block_ids_on_fork(block_id_type head_of_fork)const;
+         const GeneratedTransaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
+
 
          /**
           *  This method will convert a variant to a SignedTransaction using a contract's ABI to
@@ -274,23 +278,43 @@ namespace eos { namespace chain {
 
          void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
 
-         ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
-         ProcessedTransaction _apply_transaction(const SignedTransaction& trx);
-         ProcessedTransaction process_transaction( const SignedTransaction& trx );
+         template<typename T>
+         void check_transaction_output(const T& expected, const T& actual)const;
+
+         template<typename T>
+         typename T::Processed apply_transaction(const T& trx);
+         
+         template<typename T>
+         typename T::Processed process_transaction(const T& trx);
 
          void require_account(const AccountName& name) const;
 
          /**
           * This method performs some consistency checks on a transaction.
-          * @return true if the transaction would validate
+          * @thow transaction_exception if the transaction is invalid
           */
-         void validate_transaction(const SignedTransaction& trx)const;
+         template<typename T>
+         void validate_transaction(const T& trx) const {
+         try {
+            EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
+
+            validate_scope(trx);
+            validate_expiration(trx);
+            validate_uniqueness(trx);
+            validate_tapos(trx);
+
+         } FC_CAPTURE_AND_RETHROW( (trx) ) }
+         
          /// Validate transaction helpers @{
          void validate_uniqueness(const SignedTransaction& trx)const;
-         void validate_tapos(const SignedTransaction& trx)const;
-         void validate_referenced_accounts(const SignedTransaction& trx)const;
-         void validate_expiration(const SignedTransaction& trx) const;
-         void validate_scope(const SignedTransaction& trx) const;
+         void validate_uniqueness(const GeneratedTransaction& trx)const;
+         void validate_tapos(const Transaction& trx)const;
+         void validate_referenced_accounts(const Transaction& trx)const;
+         void validate_expiration(const Transaction& trx) const;
+         void validate_scope(const Transaction& trx) const;
+
+         void record_transaction(const SignedTransaction& trx);
+         void record_transaction(const GeneratedTransaction& trx);         
          /// @}
 
          /**
@@ -305,7 +329,7 @@ namespace eos { namespace chain {
                                                             types::AccountName code_account,
                                                             types::FuncName type) const;
 
-         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message,
+         void process_message(const Transaction& trx, AccountName code, const Message& message,
                               MessageOutput& output, apply_context* parent_context = nullptr);
          void apply_message(apply_context& c);
 
