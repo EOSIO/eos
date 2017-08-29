@@ -26,6 +26,7 @@ public:
    read_only(account_history_const_ptr&& account_history)
       : account_history(account_history) {}
 
+
    struct get_transaction_params {
       chain::transaction_id_type  transaction_id;
    };
@@ -34,6 +35,7 @@ public:
       fc::variant                 transaction;
    };
    get_transaction_results get_transaction(const get_transaction_params& params) const;
+
 
    struct get_transactions_params {
       chain::AccountName  account_name;
@@ -52,6 +54,7 @@ public:
 
    get_transactions_results get_transactions(const get_transactions_params& params) const;
 
+
    struct get_key_accounts_params {
       chain::public_key_type     public_key;
    };
@@ -59,6 +62,15 @@ public:
       vector<chain::AccountName> account_names;
    };
    get_key_accounts_results get_key_accounts(const get_key_accounts_params& params) const;
+
+
+   struct get_controlled_accounts_params {
+      chain::AccountName     controlling_account;
+   };
+   struct get_controlled_accounts_results {
+      vector<chain::AccountName> controlled_accounts;
+   };
+   get_controlled_accounts_results get_controlled_accounts(const get_controlled_accounts_params& params) const;
 };
 
 class read_write {
@@ -99,3 +111,5 @@ FC_REFLECT(eos::account_history_apis::read_only::ordered_transaction_results, (s
 FC_REFLECT(eos::account_history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
 FC_REFLECT(eos::account_history_apis::read_only::get_key_accounts_params, (public_key) )
 FC_REFLECT(eos::account_history_apis::read_only::get_key_accounts_results, (account_names) )
+FC_REFLECT(eos::account_history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
+FC_REFLECT(eos::account_history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
