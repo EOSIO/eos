@@ -289,4 +289,23 @@ block_schedule block_schedule::by_cycling_conflicts(
    return from_entries(schedule);
 }
 
+block_schedule block_schedule::in_single_thread(
+    const vector<pending_transaction>& transactions,
+    const global_property_object& properties
+    )
+{
+   auto skipper = make_skipper(properties);
+   thread_schedule thread;
+   thread.transactions.reserve(transactions.size());
+   for(const auto& t: transactions) {
+      if (skipper.should_skip(t)) {
+         break;
+      }
+
+      thread.transactions.push_back(t);
+   }
+
+   return block_schedule { { { thread } } };
+}
+
 } /* namespace chain */ } /* namespace eos */
