@@ -41,7 +41,8 @@ void account_history_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       CHAIN_RO_CALL(get_transaction),
       CHAIN_RO_CALL(get_transactions),
-      CHAIN_RO_CALL(get_key_accounts)
+      CHAIN_RO_CALL(get_key_accounts),
+      CHAIN_RO_CALL(get_controlled_accounts)
    });
 }
 

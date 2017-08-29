@@ -45,7 +45,7 @@ const static AccountName ProducersAccountName = N(producers);
 const static PermissionName ActiveName = N(active);
 const static PermissionName OwnerName = N(owner);
 
-const static ShareType InitialTokenSupply = Asset::fromString("90000000.00000000 EOS").amount;
+const static ShareType InitialTokenSupply = Asset::fromString("90000000.0000 EOS").amount;
 
 const static int BlockIntervalSeconds = 3;
 

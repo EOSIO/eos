@@ -8,7 +8,8 @@
 *.wasm
 *.s
 *.dot
-
+\#*
+\.#*
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake

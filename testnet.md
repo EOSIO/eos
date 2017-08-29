@@ -32,10 +32,13 @@ Note that the Launcher will not push instances of eosd to the remote hosts, you 
 Network topology or "shape" describes how the nodes are connected in order to share transaction and block data, and requests for the same. The idea for varying network topology is that there is a trade off between the number of times a node must send a message reporting a new transaction or block, vs the number of times that message must be repeated to ensure all nodes know of it.
 
 The Launcher has definitions of three different network "shapes" based on inter-nodal connections, which can be selected by a command line option, or you can supply your own network topology by editing the Launcher generated configuration file.
+
 ####Ring network
 This is the simplest network, where each node identifies just the node next to it as it's only peer. 
+
 ####Star network
-A "star" is intended to support the use larger number nodes in the testnet. In this case the number of peers connected to a node and the distribution of those nodes varies based on the number of nodes in the network.  
+A "star" is intended to support the use larger number nodes in the testnet. In this case the number of peers connected to a node and the distribution of those nodes varies based on the number of nodes in the network.
+
 ####Mesh network
 In a "mesh" network, each node is connected to as many peer nodes as possible.
 

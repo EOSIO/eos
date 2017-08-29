@@ -223,7 +223,7 @@ struct launcher_def {
   bool do_ssh (const string &cmd, const string &hostname);
   void prep_remote_config_dir (eosd_def &node);
   void launch (eosd_def &node, string &gts);
-  void kill (launch_modes mode);
+  void kill (launch_modes mode, string sig_opt);
   void start_all (string &gts, launch_modes mode);
 };
 
@@ -544,7 +544,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
   node_rt_info info;
   info.remote = node.remote;
 
-  string eosdcmd =  "programs/eosd/eosd --data-dir " + node.data_dir;
+  string eosdcmd =  "programs/eosd/eosd --skip-transaction-signatures --data-dir " + node.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
@@ -559,7 +559,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
       exit (-1);
     }
 
-    string cmd = "cd node.eos_root_dir; kill -TERM `cat " + pidf.string() + "`";
+    string cmd = "cd node.eos_root_dir; kill -9 `cat " + pidf.string() + "`";
     format_ssh (cmd, node.hostname, info.kill_cmd);
   }
   else {
@@ -586,7 +586,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
 }
 
 void
-launcher_def::kill (launch_modes mode) {
+launcher_def::kill (launch_modes mode, string sig_opt) {
   if (mode == LM_NONE) {
     return;
   }
@@ -598,7 +598,7 @@ launcher_def::kill (launch_modes mode) {
       if (info.pid_file.length()) {
         string pid;
         fc::json::from_file(info.pid_file).as<string>(pid);
-        string kill_cmd = "kill -TERM " + pid;
+        string kill_cmd = "kill " + sig_opt + " " + pid;
         boost::process::system (kill_cmd);
       }
       else {
@@ -638,7 +638,7 @@ int main (int argc, char *argv[]) {
   launcher_def top;
   string gts;
   launch_modes mode;
-  bool do_kill;
+  string kill_arg;
 
   local_id.initialize();
   top.set_options(opts);
@@ -646,7 +646,7 @@ int main (int argc, char *argv[]) {
   opts.add_options()
     ("timestamp,i",bpo::value<string>(),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("kill,k","The launcher retrieve the previously started process ids and issue a sigterm to each.")
+    ("kill,k", bpo::value<string>(),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
     ("help,h","print this list");
 
 
@@ -657,7 +657,8 @@ int main (int argc, char *argv[]) {
 
     if (vmap.count("timestamp"))
       gts = vmap["timestamp"].as<string>();
-    do_kill = vmap.count("kill") > 0;
+    if (vmap.count("kill"))
+      kill_arg = vmap["kill"].as<string>();
     if (vmap.count("help") > 0) {
       opts.print(cerr);
       return 0;
@@ -679,11 +680,14 @@ int main (int argc, char *argv[]) {
       }
     }
     else {
-      mode = do_kill || top.output.empty() ? LM_ALL : LM_NONE;
+      mode = !kill_arg.empty() || top.output.empty() ? LM_ALL : LM_NONE;
     }
 
-    if (do_kill) {
-      top.kill (mode);
+    if (!kill_arg.empty()) {
+      if (kill_arg[0] != '-') {
+        kill_arg = "-" + kill_arg;
+      }
+      top.kill (mode, kill_arg);
     }
     else {
       top.generate();
