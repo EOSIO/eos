@@ -284,13 +284,13 @@
 { \
    eos::chain::SignedTransaction trx; \
    if (std::string(#stakeholder) != std::string(#proxy)) \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{ {#stakeholder,"active"} }, "setproxy", types::setproxy{#stakeholder, #proxy}); \
    else \
-      transaction_helpers::emplace_message(trx, config::EosContractName, \
+      transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{ {#stakeholder,"active"} }, "setproxy", types::setproxy{#stakeholder, #proxy}); \
    trx.expiration = chain.head_block_time() + 100; \
-   transaction_helpers::set_reference_block(trx, chain.head_block_id()); \
+   transaction_set_reference_block(trx, chain.head_block_id()); \
    chain.push_transaction(trx); \
 }
 

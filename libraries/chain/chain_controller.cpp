@@ -497,129 +497,140 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
    });
 }
 
-template<typename T>
-void check_output(const T& expected, const T& actual) {
-   EOS_ASSERT((expected == actual), block_tx_output_exception, 
-      "Value mismatch, expected: ${expected}, actual: ${actual}", ("expected", expected)("actual", actual));
+struct path_cons_list {
+   typedef static_variant<int, const char *> head_type;
+   typedef const path_cons_list* tail_ref_type;
+   typedef optional<tail_ref_type> tail_type;
+   
+   path_cons_list(int index, const path_cons_list &rest) 
+      : head(head_type(index))
+      , tail(tail_ref_type(&rest))
+   { }
+
+   path_cons_list(const char *path, const path_cons_list &rest) 
+      : head(head_type(path))
+      , tail(tail_ref_type(&rest))
+   { }
+
+   path_cons_list(const char *path) 
+      : head(head_type(path))
+      , tail()
+   { }
+
+   //path_cons_list( path_cons_list && ) = delete;
+   
+   const head_type head;
+   tail_type tail;
+
+   path_cons_list operator() (int index) const {
+      return path_cons_list(index, *this);
+   }
+
+   path_cons_list operator() (const char *path) const {
+      return path_cons_list(path, *this);
+   }
+
+   void add_to_stream( std::stringstream& ss ) const {
+      if (tail) {
+         (*tail)->add_to_stream(ss);
+      }
+
+      if (head.contains<int>()) {
+         ss << "[" << head.get<int>() << "]";
+      } else {
+         ss << head.get<const char *>();
+      }
+   }
+};
+
+string resolve_path_string(const path_cons_list& path) {
+   std::stringstream ss;
+   path.add_to_stream(ss);
+   return ss.str();
 }
 
 template<typename T>
-void check_output(const vector<T>& expected, const vector<T>& actual) {
-   EOS_ASSERT((expected.size() == actual.size()), block_tx_output_exception,
-      "Vector size mismatch, expected: ${expected}, actual: ${actual}", ("expected", expected.size())("actual", actual.size()));
-   
+void check_output(const T& expected, const T& actual, const path_cons_list& path) {
+   try {
+      EOS_ASSERT((expected == actual), block_tx_output_exception, 
+         "expected: ${expected}, actual: ${actual}", ("expected", expected)("actual", actual));
+   } FC_RETHROW_EXCEPTIONS(warn, "at: ${path}", ("path", resolve_path_string(path)));
+}
+
+template<typename T>
+void check_output(const vector<T>& expected, const vector<T>& actual, const path_cons_list& path) {
+   check_output(expected.size(), actual.size(), path(".size()"));
    for(int idx=0; idx < expected.size(); idx++) {
       const auto &expected_element = expected.at(idx);
       const auto &actual_element = actual.at(idx);
-      try {
-        check_output(expected_element, actual_element);
-      } FC_RETHROW_EXCEPTIONS( warn, "at index ${idx}", ("idx", idx ) );
+      check_output(expected_element, actual_element, path(idx));
    }
 }
 
 template<>
-void check_output(const types::Bytes& expected, const types::Bytes& actual) {
-   EOS_ASSERT((expected.size() == actual.size()), block_tx_output_exception,
-      "Binary blob size mismatch, expected: ${expected}, actual: ${actual}", ("expected", expected.size())("actual", actual.size()));
-
-   EOS_ASSERT((std::memcmp(expected.data(), actual.data(), expected.size()) == 0), block_tx_output_exception,
-      "Binary blob contents differ");   
+void check_output(const types::Bytes& expected, const types::Bytes& actual, const path_cons_list& path) {
+  check_output(expected.size(), actual.size(), path(".size()"));
+  
+  auto cmp_result = std::memcmp(expected.data(), actual.data(), expected.size());
+  check_output(cmp_result, 0, path("@memcmp()"));
 }
 
 template<>
-void check_output(const types::AccountPermission& expected, const types::AccountPermission& actual) {
-   try {
-      check_output(expected.account, actual.account);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .account");
-   try {
-      check_output(expected.permission, actual.permission);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .permission");
+void check_output(const types::AccountPermission& expected, const types::AccountPermission& actual, const path_cons_list& path) {
+   check_output(expected.account, actual.account, path(".account"));
+   check_output(expected.permission, actual.permission, path(".permission"));
 }
 
 template<>
-void check_output(const types::Message& expected, const types::Message& actual) {
-   try {
-      check_output(expected.code, actual.code);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .code");
-   try {
-      check_output(expected.type, actual.type);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .type");
-   try {
-      check_output(expected.authorization, actual.authorization);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .authorization");
-   try {
-      check_output(expected.data, actual.data);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .data");
+void check_output(const types::Message& expected, const types::Message& actual, const path_cons_list& path) {
+   check_output(expected.code, actual.code, path(".code"));
+   check_output(expected.type, actual.type, path(".type"));
+   check_output(expected.authorization, actual.authorization, path(".authorization"));
+   check_output(expected.data, actual.data, path(".data"));
 }
 
 template<>
-void check_output(const MessageOutput& expected, const MessageOutput& actual);
+void check_output(const MessageOutput& expected, const MessageOutput& actual, const path_cons_list& path);
 
 template<>
-void check_output(const NotifyOutput& expected, const NotifyOutput& actual) {
-   try {
-      check_output(expected.name, actual.name);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .name");
-   try {
-      check_output(expected.output, actual.output);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .output");
+void check_output(const NotifyOutput& expected, const NotifyOutput& actual, const path_cons_list& path) {
+   check_output(expected.name, actual.name, path(".name"));
+   check_output(expected.output, actual.output, path(".output"));
 }
 
 template<>
-void check_output(const Transaction& expected, const Transaction& actual) {
-   try {
-      check_output(expected.refBlockNum, actual.refBlockNum);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .refBlockNum");
-   try {
-      check_output(expected.refBlockPrefix, actual.refBlockPrefix);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .refBlockPrefix");
-   try {
-      check_output(expected.expiration, actual.expiration);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .expiration");
-   try {
-      check_output(expected.scope, actual.scope);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .scope");
-   try {
-      check_output(expected.messages, actual.messages);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .messages");
+void check_output(const Transaction& expected, const Transaction& actual, const path_cons_list& path) {
+   check_output(expected.refBlockNum, actual.refBlockNum, path(".refBlockNum"));
+   check_output(expected.refBlockPrefix, actual.refBlockPrefix, path(".refBlockPrefix"));
+   check_output(expected.expiration, actual.expiration, path(".expiration"));
+   check_output(expected.scope, actual.scope, path(".scope"));
+   check_output(expected.messages, actual.messages, path(".messages"));
 }
 
 
 template<>
-void check_output(const ProcessedSyncTransaction& expected, const ProcessedSyncTransaction& actual) {
-   check_output<Transaction>(expected, actual);
-   try {
-      check_output(expected.output, actual.output);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .output");
+void check_output(const ProcessedSyncTransaction& expected, const ProcessedSyncTransaction& actual, const path_cons_list& path) {
+   check_output<Transaction>(expected, actual, path);
+   check_output(expected.output, actual.output, path(".output"));
 }
 
 template<>
-void check_output(const GeneratedTransaction& expected, const GeneratedTransaction& actual) {
-   try {
-      check_output(expected.id, actual.id);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .id");
-   check_output<Transaction>(expected, actual);
+void check_output(const GeneratedTransaction& expected, const GeneratedTransaction& actual, const path_cons_list& path) {
+   check_output(expected.id, actual.id, path(".id"));
+   check_output<Transaction>(expected, actual, path);
 }
 
 template<>
-void check_output(const MessageOutput& expected, const MessageOutput& actual) {
-   try {
-      check_output(expected.notify, actual.notify);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .notify");
-   
-   try {
-      check_output(expected.sync_transactions, actual.sync_transactions);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .sync_transactions");
-
-   try {
-     check_output(expected.async_transactions, actual.async_transactions);
-   } FC_RETHROW_EXCEPTIONS(warn, "in .async_transactions");
+void check_output(const MessageOutput& expected, const MessageOutput& actual, const path_cons_list& path) {
+   check_output(expected.notify, actual.notify, path(".notify"));
+   check_output(expected.sync_transactions, actual.sync_transactions, path(".sync_transactions"));
+   check_output(expected.async_transactions, actual.async_transactions, path(".async_transactions"));
 }
 
 template<typename T>
-void chain_controller::check_transaction_output(const T& expected, const T& actual)const {
+void chain_controller::check_transaction_output(const T& expected, const T& actual, const path_cons_list& path)const {
    if (!(_skip_flags & skip_output_check)) {
-      check_output(expected.output, actual.output);
+      check_output(expected.output, actual.output, path(".output"));
    }
 }
 
@@ -649,32 +660,29 @@ void chain_controller::_apply_block(const signed_block& next_block)
     * for transactions when validating broadcast transactions or
     * when building a block.
     */
+   auto root_path = path_cons_list("next_block.cycles");
    for (int c_idx = 0; c_idx < next_block.cycles.size(); c_idx++) {
       const auto& cycle = next_block.cycles.at(c_idx);
+      auto c_path = path_cons_list(c_idx, root_path);
 
       for (int t_idx = 0; t_idx < cycle.size(); t_idx++) {
          const auto& thread = cycle.at(t_idx);
+         auto t_path = path_cons_list(t_idx, c_path);
 
+         auto gen_path = path_cons_list(".generated_input", t_path);
          for(int p_idx = 0; p_idx < thread.generated_input.size(); p_idx++ ) {
             const auto& ptrx = thread.generated_input.at(p_idx);
             const auto& trx = get_generated_transaction(ptrx.id);
             auto processed = apply_transaction(trx);
-            try {
-               check_transaction_output(ptrx, processed);
-            } FC_RETHROW_EXCEPTIONS(warn, 
-               "cycle: ${c_idx}, thread: ${t_idx}, generated_input: ${p_idx}", 
-               ("c_idx", c_idx)("t_idx", t_idx)("p_idx", p_idx) );
+            check_transaction_output(ptrx, processed, gen_path(p_idx));
          }
 
+         auto user_path = path_cons_list(".user_input", t_path);
          for(int p_idx = 0; p_idx < thread.user_input.size(); p_idx++ ) {
             const auto& ptrx = thread.user_input.at(p_idx);
             const SignedTransaction& trx = ptrx;
             auto processed = apply_transaction(trx);
-            try {
-               check_transaction_output(ptrx, processed);
-            } FC_RETHROW_EXCEPTIONS(warn, 
-               "cycle: ${c_idx}, thread: ${t_idx}, user_input: ${p_idx}", 
-               ("c_idx", c_idx)("t_idx", t_idx)("p_idx", p_idx) );
+            check_transaction_output(ptrx, processed, user_path(p_idx));
          }
       }
    }
@@ -801,7 +809,7 @@ void chain_controller::validate_tapos(const Transaction& trx)const {
    const auto& tapos_block_summary = _db.get<block_summary_object>((uint16_t)trx.refBlockNum);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   EOS_ASSERT(transaction_helpers::verify_reference_block(trx, tapos_block_summary.block_id), transaction_exception,
+   EOS_ASSERT(transaction_verify_reference_block(trx, tapos_block_summary.block_id), transaction_exception,
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 }

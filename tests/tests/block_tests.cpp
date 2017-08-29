@@ -146,11 +146,11 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
 
    eos::chain::ProcessedTransaction trx;
    trx.scope = sort_names({from,to});
-   transaction_helpers::emplace_message(trx, "eos", 
+   transaction_emplace_message(trx, "eos", 
                       vector<types::AccountPermission>{ {from,"active"} },
                       "transfer", types::transfer{from, to, amount, ""});
    trx.expiration = chain.head_block_time() + 100;
-   transaction_helpers::set_reference_block(trx, chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
 
    auto original = fc::raw::pack( trx );
    auto var      = chain.transaction_to_variant( trx );
@@ -179,10 +179,10 @@ BOOST_FIXTURE_TEST_CASE(irrelevant_auth, testing_fixture) {
 
    ProcessedTransaction trx;
    trx.scope = sort_names({"joe", "inita"});
-   transaction_helpers::emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{"inita", "active"}},
+   transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{"inita", "active"}},
                       "transfer", types::transfer{"inita", "joe", 50,""});
    trx.expiration = chain.head_block_time() + 100;
-   transaction_helpers::set_reference_block(trx, chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
 
    chain.clear_pending();

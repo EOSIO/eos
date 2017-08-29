@@ -1,4 +1,5 @@
 #include <eos/account_history_plugin/account_history_plugin.hpp>
+#include <eos/account_history_plugin/account_control_history_object.hpp>
 #include <eos/account_history_plugin/account_transaction_history_object.hpp>
 #include <eos/account_history_plugin/public_key_history_object.hpp>
 #include <eos/account_history_plugin/transaction_history_object.hpp>
@@ -25,6 +26,7 @@ namespace eos {
 
 using chain::AccountName;
 using chain::block_id_type;
+using chain::PermissionName;
 using chain::ProcessedTransaction;
 using chain::signed_block;
 using boost::multi_index_container;
@@ -38,6 +40,7 @@ public:
    ProcessedTransaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
    get_transactions_results get_transactions(const AccountName&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
    vector<AccountName> get_key_accounts(const public_key_type& public_key) const;
+   vector<AccountName> get_controlled_accounts(const AccountName& controlling_account) const;
    void applied_block(const signed_block&);
 
    chain_plugin* chain_plug;
@@ -60,7 +63,20 @@ private:
    bool is_scope_relevant(const eos::types::Vector<AccountName>& scope);
    get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
    static void add(chainbase::database& db, const vector<types::KeyPermissionWeight>& keys, const AccountName& account_name, const PermissionName& permission);
-   static void remove(chainbase::database& db, const AccountName& account_name, const PermissionName& permission);
+   template<typename MultiIndex, typename LookupType>
+   static void remove(chainbase::database& db, const AccountName& account_name, const PermissionName& permission)
+   {
+      const auto& idx = db.get_index<MultiIndex, LookupType>();
+      auto& mutatable_idx = db.get_mutable_index<MultiIndex>();
+      auto range = idx.equal_range( boost::make_tuple( account_name, permission ) );
+
+      for (auto acct_perm = range.first; acct_perm != range.second; ++acct_perm)
+      {
+         mutatable_idx.remove(*acct_perm);
+      }
+   }
+
+   static void add(chainbase::database& db, const vector<types::AccountPermissionWeight>& controlling_accounts, const AccountName& account_name, const PermissionName& permission);
    bool time_exceeded(const fc::time_point& start_time) const;
    static const AccountName NEW_ACCOUNT;
    static const AccountName UPDATE_AUTH;
@@ -252,6 +268,21 @@ vector<AccountName> account_history_plugin_impl::get_key_accounts(const public_k
    return vector<AccountName>(accounts.begin(), accounts.end());
 }
 
+vector<AccountName> account_history_plugin_impl::get_controlled_accounts(const AccountName& controlling_account) const
+{
+   std::set<AccountName> accounts;
+   const auto& db = chain_plug->chain().get_database();
+   db.with_read_lock( [&]() {
+      const auto& account_control_idx = db.get_index<account_control_history_multi_index, by_controlling>();
+      auto range = account_control_idx.equal_range( controlling_account );
+      for (auto obj = range.first; obj != range.second; ++obj)
+      {
+         accounts.insert(obj->controlled_account);
+      }
+   } );
+   return vector<AccountName>(accounts.begin(), accounts.end());
+}
+
 void account_history_plugin_impl::applied_block(const signed_block& block)
 {
    const auto block_id = block.id();
@@ -286,22 +317,30 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
                   if (msg.type == NEW_ACCOUNT)
                   {
                      const auto create = msg.as<types::newaccount>();
-                     auto count = create.owner.keys.size() + create.active.keys.size() + create.recovery.keys.size();
                      add(db, create.owner.keys, create.name, OWNER);
                      add(db, create.active.keys, create.name, ACTIVE);
                      add(db, create.recovery.keys, create.name, RECOVERY);
+
+                     add(db, create.owner.accounts, create.name, OWNER);
+                     add(db, create.active.accounts, create.name, ACTIVE);
+                     add(db, create.recovery.accounts, create.name, RECOVERY);
                   }
                   else if (msg.type == UPDATE_AUTH)
                   {
                      const auto update = msg.as<types::updateauth>();
-                     remove(db, update.account, update.permission);
+                     remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
                      add(db, update.authority.keys, update.account, update.permission);
+
+                     remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
+                     add(db, update.authority.accounts, update.account, update.permission);
                   }
                   else if (msg.type == DELETE_AUTH)
                   {
                      const auto del = msg.as<types::deleteauth>();
-                     remove(db, del.account, del.permission);
-                  }
+                     remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
+
+                     remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
+}
                }
             }
          }
@@ -321,15 +360,15 @@ void account_history_plugin_impl::add(chainbase::database& db, const vector<type
    }
 }
 
-void account_history_plugin_impl::remove(chainbase::database& db, const AccountName& account_name, const PermissionName& permission)
+void account_history_plugin_impl::add(chainbase::database& db, const vector<types::AccountPermissionWeight>& controlling_accounts, const AccountName& account_name, const PermissionName& permission)
 {
-   const auto& acct_perm_idx = db.get_index<public_key_history_multi_index, by_account_permission>();
-   auto& mutatable_acct_perm_idx = db.get_mutable_index<public_key_history_multi_index>();
-   auto range = acct_perm_idx.equal_range( boost::make_tuple( account_name, permission ) );
-
-   for (auto acct_perm = range.first; acct_perm != range.second; ++acct_perm)
+   for (auto controlling_account : controlling_accounts )
    {
-      mutatable_acct_perm_idx.remove(*acct_perm);
+      db.create<account_control_history_object>([&](account_control_history_object& obj) {
+         obj.controlled_account = account_name;
+         obj.controlled_permission = permission;
+         obj.controlling_account = controlling_account.permission.account;
+      });
    }
 }
 
@@ -378,6 +417,7 @@ void account_history_plugin::plugin_startup()
 {
    my->chain_plug = app().find_plugin<chain_plugin>();
    auto& db = my->chain_plug->chain().get_mutable_database();
+   db.add_index<account_control_history_multi_index>();
    db.add_index<account_transaction_history_multi_index>();
    db.add_index<public_key_history_multi_index>();
    db.add_index<transaction_history_multi_index>();
@@ -408,5 +448,11 @@ read_only::get_key_accounts_results read_only::get_key_accounts(const get_key_ac
 {
    return { account_history->get_key_accounts(params.public_key) };
 }
+
+read_only::get_controlled_accounts_results read_only::get_controlled_accounts(const get_controlled_accounts_params& params) const
+{
+   return { account_history->get_controlled_accounts(params.controlling_account) };
+}
+
 } // namespace account_history_apis
 } // namespace eos

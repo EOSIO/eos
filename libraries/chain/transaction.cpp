@@ -31,25 +31,21 @@
 
 namespace eos { namespace chain {
 
-namespace transaction_helpers {
-
-digest_type digest(const Transaction& t) {
+digest_type transaction_digest(const Transaction& t) {
    digest_type::encoder enc;
    fc::raw::pack( enc, t );
    return enc.result();
 }
 
-void set_reference_block(Transaction& t, const block_id_type& reference_block) {
+void transaction_set_reference_block(Transaction& t, const block_id_type& reference_block) {
    t.refBlockNum = fc::endian_reverse_u32(reference_block._hash[0]);
    t.refBlockPrefix = reference_block._hash[1];
 }
 
-bool verify_reference_block(const Transaction& t, const block_id_type& reference_block) {
+bool transaction_verify_reference_block(const Transaction& t, const block_id_type& reference_block) {
    return t.refBlockNum == (decltype(t.refBlockNum))fc::endian_reverse_u32(reference_block._hash[0]) &&
           t.refBlockPrefix == (decltype(t.refBlockPrefix))reference_block._hash[1];
 }
-
-} // namespace transaction_helpers
 
 digest_type SignedTransaction::sig_digest( const chain_id_type& chain_id )const {
    digest_type::encoder enc;
@@ -59,7 +55,7 @@ digest_type SignedTransaction::sig_digest( const chain_id_type& chain_id )const 
 }
 
 eos::chain::transaction_id_type SignedTransaction::id() const {
-   auto h = transaction_helpers::digest(*this);
+   auto h = transaction_digest(*this);
    transaction_id_type result;
    memcpy(result._hash, h._hash, std::min(sizeof(result), sizeof(h)));
    return result;

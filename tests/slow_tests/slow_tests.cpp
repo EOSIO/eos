@@ -298,9 +298,9 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
          trx.messages[0].authorization.emplace_back(types::AccountPermission{account,"active"});
-         transaction_helpers::set_message(trx, 0, "setcode", handler);
+         transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
-         transaction_helpers::set_reference_block(trx, chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          chain.push_transaction(trx);
          chain.produce_blocks(1);
       }
@@ -309,12 +309,12 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
 void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   transaction_helpers::emplace_message(trx, "currency", 
+   transaction_emplace_message(trx, "currency", 
                       vector<types::AccountPermission>{ {from,"active"} },
                       "transfer", types::transfer{from, to, amount,""});
 
    trx.expiration = chain.head_block_time() + 100;
-   transaction_helpers::set_reference_block(trx, chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    idump((trx));
    chain.push_transaction(trx);
 }
@@ -322,11 +322,11 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
 void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   transaction_helpers::emplace_message(trx, "currency", 
+   transaction_emplace_message(trx, "currency", 
                       vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
                       "transfer", types::transfer{from, to, amount,""});
    trx.expiration = chain.head_block_time() + 100;
-   transaction_helpers::set_reference_block(trx, chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
 }
 
@@ -352,9 +352,9 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
          trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
-         transaction_helpers::set_message(trx, 0, "setcode", handler);
+         transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
-         transaction_helpers::set_reference_block(trx, chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          chain.push_transaction(trx);
          chain.produce_blocks(1);
       }
@@ -365,11 +365,11 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         transaction_helpers::emplace_message(trx, "currency", 
+         transaction_emplace_message(trx, "currency", 
                             vector<types::AccountPermission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "inita", 1+i,""});
          trx.expiration = chain.head_block_time() + 100;
-         transaction_helpers::set_reference_block(trx, chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          //idump((trx));
          chain.push_transaction(trx);
       }
@@ -403,12 +403,12 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   transaction_helpers::emplace_message(trx, "exchange", 
+   transaction_emplace_message(trx, "exchange", 
                       vector<types::AccountPermission>{ {seller,"active"} },
                       "sell", b );
    //trx.messages.back().set_packed( "sell", b);
    trx.expiration = chain.head_block_time() + 100;
-   transaction_helpers::set_reference_block(trx, chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
 
 }
@@ -421,12 +421,12 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   transaction_helpers::emplace_message(trx, "exchange", 
+   transaction_emplace_message(trx, "exchange", 
                       vector<types::AccountPermission>{ {buyer,"active"} },
                       "buy", b );
    //trx.messages.back().set_packed( "buy", b);
    trx.expiration = chain.head_block_time() + 100;
-   transaction_helpers::set_reference_block(trx, chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
 }
 
@@ -1117,9 +1117,9 @@ R"(
       trx.messages.resize(1);
       trx.messages[0].code = config::EosContractName;
       trx.messages[0].authorization.emplace_back(types::AccountPermission{"simplecoin","active"});
-      transaction_helpers::set_message(trx, 0, "setcode", handler);
+      transaction_set_message(trx, 0, "setcode", handler);
       trx.expiration = chain.head_block_time() + 100;
-      transaction_helpers::set_reference_block(trx, chain.head_block_id());
+      transaction_set_reference_block(trx, chain.head_block_id());
       try {
          chain.push_transaction(trx);
          BOOST_FAIL("floating point instructions should be rejected");
@@ -1154,9 +1154,9 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
          trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
-         transaction_helpers::set_message(trx, 0, "setcode", handler);
+         transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
-         transaction_helpers::set_reference_block(trx, chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          chain.push_transaction(trx);
          chain.produce_blocks(1);
       }
@@ -1165,11 +1165,11 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         transaction_helpers::emplace_message(trx, "currency",
+         transaction_emplace_message(trx, "currency",
                             vector<types::AccountPermission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "inita", 1,""});
          trx.expiration = chain.head_block_time() + 100;
-         transaction_helpers::set_reference_block(trx, chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          try
          {
             wlog("starting long transaction");
