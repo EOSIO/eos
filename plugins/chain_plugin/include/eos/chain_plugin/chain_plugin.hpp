@@ -35,6 +35,7 @@ class read_only {
    const chain_controller& db;
 
    const string KEYi64 = "i64";
+   const string KEYstr = "str";
    const string KEYi128i128 = "i128i128";
    const string KEYi64i64i64 = "i64i64i64";
    const string PRIMARY = "primary";
@@ -173,6 +174,12 @@ public:
       data.resize( sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
+   }
+
+   void copy_row(const chain::keystr_value_object& obj, vector<char>& data)const {
+      data.resize( sizeof(Name) + obj.value.size() );
+      memcpy( data.data(), &obj.primary_key, sizeof(Name) );
+      memcpy( data.data()+sizeof(Name), obj.value.data(), obj.value.size() );
    }
 
    void copy_row(const chain::key128x128_value_object& obj, vector<char>& data)const {
