@@ -54,10 +54,9 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <chrono>
 
-//#include <Wren++.h>
 namespace eos { namespace chain {
-
 
 bool chain_controller::is_known_block(const block_id_type& id)const
 {
@@ -216,7 +215,25 @@ bool chain_controller::_push_block(const signed_block& new_block)
 
    try {
       auto session = _db.start_undo_session(true);
+      auto exec_start = std::chrono::high_resolution_clock::now();
       apply_block(new_block, skip);
+      if( (fc::time_point::now() - new_block.timestamp) < fc::seconds(60) )
+      {
+         auto exec_stop = std::chrono::high_resolution_clock::now();
+         auto exec_ms = std::chrono::duration_cast<std::chrono::milliseconds>(exec_stop - exec_start);      
+         size_t trxcount = 0;
+         for (const auto& cycle : new_block.cycles)
+            for (const auto& thread : cycle)
+               trxcount += thread.user_input.size();
+         ilog( "producer=[${prod}], blocktime=${bktm}, blocknum=${bknu}, trxcount=${txco}, pendingcount=${pend}, exectime_ms=${extm}", 
+            ("prod", new_block.producer) 
+            ("bktm", new_block.timestamp)
+            ("bknu", new_block.block_num())
+            ("txco", trxcount)
+            ("pend", _pending_transactions.size())
+            ("extm", exec_ms.count())
+         );
+      }
       session.push();
    } catch ( const fc::exception& e ) {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
