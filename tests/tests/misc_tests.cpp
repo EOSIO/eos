@@ -266,6 +266,55 @@ BOOST_AUTO_TEST_CASE(authority_checker)
 } FC_LOG_AND_RETHROW() }
 
 
+BOOST_AUTO_TEST_CASE(alphabetic_sort)
+{ try {
+
+  vector<string> words = {
+    "com.o",
+    "te",
+    "a.....5",
+    "a...4",
+    ".va.ku",
+    "gh",
+    "1ho.la",
+    "g1",
+    "g",
+    "a....2",
+    "gg",
+    "va",
+    "lale.....12b",
+    "a....3",
+    "a....1",
+    "..g",
+    ".g",
+    "....g",
+    "a....y",
+    "...g",
+    "lale.....333",
+  };
+  
+  std::sort(words.begin(), words.end(), std::less<string>());
+
+  vector<uint64_t> uwords;
+  for(const auto w: words) {
+    auto n = Name(w.c_str());
+    uwords.push_back(n.value);
+  }
+
+  std::sort(uwords.begin(), uwords.end(), std::less<uint64_t>());
+
+  vector<string> tmp;
+  for(const auto uw: uwords) {
+    auto str = Name(uw).toString();
+    tmp.push_back(str);
+  }
+
+  for(int i = 0; i < words.size(); ++i ) {
+    BOOST_CHECK_EQUAL(tmp[i], words[i]);
+  }
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eos

@@ -301,15 +301,25 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 
       CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_print", "test_printn"), {}, {}) );
       BOOST_CHECK_EQUAL( capture.size() , 8);
+
+      std::cout << capture[0] << std::endl
+                << capture[1] << std::endl
+                << capture[2] << std::endl
+                << capture[3] << std::endl
+                << capture[4] << std::endl
+                << capture[5] << std::endl
+                << capture[6] << std::endl
+                << capture[7] << std::endl;
+
       BOOST_CHECK_EQUAL( (
          capture[0] == "abcde" && 
          capture[1] == "ab.de"  && 
          capture[2] == "1q1q1q" &&
          capture[3] == "abcdefghijk" &&
          capture[4] == "abcdefghijkl" &&
-         capture[5] == "abcdefghijklm" &&
-         capture[6] == "abcdefghijklm" &&
-         capture[7] == "abcdefghijklm" 
+         capture[5] == "abcdefghijkl1" &&
+         capture[6] == "abcdefghijkl1" &&
+         capture[7] == "abcdefghijkl1" 
       ), true);
 
       //Test math
