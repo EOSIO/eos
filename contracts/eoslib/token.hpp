@@ -26,6 +26,30 @@ namespace eos {
     *  @tparam NumberType - numeric type of the token
     *  @tparam CurrencyType - type of the currency (e.g. eos) represented as an unsigned 64 bit integer
     *  @ingroup tokens
+    *  @code
+    *  typedef eos::token<uint32_t, N(MyToken)> MyToken;
+    *  MyToken  a(128);
+    *  a.print(); // Output: 128 MyToken
+    *  MyToken b(64);
+    *  a += b;
+    *  a.print(); // Output: 192 MyToken
+    *  b.print(); // Output:  64 MyToken
+    *  a -= b;
+    *  a.print(); // Output: 128 MyToken
+    *  b.print(); // Output:  64 MyToken
+    *  b -= a;    // Throws integer underflow exception
+    *  MyToken c = a + b;
+    *  c.print(); // Output: 192 MyToken
+    *  MyToken d = a - b;
+    *  d.print(); // Output: 64 MyToken
+    *  MyToken maxToken(std::numeric_limits<uint32_t>::max());
+    *  maxToken += b; // Throws integer overflow exception
+    *  std::cout << (maxToken > b); // Output: true
+    *  std::cout << (b > maxToken); // Output: false
+    *  std::cout << (bool)maxToken; // Output: true
+    *  std::cout << (a == b);  // Output: false
+    *  std::cout << (a != b);  // Output: true
+    *  @endcode
     */
    template<typename NumberType, uint64_t CurrencyType = N(eos) >
    struct token {
@@ -179,12 +203,35 @@ namespace eos {
 
    /**
     *  Defines a fixed precision price between two tokens.
-    *  A price is written as  X  Base/Quote.
+    *  A price is written as  X  Base/Quote. Where X is a power of 10 which makes it simpler to just shift the decimal.
     *  It supports the following operator: /, \, <=, <, ==, !=, >=, > and also print functionality
     *  @brief Defines a fixed precision price between two tokens.
     *  @tparam BaseToken - represents the type of the base token
     *  @tparam QuoteToken -  represents the type of the quote token
     *  @ingroup tokens
+    *  @code
+    *  typedef eos::token<uint64_t, N(MyBaseToken)> MyBaseToken;
+    *  typedef eos::token<uint64_t, N(MyQuoteToken)> MyQuoteToken;
+    *  typedef price<MyBaseToken, MyQuoteToken> MyBaseToQuotePrice;
+    *  MyBaseToken zeroBaseToken;
+    *  MyQuoteToken zeroQuoteToken;
+    *  MyBaseToQuotePrice zeroBaseToQuote(zeroBaseToken, zeroQuoteToken); // throws invalid price exception
+    *  MyBaseToken baseToken(128);
+    *  MyQuoteToken quoteToken(128);
+    *  MyBaseToQuotePrice aPrice(baseToken, quoteToken);
+    *  aPrice.print(); // Output: 1e+15. MyBaseToken / MyQuoteToken
+    *  MyQuoteToken anotherQuote = baseToken / price;
+    *  std::cout << (anotherQuote == quoteToken); // Output: true
+    *  MyBaseToken anotherBase = quoteToken * price;
+    *  std::cout << (anotherBase == baseToken); // Output: true
+    *  MyBaseToQuotePrice anotherPrice(baseToken, quoteToken);
+    *  std::cout << (aPrice == anotherPrice); // Output: true
+    *  std::cout << (aPrice != anotherPrice); // Output: false
+    *  MyBaseToken base256(256);
+    *  MyBaseToQuotePrice price2(base256, quoteToken);
+    *  std::cout << (price2 > aPrice); // Output: true
+    *  std::cout << (aPrice < price2); // Output: true
+    *  @endcode
     */
    template<typename BaseToken, typename QuoteToken>
    struct price
@@ -327,6 +374,12 @@ namespace eos {
     *  The binary structure of the `transfer` message type for the `eos` contract.
     *  @brief The binary structure of the `transfer` message type for the `eos` contract.
     *  @ingroup tokens
+    *  @code
+    *  Transfer MeToYou;
+    *  MeToYou.from = N(Me);
+    *  MeToYou.to = N(You);
+    *  MeToYou.quantity = Tokens(100);
+    *  @endcode
     */
    struct Transfer {
      /**

@@ -18,6 +18,15 @@ namespace eos {
     *  This method attempts to reinterpret the message body as type T. This will only work
     *  if the message has no dynamic fields and the struct packing on type T is properly defined.
     *  @brief Interpret the message body as type T
+    *  Example
+    *  @code
+    *
+    *  struct MyMessage {
+    *     uint32_t time;
+    *  };
+    *
+    *  MyMessage msg = currentMessage<MyMessage>();
+    *  @endcode
     */
    template<typename T>
    T currentMessage() {
@@ -40,6 +49,10 @@ namespace eos {
     *  @note message.code is also considered as part of the set of notified accounts
     *
     *  @brief Verify specified accounts exist in the set of notified accounts
+    *  Example
+    *  @code
+    *  requireNotice(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
+    *  @endcode
     */
    template<typename... Accounts>
    void requireNotice( AccountName name, Accounts... accounts ){

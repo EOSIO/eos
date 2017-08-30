@@ -37,14 +37,23 @@ extern "C" {
     *  @param msg - a pointer where up to @ref len bytes of the current message will be copied
     *  @param len - len of the current message to be copied
     *  @return the number of bytes copied to msg
+    *  Example
+    *  @code
+    *  char buffer[128];
+    *  uint32_t total = readMessage(buffer, 64);
+    *  @endcode
     */
    uint32_t readMessage( void* msg, uint32_t len );
 
    /**
     * Get the length of the current message's data field
-    * This method is useful for dynamicly sized messages
-    * @brief Get the lenght of current message's data field
+    * This method is useful for dynamically sized messages
+    * @brief Get the length of current message's data field
     * @return the length of the current message's data field
+    * Example
+    * @code
+    * uint32_t msgsize = messageSize();
+    * @endcode
     */
    uint32_t messageSize();
 
@@ -52,6 +61,10 @@ extern "C" {
     *  Verifies that @ref name exists in the set of notified accounts on a message. Throws if not found
     *  @brief Verify specified account exists in the set of notified accounts
     *  @param name - name of the account to be verified
+    *  Example
+    *  @code
+    *  requireNotice(N(MyAccount)); // throws exception if MyAccount is not found in recipients list.
+    *  @endcode
     */
    void        requireNotice( AccountName name );
 
@@ -59,6 +72,10 @@ extern "C" {
     *  Verifies that @ref name exists in the set of provided auths on a message. Throws if not found
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
+    *  Example
+    *  @code
+    *  requireAuth(N(MyAccount)); // throws exception if MyAccount is not found in authentication list.
+    *  @endcode
     */
    void        requireAuth( AccountName name );
 
@@ -75,6 +92,7 @@ extern "C" {
     *  @brief Aborts processing of this message and unwinds all pending changes
     *  @param test - 0 to abort, 1 to ignore
     *  @param cstr - a null terminated message to explain the reason for failure
+
     */
    void  assert( uint32_t test, const char* cstr );
 
