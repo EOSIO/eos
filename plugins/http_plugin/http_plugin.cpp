@@ -76,8 +76,8 @@ namespace eos {
 
    class http_plugin_impl {
       public:
-         shared_ptr<std::thread>  http_thread;
-         asio::io_service         http_ios;
+         //shared_ptr<std::thread>  http_thread;
+         //asio::io_service         http_ios;
          map<string,url_handler>  url_handlers;
          optional<tcp::endpoint>  listen_endpoint;
 
@@ -120,11 +120,11 @@ namespace eos {
    void http_plugin::plugin_startup() {
       if(my->listen_endpoint) {
 
-         my->http_thread = std::make_shared<std::thread>([&](){
+         //my->http_thread = std::make_shared<std::thread>([&](){
             ilog("start processing http thread");
             try {
                my->server.clear_access_channels(websocketpp::log::alevel::all);
-               my->server.init_asio(&my->http_ios);
+               my->server.init_asio(&app().get_io_service()); //&my->http_ios);
                my->server.set_reuse_addr(true);
 
                my->server.set_http_handler([&](connection_hdl hdl) {
@@ -164,7 +164,7 @@ namespace eos {
                my->server.listen(*my->listen_endpoint);
                my->server.start_accept();
 
-               my->http_ios.run();
+           //    my->http_ios.run();
                ilog("http io service exit");
             } catch ( const fc::exception& e ){
                elog( "http: ${e}", ("e",e.to_detail_string()));
@@ -173,24 +173,24 @@ namespace eos {
             } catch (...) {
                 elog("error thrown from http io service");
             }
-         });
+         //});
 
       }
    }
 
    void http_plugin::plugin_shutdown() {
-      if(my->http_thread) {
+     // if(my->http_thread) {
          if(my->server.is_listening())
              my->server.stop_listening();
-         my->http_ios.stop();
-         my->http_thread->join();
-         my->http_thread.reset();
-      }
+     //    my->http_ios.stop();
+     //    my->http_thread->join();
+     //    my->http_thread.reset();
+     // }
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
       ilog( "add api url: ${c}", ("c",url) );
-      my->http_ios.post([=](){
+      app().get_io_service().post([=](){
         my->url_handlers.insert(std::make_pair(url,handler));
       });
    }

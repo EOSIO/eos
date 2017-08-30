@@ -1,0 +1,39 @@
+{
+    "types": [],
+    "structs": [{
+        "name": "record1",
+        "fields": {
+          "key1": "UInt64"
+        }
+      },{
+        "name" : "record2",
+        "fields": {
+          "key1": "UInt128",
+          "key2": "UInt128"
+        }
+      },{
+        "name" : "record3",
+        "fields": {
+          "key1": "UInt64",
+          "key2": "UInt64",
+          "key3": "UInt64"
+        }
+      }
+    ],
+    "actions": [{
+        "action": "insert1",
+        "type": "record1"
+      },{
+        "action": "insert2",
+        "type": "record2"
+      },{
+        "action": "insert3",
+        "type": "record3"
+      }
+    ],
+    "tables": [
+      {"table":"record1","type":"record1"},
+      {"table":"record2","type":"record2"},
+      {"table":"record3","type":"record3"}
+    ]
+}

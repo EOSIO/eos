@@ -40,7 +40,7 @@ unsigned int test_math::test_double_api() {
 
   res = double_eq(
     double_div( i64_to_double(5), i64_to_double(9) ),
-    double_div( i64_to_double(10), i64_to_double(18) )
+    double_div( i64_to_double(5), i64_to_double(9) )
   );
 
   WASM_ASSERT(res == 1, "double_eq");

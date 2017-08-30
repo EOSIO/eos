@@ -31,10 +31,20 @@
 
 namespace eos { namespace chain {
 
-digest_type SignedTransaction::digest()const {
+digest_type transaction_digest(const Transaction& t) {
    digest_type::encoder enc;
-   fc::raw::pack( enc, static_cast<const types::Transaction&>(*this) );
+   fc::raw::pack( enc, t );
    return enc.result();
+}
+
+void transaction_set_reference_block(Transaction& t, const block_id_type& reference_block) {
+   t.refBlockNum = fc::endian_reverse_u32(reference_block._hash[0]);
+   t.refBlockPrefix = reference_block._hash[1];
+}
+
+bool transaction_verify_reference_block(const Transaction& t, const block_id_type& reference_block) {
+   return t.refBlockNum == (decltype(t.refBlockNum))fc::endian_reverse_u32(reference_block._hash[0]) &&
+          t.refBlockPrefix == (decltype(t.refBlockPrefix))reference_block._hash[1];
 }
 
 digest_type SignedTransaction::sig_digest( const chain_id_type& chain_id )const {
@@ -45,7 +55,7 @@ digest_type SignedTransaction::sig_digest( const chain_id_type& chain_id )const 
 }
 
 eos::chain::transaction_id_type SignedTransaction::id() const {
-   auto h = digest();
+   auto h = transaction_digest(*this);
    transaction_id_type result;
    memcpy(result._hash, h._hash, std::min(sizeof(result), sizeof(h)));
    return result;
@@ -58,16 +68,6 @@ const signature_type& eos::chain::SignedTransaction::sign(const private_key_type
 
 signature_type eos::chain::SignedTransaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
    return key.sign_compact(sig_digest(chain_id));
-}
-
-void SignedTransaction::set_reference_block(const block_id_type& reference_block) {
-   refBlockNum = fc::endian_reverse_u32(reference_block._hash[0]);
-   refBlockPrefix = reference_block._hash[1];
-}
-
-bool SignedTransaction::verify_reference_block(const block_id_type& reference_block) const {
-   return refBlockNum == (decltype(refBlockNum))fc::endian_reverse_u32(reference_block._hash[0]) &&
-         refBlockPrefix == (decltype(refBlockPrefix))reference_block._hash[1];
 }
 
 flat_set<public_key_type> SignedTransaction::get_signature_keys( const chain_id_type& chain_id )const

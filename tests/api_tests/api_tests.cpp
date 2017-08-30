@@ -86,10 +86,10 @@ uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, con
    std::copy(data.begin(), data.end(), std::back_inserter(dest));
 
    //std::cout << "MANDO: " << msg.code << " " << msg.type << std::endl;
-   trx.emplaceMessage(msg);
+   transaction_emplace_message(trx, msg);
    
    trx.expiration = chain.head_block_time() + expiration++;
-   trx.set_reference_block(chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    //idump((trx));
    chain.push_transaction(trx);
 
@@ -177,9 +177,9 @@ void send_set_code_message(testing_blockchain& chain, types::setcode& handler, A
    trx.messages.resize(1);
    trx.messages[0].authorization = {{account,"active"}};
    trx.messages[0].code = config::EosContractName;
-   trx.setMessage(0, "setcode", handler);
+   transaction_set_message(trx, 0, "setcode", handler);
    trx.expiration = chain.head_block_time() + 100;
-   trx.set_reference_block(chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
    chain.produce_blocks(1);
 }
@@ -328,6 +328,11 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_math", "test_diveq_i128_by_0"), {}, {} ),
          fc::assert_exception, is_assert_exception );
 
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_math", "test_double_api"), {}, {} ) == WASM_TEST_PASS, "test_math::test_double_api()" );
+
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_math", "test_double_api_div_0"), {}, {} ),
+      fc::assert_exception, is_assert_exception );
+      
       //Test db (i64)
       const auto& idx = chain_db.get_index<key_value_index, by_scope_primary>();
 

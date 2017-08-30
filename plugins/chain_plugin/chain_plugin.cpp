@@ -11,7 +11,6 @@
 #include <eos/native_contract/staked_balance_objects.hpp>
 #include <eos/native_contract/balance_object.hpp>
 #include <eos/native_contract/genesis_state.hpp>
-#include <eos/types/AbiSerializer.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -26,6 +25,8 @@ using chain::block_log;
 using chain::chain_id_type;
 using chain::account_object;
 using chain::key_value_object;
+using chain::key128x128_value_object;
+using chain::key64x64x64_value_object;
 using chain::by_name;
 using chain::by_scope_primary;
 using chain::uint128_t;
@@ -223,87 +224,23 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_only::get_table_rows_i64_params& p )const {
-   read_only::get_table_rows_i64_result result;
-   const auto& d = db.get_database();
-   const auto& code_account = d.get<account_object,by_name>( p.code );
-
-   types::AbiSerializer abis;
-   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-      fc::raw::unpack( ds, abi );
-      abis.setAbi( abi );
+read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
+   if( p.table_type == KEYi64 ) {
+      return get_table_rows_ex<chain::key_value_index, chain::by_scope_primary>(p);
+   } else if( p.table_type == KEYi128i128 ) { 
+      if( p.table_key == PRIMARY )
+         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_primary>(p);
+      if( p.table_key == SECONDARY )
+         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_secondary>(p);
+   } else if(p.table_type == KEYi64i64i64 ) {
+      if( p.table_key == PRIMARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_primary>(p);
+      if( p.table_key == SECONDARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_secondary>(p);
+      if( p.table_key == TERTIARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_tertiary>(p);
    }
-
-   const auto& idx = d.get_index<chain::key_value_index,by_scope_primary>();
-   auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
-   auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
-
-   vector<char> data;
-
-   auto start = fc::time_point::now();
-   auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
-
-   int count = 0;
-   auto itr = lower;
-   for( itr = lower; itr != upper; ++itr ) {
-      data.resize( sizeof(uint64_t) + itr->value.size() );
-      memcpy( data.data(), &itr->primary_key, sizeof(itr->primary_key) );
-      memcpy( data.data()+sizeof(uint64_t), itr->value.data(), itr->value.size() );
-
-      if( p.json ) 
-         result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
-      else
-         result.rows.emplace_back( fc::variant(data) );
-      if( ++count == p.limit || fc::time_point::now() > end )
-         break;
-   }
-   if( itr != upper ) 
-      result.more = true;
-   return result;
-}
-
-read_only::get_table_rows_i128i128_primary_result read_only::get_table_rows_i128i128_primary( const read_only::get_table_rows_i128i128_primary_params& p )const {
-   read_only::get_table_rows_i128i128_primary_result result;
-   const auto& d = db.get_database();
-   const auto& code_account = d.get<account_object,by_name>( p.code );
-
-   types::AbiSerializer abis;
-   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-      fc::raw::unpack( ds, abi );
-      abis.setAbi( abi );
-   }
-
-   const auto& idx = d.get_index<chain::key128x128_value_index,chain::by_scope_primary>();
-   auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
-   auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
-
-   vector<char> data;
-
-   auto start = fc::time_point::now();
-   auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
-
-   int count = 0;
-   auto itr = lower;
-   for( itr = lower; itr != upper; ++itr ) {
-      data.resize( sizeof(uint128_t)*2 + itr->value.size() );
-      memcpy( data.data(), &itr->primary_key, sizeof(itr->primary_key) );
-      memcpy( data.data()+sizeof(uint128_t), &itr->secondary_key, sizeof(itr->secondary_key) );
-      memcpy( data.data()+sizeof(uint128_t)*2, itr->value.data(), itr->value.size() );
-
-      if( p.json ) 
-         result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
-      else
-         result.rows.emplace_back( fc::variant(data) );
-      if( ++count == p.limit || fc::time_point::now() > end )
-         break;
-   }
-   if( itr != upper ) 
-      result.more = true;
-   return result;
+   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",p.table_type)("key",p.table_key));
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
@@ -326,9 +263,26 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   auto ptrx = db.push_transaction(params, skip_flags);
+   auto pretty_input = db.transaction_from_variant( params );
+   auto ptrx = db.push_transaction(pretty_input, skip_flags);
    auto pretty_trx = db.transaction_to_variant( ptrx );
-   return read_write::push_transaction_results{ params.id(), pretty_trx };
+   return read_write::push_transaction_results{ pretty_input.id(), pretty_trx };
+}
+
+read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
+   FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
+
+   push_transactions_results result;
+   result.reserve(params.size());
+   for( const auto& item : params ) {
+      try {
+        result.emplace_back( push_transaction( item ) ); 
+      } catch ( const fc::exception& e ) {
+        result.emplace_back( read_write::push_transaction_results{ chain::transaction_id_type(), 
+                          fc::mutable_variant_object( "error", e.to_detail_string() ) } );
+      }
+   }
+   return result;
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
