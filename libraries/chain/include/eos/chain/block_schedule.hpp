@@ -60,6 +60,13 @@ namespace eos { namespace chain {
        * @return the block scheduler
        */
       static block_schedule by_cycling_conflicts(const vector<pending_transaction>& transactions, const global_property_object& properties);
+
+      /**
+       * A reference scheduler that puts all transactions in a single thread (FIFO)
+       * @return the block scheduler
+       */
+      static block_schedule in_single_thread(const vector<pending_transaction>& transactions, const global_property_object& properties);
+     
    };
 
    struct scope_extracting_visitor : public fc::visitor<std::set<AccountName>> {

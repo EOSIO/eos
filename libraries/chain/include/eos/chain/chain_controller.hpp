@@ -164,7 +164,7 @@ namespace eos { namespace chain {
             fc::time_point_sec when,
             const AccountName& producer,
             const fc::ecc::private_key& block_signing_private_key,
-            block_schedule::factory scheduler = block_schedule::by_threading_conflicts,
+            block_schedule::factory scheduler = block_schedule::in_single_thread,
             uint32_t skip = skip_nothing
             );
          signed_block _generate_block(
