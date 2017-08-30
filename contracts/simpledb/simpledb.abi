@@ -1,6 +1,11 @@
 {
     "types": [],
     "structs": [{
+        "name": "record1alpha",
+        "fields": {
+          "key1": "Name"
+        }
+      },{
         "name": "record1",
         "fields": {
           "key1": "UInt64"
@@ -24,6 +29,9 @@
         "action": "insert1",
         "type": "record1"
       },{
+        "action": "insertalpha",
+        "type": "record1alpha"
+      },{
         "action": "insert2",
         "type": "record2"
       },{
@@ -35,5 +43,6 @@
       {"table":"record1","type":"record1"},
       {"table":"record2","type":"record2"},
       {"table":"record3","type":"record3"}
+      {"table":"record1alpha","type":"record1alpha"}
     ]
 }

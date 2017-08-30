@@ -5,6 +5,10 @@ struct PACKED(record1) {
    uint64_t key;
 };
 
+struct PACKED(record1alpha) {
+   eos::Name key;
+};
+
 struct PACKED(record2) {
    uint128_t key1;
    uint128_t key2;

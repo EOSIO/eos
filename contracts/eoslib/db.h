@@ -238,7 +238,65 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
 
 ///@} db_i64
 
+/**
+ * @defgroup dbstr  Single String Index Table
+ * @brief These methods interface with a simple table with String unique primary key and arbitrary binary data value.
+ * @ingroup databaseC
+ *
+ * @see Table class in C++ API
+ *
+ * @{
+ */
 
+/**
+ * @param scope - the account scope that will be read, must exist in the transaction scopes list
+ * @param table - the ID/name of the table within the current scope/code context to modify
+ *
+ * @return 1 if a new record was created, 0 if an existing record was updated
+ *
+ * @pre datalen >= sizeof(uint64_t)
+ * @pre data is a valid pointer to a range of memory at least datalen bytes long
+ * @pre *((Name*)data) stores the primary key
+ * @pre scope is declared by the current transaction
+ * @pre this method is being called from an apply context (not validate or precondition)
+ *
+ * @post a record is either created or updated with the given scope and table.
+ *
+ * @throw if called with an invalid precondition execution will be aborted
+ *
+ */
+ int32_t store_str( AccountName scope, TableName table, const void* data, uint32_t datalen );
+ 
+ /**
+  * @return 1 if the record was updated, 0 if no record with key was found
+  */
+ int32_t update_str( AccountName scope, TableName table, const void* data, uint32_t datalen );
+ 
+ /**
+  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
+  *  @param code  - identifies the code that controls write-access to the data
+  *  @param table - the ID/name of the table within the scope/code context to query
+  *  @param data  - location to copy the stored record, should be initialized with the key to get
+  *  @param datalen - the maximum length of data to read, must be greater than sizeof(uint64_t)
+  *
+  *  @return the number of bytes read or -1 if key was not found
+  */
+ int32_t load_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ int32_t front_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ int32_t back_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ int32_t next_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ int32_t previous_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ int32_t lower_bound_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ int32_t upper_bound_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ 
+ /**
+  *  @param data - must point to at lest 8 bytes containing primary key
+  *
+  *  @return 1 if a record was removed, and 0 if no record with key was found
+  */
+ int32_t remove_str( AccountName scope, TableName table, void* data );
+ 
+ ///@} dbstr
 
 /**
  *  @defgroup dbi128i128  Dual 128 bit Index Table

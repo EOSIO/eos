@@ -37,9 +37,9 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 }
    template <typename Function, typename KeyType, int numberOfKeys>
    int32_t validate(int32_t valueptr, int32_t valuelen, Function func) {
-      
+
       static const uint32_t keylen = numberOfKeys*sizeof(KeyType);
-      
+
       FC_ASSERT( valuelen >= keylen, "insufficient data passed" );
 
       auto& wasm  = wasm_interface::get();
@@ -105,6 +105,9 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index);
 DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
 
+DEFINE_RECORD_UPDATE_FUNCTIONS(str, keystr_value_index);
+DEFINE_RECORD_READ_FUNCTIONS(str,,keystr_value_index, by_scope_primary);
+      
 DEFINE_RECORD_UPDATE_FUNCTIONS(i128i128, key128x128_value_index);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, primary_,   key128x128_value_index, by_scope_primary);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, secondary_, key128x128_value_index, by_scope_secondary);
