@@ -333,7 +333,7 @@ int main( int argc, char** argv ) {
       for( uint32_t i = 0; i < number_of_accounts; ++i ) {
          Name sender( "initb" );
          Name recipient( Name("benchmark").value + i);
-         uint32_t amount = 10000;
+         uint32_t amount = 100000;
 
          SignedTransaction trx;
          trx.scope = sort_names({sender,recipient});
@@ -381,7 +381,7 @@ int main( int argc, char** argv ) {
             transaction_set_reference_block(trx, info.head_block_id);
 
             batch.emplace_back(trx);
-            if( batch.size() == 300 ) {
+            if( batch.size() == 600 ) {
                auto result = call( push_txns_func, batch );
                //std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);

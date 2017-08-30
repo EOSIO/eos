@@ -1025,6 +1025,9 @@ block_id_type chain_controller::head_block_id()const {
 }
 
 types::AccountName chain_controller::head_block_producer() const {
+   auto b = _fork_db.fetch_block(head_block_id());
+   if( b ) return b->data.producer;
+
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return head_block->producer;
    return {};
