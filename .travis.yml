@@ -25,7 +25,7 @@ before_install:
 script:
   - WASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config ext/cmake-3.9.0-Linux-x86_64/bin/cmake -G Ninja -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext
   - ninja -j4
-  - tests/eosd_run_test
+  - tests/eosd_run_test.sh
   - tests/chain_test
   - tests/slow_test
   - tests/api_test
