@@ -56,10 +56,7 @@
 #include <iostream>
 #include <chrono>
 
-//#include <Wren++.h>
-
 namespace eos { namespace chain {
-
 
 bool chain_controller::is_known_block(const block_id_type& id)const
 {
@@ -219,9 +216,8 @@ bool chain_controller::_push_block(const signed_block& new_block)
          auto exec_ms = std::chrono::duration_cast<std::chrono::milliseconds>(exec_stop - exec_start);      
          size_t trxcount = 0;
          for (const auto& cycle : new_block.cycles)
-   	      for (const auto& thread : cycle)
-   		      for (const auto& trx : thread.user_input) 
-                  trxcount++;
+            for (const auto& thread : cycle)
+               trxcount += thread.user_input.size();
          ilog( "producer=[${prod}], blocktime=${bktm}, blocknum=${bknu}, trxcount=${txco}, pendingcount=${pend}, exectime_ms=${extm}", 
             ("prod", new_block.producer) 
             ("bktm", new_block.timestamp)
