@@ -17,11 +17,6 @@ BOOST_AUTO_TEST_CASE(wallet_test)
    using namespace eos::utilities;
 
    wallet_data d;
-   d.ws_server = "test_server";
-   d.ws_port = 99;
-   d.ws_user = "bob";
-   d.ws_password = "user_pwd";
-
    wallet_api wallet(d);
    BOOST_CHECK(wallet.is_locked());
 
@@ -131,8 +126,8 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    Name recipient("kevinheifner");
    uint64_t amount = 100000000;
    trx.scope = {sender,recipient};
-   trx.emplaceMessage(config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
-                         types::transfer{sender, recipient, amount});
+   transaction_emplace_message(trx,config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
+                         types::transfer{sender, recipient, amount, "deposit"});
    trx = wm.sign_transaction(trx, chain_id_type{});
    const auto& pks = trx.get_signature_keys(chain_id_type{});
    BOOST_CHECK_EQUAL(3, pks.size());

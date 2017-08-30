@@ -58,11 +58,8 @@ public:
    wallet_api_impl( wallet_api& s, const wallet_data& initial_data )
       : self( s )
    {
-      _wallet.ws_server = initial_data.ws_server;
-      _wallet.ws_port = initial_data.ws_port;
-      _wallet.ws_user = initial_data.ws_user;
-      _wallet.ws_password = initial_data.ws_password;
    }
+
    virtual ~wallet_api_impl()
    {}
 

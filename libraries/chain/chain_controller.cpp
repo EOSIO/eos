@@ -718,23 +718,51 @@ void chain_controller::_apply_block(const signed_block& next_block)
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
+namespace {
+
+  auto make_get_permission(const chainbase::database& db) {
+     return [&db](const types::AccountPermission& permission) {
+        auto key = boost::make_tuple(permission.account, permission.permission);
+        return db.get<permission_object, by_owner>(key);
+     };
+  }
+
+  auto make_authority_checker(const chainbase::database& db, const flat_set<public_key_type>& signingKeys) {
+     auto getPermission = make_get_permission(db);
+     auto getAuthority = [getPermission](const types::AccountPermission& permission) {
+        return getPermission(permission).auth;
+     };
+     auto depthLimit = db.get<global_property_object>().configuration.authDepthLimit;
+     return MakeAuthorityChecker(std::move(getAuthority), depthLimit, signingKeys);
+  }
+
+}
+
+flat_set<public_key_type> chain_controller::get_required_keys(const SignedTransaction& trx, const flat_set<public_key_type>& candidateKeys)const {
+   auto checker = make_authority_checker(_db, candidateKeys);
+
+   for (const auto& message : trx.messages) {
+      for (const auto& declaredAuthority : message.authorization) {
+         if (!checker.satisfied(declaredAuthority)) {
+            EOS_ASSERT(checker.satisfied(declaredAuthority), tx_missing_sigs,
+                       "Transaction declares authority '${auth}', but does not have signatures for it.",
+                       ("auth", declaredAuthority));
+         }
+      }
+   }
+
+   return checker.used_keys();
+}
+
 void chain_controller::check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures)const {
    if ((_skip_flags & skip_transaction_signatures) && (_skip_flags & skip_authority_check)) {
       ilog("Skipping auth and sigs checks");
       return;
    }
 
-
-   auto getPermission = [&db=_db](const types::AccountPermission& permission) {
-      auto key = boost::make_tuple(permission.account, permission.permission);
-      return db.get<permission_object, by_owner>(key);
-   };
-   auto getAuthority = [&getPermission](const types::AccountPermission& permission) {
-      return getPermission(permission).auth;
-   };
-   auto depthLimit = get_global_properties().configuration.authDepthLimit;
+   auto getPermission = make_get_permission(_db);
 #warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
-   auto checker = MakeAuthorityChecker(std::move(getAuthority), depthLimit, trx.get_signature_keys(chain_id_type{}));
+   auto checker = make_authority_checker(_db, trx.get_signature_keys(chain_id_type{}));
 
    for (const auto& message : trx.messages)
       for (const auto& declaredAuthority : message.authorization) {
