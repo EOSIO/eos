@@ -27,20 +27,19 @@ class MemberdefEncoder(json.JSONEncoder):
           #print 'Type node is', typeNode
           properties['results'] = {} # !!TODO!!
       for node in obj.findall('./param'):
-        # EOS code currently uses a single structure for all method arguments
-        paramType = node.find('./type/ref').get('kindref')
-        # Some are included structures, identified as 'compound'.
-        if paramType == 'compound':
-          paramName = node.find('declname').text.strip()
-          properties[paramName] = self.loadAndParseCompoundType(node.find('./type/ref').get('refid'))
-        # Others are members
-        elif paramType == 'member':
-          paramNode = node.find('declname')
-          if paramNode is not None:
-            paramName = paramNode.text.strip()
-          else:
-            paramName = ''
-          properties[paramName] = {} # !!TODO!!
+        paramTypeNode = node.find('./type/ref')
+        if paramTypeNode is not None:
+          paramType = paramTypeNode.get('kindref')
+          if paramType == 'compound':
+            paramName = node.find('declname').text.strip()
+            properties[paramName] = self.loadAndParseCompoundType(paramTypeNode.get('refid'))
+          elif paramType == 'member':
+            paramNode = node.find('declname')
+            if paramNode is not None:
+              paramName = paramNode.text.strip()
+            else:
+              paramName = ''
+            properties[paramName] = {} # !!TODO!!
       node = obj.find('./briefdescription/para')
       if node is not None:
         properties['brief'] = ''.join(node.itertext()).strip()
@@ -56,7 +55,8 @@ class MemberdefEncoder(json.JSONEncoder):
     typeRoot = ET.parse(filename).getroot()
     bases = typeRoot.findall('.//basecompoundref')
     for base in bases:
-      results.update(self.loadAndParseCompoundType(base.get('refid')))
+      if base.get('refid'): # If doxygen doesn't generate all docs, refs can be undocumented.
+        results.update(self.loadAndParseCompoundType(base.get('refid')))
     for argMember in typeRoot.findall('.//memberdef'):
       if argMember.get('prot') != 'public':
         continue
