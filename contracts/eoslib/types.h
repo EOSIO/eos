@@ -19,6 +19,7 @@ typedef uint64_t AccountName;
 typedef uint64_t TokenName;
 typedef uint64_t TableName;
 typedef uint32_t Time;
+typedef uint64_t FuncName;
 
 #define PACKED(X) __attribute((packed)) X
 
