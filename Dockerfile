@@ -42,15 +42,17 @@ RUN cd /tmp && mkdir wasm-compiler && cd wasm-compiler \
   && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../ \
   && make -j$(nproc) install && rm -rf /tmp/wasm-compiler
 
-RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
-  && mkdir -p /opt/eos/bin/data-dir && cd eos && mkdir build && cd build \
-  && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
+RUN mkdir -p /opt/eos/bin/data-dir && mkdir -p /tmp/eos/build/
+
+COPY . /tmp/eos/
+
+RUN cd /tmp/eos/build && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j$(nproc) && make install && mv ../contracts / \
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
 
-COPY config.ini genesis.json /
-COPY entrypoint.sh /sbin
+COPY Docker/config.ini Docker/genesis.json /
+COPY Docker/entrypoint.sh /sbin
 RUN chmod +x /sbin/entrypoint.sh
 VOLUME /opt/eos/bin/data-dir
 EXPOSE 9876 8888
