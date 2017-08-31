@@ -106,14 +106,14 @@ So simple and fast operation EOS:
 Build eos images
 
 ```
-cd eos/Docker
-cp ../genesis.json .
-docker build --rm -t eosio/eos .
+cd eos
+docker build -t eosio/eos .
 ```
 
 Start docker
 
 ```
+cd Docker
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
 docker-compose -f docker-compose.yml up
