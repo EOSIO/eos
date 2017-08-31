@@ -265,7 +265,7 @@ int main( int argc, char** argv ) {
    transfer->add_option("sender", sender, "The account sending EOS")->required();
    transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
    transfer->add_option("amount", amount, "The amount of EOS to send")->required();
-   transfer->add_option("memo", amount, "The memo for the transfer");
+   transfer->add_option("memo", memo, "The memo for the transfer");
    transfer->set_callback([&] {
       SignedTransaction trx;
       trx.scope = sort_names({sender,recipient});
