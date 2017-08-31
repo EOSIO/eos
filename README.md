@@ -113,10 +113,9 @@ docker build -t eosio/eos .
 Start docker
 
 ```
-cd Docker
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
-docker-compose -f docker-compose.yml up
+docker-compose -f Docker/docker-compose.yml up
 ```
 
 Run example contracts
