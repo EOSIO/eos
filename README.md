@@ -160,6 +160,6 @@ This is needed to compile the example contracts insde eos/contracts folder and t
 ```
 git clone https://github.com/eosio/eos --recursive
 mkdir -p eos/build && cd eos/build
-WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config cmake ..
+cmake -DWASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config ..
 make -j4
 ```
