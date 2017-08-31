@@ -88,16 +88,30 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
     # -fno-exceptions
     #   Disable the generation of extra code needed to propagate exceptions
-
+  
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
-      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS} -c ${infile} -o ${outfile}.bc
+      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding
+              -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS}
+              -c ${infile} -o ${outfile}.bc 
       IMPLICIT_DEPENDS CXX ${infile}
       COMMENT "Building LLVM bitcode ${outfile}.bc"
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
       VERBATIM
     )
     set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${outfile}.bc)
+
+    add_custom_command(OUTPUT ${outfile}.abi-stamp
+      DEPENDS ${infile}.bc abi_generator
+      COMMAND ${WASM_CLANG} --std=c++14 --target=wasm32 -I ${INCLUDE_FOLDERS} 
+              -Xclang -load -Xclang $<TARGET_FILE:abi_generator>
+              -Xclang -plugin -Xclang generate-abi ${infile}
+      IMPLICIT_DEPENDS CXX ${infile}
+      COMMENT "Extracting ABI information from ${outfile}"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      VERBATIM
+    )
+    set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${outfile}.abi-stamp)
 
     list(APPEND outfiles ${outfile}.bc)
 
