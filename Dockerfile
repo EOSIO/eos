@@ -51,7 +51,7 @@ RUN cd /tmp/eos/build && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAK
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
 
-COPY Docker/config.ini Docker/genesis.json /
+COPY Docker/config.ini genesis.json /
 COPY Docker/entrypoint.sh /sbin
 RUN chmod +x /sbin/entrypoint.sh
 VOLUME /opt/eos/bin/data-dir
