@@ -10,6 +10,13 @@ The following instructions overview the process of getting the software, buildin
 ### Setting up a build/development environment
 This project is written primarily in C++14 and uses CMake as its build system. An up-to-date C++ toolchain (such as Clang or GCC) and the latest version of CMake is recommended.
 
+Dependencies:
+* GCC 5.4.0 or Clang 4.0.0
+* CMake 3.5.1
+* Boost 1.64
+* LLVM 4.0
+* [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
+
 #### Clean install Ubuntu 16.10
 
 Install the development toolkit:
