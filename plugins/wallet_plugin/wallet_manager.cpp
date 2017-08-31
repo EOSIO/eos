@@ -87,6 +87,21 @@ std::vector<std::string> wallet_manager::list_keys() {
    return result;
 }
 
+flat_set<public_key_type> wallet_manager::get_public_keys() {
+   check_timeout();
+   flat_set<public_key_type> result;
+   for (const auto& i : wallets) {
+      if (!i.second->is_locked()) {
+         const auto& keys = i.second->list_keys();
+         for (const auto& i : keys) {
+            result.emplace(i.first);
+         }
+      }
+   }
+   return result;
+}
+
+
 void wallet_manager::lock_all() {
    // no call to check_timeout since we are locking all anyway
    for (auto& i : wallets) {
@@ -133,27 +148,25 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
 }
 
 chain::SignedTransaction
-wallet_manager::sign_transaction(const chain::SignedTransaction& txn, const chain::chain_id_type& id) {
+wallet_manager::sign_transaction(const chain::SignedTransaction& txn, const flat_set<public_key_type>& keys, const chain::chain_id_type& id) {
    check_timeout();
    chain::SignedTransaction stxn(txn);
 
-   size_t num_sigs = 0;
-   for (const auto& i : wallets) {
-      if (!i.second->is_locked()) {
-         const auto& name = i.first;
-         const auto& keys = i.second->list_keys();
-         for (const auto& i : keys) {
-            const optional<fc::ecc::private_key>& key = utilities::wif_to_key(i.second);
-            if (!key) {
-               FC_THROW("Invalid private key in wallet ${w}", ("w", name));
+   for (const auto& pk : keys) {
+      bool found = false;
+      for (const auto& i : wallets) {
+         if (!i.second->is_locked()) {
+            const auto& k = i.second->try_get_private_key(pk);
+            if (k) {
+               stxn.sign(*k, id);
+               found = true;
+               break; // inner for
             }
-            stxn.sign(*key, id);
-            ++num_sigs;
          }
       }
-   }
-   if (num_sigs == 0) {
-      FC_THROW("No unlocked wallets with keys, transaction not signed.");
+      if (!found) {
+         FC_THROW("Public key not found in unlocked wallets ${k}", ("k", pk));
+      }
    }
 
    return stxn;

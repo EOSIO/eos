@@ -48,6 +48,11 @@ class wallet_api
       string                            get_private_key( public_key_type pubkey )const;
 
       /**
+       * Get the private key corresponding to a public key or nothing.
+       */
+      optional<fc::ecc::private_key>    try_get_private_key(const public_key_type& id)const;
+
+      /**
        *  @param role - active | owner | posting | memo
        */
       pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;

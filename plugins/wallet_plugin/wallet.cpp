@@ -317,6 +317,12 @@ string wallet_api::get_private_key( public_key_type pubkey )const
    return key_to_wif( my->get_private_key( pubkey ) );
 }
 
+optional<fc::ecc::private_key> wallet_api::try_get_private_key(const public_key_type& id)const
+{
+   return my->try_get_private_key(id);
+}
+
+
 pair<public_key_type,string> wallet_api::get_private_key_from_password( string account, string role, string password )const {
    auto seed = account + role + password;
    FC_ASSERT( seed.size() );

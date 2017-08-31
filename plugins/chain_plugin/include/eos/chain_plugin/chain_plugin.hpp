@@ -99,10 +99,10 @@ public:
 
    struct get_required_keys_params {
       fc::variant transaction;
-      vector<string> available_keys_wif;
+      flat_set<public_key_type> available_keys;
    };
    struct get_required_keys_result {
-      vector<string> required_keys_wif;
+      flat_set<public_key_type> required_keys;
    };
 
    get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
@@ -290,5 +290,5 @@ FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(a
 FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
 FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
 FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
-FC_REFLECT( eos::chain_apis::read_only::get_required_keys_params, (available_keys_wif) )
-FC_REFLECT( eos::chain_apis::read_only::get_required_keys_result, (required_keys_wif) )
+FC_REFLECT( eos::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
+FC_REFLECT( eos::chain_apis::read_only::get_required_keys_result, (required_keys) )

@@ -39,9 +39,9 @@ using namespace eos;
 #define INVOKE_R_R(api_handle, call_name, in_param) \
      auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>());
 
-#define INVOKE_R_R_R(api_handle, call_name, in_param0, in_param1) \
+#define INVOKE_R_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
-     auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>());
+     auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>());
 
 #define INVOKE_R_V(api_handle, call_name) \
      auto result = api_handle.call_name();
@@ -72,7 +72,7 @@ void wallet_api_plugin::plugin_startup() {
        CALL(wallet, wallet_mgr, set_timeout,
             INVOKE_V_R(wallet_mgr, set_timeout, int64_t)),
        CALL(wallet, wallet_mgr, sign_transaction,
-            INVOKE_R_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction, chain::chain_id_type)),
+            INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction, flat_set<public_key_type>, chain::chain_id_type)),
        CALL(wallet, wallet_mgr, create,
             INVOKE_R_R(wallet_mgr, create, std::string)),
        CALL(wallet, wallet_mgr, open,
@@ -88,7 +88,9 @@ void wallet_api_plugin::plugin_startup() {
        CALL(wallet, wallet_mgr, list_wallets,
             INVOKE_R_V(wallet_mgr, list_wallets)),
        CALL(wallet, wallet_mgr, list_keys,
-            INVOKE_R_V(wallet_mgr, list_keys))
+            INVOKE_R_V(wallet_mgr, list_keys)),
+       CALL(wallet, wallet_mgr, get_public_keys,
+            INVOKE_R_V(wallet_mgr, get_public_keys))
    });
 }
 
@@ -105,8 +107,10 @@ void wallet_api_plugin::plugin_initialize(const variables_map& options) {
 
 
 #undef INVOKE_R_R
+#undef INVOKE_R_R_R_R
 #undef INVOKE_R_V
 #undef INVOKE_V_R
+#undef INVOKE_V_R_R
 #undef INVOKE_V_V
 #undef CALL
 

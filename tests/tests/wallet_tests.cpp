@@ -121,6 +121,10 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), key2) != keys.cend());
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), key3) != keys.cend());
 
+   fc::optional<fc::ecc::private_key> optional_private_key1 = utilities::wif_to_key(key1);
+   fc::optional<fc::ecc::private_key> optional_private_key2 = utilities::wif_to_key(key2);
+   fc::optional<fc::ecc::private_key> optional_private_key3 = utilities::wif_to_key(key3);
+
    chain::SignedTransaction trx;
    Name sender("billgates");
    Name recipient("kevinheifner");
@@ -128,15 +132,14 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    trx.scope = {sender,recipient};
    transaction_emplace_message(trx,config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
                          types::transfer{sender, recipient, amount, "deposit"});
-   trx = wm.sign_transaction(trx, chain_id_type{});
+   trx = wm.sign_transaction(trx,
+                             { optional_private_key1->get_public_key(), optional_private_key2->get_public_key(), optional_private_key3->get_public_key()},
+                             chain_id_type{});
    const auto& pks = trx.get_signature_keys(chain_id_type{});
    BOOST_CHECK_EQUAL(3, pks.size());
-   fc::optional<fc::ecc::private_key> optional_private_key = utilities::wif_to_key(key1);
-   BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key->get_public_key()) != pks.cend());
-   optional_private_key = utilities::wif_to_key(key2);
-   BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key->get_public_key()) != pks.cend());
-   optional_private_key = utilities::wif_to_key(key3);
-   BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key->get_public_key()) != pks.cend());
+   BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key1->get_public_key()) != pks.cend());
+   BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key2->get_public_key()) != pks.cend());
+   BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key3->get_public_key()) != pks.cend());
 
    BOOST_CHECK_EQUAL(3, wm.list_keys().size());
    wm.set_timeout(chrono::seconds(0));

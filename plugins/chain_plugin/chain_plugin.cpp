@@ -324,23 +324,11 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    return result;
 }
 
-read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params)const {
-
-   flat_set<public_key_type> available_keys;
-   available_keys.reserve(params.available_keys_wif.size());
-   for (const auto& k : params.available_keys_wif) {
-      available_keys.emplace(public_key_type(k));
-   }
-
+read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    auto pretty_input = db.transaction_from_variant(params.transaction);
-   auto required_keys_set = db.get_required_keys(pretty_input, available_keys);
-
+   auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
    get_required_keys_result result;
-   result.required_keys_wif.reserve(required_keys_set.size());
-   for (const auto& k : required_keys_set) {
-      result.required_keys_wif.emplace_back(k.operator std::string());
-   }
-
+   result.required_keys = required_keys_set;
    return result;
 }
 

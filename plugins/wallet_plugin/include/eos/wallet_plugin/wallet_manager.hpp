@@ -35,12 +35,15 @@ public:
    /// @param secs The timeout in seconds.
    void set_timeout(int64_t secs) { set_timeout(std::chrono::seconds(secs)); }
 
-   /// Sign transaction with all the keys from all the unlocked wallets.
+   /// Sign transaction with the private keys specified via their public keys.
+   /// Use chain_controller::get_required_keys to determine which keys are needed for txn.
    /// @param txn the transaction to sign.
+   /// @param keys the public keys of the corresponding private keys to sign the transaction with
    /// @param id the chain_id to sign transaction with.
    /// @return txn signed
-   /// @throws fc::exception if no unlocked wallets
-   chain::SignedTransaction sign_transaction(const chain::SignedTransaction& txn, const chain::chain_id_type& id);
+   /// @throws fc::exception if corresponding private keys not found in unlocked wallets
+   chain::SignedTransaction sign_transaction(const chain::SignedTransaction& txn, const flat_set<public_key_type>& keys,
+                                             const chain::chain_id_type& id);
 
    /// Create a new wallet.
    /// A new wallet is created in file dir/{name}.wallet see set_dir.
@@ -62,6 +65,9 @@ public:
 
    /// @return A list of private keys from all unlocked wallets in wif format.
    std::vector<std::string> list_keys();
+
+   /// @return A set of public keys from all unlocked wallets, use with chain_controller::get_required_keys.
+   flat_set<public_key_type> get_public_keys();
 
    /// Locks all the unlocked wallets.
    void lock_all();
