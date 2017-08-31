@@ -19,4 +19,4 @@ if [ -d '/opt/eos/bin/data-dir/contracts' ]; then
     cp -r /contracts /opt/eos/bin/data-dir
 fi
 
-exec /opt/eos/bin/eosd
+exec /opt/eos/bin/eosd $@
