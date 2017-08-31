@@ -2,7 +2,7 @@ set(WASM_TOOLCHAIN FALSE)
 
 if(NOT DEFINED WASM_LLVM_CONFIG)
   if(NOT "$ENV{WASM_LLVM_CONFIG}" STREQUAL "")
-    set(WASM_LLVM_CONFIG "$ENV{WASM_LLVM_CONFIG}" CACHE FILEPATH Location of llvm-config compiled with WASM support.)
+    set(WASM_LLVM_CONFIG "$ENV{WASM_LLVM_CONFIG}" CACHE FILEPATH "Location of llvm-config compiled with WASM support.")
   endif()
 endif()
 
