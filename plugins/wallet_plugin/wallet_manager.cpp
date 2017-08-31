@@ -78,7 +78,6 @@ std::vector<std::string> wallet_manager::list_keys() {
    std::vector<std::string> result;
    for (const auto& i : wallets) {
       if (!i.second->is_locked()) {
-         result.emplace_back(i.first);
          const auto& keys = i.second->list_keys();
          for (const auto& i : keys) {
             result.emplace_back(i.second);

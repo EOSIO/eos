@@ -164,7 +164,7 @@ namespace eos { namespace chain {
           * @return Subset of candidateKeys whose private keys should be used to sign transaction
           * @throws fc::exception if candidateKeys does not contain all required keys
           */
-         flat_set<public_key_type> get_required_keys( const SignedTransaction& trx, const flat_set<public_key_type>& candidateKeys)const;
+         flat_set<public_key_type> get_required_keys(const SignedTransaction& trx, const flat_set<public_key_type>& candidateKeys)const;
 
 
          bool _push_block( const signed_block& b );

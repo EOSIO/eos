@@ -60,8 +60,7 @@ public:
    /// @return A list of wallet names with " *" appended if the wallet is unlocked.
    std::vector<std::string> list_wallets();
 
-   /// @return A list of unlocked wallet names and their private keys.
-   ///         Wallet name entry followed by private key entries.
+   /// @return A list of private keys from all unlocked wallets in wif format.
    std::vector<std::string> list_keys();
 
    /// Locks all the unlocked wallets.
