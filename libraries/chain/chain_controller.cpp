@@ -279,7 +279,7 @@ ProcessedTransaction chain_controller::_push_transaction(const SignedTransaction
    temp_session.squash();
 
    // notify anyone listening to pending transactions
-   on_pending_transaction(trx); /// TODO move this to apply...
+   on_pending_transaction(trx); /// TODO move this to apply... ??? why... 
 
    return pt;
 }
