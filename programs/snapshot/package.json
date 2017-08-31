@@ -1,9 +1,0 @@
-{
-  "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-preset-env": "^1.6.0"
-  },
-  "scripts": {
-    "compile": "babel ./src/*.js ./lib/js/*.js ./lib/vendor/*.js --ignore ./lib/vendor/web3.js --plugins babel-polyfill --out-file ./dist/bundle.js --env production"
-  }
-}
