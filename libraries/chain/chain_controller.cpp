@@ -225,12 +225,12 @@ bool chain_controller::_push_block(const signed_block& new_block)
          for (const auto& cycle : new_block.cycles)
             for (const auto& thread : cycle)
                trxcount += thread.user_input.size();
-         ilog( "producer=[${prod}], blocktime=${bktm}, blocknum=${bknu}, trxcount=${txco}, pendingcount=${pend}, exectime_ms=${extm}", 
-            ("prod", new_block.producer) 
-            ("bktm", new_block.timestamp)
-            ("bknu", new_block.block_num())
-            ("txco", trxcount)
-            ("pend", _pending_transactions.size())
+         ilog( "${producer} #${num} @${time}  | ${trxcount} trx, ${pending} pending, exectime_ms=${extm}", 
+            ("producer", new_block.producer) 
+            ("time", new_block.timestamp)
+            ("num", new_block.block_num())
+            ("trxcount", trxcount)
+            ("pending", _pending_transactions.size())
             ("extm", exec_ms.count())
          );
       }
@@ -720,7 +720,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
 
 void chain_controller::check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures)const {
    if ((_skip_flags & skip_transaction_signatures) && (_skip_flags & skip_authority_check)) {
-      ilog("Skipping auth and sigs checks");
+      //ilog("Skipping auth and sigs checks");
       return;
    }
 
@@ -1147,7 +1147,7 @@ void chain_controller::replay() {
 
    const auto last_block_num = last_block->block_num();
 
-   ilog("Replaying blocks...");
+   ilog("Replaying ${n} blocks...", ("n", last_block_num) );
    for (uint32_t i = 1; i <= last_block_num; ++i) {
       if (i % 5000 == 0)
          std::cerr << "   " << double(i*100)/last_block_num << "%   "<<i << " of " <<last_block_num<<"   \n";
