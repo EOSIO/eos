@@ -10,23 +10,9 @@
  *  @see Table class and table_impl class
  */
 
-/**
- * @defgroup base no ops implementation class
- * @brief no ops base implementation
- * @ingroup databaseCpp
- *
- * @see specialized table_impl classes for i128 and i64 indices
- */
 template<int Primary, int Secondary>
 struct table_impl{};
 
-/**
- * @defgroup table implementation for i128i128 methods in C API
- * @brief specialization for uint128_t primary and secondary indices.
- * @ingroup databaseCpp
- *
- * @see Table class
- */
 template<>
 struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
 
@@ -248,13 +234,6 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
     }
 };
 
-/**
- * @defgroup table implementation for i64 methods in database C API
- * @brief specialization for single uint64_t index table implementation
- * @ingroup databaseCpp
- *
- * @see Table class
- */
 template<>
 struct table_impl<sizeof(uint64_t),0> {
     /**
@@ -919,10 +898,6 @@ struct Table<scope,code,table,Record,PrimaryType,void> {
 };
 
 
-/**
- *  @ingroup databaseCpp
- *  @defgroup Utility macro to define new tables
- */
 #define TABLE2(NAME, SCOPE, CODE, TABLE, TYPE, PRIMARY_NAME, PRIMARY_TYPE, SECONDARY_NAME, SECONDARY_TYPE) \
    using NAME = Table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
    typedef NAME::PrimaryIndex PRIMARY_NAME; \
