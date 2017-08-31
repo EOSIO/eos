@@ -7,26 +7,63 @@ extern "C" {
     * @ingroup contractdev
     * @brief Define API for querying message properties
     *
-    * A EOS.IO message has the following abstract structure:
-    *
-    * ```
-    *   struct Message {
-    *     Name code; ///< primary account whose code defines the action
-    *     Name action; ///< the name of the action.
-    *     Name recipients[]; ///< accounts whose code will be notified (in addition to code)
-    *     Name authorization[]; ///< accounts that have approved this message
-    *     char data[];
-    *   };
-    * ```
-    *
-    * This API enables your contract to inspect the fields on the current message and act accordingly.
-    *
     */
 
    /**
     * @defgroup messagecapi Message C API
     * @ingroup messageapi
     * @brief Define API for querying message properties
+    *
+    *
+    * A EOS.IO message has the following abstract structure:
+    *
+    * ```
+    *   struct Message {
+    *     AccountName code; // the contract defining the primary code to execute for code/type
+    *     FuncName type; // the action to be taken
+    *     AccountPermission[] authorization; // the accounts and permission levels provided
+    *     Bytes data; // opaque data processed by code
+    *   };
+    * ```
+    *
+    * This API enables your contract to inspect the fields on the current message and act accordingly.
+    *
+    * Example:
+    * @code
+    * // Assume this message is used for the following examples:
+    * // {
+    * //  "code": "eos",
+    * //  "type": "transfer",
+    * //  "authorization": [{ "account": "inita", "permission": "active" }],
+    * //  "data": {
+    * //    "from": "inita",
+    * //    "to": "initb",
+    * //    "amount": 1000
+    * //  }
+    * // }
+    *
+    * char buffer[128];
+    * uint32_t total = readMessage(buffer, 5); // buffer contains the content of the message up to 5 bytes
+    * print(total); // Output: 5
+    *
+    * uint32_t msgsize = messageSize();
+    * print(msgsize); // Output: size of the above message's data field
+    *
+    * requireNotice(N(initc)); // initc account will be notified for this message
+    *
+    * requireAuth(N(inita)); // Do nothing since inita exists in the auth list
+    * requireAuth(N(initb)); // Throws an exception
+    *
+    * AccountName code = currentCode();
+    * print(Name(code)); // Output: eos
+    *
+    * assert(Name(currentCode()) === "eos", "This message expects to be received by eos"); // Do nothing
+    * assert(Name(currentCode()) === "inita", "This message expects to be received by inita"); // Throws exception and roll back transfer transaction
+    *
+    * print(now()); // Output: timestamp of last accepted block
+    *
+    * @endcode
+    *
     *
     * @{
     */
@@ -37,11 +74,6 @@ extern "C" {
     *  @param msg - a pointer where up to @ref len bytes of the current message will be copied
     *  @param len - len of the current message to be copied
     *  @return the number of bytes copied to msg
-    *  Example
-    *  @code
-    *  char buffer[128];
-    *  uint32_t total = readMessage(buffer, 64);
-    *  @endcode
     */
    uint32_t readMessage( void* msg, uint32_t len );
 
@@ -50,10 +82,6 @@ extern "C" {
     * This method is useful for dynamically sized messages
     * @brief Get the length of current message's data field
     * @return the length of the current message's data field
-    * Example
-    * @code
-    * uint32_t msgsize = messageSize();
-    * @endcode
     */
    uint32_t messageSize();
 
@@ -61,10 +89,6 @@ extern "C" {
     *  Verifies that @ref name exists in the set of notified accounts on a message. Throws if not found
     *  @brief Verify specified account exists in the set of notified accounts
     *  @param name - name of the account to be verified
-    *  Example
-    *  @code
-    *  requireNotice(N(MyAccount)); // throws exception if MyAccount is not found in recipients list.
-    *  @endcode
     */
    void        requireNotice( AccountName name );
 
@@ -72,10 +96,6 @@ extern "C" {
     *  Verifies that @ref name exists in the set of provided auths on a message. Throws if not found
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
-    *  Example
-    *  @code
-    *  requireAuth(N(MyAccount)); // throws exception if MyAccount is not found in authentication list.
-    *  @endcode
     */
    void        requireAuth( AccountName name );
 
