@@ -1,9 +1,6 @@
 FROM ubuntu:16.04
 LABEL authors="xiaobo (peterwillcn@gmail.com), toonsevrin (toonsevrin@gmail.com)"
 
-
-
-
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
  && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
  && apt-get update \
