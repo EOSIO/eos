@@ -242,6 +242,24 @@ Run `create` command where `PUBLIC_KEY_1` and `PUBLIC_KEY_2` are the values gene
 
 You should get a json response back with a transaction ID confirming it was executed successfully.
 
+Check that account was successfully created: 
+
+```commandline
+./eosc get account exchange
+```
+
+You should get a response similar to this:
+
+```json
+{
+  "name": "exchange",
+  "eos_balance": 0,
+  "staked_balance": 1,
+  "unstaking_balance": 0,
+  "last_unstaking_time": "2106-02-07T06:28:15"
+}
+```
+
 ### Run example contract
 
 With an account for a contract created, you can upload a sample contract:
