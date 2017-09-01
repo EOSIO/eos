@@ -16,7 +16,6 @@ Eos has the following external dependencies, which must be installed on your sys
  - OpenSSL
  - LLVM 4.0 (Ubuntu users must install llvm-4.0 packages from https://apt.llvm.org/)
  - [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
-
 ```
 git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
@@ -151,6 +150,12 @@ cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 make -j4 install
 ```
+
+Also, to use the WASM compiler, eos has an external dependency on 
+ - [binaryen](https://github.com/WebAssembly/binaryen.git)
+   * need to checkout tag 1.37.14
+   * also need to run "make install"
+   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
 
 ### Using the WASM compiler to perform a full build of the project
 
