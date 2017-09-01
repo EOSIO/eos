@@ -149,7 +149,7 @@ This is needed to compile the example contracts inside eos/contracts folder and 
 git clone https://github.com/eosio/eos --recursive
 mkdir -p eos/build && cd eos/build
 export BOOST_ROOT=$HOME/opt/boost_1_64_0
-WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config cmake -DBOOST_ROOT="$BOOST_ROOT" ..
+cmake -DWASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config -DBOOST_ROOT="$BOOST_ROOT" ..
 make -j4
 ```
 
