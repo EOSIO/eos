@@ -5,7 +5,7 @@
 Welcome to the EOS.IO source code repository!
 
 ## Getting Started
-The following instructions overview the process of getting the software, building it, and running a simple test network that produces blocks.
+The following instructions overview the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain.
 
 ## Setting up a build/development environment
 This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
