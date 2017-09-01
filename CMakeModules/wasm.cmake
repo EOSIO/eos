@@ -35,9 +35,7 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
 
     endif()
 
-  endif()
-
-  if (NOT BINARYEN_BIN)
+  else()
 
     message(STATUS "BINARYEN_BIN not defined looking in PATH")
     find_path(BINARYEN_BIN
