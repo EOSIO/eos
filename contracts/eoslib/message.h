@@ -86,8 +86,8 @@ extern "C" {
    uint32_t messageSize();
 
    /**
-    *  Verifies that @ref name exists in the set of notified accounts on a message. Throws if not found
-    *  @brief Verify specified account exists in the set of notified accounts
+    *  Add the specified account to set of accounts to be notified
+    *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
    void        requireNotice( AccountName name );
