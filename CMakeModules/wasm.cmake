@@ -31,9 +31,7 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
 
     if(EXISTS "${BINARYEN_ROOT}/bin/s2wasm")
 
-      set(BINARYEN_BIN $ENV{BINARYEN_ROOT}/bin)
-
-      message(STATUS "BINARYEN_BIN => " ${BINARYEN_BIN})
+      set(BINARYEN_BIN ${BINARYEN_ROOT}/bin)
 
     endif()
 
@@ -41,7 +39,7 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
 
   if (NOT BINARYEN_BIN)
 
-    message(STATUS "BINARYEN_BIN not defined looking in PATH => " ${PATH})
+    message(STATUS "BINARYEN_BIN not defined looking in PATH")
     find_path(BINARYEN_BIN
               NAMES s2wasm
               ENV PATH )
@@ -50,9 +48,10 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
       unset(BINARYEN_BIN)
 
     endif()
-    message(STATUS "BINARYEN_BIN => " ${BINARYEN_BIN})
 
   endif()
+
+  message(STATUS "BINARYEN_BIN => " ${BINARYEN_BIN})
 
 endif()
 
