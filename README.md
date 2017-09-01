@@ -7,33 +7,33 @@ Welcome to the EOS.IO source code repository!
 ## Getting Started
 The following instructions overview the process of getting the software, building it, and running a simple test network that produces blocks.
 
-### Setting up a build/development environment
-This project is written primarily in C++14 and uses CMake as its build system. An up-to-date C++ toolchain (such as Clang or GCC) and the latest version of CMake is recommended.
+## Setting up a build/development environment
+This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
 
 Dependencies:
-* GCC 5.4.0 or Clang 4.0.0
+* Clang 4.0.0
 * CMake 3.5.1
 * Boost 1.64
 * LLVM 4.0
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 
-#### Clean install Ubuntu 16.10
+### Clean install Ubuntu 16.10
 
 Install the development toolkit:
 
-```
+```commandline
 sudo apt-get update
-sudo apt-get install gcc-5 g++-5 gcc g++ cmake make \
-                     libbz2-dev libdb++-dev libdb-dev \
-                     libssl-dev openssl libreadline-dev \
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+sudo apt-get install clang-4.0 lldb-4.0 cmake make \
+                     libbz2-dev libssl-dev libgmp3-dev \
                      autotools-dev build-essential \
-                     g++ libbz2-dev libicu-dev python-dev \
+                     libbz2-dev libicu-dev python-dev \
                      autoconf libtool git
 ```
 
 Install Boost 1.64:
 
-```
+```commandline
 cd ~
 export BOOST_ROOT=$HOME/opt/boost_1_64_0
 wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
@@ -45,7 +45,7 @@ cd boost_1_64_0/
 
 As well as [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
 
-```
+```commandline
 cd ~
 git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
@@ -55,17 +55,9 @@ make
 sudo make install
 ```
 
-And, lastly, LLVM 4.0:
-
-```
-cd ~
-wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-apt-get install clang-4.0 lldb-4.0
-```
-
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets.
 
-```
+```commandline
 mkdir  ~/wasm-compiler
 cd ~/wasm-compiler
 git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
@@ -76,6 +68,58 @@ mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 make -j4 install
+```
+
+## macOS Sierra 10.12.6
+
+macOS additional Dependencies:
+* Brew
+* Newest XCode
+
+Upgrade your XCode to the newest version:
+
+```commandline
+xcode-select --install
+```
+
+Install homebrew and install the dependencies:
+
+```commandline
+brew install automake libtool boost openssl llvm
+```
+
+Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
+        
+```commandline
+cd ~
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
+./autogen.sh
+./configure
+make
+sudo make install
+```
+
+Build LLVM and clang for WASM:
+
+```commandline
+mkdir  ~/wasm-compiler
+cd ~/wasm-compiler
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+cd llvm/tools
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+cd ..
+mkdir build
+cd build
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+make -j4 install
+```
+
+Add WASM_LLVM_CONFIG and LLVM_DIR to your .bash_profile:
+
+```commandline
+echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
 ```
 
 ### Getting the code
@@ -92,7 +136,9 @@ If a repo is cloned without the `--recursive` flag, the submodules can be retrie
 The WASM_LLVM_CONFIG environment variable is used to find our recently built WASM compiler.
 This is needed to compile the example contracts inside eos/contracts folder and their respective tests.
 
-```
+#### On Ubuntu:
+
+```commandline
 git clone https://github.com/eosio/eos --recursive
 mkdir -p eos/build && cd eos/build
 export BOOST_ROOT=$HOME/opt/boost_1_64_0
@@ -103,6 +149,15 @@ make -j4
 Out-of-source builds are also supported. To override clang's default choice in compiler, add these flags to the CMake command:
 
 `-DCMAKE_CXX_COMPILER=/path/to/c++ -DCMAKE_C_COMPILER=/path/to/cc`
+
+#### On macOS:
+
+```commandline
+git clone https://github.com/eosio/eos --recursive
+mkdir -p eos/build && cd eos/build
+cmake ..
+make -j4
+```
 
 For a debug build, add `-DCMAKE_BUILD_TYPE=Debug`. Other common build types include `Release` and `RelWithDebInfo`.
 
@@ -142,6 +197,9 @@ producer-name = initt
 producer-name = initu
 # Load the block producer plugin, so we can produce blocks
 plugin = eos::producer_plugin
+# As well as API and HTTP plugins
+plugin = eos::chain_api_plugin
+plugin = eos::http_plugin
 ```
 
 When running eosd in the docker container you need to instruct the cpp socket to accept connections from all interfaces.  Adjust any address you plan to use by changing from `127.0.0.1` to `0.0.0.0`.
@@ -154,13 +212,23 @@ http-server-endpoint = 0.0.0.0:8888
 ```
 
 After starting the Docker this can be tested from container's host machine:
-```bash
+```commandline
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
 Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, these instructions will be updated to show how to create an example multi-node testnet.
 
-### Run in docker
+### Run example contracts
+
+With `eosd` running and producing blocks, you can run sample contracts located in `contracts` folder
+
+```commandline
+cd ~/eos/build/programs/eosc/ 
+./eosc contract exchange ../../../contracts/exchange/exchange.wast ../../../contracts/exchange/exchange.abi
+./eosc contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
+```
+
+## Run in docker
 
 Simple and fast setup of EOS on Docker is also available. Firstly, install dependencies:
 
@@ -170,7 +238,7 @@ Simple and fast setup of EOS on Docker is also available. Firstly, install depen
 
 Build eos image
 
-```
+```commandline
 cd eos/Docker
 cp ../genesis.json .
 docker build --rm -t eosio/eos .
@@ -178,21 +246,20 @@ docker build --rm -t eosio/eos .
 
 Start docker
 
-```
+```commandline
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
 docker-compose -f docker-compose.yml up
 ```
 
-Run example contracts
+### Run example contracts
 
-```
+```commandline
 cd /data/store/eos/contracts/exchange
 docker exec docker_eos_1 eosc contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
 
 cd /data/store/eos/contracts/currency 
 docker exec docker_eos_1 eosc contract currency contracts/currency/currency.wast contracts/currency/currency.abi
-
 ```
 
 Done
