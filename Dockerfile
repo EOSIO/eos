@@ -1,6 +1,9 @@
 FROM ubuntu:16.04
 LABEL authors="xiaobo (peterwillcn@gmail.com), toonsevrin (toonsevrin@gmail.com)"
 
+
+
+
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
  && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
  && apt-get update \
@@ -46,7 +49,7 @@ RUN mkdir -p /opt/eos/bin/data-dir && mkdir -p /tmp/eos/build/
 
 COPY . /tmp/eos/
 
-RUN cd /tmp/eos/build && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
+RUN cd /tmp/eos/build && cmake WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j$(nproc) && make install && mv ../contracts / \
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
