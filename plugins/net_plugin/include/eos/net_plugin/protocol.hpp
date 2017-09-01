@@ -40,12 +40,7 @@ namespace eos {
       uint32_t end_block;
    };
 
-   struct peer_message {
-     vector<fc::sha256> peers;
-   };
-
    using net_message = static_variant<handshake_message,
-                                      peer_message,
                                       notice_message,
                                       request_message,
                                       sync_request_message,
@@ -67,7 +62,6 @@ FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
 FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
-FC_REFLECT( eos::peer_message, (peers) )
 
 /**
  *

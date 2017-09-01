@@ -143,6 +143,7 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
 int main( int argc, char** argv ) {
    CLI::App app{"Command Line Interface to Eos Daemon"};
    app.require_subcommand();
+   app.add_option( "-p,--port", port, "the port where eosd is running", true );
 
    // Create subcommand
    auto create = app.add_subcommand("create", "Create various items, on and off the blockchain", false);

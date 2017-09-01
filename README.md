@@ -43,17 +43,12 @@ cd boost_1_64_0/
 ./b2 install
 ```
 
-As well as [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
-
-```commandline
-cd ~
-git clone https://github.com/cryptonomex/secp256k1-zkp.git
-cd secp256k1-zkp
-./autogen.sh
-./configure
-make
-sudo make install
-```
+### Installing Dependencies
+Eos has the following external dependencies, which must be installed on your system:
+ - Boost 1.64
+ - OpenSSL
+ - LLVM 4.0 (Ubuntu users must install llvm-4.0 packages from https://apt.llvm.org/)
+ - [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets.
 
@@ -240,6 +235,10 @@ Run `create` command where `PUBLIC_KEY_1` and `PUBLIC_KEY_2` are the values gene
 ./eosc create account inita exchange PUBLIC_KEY_1 PUBLIC_KEY_2 
 ```
 
+sudo rm -rf /data/store/eos # options 
+sudo mkdir -p /data/store/eos
+docker-compose -f Docker/docker-compose.yml up
+
 You should get a json response back with a transaction ID confirming it was executed successfully.
 
 Check that account was successfully created: 
@@ -293,7 +292,13 @@ sudo mkdir -p /data/store/eos
 docker-compose -f docker-compose.yml up
 ```
 
-When running eosd in the docker container you need to instruct the cpp socket to accept connections from all interfaces.  Adjust any address you plan to use by changing from `127.0.0.1` to `0.0.0.0` in your `Docker/config.ini` file.
+Also, to use the WASM compiler, eos has an external dependency on 
+ - [binaryen](https://github.com/WebAssembly/binaryen.git)
+   * need to checkout tag 1.37.14
+   * also need to run "make install"
+   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
+
+### Using the WASM compiler to perform a full build of the project
 
 For example:
 

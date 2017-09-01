@@ -184,7 +184,7 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
            ("p", block.producer));
    }
 
-   return chain().push_block(block);
+   return chain().push_block(block, my->skip_flags);
 }
 
 void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
