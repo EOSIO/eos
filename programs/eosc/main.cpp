@@ -193,7 +193,7 @@ int main( int argc, char** argv ) {
    createAccount->add_option("name", name, "The name of the new account")->required();
    createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
    createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
-   createAccount->add_option("sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   createAccount->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    createAccount->set_callback([&] {
       create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), sign);
    });
@@ -263,7 +263,7 @@ int main( int argc, char** argv ) {
          ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
               ->check(CLI::ExistingFile);
-   contractSubcommand->add_option("sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   contractSubcommand->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << "Reading WAST..." << std::endl;
@@ -296,7 +296,7 @@ int main( int argc, char** argv ) {
    transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
    transfer->add_option("amount", amount, "The amount of EOS to send")->required();
    transfer->add_option("memo", memo, "The memo for the transfer");
-   transfer->add_option("sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   transfer->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    transfer->set_callback([&] {
       SignedTransaction trx;
       trx.scope = sort_names({sender,recipient});
@@ -521,7 +521,7 @@ int main( int argc, char** argv ) {
    messageSubcommand->add_option("-p,--permission", permissions,
                                  "An account and permission level to authorize, as in 'account@permission'");
    messageSubcommand->add_option("-s,--scope", scopes, "An account in scope for this operation", true);
-   messageSubcommand->add_option("sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   messageSubcommand->add_flag("--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    messageSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
@@ -570,10 +570,17 @@ int main( int argc, char** argv ) {
        return app.exit(e);
    } catch (const fc::exception& e) {
       auto errorString = e.to_detail_string();
-      if (errorString.find("Connection refused") != string::npos)
-         elog("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port));
-      else
+      if (errorString.find("Connection refused") != string::npos) {
+         if (errorString.find(fc::json::to_string(port)) != string::npos) {
+            elog("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port));
+         } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
+            elog("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port));
+         } else {
+            elog("Failed to connect with error: ${e}", ("e", e.to_detail_string()));
+         }
+      } else {
          elog("Failed with error: ${e}", ("e", e.to_detail_string()));
+      }
       return 1;
    }
 
