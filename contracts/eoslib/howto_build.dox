@@ -42,6 +42,12 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j4 install
 ```
 
+Also, to use the WASM compiler, eos has an external dependency on
+ - [binaryen](https://github.com/WebAssembly/binaryen.git)
+   * need to checkout tag 1.37.14
+   * also need to run "make install"
+   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
+
 ### Getting the code
 To download all of the code, download Eos and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
 
