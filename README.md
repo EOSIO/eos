@@ -82,10 +82,17 @@ Upgrade your XCode to the newest version:
 xcode-select --install
 ```
 
-Install homebrew and install the dependencies:
+Install homebrew:
 
 ```commandline
-brew install automake libtool boost openssl llvm
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
+
+Install the dependencies:
+
+```commandline
+brew update
+brew install git automake libtool boost openssl llvm
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
