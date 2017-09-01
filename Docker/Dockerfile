@@ -1,5 +1,5 @@
 FROM ubuntu:16.04
-MAINTAINER xiaobo (peterwillcn@gmail.com)
+MAINTAINER xiaobo <peterwillcn@gmail.com>
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
  && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -44,7 +44,7 @@ RUN cd /tmp && mkdir wasm-compiler && cd wasm-compiler \
 
 RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
   && mkdir -p /opt/eos/bin/data-dir && cd eos && mkdir build && cd build \
-  && WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
+  && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j$(nproc) && make install && mv ../contracts / \
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
