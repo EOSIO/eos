@@ -155,6 +155,7 @@ Also, to use the WASM compiler, eos has an external dependency on
  - [binaryen](https://github.com/WebAssembly/binaryen.git)
    * need to checkout tag 1.37.14
    * also need to run "make install"
+   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
 
 ### Using the WASM compiler to perform a full build of the project
 

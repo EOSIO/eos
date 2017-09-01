@@ -26,8 +26,38 @@ else()
   set(WASM_LLVM_LINK $ENV{WASM_LLVM_LINK})
 endif()
 
-# TODO: Check if compiler is able to generate wasm32
 if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLVM_LINK}" STREQUAL "") )
+  if( NOT "${BINARYEN_ROOT}" STREQUAL "" )
+
+    if(EXISTS "${BINARYEN_ROOT}/bin/s2wasm")
+
+      set(BINARYEN_BIN $ENV{BINARYEN_ROOT}/bin)
+
+      message(STATUS "BINARYEN_BIN => " ${BINARYEN_BIN})
+
+    endif()
+
+  endif()
+
+  if (NOT BINARYEN_BIN)
+
+    message(STATUS "BINARYEN_BIN not defined looking in PATH => " ${PATH})
+    find_path(BINARYEN_BIN
+              NAMES s2wasm
+              ENV PATH )
+    if (BINARYEN_BIN AND NOT EXISTS ${BINARYEN_ROOT}/s2wasm)
+
+      unset(BINARYEN_BIN)
+
+    endif()
+    message(STATUS "BINARYEN_BIN => " ${BINARYEN_BIN})
+
+  endif()
+
+endif()
+
+# TODO: Check if compiler is able to generate wasm32
+if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLVM_LINK}" STREQUAL "" OR NOT BINARYEN_BIN) )
   set(WASM_TOOLCHAIN TRUE)
 endif()
 
@@ -94,7 +124,7 @@ macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 1024 ${target}.s
+    COMMAND ${BINARYEN_BIN}/s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 1024 ${target}.s
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
