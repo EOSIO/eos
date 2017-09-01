@@ -1,6 +1,6 @@
 [toc]
 
-#EOS Testnet
+# EOS Testnet
 To date, all work done to experiment with the EOS blockchain has been performed using a single instance of eosd hosting all 21 block producers. While this is a perfectly valid solution for validating features of the blockchain, developing new contracts, or whatever, it does not scale. Nor does it expose the sort of issues raised when contract and block data must be shared across multiple instances. Providing the ability to scale involves deploying multiple eosd nodes across many hosts and lining then into a peer-to-peer (p2p) network. Composing this network involves tailoring and distributing configuration files, coordinating starts and stops and other tasks.
 
 Doing this manually is a tedious task and easily error prone. Fortunately a solution is provided, in the form of the Launcher application, described below.
@@ -33,23 +33,23 @@ Network topology or "shape" describes how the nodes are connected in order to sh
 
 The Launcher has definitions of three different network "shapes" based on inter-nodal connections, which can be selected by a command line option, or you can supply your own network topology by editing the Launcher generated configuration file.
 
-####Ring network
+#### Ring network
 This is the simplest network, where each node identifies just the node next to it as it's only peer. 
 
-####Star network
+#### Star network
 A "star" is intended to support the use larger number nodes in the testnet. In this case the number of peers connected to a node and the distribution of those nodes varies based on the number of nodes in the network.
 
-####Mesh network
+#### Mesh network
 In a "mesh" network, each node is connected to as many peer nodes as possible.
 
-#The Launcher Application
+# The Launcher Application
 To address the complexity implied by distributing multiple eosd nodes across a LAN or a wider network, the launcher application was created. 
 
 Based on a handful of command line arguments the Launcher is able to compose per-node configuration files, distribute these files securely amongst the peer hosts, then start up the multiple instances of eosd.
 
 Eosd instances started this way have their output logged in individual text files. Finally the launcher application is also able to shut down some or all of the test network. 
 
-##Running the Launcher application
+## Running the Launcher application
 
 The launcher program is used to configure and deploy producing and non-producing eosd nodes that talk to each other using configured routes. The configuration for each node is stored in separate directories, permitting multiple nodes to be active on the same host, assuming the machine has sufficient memory and disk space for multiple eosd instances. The launcher makes use of multiple configuration sources in order to deploy a testnet. A handful of command line arguments can be used to set up simple local networks. 
 
@@ -140,7 +140,7 @@ The ssh helper fields are paths to ssh and scp, an identity if necessary, and an
 
 The rest of the testnet.json file is the collection of node descriptors. The fragment shown above was created with the command line `programs/launcher/launcher -p6 -s mesh -o testnet.json` and then edited to refer to a remote host named "remoteserv."
 
-###Elements Of The JSON File
+### Elements Of The JSON File
 This table describes all of the key/value pairs used in the testnet.json file.
 
 |Value    | Description
