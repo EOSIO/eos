@@ -289,14 +289,7 @@ After starting the Docker this can be tested from container's host machine:
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-### Run example contracts
-
+You can run the `eosc` commands via `docker exec` command. For example:
 ```commandline
-cd /data/store/eos/contracts/exchange
 docker exec docker_eos_1 eosc contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
-
-cd /data/store/eos/contracts/currency 
-docker exec docker_eos_1 eosc contract currency contracts/currency/currency.wast contracts/currency/currency.abi
 ```
-
-Done
