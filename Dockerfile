@@ -46,7 +46,7 @@ RUN mkdir -p /opt/eos/bin/data-dir && mkdir -p /tmp/eos/build/
 
 COPY . /tmp/eos/
 
-RUN cd /tmp/eos/build && cmake WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
+RUN cd /tmp/eos/build && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j$(nproc) && make install && mv ../contracts / \
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
