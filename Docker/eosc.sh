@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Usage:
-# Go into cmd loop: sudo sh eosc.sh
-# Run single cmd:  sudo sh eosc.sh <eosc paramers>
+# Go into cmd loop: sudo ./eosc.sh
+# Run single cmd:  sudo ./eosc.sh <eosc paramers>
 
 PREFIX="docker exec docker_eos_1 eosc"
 if [ -z $1 ] ; then
   while :
   do
-    read  -p "eosc " cmd
+    read -e -p "eosc " cmd
+    history -s "$cmd"
     $PREFIX $cmd
   done
 else
