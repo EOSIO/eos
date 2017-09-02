@@ -212,7 +212,7 @@ int main( int argc, char** argv ) {
    auto getServants = get->add_subcommand("servants", "Retrieve accounts which are servants of a given account ", false);
    getServants->add_option("account", controllingAccount, "The name of the controlling account")->required();
    getServants->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "accountName", controllingAccount);
+      auto arg = fc::mutable_variant_object( "controlling_account", controllingAccount);
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
    });
 
@@ -223,6 +223,23 @@ int main( int argc, char** argv ) {
    getTransaction->set_callback([&] {
       auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
+   });
+
+   // get transactions
+   string account_name;
+   string skip_seq;
+   string num_seq;
+   auto getTransactions = get->add_subcommand("transactions", "Retrieve all transactions with specific account name referenced in their scope", false);
+   getTransactions->add_option("account_name", account_name, "Name of account to query on")->required();
+   getTransactions->add_option("skip_seq", skip_seq, "Number of most recent transactions to skip (0 would start at most recent transaction)");
+   getTransactions->add_option("num_seq", num_seq, "Number of transactions to return");
+   getTransactions->set_callback([&] {
+      auto arg = (skip_seq.empty())
+                  ? fc::mutable_variant_object( "account_name", account_name)
+                  : (num_seq.empty())
+                     ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
+                     : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
+      std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
    });
 
    // Contract subcommand
