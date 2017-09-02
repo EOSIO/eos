@@ -1,4 +1,4 @@
-#include <eos/wallet/wallet.hpp>
+#include <eos/wallet_plugin/wallet.hpp>
 #include <eos/utilities/key_conversion.hpp>
 
 #include <algorithm>
@@ -58,11 +58,8 @@ public:
    wallet_api_impl( wallet_api& s, const wallet_data& initial_data )
       : self( s )
    {
-      _wallet.ws_server = initial_data.ws_server;
-      _wallet.ws_port = initial_data.ws_port;
-      _wallet.ws_user = initial_data.ws_user;
-      _wallet.ws_password = initial_data.ws_password;
    }
+
    virtual ~wallet_api_impl()
    {}
 
@@ -191,6 +188,10 @@ public:
          // http://en.wikipedia.org/wiki/Most_vexing_parse
          //
          ofstream outfile{ wallet_filename };
+         if (!outfile) {
+            elog("Unable to open file: ${fn}", ("fn", wallet_filename));
+            FC_THROW("Unable to open file: ${fn}", ("fn", wallet_filename));
+         }
          outfile.write( data.c_str(), data.length() );
          outfile.flush();
          outfile.close();
@@ -316,12 +317,23 @@ string wallet_api::get_private_key( public_key_type pubkey )const
    return key_to_wif( my->get_private_key( pubkey ) );
 }
 
+optional<fc::ecc::private_key> wallet_api::try_get_private_key(const public_key_type& id)const
+{
+   return my->try_get_private_key(id);
+}
+
+
 pair<public_key_type,string> wallet_api::get_private_key_from_password( string account, string role, string password )const {
    auto seed = account + role + password;
    FC_ASSERT( seed.size() );
    auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
    auto priv = fc::ecc::private_key::regenerate( secret );
    return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
+}
+
+void wallet_api::set_wallet_filename(string wallet_filename)
+{
+   my->_wallet_filename = wallet_filename;
 }
 
 } } // eos::wallet

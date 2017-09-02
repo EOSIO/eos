@@ -168,21 +168,11 @@ types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountN
 }
 
 void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
-   auto GetAuthority = [this](const types::AccountPermission& permission) {
-      auto key = boost::make_tuple(permission.account, permission.permission);
-      return db.get<permission_object, by_owner>(key).auth;
-   };
-   auto checker = MakeAuthorityChecker(GetAuthority, get_global_properties().configuration.authDepthLimit,
-                                       fixture.available_keys());
-
-   for (const auto& message : trx.messages)
-      for (const auto& authorization : message.authorization)
-         if (!checker.satisfied(authorization))
-            elog("Attempting to automatically sign transaction, but testing_fixture doesn't have the keys!");
-
-   for (const auto& key : checker.used_keys())
+   auto keys = get_required_keys(trx, fixture.available_keys());
+   for (const auto& k : keys) {
       // TODO: Use a real chain_id here
-      trx.sign(fixture.get_private_key(key), chain_id_type{});
+      trx.sign(fixture.get_private_key(k), chain_id_type{});
+   }
 }
 
 fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
