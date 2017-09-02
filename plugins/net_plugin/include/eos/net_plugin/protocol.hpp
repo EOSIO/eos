@@ -21,17 +21,15 @@ namespace eos {
 
    struct notice_message {
       vector<transaction_id_type> known_trx;
-      vector<block_id_type>       known_blocks;
    };
 
 
    struct request_message {
       vector<transaction_id_type> req_trx;
-      vector<block_id_type>       req_blocks;
    };
 
    struct block_summary_message {
-      signed_block                block;
+      block_id_type             block;
       vector<transaction_id_type> trx_ids;
    };
 
@@ -59,8 +57,8 @@ FC_REFLECT( eos::handshake_message,
             (os)(agent) )
 
 FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
-FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
-FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
+FC_REFLECT( eos::notice_message, (known_trx) )
+FC_REFLECT( eos::request_message, (req_trx) )
 FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
 
 /**
