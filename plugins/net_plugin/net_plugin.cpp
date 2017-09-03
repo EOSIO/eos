@@ -142,8 +142,12 @@ namespace eos {
     }
 
     ~connection() {
-       wlog( "released connection" );
+      if (peer_addr.empty())
+        wlog( "released connection from client" );
+      else
+        wlog( "released connection to server at ${addr}", ("addr", peer_addr) );
     }
+
 
     block_state_index              block_state;
     transaction_state_index        trx_state;
@@ -366,7 +370,9 @@ namespace eos {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
           if( !ec ) {
-            start_session( std::make_shared<connection>( socket ) );
+            connection_ptr c = std::make_shared<connection>( socket );
+            connections.insert( c );
+            start_session( c );
             start_listen_loop();
           } else {
             elog( "Error accepting connection: ${m}", ("m", ec.message() ) );
