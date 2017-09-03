@@ -28,6 +28,16 @@ struct shared_authority {
    UInt32                                        threshold = 0;
    shared_vector<types::AccountPermissionWeight> accounts;
    shared_vector<types::KeyPermissionWeight>     keys;
+
+   Authority to_authority()const {
+      Authority auth;
+      auth.threshold = threshold;
+      auth.keys.reserve(keys.size());
+      auth.accounts.reserve(accounts.size());
+      for( const auto& k : keys ) { auth.keys.emplace_back( k ); }
+      for( const auto& a : accounts ) { auth.accounts.emplace_back( a ); }
+      return auth;
+   }
 };
 
 inline bool operator< (const types::AccountPermission& a, const types::AccountPermission& b) {
