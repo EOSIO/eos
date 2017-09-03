@@ -138,6 +138,12 @@ If a repo is cloned without the `--recursive` flag, the submodules can be retrie
 The WASM_LLVM_CONFIG environment variable is used to find our recently built WASM compiler.
 This is needed to compile the example contracts inside eos/contracts folder and their respective tests.
 
+Also, to use the WASM compiler, eos has an external dependency on 
+ - [binaryen](https://github.com/WebAssembly/binaryen.git)
+   * need to checkout tag 1.37.21
+   * also need to run "make install"
+   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
+
 #### On Ubuntu:
 
 ```commandline
@@ -268,7 +274,7 @@ cd ~/eos/build/programs/eosc/
 ./eosc contract exchange ../../../contracts/exchange/exchange.wast ../../../contracts/exchange/exchange.abi
 ```
 
-## Run in docker
+## Run eos in docker
 
 Simple and fast setup of EOS on Docker is also available. Firstly, install dependencies:
 
@@ -299,7 +305,7 @@ Get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-### Docker run contract example
+### Run contract in docker example
 
 You can run the `eosc` commands via `docker exec` command. For example:
 ```

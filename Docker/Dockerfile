@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 LABEL maintainer="xiaobo <peterwillcn@gmail.com>" version="0.1.1" \
   description="This is eosio/eos image" website="https://eos.io" \
-  reviews="toonsevrin (toonsevrin@gmail.com), etc..."
+  reviewers="toonsevrin (toonsevrin@gmail.com), etc..."
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -48,26 +48,27 @@ RUN cd /tmp && wget https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.
   && cd binaryen-1.37.21 && cmake . && make && mkdir /opt/binaryen && mv /tmp/binaryen-1.37.21/bin /opt/binaryen \
   && ln -s /opt/binaryen/bin/* /usr/local && rm -rf /tmp/*
 
-# Following the official master branch code takes a long time to download, depending on the network speed.
+# ** Following the official master branch code takes a long time to download, depending on the network speed.
+
 #RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
 #  && mkdir -p /opt/eos/bin/data-dir && cd eos && mkdir build && cd build \
 #  && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
 #  && make -j$(nproc) && make install && mv ../contracts / \
 #  && ln -s /opt/eos/bin/eos* /usr/local/bin \
 #  && rm -rf /tmp/eos*
-#COPY config.ini genesis.json /
-#COPY entrypoint.sh /sbin
 
 RUN mkdir -p /opt/eos/bin/data-dir && mkdir -p /tmp/eos/build/
-# Using local code saves considerable time, but does't guarantee that your code stays up-to-date
+
+# ** Using local code saves considerable time, but does't guarantee that your code stays up-to-date
+
 COPY . /tmp/eos/
 RUN cd /tmp/eos/build && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j$(nproc) && make install && mv ../contracts / \
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
+
 COPY Docker/config.ini genesis.json /
 COPY Docker/entrypoint.sh /sbin
-
 RUN chmod +x /sbin/entrypoint.sh
 VOLUME /opt/eos/bin/data-dir
 EXPOSE 9876 8888
