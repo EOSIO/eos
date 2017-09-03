@@ -20,6 +20,7 @@ namespace eos {
    using chain::public_key_type;
    using fc::optional;
    using boost::container::flat_set;
+   using chain::Asset;
 
 namespace chain_apis {
 struct empty{};
@@ -64,9 +65,9 @@ public:
 
    struct get_account_results {
       Name                       name;
-      uint64_t                   eos_balance       = 0;
-      uint64_t                   staked_balance    = 0;
-      uint64_t                   unstaking_balance = 0;
+      Asset                      eos_balance = Asset(0,EOS_SYMBOL);
+      Asset                      staked_balance;
+      Asset                      unstaking_balance;
       fc::time_point_sec         last_unstaking_time;
       vector<permission>         permissions;
       optional<producer_info>    producer;
