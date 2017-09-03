@@ -138,6 +138,12 @@ If a repo is cloned without the `--recursive` flag, the submodules can be retrie
 The WASM_LLVM_CONFIG environment variable is used to find our recently built WASM compiler.
 This is needed to compile the example contracts inside eos/contracts folder and their respective tests.
 
+Also, to use the WASM compiler, eos has an external dependency on 
+ - [binaryen](https://github.com/WebAssembly/binaryen.git)
+   * need to checkout tag 1.37.21
+   * also need to run "make install"
+   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
+
 #### On Ubuntu:
 
 ```commandline
@@ -268,7 +274,7 @@ cd ~/eos/build/programs/eosc/
 ./eosc contract exchange ../../../contracts/exchange/exchange.wast ../../../contracts/exchange/exchange.abi
 ```
 
-## Run in docker
+## Run eos in docker
 
 Simple and fast setup of EOS on Docker is also available. Firstly, install dependencies:
 
@@ -278,41 +284,30 @@ Simple and fast setup of EOS on Docker is also available. Firstly, install depen
 
 Build eos image
 
-```commandline
-cd eos/Docker
-cp ../genesis.json .
-docker build --rm -t eosio/eos .
+```
+git clone https://github.com/EOSIO/eos.git --recursive
+cd eos
+cp genesis.json Docker 
+docker build -t eosio/eos -f Docker/Dockerfile .
 ```
 
-Start docker
+Starting the Docker this can be tested from container's host machine:
 
-```commandline
+```
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
-docker-compose -f docker-compose.yml up
+docker-compose -f Docker/docker-compose.yml up
 ```
 
-Also, to use the WASM compiler, eos has an external dependency on 
- - [binaryen](https://github.com/WebAssembly/binaryen.git)
-   * need to checkout tag 1.37.14
-   * also need to run "make install"
-   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
-
-### Using the WASM compiler to perform a full build of the project
-
-For example:
+Get chain info
 
 ```
-# The local IP and port to listen for incoming http connections.
-http-server-endpoint = 0.0.0.0:8888
-```
-
-After starting the Docker this can be tested from container's host machine:
-```commandline
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
+### Run contract in docker example
+
 You can run the `eosc` commands via `docker exec` command. For example:
-```commandline
+```
 docker exec docker_eos_1 eosc contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
 ```
