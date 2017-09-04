@@ -49,6 +49,12 @@
     }
   ],
   "actions": [{
+      "action": "cancelbuy",
+      "type": "OrderID"
+    },{
+      "action": "cancelsell",
+      "type": "OrderID"
+    },{
       "action": "buy",
       "type": "buy_order"
     },{
