@@ -19,4 +19,7 @@ if [ -d '/opt/eos/bin/data-dir/contracts' ]; then
     cp -r /contracts /opt/eos/bin/data-dir
 fi
 
-exec /opt/eos/bin/eosd $@
+if [ $EOS_APP == "walletd" ]; then
+  exec /opt/eos/bin/eos-walletd $@
+else
+  exec /opt/eos/bin/eosd $@
