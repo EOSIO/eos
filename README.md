@@ -44,6 +44,18 @@ cd boost_1_64_0/
 ./b2 install
 ```
 
+Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
+        
+```commandline
+cd ~
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
+./autogen.sh
+./configure
+make
+sudo make install
+```
+
 ### LLVM with WASM build target
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets.
@@ -261,7 +273,7 @@ You should get a response similar to this:
 }
 ```
 
-### Run example contract
+### Upload example contract
 
 With an account for a contract created, you can upload a sample contract:
 
