@@ -374,6 +374,8 @@ cp genesis.json Docker
 docker build -t eosio/eos -f Docker/Dockerfile .
 ```
 
+We recommend 6GB+ of memory allocated to Docker to successfully build the image.
+
 Starting the Docker this can be tested from container's host machine:
 
 ```
