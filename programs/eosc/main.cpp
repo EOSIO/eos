@@ -12,6 +12,7 @@
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/range/algorithm/copy.hpp>
 
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
@@ -556,9 +557,9 @@ int main( int argc, char** argv ) {
       });
 
       SignedTransaction trx;
-      transaction_emplace_serialized_message(trx, contract, action,
-                                                      vector<types::AccountPermission>{fixedPermissions.front(),
-                                                                                       fixedPermissions.back()},
+      vector<types::AccountPermission> accountPermissions;
+      boost::copy(fixedPermissions, std::back_inserter(accountPermissions)); 
+      transaction_emplace_serialized_message(trx, contract, action, accountPermissions,
                                                       result.get_object()["binargs"].as<Bytes>());
       trx.scope.assign(scopes.begin(), scopes.end());
       ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx, sign))));
