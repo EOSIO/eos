@@ -7,6 +7,8 @@
 
 #include <eos/database_plugin/database_plugin.hpp>
 
+#include <boost/container/flat_set.hpp>
+
 namespace fc { class variant; }
 
 namespace eos {
@@ -14,8 +16,10 @@ namespace eos {
    using std::unique_ptr;
    using namespace appbase;
    using chain::Name;
-   using fc::optional;
    using chain::uint128_t;
+   using chain::public_key_type;
+   using fc::optional;
+   using boost::container::flat_set;
 
 namespace chain_apis {
 struct empty{};
@@ -92,6 +96,16 @@ public:
       
    abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
 
+
+   struct get_required_keys_params {
+      fc::variant transaction;
+      flat_set<public_key_type> available_keys;
+   };
+   struct get_required_keys_result {
+      flat_set<public_key_type> required_keys;
+   };
+
+   get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
 
 
    struct get_block_params {
@@ -276,3 +290,5 @@ FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(a
 FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
 FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
 FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
+FC_REFLECT( eos::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
+FC_REFLECT( eos::chain_apis::read_only::get_required_keys_result, (required_keys) )

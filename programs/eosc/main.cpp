@@ -33,6 +33,12 @@ string program = "eosc";
 string host = "localhost";
 uint32_t port = 8888;
 
+// restricting use of wallet to localhost
+const string wallet_host = "localhost";
+
+// TODO: make wallet_port a cli option when above host/port is made a cli option
+constexpr uint32_t wallet_port = 8899;
+
 const string chain_func_base = "/v1/chain";
 const string get_info_func = chain_func_base + "/get_info";
 const string push_txn_func = chain_func_base + "/push_transaction";
@@ -40,12 +46,26 @@ const string push_txns_func = chain_func_base + "/push_transactions";
 const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
 const string get_block_func = chain_func_base + "/get_block";
 const string get_account_func = chain_func_base + "/get_account";
+const string get_required_keys = chain_func_base + "/get_required_keys";
 
 const string account_history_func_base = "/v1/account_history";
 const string get_transaction_func = account_history_func_base + "/get_transaction";
 const string get_transactions_func = account_history_func_base + "/get_transactions";
 const string get_key_accounts_func = account_history_func_base + "/get_key_accounts";
 const string get_controlled_accounts_func = account_history_func_base + "/get_controlled_accounts";
+
+const string wallet_func_base = "/v1/wallet";
+const string wallet_create = wallet_func_base + "/create";
+const string wallet_open = wallet_func_base + "/open";
+const string wallet_list = wallet_func_base + "/list_wallets";
+const string wallet_list_keys = wallet_func_base + "/list_keys";
+const string wallet_public_keys = wallet_func_base + "/get_public_keys";
+const string wallet_lock = wallet_func_base + "/lock";
+const string wallet_lock_all = wallet_func_base + "/lock_all";
+const string wallet_unlock = wallet_func_base + "/unlock";
+const string wallet_import_key = wallet_func_base + "/import_key";
+const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
+
 
 inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    std::sort( names.begin(), names.end() );
@@ -105,17 +125,34 @@ eos::chain_apis::read_only::get_info_results get_info() {
   return call(host, port, get_info_func ).as<eos::chain_apis::read_only::get_info_results>();
 }
 
-fc::variant push_transaction( SignedTransaction& trx ) {
+void sign_transaction(SignedTransaction& trx) {
+   // TODO better error checking
+   const auto& public_keys = call(wallet_host, wallet_port, wallet_public_keys);
+   auto get_arg = fc::mutable_variant_object
+         ("transaction", trx)
+         ("available_keys", public_keys);
+   const auto& required_keys = call(host, port, get_required_keys, get_arg);
+   // TODO determine chain id
+   fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id_type{})};
+   const auto& signed_trx = call(wallet_host, wallet_port, wallet_sign_trx, sign_args);
+   trx = signed_trx.as<SignedTransaction>();
+}
+
+fc::variant push_transaction( SignedTransaction& trx, bool sign ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
     transaction_set_reference_block(trx, info.head_block_id);
     boost::sort( trx.scope );
 
+    if (sign) {
+       sign_transaction(trx);
+    }
+
     return call( push_txn_func, trx );
 }
 
 
-void create_account(Name creator, Name newaccount, public_key_type owner, public_key_type active) {
+void create_account(Name creator, Name newaccount, public_key_type owner, public_key_type active, bool sign) {
       auto owner_auth   = eos::chain::Authority{1, {{owner, 1}}, {}};
       auto active_auth  = eos::chain::Authority{1, {{active, 1}}, {}};
       auto recovery_auth = eos::chain::Authority{1, {}, {{{creator, "active"}, 1}}};
@@ -127,17 +164,7 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
       transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{creator,"active"}}, "newaccount",
                                            types::newaccount{creator, newaccount, owner_auth,
                                                              active_auth, recovery_auth, deposit});
-      if (creator == "inita")
-      {
-         fc::optional<fc::ecc::private_key> private_key = eos::utilities::wif_to_key("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3");
-         if (private_key)
-         {
-            wlog("public key ${k}",("k", private_key->get_public_key()));
-            trx.sign(*private_key, eos::chain::chain_id_type{});
-         }
-      }
-
-      std::cout << fc::json::to_pretty_string(push_transaction(trx)) << std::endl;
+      std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
 
 int main( int argc, char** argv ) {
@@ -160,13 +187,15 @@ int main( int argc, char** argv ) {
    string name;
    string ownerKey;
    string activeKey;
+   bool sign = false;
    auto createAccount = create->add_subcommand("account", "Create a new account on the blockchain", false);
    createAccount->add_option("creator", creator, "The name of the account creating the new account")->required();
    createAccount->add_option("name", name, "The name of the new account")->required();
    createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
    createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
+   createAccount->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    createAccount->set_callback([&] {
-      create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey));
+      create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), sign);
    });
 
    // Get subcommand
@@ -211,7 +240,7 @@ int main( int argc, char** argv ) {
    auto getServants = get->add_subcommand("servants", "Retrieve accounts which are servants of a given account ", false);
    getServants->add_option("account", controllingAccount, "The name of the controlling account")->required();
    getServants->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "accountName", controllingAccount);
+      auto arg = fc::mutable_variant_object( "controlling_account", controllingAccount);
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
    });
 
@@ -224,6 +253,23 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
+   // get transactions
+   string account_name;
+   string skip_seq;
+   string num_seq;
+   auto getTransactions = get->add_subcommand("transactions", "Retrieve all transactions with specific account name referenced in their scope", false);
+   getTransactions->add_option("account_name", account_name, "Name of account to query on")->required();
+   getTransactions->add_option("skip_seq", skip_seq, "Number of most recent transactions to skip (0 would start at most recent transaction)");
+   getTransactions->add_option("num_seq", num_seq, "Number of transactions to return");
+   getTransactions->set_callback([&] {
+      auto arg = (skip_seq.empty())
+                  ? fc::mutable_variant_object( "account_name", account_name)
+                  : (num_seq.empty())
+                     ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
+                     : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
+      std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
+   });
+
    // Contract subcommand
    string account;
    string wastPath;
@@ -234,6 +280,7 @@ int main( int argc, char** argv ) {
          ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
               ->check(CLI::ExistingFile);
+   contractSubcommand->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << "Reading WAST..." << std::endl;
@@ -253,7 +300,7 @@ int main( int argc, char** argv ) {
                                            "setcode", handler);
 
       std::cout << "Publishing contract..." << std::endl;
-      std::cout << fc::json::to_pretty_string(push_transaction(trx)) << std::endl;
+      std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
    });
 
    // Transfer subcommand
@@ -265,7 +312,8 @@ int main( int argc, char** argv ) {
    transfer->add_option("sender", sender, "The account sending EOS")->required();
    transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
    transfer->add_option("amount", amount, "The amount of EOS to send")->required();
-   transfer->add_option("memo", amount, "The memo for the transfer");
+   transfer->add_option("memo", memo, "The memo for the transfer");
+   transfer->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    transfer->set_callback([&] {
       SignedTransaction trx;
       trx.scope = sort_names({sender,recipient});
@@ -275,8 +323,85 @@ int main( int argc, char** argv ) {
       auto info = get_info();
       trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
       transaction_set_reference_block(trx, info.head_block_id);
+      if (sign) {
+         sign_transaction(trx);
+      }
 
       std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
+   });
+
+
+   // Wallet subcommand
+   auto wallet = app.add_subcommand( "wallet", "Interact with local wallet", false );
+
+   // create wallet
+   string wallet_name;
+   auto createWallet = wallet->add_subcommand("create", "Create a new wallet locally", false);
+   createWallet->add_option("name", wallet_name, "The name of the new wallet")->required();
+   createWallet->set_callback([&wallet_name] {
+      const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
+      std::cout << "Save password to use in the future to unlock this wallet." << std::endl;
+      std::cout << "Without password imported keys will not be retrievable." << std::endl;
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // open wallet
+   auto openWallet = wallet->add_subcommand("open", "Open an existing wallet", false);
+   openWallet->add_option("name", wallet_name, "The name of the wallet to open")->required();
+   openWallet->set_callback([&wallet_name] {
+      const auto& v = call(wallet_host, wallet_port, wallet_open, wallet_name);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // lock wallet
+   auto lockWallet = wallet->add_subcommand("lock", "Lock wallet", false);
+   lockWallet->add_option("name", wallet_name, "The name of the wallet to lock")->required();
+   lockWallet->set_callback([&wallet_name] {
+      const auto& v = call(wallet_host, wallet_port, wallet_lock, wallet_name);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // lock all wallets
+   auto locakAllWallets = wallet->add_subcommand("lock_all", "Lock all unlocked wallets", false);
+   locakAllWallets->set_callback([] {
+      const auto& v = call(wallet_host, wallet_port, wallet_lock_all);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // unlock wallet
+   string wallet_pw;
+   auto unlockWallet = wallet->add_subcommand("unlock", "Unlock wallet", false);
+   unlockWallet->add_option("name", wallet_name, "The name of the wallet to unlock")->required();
+   unlockWallet->add_option("password", wallet_pw, "The password returned by wallet create")->required();
+   unlockWallet->set_callback([&wallet_name, &wallet_pw] {
+      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
+      const auto& v = call(wallet_host, wallet_port, wallet_unlock, vs);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // import keys into wallet
+   string wallet_key;
+   auto importWallet = wallet->add_subcommand("import", "Import private key into wallet", false);
+   importWallet->add_option("name", wallet_name, "The name of the wallet to import key into")->required();
+   importWallet->add_option("key", wallet_key, "Private key in WIF format to import")->required();
+   importWallet->set_callback([&wallet_name, &wallet_key] {
+      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
+      const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // list wallets
+   auto listWallet = wallet->add_subcommand("list", "List opened wallets, * = unlocked", false);
+   listWallet->set_callback([] {
+      const auto& v = call(wallet_host, wallet_port, wallet_list);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // list keys
+   auto listKeys = wallet->add_subcommand("keys", "List of private keys from all unlocked wallets in wif format.", false);
+   listKeys->set_callback([] {
+      const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // Benchmark subcommand
@@ -413,6 +538,7 @@ int main( int argc, char** argv ) {
    messageSubcommand->add_option("-p,--permission", permissions,
                                  "An account and permission level to authorize, as in 'account@permission'");
    messageSubcommand->add_option("-s,--scope", scopes, "An account in scope for this operation", true);
+   messageSubcommand->add_flag("--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
    messageSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
@@ -434,7 +560,7 @@ int main( int argc, char** argv ) {
                                                                                        fixedPermissions.back()},
                                                       result.get_object()["binargs"].as<Bytes>());
       trx.scope.assign(scopes.begin(), scopes.end());
-      ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx))));
+      ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx, sign))));
    });
 
    // push transaction
@@ -461,10 +587,17 @@ int main( int argc, char** argv ) {
        return app.exit(e);
    } catch (const fc::exception& e) {
       auto errorString = e.to_detail_string();
-      if (errorString.find("Connection refused") != string::npos)
-         elog("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port));
-      else
+      if (errorString.find("Connection refused") != string::npos) {
+         if (errorString.find(fc::json::to_string(port)) != string::npos) {
+            elog("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port));
+         } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
+            elog("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port));
+         } else {
+            elog("Failed to connect with error: ${e}", ("e", e.to_detail_string()));
+         }
+      } else {
          elog("Failed with error: ${e}", ("e", e.to_detail_string()));
+      }
       return 1;
    }
 

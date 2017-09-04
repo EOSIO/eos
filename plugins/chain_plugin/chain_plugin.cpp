@@ -12,6 +12,8 @@
 #include <eos/native_contract/balance_object.hpp>
 #include <eos/native_contract/genesis_state.hpp>
 
+#include <eos/utilities/key_conversion.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
@@ -321,6 +323,15 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    result.args = db.message_from_binary( params.code, params.action, params.binargs );
    return result;
 }
+
+read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
+   auto pretty_input = db.transaction_from_variant(params.transaction);
+   auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
+   get_required_keys_result result;
+   result.required_keys = required_keys_set;
+   return result;
+}
+
 
 } // namespace chain_apis
 } // namespace eos

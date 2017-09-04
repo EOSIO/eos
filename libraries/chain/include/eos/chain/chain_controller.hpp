@@ -157,6 +157,15 @@ namespace eos { namespace chain {
          ProcessedTransaction push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
          ProcessedTransaction _push_transaction( const SignedTransaction& trx );
 
+         /**
+          * Determine which public keys are needed to sign the given transaction.
+          * @param trx Transaction that requires signature
+          * @param candidateKeys Set of public keys to examine for applicability
+          * @return Subset of candidateKeys whose private keys should be used to sign transaction
+          * @throws fc::exception if candidateKeys does not contain all required keys
+          */
+         flat_set<public_key_type> get_required_keys(const SignedTransaction& trx, const flat_set<public_key_type>& candidateKeys)const;
+
 
          bool _push_block( const signed_block& b );
 
