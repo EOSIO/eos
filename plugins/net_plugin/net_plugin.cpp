@@ -414,23 +414,6 @@ namespace eos {
       return fc::ip::endpoint (addr,ep.port());
     }
 
-    void send_peer_message () {
-      peer_message pm;
-      for (auto &c : connections) {
-        if ( (c->remote_node_id._hash[0] | c->remote_node_id._hash[1] | c->remote_node_id._hash[2] | c->remote_node_id._hash[0]) == 0 ) {
-          return;
-        }
-        pm.peers.push_back(c->remote_node_id);
-      }
-      if (!pm.peers.empty()) {
-        for (auto &c : connections) {
-          if (c->out_sync_state.size() == 0) {
-            c->send(pm);
-          }
-        }
-      }
-    }
-
     //    template<typename T>
     void send_all (const SignedTransaction &msg) {
       for (auto &c : connections) {
@@ -544,31 +527,8 @@ namespace eos {
         }
 
         c->remote_node_id = msg.node_id;
-        send_peer_message();
       }
       c->last_handshake = msg;
-    }
-
-    void handle_message (connection_ptr c, const peer_message &msg) {
-      dlog ("got a peer message with ${pc} from ${r}", ("pc", msg.peers.size())("r",c->last_handshake.p2p_address));
-      c->shared_peers.clear();
-      for (auto pnode : msg.peers) {
-        if (pnode == node_id) {
-          dlog ("skipping self peernode");
-          continue;
-        }
-        if (pnode == c->remote_node_id) {
-          dlog ("skipping received connection's node");
-          continue;
-        }
-        for (auto &conn : connections) {
-          if (conn->remote_node_id == pnode) {
-            c->mutual_peers.insert (conn);
-            break;
-          }
-        }
-        c->shared_peers.insert (pnode);
-      }
     }
 
     void handle_message (connection_ptr c, const notice_message &msg) {
@@ -694,7 +654,7 @@ namespace eos {
         node_transaction_state nts = {msg.id(),time_point::now(),msg.expiration,
                                       msg,bn, true};
         local_txns.insert(nts);
-        forward (c, msg);
+        forward(c, msg);
       }
     }
 
@@ -704,12 +664,12 @@ namespace eos {
       chain_controller &cc = chain_plug->chain();
 
       if (cc.is_known_block(msg.id())) {
-        // dlog ("block id ${id} is known", ("id", msg.id()) );
+        dlog ("block id ${id} is known", ("id", msg.id()) );
         return;
       }
       uint32_t num = 0;
 
-      for( auto ss = c->in_sync_state.begin(); ss != c->in_sync_state.end(); ) {
+      for( auto ss = c->in_sync_state.begin(); ss != c->in_sync_state.end(); ++ss ) {
         if (msg.block_num() == ss->last + 1 && msg.block_num() <= ss->end_block) {
           num = msg.block_num();
           ss.get_node()->value().last = num;
@@ -922,7 +882,7 @@ namespace eos {
       my->acceptor->set_option(tcp::acceptor::reuse_address(true));
       my->acceptor->bind(my->listen_endpoint);
       my->acceptor->listen();
-      my->chain_plug->chain().on_pending_transaction.connect (&net_plugin_impl::pending_txn);
+      my->chain_plug->chain().on_pending_transaction.connect( &net_plugin_impl::pending_txn );
 
       my->start_listen_loop();
     }
