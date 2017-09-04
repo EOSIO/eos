@@ -322,13 +322,41 @@ You should get a response similar to this:
 
 ### Upload sample contract
 
+Before uploading a contract, we can verify that there is no current contract:
+
+```commandline
+./eosc get code currency 
+code hash: 0000000000000000000000000000000000000000000000000000000000000000
+```
+
 With an account for a contract created, you can upload a sample contract:
 
 ```commandline
-./eosc contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
+./eosc set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
 ```
 
 As a response you should get a json with a `transaction_id` field. Your contract was successfully uploaded!
+
+We can also verify that the code has been set:
+
+```commandline
+./eosc get code currency
+code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
+```
+
+Next we can verify that the currency contract has the proper initial balance:
+
+```commandline
+./eosc get table currency currency account
+{
+  "rows": [{
+     "account": "account",
+     "balance": 1000000000
+     }
+  ],
+  "more": false
+}
+```
 
 ### Push a message to a sample contract
 
@@ -351,10 +379,34 @@ And then create the `tester` account:
 After this we can send a message to the contract:
 
 ```commandline
-./eosc push message currency transfer '{"from":"currency","to":"tester","amount":50}' -s currency -s tester -p currency@active
+./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
 ```
 
-As a confirmation of a successful transaction you will get a json with a `transaction_id` field.
+As a confirmation of a successfully submitted transaction you will get a json with a `transaction_id` field.
+
+### Reading Currency Contract Balance
+
+```commandline
+./eosc get table inita currency account
+{
+  "rows": [{
+      "account": "account",
+      "balance": 50 
+       }
+    ],
+  "more": false
+}
+./eosc get table currency currency account
+{
+  "rows": [{
+      "account": "account",
+      "balance": 999999950
+    }
+  ],
+  "more": false
+}
+```
+
 
 
 ## Run eos in docker

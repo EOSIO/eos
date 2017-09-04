@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/eos/chain/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
+             wast_to_wasm.cpp
              chain_controller.cpp
              wasm_interface.cpp
              block_schedule.cpp
