@@ -19,7 +19,8 @@ public:
                  const chain::Message& m,
                  const types::AccountName& code)
       : controller(con), db(db), trx(t), msg(m), code(code), mutable_controller(con),
-        mutable_db(db), used_authorizations(msg.authorization.size(), false){}
+        mutable_db(db), used_authorizations(msg.authorization.size(), false),
+        next_pending_transaction_serial(0){}
 
    template <typename ObjectType>
    int32_t store_record( Name scope, Name code, Name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
@@ -286,11 +287,49 @@ public:
    chainbase::database& mutable_db;
 
    std::deque<AccountName>          notified;
-   std::deque<ProcessedTransaction> sync_transactions; ///< sync calls made
-   std::deque<GeneratedTransaction> async_transactions; ///< async calls requested
+   std::deque<Transaction>          inline_transactions; ///< queued inline txs
+   std::deque<Transaction>          deferred_transactions; ///< deferred txs
 
    ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
    vector<bool> used_authorizations;
+
+   ///< pending transaction construction
+   typedef uint32_t pending_transaction_handle;
+   struct pending_transaction {
+      typedef uint32_t handle_type;
+      static const handle_type Invalid_handle = 0xFFFFFFFFUL;
+
+      handle_type handle;
+      struct message_dest {
+         AccountName code;
+         FuncName type;
+      };
+
+      // state set that applies to pushed message data
+      optional<message_destination> current_destination;
+      vector<types::AccountPermission> current_permissions;
+
+      // state to apply when the transaction is pushed
+      vector<AccountName> scopes;
+      vector<AccountName> read_scopes;
+      vector<types::Message> messages;
+
+      types::Transaction as_transaction() const;
+      void check_size() const;
+
+      void reset_message() {
+         current_destination = decltype(current_destination)();
+         current_permissions.clear();
+      }
+   };
+
+   pending_transaction::handle_type next_pending_transaction_serial;
+   vector<pending_transaction> pending_transactions;
+
+   pending_transaction& get_pending_transaction(pending_transaction::handle_type handle);
+   pending_transaction& create_pending_transaction();
+   void release_pending_transaction(pending_transaction::handle_type handle);
+
 };
 
 using apply_handler = std::function<void(apply_context&)>;

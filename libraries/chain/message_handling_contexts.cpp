@@ -51,4 +51,49 @@ vector<types::AccountPermission> apply_context::unused_authorizations() const {
    return {range.begin(), range.end()};
 }
 
+pending_transaction& apply_context::get_pending_transaction(pending_transaction::handle_type handle) {
+   auto itr = boost::find_if(pending_transactions, [&](const auto& trx) { return trx.handle == handle; });
+   EOS_ASSERT(itr != pending_transactions.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending transaction");
+   return *itr;
+}
+
+const int Max_pending_transactions = 4;
+const uint32_t Max_pending_transaction_size = 16 * 1024;
+const auto Pending_transaction_expiration = fc::seconds(21 * 3); 
+
+pending_transaction& apply_context::create_pending_transaction() {
+   EOS_ASSERT(pending_transactions.size() < Max_pending_transactions, tx_resource_exhausted,
+              "Transaction is attempting to create too many pending transactions. The max is ${max}", ("max", Max_pending_transactions));)
+   
+   pending_transaction::handle handle = next_pending_transaction_serial++;
+   pending_transactions.push_back({handle});
+   return pending_transaction.back();
+}
+
+void apply_context::release_pending_transaction(pending_transaction::handle_type handle) {
+   auto itr = boost::find_if(pending_transactions, [&](const auto& trx) { return trx.handle == handle; });
+   EOS_ASSERT(itr != pending_transactions.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending transaction");
+
+   auto last = pending_transactions.end() - 1;
+   if (itr != last) {
+      std::swap(itr, last);
+   }
+   pending_transactions.pop_back();
+}
+
+types::Transaction apply_context::pending_transaction::as_transaction() const {
+   decltype(types::Transaction::refBlockNum) head_block_num = chain_controller.head_block_num();
+   decltype(types::Transaction::refBlockRef) head_block_ref = fc::endian_reverse_u32(chain_controller.head_block_ref()._hash[0]);
+   decltype(types::Transaction::expiration) expiration = chain_controller.head_block_time() + Pending_transaction_expiration;
+   return types::Transaction(head_block_num, head_block_ref, expiration, scopes, read_scopes, messages);
+}
+
+void apply_context::pending_transaction::check_size() const {
+   auto trx = as_transaction();
+   EOS_ASSERT(fc::raw::pack_size(trx) <= Max_pending_transaction_size, tx_resource_exhausted,
+              "Transaction is attempting to create a transaction which is too large. The max size is ${max} bytes", ("max", Max_pending_transaction_size));
+}
+
 } } // namespace eos::chain

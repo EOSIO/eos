@@ -58,6 +58,8 @@ extern "C" {
 
    typedef uint32_t TransactionHandle;
    #define InvalidTransactionHandle (0xFFFFFFFFUL)
+   #define SendInline (1)
+   #define SendDeferred (0)
 
    /**
     * @brief create a pending transaction
@@ -103,9 +105,10 @@ extern "C" {
     * This function adds a @ref PermissionName to the pending message
     *
     * @param trx - the `TransactionHandle` of the pending transaction to modify
+    * @param account - the `AccountName` to add
     * @param permission - the `PermissionName` to add
     */
-   void transactionAddMessagePermission(TransactionHandle trx, PermissionName permission);
+   void transactionAddMessagePermission(TransactionHandle trx, AccountName account, PermissionName permission);
 
 
    /**
@@ -147,7 +150,7 @@ extern "C" {
     * @param trx - the `TransactionHandle` of the pending transaction to send
     * @param inlineMode - whether to send as an inline transaction (!=0) or deferred(=0)
     */
-   void transactionSend(TransactionHandle trx, int inlineMode = 0);
+   void transactionSend(TransactionHandle trx, int mode = SendDeferred);
 
    /**
     * @brief drop a pending transaction

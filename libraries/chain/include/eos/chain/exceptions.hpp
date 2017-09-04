@@ -57,6 +57,8 @@ namespace eos { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                      eos::chain::transaction_exception, 3030011, "duplicate transaction" )
    FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     eos::chain::transaction_exception, 3030012, "unknown transaction" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_scheduling_exception,           eos::chain::transaction_exception, 3030013, "transaction failed during sheduling" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_unknown_argument,               eos::chain::transaction_exception, 3030014, "transaction provided an unknown value to a system call" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_resource_exhausted,             eos::chain::transaction_exception, 3030015, "transaction exhausted allowed resources" )
 
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eos::chain::utility_exception, 3060001, "invalid pts address" )
    FC_DECLARE_DERIVED_EXCEPTION( insufficient_feeds,                eos::chain::chain_exception, 37006, "insufficient feeds" )
