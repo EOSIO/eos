@@ -188,15 +188,15 @@ int main( int argc, char** argv ) {
    string name;
    string ownerKey;
    string activeKey;
-   bool sign = false;
+   bool skip_sign = false;
    auto createAccount = create->add_subcommand("account", "Create a new account on the blockchain", false);
    createAccount->add_option("creator", creator, "The name of the account creating the new account")->required();
    createAccount->add_option("name", name, "The name of the new account")->required();
    createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
    createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
-   createAccount->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   createAccount->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
    createAccount->set_callback([&] {
-      create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), sign);
+      create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign);
    });
 
    // Get subcommand
@@ -281,7 +281,7 @@ int main( int argc, char** argv ) {
          ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
               ->check(CLI::ExistingFile);
-   contractSubcommand->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << "Reading WAST..." << std::endl;
@@ -301,7 +301,7 @@ int main( int argc, char** argv ) {
                                            "setcode", handler);
 
       std::cout << "Publishing contract..." << std::endl;
-      std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
+      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
    });
 
    // Transfer subcommand
@@ -314,7 +314,7 @@ int main( int argc, char** argv ) {
    transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
    transfer->add_option("amount", amount, "The amount of EOS to send")->required();
    transfer->add_option("memo", memo, "The memo for the transfer");
-   transfer->add_flag("-s,--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   transfer->add_flag("-s,--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
    transfer->set_callback([&] {
       SignedTransaction trx;
       trx.scope = sort_names({sender,recipient});
@@ -324,7 +324,7 @@ int main( int argc, char** argv ) {
       auto info = get_info();
       trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
       transaction_set_reference_block(trx, info.head_block_id);
-      if (sign) {
+      if (!skip_sign) {
          sign_transaction(trx);
       }
 
@@ -394,6 +394,7 @@ int main( int argc, char** argv ) {
    // list wallets
    auto listWallet = wallet->add_subcommand("list", "List opened wallets, * = unlocked", false);
    listWallet->set_callback([] {
+      std::cout << "Wallets: \n";
       const auto& v = call(wallet_host, wallet_port, wallet_list);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
@@ -539,7 +540,7 @@ int main( int argc, char** argv ) {
    messageSubcommand->add_option("-p,--permission", permissions,
                                  "An account and permission level to authorize, as in 'account@permission'");
    messageSubcommand->add_option("-s,--scope", scopes, "An account in scope for this operation", true);
-   messageSubcommand->add_flag("--sign", sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   messageSubcommand->add_flag("--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
    messageSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
@@ -561,7 +562,7 @@ int main( int argc, char** argv ) {
                                                                                        fixedPermissions.back()},
                                                       result.get_object()["binargs"].as<Bytes>());
       trx.scope.assign(scopes.begin(), scopes.end());
-      ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx, sign))));
+      ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx, !skip_sign ))));
    });
 
    // push transaction

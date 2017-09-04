@@ -20,9 +20,16 @@ namespace eos {
    using chain::public_key_type;
    using fc::optional;
    using boost::container::flat_set;
+   using chain::Asset;
 
 namespace chain_apis {
 struct empty{};
+
+struct permission {
+   Name             name;
+   Name             parent;
+   types::Authority required_auth;
+};
 
 class read_only {
    const chain_controller& db;
@@ -55,12 +62,14 @@ public:
       Name                       name;
    };
 
+
    struct get_account_results {
       Name                       name;
-      uint64_t                   eos_balance       = 0;
-      uint64_t                   staked_balance    = 0;
-      uint64_t                   unstaking_balance = 0;
+      Asset                      eos_balance = Asset(0,EOS_SYMBOL);
+      Asset                      staked_balance;
+      Asset                      unstaking_balance;
       fc::time_point_sec         last_unstaking_time;
+      vector<permission>         permissions;
       optional<producer_info>    producer;
       optional<types::Abi>       abi;
    };
@@ -271,6 +280,7 @@ private:
 
 }
 
+FC_REFLECT( eos::chain_apis::permission, (name)(parent)(required_auth) )
 FC_REFLECT(eos::chain_apis::empty, )
 FC_REFLECT(eos::chain_apis::read_only::get_info_results,
   (head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
@@ -283,7 +293,7 @@ FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_params, (json)(table_type)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
-FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(producer)(abi) )
+FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer)(abi) )
 FC_REFLECT( eos::chain_apis::read_only::get_account_params, (name) )
 FC_REFLECT( eos::chain_apis::read_only::producer_info, (name) )
 FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )

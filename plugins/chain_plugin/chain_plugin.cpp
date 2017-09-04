@@ -298,6 +298,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
    const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
 
+
    if( accnt.abi.size() > 4 ) {
       eos::types::Abi abi;
       fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
@@ -305,10 +306,23 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       result.abi = std::move(abi);
    }
 
-   result.eos_balance          = balance.balance;
-   result.staked_balance       = staked_balance.stakedBalance;
-   result.unstaking_balance    = staked_balance.unstakingBalance;
+   result.eos_balance          = Asset(balance.balance, EOS_SYMBOL);
+   result.staked_balance       = Asset(staked_balance.stakedBalance);
+   result.unstaking_balance    = Asset(staked_balance.unstakingBalance);
    result.last_unstaking_time  = staked_balance.lastUnstakingTime;
+
+   const auto& permissions = d.get_index<permission_index,by_owner>();
+   auto perm = permissions.lower_bound( boost::make_tuple( params.name ) );
+   while( perm != permissions.end() && perm->owner == params.name ) {
+      /// TODO: lookup perm->parent name 
+      Name parent;
+
+      const auto* p = d.find<permission_object,by_id>( perm->parent );
+      if( p ) parent = p->name;
+
+      result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );
+      ++perm;
+   }
 
 
    return result;

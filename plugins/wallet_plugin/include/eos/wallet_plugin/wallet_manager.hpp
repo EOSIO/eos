@@ -64,7 +64,7 @@ public:
    std::vector<std::string> list_wallets();
 
    /// @return A list of private keys from all unlocked wallets in wif format.
-   std::vector<std::string> list_keys();
+   map<public_key_type,std::string> list_keys();
 
    /// @return A set of public keys from all unlocked wallets, use with chain_controller::get_required_keys.
    flat_set<public_key_type> get_public_keys();

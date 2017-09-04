@@ -73,14 +73,14 @@ std::vector<std::string> wallet_manager::list_wallets() {
    return result;
 }
 
-std::vector<std::string> wallet_manager::list_keys() {
+map<public_key_type,string> wallet_manager::list_keys() {
    check_timeout();
-   std::vector<std::string> result;
+   map<public_key_type,string> result;
    for (const auto& i : wallets) {
       if (!i.second->is_locked()) {
          const auto& keys = i.second->list_keys();
          for (const auto& i : keys) {
-            result.emplace_back(i.second);
+            result[i.first] = i.second;
          }
       }
    }
@@ -126,7 +126,7 @@ void wallet_manager::lock(const std::string& name) {
 void wallet_manager::unlock(const std::string& name, const std::string& password) {
    check_timeout();
    if (wallets.count(name) == 0) {
-      FC_THROW("Wallet not found: ${w}", ("w", name));
+      open( name );
    }
    auto& w = wallets.at(name);
    if (!w->is_locked()) {
