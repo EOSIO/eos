@@ -23,3 +23,4 @@ if [ $EOS_APP == "walletd" ]; then
   exec /opt/eos/bin/eos-walletd $@
 else
   exec /opt/eos/bin/eosd $@
+fi
