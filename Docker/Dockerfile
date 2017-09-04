@@ -37,17 +37,11 @@ RUN cd /tmp && git clone https://github.com/cryptonomex/secp256k1-zkp.git \
   && ./autogen.sh && ./configure && make && make install \
   && ldconfig && rm -rf /tmp/secp256k1-zkp*
 
-RUN cd /tmp \
-  && git clone https://github.com/WebAssembly/binaryen.git \
-  && cd binaryen \
-  && git checkout tags/1.37.14 \
-  && cmake . && make
-
 RUN cd /tmp && mkdir wasm-compiler && cd wasm-compiler \
   && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git \
   && cd llvm/tools && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git \
   && cd .. && mkdir build && cd build \
-  && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/opt/wasm -DBINARYEN_ROOT=~/binaryen -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../ \
+  && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../ \
   && make -j$(nproc) install && rm -rf /tmp/wasm-compiler
 
 RUN cd /tmp && wget https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.gz && tar zxf 1.37.21.tar.gz \
@@ -68,7 +62,7 @@ RUN mkdir -p /opt/eos/bin/data-dir && mkdir -p /tmp/eos/build/
 # ** Using local code saves considerable time, but does't guarantee that your code stays up-to-date
 
 COPY . /tmp/eos/
-RUN cd /tmp/eos/build && cmake -DBINARYEN_BIN=/tmp/binaryen/bin -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
+RUN cd /tmp/eos/build && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
   && make -j$(nproc) && make install && mv ../contracts / \
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
