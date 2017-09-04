@@ -14,6 +14,7 @@ Dependencies:
 * Clang 4.0.0
 * CMake 3.5.1
 * Boost 1.64
+* OpenSSL
 * LLVM 4.0
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 
@@ -43,17 +44,7 @@ cd boost_1_64_0/
 ./b2 install
 ```
 
-As well as [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
-
-```commandline
-cd ~
-git clone https://github.com/cryptonomex/secp256k1-zkp.git
-cd secp256k1-zkp
-./autogen.sh
-./configure
-make
-sudo make install
-```
+### LLVM with WASM build target
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets.
 
@@ -142,6 +133,12 @@ If a repo is cloned without the `--recursive` flag, the submodules can be retrie
 
 The WASM_LLVM_CONFIG environment variable is used to find our recently built WASM compiler.
 This is needed to compile the example contracts inside eos/contracts folder and their respective tests.
+
+Also, to use the WASM compiler, eos has an external dependency on 
+ - [binaryen](https://github.com/WebAssembly/binaryen.git)
+   * need to checkout tag 1.37.21
+   * also need to run "make install"
+   * if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake
 
 #### On Ubuntu:
 
@@ -240,6 +237,10 @@ Run `create` command where `PUBLIC_KEY_1` and `PUBLIC_KEY_2` are the values gene
 ./eosc create account inita exchange PUBLIC_KEY_1 PUBLIC_KEY_2 
 ```
 
+sudo rm -rf /data/store/eos # options 
+sudo mkdir -p /data/store/eos
+docker-compose -f Docker/docker-compose.yml up
+
 You should get a json response back with a transaction ID confirming it was executed successfully.
 
 Check that account was successfully created: 
@@ -269,7 +270,7 @@ cd ~/eos/build/programs/eosc/
 ./eosc contract exchange ../../../contracts/exchange/exchange.wast ../../../contracts/exchange/exchange.abi
 ```
 
-## Run in docker
+## Run eos in docker
 
 Simple and fast setup of EOS on Docker is also available. Firstly, install dependencies:
 
@@ -279,35 +280,30 @@ Simple and fast setup of EOS on Docker is also available. Firstly, install depen
 
 Build eos image
 
-```commandline
-cd eos/Docker
-cp ../genesis.json .
-docker build --rm -t eosio/eos .
+```
+git clone https://github.com/EOSIO/eos.git --recursive
+cd eos
+cp genesis.json Docker 
+docker build -t eosio/eos -f Docker/Dockerfile .
 ```
 
-Start docker
+Starting the Docker this can be tested from container's host machine:
 
-```commandline
+```
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
-docker-compose -f docker-compose.yml up
+docker-compose -f Docker/docker-compose.yml up
 ```
 
-When running eosd in the docker container you need to instruct the cpp socket to accept connections from all interfaces.  Adjust any address you plan to use by changing from `127.0.0.1` to `0.0.0.0` in your `Docker/config.ini` file.
-
-For example:
+Get chain info
 
 ```
-# The local IP and port to listen for incoming http connections.
-http-server-endpoint = 0.0.0.0:8888
-```
-
-After starting the Docker this can be tested from container's host machine:
-```commandline
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
+### Run contract in docker example
+
 You can run the `eosc` commands via `docker exec` command. For example:
-```commandline
+```
 docker exec docker_eos_1 eosc contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
 ```
