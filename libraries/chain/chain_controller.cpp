@@ -755,7 +755,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const SignedTransa
 }
 
 void chain_controller::check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures)const {
-   if ((_skip_flags & skip_transaction_signatures) && (_skip_flags & skip_authority_check)) {
+   if ((_skip_flags & skip_transaction_signatures) /* && (_skip_flags & skip_authority_check)*/ ) {
       //ilog("Skipping auth and sigs checks");
       return;
    }
@@ -1140,9 +1140,9 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 } FC_CAPTURE_AND_RETHROW() }
 
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                                   chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
+                                   chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin, uint64_t skip_flags)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
-
+   _skip_flags = skip_flags;
    initialize_indexes();
    starter.register_types(*this, _db);
 

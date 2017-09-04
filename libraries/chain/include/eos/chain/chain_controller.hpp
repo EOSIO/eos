@@ -56,7 +56,7 @@ namespace eos { namespace chain {
    class chain_controller {
       public:
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin);
+                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin, uint64_t skip_flags);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 

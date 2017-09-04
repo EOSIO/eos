@@ -126,6 +126,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
            "**************************************\n");
 
       my->skip_flags |= chain_controller::skip_transaction_signatures;
+      //my->skip_flags |= chain_controller::skip_authority_check;
    }
 
    if(options.count("checkpoint"))
@@ -159,7 +160,7 @@ void chain_plugin::plugin_startup()
    my->block_logger = block_log(my->block_log_dir);
    my->chain_id = genesis.compute_chain_id();
    my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
-                                initializer, native_contract::make_administrator());
+                                initializer, native_contract::make_administrator(), my->skip_flags);
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
