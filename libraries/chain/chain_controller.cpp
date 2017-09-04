@@ -920,10 +920,11 @@ void chain_controller::process_message(const Transaction& trx, AccountName code,
             parent_context->used_authorizations[i] = true;
 
    // process_message recurses for each notified account, but we only want to run this check at the top level
-   if (parent_context == nullptr && (_skip_flags & skip_authority_check) == false)
-      EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
-                 "Message declared authorities it did not need: ${unused}",
-                 ("unused", apply_ctx.unused_authorizations())("message", message));
+   if (!(_skip_flags & skip_transaction_signatures))
+      if (parent_context == nullptr && (_skip_flags & skip_authority_check) == false)
+         EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
+                    "Message declared authorities it did not need: ${unused}",
+                   ("unused", apply_ctx.unused_authorizations())("message", message));
 }
 
 void chain_controller::apply_message(apply_context& context)
