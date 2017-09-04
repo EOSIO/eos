@@ -104,7 +104,7 @@ flat_set<public_key_type> testing_fixture::available_keys() const {
 
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& initializer, testing_fixture& fixture)
-   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator()),
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(), 0),
      db(db),
      fixture(fixture) {}
 
