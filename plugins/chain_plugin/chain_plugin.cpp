@@ -13,6 +13,7 @@
 #include <eos/native_contract/genesis_state.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
+#include <eos/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -226,23 +227,49 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   if( p.table_type == KEYi64 ) {
-      return get_table_rows_ex<chain::key_value_index, chain::by_scope_primary>(p);
-   } else if( p.table_type == KEYi128i128 ) { 
-      if( p.table_key == PRIMARY )
-         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_primary>(p);
-      if( p.table_key == SECONDARY )
-         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_secondary>(p);
-   } else if(p.table_type == KEYi64i64i64 ) {
-      if( p.table_key == PRIMARY )
-         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_primary>(p);
-      if( p.table_key == SECONDARY )
-         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_secondary>(p);
-      if( p.table_key == TERTIARY )
-         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_tertiary>(p);
+types::Abi getAbi( const chain_controller& db, const Name& account ) {
+   const auto& d = db.get_database();
+   const auto& code_accnt  = d.get<account_object,by_name>( account );
+
+   eos::types::Abi abi;
+   if( code_accnt.abi.size() > 4 ) {
+      fc::datastream<const char*> ds( code_accnt.abi.data(), code_accnt.abi.size() );
+      fc::raw::unpack( ds, abi );
    }
-   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",p.table_type)("key",p.table_key));
+   return abi;
+}
+
+string getTableType( const types::Abi& abi, const Name& tablename ) {
+   for( const auto& t : abi.tables ) {
+      if( t.table == tablename )
+         return t.indextype;
+   }
+   FC_ASSERT( !"Abi does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
+}
+
+read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
+   const auto& d = db.get_database();
+
+   const types::Abi abi = getAbi( db, p.code );
+   auto table_type = getTableType( abi, p.table );
+   auto table_key = PRIMARY;
+
+   if( table_type == KEYi64 ) {
+      return get_table_rows_ex<chain::key_value_index, chain::by_scope_primary>(p,abi);
+   } else if( table_type == KEYi128i128 ) { 
+      if( table_key == PRIMARY )
+         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_primary>(p,abi);
+      if( table_key == SECONDARY )
+         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_secondary>(p,abi);
+   } else if( table_type == KEYi64i64i64 ) {
+      if( table_key == PRIMARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_primary>(p,abi);
+      if( table_key == SECONDARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_secondary>(p,abi);
+      if( table_key == TERTIARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_tertiary>(p,abi);
+   }
+   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
@@ -287,6 +314,25 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
    return result;
 }
 
+read_only::get_code_results read_only::get_code( const get_code_params& params )const {
+   get_code_results result;
+   result.name = params.name;
+   const auto& d = db.get_database();
+   const auto& accnt  = d.get<account_object,by_name>( params.name );
+
+   if( accnt.code.size() ) {
+      result.wast = chain::wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
+      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+   }
+   if( accnt.abi.size() > 4 ) {
+      eos::types::Abi abi;
+      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
+      fc::raw::unpack( ds, abi );
+      result.abi = std::move(abi);
+   }
+   return result;
+}
+
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
    using namespace native::eos;
 
@@ -297,14 +343,6 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& accnt          = d.get<account_object,by_name>( params.name );
    const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
    const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
-
-
-   if( accnt.abi.size() > 4 ) {
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
-      fc::raw::unpack( ds, abi );
-      result.abi = std::move(abi);
-   }
 
    result.eos_balance          = Asset(balance.balance, EOS_SYMBOL);
    result.staked_balance       = Asset(staked_balance.stakedBalance);

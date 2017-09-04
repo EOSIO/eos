@@ -71,12 +71,26 @@ public:
       fc::time_point_sec         last_unstaking_time;
       vector<permission>         permissions;
       optional<producer_info>    producer;
-      optional<types::Abi>       abi;
    };
    struct get_account_params {
       Name name;
    };
    get_account_results get_account( const get_account_params& params )const;
+
+
+   struct get_code_results {
+      Name                   name;
+      string                 wast;
+      fc::sha256             code_hash;
+      optional<types::Abi>   abi;
+   };
+
+   struct get_code_params {
+      Name name;
+   };
+   get_code_results get_code( const get_code_params& params )const;
+
+
 
    struct abi_json_to_bin_params {
       Name         code;
@@ -141,7 +155,7 @@ public:
       Name        scope;
       Name        code;
       Name        table;
-      string      table_type;
+//      string      table_type;
       string      table_key;
       string      lower_bound;
       string      upper_bound;
@@ -177,23 +191,22 @@ public:
    }
  
    template <typename IndexType, typename Scope>
-   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p )const {
+   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const types::Abi& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.get_database();
       const auto& code_account = d.get<chain::account_object,chain::by_name>( p.code );
    
       types::AbiSerializer abis;
-      if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-         eos::types::Abi abi;
-         fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-         fc::raw::unpack( ds, abi );
-         abis.setAbi( abi );
-      }
+      abis.setAbi(abi);
    
       const auto& idx = d.get_index<IndexType, Scope>();
-      auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.lower_bound).as<typename IndexType::value_type::key_type>() ) );
-      auto upper = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.upper_bound).as<typename IndexType::value_type::key_type>() ) );
-  //    auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, p.table, boost::lexical_cast<typename IndexType::value_type::key_type>(p.upper_bound)) );
+      auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table   ) );
+      auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, Name(uint64_t(p.table)+1) ) );
+
+      if( p.lower_bound.size() )
+         lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.lower_bound).as<typename IndexType::value_type::key_type>() ) );
+      if( p.upper_bound.size() )
+         upper = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.upper_bound).as<typename IndexType::value_type::key_type>() ) );
    
       vector<char> data;
    
@@ -290,11 +303,13 @@ FC_REFLECT(eos::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT_DERIVED( eos::chain_apis::read_only::get_block_results, (eos::chain::signed_block), (id)(block_num)(refBlockPrefix) );
 FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
-FC_REFLECT( eos::chain_apis::read_only::get_table_rows_params, (json)(table_type)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eos::chain_apis::read_only::get_table_rows_params, (json)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eos::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
-FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer)(abi) )
+FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
+FC_REFLECT( eos::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)(abi) )
 FC_REFLECT( eos::chain_apis::read_only::get_account_params, (name) )
+FC_REFLECT( eos::chain_apis::read_only::get_code_params, (name) )
 FC_REFLECT( eos::chain_apis::read_only::producer_info, (name) )
 FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )

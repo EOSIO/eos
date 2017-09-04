@@ -47,6 +47,8 @@ const string push_txns_func = chain_func_base + "/push_transactions";
 const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
 const string get_block_func = chain_func_base + "/get_block";
 const string get_account_func = chain_func_base + "/get_account";
+const string get_table_func = chain_func_base + "/get_table_rows";
+const string get_code_func = chain_func_base + "/get_code";
 const string get_required_keys = chain_func_base + "/get_required_keys";
 
 const string account_history_func_base = "/v1/account_history";
@@ -228,6 +230,63 @@ int main( int argc, char** argv ) {
                 << std::endl;
    });
 
+   // get code
+   string codeFilename;
+   string abiFilename;
+   auto getCode = get->add_subcommand("code", "Retrieve the code and ABI for an account", false);
+   getCode->add_option("name", accountName, "The name of the account whose code should be retrieved")->required();
+   getCode->add_option("-c,--code",codeFilename, "The name of the file to save the contract .wast to" );
+   getCode->add_option("-a,--abi",abiFilename, "The name of the file to save the contract .abi to" );
+   getCode->set_callback([&] {
+      auto result = call(get_code_func, fc::mutable_variant_object("name", accountName));
+
+      std::cout << "code hash: " << result["code_hash"].as_string() <<"\n";
+
+      if( codeFilename.size() ){
+         std::cout << "saving wast to " << codeFilename <<"\n";
+         auto code = result["wast"].as_string();
+         std::ofstream out( codeFilename.c_str() );
+         out << code;
+      }
+      if( abiFilename.size() ) {
+         std::cout << "saving abi to " << abiFilename <<"\n";
+         auto abi  = fc::json::to_pretty_string( result["abi"] );
+         std::ofstream abiout( abiFilename.c_str() );
+         abiout << abi;
+      }
+   });
+
+   // get table 
+   string scope;
+   string code;
+   string table;
+   string lower;
+   string upper;
+   bool binary = false;
+   uint32_t limit = 10;
+   auto getTable = get->add_subcommand( "table", "Retrieve the contents of a database table", false);
+   getTable->add_option( "scope", scope, "The account scope where the table is found" )->required();
+   getTable->add_option( "contract", code, "The contract within scope who owns the table" )->required();
+   getTable->add_option( "table", table, "The name of the table as specified by the contract abi" )->required();
+   getTable->add_option( "-b,--binary", binary, "Return the value as BINARY rather than using abi to interpret as JSON" );
+   getTable->add_option( "-l,--limit", limit, "The maximum number of rows to return" );
+   getTable->add_option( "-k,--key", limit, "The name of the key to index by as defined by the abi, defaults to primary key" );
+   getTable->add_option( "-L,--lower", lower, "JSON representation of lower bound value of key, defaults to first" );
+   getTable->add_option( "-U,--upper", upper, "JSON representation of upper bound value value of key, defaults to last" );
+
+   getTable->set_callback([&] {
+      auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
+                         ("scope",scope)
+                         ("code",code)
+                         ("table",table)
+                         );
+
+      std::cout << fc::json::to_pretty_string(result)
+                << std::endl;
+   });
+
+
+
    // get accounts
    string publicKey;
    auto getAccounts = get->add_subcommand("accounts", "Retrieve accounts associated with a public key", false);
@@ -276,7 +335,8 @@ int main( int argc, char** argv ) {
    string account;
    string wastPath;
    string abiPath;
-   auto contractSubcommand = app.add_subcommand("contract", "Create or update the contract on an account");
+   auto setSubcommand = app.add_subcommand("set", "Set or update blockchain state");
+   auto contractSubcommand = setSubcommand->add_subcommand("contract", "Create or update the contract on an account");
    contractSubcommand->add_option("account", account, "The account to publish a contract for")->required();
    contractSubcommand->add_option("wast-file", wastPath, "The file containing the contract WAST")->required()
          ->check(CLI::ExistingFile);
@@ -522,7 +582,7 @@ int main( int argc, char** argv ) {
    
 
    // Push subcommand
-   auto push = app.add_subcommand("push", "Push arbitrary data to the blockchain", false);
+   auto push = app.add_subcommand("push", "Push arbitrary transactions to the blockchain", false);
    push->require_subcommand();
 
    // push message
@@ -540,8 +600,8 @@ int main( int argc, char** argv ) {
    messageSubcommand->add_option("data", data, "The arguments to the contract")->required();
    messageSubcommand->add_option("-p,--permission", permissions,
                                  "An account and permission level to authorize, as in 'account@permission'");
-   messageSubcommand->add_option("-s,--scope", scopes, "An account in scope for this operation", true);
-   messageSubcommand->add_flag("--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   messageSubcommand->add_option("-S,--scope", scopes, "An comma separated list of accounts in scope for this operation", true);
+   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
    messageSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
@@ -562,7 +622,12 @@ int main( int argc, char** argv ) {
       boost::copy(fixedPermissions, std::back_inserter(accountPermissions)); 
       transaction_emplace_serialized_message(trx, contract, action, accountPermissions,
                                                       result.get_object()["binargs"].as<Bytes>());
-      trx.scope.assign(scopes.begin(), scopes.end());
+      for( const auto& scope : scopes ) {
+         vector<string> subscopes;
+         boost::split( subscopes, scope, boost::is_any_of( ", :" ) );
+         for( const auto& s : subscopes )
+         trx.scope.emplace_back(s);
+      }
       ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx, !skip_sign ))));
    });
 
