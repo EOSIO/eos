@@ -244,9 +244,23 @@ plugin = eos::http_plugin
 
 Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, these instructions will be updated to show how to create an example multi-node testnet.
 
+When running `eosd` you should get log messages similar to below. It means the blocks are successfully produced.
+
+```
+1575001ms thread-0   chain_controller.cpp:235      _push_block          ] initm #1 @2017-09-04T04:26:15  | 0 trx, 0 pending, exectime_ms=0
+1575001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initm generated block #1 @ 2017-09-04T04:26:15 with 0 trxs  0 pending
+1578001ms thread-0   chain_controller.cpp:235      _push_block          ] initc #2 @2017-09-04T04:26:18  | 0 trx, 0 pending, exectime_ms=0
+1578001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initc generated block #2 @ 2017-09-04T04:26:18 with 0 trxs  0 pending
+1581001ms thread-0   chain_controller.cpp:235      _push_block          ] initd #3 @2017-09-04T04:26:21  | 0 trx, 0 pending, exectime_ms=0
+1581001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initd generated block #3 @ 2017-09-04T04:26:21 with 0 trxs  0 pending
+1584000ms thread-0   chain_controller.cpp:235      _push_block          ] inite #4 @2017-09-04T04:26:24  | 0 trx, 0 pending, exectime_ms=0
+1584000ms thread-0   producer_plugin.cpp:207       block_production_loo ] inite generated block #4 @ 2017-09-04T04:26:24 with 0 trxs  0 pending
+1587000ms thread-0   chain_controller.cpp:235      _push_block          ] initf #5 @2017-09-04T04:26:27  | 0 trx, 0 pending, exectime_ms=0
+```
+
 ## Accounts and smart contracts
 
-EOS comes with example contracts that can be uploaded and run. To upload and test them, please follow the steps below.
+EOS comes with example contracts that can be uploaded and run for testing purposes. To upload and test them, please follow the steps below.
 
 ### Create accounts for your smart contracts
 
