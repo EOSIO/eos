@@ -7,69 +7,119 @@ extern "C" {
     * @ingroup contractdev
     * @brief Define API for querying message properties
     *
+    */
+
+   /**
+    * @defgroup messagecapi Message C API
+    * @ingroup messageapi
+    * @brief Define API for querying message properties
+    *
+    *
     * A EOS.IO message has the following abstract structure:
     *
     * ```
     *   struct Message {
-    *     Name code; ///< primary account whose code defines the action 
-    *     Name action; ///< the name of the action.
-    *     Name recipients[]; ///< accounts whose code will be notified (in addition to code)
-    *     Name authorization[]; ///< accounts that have approved this message
-    *     char data[];
+    *     AccountName code; // the contract defining the primary code to execute for code/type
+    *     FuncName type; // the action to be taken
+    *     AccountPermission[] authorization; // the accounts and permission levels provided
+    *     Bytes data; // opaque data processed by code
     *   };
     * ```
-    * 
+    *
     * This API enables your contract to inspect the fields on the current message and act accordingly.
-    * 
-    */
-
-   /** 
-    * @defgroup messagecapi Message C API
-    * @ingroup messageapi
-    * @brief Define API for querying message properties
+    *
+    * Example:
+    * @code
+    * // Assume this message is used for the following examples:
+    * // {
+    * //  "code": "eos",
+    * //  "type": "transfer",
+    * //  "authorization": [{ "account": "inita", "permission": "active" }],
+    * //  "data": {
+    * //    "from": "inita",
+    * //    "to": "initb",
+    * //    "amount": 1000
+    * //  }
+    * // }
+    *
+    * char buffer[128];
+    * uint32_t total = readMessage(buffer, 5); // buffer contains the content of the message up to 5 bytes
+    * print(total); // Output: 5
+    *
+    * uint32_t msgsize = messageSize();
+    * print(msgsize); // Output: size of the above message's data field
+    *
+    * requireNotice(N(initc)); // initc account will be notified for this message
+    *
+    * requireAuth(N(inita)); // Do nothing since inita exists in the auth list
+    * requireAuth(N(initb)); // Throws an exception
+    *
+    * AccountName code = currentCode();
+    * print(Name(code)); // Output: eos
+    *
+    * assert(Name(currentCode()) === "eos", "This message expects to be received by eos"); // Do nothing
+    * assert(Name(currentCode()) === "inita", "This message expects to be received by inita"); // Throws exception and roll back transfer transaction
+    *
+    * print(now()); // Output: timestamp of last accepted block
+    *
+    * @endcode
+    *
     *
     * @{
     */
 
    /**
-    *  @param msg - a pointer where up to @ref len bytes of the current message will be coppied
+    *  Copy up to @ref len bytes of current message to the specified location
+    *  @brief Copy current message to the specified location
+    *  @param msg - a pointer where up to @ref len bytes of the current message will be copied
+    *  @param len - len of the current message to be copied
     *  @return the number of bytes copied to msg
     */
    uint32_t readMessage( void* msg, uint32_t len );
 
    /**
-    * This method is useful for dynamicly sized messages
-    *
+    * Get the length of the current message's data field
+    * This method is useful for dynamically sized messages
+    * @brief Get the length of current message's data field
     * @return the length of the current message's data field
     */
    uint32_t messageSize();
 
    /**
-    *  Verifies that @ref name exists in the set of notified accounts on a message. Throws if not found
+    *  Add the specified account to set of accounts to be notified
+    *  @brief Add the specified account to set of accounts to be notified
+    *  @param name - name of the account to be verified
     */
-   void        requireNotice( AccountName );
+   void        requireNotice( AccountName name );
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a message. Throws if not found
+    *  @brief Verify specified account exists in the set of provided auths
+    *  @param name - name of the account to be verified
     */
    void        requireAuth( AccountName name );
 
    /**
-    *  @return the account which specifes the code that is being run
+    *  Get the account which specifies the code that is being run
+    *  @brief Get the account which specifies the code that is being run
+    *  @return the account which specifies the code that is being run
     */
    AccountName currentCode();
 
 
    /**
-    *  Aborts processing of this message and unwinds all pending changes
-    *
+    *  Aborts processing of this message and unwinds all pending changes if the test condition is true
+    *  @brief Aborts processing of this message and unwinds all pending changes
     *  @param test - 0 to abort, 1 to ignore
     *  @param cstr - a null terminated message to explain the reason for failure
+
     */
    void  assert( uint32_t test, const char* cstr );
 
    /**
     *  Returns the time in seconds from 1970 of the last accepted block (not the block including this message)
+    *  @brief Get time of the last accepted block
+    *  @return time in seconds from 1970 of the last accepted block
     */
    Time  now();
 

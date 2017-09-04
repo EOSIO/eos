@@ -15,18 +15,6 @@ typedef uint16_t transaction_handle_type;
 struct wallet_data
 {
    vector<char>              cipher_keys; /** encrypted keys */
-
-   string                    ws_server = "localhost";
-   uint16_t                  ws_port = 8090;
-   string                    ws_user;
-   string                    ws_password;
-};
-
-enum authority_type
-{
-   owner,
-   active,
-   posting
 };
 
 namespace detail {
@@ -35,7 +23,7 @@ class wallet_api_impl;
 
 /**
  * This wallet assumes it is connected to the database server with a high-bandwidth, low-latency connection and
- * performs minimal caching. This API could be provided locally to be used by a web interface.
+ * performs minimal caching.
  */
 class wallet_api
 {
@@ -58,6 +46,11 @@ class wallet_api
        * private key must already be in the wallet.
        */
       string                            get_private_key( public_key_type pubkey )const;
+
+      /**
+       * Get the private key corresponding to a public key or nothing.
+       */
+      optional<fc::ecc::private_key>    try_get_private_key(const public_key_type& id)const;
 
       /**
        *  @param role - active | owner | posting | memo
@@ -165,13 +158,6 @@ struct plain_keys {
 
 } }
 
-FC_REFLECT( eos::wallet::wallet_data,
-            (cipher_keys)
-            (ws_server)
-            (ws_user)
-            (ws_password)
-          )
+FC_REFLECT( eos::wallet::wallet_data, (cipher_keys) )
 
 FC_REFLECT( eos::wallet::plain_keys, (checksum)(keys) )
-
-FC_REFLECT_ENUM( eos::wallet::authority_type, (owner)(active)(posting) )

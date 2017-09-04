@@ -338,7 +338,7 @@ sudo mkdir -p /data/store/eos
 docker-compose -f Docker/docker-compose.yml up
 ```
 
-Get chain info
+Get chain info:
 
 ```
 curl http://127.0.0.1:8888/v1/chain/get_info
