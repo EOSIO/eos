@@ -3,7 +3,6 @@ version: "2"
 services:
   eos:
     image: eosio/eos
-    command: "--skip-transaction-signatures"
     ports:
     - "8888:8888"
     - "9876:9876"
