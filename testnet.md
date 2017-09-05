@@ -34,12 +34,15 @@ Network topology or "shape" describes how the nodes are connected in order to sh
 The Launcher has definitions of three different network "shapes" based on inter-nodal connections, which can be selected by a command line option, or you can supply your own network topology by editing the Launcher generated configuration file.
 
 #### Ring network
+![](ring.png  "Ring Diagram")
 This is the simplest network, where each node identifies just the node next to it as it's only peer. 
 
 #### Star network
+![](star.png "Star Diagram")
 A "star" is intended to support the use larger number nodes in the testnet. In this case the number of peers connected to a node and the distribution of those nodes varies based on the number of nodes in the network.
 
 #### Mesh network
+![](mesh.png "Mesh Diagram")
 In a "mesh" network, each node is connected to as many peer nodes as possible.
 
 # The Launcher Application
@@ -172,7 +175,7 @@ keys | specify the authentication tokens for this node.
 peers | this list indicates the other nodes in the network to which this one actively connects. Since this file may be edited to alter the hostname, public name, or p2p port values, the peers list here holds aliases for the actual endpoints eventually written to the individual config.ini files.
 producers | this list identifies which of the producers from the genesis.json file are held by this node. Note that the launcher uses a round-robin algorithm to spread the producer instances across the producing nodes.
 
-###Provisioning Distributed Servers
+### Provisioning Distributed Servers
 The ssh_helper section of the testnet.json file contains the ssh elements necessary to connect and issue commands to other servers. In addition to the ssh_helper section which provides access to global configuration settings, the per-node configuration may provide overriding identity and connection arguments.
 
 It is also necessary to provision the server by at least copying the eosd executable, and the genesis.json files to their appropriate locations relative to some named EOS root directory. For example, I defined the EOS root to be `/home/phil/blockchain/eos`. When run, the launcher will run through a variety of shell commands using ssh and finally using scp to copy a config.ini file to the appropriate data directory on the remote.
@@ -191,7 +194,7 @@ The launcher app creates a separate date and configuration directory for each no
 
 A file called "last_run.json" contains hints for a later instance of the launcher to be able to kill local and remote nodes when run with -k. 
 
-#What Remains To Be Done
+# What Remains To Be Done
 
 Functionality that remains to be implemented: caching signed transactions then purging them on a schedule. Sending summaries of blocks rather than whole blocks. Optimizing the routing between nodes. Failover during new node synchronization if a peer fails to respond timely enough
 
