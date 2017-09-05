@@ -16,6 +16,6 @@ services:
       - "EOS_APP=walletd"
     command: "--skip-localhost-verification"
     ports:
-    - "8899:8888"
+    - "8899:8899"
     volumes:
       - /data/store/walletd:/opt/eos/bin/walletd-dir
