@@ -204,6 +204,13 @@ For a debug build, add `-DCMAKE_BUILD_TYPE=Debug`. Other common build types incl
 
 To run the test suite after building, run the `chain_test` executable in the `tests` folder.
 
+EOS comes with a number of programs you can find in `~/eos/build/programs`. They are listed below:
+
+* eosd - server-side blockchain node component
+* eosc - command line interface to interact with the blockchain
+* eos-walletd - EOS wallet
+* launcher - application for nodes network composing and deployment
+
 ### Creating and launching a single-node testnet
 
 After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with Ctrl-C. Note that `eosd` will have created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
@@ -278,7 +285,7 @@ cd ~/eos/build/programs/eosd/
 ./eosd --skip-transaction-signatures
 ```
 
-### Run a eos-walletd and importing account key
+### Run eos-walletd and importing account key
 
 Before running the API commands you need to start EOS wallet process and import private key of an account you will be authorizing the transactions under.
 
