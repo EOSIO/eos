@@ -56,11 +56,44 @@ struct TestModel3xi64_V2 : TestModel3xi64 {
 
 #pragma pack(pop)
 
+#define STRLEN(s) (sizeof(s)/sizeof(s[0]))
+
 extern "C" {
   void my_memset(void *vptr, unsigned char val, unsigned int size) {
     char *ptr = (char *)vptr;
     while(size--) { *(ptr++)=val; }
   }
+}
+
+
+unsigned int test_db::key_str_general() {
+
+  const char* keys[] = { "alice", "bob", "dave", "carol" };
+  const char* vals[] = { "data1", "data2", "data3", "data4" };
+
+  char tmp[64];
+
+  uint32_t res;
+  res = store_str(currentCode(),  N(str), (char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]) );
+  WASM_ASSERT(res != 0, "store alice" );
+
+  res = store_str(currentCode(),  N(str), (char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
+  WASM_ASSERT(res != 0, "store bob" );
+
+  res = store_str(currentCode(),  N(str), (char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
+  WASM_ASSERT(res != 0, "store dave" );
+
+  res = store_str(currentCode(),  N(str), (char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
+  WASM_ASSERT(res != 0, "store carol" );
+
+  res = load_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 63);
+
+  prints("--->RES: NUM\n");
+  printi(uint64_t(res));
+  prints(tmp);
+
+  return WASM_TEST_PASS;
+
 }
 
 unsigned int test_db::key_i64_general() {

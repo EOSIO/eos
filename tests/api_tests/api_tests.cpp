@@ -388,6 +388,9 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       //Test db (i64i64i64)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_i64i64i64_general"), {}, {} ) == WASM_TEST_PASS, "test_db::key_i64i64i64_general()" );
 
+      //Test db (str)
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_db", "key_str_general"), {}, {} ) == WASM_TEST_PASS, "test_db::key_str_general()" );
+
       //Test crypto
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_crypto", "test_sha256"), {}, {} ) == WASM_TEST_PASS, "test_crypto::test_sha256()" );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_crypto", "sha256_no_data"), {}, {} ),
