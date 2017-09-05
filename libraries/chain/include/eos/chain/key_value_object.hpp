@@ -62,17 +62,37 @@ namespace eos { namespace chain {
       >
    >;
 
+   struct shared_string_less {
+      bool operator()( const char* a, const char* b )const {
+         return less(a, b);
+      }
+
+      bool operator()( const std::string& a, const char* b )const {
+         return less(a.c_str(), b);
+      }
+
+      bool operator()( const char* a, const std::string& b )const {
+         return less(a, b.c_str());
+      }
+
+      inline bool less( const char* a, const char* b )const{
+         return std::strcmp( a, b ) < 0;
+      }
+   };
+
    struct keystr_value_object : public chainbase::object<keystr_value_object_type, keystr_value_object> {
-      OBJECT_CTOR(keystr_value_object, (value))
+      OBJECT_CTOR(keystr_value_object, (primary_key)(value))
       
-      typedef Name key_type;
+      typedef std::string key_type;
       static const int number_of_keys = 1;
+
+      const char* data() const { return primary_key.data(); }
 
       id_type               id;
       AccountName           scope; 
       AccountName           code;
       AccountName           table;
-      Name                  primary_key;
+      shared_string         primary_key;
       shared_string         value;
    };
 
@@ -85,9 +105,9 @@ namespace eos { namespace chain {
                member<keystr_value_object, AccountName, &keystr_value_object::scope>,
                member<keystr_value_object, AccountName, &keystr_value_object::code>,
                member<keystr_value_object, AccountName, &keystr_value_object::table>,
-               member<keystr_value_object, Name, &keystr_value_object::primary_key>
+               const_mem_fun<keystr_value_object, const char*, &keystr_value_object::data>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<Name> >
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,shared_string_less>
          >
       >
    >;

@@ -46,6 +46,7 @@ namespace eos { namespace types {
       built_in_types.emplace("Price",         packUnpack<Price>());
      
       //native.hpp
+      built_in_types.emplace("RealString",    packUnpack<RealString>());
       built_in_types.emplace("String",        packUnpack<String>());
       built_in_types.emplace("Time",          packUnpack<Time>());
       built_in_types.emplace("Signature",     packUnpack<Signature>());
