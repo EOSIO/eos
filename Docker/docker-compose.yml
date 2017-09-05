@@ -8,6 +8,8 @@ services:
     - "9876:9876"
     volumes:
       - /data/store/eosd:/opt/eos/bin/eosd-dir
+    #Until we can override the walletd ip:port, this will be used.
+    network_mode: "host"
   walletd:
     image: eosio/eos
     environment:
