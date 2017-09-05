@@ -3,7 +3,8 @@
     "structs": [{
         "name": "record1alpha",
         "fields": {
-          "key1": "Name"
+          "key": "RealString",
+          "value": "RealString"
         }
       },{
         "name": "record1",
