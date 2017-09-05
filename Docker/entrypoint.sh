@@ -17,11 +17,6 @@ if [ -f '/opt/eos/bin/eosd-dir/genesis.json' ]; then
   else
     cp /genesis.json /opt/eos/bin/eosd-dir
 fi
-if [ -f '/opt/eos/bin/walletd-dir/genesis.json' ]; then
-    echo
-  else
-    cp /genesis.json /opt/eos/bin/walletd-dir
-fi
 
 if [ -d '/opt/eos/bin/eosd-dir/contracts' ]; then
     echo
