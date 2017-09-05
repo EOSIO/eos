@@ -1,10 +1,10 @@
 /**
 
   @defgroup eosc EOS Command Line Client (eosc)
-  @brief Tool for sending transactions and querying state from @ref eosd 
+  @brief Tool for sending transactions and querying state from @ref eosd
 
   @section intro Introduction to EOSC
-  
+
   `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
   have a local copy of `eosd` running and configured to load the 'eos::chain_api_plugin'.
 
@@ -35,9 +35,30 @@ $ ./eosc get info
 }
 ```
 
+
+  @section createwallet Creating a Wallet
+
+In order to push transaction to the blockchain (without --skip-transaction-signatures enabled on `eosd`), you will need a wallet that store your private key.
+
+EOS Wallet application can be found inside programs/eos-walletd. Let's first start eos-walletd on port 8887 (since port 8888 is used by `eosd`)
+```
+  ./eos-walletd --http-server-endpoint 127.0.0.1:8887
+```
+Then create a wallet inside `eos-walletd` using `eosc`:
+```
+$ ./eosc --wallet-port 8887 wallet create
+Creating wallet: default
+Save password to use in the future to unlock this wallet.
+Without password imported keys will not be retrievable.
+"PW5JD9cw9YY288AXPvnbwUk5JK4Cy6YyZ83wzHcshu8F2akU9rRWE"
+```
+This will create a wallet called 'default' inside `eos-walletd` and return a password that you can use to unlock your wallet in the future.
+Note that, the wallet is going to be automatically locked after certain period of time.
+
+
   @section createaccount Creating an Account
 
-In order to create an account you will need two new keys: owener and active. You can ask eosc to create some keys for you:
+In order to create an account you will need two new keys: owner and active. You can ask eosc to create some keys for you:
 
 This will be your owner key,
 ```
@@ -53,14 +74,20 @@ public: EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 private: 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
 ```
 
-@note eosc does not save the generated private key.  
+@note eosc does not save the generated private key.
 
 Next we will create the account `tester`, but because all accounts need to be created by an existing account we will ask the `inita` account
 to create `tester` using the owner and active keys created above.  `inita` was specified in the genesis file.
 
-
+In order to push transaction as `inita`, you first need to import inita's private key to your wallet
 ```
-$ ./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+$ ./eosc --wallet-port 8887 import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+```
+
+Then create an account called tester
+```
+$ ./eosc --wallet-port 8887 create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
 {
   "transaction_id": "6acd2ece68c4b86c1fa209c3989235063384020781f2c67bbb80bc8d540ca120",
   "processed": {
@@ -92,6 +119,13 @@ $ ./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5K
   }
 }
 ```
+If you enable --skip-signing-transaction in `eosd`, you can also skip the transaction signing with -s option
+```
+$ ./eosc -s create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+```
+@note The rest of this tutorial signs every transaction, however, you can always opt to use ``./eosc -s` if you want to skip transaction signing (with --skip-transaction-signature enabled on `eosd`)
+
+  @section transfereos Transfer EOS
 
 After creating the account we can view the current account status like so:
 
@@ -102,85 +136,94 @@ $ ./eosc get account tester
   "eos_balance": 0,
   "staked_balance": 1,
   "unstaking_balance": 0,
-  "last_unstaking_time": "1969-12-31T23:59:59"
+  "last_unstaking_time": "1969-12-31T23:59:59",
+  "permissions": [{
+      "name": "active",
+      "parent": "owner",
+      "required_auth": {
+        "threshold": 1,
+        "keys": [{
+            "key": "EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA",
+            "weight": 1
+          }
+        ],
+        "accounts": []
+      }
+    },{
+      "name": "owner",
+      "parent": "owner",
+      "required_auth": {
+        "threshold": 1,
+        "keys": [{
+            "key": "EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq",
+            "weight": 1
+          }
+        ],
+        "accounts": []
+      }
+    }
+  ]
 }
 ```
 
-You will note that there is no balance because almost all genesis EOS tokens are currently allocated to the `eos` account.
+You will note that there is no balance because almost all genesis EOS tokens are currently allocated to the `eos` account and genesis accounts.
 
 ```
-$ ./eosc get account eos
 {
   "name": "eos",
-  "eos_balance": "8999999999998100",
-  "staked_balance": 0,
-  "unstaking_balance": 0,
+  "eos_balance": "69000000.0000 EOS",
+  "staked_balance": "0.0000 EOS",
+  "unstaking_balance": "0.0000 EOS",
   "last_unstaking_time": "1969-12-31T23:59:59",
-  "abi": {
-    "types": [{
-        "newTypeName": "AccountName",
-        "type": "Name"
-      }
-    ],
-    "structs": [{
-        "name": "transfer",
-        "base": "",
-        "fields": {
-          "from": "AccountName",
-          "to": "AccountName",
-          "amount": "UInt64"
-        }
-      }
-    ],
-    "actions": [{
-        "action": "transfer",
-        "type": "transfer"
-      }
-    ],
-    "tables": []
-  }
+  "permissions": []
 }
 ```
 
-@note The `eos` account happens to have an ABI (Application Binary Interface) defined which provides meta-data to tools that want to interface with the `eos` contract.
-
-
-
-
-We can fund our `tester` account via `eosc` with the following command:
+Since we have the private key of the genesis accounts (i.e. inita, initb, initc, etc) in the wallet.
+We can fund our `tester` account via `eosc` through any of the genesis account with the following command:
 
 ```
-$ ./eosc transfer eos tester 1000
+$ ./eosc transfer inita tester 1000
 {
-  "transaction_id": "52b488d27ce1f72a2b29f22e5e1638fa5db5d7805565884e795733a15c6c2195",
+  "transaction_id": "eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703",
   "processed": {
-    "refBlockNum": "25298",
-    "refBlockPrefix": "1151709320",
-    "expiration": "2017-07-25T17:58:58",
+    "refBlockNum": 2206,
+    "refBlockPrefix": 221394282,
+    "expiration": "2017-09-05T08:03:58",
     "scope": [
-      "eos",
+      "inita",
       "tester"
     ],
-    "signatures": [],
+    "signatures": [
+      "1f22e64240e1e479eee6ccbbd79a29f1a6eb6020384b4cca1a958e7c708d3e562009ae6e60afac96f9a3b89d729a50cd5a7b5a7a647540ba1678831bf970e83312"
+    ],
     "messages": [{
         "code": "eos",
         "type": "transfer",
         "authorization": [{
-            "account": "eos",
+            "account": "inita",
             "permission": "active"
           }
         ],
         "data": {
-          "from": "eos",
+          "from": "inita",
           "to": "tester",
-          "amount": 1000
+          "amount": 1000,
+          "memo": ""
         },
-        "hex_data": "e54d000000000000b44c5a2400000000e803000000000000"
+        "hex_data": "000000008040934b00000000c84267a1e80300000000000000"
       }
     ],
     "output": [{
         "notify": [{
             "name": "tester",
+            "output": {
+              "notify": [],
+              "sync_transactions": [],
+              "async_transactions": []
+            }
+          },{
+            "name": "inita",
             "output": {
               "notify": [],
               "sync_transactions": [],
@@ -194,6 +237,7 @@ $ ./eosc transfer eos tester 1000
     ]
   }
 }
+
 ```
 
 Now we can verify that the funds were received.
@@ -202,29 +246,62 @@ Now we can verify that the funds were received.
 $ ./eosc get account tester
 {
   "name": "tester",
-  "eos_balance": 1000,
-  "staked_balance": 1,
-  "unstaking_balance": 0,
-  "last_unstaking_time": "1969-12-31T23:59:59"
+  "eos_balance": "0.1000 EOS",
+  "staked_balance": "0.0001 EOS",
+  "unstaking_balance": "0.0000 EOS",
+  "last_unstaking_time": "1969-12-31T23:59:59",
+  "permissions": [{
+      "name": "active",
+      "parent": "owner",
+      "required_auth": {
+        "threshold": 1,
+        "keys": [{
+            "key": "EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA",
+            "weight": 1
+          }
+        ],
+        "accounts": []
+      }
+    },{
+      "name": "owner",
+      "parent": "owner",
+      "required_auth": {
+        "threshold": 1,
+        "keys": [{
+            "key": "EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq",
+            "weight": 1
+          }
+        ],
+        "accounts": []
+      }
+    }
+  ]
 }
 ```
 
 
-
 @section createcontract Creating a Contract
 
-In this section we will use `eosc` to create and publish a currency contract. You can find the example currency contract in the `eos/contracts/currency` directory. 
+In this section we will use `eosc` to create and publish a currency contract. You can find the example currency contract in the `eos/contracts/currency` directory.
 
-The first step is to create an account for currency. We will have the `tester` account create the `currency` account.
+The first step is to create an account for currency. We will have the `inita` account create the `currency` account.
 
-```
-$ ./eosc create account tester currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
-```
-
-The next step is to publish the contract (.wast) and its abi (.abi)
 
 ```
-$ ./eosc contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
+$ ./eosc --wallet-port 8887 create account inita currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+```
+
+The next step is to publish the contract (.wast) and its abi (.abi).
+
+We will need currency active key in our wallet for this
+```
+$ ./eosc --wallet-port 8887 import 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
+imported private key for: EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+```
+Then proceed with setting the code
+
+```
+$ ./eosc --wallet-port 8887 set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
 Reading WAST...
 Assembling WASM...
 Publishing contract...
@@ -263,7 +340,7 @@ Publishing contract...
 After the contract is published it initially allocates all of the currency to the `currency` account.  So lets transfer some of it to our tester.
 
 ```
-$ ./eosc push message currency transfer '{"from":"currency","to":"tester","quantity":50}' -s currency -s tester -p active@currency
+$ ./eosc --wallet-port 8887 push message currency transfer '{"from":"currency","to":"tester","amount":50}' -S currency -S tester -p currency@active
 1589302ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
 1589304ms thread-0   main.cpp:290                  operator()           ] Transaction result:
 {
@@ -310,53 +387,23 @@ $ ./eosc push message currency transfer '{"from":"currency","to":"tester","quant
   }
 }
 ```
-
-eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
+We can check the balance of `tester` inside its scope, and see it has balance of 50
 ```
-$ ./eosc
-ERROR: RequiredError: Subcommand required
-Command Line Interface to Eos Daemon
-Usage: ./eosc [OPTIONS] SUBCOMMAND
-
-Options:
-  -h,--help                   Print this help message and exit
-
-Subcommands:
-  create                      Create various items, on and off the blockchain
-  get                         Retrieve various items and information from the blockchain
-  contract                    Create or update the contract on an account
-  transfer                    Transfer EOS from account to account
-  push                        Push arbitrary data to the blockchain
+ ./eosc get table tester currency account
+ {
+  "rows": [{
+      "account": "account",
+      "balance": 50
+    }
+  ],
+  "more": true
+}
 ```
-To get help with any particular subcommand, run it with no arguments as well:
-```
-$ ./eosc create
-ERROR: RequiredError: Subcommand required
-Create various items, on and off the blockchain
-Usage: ./eosc create SUBCOMMAND
-
-Subcommands:
-  key                         Create a new keypair and print the public and private keys
-  account                     Create a new account on the blockchain
-$ ./eosc create account
-ERROR: RequiredError: creator
-Create a new account on the blockchain
-Usage: ./eosc create account creator name OwnerKey ActiveKey
-
-Positionals:
-  creator TEXT                The name of the account creating the new account
-  name TEXT                   The name of the new account
-  OwnerKey TEXT               The owner public key for the account
-  ActiveKey TEXT              The active public key for the account
-```
-
-@note at this time the blockchain is not validating signatures so anyone can do anything provided if they simply declare the proper authority. In the future the declared authorities will direct the wallet on which keys to use to sign the transaction. Also future revisions of this API may automatically detect `scope` and `authorization` via a trial run of the contract.
-
 
 Now we can transfer it from `tester` to `inita` and require the permission of `tester`.  This should drain the balance of `tester` to 0.
 
 ```
-$ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
+$ ./eosc --wallet-port 8887 push message currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
 3116153ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
 3116154ms thread-0   main.cpp:290                  operator()           ] Transaction result:
 {
@@ -414,7 +461,7 @@ $ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity
 Now that `tester` has a balance of 0, if we attempt this transfer a second time it should fail:
 
 ```
-$ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -s inita -s tester -p tester@active
+$ ./eosc --wallet-port 8887 push message currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
 3543610ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
 3543615ms thread-0   main.cpp:311                  main                 ] Failed with error: 10 assert_exception: Assert Exception
 status_code == 200: Error
@@ -424,6 +471,54 @@ test: assertion failed: integer underflow subtracting token balance
     thread-1  wasm_interface.cpp:248 assertnonei32i32
 
 [...snipped...]
+```
+
+  @section additionaldoc Additional Documentation
+
+eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
+```
+$ ./eosc
+ERROR: RequiredError: Subcommand required
+Command Line Interface to Eos Daemon
+Usage: ./eosc [OPTIONS] SUBCOMMAND
+
+Options:
+  -h,--help                   Print this help message and exit
+  -H,--host TEXT=localhost    the host where eosd is running
+  -p,--port UINT=8888         the port where eosd is running
+  --wallet-host TEXT=localhost
+                              the host where eos-walletd is running
+  --wallet-port UINT=8888     the port where eos-walletd is running
+
+Subcommands:
+  create                      Create various items, on and off the blockchain
+  get                         Retrieve various items and information from the blockchain
+  set                         Set or update blockchain state
+  transfer                    Transfer EOS from account to account
+  wallet                      Interact with local wallet
+  benchmark                   Configure and execute benchmarks
+  push                        Push arbitrary transactions to the blockchain
+```
+To get help with any particular subcommand, run it with no arguments as well:
+```
+$ ./eosc create
+ERROR: RequiredError: Subcommand required
+Create various items, on and off the blockchain
+Usage: ./eosc create SUBCOMMAND
+
+Subcommands:
+  key                         Create a new keypair and print the public and private keys
+  account                     Create a new account on the blockchain
+$ ./eosc create account
+ERROR: RequiredError: creator
+Create a new account on the blockchain
+Usage: ./eosc create account creator name OwnerKey ActiveKey
+
+Positionals:
+  creator TEXT                The name of the account creating the new account
+  name TEXT                   The name of the new account
+  OwnerKey TEXT               The owner public key for the account
+  ActiveKey TEXT              The active public key for the account
 ```
 
 */
