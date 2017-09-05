@@ -244,10 +244,11 @@ producer-name = initr
 producer-name = inits
 producer-name = initt
 producer-name = initu
-# Load the block producer plugin, so we can produce blocks
+# Load the block producer plugin, so you can produce blocks
 plugin = eos::producer_plugin
-# As well as API and HTTP plugins
+# Wallet plugin
 plugin = eos::wallet_api_plugin
+# As well as API and HTTP plugins
 plugin = eos::chain_api_plugin
 plugin = eos::http_plugin
 ```
@@ -435,9 +436,9 @@ As a confirmation of a successfully submitted transaction you will get a json wi
 
 ## Running local testnet
 
-To run a local testnet we can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
+To run a local testnet you can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
 
-For testing purposes we will run 2 local production nodes talking to each other.
+For testing purposes you will run 2 local production nodes talking to each other.
 
 ```commandline
 cd ~/eos/build
@@ -464,7 +465,7 @@ To confirm the nodes are running, run following `eosc` commands:
 ./eosc -p 8889 get info
 ```
 
-For each we should get a json with a blockchain information.
+For each you should get a json with a blockchain information.
 
 You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
