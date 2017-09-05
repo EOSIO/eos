@@ -249,7 +249,6 @@ plugin = eos::producer_plugin
 # As well as API and HTTP plugins
 plugin = eos::chain_api_plugin
 plugin = eos::http_plugin
-plugin = eos::wallet_api_plugin
 ```
 
 Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, these instructions will be updated to show how to create an example multi-node testnet.
