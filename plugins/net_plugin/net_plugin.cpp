@@ -1,4 +1,4 @@
-#include <eos/chain/types.hpp>
+  #include <eos/chain/types.hpp>
 
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
@@ -135,6 +135,8 @@ namespace eos {
         peer_addr ()
     {
       wlog( "created connection from client" );
+      boost::asio::ip::tcp::no_delay option(true);
+      socket->set_option(option);
       initialize ();
     }
 
@@ -146,8 +148,6 @@ namespace eos {
     }
 
     void initialize () {
-      boost::asio::ip::tcp::no_delay option(true);
-      //      socket->set_option(option);
       pending_message_buffer.resize( 1024*1024*4 );
       auto *rnd = remote_node_id.data();
       rnd[0] = 0;
@@ -305,8 +305,6 @@ namespace eos {
     string                        p2p_address;
 
     vector<string>                supplied_peers;
-    std::set<fc::sha256>          resolved_nodes;
-    std::set<fc::sha256>          learned_nodes;
 
     std::set< connection_ptr >    connections;
     bool                          done = false;
@@ -488,12 +486,15 @@ namespace eos {
       }
     }
 
-    void apply_cached_blocks () {
+    void apply_cached_blocks (connection_ptr conn) {
       uint32_t start = 1 + chain_plug->chain().head_block_num();
       bool keep_going = true;
       while (keep_going) {
         keep_going = false;
         for (auto &c : connections) {
+          if (c == conn || c->connecting || !c->socket->is_open()) {
+            continue;
+          }
           try {
             auto ss = c->in_sync_state.begin();
             if (start == ss->start_block) {
@@ -553,30 +554,19 @@ namespace eos {
         }
       }
 
+      if ( c->remote_node_id != msg.node_id) {
+        c->reset();
+        c->remote_node_id = msg.node_id;
+      }
+
       uint32_t head = cc.head_block_num ();
+      dlog ("msg.head_num = ${m} head = ${h}", ("m", msg.head_num)("h",head));
       if ( msg.head_num  >  head) {
         set_sync_head(msg.head_num);
       }
 
-      if ( c->remote_node_id != msg.node_id) {
-        c->reset();
-        if (c->peer_addr.length() > 0) {
-          auto old_id =  resolved_nodes.find (c->remote_node_id);
-          if (old_id != resolved_nodes.end()) {
-            resolved_nodes.erase(old_id);
-          }
-          resolved_nodes.insert (msg.node_id);
-        }
-        else {
-          auto old_id =  learned_nodes.find (c->remote_node_id);
-          if (old_id != learned_nodes.end()) {
-            learned_nodes.erase(old_id);
-          }
-          learned_nodes.insert (msg.node_id);
-        }
 
-        c->remote_node_id = msg.node_id;
-      }
+
       c->last_handshake = msg;
     }
 
@@ -607,6 +597,7 @@ namespace eos {
         // collect a list of transactions that were found.
         // collect a second list of transaction ids that were not found but are otherwise known by some peers
         // finally, what remains are future(?) transactions
+
       vector< SignedTransaction > send_now;
       map <connection_ptr, vector < transaction_id_type > > forward_to;
       auto conn_ndx = connections.begin();
@@ -655,6 +646,7 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
+      dlog ("got sync_request, ${low} - ${high}", ("low", msg.start_block)("high", msg.end_block));
       sync_state req = {msg.start_block,msg.end_block,msg.start_block-1,time_point::now()};
       c->out_sync_state.push_back (req);
       c->write_block_backlog ();
@@ -714,7 +706,7 @@ namespace eos {
 
     void handle_message (connection_ptr c, const signed_block &msg) {
       chain_controller &cc = chain_plug->chain();
-
+      dlog("signed_block num = ${num}",("num",msg.block_num()));
       if (cc.is_known_block(msg.id())) {
         return;
       }
@@ -732,7 +724,7 @@ namespace eos {
                 s0->start_block++;
                 if (s0->start_block == s0->end_block) {
                   c->in_sync_state.erase(s0);
-                  apply_cached_blocks();
+                  apply_cached_blocks(c);
                 }
 
               } catch (const unlinkable_block_exception &ex) {
@@ -863,7 +855,6 @@ namespace eos {
       start_conn_timer();
       vector <connection_ptr> discards;
       for (auto &c : connections ) {
-        dlog ("socket open = ${so} connecting - ${c}",("so", c->socket->is_open())("c",c->connecting));
         if (!c->socket->is_open() && !c->connecting) {
           if (c->peer_addr.length() > 0) {
             connect (c);
