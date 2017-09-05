@@ -5,8 +5,7 @@ extern "C" {
    /**
     * @defgroup transactionapi Transaction API
     * @ingroup contractdev
-    * @brief Define API for sending transactions to other contracts inline with
-    * the current transaction or deferred to a future block.
+    * @brief Define API for sending transactions and inline messages
     *
     * A EOS.IO transaction has the following abstract structure:
     *
@@ -20,32 +19,32 @@ extern "C" {
     * 
     * This API enables your contract to construct and send transactions
     *
-    * A Transaction can be processed immediately after the execution of the 
-    * parent transaction (inline).  An inline transaction is more restrictive
-    * than a deferred transaction however, it allows the success or failure
-    * of the parent transaction to be affected by the new transaction.  In 
-    * other words, if an inline transaction fails then the whole tree of 
-    * transactions rooted in the block will me marked as failing and none of
-    * their affects on the database will persist.  
-    *
-    * Because of this and the parallel nature of transaction application, 
-    * inline transactions may not adopt any `scope` which is not listed in 
-    * their parent transaction's scope.  They may adopt any `readScope` listed
-    * in either their parent's `scope` or `readScope`.
-    *
-    * Deferred transactions carry no `scope` or `readScope` restrictions.  They
-    * may adopt any valid accounts for either field.
-    *
     * Deferred transactions will not be processed until a future block.  They
     * can therefore have no effect on the success of failure of their parent 
     * transaction so long as they appear well formed.  If any other condition
     * causes the parent transaction to be marked as failing, then the deferred
     * transaction will never be processed. 
     *
-    * Both Deferred and Inline transactions must adhere to the permissions
-    * available to the parent transaction or, in the future, delegated to the
-    * contract account for future use.
+    * Deferred transactions must adhere to the permissions available to the 
+    * parent transaction or, in the future, delegated to the contract account 
+    * for future use.
     * 
+    * An inline message allows one contract to send another contract a message
+    * which is processed immediately after the current message's processing
+    * ends such that the success or failure of the parent transaction is 
+    * dependent on the success of the message. If an inline message fails in 
+    * processing then the whole tree of transactions and messages rooted in the
+    * block will me marked as failing and none of effects on the database will
+    * persist.  
+    *
+    * Because of this and the parallel nature of transaction application, 
+    * inline messages may not affect any `scope` which is not listed in 
+    * their parent transaction's `scope`.  They also may not read any `scope`
+    * not listed in either their parent transaction's `scope` or `readScope`.
+    *
+    * Inline messages and Deferred transactions must adhere to the permissions
+    * available to the parent transaction or, in the future, delegated to the 
+    * contract account for future use.
     */
 
    /** 
@@ -58,8 +57,9 @@ extern "C" {
 
    typedef uint32_t TransactionHandle;
    #define InvalidTransactionHandle (0xFFFFFFFFUL)
-   #define SendInline (1)
-   #define SendDeferred (0)
+   
+   typedef uint32_t MessageHandle;
+   #define InvalidMessageHandle (0xFFFFFFFFUL)
 
    /**
     * @brief create a pending transaction
@@ -75,7 +75,7 @@ extern "C" {
    TransactionHandle transactionCreate();
 
    /**
-    * @brief add a scope to a pending transaction
+    * @brief require a scope to process a pending transaction
     *
     * This function adds either a `scope` or `readScope` to the given pending
     * transaction.
@@ -84,58 +84,17 @@ extern "C" {
     * @param scope - the `AccountName` to add  
     * @param readOnly - whether `scope` should be added to `scope[]` or `readScope[]`
     */
-   void transactionAddScope(TransactionHandle trx, AccountName scope, int readOnly = 0);
-   
-   /**
-    * @brief set the destination for the pending message
-    *
-    * This function sets the `AccountName` of the owner of the contract
-    * that is acting as the reciever of the pending message and the type of
-    * message;
-    *
-    * @param trx - the `TransactionHandle` of the pending transaction to modify
-    * @param code - the `AccountName` which owns the contract code to execute
-    * @param type - the type of this message
-    */
-   void transactionSetMessageDestination(TransactionHandle trx, AccountName code, FuncName type);
-
-   /**
-    * @brief add a permission to the pending message
-    *
-    * This function adds a @ref PermissionName to the pending message
-    *
-    * @param trx - the `TransactionHandle` of the pending transaction to modify
-    * @param account - the `AccountName` to add
-    * @param permission - the `PermissionName` to add
-    */
-   void transactionAddMessagePermission(TransactionHandle trx, AccountName account, PermissionName permission);
-
+   void transactionRequireScope(TransactionHandle trx, AccountName scope, int readOnly = 0);
 
    /**
     * @brief finalize the pending message and add it to the transaction
     *
-    * This function adds payload data to the pending message and pushes it into
-    * the given transaction.
-    * 
-    * This will reset the destination and permissions for the pending message on
-    * the given transaction.
+    * The message handle should be considered invalid after the call
     *
     * @param trx - the `TransactionHandle` of the pending transaction to modify
-    * @param data - the payload data for this message
-    * @param size - the size of `data`
+    * @param msg - the `MessageHandle` of the pending message to add
     */
-   void transactionPushMessage(TransactionHandle trx, void* data, int size);
-   
-   /**
-    * @brief reset the destination and persmisions of the pending transaction
-    *
-    * This will reset the destination and permissions for the pending message on
-    * the given transaction without committing the existing settings effectively
-    * dropping any changes made so far.
-    *
-    * @param trx - the `TransactionHandle` of the pending transaction to modify
-    */
-   void transactionResetMessage(TransactionHandle trx);
+   void transactionAddMessage(TransactionHandle trx, MessageHandle msg);
 
 
    /**
@@ -148,9 +107,8 @@ extern "C" {
     * This handle should be considered invalid after the call
     *
     * @param trx - the `TransactionHandle` of the pending transaction to send
-    * @param inlineMode - whether to send as an inline transaction (!=0) or deferred(=0)
     */
-   void transactionSend(TransactionHandle trx, int mode = SendDeferred);
+   void transactionSend(TransactionHandle trx);
 
    /**
     * @brief drop a pending transaction
@@ -164,6 +122,53 @@ extern "C" {
     */
    void transactionDrop(TransactionHandle trx);
    
+
+   /**
+    * @brief create a pending message 
+    *
+    * This function creates a pending message to be included in a deferred
+    * transaction or to be send as an inline message
+    * 
+    * This message has no default permissions, see @ref messageRequirePermission
+    *
+    * @param code - the `AccountName` which owns the contract code to execute
+    * @param type - the type of this message
+    * @param data - the payload data for this message
+    * @param size - the size of `data`
+    */
+   MessageHandle messageCreate(AccountName code, FuncName type, void* data, int size);
+
+   /**
+    * @brief require a permission for the pending message
+    *
+    * Indicates that a given pending message requires a certain permission
+    *
+    * @param msg - the `MessageHandle` pending message referred to
+    * @param account - the `AccountName` to of the permission
+    * @param permission - the `PermissionName` to of the permision
+    */
+   void messageRequirePermission(MessageHandle msg, AccountName account, PermissionName permission);
+
+
+   /**
+    * @brief send a pending message as an inline message
+    *
+    * This handle should be considered invalid after the call
+    *
+    * @param msg - the `MessageHandle` of the pending message to send inline
+    */
+   void messageSend(MessageHandle msg);
+
+
+   /**
+    * @brief discard a pending message
+    *
+    * This handle should be considered invalid after the call
+    *
+    * @param trx - the `MessageHandle` of the pending message to discard
+    */
+   void messageDrop(MessageHandle msg);
+
 
    ///@ } transactioncapi
 }

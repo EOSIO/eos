@@ -253,33 +253,46 @@ DEFINE_INTRINSIC_FUNCTION0(env,transactionCreate,transactionCreate,i32) {
    return ptrx.handle;
 }
 
-DEFINE_INTRINSIC_FUNCTION3(env,transactionAddScope,transactionAddScope,none,i32,handle,i64,scope,i32,readOnly) {
+DEFINE_INTRINSIC_FUNCTION3(env,transactionRequireScope,transactionRequireScope,none,i32,handle,i64,scope,i32,readOnly) {
    auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
    if(readOnly == 0) {
-      ptrx.scopes.emplace_back(scope);
+      ptrx.scope.emplace_back(scope);
    } else {
-      ptrx.read_scopes.emplace_back(scope);
+      ptrx.readscope.emplace_back(scope);
    }
 
    ptrx.check_size();
 }
 
-DEFINE_INTRINSIC_FUNCTION3(env,transactionSetMessageDestination,transactionSetMessageDestination,none,i32,handle,i64,code,i64,type) {
-   auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
-   ptrx.current_destination = decltype(ptrx.current_destination)({Name(code), Name(type)});
+DEFINE_INTRINSIC_FUNCTION2(env,transactionAddMessage,transactionAddMessage,none,i32,handle,i32,msg_handle) {
+   auto apply_context  = wasm_interface::get().current_apply_context;
+   auto& ptrx = apply_context->get_pending_transaction(handle);
+   auto& pmsg = apply_context->get_pending_message(msg_handle);
+   ptrx.messages.emplace_back(pmsg);
+   ptrx.check_size();
+   apply_context->release_pending_message(msg_handle);
 }
 
-DEFINE_INTRINSIC_FUNCTION3(env,transactionAddMessagePermission,transactionAddMessagePermission,none,i32,handle,i64,account,i64,permission) {
-   wasm_interface::get().current_apply_context->require_authorization(Name(account), Name(permission));
-   auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
-   ptrx.current_permissions.emplace_back(Name(account), Name(permission));
+DEFINE_INTRINSIC_FUNCTION1(env,transactionSend,transactionSend,none,i32,handle) {
+   auto apply_context  = wasm_interface::get().current_apply_context;
+   auto& ptrx = apply_context->get_pending_transaction(handle);
+
+   EOS_ASSERT(ptrx.messages.size() > 0, tx_unknown_argument,
+      "Attempting to send a transaction with no messages");
+
+   apply_context->deferred_transactions.emplace_back(ptrx);
+   apply_context->release_pending_transaction(handle);
 }
 
-DEFINE_INTRINSIC_FUNCTION3(env,transactionPushMessage,transactionPushMessage,none,i32,handle,i32,msg_buffer,i32,msg_size) {
+DEFINE_INTRINSIC_FUNCTION1(env,transactionDrop,transactionDrop,none,i32,handle) {
+   wasm_interface::get().current_apply_context->release_pending_transaction(handle);
+}
+
+DEFINE_INTRINSIC_FUNCTION4(env,messageCreate,messageCreate,i32,i64,code,i64,type,i32,data,i32,length) {
    auto& wasm  = wasm_interface::get();
    auto  mem   = wasm.current_memory;
 
-   EOS_ASSERT( msg_size > 0, tx_unknown_argument
+   EOS_ASSERT( length > 0, tx_unknown_argument,
       "Attempting to push an empty message" );
 
    const char* buffer = nullptr; 
@@ -287,47 +300,32 @@ DEFINE_INTRINSIC_FUNCTION3(env,transactionPushMessage,transactionPushMessage,non
       // memoryArrayPtr checks that the entire array of bytes is valid and
       // within the bounds of the memory segment so that transactions cannot pass
       // bad values in attempts to read improper memory
-      buffer = memoryArrayPtr<const char>( mem, msg_buffer, msg_size );
+      buffer = memoryArrayPtr<const char>( mem, data, uint32_t(length) );
    } catch( const Runtime::Exception& e ) {
-      FC_THROW_EXCEPTION(tx_unknown_argument, "Message data is not valid");
+      FC_THROW_EXCEPTION(tx_unknown_argument, "Message data is not a valid memory range");
    }
 
-   auto& ptrx = wasm.current_apply_context->get_pending_transaction(handle);
-   EOS_ASSERT(ptrx.destination.valid(), tx_unknown_argument
-      "Attempting to push a message without setting a destination");
-
-   auto& dest = *ptrx.destination;
-   ptrx.messages.emplace_back(dest.code, dest.type, ptrx.current_permissions, Bytes(buffer, buffer + msg_size));
-   ptrx.reset_message();
-   ptrx.check_size();
+   auto& pmsg = wasm.current_apply_context->create_pending_message(Name(code), Name(type), Bytes(buffer, buffer + length));
+   return pmsg.handle;
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,transactionResetMessage,transactionResetMessage,none,i32,handle) {
-   auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
-   ptrx.reset_message();
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,transactionSend,transactionSend,none,i32,handle,i32,mode) {
-   EOS_ASSERT(mode == 0 || mode == 1, tx_unknown_argument
-      "Unknown delivery mode when sending transaction: ${mode}", ("mode":mode));
-
+DEFINE_INTRINSIC_FUNCTION3(env,messageRequirePermission,messageRequirePermission,none,i32,handle,i64,account,i64,permission) {
    auto apply_context  = wasm_interface::get().current_apply_context;
-   auto& ptrx = apply_context->get_pending_transaction(handle);
-
-   EOS_ASSERT(ptrx.messages.size() > 0, , tx_unknown_argument
-      "Attempting to send a transaction with no messages");
-
-   if (mode == 0) {
-      apply_context->deferred_transactions.emplace_back(ptrx.as_transaction());
-   } else {
-      apply_context->inline_transactions.emplace_back(ptrx.as_transaction());
-   }
-
-   apply_context->release_pending_transaction(handle);
+   apply_context->require_authorization(Name(account), Name(permission));
+   auto& pmsg = apply_context->get_pending_message(handle);
+   pmsg.authorization.emplace_back(Name(account), Name(permission));
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,transactionDrop,transactionDrop,none,i32,handle) {
-   wasm_interface::get().current_apply_context->release_pending_transaction(handle);
+DEFINE_INTRINSIC_FUNCTION1(env,messageSend,messageSend,none,i32,handle) {
+   auto apply_context  = wasm_interface::get().current_apply_context;
+   auto& pmsg = apply_context->get_pending_message(handle);
+
+   apply_context->inline_messages.emplace_back(pmsg);
+   apply_context->release_pending_message(handle);
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,messageDrop,messageDrop,none,i32,handle) {
+   wasm_interface::get().current_apply_context->release_pending_message(handle);
 }
 
 /**

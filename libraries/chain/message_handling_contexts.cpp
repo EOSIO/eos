@@ -6,6 +6,8 @@
 
 #include <eos/utilities/parallel_markers.hpp>
 
+#include <fc/bitutil.hpp>
+
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 
@@ -15,6 +17,13 @@ void apply_context::require_authorization(const types::AccountName& account) {
    auto itr = boost::find_if(msg.authorization, [&account](const auto& auth) { return auth.account == account; });
    EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
               "Transaction is missing required authorization from ${acct}", ("acct", account));
+   used_authorizations[itr - msg.authorization.begin()] = true;
+}
+
+void apply_context::require_authorization(const types::AccountName& account,const types::PermissionName& permission) {
+   auto itr = boost::find_if(msg.authorization, [&account, &permission](const auto& auth) { return auth.account == account && auth.permission == permission; });
+   EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
+              "Transaction is missing required authorization from ${acct} with permission ${permission}", ("acct", account)("permission", permission));
    used_authorizations[itr - msg.authorization.begin()] = true;
 }
 
@@ -51,7 +60,7 @@ vector<types::AccountPermission> apply_context::unused_authorizations() const {
    return {range.begin(), range.end()};
 }
 
-pending_transaction& apply_context::get_pending_transaction(pending_transaction::handle_type handle) {
+apply_context::pending_transaction& apply_context::get_pending_transaction(pending_transaction::handle_type handle) {
    auto itr = boost::find_if(pending_transactions, [&](const auto& trx) { return trx.handle == handle; });
    EOS_ASSERT(itr != pending_transactions.end(), tx_unknown_argument,
               "Transaction refers to non-existant/destroyed pending transaction");
@@ -59,16 +68,21 @@ pending_transaction& apply_context::get_pending_transaction(pending_transaction:
 }
 
 const int Max_pending_transactions = 4;
-const uint32_t Max_pending_transaction_size = 16 * 1024;
+const uint32_t Max_pending_transaction_size = 64 * 1024;
 const auto Pending_transaction_expiration = fc::seconds(21 * 3); 
 
-pending_transaction& apply_context::create_pending_transaction() {
+apply_context::pending_transaction& apply_context::create_pending_transaction() {
    EOS_ASSERT(pending_transactions.size() < Max_pending_transactions, tx_resource_exhausted,
-              "Transaction is attempting to create too many pending transactions. The max is ${max}", ("max", Max_pending_transactions));)
+              "Transaction is attempting to create too many pending transactions. The max is ${max}", ("max", Max_pending_transactions));
    
-   pending_transaction::handle handle = next_pending_transaction_serial++;
-   pending_transactions.push_back({handle});
-   return pending_transaction.back();
+   
+   pending_transaction::handle_type handle = next_pending_transaction_serial++;
+   auto head_block_id = controller.head_block_id();
+   decltype(pending_transaction::refBlockNum) head_block_num = fc::endian_reverse_u32(head_block_id._hash[0]);
+   decltype(pending_transaction::refBlockPrefix) head_block_ref = head_block_id._hash[1];
+   decltype(pending_transaction::expiration) expiration = controller.head_block_time() + Pending_transaction_expiration;
+   pending_transactions.emplace_back(handle, head_block_num, head_block_ref, expiration);
+   return pending_transactions.back();
 }
 
 void apply_context::release_pending_transaction(pending_transaction::handle_type handle) {
@@ -83,17 +97,44 @@ void apply_context::release_pending_transaction(pending_transaction::handle_type
    pending_transactions.pop_back();
 }
 
-types::Transaction apply_context::pending_transaction::as_transaction() const {
-   decltype(types::Transaction::refBlockNum) head_block_num = chain_controller.head_block_num();
-   decltype(types::Transaction::refBlockRef) head_block_ref = fc::endian_reverse_u32(chain_controller.head_block_ref()._hash[0]);
-   decltype(types::Transaction::expiration) expiration = chain_controller.head_block_time() + Pending_transaction_expiration;
-   return types::Transaction(head_block_num, head_block_ref, expiration, scopes, read_scopes, messages);
-}
-
 void apply_context::pending_transaction::check_size() const {
-   auto trx = as_transaction();
+   const types::Transaction& trx = *this;
    EOS_ASSERT(fc::raw::pack_size(trx) <= Max_pending_transaction_size, tx_resource_exhausted,
               "Transaction is attempting to create a transaction which is too large. The max size is ${max} bytes", ("max", Max_pending_transaction_size));
+}
+
+apply_context::pending_message& apply_context::get_pending_message(pending_message::handle_type handle) {
+   auto itr = boost::find_if(pending_messages, [&](const auto& msg) { return msg.handle == handle; });
+   EOS_ASSERT(itr != pending_messages.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending message");
+   return *itr;
+}
+
+const int Max_pending_messages = 4;
+const uint32_t Max_pending_message_size = 4 * 1024;
+
+apply_context::pending_message& apply_context::create_pending_message(const AccountName& code, const FuncName& type, const Bytes& data) {
+   EOS_ASSERT(pending_messages.size() < Max_pending_messages, tx_resource_exhausted,
+              "Transaction is attempting to create too many pending messages. The max is ${max}", ("max", Max_pending_messages));
+   
+   EOS_ASSERT(data.size() < Max_pending_message_size, tx_resource_exhausted,
+              "Transaction is attempting to create a pending message that is too large. The max is ${max}", ("max", Max_pending_message_size));
+   
+   pending_message::handle_type handle = next_pending_message_serial++;
+   pending_messages.emplace_back(handle, code, type, data);
+   return pending_messages.back();
+}
+
+void apply_context::release_pending_message(pending_message::handle_type handle) {
+   auto itr = boost::find_if(pending_messages, [&](const auto& trx) { return trx.handle == handle; });
+   EOS_ASSERT(itr != pending_messages.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending message");
+
+   auto last = pending_messages.end() - 1;
+   if (itr != last) {
+      std::swap(itr, last);
+   }
+   pending_messages.pop_back();
 }
 
 } } // namespace eos::chain

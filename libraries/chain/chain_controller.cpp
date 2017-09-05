@@ -626,7 +626,7 @@ void check_output(const Transaction& expected, const Transaction& actual, const 
 
 
 template<>
-void check_output(const ProcessedSyncTransaction& expected, const ProcessedSyncTransaction& actual, const path_cons_list& path) {
+void check_output(const InlineTransaction& expected, const InlineTransaction& actual, const path_cons_list& path) {
    check_output<Transaction>(expected, actual, path);
    check_output(expected.output, actual.output, path(".output"));
 }
@@ -640,8 +640,8 @@ void check_output(const GeneratedTransaction& expected, const GeneratedTransacti
 template<>
 void check_output(const MessageOutput& expected, const MessageOutput& actual, const path_cons_list& path) {
    check_output(expected.notify, actual.notify, path(".notify"));
-   check_output(expected.sync_transactions, actual.sync_transactions, path(".sync_transactions"));
-   check_output(expected.async_transactions, actual.async_transactions, path(".async_transactions"));
+   check_output(expected.inline_transaction, actual.inline_transaction, path(".inline_transaction"));
+   check_output(expected.deferred_transactions, actual.deferred_transactions, path(".deferred_transactions"));
 }
 
 template<typename T>
@@ -898,19 +898,27 @@ void chain_controller::process_message(const Transaction& trx, AccountName code,
       } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
 
-   for( const auto& generated : apply_ctx.sync_transactions ) {
-      try {
-         output.sync_transactions.emplace_back( process_transaction( generated ) );
-      } FC_CAPTURE_AND_RETHROW((generated))
-   }
+   // combine inline messages and process
+   auto inline_transaction = PendingInlineTransaction(trx);
+   inline_transaction.messages = std::move(apply_ctx.inline_messages);
+   try {
+      output.inline_transaction = process_transaction(inline_transaction);
+   } FC_CAPTURE_AND_RETHROW((inline_transaction))
+   
 
-   for( auto& asynctrx : apply_ctx.async_transactions ) {
+   for( auto& asynctrx : apply_ctx.deferred_transactions ) {
+      digest_type::encoder enc;
+      fc::raw::pack( enc, trx );
+      fc::raw::pack( enc, asynctrx );
+      auto id = enc.result();
+      auto gtrx = GeneratedTransaction(id, asynctrx);
+
       _db.create<generated_transaction_object>([&](generated_transaction_object& transaction) {
-         transaction.trx = asynctrx;
+         transaction.trx = gtrx;
          transaction.status = generated_transaction_object::PENDING;
       });
 
-      output.async_transactions.emplace_back( std::move( asynctrx ) );
+      output.deferred_transactions.emplace_back( gtrx );
    }
 
    // propagate used_authorizations up the context chain
