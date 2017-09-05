@@ -209,7 +209,7 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 * eosd - server-side blockchain node component
 * eosc - command line interface to interact with the blockchain
 * eos-walletd - EOS wallet
-* launcher - application for nodes network composing and deployment
+* launcher - application for nodes network composing and deployment; [more on launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
 ### Creating and launching a single-node testnet
 
@@ -276,13 +276,11 @@ EOS comes with example contracts that can be uploaded and run for testing purpos
 
 To publish sample smart contracts you need to create accounts for them.
 
-At the moment for the testing purposes you need to run `eosd` with `--skip-transaction-signatures` flag to successfully create accounts and run transactions.
-
 Run the node:
 
 ```commandline
 cd ~/eos/build/programs/eosd/
-./eosd --skip-transaction-signatures
+./eosd
 ```
 
 ### Run eos-walletd and importing account key
@@ -308,6 +306,7 @@ To login you need to run a command importing an active (not owner!) private key 
 
 ```commandline
 cd ~/eos/build/programs/eosc/
+./eosc --wallet-port 8889 wallet create # You get a password that you need to save to be able to lock/unlock the wallet
 ./eosc --wallet-port 8889 wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
 ```
 
