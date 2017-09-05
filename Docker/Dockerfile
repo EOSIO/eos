@@ -73,7 +73,6 @@ COPY Docker/entrypoint.sh /sbin
 RUN chmod +x /sbin/entrypoint.sh
 VOLUME /opt/eos/bin/eosd-dir
 VOLUME /opt/eos/bin/walletd-dir
-EXPOSE 8888
-EXPOSE 9876
-EXPOSE 8899
+EXPOSE 8888 8899 9876
+
 ENTRYPOINT ["/sbin/entrypoint.sh"]
