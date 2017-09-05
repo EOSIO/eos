@@ -265,12 +265,12 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
- int32_t store_str( AccountName scope, TableName table, const void* data, uint32_t datalen );
+ int32_t store_str( AccountName scope, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
   * @return 1 if the record was updated, 0 if no record with key was found
   */
- int32_t update_str( AccountName scope, TableName table, const void* data, uint32_t datalen );
+ int32_t update_str( AccountName scope, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -281,20 +281,20 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
   *
   *  @return the number of bytes read or -1 if key was not found
   */
- int32_t load_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
- int32_t front_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
- int32_t back_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
- int32_t next_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
- int32_t previous_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
- int32_t lower_bound_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
- int32_t upper_bound_str( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+ int32_t load_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t front_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t back_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t next_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t previous_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t lower_bound_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t upper_bound_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
   *  @param data - must point to at lest 8 bytes containing primary key
   *
   *  @return 1 if a record was removed, and 0 if no record with key was found
   */
- int32_t remove_str( AccountName scope, TableName table, void* data );
+ int32_t remove_str( AccountName scope, TableName table, char* key, uint32_t keylen );
  
  ///@} dbstr
 
