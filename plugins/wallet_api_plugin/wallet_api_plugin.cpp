@@ -59,6 +59,12 @@ using namespace eos;
      api_handle.call_name(); \
      eos::detail::wallet_api_plugin_empty result;
 
+void wallet_api_plugin::set_program_options(options_description& cli, options_description& cfg)
+{
+  cfg.add_options()
+    ("skip-localhost-verification", bpo::bool_switch()->default_value(false),
+     "Disables the localhost check in walletd");
+}
 
 void wallet_api_plugin::plugin_startup() {
    ilog("starting wallet_api_plugin");
@@ -96,11 +102,13 @@ void wallet_api_plugin::plugin_startup() {
 
 void wallet_api_plugin::plugin_initialize(const variables_map& options) {
    // TODO: see TODO above, this is temporary until http_plugin has option to restrict to localhost
-   if (options.count("http-server-endpoint")) {
-      const auto& lipstr = options.at("http-server-endpoint").as<string>();
-      const auto& host = lipstr.substr(0, lipstr.find(':'));
-      if (host != "localhost" && host != "127.0.0.1") {
-         FC_THROW("wallet api restricted to localhost");
+   if(!options.at("skip-localhost-verification").as<bool>()){
+      if (options.count("http-server-endpoint")) {
+         const auto& lipstr = options.at("http-server-endpoint").as<string>();
+         const auto& host = lipstr.substr(0, lipstr.find(':'));
+         if (host != "localhost" && host != "127.0.0.1") {
+           FC_THROW("wallet api restricted to localhost");
+         }
       }
    }
 }
