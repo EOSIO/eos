@@ -177,9 +177,11 @@ public:
    }
 
    void copy_row(const chain::keystr_value_object& obj, vector<char>& data)const {
-      data.resize( sizeof(Name) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(Name) );
-      memcpy( data.data()+sizeof(Name), obj.value.data(), obj.value.size() );
+      data.resize(1024);
+      fc::datastream<char*> ds(data.data(), data.size());
+      fc::raw::pack(ds, fc::string(obj.primary_key.data(), obj.primary_key.size()) );
+      fc::raw::pack(ds, fc::string(obj.value.data(), obj.value.size()) );
+      data.resize(ds.tellp());
    }
 
    void copy_row(const chain::key128x128_value_object& obj, vector<char>& data)const {
