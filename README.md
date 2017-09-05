@@ -455,6 +455,27 @@ cp ../genesis.json ./
 ./programs/launcher/launcher -p2 -s testnet.json -l local
 ```
 
+This command will generate 2 data folder for each instance of the node: `tn_data_0` and `tn_data_1`, as well as `testnet.json` file for the testnet configuration.
+
+You should see a following response:
+
+```commandline
+adding hostname ip-XXX-XXX-XXX
+found interface 127.0.0.1
+found interface XXX.XX.XX.XX
+spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_data_0
+spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_data_1
+```
+
+To confirm the nodes are running, run following `eosc` commands:
+```commandline
+~/eos/build/programs/eosc
+./eosc -p 8888 get info
+./eosc -p 8889 get info
+```
+
+For each you should get a json with a blockchain information.
+
 You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
 ## Run eos in docker
