@@ -4,7 +4,9 @@
 #include <iostream>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
+#include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
+#include <eos/utilities/key_conversion.hpp>
 
 #include <eos/chain/config.hpp>
 #include <eos/chain_plugin/chain_plugin.hpp>
@@ -35,10 +37,8 @@ string host = "localhost";
 uint32_t port = 8888;
 
 // restricting use of wallet to localhost
-const string wallet_host = "localhost";
-
-// TODO: make wallet_port a cli option when above host/port is made a cli option
-constexpr uint32_t wallet_port = 8899;
+string wallet_host = "localhost";
+uint32_t wallet_port = 8888;
 
 const string chain_func_base = "/v1/chain";
 const string get_info_func = chain_func_base + "/get_info";
@@ -173,7 +173,10 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
 int main( int argc, char** argv ) {
    CLI::App app{"Command Line Interface to Eos Daemon"};
    app.require_subcommand();
+   app.add_option( "-H,--host", host, "the host where eosd is running", true );
    app.add_option( "-p,--port", port, "the port where eosd is running", true );
+   app.add_option( "--wallet-host", wallet_host, "the host where eos-walletd is running", true );
+   app.add_option( "--wallet-port", wallet_port, "the port where eos-walletd is running", true );
 
    // Create subcommand
    auto create = app.add_subcommand("create", "Create various items, on and off the blockchain", false);
@@ -328,7 +331,21 @@ int main( int argc, char** argv ) {
                   : (num_seq.empty())
                      ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
                      : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
+      auto result = call(get_transactions_func, arg);
       std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
+
+
+      const auto& trxs = result.get_object()["transactions"].get_array();
+      for( const auto& t : trxs ) {
+         const auto& tobj = t.get_object();
+         int64_t seq_num  = tobj["seq_num"].as<int64_t>();
+         string  id       = tobj["transaction_id"].as_string();
+         const auto& trx  = tobj["transaction"].get_object();
+         const auto& exp  = trx["expiration"].as<fc::time_point_sec>();
+         const auto& msgs = trx["messages"].get_array();
+         std::cout << tobj["seq_num"].as_string() <<"] " << id << "  " << trx["expiration"].as_string() << std::endl;
+      }
+
    });
 
    // Contract subcommand
@@ -397,11 +414,12 @@ int main( int argc, char** argv ) {
    auto wallet = app.add_subcommand( "wallet", "Interact with local wallet", false );
 
    // create wallet
-   string wallet_name;
+   string wallet_name = "default";
    auto createWallet = wallet->add_subcommand("create", "Create a new wallet locally", false);
-   createWallet->add_option("name", wallet_name, "The name of the new wallet")->required();
+   createWallet->add_option("-n,--name", wallet_name, "The name of the new wallet", true);
    createWallet->set_callback([&wallet_name] {
       const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
+      std::cout << "Creating wallet: " << wallet_name << std::endl;
       std::cout << "Save password to use in the future to unlock this wallet." << std::endl;
       std::cout << "Without password imported keys will not be retrievable." << std::endl;
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -409,47 +427,65 @@ int main( int argc, char** argv ) {
 
    // open wallet
    auto openWallet = wallet->add_subcommand("open", "Open an existing wallet", false);
-   openWallet->add_option("name", wallet_name, "The name of the wallet to open")->required();
+   openWallet->add_option("-n,--name", wallet_name, "The name of the wallet to open");
    openWallet->set_callback([&wallet_name] {
-      const auto& v = call(wallet_host, wallet_port, wallet_open, wallet_name);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
+      //std::cout << fc::json::to_pretty_string(v) << std::endl;
+      std::cout << "Opened: '"<<wallet_name<<"'\n";
    });
 
    // lock wallet
    auto lockWallet = wallet->add_subcommand("lock", "Lock wallet", false);
-   lockWallet->add_option("name", wallet_name, "The name of the wallet to lock")->required();
+   lockWallet->add_option("-n,--name", wallet_name, "The name of the wallet to lock");
    lockWallet->set_callback([&wallet_name] {
-      const auto& v = call(wallet_host, wallet_port, wallet_lock, wallet_name);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
+      std::cout << "Locked: '"<<wallet_name<<"'\n";
+      //std::cout << fc::json::to_pretty_string(v) << std::endl;
+
    });
 
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", "Lock all unlocked wallets", false);
    locakAllWallets->set_callback([] {
-      const auto& v = call(wallet_host, wallet_port, wallet_lock_all);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
+      //std::cout << fc::json::to_pretty_string(v) << std::endl;
+      std::cout << "Locked All Wallets\n";
    });
 
    // unlock wallet
    string wallet_pw;
    auto unlockWallet = wallet->add_subcommand("unlock", "Unlock wallet", false);
-   unlockWallet->add_option("name", wallet_name, "The name of the wallet to unlock")->required();
-   unlockWallet->add_option("password", wallet_pw, "The password returned by wallet create")->required();
+   unlockWallet->add_option("-n,--name", wallet_name, "The name of the wallet to unlock");
+   unlockWallet->add_option("--password", wallet_pw, "The password returned by wallet create");
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
+      if( wallet_pw.size() == 0 ) {
+         std::cout << "password: ";
+         fc::set_console_echo(false);
+         std::getline( std::cin, wallet_pw, '\n' );
+         fc::set_console_echo(true);
+      }
+
+
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
-      const auto& v = call(wallet_host, wallet_port, wallet_unlock, vs);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      /*const auto& v = */call(wallet_host, wallet_port, wallet_unlock, vs);
+      std::cout << "Unlocked: '"<<wallet_name<<"'\n";
+      //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // import keys into wallet
    string wallet_key;
    auto importWallet = wallet->add_subcommand("import", "Import private key into wallet", false);
-   importWallet->add_option("name", wallet_name, "The name of the wallet to import key into")->required();
+   importWallet->add_option("-n,--name", wallet_name, "The name of the wallet to import key into");
    importWallet->add_option("key", wallet_key, "Private key in WIF format to import")->required();
    importWallet->set_callback([&wallet_name, &wallet_key] {
+      auto key = utilities::wif_to_key(wallet_key);
+      FC_ASSERT( key, "invalid private key: ${k}", ("k",wallet_key) );
+      public_key_type pubkey = key->get_public_key();
+
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      std::cout << "imported private key for: " << std::string(pubkey) <<"\n";
+      //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // list wallets

@@ -33,8 +33,9 @@ std::string wallet_manager::create(const std::string& name) {
    std::string password = gen_password();
 
    auto wallet_filename = dir / (name + file_ext);
-   if (fc::exists( dir / wallet_filename)) {
-      FC_THROW("Wallet with name: ${n} already exists.", ("n", name));
+
+   if (fc::exists( wallet_filename)) {
+      FC_THROW("Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
    }
 
    wallet_data d;

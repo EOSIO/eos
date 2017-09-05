@@ -30,7 +30,7 @@
   }
   ```
 
-  `main` is give the arguments `code` and `action` which uniquely identify every event in
+  `apply` is give the arguments `code` and `action` which uniquely identify every event in
   the system. For example, `code` could be a *currency* contract and `action` could be *transfer*.  This event (code,action)
   may be passed to several contracts including the `sender` and `receiver`.  It is up to your application to figure
   out what to do in response to such an event.
