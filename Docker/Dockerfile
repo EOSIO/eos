@@ -75,4 +75,5 @@ VOLUME /opt/eos/bin/eosd-dir
 VOLUME /opt/eos/bin/walletd-dir
 EXPOSE 8888
 EXPOSE 9876
+EXPOSE 8899
 ENTRYPOINT ["/sbin/entrypoint.sh"]
