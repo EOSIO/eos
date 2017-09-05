@@ -57,8 +57,9 @@ RUN cd /tmp && wget https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.
 #  && ln -s /opt/eos/bin/eos* /usr/local/bin \
 #  && rm -rf /tmp/eos*
 
-RUN mkdir -p /opt/eos/bin/data-dir && mkdir -p /tmp/eos/build/
-
+RUN mkdir -p /opt/eos/bin/eosd-dir \
+ && mkdir -p /tmp/eos/build \
+ && mkdir -p /opt/eos/bin/walletd-dir
 # ** Using local code saves considerable time, but does't guarantee that your code stays up-to-date
 
 COPY . /tmp/eos/
@@ -67,9 +68,11 @@ RUN cd /tmp/eos/build && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCM
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
 
-COPY Docker/config.ini genesis.json /
+COPY Docker/config.ini Docker/walletd_config.ini genesis.json /
 COPY Docker/entrypoint.sh /sbin
 RUN chmod +x /sbin/entrypoint.sh
-VOLUME /opt/eos/bin/data-dir
-EXPOSE 9876 8888
+VOLUME /opt/eos/bin/eosd-dir
+VOLUME /opt/eos/bin/walletd-dir
+EXPOSE 8888
+EXPOSE 9876
 ENTRYPOINT ["/sbin/entrypoint.sh"]
