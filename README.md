@@ -443,6 +443,20 @@ As a confirmation of a successfully submitted transaction you will get a json wi
 }
 ```
 
+## Running local testnet
+
+To run a local testnet you can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
+
+For testing purposes we will run 2 local production nodes talking to each other.
+
+```commandline
+cd ~/eos/build
+cp ../genesis.json ./
+./programs/launcher/launcher -p2 -s testnet.json -l local
+```
+
+You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
+
 ## Run eos in docker
 
 Simple and fast setup of EOS on Docker is also available. Firstly, install dependencies:
