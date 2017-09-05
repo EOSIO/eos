@@ -481,6 +481,15 @@ DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
   std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
 }
 
+DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+  
+  char* buff = memoryArrayPtr<char>(mem, data, datalen);
+  std::cerr << fc::to_hex(buff, datalen) << std::endl;
+}
+
+
 DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 }
 
