@@ -140,6 +140,7 @@ namespace eos {
                         handler_itr->second(resource, body, [con,this](int code, string body) {
                            con->set_body(body);
                            con->set_status(websocketpp::http::status_code::value(code));
+                           con->append_header("Access-Control-Allow-Origin", "*");
                         });
                      } else {
                         wlog("404 - not found: ${ep}", ("ep",resource));
