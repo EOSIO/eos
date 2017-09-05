@@ -236,7 +236,7 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("shape,s",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(),"save a copy of the generated topology in this file")
-    ("skip-signature,s", bpo::value<bool>(), "EOSD does not require transaction signatures.");
+    ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.");
 }
 
 void
@@ -252,7 +252,7 @@ launcher_def::initialize (const variables_map &vmap) {
   if (vmap.count("output"))
     output = vmap["output"].as<bf::path>();
   if (vmap.count("skip-signature"))
-    skip_transaction_signatures = true;
+    skip_transaction_signatures = vmap["skip-signature"].as<bool>();
 
   producers = 21;
   data_dir_base = "tn_data_";
