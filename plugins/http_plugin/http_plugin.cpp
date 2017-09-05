@@ -80,6 +80,7 @@ namespace eos {
          //asio::io_service         http_ios;
          map<string,url_handler>  url_handlers;
          optional<tcp::endpoint>  listen_endpoint;
+         string access_control_allow_origin;
 
          websocket_server_type    server;
    };
@@ -91,6 +92,8 @@ namespace eos {
       cfg.add_options()
             ("http-server-endpoint", bpo::value<string>()->default_value("127.0.0.1:8888"),
              "The local IP and port to listen for incoming http connections.")
+            ("access-control-allow-origin", bpo::value<string>(),
+             "Specify the Access-Control-Allow-Origin to be returned on each request.")
             ;
    }
 
@@ -110,6 +113,11 @@ namespace eos {
            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
            my->listen_endpoint = *resolver->resolve( query);
            ilog("configured http to listen on ${h}:${p}", ("h",host)("p",port));
+         }
+
+         if (options.count("access-control-allow-origin")) {
+            my->access_control_allow_origin = options.at("access-control-allow-origin").as<string>();
+            ilog("configured http with access-control-allow-origin : ${o}", ("o", my->access_control_allow_origin));
          }
 
          // uint32_t addr = my->listen_endpoint->address().to_v4().to_ulong();
@@ -133,6 +141,9 @@ namespace eos {
                      //ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
                      //ilog("${body}", ("body", con->get_request_body()));
 
+                     if (!my->access_control_allow_origin.empty()) {
+                        con->append_header("Access-Control-Allow-Origin", my->access_control_allow_origin);
+                     }
                      auto body = con->get_request_body();
                      auto resource = con->get_uri()->get_resource();
                      auto handler_itr = my->url_handlers.find(resource);
