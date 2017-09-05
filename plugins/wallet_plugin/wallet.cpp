@@ -142,8 +142,12 @@ public:
          FC_THROW("Invalid private key");
       eos::chain::public_key_type wif_pub_key = optional_private_key->get_public_key();
 
-      _keys[wif_pub_key] = wif_key;
-      return true;
+      auto itr = _keys.find(wif_pub_key);
+      if( itr == _keys.end() ) {
+         _keys[wif_pub_key] = wif_key;
+         return true;
+      }
+      FC_ASSERT( !"Key already in wallet" );
    }
 
    bool load_wallet_file(string wallet_filename = "")

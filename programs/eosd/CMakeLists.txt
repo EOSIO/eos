@@ -12,7 +12,7 @@ endif()
 target_link_libraries( eosd
         PRIVATE appbase
         PRIVATE account_history_api_plugin account_history_plugin
-        PRIVATE chain_api_plugin producer_plugin chain_plugin
+        PRIVATE chain_api_plugin producer_plugin chain_plugin wallet_api_plugin
         PRIVATE net_plugin http_plugin
         PRIVATE eos_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
