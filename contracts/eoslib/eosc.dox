@@ -121,9 +121,9 @@ $ ./eosc --wallet-port 8887 create account inita tester EOS4toFS3YXEQCkuuw1aqDLr
 ```
 If you enable --skip-signing-transaction in `eosd`, you can also skip the transaction signing with -s option
 ```
-$ ./eosc -s create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+$ ./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA -s
 ```
-@note The rest of this tutorial signs every transaction, however, you can always opt to use ``./eosc -s` if you want to skip transaction signing (with --skip-transaction-signature enabled on `eosd`)
+@note The rest of this tutorial signs every transaction, however, you can always opt to use `-s` option of `eosc` if you want to skip transaction signing (with --skip-transaction-signature enabled on `eosd`)
 
   @section transfereos Transfer EOS
 
