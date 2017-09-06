@@ -114,6 +114,7 @@ namespace eos {
         last_handshake(),
         out_queue(),
         connecting (false),
+        syncing (false),
         peer_addr (endpoint)
     {
       wlog( "created connection to ${n}", ("n", endpoint) );
@@ -132,6 +133,7 @@ namespace eos {
         last_handshake(),
         out_queue(),
         connecting (false),
+        syncing (false),
         peer_addr ()
     {
       wlog( "created connection from client" );
@@ -167,7 +169,12 @@ namespace eos {
     std::deque<net_message>        out_queue;
     uint32_t                       mtu;
     bool                           connecting;
+    bool                           syncing;
     string                         peer_addr;
+
+    bool ready () {
+      return (socket->is_open() && !connecting && !syncing);
+    }
 
     void reset () {
       in_sync_state.clear();
@@ -178,6 +185,7 @@ namespace eos {
 
     void close () {
       connecting = false;
+      syncing = false;
       out_queue.clear();
       if (socket) {
         socket->close();
@@ -442,8 +450,7 @@ namespace eos {
     template<typename VerifierFunc>
     void send_all (const net_message &msg, VerifierFunc verify) {
       for (auto &c : connections) {
-        if (c->out_sync_state.size() == 0 &&
-            verify (c)) {
+        if (c->ready() && verify (c)) {
           c->send(msg);
         }
       }
@@ -451,15 +458,11 @@ namespace eos {
 
     bool get_sync_req (connection_ptr c) {
 
-      dlog ("requesting a new sync requ= message, sync head =  ${sh}, sync_req_head = ${srh}",
-            ("sh",sync_head)("srh",sync_req_head));
-
       if (sync_req_head == sync_head) {
         return true;
       }
       uint32_t low = sync_req_head + 1;
       uint32_t high = low + sync_req_span < sync_head ? low + sync_req_span : sync_head;
-
       sync_state req =  {low, high, sync_req_head, time_point::now(), vector<signed_block>() };
       c->in_sync_state.push_back (req);
       sync_request_message srm = {req.start_block, req.end_block };
@@ -470,15 +473,13 @@ namespace eos {
 
     void set_sync_head (uint32_t target) {
       uint32_t cchead =  chain_plug->chain().head_block_num();
-      dlog ("target = ${t}, cc head = ${cc}",("t", target)("cc",cchead));
-
       if (sync_head == sync_req_head) {
         sync_req_head = chain_plug->chain().head_block_num();
       }
 
       sync_head = target;
       for (auto &c : connections) {
-        if (c->out_sync_state.empty() && c->socket->is_open() && ! c->connecting) {
+        if (c->ready()) {
           if (get_sync_req (c)) {
             break;
           }
@@ -492,7 +493,7 @@ namespace eos {
       while (keep_going) {
         keep_going = false;
         for (auto &c : connections) {
-          if (c == conn || c->connecting || !c->socket->is_open()) {
+          if (c == conn || !c->ready()) {
             continue;
           }
           try {
@@ -529,7 +530,8 @@ namespace eos {
         return;
       }
       if (msg.network_version != network_version) {
-        elog ("Peer network version does not match ");
+        elog ("Peer network version does not match expected ${nv} but got ${mnv}",
+              ("nv", network_version)("mnv",msg.network_version));
         close (c);
         return;
       }
@@ -564,9 +566,9 @@ namespace eos {
       if ( msg.head_num  >  head) {
         set_sync_head(msg.head_num);
       }
-
-
-
+      else {
+        c->syncing = head != msg.head_num;
+      }
       c->last_handshake = msg;
     }
 
@@ -646,7 +648,6 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
-      dlog ("got sync_request, ${low} - ${high}", ("low", msg.start_block)("high", msg.end_block));
       sync_state req = {msg.start_block,msg.end_block,msg.start_block-1,time_point::now()};
       c->out_sync_state.push_back (req);
       c->write_block_backlog ();
@@ -706,27 +707,33 @@ namespace eos {
 
     void handle_message (connection_ptr c, const signed_block &msg) {
       chain_controller &cc = chain_plug->chain();
-      dlog("signed_block num = ${num}",("num",msg.block_num()));
-      if (cc.is_known_block(msg.id())) {
-        return;
+      try {
+        if (cc.is_known_block(msg.id())) {
+          return;
+        }
+      } catch (...) {
       }
-
       uint32_t num = msg.block_num();
       bool syncing = sync_head > cc.head_block_num();
       if (syncing) {
         for( auto &ss : c->in_sync_state) {
-          if (msg.block_num() <= ss.end_block) {
+          if (num <= ss.end_block) {
             ss.last = num;
+            if (num == ss.end_block) {
+              get_sync_req (c);
+            }
+
             if (num == cc.head_block_num()+1) {
               try {
                 chain_plug->accept_block(msg, true);
                 auto s0 = c->in_sync_state.begin();
-                s0->start_block++;
                 if (s0->start_block == s0->end_block) {
                   c->in_sync_state.erase(s0);
                   apply_cached_blocks(c);
                 }
-
+                else {
+                  s0->start_block++;
+                }
               } catch (const unlinkable_block_exception &ex) {
                 elog ("unable to accept block #${n} syncing",("n",num));
                 //close (c);
@@ -738,22 +745,17 @@ namespace eos {
             } else {
               ss.block_cache.push_back(msg);
             }
-
-            if (num == ss.end_block) {
-              get_sync_req (c);
-            }
             break;
           }
         }
         if ( chain_plug->chain().head_block_num() == sync_head) {
-          dlog ("calling send_handshake");
           c->send_handshake ( );
         }
 
         return;
       }
       else {
-        send_all (msg, [c](connection_ptr conn) -> bool {
+          send_all (msg, [c](connection_ptr conn) -> bool {
             return (c != conn);
           });
 
@@ -1099,10 +1101,6 @@ namespace eos {
       my->connections.insert (c);
       my->connect( c );
     }
-    boost::asio::signal_set signals (app().get_io_service(), SIGINT, SIGTERM);
-    signals.async_wait ([this](const boost::system::error_code &ec, int signum) {
-        dlog ("caught signal ${sn}", ("sn", signum) ) ;
-      });
   }
 
   void net_plugin::plugin_shutdown() {
