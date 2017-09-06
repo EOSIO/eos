@@ -14,7 +14,7 @@ extern "C" {
       str[str_len] = x;
    }
 
-   void printhex( char* data, uint32_t datalen );
+   //void printhex( char* data, uint32_t datalen );
 
    void apply( uint64_t code, uint64_t action ) {
       if( code == N(simpledb) ) {

@@ -1,12 +1,6 @@
 {
     "types": [],
     "structs": [{
-        "name": "record1alpha",
-        "fields": {
-          "key": "RealString",
-          "value": "RealString"
-        }
-      },{
         "name": "record1",
         "fields": {
           "key1": "UInt64"
@@ -31,7 +25,7 @@
         "type": "record1"
       },{
         "action": "insertalpha",
-        "type": "record1alpha"
+        "type": "KeyValuePair"
       },{
         "action": "insert2",
         "type": "record2"
@@ -44,6 +38,9 @@
       {"table":"record1","type":"record1"},
       {"table":"record2","type":"record2"},
       {"table":"record3","type":"record3"}
-      {"table":"record1alpha","type":"record1alpha"}
+      {
+        "table" : "record1alpha",
+        "type"  : "KeyValuePair"
+      }
     ]
 }
