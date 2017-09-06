@@ -1,5 +1,7 @@
 #pragma once
 
+#include <eos/utilities/wasm.hpp>
+
 #include "macro_support.hpp"
 
 /// Some helpful macros to reduce boilerplate when making testcases
@@ -169,6 +171,16 @@
  * You may specify a seventh argument, which will be used as the recovery authority.
  */
 #define Make_Account(...) BOOST_PP_OVERLOAD(MKACCT, __VA_ARGS__)(__VA_ARGS__)
+
+/**
+ * @brief Shorthand way to set the code for an account
+ *
+ * @code{.cpp}
+ * char* wast = //...
+ * Set_Code(chain, codeacct, wast);
+ * @endcode
+ */
+#define Set_Code(...) BOOST_PP_OVERLOAD(SETCODE, __VA_ARGS__)(__VA_ARGS__)
 
 /**
  * @brief Shorthand way to create or update named authority on an account

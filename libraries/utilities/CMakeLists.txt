@@ -14,6 +14,7 @@ set(sources
    string_escape.cpp
    tempdir.cpp
    words.cpp
+   wasm.cpp
    ${HEADERS})
 
 #configure_file("${CMAKE_CURRENT_SOURCE_DIR}/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
@@ -22,9 +23,10 @@ set(sources
 add_library( eos_utilities
              ${sources}
              ${HEADERS} )
-target_link_libraries( eos_utilities fc )
+target_link_libraries( eos_utilities fc WAST WASM )
 target_include_directories( eos_utilities
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include" )
 if (USE_PCH)
   set_target_properties(eos_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
   cotire(eos_utilities)
