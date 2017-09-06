@@ -282,8 +282,8 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
   *  @return the number of bytes read or -1 if key was not found
   */
  int32_t load_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- int32_t front_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- int32_t back_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t front_str( AccountName scope, AccountName code, TableName table, char* value, uint32_t valuelen );
+ int32_t back_str( AccountName scope, AccountName code, TableName table, char* value, uint32_t valuelen );
  int32_t next_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  int32_t previous_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  int32_t lower_bound_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );

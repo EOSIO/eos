@@ -63,8 +63,6 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
       char* key   = memoryArrayPtr<char>( wasm.current_memory, keyptr, keylen );
       char* value = memoryArrayPtr<char>( wasm.current_memory, valueptr, valuelen );
 
-      //shared_string keys(allocator<char>);
-      //keys.assign(key, keylen);
       std::string keys(key, keylen);
 
       return func(wasm.current_apply_context, &keys, value, valuelen);
@@ -159,10 +157,12 @@ DEFINE_INTRINSIC_FUNCTION4(env,remove_str,remove_str,i32,i64,scope,i64,table,i32
 DEFINE_INTRINSIC_FUNCTION7(env,load_str,load_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
   READ_RECORD_STR(load_record)
 }
-DEFINE_INTRINSIC_FUNCTION7(env,front_str,front_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+DEFINE_INTRINSIC_FUNCTION5(env,front_str,front_str,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
+  int32_t keyptr=0, keylen=0;
   READ_RECORD_STR(front_record)
 }
-DEFINE_INTRINSIC_FUNCTION7(env,back_str,back_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+DEFINE_INTRINSIC_FUNCTION5(env,back_str,back_str,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
+  int32_t keyptr=0, keylen=0;
   READ_RECORD_STR(back_record)
 }
 DEFINE_INTRINSIC_FUNCTION7(env,next_str,next_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
