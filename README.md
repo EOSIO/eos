@@ -443,7 +443,7 @@ For testing purposes you will run 2 local production nodes talking to each other
 ```commandline
 cd ~/eos/build
 cp ../genesis.json ./
-./programs/launcher/launcher -p2 -s testnet.json -l local
+./programs/launcher/launcher -p2 -s testnet.json --skip-signature -l local
 ```
 
 This command will generate 2 data folder for each instance of the node: `tn_data_0` and `tn_data_1`, as well as `testnet.json` file for the testnet configuration.
