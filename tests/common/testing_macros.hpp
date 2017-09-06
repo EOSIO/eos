@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eos/utilities/wasm.hpp>
+#include <eos/chain/wast_to_wasm.hpp>
 
 #include "macro_support.hpp"
 
