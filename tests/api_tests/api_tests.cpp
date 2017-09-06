@@ -143,6 +143,8 @@ bool is_access_violation(fc::unhandled_exception const & e) {
 bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
 bool is_tx_missing_scope(tx_missing_scope const& e) { return true; }
+bool is_tx_resource_exhausted(tx_resource_exhausted const & e) { return true; }
+bool is_tx_unknown_argument(tx_unknown_argument const & e) { return true; }
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 
 std::vector<std::string> capture;
@@ -379,6 +381,19 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_crypto", "asert_sha256_true"), {}, {} ) == WASM_TEST_PASS, "test_crypto::asert_sha256_true()" );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_crypto", "asert_no_data"), {}, {} ),
          fc::assert_exception, is_assert_exception );
+
+      //Test transaction
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message"), {}, {}) == WASM_TEST_PASS, "test_transaction::send_message()");
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_large"), {}, {} ),
+         tx_resource_exhausted, is_tx_resource_exhausted );
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_max"), {}, {} ),
+         tx_resource_exhausted, is_tx_resource_exhausted );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction"), {}, {}) == WASM_TEST_PASS, "test_transaction::send_message()");
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_large"), {}, {} ),
+         tx_resource_exhausted, is_tx_resource_exhausted );
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_max"), {}, {} ),
+         tx_resource_exhausted, is_tx_resource_exhausted );
+
 
 
 } FC_LOG_AND_RETHROW() }

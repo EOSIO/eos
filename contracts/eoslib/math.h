@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eoslib/types.h>
+#include <eoslib/system.h>
 
 extern "C" {
   /**

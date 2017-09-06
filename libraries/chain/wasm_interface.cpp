@@ -289,21 +289,22 @@ DEFINE_INTRINSIC_FUNCTION1(env,transactionDrop,transactionDrop,none,i32,handle) 
 DEFINE_INTRINSIC_FUNCTION4(env,messageCreate,messageCreate,i32,i64,code,i64,type,i32,data,i32,length) {
    auto& wasm  = wasm_interface::get();
    auto  mem   = wasm.current_memory;
-
+   
    EOS_ASSERT( length > 0, tx_unknown_argument,
       "Attempting to push an empty message" );
 
-   const char* buffer = nullptr; 
+   Bytes payload;
    try {
       // memoryArrayPtr checks that the entire array of bytes is valid and
       // within the bounds of the memory segment so that transactions cannot pass
       // bad values in attempts to read improper memory
-      buffer = memoryArrayPtr<const char>( mem, data, uint32_t(length) );
+      const char* buffer = memoryArrayPtr<const char>( mem, uint32_t(data), uint32_t(length) );
+      payload.insert(payload.end(), buffer, buffer + length);
    } catch( const Runtime::Exception& e ) {
       FC_THROW_EXCEPTION(tx_unknown_argument, "Message data is not a valid memory range");
    }
 
-   auto& pmsg = wasm.current_apply_context->create_pending_message(Name(code), Name(type), Bytes(buffer, buffer + length));
+   auto& pmsg = wasm.current_apply_context->create_pending_message(Name(code), Name(type), payload);
    return pmsg.handle;
 }
 
