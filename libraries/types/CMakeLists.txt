@@ -20,4 +20,11 @@ target_link_libraries( type_generator eos_utilities fc ${CMAKE_DL_LIBS} ${PLATFO
 add_custom_command( OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp"
                     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/type_generator ${CMAKE_CURRENT_SOURCE_DIR}/types.eos ${CMAKE_CURRENT_SOURCE_DIR}/include/eos/types/generated.hpp
                     DEPENDS types.eos type_generator )
+INSTALL( TARGETS
+   eos_types
 
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)
+INSTALL( FILES ${HEADERS} DESTINATION "include/eos/types" )
