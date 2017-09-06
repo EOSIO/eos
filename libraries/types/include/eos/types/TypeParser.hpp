@@ -45,7 +45,7 @@ public:
             "UInt128", "Checksum", "UInt256", "UInt512",
             "Int8", "Int16", "Int32", "Int64",
             "Int128", "Int224", "Int256", "Int512",
-            "Bytes", "PublicKey", "Signature", "String", "Time" })
+            "Bytes", "PublicKey", "Signature", "String", "Time", "RealString" })
    {}
 
    virtual void addType(const Struct& s) override;
