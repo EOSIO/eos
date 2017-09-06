@@ -215,6 +215,14 @@ const chain::chain_controller& chain_plugin::chain() const { return *my->chain; 
 
 namespace chain_apis {
 
+const string read_only::KEYi64 = "i64";
+const string read_only::KEYstr = "str";
+const string read_only::KEYi128i128 = "i128i128";
+const string read_only::KEYi64i64i64 = "i64i64i64";
+const string read_only::PRIMARY = "primary";
+const string read_only::SECONDARY = "secondary";
+const string read_only::TERTIARY = "tertiary";
+
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
    return {
       db.head_block_num(),
@@ -241,8 +249,12 @@ types::Abi getAbi( const chain_controller& db, const Name& account ) {
 
 string getTableType( const types::Abi& abi, const Name& tablename ) {
    for( const auto& t : abi.tables ) {
-      if( t.table == tablename )
-         return t.indextype;
+      if( t.table == tablename ){
+         if( t.type == "KeyValuePair" ) 
+            return read_only::KEYstr;
+         else
+            return t.indextype;
+       }
    }
    FC_ASSERT( !"Abi does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
 }
@@ -256,6 +268,8 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 
    if( table_type == KEYi64 ) {
       return get_table_rows_ex<chain::key_value_index, chain::by_scope_primary>(p,abi);
+   } else if( table_type == KEYstr ) {
+      return get_table_rows_ex<chain::keystr_value_index, chain::by_scope_primary>(p,abi);
    } else if( table_type == KEYi128i128 ) { 
       if( table_key == PRIMARY )
          return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_primary>(p,abi);
