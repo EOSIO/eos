@@ -246,8 +246,6 @@ DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
  * @{
  */ 
 
-static const uint32_t InvalidTransactionHandle = 0xFFFFFFFFUL;
-
 DEFINE_INTRINSIC_FUNCTION0(env,transactionCreate,transactionCreate,i32) {
    auto& ptrx = wasm_interface::get().current_apply_context->create_pending_transaction();
    return ptrx.handle;

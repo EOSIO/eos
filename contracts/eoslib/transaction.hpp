@@ -14,6 +14,58 @@ namespace eos {
     * @{ 
     */
 
+   class Transaction;
+   class Message {
+   public:
+      template<typename Message, typename ...Permissions>
+      Message(const AccountName& code, const FuncName& type, const Message& message, Permissions... permissions ) 
+         : handle(messageCreate(code, type, &message, sizeof(Message)))
+      {
+         addPermissions(permissions...);
+      }
+
+      // no copy construtor due to opaque handle
+      Message( const Message& ) = delete;
+
+      Message( Message&& msg ) {
+         handle = msg.handle;
+         msg.handle = InvalidMessageHandle;
+      }
+
+      ~Message() {
+         if (handle != InvalidMessageHandle) {
+            messageDrop(handle);
+            handle = InvalidMessageHandle;
+         }
+      }
+
+      void addPermissions(AccountName account, PermissionName permission) {
+         messageRequirePermission(handle, account, permission);
+      }
+
+      template<typename ...Permissions>
+      void addPermissions(AccountName account, PermissionName permission, Permissions... permissions) {
+         addPermissions(account, permission);
+         addPermissions(permissions...);
+      }
+
+      void send() {
+         assertValidHandle();
+         messageSend(handle);
+         handle = InvalidMessageHandle;
+      }
+
+   private:
+      void assertValidHandle() {
+         assert(handle != InvalidMessageHandle, "attempting to send or modify a finalized message" );
+      }
+
+      MessageHandle handle;
+
+      friend class Transaction;
+
+   };
+
    class Transaction {
    public:
       Transaction() 
@@ -23,7 +75,7 @@ namespace eos {
       // no copy construtor due to opaque handle
       Transaction( const Transaction& ) = delete;
 
-      Transaction( const Transaction&& trx ) {
+      Transaction( Transaction&& trx ) {
          handle = trx.handle;
          trx.handle = InvalidTransactionHandle;
       }
@@ -37,18 +89,15 @@ namespace eos {
 
       void addScope(AccountName scope, bool readOnly) {
          assertValidHandle();
-         transactionAddScope(handle, scope, readOnly ? 1 : 0);
+         transactionRequireScope(handle, scope, readOnly ? 1 : 0);
       }
 
       template<typename P, typename T>
-      void addMessage(AccountName code, FuncName name, const P& permissions, const T& data ) {
+      void addMessage(Message &message) {
          assertValidHandle();
-         transactionResetMessage(handle);
-         transactionSetMessageDestination(handle, code, name);
-         for (const auto &p: permissions) {
-            transactionAddMessagePermission(handle, p);
-         }
-         transactionPushMessage(handle, &data, sizeof(data));
+         message.assertValidHandle();
+         transactionAddMessage(handle, message.handle);
+         message.handle = InvalidMessageHandle;
       }
 
       void send() {

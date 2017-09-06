@@ -16,6 +16,7 @@ typedef __int128             int128_t;
 typedef unsigned char        uint8_t;
 
 typedef uint64_t AccountName;
+typedef uint64_t PermissionName;
 typedef uint64_t TokenName;
 typedef uint64_t TableName;
 typedef uint32_t Time;
