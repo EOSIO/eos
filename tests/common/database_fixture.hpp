@@ -142,15 +142,22 @@ protected:
  */
 class testing_blockchain : public chain_controller {
 public:
-    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                      chain_initializer_interface& initializer, testing_fixture& fixture);
+
+   /**
+    * @brief Publish the provided contract to the blockchain, owned by owner
+    * @param owner The account to publish the contract under
+    * @param contract_wast The WAST of the contract
+    */
+   void set_contract(AccountName owner, const char* contract_wast);
 
    /**
     * @brief Produce new blocks, adding them to the blockchain, optionally following a gap of missed blocks
     * @param count Number of blocks to produce
     * @param blocks_to_miss Number of block intervals to miss a production before producing the next block
     *
-    * Creates and adds  @ref count new blocks to the blockchain, after going @ref blocks_to_miss intervals without
+    * Creates and adds @ref count new blocks to the blockchain, after going @ref blocks_to_miss intervals without
     * producing a block.
     */
    void produce_blocks(uint32_t count = 1, uint32_t blocks_to_miss = 0);
