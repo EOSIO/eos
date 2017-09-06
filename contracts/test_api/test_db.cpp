@@ -56,24 +56,39 @@ struct TestModel3xi64_V2 : TestModel3xi64 {
 
 #pragma pack(pop)
 
-#define STRLEN(s) (sizeof(s)/sizeof(s[0]))
+#define STRLEN(s) my_strlen(s)
 
 extern "C" {
   void my_memset(void *vptr, unsigned char val, unsigned int size) {
     char *ptr = (char *)vptr;
     while(size--) { *(ptr++)=val; }
   }
+  uint32_t my_strlen(const char *str);
+  bool my_memcmp(void *s1, void *s2, uint32_t n);
 }
 
 
 unsigned int test_db::key_str_general() {
 
-  const char* keys[] = { "alice", "bob", "dave", "carol" };
+  const char* keys[] = { "alice", "bob", "carol", "dave" };
   const char* vals[] = { "data1", "data2", "data3", "data4" };
+
+  const char* atr[]  = { "atr", "atr", "atr", "atr" };
+  const char* ztr[]  = { "ztr", "ztr", "ztr", "ztr" };
+
+  uint32_t res=0;
+
+  //fill some data in contiguous tables
+  for(int i=0; i < 4; ++i) {
+    res = store_str(currentCode(),  N(atr), (char *)keys[i], STRLEN(keys[i]), (char *)atr[i], STRLEN(atr[i]) );
+    WASM_ASSERT(res != 0, "atr" );
+
+    res = store_str(currentCode(),  N(ztr), (char *)keys[i], STRLEN(keys[i]), (char *)ztr[i], STRLEN(ztr[i]) );
+    WASM_ASSERT(res != 0, "ztr" );
+  }
 
   char tmp[64];
 
-  uint32_t res;
   res = store_str(currentCode(),  N(str), (char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]) );
   WASM_ASSERT(res != 0, "store alice" );
 
@@ -81,19 +96,69 @@ unsigned int test_db::key_str_general() {
   WASM_ASSERT(res != 0, "store bob" );
 
   res = store_str(currentCode(),  N(str), (char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
-  WASM_ASSERT(res != 0, "store dave" );
-
-  res = store_str(currentCode(),  N(str), (char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
   WASM_ASSERT(res != 0, "store carol" );
 
-  res = load_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 63);
+  res = store_str(currentCode(),  N(str), (char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
+  WASM_ASSERT(res != 0, "store dave" );
 
-  prints("--->RES: NUM\n");
-  printi(uint64_t(res));
-  prints(tmp);
+  res = load_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
+
+  res = load_str(currentCode(), currentCode(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+
+  res = load_str(currentCode(), currentCode(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+
+  res = load_str(currentCode(), currentCode(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+
+  res = previous_str(currentCode(), currentCode(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+
+  res = previous_str(currentCode(), currentCode(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+
+  res = previous_str(currentCode(), currentCode(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+
+  res = previous_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  WASM_ASSERT(res == -1, "no prev");
+
+  res = next_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+
+  res = next_str(currentCode(), currentCode(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+
+  res = next_str(currentCode(), currentCode(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+
+  res = next_str(currentCode(), currentCode(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  WASM_ASSERT(res == -1, "no next");
+
+  res = next_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 0);
+  WASM_ASSERT(res == 0, "next 0");
+
+  res = front_str(currentCode(), currentCode(), N(str), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
+
+  res = back_str(currentCode(), currentCode(), N(str), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
+
+  res = lower_bound_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+
+  res = upper_bound_str(currentCode(), currentCode(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+
+  res = lower_bound_str(currentCode(), currentCode(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+
+  res = upper_bound_str(currentCode(), currentCode(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  WASM_ASSERT(res == -1, "no upper_bound");
 
   return WASM_TEST_PASS;
-
 }
 
 unsigned int test_db::key_i64_general() {
