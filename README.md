@@ -213,7 +213,7 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 
 ### Creating and launching a single-node testnet
 
-After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with Ctrl-C. Note that `eosd` will have created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
+After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with Ctrl-C. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
 
 Edit the `config.ini` file, adding the following settings to the defaults already in place:
 
@@ -488,7 +488,7 @@ docker build -t eosio/eos -f Docker/Dockerfile .
 
 We recommend 6GB+ of memory allocated to Docker to successfully build the image.
 
-Starting the Docker this can be tested from container's host machine:
+Now you can start the Docker container:
 
 ```
 sudo rm -rf /data/store/eos # options 
