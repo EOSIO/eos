@@ -96,7 +96,9 @@ void producer_plugin::set_program_options(
    auto private_key_default = std::make_pair(chain::public_key_type(default_priv_key.get_public_key()),
                                              eos::utilities::key_to_wif(default_priv_key));
 
-   command_line_options.add_options()
+   boost::program_options::options_description producer_options;
+
+   producer_options.add_options()
          ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
          ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -105,7 +107,8 @@ void producer_plugin::set_program_options(
                                                                                                 fc::json::to_string(private_key_default)),
           "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ;
-   config_file_options.add(command_line_options);
+   command_line_options.add(producer_options);
+   config_file_options.add(producer_options);
 }
 
 template<typename T>
