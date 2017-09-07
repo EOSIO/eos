@@ -12,6 +12,7 @@ target_link_libraries( chain_test eos_native_contract eos_chain chainbase eos_ut
 
 if(WASM_TOOLCHAIN)
   file(GLOB SLOW_TESTS "slow_tests/*.cpp")
+  add_subdirectory(slow_tests/memory_test)
   add_executable( slow_test ${SLOW_TESTS} ${COMMON_SOURCES} )
   target_link_libraries( slow_test eos_native_contract eos_chain chainbase eos_utilities eos_egenesis_none fc ${PLATFORM_SPECIFIC_LIBS} )
   target_include_directories( slow_test PUBLIC ${CMAKE_BINARY_DIR}/contracts )

@@ -47,6 +47,7 @@
 #include <currency/currency.wast.hpp>
 #include <exchange/exchange.wast.hpp>
 #include <infinite/infinite.wast.hpp>
+#include "memory_test/memory_test.wast.hpp"
 
 using namespace eos;
 using namespace chain;
@@ -1180,6 +1181,49 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
          {
             wlog("checktime_exceeded caught");
          }
+      }
+} FC_LOG_AND_RETHROW() }
+
+//Test wasm memory
+BOOST_FIXTURE_TEST_CASE(test_memory, testing_fixture)
+{ try {
+      Make_Blockchain(chain);
+      chain.produce_blocks(10);
+      Make_Account(chain, currency);
+      chain.produce_blocks(1);
+
+
+      types::setcode handler;
+      handler.account = "currency";
+
+      auto wasm = assemble_wast( memory_test_wast );
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = {"currency"};
+         trx.messages.resize(1);
+         trx.messages[0].code = config::EosContractName;
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+         transaction_set_message(trx, 0, "setcode", handler);
+         trx.expiration = chain.head_block_time() + 100;
+         transaction_set_reference_block(trx, chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
+      }
+
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = sort_names({"currency","inita"});
+         transaction_emplace_message(trx, "currency",
+                            vector<types::AccountPermission>{},
+                            "transfer", types::transfer{"currency", "inita", 1,""});
+         trx.expiration = chain.head_block_time() + 100;
+         transaction_set_reference_block(trx, chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
       }
 } FC_LOG_AND_RETHROW() }
 
