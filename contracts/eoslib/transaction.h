@@ -136,7 +136,7 @@ extern "C" {
     * @param data - the payload data for this message
     * @param size - the size of `data`
     */
-   MessageHandle messageCreate(AccountName code, FuncName type, void* data, int size);
+   MessageHandle messageCreate(AccountName code, FuncName type, void const* data, int size);
 
    /**
     * @brief require a permission for the pending message

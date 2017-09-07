@@ -251,12 +251,19 @@ DEFINE_INTRINSIC_FUNCTION0(env,transactionCreate,transactionCreate,i32) {
    return ptrx.handle;
 }
 
+static void emplace_scope(const Name& scope, std::vector<Name>& scopes) {
+   auto i = std::upper_bound( scopes.begin(), scopes.end(), scope);
+   if (i == scopes.begin() || *(i - 1) != scope ) {
+     scopes.insert(i, scope);
+   }
+}
+
 DEFINE_INTRINSIC_FUNCTION3(env,transactionRequireScope,transactionRequireScope,none,i32,handle,i64,scope,i32,readOnly) {
    auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
    if(readOnly == 0) {
-      ptrx.scope.emplace_back(scope);
+      emplace_scope(scope, ptrx.scope);
    } else {
-      ptrx.readscope.emplace_back(scope);
+      emplace_scope(scope, ptrx.readscope);
    }
 
    ptrx.check_size();
@@ -312,7 +319,11 @@ DEFINE_INTRINSIC_FUNCTION4(env,messageCreate,messageCreate,i32,i64,code,i64,type
 
 DEFINE_INTRINSIC_FUNCTION3(env,messageRequirePermission,messageRequirePermission,none,i32,handle,i64,account,i64,permission) {
    auto apply_context  = wasm_interface::get().current_apply_context;
-   apply_context->require_authorization(Name(account), Name(permission));
+   // if this is not sent from the code account with the permission of "code" then we must
+   // presently have the permission to add it, otherwise its a failure
+   if (!(account == apply_context->code.value && Name(permission) == Name("code"))) {
+      apply_context->require_authorization(Name(account), Name(permission));
+   }
    auto& pmsg = apply_context->get_pending_message(handle);
    pmsg.authorization.emplace_back(Name(account), Name(permission));
 }

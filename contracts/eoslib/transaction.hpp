@@ -17,11 +17,22 @@ namespace eos {
    class Transaction;
    class Message {
    public:
-      template<typename Message, typename ...Permissions>
-      Message(const AccountName& code, const FuncName& type, const Message& message, Permissions... permissions ) 
-         : handle(messageCreate(code, type, &message, sizeof(Message)))
+      template<typename Payload, typename ...Permissions>
+      Message(const AccountName& code, const FuncName& type, const Payload& payload, Permissions... permissions ) 
+         : handle(messageCreate(code, type, &payload, sizeof(Payload)))
       {
          addPermissions(permissions...);
+      }
+
+      template<typename Payload>
+      Message(const AccountName& code, const FuncName& type, const Payload& payload ) 
+         : handle(messageCreate(code, type, &payload, sizeof(Payload)))
+      {
+      }
+
+      Message(const AccountName& code, const FuncName& type) 
+         : handle(messageCreate(code, type, nullptr, 0))
+      {
       }
 
       // no copy construtor due to opaque handle
@@ -87,12 +98,11 @@ namespace eos {
          }
       }
 
-      void addScope(AccountName scope, bool readOnly) {
+      void addScope(AccountName scope, bool readOnly = false) {
          assertValidHandle();
          transactionRequireScope(handle, scope, readOnly ? 1 : 0);
       }
 
-      template<typename P, typename T>
       void addMessage(Message &message) {
          assertValidHandle();
          message.assertValidHandle();

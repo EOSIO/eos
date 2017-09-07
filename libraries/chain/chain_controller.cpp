@@ -321,6 +321,20 @@ signed_block chain_controller::_generate_block(
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
 
   
+   //
+   // The following code throws away existing pending_tx_session and
+   // rebuilds it by re-applying pending transactions.
+   //
+   // This rebuild is necessary because pending transactions' validity
+   // and semantics may have changed since they were received, because
+   // time-based semantics are evaluated based on the current block
+   // time.  These changes can only be reflected in the database when
+   // the value of the "when" variable is known, which means we need to
+   // re-apply pending transactions in this method.
+   //
+   _pending_tx_session.reset();
+   _pending_tx_session = _db.start_undo_session(true);
+
    const auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_status>().equal_range(generated_transaction_object::PENDING);
 
    vector<pending_transaction> pending;
@@ -336,20 +350,6 @@ signed_block chain_controller::_generate_block(
    }
 
    auto schedule = scheduler(pending, get_global_properties());
-
-   //
-   // The following code throws away existing pending_tx_session and
-   // rebuilds it by re-applying pending transactions.
-   //
-   // This rebuild is necessary because pending transactions' validity
-   // and semantics may have changed since they were received, because
-   // time-based semantics are evaluated based on the current block
-   // time.  These changes can only be reflected in the database when
-   // the value of the "when" variable is known, which means we need to
-   // re-apply pending transactions in this method.
-   //
-   _pending_tx_session.reset();
-   _pending_tx_session = _db.start_undo_session(true);
 
    signed_block pending_block;
    pending_block.cycles.reserve(schedule.cycles.size());
@@ -413,7 +413,7 @@ signed_block chain_controller::_generate_block(
      }
    }
    
-   size_t postponed_tx_count = _pending_transactions.size() - valid_transaction_count - invalid_transaction_count;
+   size_t postponed_tx_count = pending.size() - valid_transaction_count - invalid_transaction_count;
    if( postponed_tx_count > 0 )
    {
       wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
