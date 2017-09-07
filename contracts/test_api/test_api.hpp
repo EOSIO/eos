@@ -108,10 +108,13 @@ struct test_crypto {
 struct test_transaction {
 
   static unsigned int send_message();
+  static unsigned int send_message_empty();
   static unsigned int send_message_max();
   static unsigned int send_message_large();
   static unsigned int send_message_recurse();
+  static unsigned int send_message_inline_fail();
   static unsigned int send_transaction();
+  static unsigned int send_transaction_empty();
   static unsigned int send_transaction_max();
   static unsigned int send_transaction_large();
 };
