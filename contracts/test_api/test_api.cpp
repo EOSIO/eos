@@ -64,6 +64,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_message);
       WASM_TEST_HANDLER(test_transaction, send_message_max);
       WASM_TEST_HANDLER(test_transaction, send_message_large);
+      WASM_TEST_HANDLER(test_transaction, send_message_recurse);
       WASM_TEST_HANDLER(test_transaction, send_transaction);
       WASM_TEST_HANDLER(test_transaction, send_transaction_max);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);

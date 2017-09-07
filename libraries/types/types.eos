@@ -49,6 +49,8 @@ struct BlockchainConfiguration
    minEosBalance     ShareType
    maxTrxLifetime    UInt32
    authDepthLimit    UInt16
+   maxTrxRuntime     UInt32
+   inlineDepthLimit  UInt16
 
 struct TypeDef 
    newTypeName TypeName

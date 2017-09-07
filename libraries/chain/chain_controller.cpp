@@ -899,12 +899,8 @@ void chain_controller::process_message(const Transaction& trx, AccountName code,
    }
 
    // combine inline messages and process
-   auto inline_transaction = PendingInlineTransaction(trx);
-   inline_transaction.messages = std::move(apply_ctx.inline_messages);
-   try {
-      output.inline_transaction = process_transaction(inline_transaction);
-   } FC_CAPTURE_AND_RETHROW((inline_transaction))
-   
+   output.inline_transaction = InlineTransaction(trx);
+   output.inline_transaction.messages = std::move(apply_ctx.inline_messages);
 
    for( auto& asynctrx : apply_ctx.deferred_transactions ) {
       digest_type::encoder enc;
@@ -960,7 +956,7 @@ typename T::Processed chain_controller::apply_transaction(const T& trx)
 { try {
    validate_transaction(trx);
    record_transaction(trx);
-   return process_transaction( trx );
+   return process_transaction( trx, 0, fc::time_point::now());
 
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
@@ -968,13 +964,24 @@ typename T::Processed chain_controller::apply_transaction(const T& trx)
  *  @pre the transaction is assumed valid and all signatures / duplicate checks have bee performed
  */
 template<typename T>
-typename T::Processed chain_controller::process_transaction( const T& trx ) 
+typename T::Processed chain_controller::process_transaction( const T& trx, int depth, const fc::time_point& start_time ) 
 { try {
+   const BlockchainConfiguration& chain_configuration = get_global_properties().configuration;
+   EOS_ASSERT((fc::time_point::now() - start_time).count() < chain_configuration.maxTrxRuntime, checktime_exceeded,
+      "Transaction exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.maxTrxRuntime));
+
+   EOS_ASSERT(depth < chain_configuration.inlineDepthLimit, tx_resource_exhausted,
+      "Transaction exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.inlineDepthLimit));
+
    typename T::Processed ptrx( trx );
    ptrx.output.resize( trx.messages.size() );
 
    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
-      process_message(trx, trx.messages[i].code, trx.messages[i], ptrx.output[i] );
+      auto& output = ptrx.output[i];
+      process_message(trx, trx.messages[i].code, trx.messages[i], output);
+      if (output.inline_transaction.messages.size() > 0 ) {
+         output.inline_transaction = process_transaction(PendingInlineTransaction(output.inline_transaction), depth + 1, start_time);
+      }
    }
 
    return ptrx;

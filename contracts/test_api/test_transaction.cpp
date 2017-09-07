@@ -1,4 +1,5 @@
 #include <eoslib/transaction.hpp>
+#include <eoslib/message.hpp>
 
 #include "test_api.hpp"
 
@@ -40,6 +41,17 @@ unsigned int test_transaction::send_message_large() {
    char large_message[8 * 1024];
    messageCreate(N(testapi), WASM_TEST_ACTION("test_message", "read_message"), large_message, sizeof(large_message));
    return WASM_TEST_FAIL;
+}
+
+/**
+ * cause failure due recursive loop
+ */
+unsigned int test_transaction::send_message_recurse() {
+   char buffer[1024];
+   uint32_t size = readMessage(buffer, 1024);
+   auto msg = messageCreate(N(testapi), WASM_TEST_ACTION("test_transaction", "send_message_recurse"), buffer, size);
+   messageSend(msg);
+   return WASM_TEST_PASS;
 }
 
 /**

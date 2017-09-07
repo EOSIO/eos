@@ -298,7 +298,7 @@ namespace eos { namespace chain {
          typename T::Processed apply_transaction(const T& trx);
          
          template<typename T>
-         typename T::Processed process_transaction(const T& trx);
+         typename T::Processed process_transaction(const T& trx, int depth, const fc::time_point& start_time);
 
          void require_account(const AccountName& name) const;
 

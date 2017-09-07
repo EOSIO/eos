@@ -110,6 +110,7 @@ struct test_transaction {
   static unsigned int send_message();
   static unsigned int send_message_max();
   static unsigned int send_message_large();
+  static unsigned int send_message_recurse();
   static unsigned int send_transaction();
   static unsigned int send_transaction_max();
   static unsigned int send_transaction_large();

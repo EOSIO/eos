@@ -388,6 +388,8 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          tx_resource_exhausted, is_tx_resource_exhausted );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_max"), {}, {} ),
          tx_resource_exhausted, is_tx_resource_exhausted );
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_recurse"), {}, fc::raw::pack(dummy13) ),
+         tx_resource_exhausted, is_tx_resource_exhausted );
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction"), {}, {}) == WASM_TEST_PASS, "test_transaction::send_message()");
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_large"), {}, {} ),
          tx_resource_exhausted, is_tx_resource_exhausted );
