@@ -175,6 +175,7 @@ source ~/.bash_profile
 ## Building and running a node
 
 ### Getting the code
+
 To download all of the code, download Eos and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
 
 `git clone https://github.com/eosio/eos --recursive`
