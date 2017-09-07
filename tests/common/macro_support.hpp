@@ -76,7 +76,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define SETCODE3(chain, acct, wast) \
    { \
-      auto wasm = eos::utilities::assemble_wast(wast); \
+      auto wasm = eos::chain::wast_to_wasm(wast); \
       types::setcode handler; \
       handler.account = #acct; \
       handler.code.assign(wasm.begin(), wasm.end()); \
