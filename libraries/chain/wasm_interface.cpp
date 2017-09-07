@@ -246,7 +246,6 @@ DEFINE_INTRINSIC_FUNCTION3(env,memset,memset,i32,i32,rel_ptr,i32,value,i32,len) 
    char* ptr           = memoryArrayPtr<char>( mem, rel_ptr, len);
    FC_ASSERT( len > 0 );
 
-   wlog("setting ${p} ${v} ${l}", ("p",(uint64_t)rel_ptr)("v",value)("l",len));
    memset( ptr, value, len );
    return rel_ptr;
 }

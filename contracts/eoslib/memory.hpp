@@ -29,6 +29,7 @@ namespace eos {
          memset(_initial_heap, 0, sizeof(_initial_heap));
       }
 
+   private:
       void* malloc(uint32_t size)
       {
          if (_offset + size + SIZE_MARKER >= INITIAL_HEAP_SIZE || size == 0)
@@ -43,7 +44,7 @@ namespace eos {
       {
          uint32_t orig_ptr_size = 0;
          const char* const END_OF_BUFFER = _initial_heap + INITIAL_HEAP_SIZE;
-         char* const char_ptr = (char*)ptr;
+         char* const char_ptr = static_cast<char*>(ptr);
          if (ptr != nullptr)
          {
             buffer_ptr orig_buffer(ptr);
@@ -92,7 +93,7 @@ namespace eos {
             }
          }
 
-         char* new_alloc = (char*)malloc(size);
+         char* new_alloc = static_cast<char*>(malloc(size));
 
          const uint32_t copy_size = (size < orig_ptr_size) ? size : orig_ptr_size;
          if (copy_size > 0)
@@ -109,18 +110,17 @@ namespace eos {
          // currently no-op
       }
 
-   private:
       class buffer_ptr
       {
       public:
          buffer_ptr(void* ptr)
-         : _ptr((char*)ptr)
-         , _size(*(uint32_t*)((char*)ptr - SIZE_MARKER))
+         : _ptr(static_cast<char*>(ptr))
+         , _size(*(uint32_t*)(static_cast<char*>(ptr) - SIZE_MARKER))
          {
          }
 
          buffer_ptr(void* ptr, uint32_t buff_size)
-         : _ptr((char*)ptr)
+         : _ptr(static_cast<char*>(ptr))
          {
             size(buff_size);
          }
@@ -137,7 +137,7 @@ namespace eos {
 
          void size(uint32_t val)
          {
-            *(uint32_t*)(_ptr - SIZE_MARKER) = val;
+            *reinterpret_cast<uint32_t*>(_ptr - SIZE_MARKER) = val;
             _size = val;
          }
 
