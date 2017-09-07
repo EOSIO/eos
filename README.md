@@ -175,6 +175,7 @@ source ~/.bash_profile
 ## Building and running a node
 
 ### Getting the code
+
 To download all of the code, download Eos and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
 
 `git clone https://github.com/eosio/eos --recursive`
@@ -359,7 +360,7 @@ code hash: 0000000000000000000000000000000000000000000000000000000000000000
 With an account for a contract created, you can upload a sample contract:
 
 ```commandline
-./eosc set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
+./eosc set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
 ```
 
 As a response you should get a json with a `transaction_id` field. Your contract was successfully uploaded!
@@ -507,5 +508,5 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 You can run the `eosc` commands via `docker exec` command. For example:
 
 ```
-docker exec docker_eos_1 eosc contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
+docker exec docker_eos_1 eosc contract exchange build/contracts/exchange/exchange.wast build/contracts/exchange/exchange.abi
 ```

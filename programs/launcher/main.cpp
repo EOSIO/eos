@@ -379,7 +379,9 @@ launcher_def::write_config_file (eosd_def &node) {
           << "\",\"" << kp.wif_private_key << "\"]\n";
     }
     cfg << "plugin = eos::producer_plugin\n"
-        << "plugin = eos::chain_api_plugin\n";
+        << "plugin = eos::chain_api_plugin\n"
+        << "plugin = eos::account_history_plugin\n"
+        << "plugin = eos::account_history_api_plugin\n";
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }
