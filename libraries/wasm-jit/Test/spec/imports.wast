@@ -47,6 +47,10 @@
   (func (export "p5") (import "spectest" "print") (type 0))
   (func (export "p6") (import "spectest" "print") (type 0) (param i32) (result))
 
+  (import "spectest" "print" (func (type $forward)))
+  (func (import "spectest" "print") (type $forward))
+  (type $forward (func (param i32)))
+
   (table anyfunc (elem $print_i32 $print_f64))
 
   (func (export "print32") (param $i i32)
