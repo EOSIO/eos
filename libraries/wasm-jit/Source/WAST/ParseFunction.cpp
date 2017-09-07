@@ -619,6 +619,6 @@ namespace WAST
 		findClosingParenthesis(state,funcToken-1);
 		--state.nextToken;
 	
-		return {UINT32_MAX,{},{}};
+		return {{UINT32_MAX},{},{}};
 	}
 }
