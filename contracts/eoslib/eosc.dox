@@ -14,6 +14,8 @@
   - [Transfer EOS](#transfereos)
   - [Getting Transaction](#gettingtransaction)
   - [Creating a Contract](#createcontract)
+  - [Pushing Message to Contract](#pushmessage)
+  - [Querying Contract](#querycontract)
   - [Connecting to Particular Node](#particularnode)
   - [Using Separate Wallet App](#separatewallet)
   - [Skipping Signature](#skippingsignature)
@@ -201,6 +203,15 @@
         }
       ]
     }
+  }
+  ```
+  You can see that `tester` is now the controlled_account under `inita`
+  ```
+  $ ./eosc get servants inita
+  {
+    "controlled_accounts": [
+      "tester"
+    ]
   }
   ```
 
@@ -490,7 +501,58 @@
   }
   ```
 
+  @section pushmessage Pushing Message to Contract
+
   After the contract is published it initially allocates all of the currency to the `currency` account.  So lets transfer some of it to our tester.
+
+  We can query the blockchain for the .abi of the contract, on which we can check the list of available actions and their respective message structure
+  ```
+  $ ./eosc get code --a currency.abi currency
+  code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
+  saving abi to currency.abi
+  $ cat currency.abi
+  {
+    "types": [{
+        "newTypeName": "AccountName",
+        "type": "Name"
+      }
+    ],
+    "structs": [{
+        "name": "transfer",
+        "base": "",
+        "fields": {
+          "from": "AccountName",
+          "to": "AccountName",
+          "amount": "UInt64"
+        }
+      },{
+        "name": "account",
+        "base": "",
+        "fields": {
+          "account": "Name",
+          "balance": "UInt64"
+        }
+      }
+    ],
+    "actions": [{
+        "action": "transfer",
+        "type": "transfer"
+      }
+    ],
+    "tables": [{
+        "table": "account",
+        "indextype": "i64",
+        "keynames": [
+          "account"
+        ],
+        "keytype": [],
+        "type": "account"
+      }
+    ]
+  }
+  ```
+
+  From the above abi, we can see that `currency` contract accepts an action called `transfer` that accepts message with fields `from`, `to`, and `amount`.
 
   ```
   $ ./eosc push message currency transfer '{"from":"currency","to":"tester","amount":50}' -S currency -S tester -p currency@active
@@ -538,18 +600,6 @@
         }
       ]
     }
-  }
-  ```
-  We can check the balance of `tester` inside its scope, and see it has balance of 50
-  ```
-   ./eosc get table tester currency account
-   {
-    "rows": [{
-        "account": "account",
-        "balance": 50
-      }
-    ],
-    "more": true
   }
   ```
 
@@ -625,6 +675,30 @@
 
   [...snipped...]
   ```
+
+  @section querycontract Querying Contract
+
+  After doing the transfer action on `currency` contract, we can verify the amount of token held by each account by looking at `currency`'s `account` table.
+
+  This table is stored on the scope of each account instead of on `currency` scope.
+
+  ```
+  $./eosc get table tester currency account
+  {
+    "rows": [],
+    "more": false
+  }
+  $./eosc get table inita currency account
+  {
+    "rows": [{
+        "account": "account",
+        "balance": 50
+      }
+    ],
+    "more": true
+  }
+  ```
+
 
   @section particularnode Connecting to Particular Node
 
