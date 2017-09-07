@@ -220,9 +220,7 @@ namespace eos {
       fc::datastream<char*> ds( buffer.data(), buffer.size() );
       ds.write( (char*)&size, sizeof(size) );
       fc::raw::pack( ds, m );
-      dlog ("send_next_message called, buffer size = ${s}", ("s",buffer.size()));
-
-
+      boost::asio::buffer abuff( buffer.data(), buffer.size());
       boost::asio::async_write( *socket, boost::asio::buffer( buffer.data(), buffer.size() ),
                    [this,buf=std::move(buffer)]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                      if( ec ) {
@@ -233,9 +231,6 @@ namespace eos {
                        } else {
                          out_queue.pop_front();
                        }
-                       dlog ("after write, bytes_transferred = ${bt} buf.size = ${bs}",
-                             ("bt",bytes_transferred)("bs",buf.size()));
-
                        send_next_message();
                      }
                    });
@@ -393,7 +388,6 @@ namespace eos {
         just_send_it_max = mtu;
       }
       start_read_message( con );
-      dlog ("calling send_handshake");
       con->send_handshake( );
 
       // for now, we can just use the application main loop.
@@ -471,7 +465,6 @@ namespace eos {
       sync_state req =  {low, high, sync_req_head, time_point::now(), vector<signed_block>() };
       c->in_sync_state.push_back (req);
       sync_request_message srm = {req.start_block, req.end_block };
-      dlog ("sending srm, from ${s} to ${e}", ("s", req.start_block)("e", req.end_block));
       c->send (srm);
       sync_req_head = high;
       return (sync_req_head == sync_head);
@@ -567,7 +560,6 @@ namespace eos {
       }
 
       uint32_t head = cc.head_block_num ();
-      dlog ("msg.head_num = ${m} head = ${h}", ("m", msg.head_num)("h",head));
       if ( msg.head_num  >  head) {
         set_sync_head(msg.head_num);
       }
