@@ -80,21 +80,16 @@ namespace eos {
    * Index by start_block
    */
   struct sync_state {
-    uint32_t     start_block = 0;
-    uint32_t     end_block = 0;
-    uint32_t     last = 0; ///< last sent or received
+    sync_state(uint32_t start = 0, uint32_t end = 0, uint32_t last_acted = 0)
+      :start_block ( start ), end_block( end ), last( last_acted ),
+       start_time (time_point::now()), block_cache()
+    {}
+    uint32_t     start_block;
+    uint32_t     end_block;
+    uint32_t     last; ///< last sent or received
     time_point   start_time; ///< time request made or received
     vector< vector<char> > block_cache;
   };
-#if 0
-  struct by_start_block;
-  typedef multi_index_container<
-    sync_state,
-    indexed_by<
-      ordered_unique< tag<by_start_block>, member<sync_state, uint32_t, &sync_state::start_block > >
-      >
-    > sync_request_index;
-#endif
 
   struct handshake_initializer {
     static void populate (handshake_message &hello);
@@ -175,11 +170,14 @@ namespace eos {
     string                         peer_addr;
 
     bool ready () {
-      return (socket->is_open() && !connecting && !syncing);
+      return (socket->is_open() && !connecting);
+    }
+
+    bool ready_and_willing () {
+      return (ready() && !syncing);
     }
 
     void reset () {
-      dlog ("reset clearing sync_received");
       sync_received.clear();
       sync_requested.clear();
       block_state.clear();
@@ -367,7 +365,6 @@ namespace eos {
                            [c, endpoint_itr, this]
                            ( const boost::system::error_code& err ) {
                              if( !err ) {
-                               dlog("new connnection to ${peer}",("peer",c->peer_addr));
                                start_session( c );
                              } else {
                                if( endpoint_itr != tcp::resolver::iterator() ) {
@@ -451,7 +448,7 @@ namespace eos {
     template<typename VerifierFunc>
     void send_all (const net_message &msg, VerifierFunc verify) {
       for (auto &c : connections) {
-        if (c->ready() && verify (c)) {
+        if (c->ready_and_willing() && verify (c)) {
           c->send(msg);
         }
       }
@@ -462,16 +459,14 @@ namespace eos {
       if (sync_req_head == sync_head) {
         return true;
       }
-      uint32_t low = sync_req_head + 1;
-      uint32_t high = low + sync_req_span < sync_head ? low + sync_req_span : sync_head;
-      sync_state req =  {low, high, sync_req_head, time_point::now(), vector< vector<char> >() };
-      c->sync_received.push_back (req);
-      dlog ("pushing new cache from ${l} to ${h} on ${c} size = ${s}",
-            ("l",low)("h",high)("c",c->peer_addr)("s",c->sync_received.size()));
-
-      sync_request_message srm = {req.start_block, req.end_block };
+      uint32_t first = sync_req_head + 1;
+      uint32_t last = (first + sync_req_span -1);
+      if (last < sync_head)
+        last = sync_head;
+      c->sync_received.emplace_back (first, last, sync_req_head);
+      sync_request_message srm = {first, last };
       c->send (srm);
-      sync_req_head = high;
+      sync_req_head = last;
       return (sync_req_head == sync_head);
     }
 
@@ -498,41 +493,59 @@ namespace eos {
       }
     }
 
+    struct postcache : public fc::visitor<void> {
+      connection_ptr c;
+      chain_plugin * chain_plug;
+      postcache (connection_ptr conn, chain_plugin *cp) : c(conn), chain_plug (cp) {}
+
+      void operator()(const signed_block &block) const
+      {
+        chain_plug->accept_block (block,true);
+      }
+
+      template <typename T>
+      void operator()(const T &msg) const
+      {
+        //no-op
+      }
+
+    };
+
     void apply_cached_blocks (connection_ptr conn) {
       bool keep_going = true;
       while (keep_going) {
         keep_going = false;
         for (auto &c : connections) {
-          if (c == conn || !c->ready()) { // || c->sync_received.size() == 0) {
-            continue;
-          }
           try {
             auto ss = c->sync_received.begin();
             if (ss == c->sync_received.end()) {
-              dlog ("conn ${c} has empty sync_received");
+              get_sync_req(c);
               continue;
             }
             uint32_t start = 1 + chain_plug->chain().head_block_num();
             if (start == ss->start_block) {
-              if (ss->last < start) {
-                dlog ("found the set but the cache is empty");
+              if (ss->last < start || ss->block_cache.empty()) {
                 return;
               }
+
               for (auto & blk : ss->block_cache) {
-                auto block = fc::raw::unpack<signed_block>( blk );
-                chain_plug->accept_block (block,true);
+                auto block = fc::raw::unpack<net_message>( blk );
+                postcache pc(c,chain_plug);
+                block.visit (pc);
                 ++start;
                 ss->start_block++;
               }
               ss->block_cache.clear();
-              dlog ("cleared a cache, start = ${s} and end = ${e} head = ${h}",
-                    ("s",start)("e",ss->end_block)("h",chain_plug->chain().head_block_num()));
-              if (start >= ss->end_block) {
+              if (start > ss->end_block) {
                 c->sync_received.erase(ss);
+                if (c->sync_received.empty()) {
+                  get_sync_req(c);
+                }
                 keep_going = true;
               }
             }
           } catch (...) {
+              elog ("caught something trying to accept blocks");
             // not a problem. We found the list but no blocks were cached
             return;
           }
@@ -541,7 +554,6 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const handshake_message &msg) {
-      dlog ("got a handshake from ${p}",("p",c->peer_addr));
       if (msg.node_id == node_id) {
         elog ("Self connection detected. Closing connection");
         close(c);
@@ -670,8 +682,7 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const sync_request_message &msg) {
-      sync_state req = {msg.start_block,msg.end_block,msg.start_block-1,time_point::now()};
-      c->sync_requested.push_back (req);
+      c->sync_requested.emplace_back (msg.start_block,msg.end_block,msg.start_block-1);
       c->write_block_backlog ();
     }
 
@@ -731,29 +742,22 @@ namespace eos {
       chain_controller &cc = chain_plug->chain();
       try {
         if (cc.is_known_block(msg.id())) {
-          dlog ("skipping known block");
           return;
         }
       } catch (...) {
       }
       uint32_t num = msg.block_num();
-      dlog ("handling block #${n} conn = ${c}",("n", num)("c",c->peer_addr));
       bool syncing = sync_head > cc.head_block_num();
+      bool get_more = false;
       if (syncing) {
-        dlog ("sync_rec size ${s}",("s", c->sync_received.size()));
         for( auto &ss : c->sync_received) {
           if (num > ss.end_block) {
-
             continue;
           }
           ss.last = num;
-          if (num == ss.end_block) {
-            get_sync_req (c);
-          }
-
+          get_more = num == ss.end_block;
           if (num == cc.head_block_num()+1) {
             try {
-              dlog ("sync accepting block #${n}",("n", num));
               chain_plug->accept_block(msg, true);
               auto s0 = c->sync_received.begin();
               if (s0->start_block == s0->end_block) {
@@ -772,22 +776,19 @@ namespace eos {
             }
 
           } else {
-            dlog ("caching block #${n} size = ${s}", ("n", num)("s", c->blk_buffer.size()));
-            // ss.block_cache.emplace_back(::move(c->blk_buffer));
-
-            ss.block_cache.push_back(c->blk_buffer);
+            ss.block_cache.emplace_back(std::move(c->blk_buffer));
           }
           break;
         }
         if ( chain_plug->chain().head_block_num() == sync_head) {
-          dlog ("caught up with previous target ${t}",("t",sync_head));
           handshake_message hello;
           handshake_initializer::populate(hello);
           send_all (hello, [c](connection_ptr conn) -> bool {
               return true;
             });
+        } else if (get_more) {
+          get_sync_req( c );
         }
-
         return;
       }
       else {
