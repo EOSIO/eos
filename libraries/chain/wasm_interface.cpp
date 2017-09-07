@@ -240,6 +240,17 @@ DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
    return dstp;
 }
 
+DEFINE_INTRINSIC_FUNCTION3(env,memset,memset,i32,i32,rel_ptr,i32,value,i32,len) {
+   auto& wasm          = wasm_interface::get();
+   auto  mem           = wasm.current_memory;
+   char* ptr           = memoryArrayPtr<char>( mem, rel_ptr, len);
+   FC_ASSERT( len > 0 );
+
+   wlog("setting ${p} ${v} ${l}", ("p",(uint64_t)rel_ptr)("v",value)("l",len));
+   memset( ptr, value, len );
+   return rel_ptr;
+}
+
 
 /**
  * Transaction C API implementation
