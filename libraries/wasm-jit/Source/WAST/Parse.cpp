@@ -167,45 +167,60 @@ namespace WAST
 		return FunctionType::get(ret,parameters);
 	}
 	
-	IndexedFunctionType parseFunctionTypeRef(ModuleParseState& state,NameToIndexMap& outLocalNameToIndexMap,std::vector<std::string>& outLocalDisassemblyNames)
+	UnresolvedFunctionType parseFunctionTypeRefAndOrDecl(ModuleParseState& state,NameToIndexMap& outLocalNameToIndexMap,std::vector<std::string>& outLocalDisassemblyNames)
 	{
 		// Parse an optional function type reference.
-		const Token* typeReferenceToken = state.nextToken;
-		IndexedFunctionType referencedFunctionType = {UINT32_MAX};
+		Reference functionTypeRef;
 		if(state.nextToken[0].type == t_leftParenthesis
 		&& state.nextToken[1].type == t_type)
 		{
-			// Parse a reference by name or index to some type in the module's type table.
 			parseParenthesized(state,[&]
 			{
 				require(state,t_type);
-				referencedFunctionType.index = parseAndResolveNameOrIndexRef(state,state.typeNameToIndexMap,state.module.types.size(),"type");
+				if(!tryParseNameOrIndexRef(state,functionTypeRef))
+				{
+					parseErrorf(state,state.nextToken,"expected type name or index");
+					throw RecoverParseException();
+				}
 			});
 		}
 
 		// Parse the explicit function parameters and result type.
-		const FunctionType* directFunctionType = parseFunctionType(state,outLocalNameToIndexMap,outLocalDisassemblyNames);
-		const bool hasNoDirectType = directFunctionType == FunctionType::get();
+		const FunctionType* explicitFunctionType = parseFunctionType(state,outLocalNameToIndexMap,outLocalDisassemblyNames);
 
-		// Validate that if the function definition has both a type reference, and explicit parameter/result type declarations, that they match.
-		IndexedFunctionType functionType;
-		if(referencedFunctionType.index != UINT32_MAX && hasNoDirectType)
+		UnresolvedFunctionType result;
+		result.reference = functionTypeRef;
+		result.explicitType = explicitFunctionType;
+		return result;
+	}
+
+	IndexedFunctionType resolveFunctionType(ModuleParseState& state,const UnresolvedFunctionType& unresolvedType)
+	{
+		if(!unresolvedType.reference)
 		{
-			functionType = referencedFunctionType;
+			return getUniqueFunctionTypeIndex(state,unresolvedType.explicitType);
 		}
 		else
 		{
-			functionType = getUniqueFunctionTypeIndex(state,directFunctionType);
-			if(referencedFunctionType.index != UINT32_MAX && state.module.types[referencedFunctionType.index] != directFunctionType)
-			{
-				parseErrorf(state,typeReferenceToken,"referenced function type (%s) does not match declared parameters and results (%s)",
-					asString(state.module.types[referencedFunctionType.index]).c_str(),
-					asString(directFunctionType).c_str()
-					);
-			}
-		}
+			// Resolve the referenced type.
+			const U32 referencedFunctionTypeIndex = resolveRef(state,state.typeNameToIndexMap,state.module.types.size(),unresolvedType.reference);
 
-		return functionType;
+			// Validate that if the function definition has both a type reference and explicit parameter/result type declarations, they match.
+			const bool hasExplicitParametersOrResultType = unresolvedType.explicitType != FunctionType::get();
+			if(hasExplicitParametersOrResultType)
+			{
+				if(referencedFunctionTypeIndex != UINT32_MAX
+				&& state.module.types[referencedFunctionTypeIndex] != unresolvedType.explicitType)
+				{
+					parseErrorf(state,unresolvedType.reference.token,"referenced function type (%s) does not match declared parameters and results (%s)",
+						asString(state.module.types[referencedFunctionTypeIndex]).c_str(),
+						asString(unresolvedType.explicitType).c_str()
+						);
+				}
+			}
+
+			return {referencedFunctionTypeIndex};
+		}
 	}
 
 	IndexedFunctionType getUniqueFunctionTypeIndex(ModuleParseState& state,const FunctionType* functionType)
