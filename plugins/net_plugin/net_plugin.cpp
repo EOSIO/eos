@@ -220,6 +220,8 @@ namespace eos {
       fc::datastream<char*> ds( buffer.data(), buffer.size() );
       ds.write( (char*)&size, sizeof(size) );
       fc::raw::pack( ds, m );
+      dlog ("send_next_message called, buffer size = ${s}", ("s",buffer.size()));
+
 
       boost::asio::async_write( *socket, boost::asio::buffer( buffer.data(), buffer.size() ),
                    [this,buf=std::move(buffer)]( boost::system::error_code ec, std::size_t bytes_transferred ) {
@@ -231,6 +233,9 @@ namespace eos {
                        } else {
                          out_queue.pop_front();
                        }
+                       dlog ("after write, bytes_transferred = ${bt} buf.size = ${bs}",
+                             ("bt",bytes_transferred)("bs",buf.size()));
+
                        send_next_message();
                      }
                    });
@@ -466,13 +471,13 @@ namespace eos {
       sync_state req =  {low, high, sync_req_head, time_point::now(), vector<signed_block>() };
       c->in_sync_state.push_back (req);
       sync_request_message srm = {req.start_block, req.end_block };
+      dlog ("sending srm, from ${s} to ${e}", ("s", req.start_block)("e", req.end_block));
       c->send (srm);
       sync_req_head = high;
       return (sync_req_head == sync_head);
     }
 
     void set_sync_head (uint32_t target) {
-      uint32_t cchead =  chain_plug->chain().head_block_num();
       if (sync_head == sync_req_head) {
         sync_req_head = chain_plug->chain().head_block_num();
       }
@@ -749,7 +754,11 @@ namespace eos {
           }
         }
         if ( chain_plug->chain().head_block_num() == sync_head) {
-          c->send_handshake ( );
+          handshake_message hello;
+          handshake_initializer::populate(hello);
+          send_all (hello, [c](connection_ptr conn) -> bool {
+              return true;
+            });
         }
 
         return;
