@@ -22,7 +22,8 @@ Welcome to the EOS.IO source code repository!
 	5. [Push a message to a sample contract](#pushamessage)
 	6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
-6. [Running EOS in Docker](#docker)
+6. [Doxygen documentation](#doxygen)
+7. [Running EOS in Docker](#docker)
 	1. [Run contract in docker example](#dockercontract)
 
 ## Getting Started <a href="gettingstarted"></a>
@@ -492,6 +493,10 @@ To confirm the nodes are running, run following `eosc` commands:
 For each you should get a json with a blockchain information.
 
 You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
+
+## Doxygen documentation <a href="doxygen"></a>
+
+You can find more detailed API documentation in Doxygen reference: https://eosio.github.io/eos/
 
 ## Running EOS in Docker <a href="docker"></a>
 
