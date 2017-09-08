@@ -32,7 +32,7 @@ namespace eos {
    private:
       void* malloc(uint32_t size)
       {
-         if (_offset + size + SIZE_MARKER >= INITIAL_HEAP_SIZE || size == 0)
+         if (_offset + size + SIZE_MARKER > INITIAL_HEAP_SIZE || size == 0)
             return nullptr;
 
          buffer_ptr new_buff(&_initial_heap[_offset + SIZE_MARKER], size);
