@@ -26,10 +26,10 @@ Welcome to the EOS.IO source code repository!
 7. [Running EOS in Docker](#docker)
 	1. [Run contract in docker example](#dockercontract)
 
-## Getting Started <a href="gettingstarted"></a>
+## Getting Started <a name="gettingstarted"></a>
 The following instructions overview the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain.
 
-## Setting up a build/development environment <a href="setup"></a>
+## Setting up a build/development environment <a name="setup"></a>
 This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
 
 Dependencies:
@@ -42,7 +42,7 @@ Dependencies:
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 * [binaryen](https://github.com/WebAssembly/binaryen.git)
 
-### Clean install Ubuntu 16.10 <a href="ubuntu"></a>
+### Clean install Ubuntu 16.10 <a name="ubuntu"></a>
 
 Install the development toolkit:
 
@@ -115,7 +115,7 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j4 install
 ```
 
-### macOS Sierra 10.12.6 <a href="macos"></a>
+### macOS Sierra 10.12.6 <a name="macos"></a>
 
 macOS additional Dependencies:
 
@@ -194,9 +194,9 @@ echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_pr
 source ~/.bash_profile
 ```
 
-## Building and running a node <a href="runanode"></a>
+## Building and running a node <a name="runanode"></a>
 
-### Getting the code <a href="getcode"></a>
+### Getting the code <a name="getcode"></a>
 
 To download all of the code, download EOS source code and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
 
@@ -206,7 +206,7 @@ If a repo is cloned without the `--recursive` flag, the submodules can be retrie
 
 `git submodule update --init --recursive`
 
-### Building from source code <a href="build"></a>
+### Building from source code <a name="build"></a>
 
 The *WASM_LLVM_CONFIG* environment variable is used to find our recently built WASM compiler.
 This is needed to compile the example contracts inside `eos/contracts` folder and their respective tests.
@@ -234,7 +234,7 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 * eos-walletd - EOS wallet
 * launcher - application for nodes network composing and deployment; [more on launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
-### Creating and launching a single-node testnet <a href="singlenode"></a>
+### Creating and launching a single-node testnet <a name="singlenode"></a>
 
 After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with `Ctrl-C`. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
 
@@ -292,11 +292,11 @@ When running `eosd` you should get log messages similar to below. It means the b
 1587000ms thread-0   chain_controller.cpp:235      _push_block          ] initf #5 @2017-09-04T04:26:27  | 0 trx, 0 pending, exectime_ms=0
 ```
 
-## Accounts and smart contracts <a href="accountssmartcontracts"></a>
+## Accounts and smart contracts <a name="accountssmartcontracts"></a>
 
 EOS comes with example contracts that can be uploaded and run for testing purposes. To upload and test them, follow the steps below.
 
-### Example smart contracts <a href="smartcontractexample"></a>
+### Example smart contracts <a name="smartcontractexample"></a>
 
 To publish sample smart contracts you need to create accounts for them.
 
@@ -307,7 +307,7 @@ cd ~/eos/build/programs/eosd/
 ./eosd
 ```
 
-### Setting up a wallet and importing account key <a href="walletimport"></a>
+### Setting up a wallet and importing account key <a name="walletimport"></a>
 
 Before running API commands you need to import the private key of an account you will be authorizing the transactions under into the EOS wallet.
 
@@ -325,7 +325,7 @@ cd ~/eos/build/programs/eosc/
 
 Now you can issue API commands under `inita` authority.
 
-### Creating accounts for your smart contracts <a href="createaccounts"></a>
+### Creating accounts for your smart contracts <a name="createaccounts"></a>
 
 First, generate public/private key pairs for the `owner_key` and `active_key`. You will need them to create an account:
 
@@ -372,7 +372,7 @@ You should get a response similar to this:
 }
 ```
 
-### Upload sample contract to blockchain <a href="uploadsmartcontract"></a>
+### Upload sample contract to blockchain <a name="uploadsmartcontract"></a>
 
 Before uploading a contract, you can verify that there is no current contract:
 
@@ -410,7 +410,7 @@ Next you can verify that the currency contract has the proper initial balance:
 }
 ```
 
-### Push a message to a sample contract <a href="pushamessage"></a>
+### Push a message to a sample contract <a name="pushamessage"></a>
 
 To send a message to a contract you need to create a new user account who will be sending the message.
 
@@ -436,7 +436,7 @@ After this you can send a message to the contract:
 
 As a confirmation of a successfully submitted transaction you will get a json with a `transaction_id` field.
 
-### Reading Currency Contract Balance <a href="readingcontract"></a>
+### Reading Currency Contract Balance <a name="readingcontract"></a>
 
 ```commandline
 ./eosc get table inita currency account
@@ -459,7 +459,7 @@ As a confirmation of a successfully submitted transaction you will get a json wi
 }
 ```
 
-## Running local testnet <a href="localtestnet"></a>
+## Running local testnet <a name="localtestnet"></a>
 
 To run a local testnet you can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
 
@@ -494,11 +494,11 @@ For each you should get a json with a blockchain information.
 
 You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
-## Doxygen documentation <a href="doxygen"></a>
+## Doxygen documentation <a name="doxygen"></a>
 
 You can find more detailed API documentation in Doxygen reference: https://eosio.github.io/eos/
 
-## Running EOS in Docker <a href="docker"></a>
+## Running EOS in Docker <a name="docker"></a>
 
 Simple and fast setup of EOS in Docker is also available. Firstly, install dependencies:
 
@@ -531,7 +531,7 @@ Get chain info:
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-### Run contract in docker example <a href="dockercontract"></a>
+### Run contract in docker example <a name="dockercontract"></a>
 
 You can run the `eosc` commands via `docker exec` command. For example:
 
