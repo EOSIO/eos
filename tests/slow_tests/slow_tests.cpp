@@ -1188,13 +1188,13 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(test_memory, testing_fixture)
 { try {
       Make_Blockchain(chain);
-      chain.produce_blocks(10);
-      Make_Account(chain, currency);
+      chain.produce_blocks(1);
+      Make_Account(chain, testmemory);
       chain.produce_blocks(1);
 
 
       types::setcode handler;
-      handler.account = "currency";
+      handler.account = "testmemory";
 
       auto wasm = assemble_wast( memory_test_wast );
       handler.code.resize(wasm.size());
@@ -1202,10 +1202,10 @@ BOOST_FIXTURE_TEST_CASE(test_memory, testing_fixture)
 
       {
          eos::chain::SignedTransaction trx;
-         trx.scope = {"currency"};
+         trx.scope = {"testmemory"};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
-         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"testmemory","active"});
          transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
@@ -1216,10 +1216,96 @@ BOOST_FIXTURE_TEST_CASE(test_memory, testing_fixture)
 
       {
          eos::chain::SignedTransaction trx;
-         trx.scope = sort_names({"currency","inita"});
-         transaction_emplace_message(trx, "currency",
+         trx.scope = sort_names({"testmemory","inita"});
+         transaction_emplace_message(trx, "testmemory",
                             vector<types::AccountPermission>{},
-                            "transfer", types::transfer{"currency", "inita", 1,""});
+                            "transfer", types::transfer{"testmemory", "inita", 1,""});
+         trx.expiration = chain.head_block_time() + 100;
+         transaction_set_reference_block(trx, chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
+      }
+} FC_LOG_AND_RETHROW() }
+
+//Test wasm memory
+BOOST_FIXTURE_TEST_CASE(test_memory_bounds, testing_fixture)
+{ try {
+      Make_Blockchain(chain);
+      chain.produce_blocks(1);
+      Make_Account(chain, testbounds);
+      chain.produce_blocks(1);
+
+
+      types::setcode handler;
+      handler.account = "testbounds";
+
+      auto wasm = assemble_wast( memory_test_wast );
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = {"testbounds"};
+         trx.messages.resize(1);
+         trx.messages[0].code = config::EosContractName;
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"testbounds","active"});
+         transaction_set_message(trx, 0, "setcode", handler);
+         trx.expiration = chain.head_block_time() + 100;
+         transaction_set_reference_block(trx, chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
+      }
+
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = sort_names({"testbounds","inita"});
+         transaction_emplace_message(trx, "testbounds",
+                            vector<types::AccountPermission>{},
+                            "transfer", types::transfer{"testbounds", "inita", 1,""});
+         trx.expiration = chain.head_block_time() + 100;
+         transaction_set_reference_block(trx, chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
+      }
+} FC_LOG_AND_RETHROW() }
+
+//Test intrinsic provided memset and memcpy
+BOOST_FIXTURE_TEST_CASE(test_memset_memcpy, testing_fixture)
+{ try {
+      Make_Blockchain(chain);
+      chain.produce_blocks(1);
+      Make_Account(chain, testmemset);
+      chain.produce_blocks(1);
+
+
+      types::setcode handler;
+      handler.account = "testmemset";
+
+      auto wasm = assemble_wast( memory_test_wast );
+      handler.code.resize(wasm.size());
+      memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = {"testmemset"};
+         trx.messages.resize(1);
+         trx.messages[0].code = config::EosContractName;
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"testmemset","active"});
+         transaction_set_message(trx, 0, "setcode", handler);
+         trx.expiration = chain.head_block_time() + 100;
+         transaction_set_reference_block(trx, chain.head_block_id());
+         chain.push_transaction(trx);
+         chain.produce_blocks(1);
+      }
+
+
+      {
+         eos::chain::SignedTransaction trx;
+         trx.scope = sort_names({"testmemset","inita"});
+         transaction_emplace_message(trx, "testmemset",
+                            vector<types::AccountPermission>{},
+                            "transfer", types::transfer{"testmemset", "inita", 1,""});
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
          chain.push_transaction(trx);
