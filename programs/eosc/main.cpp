@@ -729,7 +729,7 @@ int main( int argc, char** argv ) {
          for( const auto& s : subscopes )
          trx.scope.emplace_back(s);
       }
-      ilog("Transaction result:\n${r}", ("r", fc::json::to_pretty_string(push_transaction(trx, !skip_sign ))));
+      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign )) << std::endl;
    });
 
    // push transaction
