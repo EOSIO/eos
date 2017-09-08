@@ -167,14 +167,15 @@ namespace eos { namespace chain {
 
    struct PendingInlineTransaction : public types::Transaction {
       typedef types::Transaction super;
-      using super::super;
+      using super::super;      
       
       typedef InlineTransaction Processed;
    };
 
    struct MessageOutput;
    struct InlineTransaction : public types::Transaction {
-      explicit InlineTransaction( const PendingInlineTransaction& t ):Transaction(t){}
+      explicit InlineTransaction( const types::Transaction& t ):types::Transaction((const types::Transaction& )t){}
+      explicit InlineTransaction( const PendingInlineTransaction& t ):types::Transaction((const types::Transaction& )t){}
       InlineTransaction(){}
 
       vector<MessageOutput> output;

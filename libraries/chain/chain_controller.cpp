@@ -990,7 +990,8 @@ typename T::Processed chain_controller::process_transaction( const T& trx, int d
       auto& output = ptrx.output[i];
       process_message(trx, trx.messages[i].code, trx.messages[i], output);
       if (output.inline_transaction.valid() ) {
-         output.inline_transaction = process_transaction(PendingInlineTransaction(*output.inline_transaction), depth + 1, start_time);
+         const Transaction& trx = *output.inline_transaction;
+         output.inline_transaction = process_transaction(PendingInlineTransaction(trx), depth + 1, start_time);
       }
    }
 
