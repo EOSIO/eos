@@ -97,7 +97,7 @@ namespace eos {
 
   class connection : public std::enable_shared_from_this<connection> {
   public:
-    const size_t                   BufferSize{1024*1024*4};
+    const size_t                   kBufferSize{1024*1024*4};
     connection( string endpoint )
       : block_state(),
         trx_state(),
@@ -105,8 +105,8 @@ namespace eos {
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
         pending_message_size(0),
-        pending_message_buffer(BufferSize),
-        send_buffer(BufferSize),
+        pending_message_buffer(kBufferSize),
+        send_buffer(kBufferSize),
         remote_node_id(),
         last_handshake(),
         out_queue(),
@@ -125,12 +125,13 @@ namespace eos {
         sync_requested(),
         socket( s ),
         pending_message_size(0),
-        pending_message_buffer(BufferSize),
-        send_buffer(BufferSize),
+        pending_message_buffer(kBufferSize),
+        send_buffer(kBufferSize),
         remote_node_id(),
         last_handshake(),
         out_queue(),
         connecting (false),
+        syncing (false),
         peer_addr ()
     {
       wlog( "created network connection" );
