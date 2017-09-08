@@ -116,7 +116,7 @@ Install the dependencies:
 
 ```commandline
 brew update
-brew install git automake libtool boost openssl llvm
+brew install git automake libtool boost openssl llvm gmp
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -193,7 +193,7 @@ This is needed to compile the example contracts inside eos/contracts folder and 
 cd ~
 git clone https://github.com/eosio/eos --recursive
 mkdir -p ~/eos/build && cd ~/eos/build
-cmake -DBINARYEN_BIN=~/binaryen/bin ..
+cmake -DBINARYEN_BIN=~/binaryen/bin -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib ..
 make -j4
 ```
 
