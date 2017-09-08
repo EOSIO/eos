@@ -19,12 +19,12 @@ Welcome to the EOS.IO source code repository!
 	2. [Setting up a wallet and importing account key](#walletimport)
 	3. [Creating accounts for your smart contracts](#createaccounts)
 	4. [Upload sample contract to blockchain](#uploadsmartcontract)
-	5. [Push a message to a sample contract](#pushamessage)
+	5. [Pushing a message to a sample contract](#pushamessage)
 	6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
 6. [Doxygen documentation](#doxygen)
 7. [Running EOS in Docker](#docker)
-	1. [Run contract in docker example](#dockercontract)
+	1. [Running contract in docker example](#dockercontract)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -423,7 +423,7 @@ Next you can verify that the currency contract has the proper initial balance:
 ```
 
 <a name="pushamessage"></a>
-### Push a message to a sample contract 
+### Pushing a message to a sample contract 
 
 To send a message to a contract you need to create a new user account who will be sending the message.
 
@@ -549,7 +549,7 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
 <a name="dockercontract"></a>
-### Run contract in docker example 
+### Running contract in docker example 
 
 You can run the `eosc` commands via `docker exec` command. For example:
 
