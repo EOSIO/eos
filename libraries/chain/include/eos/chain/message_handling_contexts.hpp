@@ -299,12 +299,14 @@ public:
    struct pending_transaction : public types::Transaction {
       typedef uint32_t handle_type;
       
-      pending_transaction(const handle_type& _handle, const UInt16& block_num, const UInt32& block_ref, const Time& expiration )
+      pending_transaction(const handle_type& _handle, const apply_context& _context, const UInt16& block_num, const UInt32& block_ref, const Time& expiration )
          : types::Transaction(block_num, block_ref, expiration, vector<types::AccountName>(),  vector<types::AccountName>(), vector<types::Message>())
-         , handle(_handle) {}
+         , handle(_handle)
+         , context(_context) {}
       
       
       handle_type handle;
+      const apply_context& context;
 
       void check_size() const;
    };

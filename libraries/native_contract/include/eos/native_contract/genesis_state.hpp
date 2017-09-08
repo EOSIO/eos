@@ -78,7 +78,9 @@ struct genesis_state_type {
       config::DefaultMaxTrxLifetime,
       config::DefaultAuthDepthLimit,
       config::DefaultMaxTrxRuntime,
-      config::DefaultInlineDepthLimit
+      config::DefaultInlineDepthLimit,
+      config::DefaultMaxInlineMsgSize,
+      config::DefaultMaxGenTrxSize
    };
    vector<initial_account_type>             initial_accounts;
    vector<initial_producer_type>            initial_producers;

@@ -67,9 +67,9 @@ apply_context::pending_transaction& apply_context::get_pending_transaction(pendi
    return *itr;
 }
 
+const auto Pending_transaction_expiration = fc::seconds(21 * 3);
+const int Max_pending_messages = 4;
 const int Max_pending_transactions = 4;
-const uint32_t Max_pending_transaction_size = 64 * 1024;
-const auto Pending_transaction_expiration = fc::seconds(21 * 3); 
 
 apply_context::pending_transaction& apply_context::create_pending_transaction() {
    EOS_ASSERT(pending_transactions.size() < Max_pending_transactions, tx_resource_exhausted,
@@ -81,7 +81,7 @@ apply_context::pending_transaction& apply_context::create_pending_transaction() 
    decltype(pending_transaction::refBlockNum) head_block_num = fc::endian_reverse_u32(head_block_id._hash[0]);
    decltype(pending_transaction::refBlockPrefix) head_block_ref = head_block_id._hash[1];
    decltype(pending_transaction::expiration) expiration = controller.head_block_time() + Pending_transaction_expiration;
-   pending_transactions.emplace_back(handle, head_block_num, head_block_ref, expiration);
+   pending_transactions.emplace_back(handle, *this, head_block_num, head_block_ref, expiration);
    return pending_transactions.back();
 }
 
@@ -99,8 +99,9 @@ void apply_context::release_pending_transaction(pending_transaction::handle_type
 
 void apply_context::pending_transaction::check_size() const {
    const types::Transaction& trx = *this;
-   EOS_ASSERT(fc::raw::pack_size(trx) <= Max_pending_transaction_size, tx_resource_exhausted,
-              "Transaction is attempting to create a transaction which is too large. The max size is ${max} bytes", ("max", Max_pending_transaction_size));
+   const BlockchainConfiguration& chain_configuration = context.controller.get_global_properties().configuration;
+   EOS_ASSERT(fc::raw::pack_size(trx) <= chain_configuration.maxGenTrxSize, tx_resource_exhausted,
+              "Transaction is attempting to create a transaction which is too large. The max size is ${max} bytes", ("max", chain_configuration.maxGenTrxSize));
 }
 
 apply_context::pending_message& apply_context::get_pending_message(pending_message::handle_type handle) {
@@ -110,15 +111,14 @@ apply_context::pending_message& apply_context::get_pending_message(pending_messa
    return *itr;
 }
 
-const int Max_pending_messages = 4;
-const uint32_t Max_pending_message_size = 4 * 1024;
-
 apply_context::pending_message& apply_context::create_pending_message(const AccountName& code, const FuncName& type, const Bytes& data) {
+   const BlockchainConfiguration& chain_configuration = controller.get_global_properties().configuration;
+   
    EOS_ASSERT(pending_messages.size() < Max_pending_messages, tx_resource_exhausted,
               "Transaction is attempting to create too many pending messages. The max is ${max}", ("max", Max_pending_messages));
    
-   EOS_ASSERT(data.size() < Max_pending_message_size, tx_resource_exhausted,
-              "Transaction is attempting to create a pending message that is too large. The max is ${max}", ("max", Max_pending_message_size));
+   EOS_ASSERT(data.size() < chain_configuration.maxInlineMsgSize, tx_resource_exhausted,
+              "Transaction is attempting to create a pending message that is too large. The max is ${max}", ("max", chain_configuration.maxInlineMsgSize));
    
    pending_message::handle_type handle = next_pending_message_serial++;
    pending_messages.emplace_back(handle, code, type, data);

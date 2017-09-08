@@ -143,9 +143,12 @@ bool is_access_violation(fc::unhandled_exception const & e) {
 bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
 bool is_tx_missing_scope(tx_missing_scope const& e) { return true; }
-bool is_tx_resource_exhausted(tx_resource_exhausted const & e) { return true; }
-bool is_tx_unknown_argument(tx_unknown_argument const & e) { return true; }
+bool is_tx_resource_exhausted(const tx_resource_exhausted& e) { return true; }
+bool is_tx_unknown_argument(const tx_unknown_argument& e) { return true; }
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
+bool is_tx_resource_exhausted_or_checktime(const transaction_exception& e) {
+   return (e.code() == tx_resource_exhausted::code_value) || (e.code() == checktime_exceeded::code_value);
+}
 
 std::vector<std::string> capture;
 
@@ -390,7 +393,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_max"), {}, {} ),
          tx_resource_exhausted, is_tx_resource_exhausted );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_recurse"), {}, fc::raw::pack(dummy13) ),
-         tx_resource_exhausted, is_tx_resource_exhausted );
+         transaction_exception, is_tx_resource_exhausted_or_checktime );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_inline_fail"), {}, {} ),
          fc::assert_exception, is_assert_exception );
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction"), {}, {}) == WASM_TEST_PASS, "test_transaction::send_message()");
