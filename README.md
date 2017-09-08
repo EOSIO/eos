@@ -8,7 +8,7 @@ Welcome to the EOS.IO source code repository!
 
 1. [Getting Started](#gettingstarted)
 2. [Setting up a buid/development environment](#setup)
-	1. [Clean install Ubuntu](#ubuntu)
+	1. [Clean install Ubuntu 16.10](#ubuntu)
 	2. [macOS Sierra 10.12.6](#macos)
 3. [Building and running a node](#runanode)
 	1. [Getting the code](#getcode)
