@@ -584,6 +584,14 @@ void check_output(const vector<T>& expected, const vector<T>& actual, const path
    }
 }
 
+template<typename T>
+void check_output(const fc::optional<T>& expected, const fc::optional<T>& actual, const path_cons_list& path) {
+   check_output(expected.valid(), actual.valid(), path(".valid()"));
+   if (expected.valid()) {
+      check_output(*expected, *actual, path);
+   }
+}
+
 template<>
 void check_output(const types::Bytes& expected, const types::Bytes& actual, const path_cons_list& path) {
   check_output(expected.size(), actual.size(), path(".size()"));
@@ -899,8 +907,10 @@ void chain_controller::process_message(const Transaction& trx, AccountName code,
    }
 
    // combine inline messages and process
-   output.inline_transaction = InlineTransaction(trx);
-   output.inline_transaction.messages = std::move(apply_ctx.inline_messages);
+   if (apply_ctx.inline_messages.size() > 0) {
+      output.inline_transaction = InlineTransaction(trx);
+      (*output.inline_transaction).messages = std::move(apply_ctx.inline_messages);
+   }
 
    for( auto& asynctrx : apply_ctx.deferred_transactions ) {
       digest_type::encoder enc;
@@ -979,8 +989,8 @@ typename T::Processed chain_controller::process_transaction( const T& trx, int d
    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
       auto& output = ptrx.output[i];
       process_message(trx, trx.messages[i].code, trx.messages[i], output);
-      if (output.inline_transaction.messages.size() > 0 ) {
-         output.inline_transaction = process_transaction(PendingInlineTransaction(output.inline_transaction), depth + 1, start_time);
+      if (output.inline_transaction.valid() ) {
+         output.inline_transaction = process_transaction(PendingInlineTransaction(*output.inline_transaction), depth + 1, start_time);
       }
    }
 

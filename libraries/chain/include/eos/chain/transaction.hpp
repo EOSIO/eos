@@ -187,7 +187,7 @@ namespace eos { namespace chain {
     */
    struct MessageOutput {
       vector<NotifyOutput>             notify; ///< accounts to notify, may only be notified once
-      InlineTransaction                inline_transaction; ///< transactions generated and applied after notify
+      fc::optional<InlineTransaction>  inline_transaction; ///< transactions generated and applied after notify
       vector<GeneratedTransaction>     deferred_transactions; ///< transactions generated but not applied
    };
 
