@@ -8,4 +8,4 @@
         ignore = dirty
 [submodule "programs/snapshot"]
 	path = programs/snapshot
-	url = git@github.com:EOSIO/genesis.git
+	url = https://github.com/EOSIO/genesis.git
