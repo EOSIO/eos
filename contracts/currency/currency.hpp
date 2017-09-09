@@ -37,6 +37,11 @@ namespace TOKEN_NAME {
    */
    typedef eosio::token<uint64_t,N(currency)> currency_tokens;
 
+   // union pepe {
+   //   unsigned long long a;
+   //   char b;
+   // };
+
    /**
     *  transfer requires that the sender and receiver be the first two
     *  accounts notified and that the sender has provided authorization.
@@ -58,7 +63,6 @@ namespace TOKEN_NAME {
    };
 
    /**
-<<<<<<< a12c91560b4de7d041857a3e3101258aea48c2ae
     *  @brief row in Account table stored within each scope
     *  @abi currency table
     */
