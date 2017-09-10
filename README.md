@@ -24,7 +24,7 @@ Dependencies:
 
 Install the development toolkit:
 
-```commandline
+```bash
 sudo apt-get update
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
 sudo apt-get install clang-4.0 lldb-4.0 cmake make \
@@ -36,7 +36,7 @@ sudo apt-get install clang-4.0 lldb-4.0 cmake make \
 
 Install Boost 1.64:
 
-```commandline
+```bash
 cd ~
 wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
 tar xjf boost_1.64.0.tar.bz2
@@ -50,7 +50,7 @@ source ~/.bash_profile
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
         
-```commandline
+```bash
 cd ~
 git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
@@ -62,7 +62,7 @@ sudo make install
 
 Also, to use the WASM compiler, eos has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
 
-```commandline
+```bash
 cd ~
 git clone https://github.com/WebAssembly/binaryen.git
 cd ~/binaryen
@@ -71,16 +71,16 @@ cmake . && make
 
 ```
 
-Add BINARYEN_ROOT to your .bash_profile:
+Add `BINARYEN_ROOT` to your .bash_profile:
 
-```commandline
+```bash
 echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
 
-```commandline
+```bash
 mkdir  ~/wasm-compiler
 cd ~/wasm-compiler
 git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
@@ -102,26 +102,26 @@ macOS additional Dependencies:
 
 Upgrade your XCode to the newest version:
 
-```commandline
+```bash
 xcode-select --install
 ```
 
 Install homebrew:
 
-```commandline
+```bash
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
 
 Install the dependencies:
 
-```commandline
+```bash
 brew update
 brew install git automake libtool boost openssl llvm
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
         
-```commandline
+```bash
 cd ~
 git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
@@ -133,7 +133,7 @@ sudo make install
 
 Install [binaryen v1.37.14](https://github.com/WebAssembly/binaryen.git):
 
-```commandline
+```bash
 cd ~
 git clone https://github.com/WebAssembly/binaryen.git
 cd ~/binaryen
@@ -141,9 +141,9 @@ git checkout tags/1.37.14
 cmake . && make
 ```
 
-Add BINARYEN_ROOT to your .bash_profile:
+Add `BINARYEN_ROOT` to your .bash_profile:
 
-```commandline
+```bash
 echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
 source ~/.bash_profile
 ```
@@ -151,7 +151,7 @@ source ~/.bash_profile
 
 Build LLVM and clang for WASM:
 
-```commandline
+```bash
 mkdir  ~/wasm-compiler
 cd ~/wasm-compiler
 git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
@@ -164,9 +164,9 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j4 install
 ```
 
-Add WASM_LLVM_CONFIG and LLVM_DIR to your .bash_profile:
+Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your .bash_profile:
 
-```commandline
+```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
 echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
@@ -189,7 +189,7 @@ If a repo is cloned without the `--recursive` flag, the submodules can be retrie
 The WASM_LLVM_CONFIG environment variable is used to find our recently built WASM compiler.
 This is needed to compile the example contracts inside eos/contracts folder and their respective tests.
 
-```commandline
+```bash
 cd ~
 git clone https://github.com/eosio/eos --recursive
 mkdir -p ~/eos/build && cd ~/eos/build
@@ -214,7 +214,7 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 
 ### Creating and launching a single-node testnet
 
-After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with Ctrl-C. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
+After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
 
 Edit the `config.ini` file, adding the following settings to the defaults already in place:
 
@@ -280,7 +280,7 @@ To publish sample smart contracts you need to create accounts for them.
 
 Run the node:
 
-```commandline
+```bash
 cd ~/eos/build/programs/eosd/
 ./eosd
 ```
@@ -295,7 +295,7 @@ For testing purposes you can use a pre-created account `inita` from the `genesis
 
 To login you need to run a command importing an active (not owner!) private key from `inita` account (you can find it in `~/eos/build/programs/eosd/data-dir/config.ini`) to the wallet.
 
-```commandline
+```bash
 cd ~/eos/build/programs/eosc/
 ./eosc wallet create # Outputs a password that you need to save to be able to lock/unlock the wallet
 ./eosc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
@@ -307,7 +307,7 @@ Now you can issue API commands under `inita` authority.
 
 First, generate public/private key pairs for the `owner_key` and `active_key`. You will need them to create an account:
 
-```commandline
+```bash
 cd ~/eos/build/programs/eosc/
 ./eosc create key
 ./eosc create key
@@ -324,7 +324,7 @@ Save the values for future reference.
 
 Run `create` command where `PUBLIC_KEY_1` and `PUBLIC_KEY_2` are the values generated by the `create key` command:
 
-```commandline
+```bash
 ./eosc create account inita currency PUBLIC_KEY_1 PUBLIC_KEY_2 
 ```
 
@@ -332,7 +332,7 @@ You should get a json response back with a transaction ID confirming it was exec
 
 Check that account was successfully created: 
 
-```commandline
+```bash
 ./eosc get account currency
 ```
 
@@ -352,14 +352,14 @@ You should get a response similar to this:
 
 Before uploading a contract, you can verify that there is no current contract:
 
-```commandline
+```bash
 ./eosc get code currency 
 code hash: 0000000000000000000000000000000000000000000000000000000000000000
 ```
 
 With an account for a contract created, you can upload a sample contract:
 
-```commandline
+```bash
 ./eosc set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
 ```
 
@@ -367,14 +367,14 @@ As a response you should get a json with a `transaction_id` field. Your contract
 
 You can also verify that the code has been set:
 
-```commandline
+```bash
 ./eosc get code currency
 code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 ```
 
 Next you can verify that the currency contract has the proper initial balance:
 
-```commandline
+```bash
 ./eosc get table currency currency account
 {
   "rows": [{
@@ -392,7 +392,7 @@ To send a message to a contract you need to create a new user account who will b
 
 Firstly, generate the keys for the account:
 
-```commandline
+```bash
 cd ~/eos/build/programs/eosc/
 ./eosc create key
 ./eosc create key
@@ -400,21 +400,21 @@ cd ~/eos/build/programs/eosc/
 
 And then create the `tester` account:
 
-```commandline
+```bash
 ./eosc create account inita tester PUBLIC_USER_KEY_1 PUBLIC_USER_KEY_2 
 ```
 
 After this you can send a message to the contract:
 
-```commandline
+```bash
 ./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
 ```
 
 As a confirmation of a successfully submitted transaction you will get a json with a `transaction_id` field.
 
-### Reading Currency Contract Balance
+### Reading currency contract balance
 
-```commandline
+```bash
 ./eosc get table inita currency account
 {
   "rows": [{
@@ -441,7 +441,7 @@ To run a local testnet you can use a `launcher` application provided in `~/eos/b
 
 For testing purposes you will run 2 local production nodes talking to each other.
 
-```commandline
+```bash
 cd ~/eos/build
 cp ../genesis.json ./
 ./programs/launcher/launcher -p2 -s testnet.json --skip-signature -l local
@@ -451,7 +451,7 @@ This command will generate 2 data folder for each instance of the node: `tn_data
 
 You should see a following response:
 
-```commandline
+```bash
 adding hostname ip-XXX-XXX-XXX
 found interface 127.0.0.1
 found interface XXX.XX.XX.XX
@@ -478,9 +478,9 @@ Simple and fast setup of EOS on Docker is also available. Firstly, install depen
  - [Docker-compose](https://github.com/docker/compose)
  - [Docker-volumes](https://github.com/cpuguy83/docker-volumes)
 
-Build eos image
+Build eos image:
 
-```
+```bash
 git clone https://github.com/EOSIO/eos.git --recursive
 cd eos
 cp genesis.json Docker 
@@ -491,7 +491,7 @@ We recommend 6GB+ of memory allocated to Docker to successfully build the image.
 
 Now you can start the Docker container:
 
-```
+```bash
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
 docker-compose -f Docker/docker-compose.yml up
@@ -499,7 +499,7 @@ docker-compose -f Docker/docker-compose.yml up
 
 Get chain info:
 
-```
+```bash
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
@@ -507,6 +507,6 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 
 You can run the `eosc` commands via `docker exec` command. For example:
 
-```
+```bash
 docker exec docker_eos_1 eosc contract exchange build/contracts/exchange/exchange.wast build/contracts/exchange/exchange.abi
 ```
