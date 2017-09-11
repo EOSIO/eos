@@ -80,7 +80,9 @@ namespace eos {
          //asio::io_service         http_ios;
          map<string,url_handler>  url_handlers;
          optional<tcp::endpoint>  listen_endpoint;
-         string access_control_allow_origin;
+         string                   access_control_allow_origin;
+         string                   access_control_allow_headers;
+         bool                     access_control_allow_credentials = false;
 
          websocket_server_type    server;
    };
@@ -92,8 +94,26 @@ namespace eos {
       cfg.add_options()
             ("http-server-endpoint", bpo::value<string>()->default_value("127.0.0.1:8888"),
              "The local IP and port to listen for incoming http connections.")
-            ("access-control-allow-origin", bpo::value<string>(),
+
+            ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
+                my->access_control_allow_origin = v;
+                ilog("configured http with Access-Control-Allow-Origin: ${o}", ("o", my->access_control_allow_origin));
+             }),
              "Specify the Access-Control-Allow-Origin to be returned on each request.")
+
+
+            ("access-control-allow-headers", bpo::value<string>()->notifier([this](const string& v) {
+                my->access_control_allow_headers = v;
+                ilog("configured http with Access-Control-Allow-Headers : ${o}", ("o", my->access_control_allow_headers));
+             }),
+             "Specify the Access-Control-Allow-Headers to be returned on each request.")
+
+            ("access-control-allow-credentials",
+             bpo::bool_switch()->notifier([this](bool v) {
+                my->access_control_allow_credentials = v;
+                if (v) ilog("configured http with Access-Control-Allow-Credentials: true");
+             })->default_value(false),
+             "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
             ;
    }
 
@@ -113,11 +133,6 @@ namespace eos {
            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
            my->listen_endpoint = *resolver->resolve( query);
            ilog("configured http to listen on ${h}:${p}", ("h",host)("p",port));
-         }
-
-         if (options.count("access-control-allow-origin")) {
-            my->access_control_allow_origin = options.at("access-control-allow-origin").as<string>();
-            ilog("configured http with access-control-allow-origin : ${o}", ("o", my->access_control_allow_origin));
          }
 
          // uint32_t addr = my->listen_endpoint->address().to_v4().to_ulong();
@@ -143,6 +158,12 @@ namespace eos {
 
                      if (!my->access_control_allow_origin.empty()) {
                         con->append_header("Access-Control-Allow-Origin", my->access_control_allow_origin);
+                     }
+                     if (!my->access_control_allow_headers.empty()) {
+                        con->append_header("Access-Control-Allow-Headers", my->access_control_allow_headers);
+                     }
+                     if (my->access_control_allow_credentials) {
+                        con->append_header("Access-Control-Allow-Credentials", "true");
                      }
                      auto body = con->get_request_body();
                      auto resource = con->get_uri()->get_resource();
