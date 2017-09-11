@@ -37,6 +37,20 @@ namespace eos {
   using socket_ptr = std::shared_ptr<tcp::socket>;
 
   /**
+   * default value initializers
+   */
+  constexpr auto     def_buffer_size = 1024*1024*4;
+  constexpr auto     def_max_clients = 0; // 0 for unlimited clients
+  constexpr auto     def_conn_retry_wait = std::chrono::seconds (30);
+  constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
+  constexpr auto     def_resp_expected_wait = std::chrono::seconds (1);
+  constexpr auto     def_network_version = 0;
+  constexpr auto     def_sync_rec_span = 10;
+  constexpr auto     def_max_just_send = 1300 * 3; // "mtu" * 3
+  constexpr auto     def_send_whole_blocks = true;
+
+
+  /**
    *  Index by id
    *  Index by is_known, block_num, validated_time, this is the order we will broadcast
    *  to peer.
@@ -97,46 +111,49 @@ namespace eos {
 
   class connection : public std::enable_shared_from_this<connection> {
   public:
-    const size_t                   kBufferSize{1024*1024*4};
-    connection( string endpoint )
+    connection( string endpoint,
+                size_t send_buf_size = def_buffer_size,
+                size_t recv_buf_size = def_buffer_size )
       : block_state(),
         trx_state(),
         sync_received(),
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
         pending_message_size(0),
-        pending_message_buffer(kBufferSize),
-        send_buffer(kBufferSize),
+        pending_message_buffer(recv_buf_size),
+        send_buffer(send_buf_size),
         remote_node_id(),
         last_handshake(),
         out_queue(),
         connecting (false),
         syncing (false),
-        peer_addr (endpoint)
+        peer_addr (endpoint),
+        response_expected ()
     {
       wlog( "created connection to ${n}", ("n", endpoint) );
       initialize();
     }
 
-    connection( socket_ptr s )
+    connection( socket_ptr s,
+                size_t send_buf_size = def_buffer_size,
+                size_t recv_buf_size = def_buffer_size )
       : block_state(),
         trx_state(),
         sync_received(),
         sync_requested(),
         socket( s ),
         pending_message_size(0),
-        pending_message_buffer(kBufferSize),
-        send_buffer(kBufferSize),
+        pending_message_buffer(recv_buf_size),
+        send_buffer(send_buf_size),
         remote_node_id(),
         last_handshake(),
         out_queue(),
         connecting (false),
         syncing (false),
-        peer_addr ()
+        peer_addr (),
+        response_expected ()
     {
-      wlog( "created network connection" );
-      boost::asio::ip::tcp::no_delay option(true);
-      socket->set_option(option);
+      wlog( "accepted network connection" );
       initialize ();
     }
 
@@ -150,6 +167,8 @@ namespace eos {
     void initialize () {
       auto *rnd = remote_node_id.data();
       rnd[0] = 0;
+      response_expected.reset(new boost::asio::steady_timer (app().get_io_service()));
+
     }
 
     block_state_index              block_state;
@@ -168,10 +187,10 @@ namespace eos {
     fc::sha256                     remote_node_id;
     handshake_message              last_handshake;
     std::deque<net_message>        out_queue;
-    uint32_t                       mtu;
     bool                           connecting;
     bool                           syncing;
     string                         peer_addr;
+    unique_ptr<boost::asio::steady_timer> response_expected;
 
     bool ready () {
       return (socket->is_open() && !connecting);
@@ -314,6 +333,8 @@ namespace eos {
     unique_ptr<tcp::acceptor>     acceptor;
     tcp::endpoint                 listen_endpoint;
     string                        p2p_address;
+    uint32_t                      max_client_count;
+    uint32_t                      num_clients;
 
     vector<string>                supplied_peers;
 
@@ -327,8 +348,9 @@ namespace eos {
     unique_ptr<boost::asio::steady_timer> transaction_check;
     boost::asio::steady_timer::duration   connector_period;
     boost::asio::steady_timer::duration   txn_exp_period;
+    boost::asio::steady_timer::duration   resp_expected_period;
 
-    int16_t                       network_version{0};
+    int16_t                       network_version;
     chain_id_type                 chain_id;
     fc::sha256                    node_id;
 
@@ -351,11 +373,13 @@ namespace eos {
       // Note: need to add support for IPv6 too
 
       resolver->async_resolve( query,
-                               [c, this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ){
+                               [c, this]( const boost::system::error_code& err,
+                                          tcp::resolver::iterator endpoint_itr ){
                                  if( !err ) {
                                    connect( c, endpoint_itr );
                                  } else {
-                                   elog( "Unable to resolve ${peer_addr}: ${error}", ( "peer_addr", c->peer_addr )("error", err.message() ) );
+                                   elog( "Unable to resolve ${peer_addr}: ${error}",
+                                         ( "peer_addr", c->peer_addr )("error", err.message() ) );
                                  }
                                });
     }
@@ -375,7 +399,8 @@ namespace eos {
                                  connect( c, endpoint_itr );
                                }
                                else {
-                                 elog ("connection failed to ${peer}: ${error}", ("peer", c->peer_addr)("error",err.message()));
+                                 elog ("connection failed to ${peer}: ${error}",
+                                       ("peer", c->peer_addr)("error",err.message()));
                                  c->connecting = false;
                                  c->close();
                                }
@@ -383,12 +408,10 @@ namespace eos {
                            } );
     }
 
-    void start_session(connection_ptr con ) {
+    void start_session( connection_ptr con ) {
       con->connecting = false;
-      uint32_t mtu = 1300; // need a way to query this
-      if (mtu < just_send_it_max) {
-        just_send_it_max = mtu;
-      }
+      boost::asio::ip::tcp::no_delay option( true );
+      con->socket->set_option( option );
       start_read_message( con );
       con->send_handshake( );
 
@@ -398,13 +421,20 @@ namespace eos {
     }
 
 
-    void start_listen_loop() {
+    void start_listen_loop( ) {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
           if( !ec ) {
-            connection_ptr c = std::make_shared<connection>( socket );
-            connections.insert( c );
-            start_session( c );
+            if( max_client_count > 0 && num_clients < max_client_count ) {
+              ++num_clients;
+              connection_ptr c = std::make_shared<connection>( socket );
+              connections.insert( c );
+              start_session( c );
+            } else {
+              elog( "Error max_client_count ${m} exceeded",
+                    ("m", max_client_count) );
+              socket->close( );
+            }
             start_listen_loop();
           } else {
             elog( "Error accepting connection: ${m}", ("m", ec.message() ) );
@@ -559,7 +589,7 @@ namespace eos {
     void handle_message (connection_ptr c, const handshake_message &msg) {
       if (msg.node_id == node_id) {
         elog ("Self connection detected. Closing connection");
-        close(c);
+        close( c );
         return;
       }
       if (msg.chain_id != chain_id) {
@@ -725,20 +755,19 @@ namespace eos {
     }
 
     void handle_message (connection_ptr c, const SignedTransaction &msg) {
-      if (handle_transaction (msg, true)) {
+      transaction_id_type txnid = msg.id();
+      if( local_txns.get<by_id>().find( txnid ) != local_txns.end () ) { //found
         return;
       }
 
-      if (sizeof(msg) <= just_send_it_max) {
-        send_all (msg, [c](connection_ptr conn) -> bool {
-            return (c != conn);
-          });
-      }
-
-      chain_controller &cc = chain_plug->chain();
-      if (!cc.is_known_transaction(msg.id())) {
+      try {
         chain_plug->accept_transaction (msg);
       }
+      catch (...) {
+        elog (" caught something attempting to accept transaction");
+        close (c);
+      }
+
     }
 
     void handle_message (connection_ptr c, const signed_block &msg) {
@@ -937,50 +966,42 @@ namespace eos {
     }
 
     void close( connection_ptr c ) {
+      if( c->peer_addr.empty( ) ) {
+        --num_clients;
+      }
       c->close();
     }
 
-
-    bool handle_transaction (const SignedTransaction& txn, bool check_expire) {
-
-      if (check_expire) {
-        //expire_txns ();
-      }
-      auto t = local_txns.get<by_id>().find(txn.id());
-      bool isKnown = t != local_txns.end();
-
-      if (!isKnown) {
-        uint16_t bn = static_cast<uint16_t>(txn.refBlockNum);
-        node_transaction_state nts = {txn.id(),time_point::now(),txn.expiration,
-                                      bn, true};
-        local_txns.insert(nts);
-      }
-      return isKnown;
-    }
-
-
     void send_all_txn (const SignedTransaction& txn) {
-      if (handle_transaction (txn, true)) {
+      transaction_id_type txnid = txn.id();
+      if( local_txns.get<by_id>().find( txnid ) != local_txns.end () ) { //found
         return;
       }
-      if (sizeof(txn) <= just_send_it_max) {
-        send_all (txn, [txn](connection_ptr c) -> bool {
-            const auto& bs = c->trx_state.find(txn.id());
+
+      uint16_t bn = static_cast<uint16_t>(txn.refBlockNum);
+      node_transaction_state nts = {txnid,time_point::now(),
+                                    txn.expiration,
+                                    bn, true};
+      local_txns.insert(nts);
+
+      if (fc::raw::pack_size(txn) <= just_send_it_max) {
+        send_all (txn, [txn, txnid](connection_ptr c) -> bool {
+            const auto& bs = c->trx_state.find(txnid);
             bool unknown = bs == c->trx_state.end();
             if (unknown)
-              c->trx_state.insert(transaction_state({txn.id(),true,true,(uint32_t)-1,
+              c->trx_state.insert(transaction_state({txnid,true,true,(uint32_t)-1,
                       fc::time_point(),fc::time_point() }));
             return unknown;
           });
       }
       else {
-        pending_notify.push_back (txn.id());
+        pending_notify.push_back (txnid);
         notice_message nm = {pending_notify};
-        send_all (nm, [txn](connection_ptr c) -> bool {
-            const auto& bs = c->trx_state.find(txn.id());
+        send_all (nm, [txn, txnid](connection_ptr c) -> bool {
+            const auto& bs = c->trx_state.find(txnid);
             bool unknown = bs == c->trx_state.end();
             if (unknown)
-              c->trx_state.insert(transaction_state({txn.id(),false,true,(uint32_t)-1,
+              c->trx_state.insert(transaction_state({txnid,false,true,(uint32_t)-1,
                       fc::time_point(),fc::time_point() }));
             return unknown;
           });
@@ -991,7 +1012,7 @@ namespace eos {
     /**
      * This one is necessary to hook into the boost notifier api
      **/
-    static void pending_txn (const SignedTransaction& txn) {
+    static void transaction_ready (const SignedTransaction& txn) {
       my_impl->send_all_txn (txn);
     }
 
@@ -1012,13 +1033,21 @@ namespace eos {
               if (lt != local_txns.end()) {
                 id_iter.modify (lt, update_block_num(txn.refBlockNum));
               } else {
-                handle_transaction (txn, false);
+                transaction_id_type txnid = txn.id();
+                if( local_txns.get<by_id>().find( txnid ) == local_txns.end () ) { //not found
+                  uint16_t bn = static_cast<uint16_t>(txn.refBlockNum);
+                  node_transaction_state nts = {txnid,time_point::now(),
+                                                txn.expiration, bn, true};
+                  local_txns.insert(nts);
+                }
               }
               trxs.push_back (ui.id());
             }
           }
         }
       }
+
+
 
       if (!send_whole_blocks) {
         block_summary_message bsm = {sb.id(), trxs};
@@ -1038,7 +1067,7 @@ namespace eos {
 
   void
   handshake_initializer::populate (handshake_message &hello) {
-    hello.network_version = 0;
+    hello.network_version = my_impl->network_version;
     hello.chain_id = my_impl->chain_id;
     hello.node_id = my_impl->node_id;
     hello.p2p_address = my_impl->p2p_address;
@@ -1074,7 +1103,6 @@ namespace eos {
 
   }
 
-
   net_plugin::net_plugin()
     :my( new net_plugin_impl ) {
     my_impl = my.get();
@@ -1095,6 +1123,20 @@ namespace eos {
 
   void net_plugin::plugin_initialize( const variables_map& options ) {
     ilog("Initialize net plugin");
+
+    my->network_version = def_network_version;
+    my->send_whole_blocks = def_send_whole_blocks;
+    my->sync_req_span = def_sync_rec_span;
+    my->sync_head = 0;
+    my->sync_req_head = 0;
+
+    my->connector_period = def_conn_retry_wait;
+    my->txn_exp_period = def_txn_expire_wait;
+    my->resp_expected_period = def_resp_expected_wait;
+    my->just_send_it_max = def_max_just_send;
+    my->max_client_count = def_max_clients;
+    my->num_clients = 0;
+
     my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
     if( options.count( "listen-endpoint" ) ) {
       my->p2p_address = options.at("listen-endpoint").as< string >();
@@ -1126,10 +1168,6 @@ namespace eos {
       }
     }
 
-    my->send_whole_blocks = true;
-    my->sync_req_span = 10;
-    my->sync_head = 0;
-    my->sync_req_head = 0;
     if( options.count( "remote-endpoint" ) ) {
       my->supplied_peers = options.at( "remote-endpoint" ).as< vector<string> >();
     }
@@ -1139,11 +1177,6 @@ namespace eos {
     my->chain_plug = app().find_plugin<chain_plugin>();
     my->chain_plug->get_chain_id(my->chain_id);
     fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
-
-    my->connector_period = std::chrono::seconds (30);
-    my->txn_exp_period = std::chrono::seconds (3);
-
-    my->just_send_it_max = 1300;
   }
 
   void net_plugin::plugin_startup() {
@@ -1155,7 +1188,7 @@ namespace eos {
       my->start_listen_loop();
     }
 
-    my->chain_plug->chain().on_pending_transaction.connect (&net_plugin_impl::pending_txn);
+    my->chain_plug->chain().on_pending_transaction.connect (&net_plugin_impl::transaction_ready);
     my->start_monitors();
 
     for( auto seed_node : my->supplied_peers ) {
