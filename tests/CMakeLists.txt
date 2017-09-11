@@ -21,7 +21,7 @@ if(WASM_TOOLCHAIN)
   file(GLOB API_TESTS "api_tests/*.cpp")
   add_executable( api_test ${API_TESTS} ${COMMON_SOURCES} )
   target_link_libraries( api_test eos_native_contract eos_chain chainbase eos_utilities eos_egenesis_none fc ${PLATFORM_SPECIFIC_LIBS} )
-  target_include_directories( api_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/slow_tests )
+  target_include_directories( api_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/api_tests )
   add_dependencies(api_test test_api memory_test)
 endif()
 
