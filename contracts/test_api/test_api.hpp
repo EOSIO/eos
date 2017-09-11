@@ -9,12 +9,6 @@
 #define WASM_ASSERT(m, message) if(!(m)) { WASM_TEST_ERROR_MESSAGE=(unsigned int)message; return WASM_TEST_FAIL; }
 
 typedef unsigned long long u64;
-#define WASM_TEST_HANDLER(CLASS, METHOD) \
-  if( u32(action>>32) == DJBH(#CLASS) && u32(action) == DJBH(#METHOD) ) { \
-     WASM_TEST_ERROR_CODE = CLASS::METHOD(); \
-     return; \
-  }
-
 typedef unsigned int u32;
 static constexpr u32 DJBH(const char* cp)
 {
@@ -23,6 +17,17 @@ static constexpr u32 DJBH(const char* cp)
       hash = 33 * hash ^ (unsigned char) *cp++;
   return hash;
 }
+
+static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
+{
+  return u64(DJBH(cls)) << 32 | u64(DJBH(method));
+}
+
+#define WASM_TEST_HANDLER(CLASS, METHOD) \
+  if( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \
+     WASM_TEST_ERROR_CODE = CLASS::METHOD(); \
+     return; \
+  }
 
 #pragma pack(push, 1)
 struct dummy_message {
@@ -98,4 +103,18 @@ struct test_crypto {
    static unsigned int asert_sha256_false();
    static unsigned int asert_sha256_true();
    static unsigned int asert_no_data();
+};
+
+struct test_transaction {
+
+  static unsigned int send_message();
+  static unsigned int send_message_empty();
+  static unsigned int send_message_max();
+  static unsigned int send_message_large();
+  static unsigned int send_message_recurse();
+  static unsigned int send_message_inline_fail();
+  static unsigned int send_transaction();
+  static unsigned int send_transaction_empty();
+  static unsigned int send_transaction_max();
+  static unsigned int send_transaction_large();
 };

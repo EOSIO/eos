@@ -321,6 +321,20 @@ signed_block chain_controller::_generate_block(
       FC_ASSERT( producer_obj.signing_key == block_signing_private_key.get_public_key() );
 
   
+   //
+   // The following code throws away existing pending_tx_session and
+   // rebuilds it by re-applying pending transactions.
+   //
+   // This rebuild is necessary because pending transactions' validity
+   // and semantics may have changed since they were received, because
+   // time-based semantics are evaluated based on the current block
+   // time.  These changes can only be reflected in the database when
+   // the value of the "when" variable is known, which means we need to
+   // re-apply pending transactions in this method.
+   //
+   _pending_tx_session.reset();
+   _pending_tx_session = _db.start_undo_session(true);
+
    const auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_status>().equal_range(generated_transaction_object::PENDING);
 
    vector<pending_transaction> pending;
@@ -336,20 +350,6 @@ signed_block chain_controller::_generate_block(
    }
 
    auto schedule = scheduler(pending, get_global_properties());
-
-   //
-   // The following code throws away existing pending_tx_session and
-   // rebuilds it by re-applying pending transactions.
-   //
-   // This rebuild is necessary because pending transactions' validity
-   // and semantics may have changed since they were received, because
-   // time-based semantics are evaluated based on the current block
-   // time.  These changes can only be reflected in the database when
-   // the value of the "when" variable is known, which means we need to
-   // re-apply pending transactions in this method.
-   //
-   _pending_tx_session.reset();
-   _pending_tx_session = _db.start_undo_session(true);
 
    signed_block pending_block;
    pending_block.cycles.reserve(schedule.cycles.size());
@@ -413,7 +413,7 @@ signed_block chain_controller::_generate_block(
      }
    }
    
-   size_t postponed_tx_count = _pending_transactions.size() - valid_transaction_count - invalid_transaction_count;
+   size_t postponed_tx_count = pending.size() - valid_transaction_count - invalid_transaction_count;
    if( postponed_tx_count > 0 )
    {
       wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
@@ -584,6 +584,14 @@ void check_output(const vector<T>& expected, const vector<T>& actual, const path
    }
 }
 
+template<typename T>
+void check_output(const fc::optional<T>& expected, const fc::optional<T>& actual, const path_cons_list& path) {
+   check_output(expected.valid(), actual.valid(), path(".valid()"));
+   if (expected.valid()) {
+      check_output(*expected, *actual, path);
+   }
+}
+
 template<>
 void check_output(const types::Bytes& expected, const types::Bytes& actual, const path_cons_list& path) {
   check_output(expected.size(), actual.size(), path(".size()"));
@@ -626,7 +634,7 @@ void check_output(const Transaction& expected, const Transaction& actual, const 
 
 
 template<>
-void check_output(const ProcessedSyncTransaction& expected, const ProcessedSyncTransaction& actual, const path_cons_list& path) {
+void check_output(const InlineTransaction& expected, const InlineTransaction& actual, const path_cons_list& path) {
    check_output<Transaction>(expected, actual, path);
    check_output(expected.output, actual.output, path(".output"));
 }
@@ -640,8 +648,8 @@ void check_output(const GeneratedTransaction& expected, const GeneratedTransacti
 template<>
 void check_output(const MessageOutput& expected, const MessageOutput& actual, const path_cons_list& path) {
    check_output(expected.notify, actual.notify, path(".notify"));
-   check_output(expected.sync_transactions, actual.sync_transactions, path(".sync_transactions"));
-   check_output(expected.async_transactions, actual.async_transactions, path(".async_transactions"));
+   check_output(expected.inline_transaction, actual.inline_transaction, path(".inline_transaction"));
+   check_output(expected.deferred_transactions, actual.deferred_transactions, path(".deferred_transactions"));
 }
 
 template<typename T>
@@ -898,19 +906,25 @@ void chain_controller::process_message(const Transaction& trx, AccountName code,
       } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
 
-   for( const auto& generated : apply_ctx.sync_transactions ) {
-      try {
-         output.sync_transactions.emplace_back( process_transaction( generated ) );
-      } FC_CAPTURE_AND_RETHROW((generated))
+   // combine inline messages and process
+   if (apply_ctx.inline_messages.size() > 0) {
+      output.inline_transaction = InlineTransaction(trx);
+      (*output.inline_transaction).messages = std::move(apply_ctx.inline_messages);
    }
 
-   for( auto& asynctrx : apply_ctx.async_transactions ) {
+   for( auto& asynctrx : apply_ctx.deferred_transactions ) {
+      digest_type::encoder enc;
+      fc::raw::pack( enc, trx );
+      fc::raw::pack( enc, asynctrx );
+      auto id = enc.result();
+      auto gtrx = GeneratedTransaction(id, asynctrx);
+
       _db.create<generated_transaction_object>([&](generated_transaction_object& transaction) {
-         transaction.trx = asynctrx;
+         transaction.trx = gtrx;
          transaction.status = generated_transaction_object::PENDING;
       });
 
-      output.async_transactions.emplace_back( std::move( asynctrx ) );
+      output.deferred_transactions.emplace_back( gtrx );
    }
 
    // propagate used_authorizations up the context chain
@@ -952,7 +966,7 @@ typename T::Processed chain_controller::apply_transaction(const T& trx)
 { try {
    validate_transaction(trx);
    record_transaction(trx);
-   return process_transaction( trx );
+   return process_transaction( trx, 0, fc::time_point::now());
 
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
@@ -960,13 +974,25 @@ typename T::Processed chain_controller::apply_transaction(const T& trx)
  *  @pre the transaction is assumed valid and all signatures / duplicate checks have bee performed
  */
 template<typename T>
-typename T::Processed chain_controller::process_transaction( const T& trx ) 
+typename T::Processed chain_controller::process_transaction( const T& trx, int depth, const fc::time_point& start_time ) 
 { try {
+   const BlockchainConfiguration& chain_configuration = get_global_properties().configuration;
+   EOS_ASSERT((fc::time_point::now() - start_time).count() < chain_configuration.maxTrxRuntime, checktime_exceeded,
+      "Transaction exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.maxTrxRuntime));
+
+   EOS_ASSERT(depth < chain_configuration.inlineDepthLimit, tx_resource_exhausted,
+      "Transaction exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.inlineDepthLimit));
+
    typename T::Processed ptrx( trx );
    ptrx.output.resize( trx.messages.size() );
 
    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
-      process_message(trx, trx.messages[i].code, trx.messages[i], ptrx.output[i] );
+      auto& output = ptrx.output[i];
+      process_message(trx, trx.messages[i].code, trx.messages[i], output);
+      if (output.inline_transaction.valid() ) {
+         const Transaction& trx = *output.inline_transaction;
+         output.inline_transaction = process_transaction(PendingInlineTransaction(trx), depth + 1, start_time);
+      }
    }
 
    return ptrx;

@@ -241,39 +241,108 @@ DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
 }
 
 
-DEFINE_INTRINSIC_FUNCTION2(env,send,send,i32,i32,trx_buffer, i32,trx_buffer_size ) {
-   auto& wasm  = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-   const char* buffer = &memoryRef<const char>( mem, trx_buffer );
-
-   FC_ASSERT( trx_buffer_size > 0 );
-   FC_ASSERT( wasm.current_apply_context, "not in apply context" );
-
-   fc::datastream<const char*> ds(buffer, trx_buffer_size );
-   eos::chain::GeneratedTransaction gtrx;
-   eos::chain::Transaction& trx = gtrx;
-   fc::raw::unpack( ds, trx );
-
 /**
- *  The code below this section provides sanity checks that the generated message is well formed
- *  before being accepted. These checks do not need to be applied during reindex.
- */
-#warning TODO: reserve per-thread static memory for MAX TRX SIZE 
-/** make sure that packing what we just unpacked produces expected output */
-   auto test = fc::raw::pack( trx );
-   FC_ASSERT( 0 == memcmp( buffer, test.data(), test.size() ) );
+ * Transaction C API implementation
+ * @{
+ */ 
 
-/** TODO: make sure that we can call validate() on the message and it passes, this is thread safe and
- *   ensures the type is properly registered and can be deserialized... one issue is that this could
- *   construct a RECURSIVE virtual machine state which means the wasm_interface state needs to be a STACK vs
- *   a per-thread global.
- **/
-
-//   wasm.current_apply_context->generated.emplace_back( std::move(gtrx) );
-
-   return 0;
+DEFINE_INTRINSIC_FUNCTION0(env,transactionCreate,transactionCreate,i32) {
+   auto& ptrx = wasm_interface::get().current_apply_context->create_pending_transaction();
+   return ptrx.handle;
 }
 
+static void emplace_scope(const Name& scope, std::vector<Name>& scopes) {
+   auto i = std::upper_bound( scopes.begin(), scopes.end(), scope);
+   if (i == scopes.begin() || *(i - 1) != scope ) {
+     scopes.insert(i, scope);
+   }
+}
+
+DEFINE_INTRINSIC_FUNCTION3(env,transactionRequireScope,transactionRequireScope,none,i32,handle,i64,scope,i32,readOnly) {
+   auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
+   if(readOnly == 0) {
+      emplace_scope(scope, ptrx.scope);
+   } else {
+      emplace_scope(scope, ptrx.readscope);
+   }
+
+   ptrx.check_size();
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,transactionAddMessage,transactionAddMessage,none,i32,handle,i32,msg_handle) {
+   auto apply_context  = wasm_interface::get().current_apply_context;
+   auto& ptrx = apply_context->get_pending_transaction(handle);
+   auto& pmsg = apply_context->get_pending_message(msg_handle);
+   ptrx.messages.emplace_back(pmsg);
+   ptrx.check_size();
+   apply_context->release_pending_message(msg_handle);
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,transactionSend,transactionSend,none,i32,handle) {
+   auto apply_context  = wasm_interface::get().current_apply_context;
+   auto& ptrx = apply_context->get_pending_transaction(handle);
+
+   EOS_ASSERT(ptrx.messages.size() > 0, tx_unknown_argument,
+      "Attempting to send a transaction with no messages");
+
+   apply_context->deferred_transactions.emplace_back(ptrx);
+   apply_context->release_pending_transaction(handle);
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,transactionDrop,transactionDrop,none,i32,handle) {
+   wasm_interface::get().current_apply_context->release_pending_transaction(handle);
+}
+
+DEFINE_INTRINSIC_FUNCTION4(env,messageCreate,messageCreate,i32,i64,code,i64,type,i32,data,i32,length) {
+   auto& wasm  = wasm_interface::get();
+   auto  mem   = wasm.current_memory;
+   
+   EOS_ASSERT( length >= 0, tx_unknown_argument,
+      "Pushing a message with a negative length" );
+
+   Bytes payload;
+   if (length > 0) {
+      try {
+         // memoryArrayPtr checks that the entire array of bytes is valid and
+         // within the bounds of the memory segment so that transactions cannot pass
+         // bad values in attempts to read improper memory
+         const char* buffer = memoryArrayPtr<const char>( mem, uint32_t(data), uint32_t(length) );
+         payload.insert(payload.end(), buffer, buffer + length);
+      } catch( const Runtime::Exception& e ) {
+         FC_THROW_EXCEPTION(tx_unknown_argument, "Message data is not a valid memory range");
+      }
+   }
+
+   auto& pmsg = wasm.current_apply_context->create_pending_message(Name(code), Name(type), payload);
+   return pmsg.handle;
+}
+
+DEFINE_INTRINSIC_FUNCTION3(env,messageRequirePermission,messageRequirePermission,none,i32,handle,i64,account,i64,permission) {
+   auto apply_context  = wasm_interface::get().current_apply_context;
+   // if this is not sent from the code account with the permission of "code" then we must
+   // presently have the permission to add it, otherwise its a failure
+   if (!(account == apply_context->code.value && Name(permission) == Name("code"))) {
+      apply_context->require_authorization(Name(account), Name(permission));
+   }
+   auto& pmsg = apply_context->get_pending_message(handle);
+   pmsg.authorization.emplace_back(Name(account), Name(permission));
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,messageSend,messageSend,none,i32,handle) {
+   auto apply_context  = wasm_interface::get().current_apply_context;
+   auto& pmsg = apply_context->get_pending_message(handle);
+
+   apply_context->inline_messages.emplace_back(pmsg);
+   apply_context->release_pending_message(handle);
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,messageDrop,messageDrop,none,i32,handle) {
+   wasm_interface::get().current_apply_context->release_pending_message(handle);
+}
+
+/**
+ * @} Transaction C API implementation
+ */ 
 
 
 

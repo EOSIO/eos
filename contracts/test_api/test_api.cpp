@@ -60,6 +60,18 @@ extern "C" {
       WASM_TEST_HANDLER(test_crypto, asert_sha256_true);
       WASM_TEST_HANDLER(test_crypto, asert_no_data);
 
+      //test transaction
+      WASM_TEST_HANDLER(test_transaction, send_message);
+      WASM_TEST_HANDLER(test_transaction, send_message_empty);
+      WASM_TEST_HANDLER(test_transaction, send_message_max);
+      WASM_TEST_HANDLER(test_transaction, send_message_large);
+      WASM_TEST_HANDLER(test_transaction, send_message_recurse);
+      WASM_TEST_HANDLER(test_transaction, send_message_inline_fail);
+      WASM_TEST_HANDLER(test_transaction, send_transaction);
+      WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
+      WASM_TEST_HANDLER(test_transaction, send_transaction_max);
+      WASM_TEST_HANDLER(test_transaction, send_transaction_large);
+      
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }

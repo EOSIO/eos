@@ -41,14 +41,18 @@ struct Authority
    accounts  AccountPermissionWeight[]
 
 struct BlockchainConfiguration
-   maxBlockSize      UInt32
-   targetBlockSize   UInt32
-   maxStorageSize    UInt64
-   electedPay        ShareType
-   runnerUpPay       ShareType
-   minEosBalance     ShareType
-   maxTrxLifetime    UInt32
-   authDepthLimit    UInt16
+   maxBlockSize       UInt32
+   targetBlockSize    UInt32
+   maxStorageSize     UInt64
+   electedPay         ShareType
+   runnerUpPay        ShareType
+   minEosBalance      ShareType
+   maxTrxLifetime     UInt32
+   authDepthLimit     UInt16
+   maxTrxRuntime      UInt32
+   inlineDepthLimit   UInt16
+   maxInlineMsgSize   UInt32
+   maxGenTrxSize      UInt32
 
 struct TypeDef 
    newTypeName TypeName

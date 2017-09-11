@@ -61,6 +61,10 @@ const static ShareType DefaultRunnerUpPay = Asset(75).amount;
 const static ShareType DefaultMinEosBalance = Asset(100).amount;
 const static UInt32 DefaultMaxTrxLifetime = 60*60;
 const static UInt16 DefaultAuthDepthLimit = 6;
+const static UInt32 DefaultMaxTrxRuntime = 10*1000;
+const static UInt16 DefaultInlineDepthLimit = 4;
+const static UInt32 DefaultMaxInlineMsgSize = 4 * 1024;
+const static UInt32 DefaultMaxGenTrxSize = 64 * 1024;
 const static UInt32 ProducersAuthorityThreshold = 14;
 
 const static int BlocksPerRound = 21;

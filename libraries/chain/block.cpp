@@ -104,14 +104,8 @@ namespace eos { namespace chain {
       for( const auto& trx : user_input )
          ids.push_back( transaction_digest(trx) );
 
-      /**
-       *  When generating the merkle hash of an output transaction we hash it
-       *  a second time. This is because the transaction has not been confirmed as
-       *  "valid and applied" just "produced".  Later, when this transaction is included
-       *  as part of "generated input" its ID will be used without the extra hash.
-      for( const auto& trx : output_transactions )
-         ids.push_back( digest_type::hash(trx.merkle_digest()) );
-       */
+      for( const auto& trx : generated_input )
+         ids.push_back( trx.id );
 
 
       return merkle(ids);
