@@ -39,8 +39,9 @@ namespace eos {
   /**
    * default value initializers
    */
-  constexpr auto     def_buffer_size = 1024*1024*4;
-  constexpr auto     def_max_clients = 0; // 0 for unlimited clients
+  constexpr auto     def_buffer_size_mb = 4;
+  constexpr auto     def_buffer_size = 1024*1024*def_buffer_size_mb;
+  constexpr auto     def_max_clients = 20; // 0 for unlimited clients
   constexpr auto     def_conn_retry_wait = std::chrono::seconds (30);
   constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds (1);
