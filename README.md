@@ -527,7 +527,7 @@ Simple and fast setup of EOS in Docker is also available. Firstly, install depen
 
 Build EOS image
 
-```
+```bash
 git clone https://github.com/EOSIO/eos.git --recursive
 cd eos
 cp genesis.json Docker 
@@ -538,7 +538,7 @@ We recommend 6GB+ of memory allocated to Docker to successfully build the image.
 
 Now you can start the Docker container:
 
-```
+```bash
 sudo rm -rf /data/store/eos # options 
 sudo mkdir -p /data/store/eos
 docker-compose -f Docker/docker-compose.yml up
@@ -546,7 +546,7 @@ docker-compose -f Docker/docker-compose.yml up
 
 Get chain info:
 
-```
+```bash
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
@@ -555,6 +555,6 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 
 You can run the `eosc` commands via `docker exec` command. For example:
 
-```
+```bash
 docker exec docker_eos_1 eosc contract exchange build/contracts/exchange/exchange.wast build/contracts/exchange/exchange.abi
 ```
