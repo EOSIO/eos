@@ -7,10 +7,10 @@ Welcome to the EOS.IO source code repository!
 # Table of contents
 
 1. [Getting Started](#gettingstarted)
-2. [Setting up a buid/development environment](#setup)
+2. [Setting up a build/development environment](#setup)
 	1. [Clean install Ubuntu 16.10](#ubuntu)
 	2. [macOS Sierra 10.12.6](#macos)
-3. [Building and running a node](#runanode)
+3. [Building EOS and running a node](#runanode)
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
 	3. [Creating and launching a single-node testnet](#singlenode)
@@ -118,6 +118,8 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j4 install
 ```
 
+Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>. 
+
 <a name="macos"></a>
 ### macOS Sierra 10.12.6 
 
@@ -199,7 +201,7 @@ source ~/.bash_profile
 ```
 
 <a name="runanode"></a>
-## Building and running a node 
+## Building EOS and running a node 
 
 <a name="getcode"></a>
 ### Getting the code 
