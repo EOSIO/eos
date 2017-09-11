@@ -1,0 +1,47 @@
+/**
+
+  @defgroup eoswallet EOS Wallet Process (eos-walletd)
+  @brief Local process to store signatures used by eosd to verify signatures and authorize transactions.
+
+  @section intro Introduction to EOS Wallet Process
+  
+  eos-walletd is a local process that is used by eosd for verifying signatures and authorizing transactions.
+  
+  In order to sign transaction and push it to the blockchain, you will need to have the 'eos::wallet_api_plugin' loaded in eosd or alternatively have a eos-walletd process running on the local server.
+ 
+  The command line arguments to eos-walletd are self explanatory and can be obtained by running ./eos-walletd –help
+
+  ```
+$ ./eos-walletd --help
+Application Options:
+
+Config Options for eos::http_plugin:
+  --http-server-endpoint arg (=127.0.0.1:8888)
+                                        The local IP and port to listen for
+                                        incoming http connections.
+  --access-control-allow-origin arg     Specify the Access-Control-Allow-Origin
+                                        to be returned on each request.
+
+Command Line Options for eos::wallet_plugin:
+  --wallet-dir arg (=".")               The path of the wallet files (absolute
+                                        path or relative to application data
+                                        dir)
+  --unlock-timeout arg                  Timeout for unlocked wallet in seconds.
+                                        Wallets will automatically lock after
+                                        specified number of seconds of
+                                        inactivity. Activity is defined as any
+                                        wallet command e.g. list-wallets.
+
+Application Config Options:
+  --plugin arg                          Plugin(s) to enable, may be specified
+                                        multiple times
+
+Application Command Line Options:
+  -h [ --help ]                         Print this help message and exit.
+  -v [ --version ]                      Print version information.
+  -d [ --data-dir ] arg (="data-dir")   Directory containing configuration file
+                                        config.ini
+  -c [ --config ] arg (="config.ini")   Configuration file name relative to
+                                        data-dir
+  ```
+**/
