@@ -70,6 +70,9 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
+<p>Primary Index of <a class="el" href="struct_table.html">Table</a>.  
+</p>
+
 <p><code>#include &lt;<a class="el" href="db_8hpp_source.html">db.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
@@ -117,6 +120,13 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to a record to store the back.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the back of the table. </dd></dl>
 
 </div>
 </div>
@@ -145,6 +155,13 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to a record to store the front.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the front of the table. </dd></dl>
 
 </div>
 </div>
@@ -189,6 +206,15 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">p</td><td>- reference to the primary key to retrieve the record. </td></tr>
+    <tr><td class="paramname">r</td><td>- reference to hold the result of the query. </td></tr>
+    <tr><td class="paramname">s</td><td>- scope; defaults to scope of the class. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the record. </dd></dl>
 
 </div>
 </div>
@@ -227,6 +253,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">p</td><td>- reference to the primary key to retrieve the lower bound. </td></tr>
+    <tr><td class="paramname">r</td><td>- reference to hold the result of the query. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the record. </dd></dl>
 
 </div>
 </div>
@@ -255,6 +289,13 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to store the next record. Must be initialized with a key.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the next record. </dd></dl>
 
 </div>
 </div>
@@ -283,6 +324,13 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to store previous record. Must be initialized with a key.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the previous record. </dd></dl>
 
 </div>
 </div>
@@ -311,6 +359,13 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to record to be removed. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully removed. </dd></dl>
 
 </div>
 </div>
@@ -349,6 +404,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">p</td><td>- reference to the primary key to retrieve the upper bound. </td></tr>
+    <tr><td class="paramname">r</td><td>- reference to hold the result of the query. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the record. </dd></dl>
 
 </div>
 </div>

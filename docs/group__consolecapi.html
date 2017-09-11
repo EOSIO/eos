@@ -68,16 +68,47 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:gaa99be0cc1b9e5cbbc2b12a43537e7ed3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#gaa99be0cc1b9e5cbbc2b12a43537e7ed3">prints</a> (const char *cstr)</td></tr>
+<tr class="memdesc:gaa99be0cc1b9e5cbbc2b12a43537e7ed3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints string.  <a href="#gaa99be0cc1b9e5cbbc2b12a43537e7ed3">More...</a><br /></td></tr>
 <tr class="separator:gaa99be0cc1b9e5cbbc2b12a43537e7ed3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga23902e1572b43c290fed01d9ae736a78"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga23902e1572b43c290fed01d9ae736a78">printi</a> (<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> value)</td></tr>
+<tr class="memdesc:ga23902e1572b43c290fed01d9ae736a78"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as a 64 bit unsigned integer.  <a href="#ga23902e1572b43c290fed01d9ae736a78">More...</a><br /></td></tr>
 <tr class="separator:ga23902e1572b43c290fed01d9ae736a78"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga0ac41ae1c31cf87a4adc14d9edb3e6a5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga0ac41ae1c31cf87a4adc14d9edb3e6a5">printi128</a> (const <a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> *value)</td></tr>
+<tr class="memdesc:ga0ac41ae1c31cf87a4adc14d9edb3e6a5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as a 128 bit unsigned integer.  <a href="#ga0ac41ae1c31cf87a4adc14d9edb3e6a5">More...</a><br /></td></tr>
 <tr class="separator:ga0ac41ae1c31cf87a4adc14d9edb3e6a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gae533b1ec1f098222339ad296a7d882c8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#gae533b1ec1f098222339ad296a7d882c8">printd</a> (<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> value)</td></tr>
+<tr class="memdesc:gae533b1ec1f098222339ad296a7d882c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as double.  <a href="#gae533b1ec1f098222339ad296a7d882c8">More...</a><br /></td></tr>
+<tr class="separator:gae533b1ec1f098222339ad296a7d882c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga9ec6a2d163a27b98984065d55fb41475"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga9ec6a2d163a27b98984065d55fb41475">printn</a> (<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> name)</td></tr>
+<tr class="memdesc:ga9ec6a2d163a27b98984065d55fb41475"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints a 64 bit names as base32 encoded string.  <a href="#ga9ec6a2d163a27b98984065d55fb41475">More...</a><br /></td></tr>
 <tr class="separator:ga9ec6a2d163a27b98984065d55fb41475"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <h2 class="groupheader">Function Documentation</h2>
+<a id="gae533b1ec1f098222339ad296a7d882c8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gae533b1ec1f098222339ad296a7d882c8">&#9670;&nbsp;</a></span>printd()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printd </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>value</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Prints value as double </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Value</td><td>of double (interpreted as 64 bit unsigned integer) to be printed</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> double_value = <a class="code" href="group__mathcapi.html#gad67af06a6b0e9dbbf3be05d6bf99257c">double_div</a>( <a class="code" href="group__mathcapi.html#gaec506d4ee77526e67ab5f2a8ef54f2b5">i64_to_double</a>(5), <a class="code" href="group__mathcapi.html#gaec506d4ee77526e67ab5f2a8ef54f2b5">i64_to_double</a>(10) );</div><div class="line"><a class="code" href="group__consolecapi.html#gae533b1ec1f098222339ad296a7d882c8">printd</a>(double_value); <span class="comment">// Output: 0.5</span></div></div><!-- fragment --> 
+</div>
+</div>
 <a id="ga23902e1572b43c290fed01d9ae736a78"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ga23902e1572b43c290fed01d9ae736a78">&#9670;&nbsp;</a></span>printi()</h2>
 
@@ -93,8 +124,13 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Prints value as an integer </p>
-
+<p>Prints value as a 64 bit unsigned integer </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Value</td><td>of 64 bit unsigned integer to be printed</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__consolecapi.html#ga23902e1572b43c290fed01d9ae736a78">printi</a>(1e+18); <span class="comment">// Output: 1000000000000000000</span></div></div><!-- fragment --> 
 </div>
 </div>
 <a id="ga0ac41ae1c31cf87a4adc14d9edb3e6a5"></a>
@@ -112,7 +148,13 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-
+<p>Prints value as a 128 bit unsigned integer </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">value</td><td>128 bit integer to be printed</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> large_int(87654323456);</div><div class="line"><a class="code" href="group__consolecapi.html#ga0ac41ae1c31cf87a4adc14d9edb3e6a5">printi128</a>(large_int); <span class="comment">// Output: 87654323456</span></div></div><!-- fragment --> 
 </div>
 </div>
 <a id="ga9ec6a2d163a27b98984065d55fb41475"></a>
@@ -130,8 +172,13 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Prints a 64 bit names as base32 encoded string </p>
-
+<p>Prints a 64 bit names as base32 encoded string </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Value</td><td>of 64 bit names to be printed</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__consolecapi.html#ga9ec6a2d163a27b98984065d55fb41475">printn</a>(<a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(abcde)); <span class="comment">// Output: abcde</span></div></div><!-- fragment --> 
 </div>
 </div>
 <a id="gaa99be0cc1b9e5cbbc2b12a43537e7ed3"></a>
@@ -149,13 +196,13 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<dl class="params"><dt>Parameters</dt><dd>
+<p>Prints string </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">cstr</td><td>- a null terminated string </td></tr>
+    <tr><td class="paramname">cstr</td><td>- a null terminated string</td></tr>
   </table>
   </dd>
 </dl>
-
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__consolecapi.html#gaa99be0cc1b9e5cbbc2b12a43537e7ed3">prints</a>(<span class="stringliteral">&quot;Hello World!&quot;</span>); <span class="comment">// Output: Hello World!</span></div></div><!-- fragment --> 
 </div>
 </div>
 </div><!-- contents -->

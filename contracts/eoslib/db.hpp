@@ -366,7 +366,8 @@ struct table_impl<sizeof(uint64_t),0> {
 
 /**
  *  @class Table
- *  @brief defines a type-safe C++ wrapper around the @ref databaseC 
+ *  @defgroup dualIndexTable Dual Index Table
+ *  @brief defines a type-safe C++ wrapper around the @ref databaseC
  *
  *  @tparam scope         - the default account name/scope that this table is located within
  *  @tparam code          - the code account name which has write permission to this table
@@ -441,6 +442,7 @@ struct table_impl<sizeof(uint64_t),0> {
  *
  *  @endcode
  *  @ingroup databaseCpp
+  * @{
  */
 template<uint64_t scope, uint64_t code, uint64_t table, typename Record, typename PrimaryType, typename SecondaryType = void>
 struct Table {
@@ -453,7 +455,7 @@ struct Table {
    typedef SecondaryType Secondary;
 
     /**
-     * @defgroup defines the primary index
+     * @brief The Primary Index
     */
 
    struct PrimaryIndex {
@@ -541,9 +543,12 @@ struct Table {
          return impl::remove( s, table, &r ) != 0;
       }
    };
+
+
      /**
-     * @defgroup defines the secondary index
+     * @brief The Secondary Index
      */
+
    struct SecondaryIndex {
        /**
        *  @param r - reference to a record to store the front record based on secondary index.
@@ -630,6 +635,7 @@ struct Table {
        }
     };
 
+
     /**
     *  @param p - reference to primary key to retrieve
     *  @param r - reference to a record to load the value to.
@@ -675,9 +681,10 @@ struct Table {
        return impl::remove( s, table, &r ) != 0;
     }
  };
-
+/// @}
 
  /**
+  * @defgroup Singleindextable Single Index Table
   *  @brief this specialization of Table is for single-index tables
   *
   *  @tparam scope - the default account name scope that this table is located within
@@ -742,6 +749,7 @@ struct Table {
   *
   *  @endcode
   *  @ingroup databaseCpp
+  * @{
   */
 
  template<uint64_t scope, uint64_t code, uint64_t table, typename Record, typename PrimaryType>
@@ -753,7 +761,7 @@ struct Table<scope,code,table,Record,PrimaryType,void> {
    public:
    typedef PrimaryType Primary;
     /**
-     * @defgroup Primary Index of table
+     * @brief Primary Index of Table
      */
    struct PrimaryIndex {
        /**
@@ -895,11 +903,10 @@ struct Table<scope,code,table,Record,PrimaryType,void> {
    static bool remove( const Record& r, uint64_t s = scope ) {
       return impl::remove( s, table, &r ) != 0;
    }
-};
+}; /// @}
 
 
 #define TABLE2(NAME, SCOPE, CODE, TABLE, TYPE, PRIMARY_NAME, PRIMARY_TYPE, SECONDARY_NAME, SECONDARY_TYPE) \
    using NAME = Table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
    typedef NAME::PrimaryIndex PRIMARY_NAME; \
-   typedef NAME::SecondaryIndex SECONDARY_NAME; 
-
+   typedef NAME::SecondaryIndex SECONDARY_NAME;

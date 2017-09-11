@@ -72,9 +72,11 @@ $(function() {
 Functions</h2></td></tr>
 <tr class="memitem:ga82362482cd5c990d4b25708a96f72c32"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:ga82362482cd5c990d4b25708a96f72c32"><td class="memTemplItemLeft" align="right" valign="top">T&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__messagecppapi.html#ga82362482cd5c990d4b25708a96f72c32">eos::currentMessage</a> ()</td></tr>
+<tr class="memdesc:ga82362482cd5c990d4b25708a96f72c32"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interpret the message body as type T.  <a href="group__messagecppapi.html#ga82362482cd5c990d4b25708a96f72c32">More...</a><br /></td></tr>
 <tr class="separator:ga82362482cd5c990d4b25708a96f72c32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga949563fd4a436805bb61fba6d0418e23"><td class="memTemplParams" colspan="2">template&lt;typename... Accounts&gt; </td></tr>
-<tr class="memitem:ga949563fd4a436805bb61fba6d0418e23"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__messagecppapi.html#ga949563fd4a436805bb61fba6d0418e23">eos::requireNotice</a> (<a class="el" href="namespaceeos.html#a3badbeca2584772a02666d85b1e223b1">AccountName</a> name, Accounts... accounts)</td></tr>
+<tr class="memitem:ga949563fd4a436805bb61fba6d0418e23"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__messagecppapi.html#ga949563fd4a436805bb61fba6d0418e23">eos::requireNotice</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> name, Accounts... accounts)</td></tr>
+<tr class="memdesc:ga949563fd4a436805bb61fba6d0418e23"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verify specified accounts exist in the set of notified accounts.  <a href="group__messagecppapi.html#ga949563fd4a436805bb61fba6d0418e23">More...</a><br /></td></tr>
 <tr class="separator:ga949563fd4a436805bb61fba6d0418e23"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -96,8 +98,8 @@ template&lt;typename T &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>This method attempts to reinterpret the message body as type T. This will only work if the message has no dynamic fields and the struct packing on type T is properly defined. </p>
-
+<p>This method attempts to reinterpret the message body as type T. This will only work if the message has no dynamic fields and the struct packing on type T is properly defined.</p>
+<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">struct </span><a class="code" href="structdummy__message.html">dummy_message</a> {</div><div class="line">  <span class="keywordtype">char</span> a; <span class="comment">//1</span></div><div class="line">  <span class="keywordtype">unsigned</span> <span class="keywordtype">long</span> <span class="keywordtype">long</span> b; <span class="comment">//8</span></div><div class="line">  <span class="keywordtype">int</span>  c; <span class="comment">//4</span></div><div class="line">};</div><div class="line"><a class="code" href="structdummy__message.html">dummy_message</a> msg = currentMessage&lt;dummy_message&gt;();</div></div><!-- fragment --> 
 </div>
 </div>
 <a id="ga949563fd4a436805bb61fba6d0418e23"></a>
@@ -111,7 +113,7 @@ template&lt;typename... Accounts&gt; </div>
         <tr>
           <td class="memname">void eos::requireNotice </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="namespaceeos.html#a3badbeca2584772a02666d85b1e223b1">AccountName</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
           <td class="paramname"><em>name</em>, </td>
         </tr>
         <tr>
@@ -127,10 +129,10 @@ template&lt;typename... Accounts&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>All of the listed accounts must be specified on the message notice list or this method will throw and end execution of the message.</p>
-<p>This helper method enables you to require notice of multiple accounts with a single call rather than having to call the similar C API multiple times.</p>
-<dl class="section note"><dt>Note</dt><dd>message.code is also considered as part of the set of notified accounts </dd></dl>
-
+<p>All of the listed accounts will be added to the set of accounts to be notified</p>
+<p>This helper method enables you to add multiple accounts to accounts to be notified list with a single call rather than having to call the similar C API multiple times.</p>
+<dl class="section note"><dt>Note</dt><dd>message.code is also considered as part of the set of notified accounts</dd></dl>
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__messagecppapi.html#ga949563fd4a436805bb61fba6d0418e23">requireNotice</a>(<a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(Account1), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(Account2), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(Account3)); <span class="comment">// throws exception if any of them not in set.</span></div></div><!-- fragment --> 
 </div>
 </div>
 </div><!-- contents -->
