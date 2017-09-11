@@ -37,11 +37,6 @@ namespace TOKEN_NAME {
    */
    typedef eosio::token<uint64_t,N(currency)> currency_tokens;
 
-   // union pepe {
-   //   unsigned long long a;
-   //   char b;
-   // };
-
    /**
     *  transfer requires that the sender and receiver be the first two
     *  accounts notified and that the sender has provided authorization.

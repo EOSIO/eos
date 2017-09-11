@@ -22,69 +22,115 @@ using namespace clang;
 using namespace std;
 namespace bfs = boost::filesystem;
 
-bool enable_abi_generation = true;
-string destination_file;
-string abi_contex;
+struct AbiGenerator {
 
-string getDisabledAbiFile() {
-  return destination_file + ".disabled";
-}
+  const string destination_file_param = "-destination-file=";
+  const string abi_context_param       = "-context=";
+  const string verbose_param          = "-verbose=";
+  const char*  NOABI_VARNAME          = "NOABI";
 
-void touch(const string& fileName) {
-  bfs::ofstream(fileName.c_str());  
-}
-
-void setEnabled(bool enabled) {
-  enable_abi_generation = enabled;
-}
-
-namespace {
-
-class RecordConsumer : public ASTConsumer {
-
-  CompilerInstance&         compiler_instance;
-  set<string>               parsed_templates;
+  bool                      enabled;
+  bool                      disabled_by_user;
+  bool                      error_found;
+  bool                      verbose;
   eos::types::Abi           abi;
   clang::ASTContext*        context;
+  CompilerInstance*         compiler_instance;
   map<string, uint64_t>     type_size;
-public:
+  map<string, string>       full_type_name;
+  string                    destination_file;
+  string                    abi_context;
   
-  void Initialize(clang::ASTContext& context) override {
-    this->context = &context;
+  AbiGenerator() : enabled(true), error_found(false), disabled_by_user(false) {
+    remove(destination_file + ".abi.done");
+    auto no_abi = std::getenv(NOABI_VARNAME);
+    if(no_abi && boost::lexical_cast<bool>(no_abi) ) {
+      onUserDisable();
+      cerr << "ABI Generation disabled ("<< NOABI_VARNAME << "=" << no_abi << ")\n";
+    }
   }
 
-  RecordConsumer(CompilerInstance& compiler_instance,
-                         set<string> parsed_templates)
-      : compiler_instance(compiler_instance), parsed_templates(parsed_templates) {
-        
-        setEnabled(!bfs::exists(getDisabledAbiFile()) && !bfs::exists(getErrorAbiFile()));
-        
-        if( isEnabled() && bfs::exists(getTempAbiFile()) )
-          abi = fc::json::from_file<eos::types::Abi>(getTempAbiFile());
-      }
+  ~AbiGenerator() {
+    
+    if(verbose) {
+      cerr << "ABI Generation finished disabled_by_user:" << 
+        disabled_by_user << ",error_found:" << error_found << "\n";
+    }
+    
+    if(disabled_by_user) {
+      touch(destination_file + ".abi.done");
+    } else if(!error_found) {
+      fc::json::save_to_file<eos::types::Abi>(abi, destination_file + ".abi");
+      touch(destination_file + ".abi.done");
+    } else {
+      //should we remove the .abi file?
+      remove(destination_file + ".abi");
+    }
+  }
   
-  void HandleTranslationUnit(ASTContext& context) override {
-     if( isEnabled() ) {
-       fc::json::save_to_file<eos::types::Abi>(abi, getTempAbiFile());
-     }
+  void touch(const string& fileName) {
+    bfs::ofstream(fileName.c_str());  
+  }
+
+  void remove(const string& fileName) {
+    if(bfs::exists(fileName.c_str()))
+      bfs::remove(fileName.c_str());  
+  }
+
+  static AbiGenerator& get() {
+    static AbiGenerator generator;
+    return generator;
   }
 
   bool isEnabled() {
-    return enable_abi_generation;
+    return enabled;
   }
 
-  string getTempAbiFile() {
-    return destination_file + ".tmp";
+  void onUserDisable(){
+    disableGeneration();
+    disabled_by_user = true;
   }
 
-  string getErrorAbiFile() {
-    return destination_file + ".error";
+  void setContext(clang::ASTContext& context) {
+    this->context = &context;
   }
-  
+
+  void setCompilerInstance(CompilerInstance& compiler_instance) {
+    this->compiler_instance = &compiler_instance;
+  }
+ 
   void onError(const string& error_message) {
-    setEnabled(false);
-    touch(getErrorAbiFile());
-    llvm::errs() << error_message << "\n";
+    disableGeneration();
+    error_found = true;
+    elog(error_message.c_str());
+  }
+
+  void disableGeneration() {
+    enabled = false;
+  }
+
+  void parseArgs(const vector<string>& args) {
+    
+    size_t total_args = args.size();
+    
+    for (size_t i=0; i<total_args; ++i) {
+      if(args[i].find(destination_file_param) == 0) 
+        destination_file = args[i].substr(destination_file_param.size());
+      else if(args[i].find(abi_context_param) == 0) 
+        abi_context = args[i].substr(abi_context_param.size());
+      else if(args[i].find(verbose_param) == 0) 
+        verbose = boost::lexical_cast<bool>(args[i].substr(verbose_param.size()).c_str());
+    }
+
+    remove(destination_file + ".abi.done");
+    if(verbose) {
+      cerr << "AbiGenerator configured:\n file:" << 
+        destination_file << "\n abi_context:" << abi_context << "\n";
+    }
+  }
+
+  void printHelp(llvm::raw_ostream& ros) {
+    //TODO: show help
   }
 
   string removeNamespace(const string& full_type_name) {
@@ -132,17 +178,20 @@ public:
   }
 
   string getNameFromRecordDecl(const CXXRecordDecl* record_decl) {
-    clang::PrintingPolicy policy = compiler_instance.getLangOpts();
-    auto name = record_decl->getTypeForDecl()->getCanonicalTypeInternal().getAsString(policy);
-    return removeNamespace(name);
+    clang::PrintingPolicy policy = compiler_instance->getLangOpts();
+    return record_decl->getTypeForDecl()->getCanonicalTypeInternal().getAsString(policy);
+  }
+  
+  void handleTranslationUnit(ASTContext& context) {
+    //mmm ...
   }
 
-  void HandleTagDeclDefinition(TagDecl* tag_decl) override { 
+  void handleTagDeclDefinition(TagDecl* tag_decl) {
     try {
       handleTagDeclDefinitionEx(tag_decl);
     } catch(fc::exception& e) {
-      onError(e.to_detail_string());
-    }
+      onError(e.to_string());
+    }    
   }
 
   void handleTagDeclDefinitionEx(TagDecl* tag_decl) { try {
@@ -151,6 +200,11 @@ public:
 
     const CXXRecordDecl* recordDecl = dyn_cast<CXXRecordDecl>(tag_decl);
     if(!recordDecl) return;
+
+    if(verbose) {
+      cerr << "handleTagDeclDefinitionEx:" << tag_decl->getKindName().str() << " " << getNameFromRecordDecl(recordDecl) << "\n";
+    }
+
 
     ASTContext& ctx = recordDecl->getASTContext();
     const RawComment* raw_comment = ctx.getRawCommentForDeclNoCache(tag_decl);
@@ -168,7 +222,7 @@ public:
       if(smatch.size() == 4) {
 
         auto context = smatch[1].str();
-        if(context != abi_contex) return;
+        if(context != abi_context) return;
 
         auto type = smatch[2].str();
         
@@ -178,10 +232,15 @@ public:
         if(!string_params.empty())
           boost::split(params, string_params, boost::is_any_of(" "));
 
-        auto type_name = getNameFromRecordDecl(recordDecl);
-        FC_ASSERT(tag_decl->isStruct() || tag_decl->isClass(), "Only struct and class are supported. ${type} ${type_name}",("type",type)("type_name",type_name));
+        auto full_type_name = getNameFromRecordDecl(recordDecl);
+        FC_ASSERT(tag_decl->isStruct() || tag_decl->isClass(), "Only struct and class are supported. ${type} ${full_type_name}",("type",type)("full_type_name",full_type_name));
 
-        addStruct(recordDecl, type_name);
+        if(verbose) {
+          cerr << "About to add " << full_type_name << "\n";
+        }
+
+        addStruct(recordDecl, full_type_name);
+        auto type_name = removeNamespace(full_type_name);
 
         eos::types::Struct s;
         FC_ASSERT(findStruct(type_name, s), "Unable to find type ${type}", ("type",type_name));
@@ -198,12 +257,7 @@ public:
           table.type = type_name;
           
           if(params.size() >= 1)
-            table.table = params[0];
-          else
-            table.table = boost::algorithm::to_lower_copy(type_name);
-
-          if(params.size() >= 2)
-            table.indextype = params[1];
+            table.indextype = params[0];
           else
             guessIndexType(type_name, table, s);
 
@@ -315,13 +369,22 @@ public:
   }
 
   void addStruct(const clang::CXXRecordDecl* recordDecl, const string& full_name) {
+    
+    //TODO: handle this better
+    if(!recordDecl) {
+      FC_ASSERT(false, "Null CXXRecordDecl for ${type}.", ("type",full_name));
+    }
 
     string name = removeNamespace(full_name);
 
-    //TODO: handle this better
-    if(!recordDecl) {
-      FC_ASSERT(false, "Null CXXRecordDecl for ${type}.", ("type",name));
-    }
+    // FC_ASSERT(name.size() <= sizeof(eos::types::TypeName),
+    //   "Type name > ${maxsize}, ${name}",
+    //   ("type",full_name)("name",name)("maxsize",sizeof(eos::types::TypeName)));
+
+    // auto itr = full_type_name.find(name);
+    // if(itr != full_type_name.end()) {
+    //   FC_ASSERT(itr->second == full_name, "Unable to add type '${full_name}' because '${conflict}' is already in.", ("full_name",full_name)("conflict",itr->second));
+    // }
 
     eos::types::Struct s;
     if( findStruct(name, s) ) return;
@@ -329,7 +392,7 @@ public:
     auto bases = recordDecl->bases();
     auto total_bases = distance(bases.begin(), bases.end());
     if( total_bases > 1 ) {
-      FC_ASSERT(false, "Multiple inheritance not supported - ${type}", ("type",name));
+      FC_ASSERT(false, "Multiple inheritance not supported - ${type}", ("type",full_name));
     }
 
     string base_name;
@@ -355,13 +418,24 @@ public:
         auto const* field_record = clang::cast_or_null<clang::CXXRecordDecl>(field_record_type->getDecl()->getDefinition());
         addStruct(field_record, field_type);
         if( isOneFieldNoBase(field_type) ) {
+          //cerr << "isOneFieldNoBase == TRUE : [" << field_type << "]\n";
           field_type = abi.structs.back().fields[0].type;
           abi.structs.pop_back();
         }
       }
       
-      struct_field.name = field->getNameAsString();
-      struct_field.type = translateType(field_type);
+      auto struct_field_name = field->getNameAsString();
+      auto struct_field_type = translateType(field_type);
+
+      // FC_ASSERT(struct_field_name.size() <= sizeof(decltype(struct_field.name)) , 
+      //   "Field name > ${maxsize}, ${type}::${name}", ("type",full_name)("name",struct_field_name)("maxsize", sizeof(decltype(struct_field.name))));
+      
+      // FC_ASSERT(struct_field_type.size() <= sizeof(decltype(struct_field.type)),
+      //   "Type name > ${maxsize}, ${type}::${name}", ("type",full_name)("name",struct_field_type)("maxsize",sizeof(decltype(struct_field.type))));
+
+      struct_field.name = struct_field_name;
+      struct_field.type = struct_field_type;
+
       type_size[string(struct_field.type)] = context->getTypeSize(qt);
 
       eos::types::Struct dummy;
@@ -371,15 +445,48 @@ public:
     }
 
     abi_struct.name = name;
-    abi_struct.base = base_name;
+    abi_struct.base = removeNamespace(base_name);
     abi.structs.push_back(abi_struct);
+
+    if(verbose) {    
+      cerr << "Adding type " << name << " (" << full_name << ")\n";
+    }
+
+    full_type_name[name] = full_name;
   }
+
+};
+
+class RecordConsumer : public ASTConsumer {
+  set<string>        parsed_templates;
+  AbiGenerator&      generator;        
+public:
+  
+  void Initialize(clang::ASTContext& context) override {
+    AbiGenerator::get().setContext(context);
+  }
+
+  RecordConsumer(CompilerInstance& compiler_instance,
+          set<string> parsed_templates) : parsed_templates(parsed_templates), generator(AbiGenerator::get()) {
+    generator.setCompilerInstance(compiler_instance);
+  }
+
+  void HandleTranslationUnit(ASTContext& context) override {
+    generator.handleTranslationUnit(context);
+  }
+
+  void HandleTagDeclDefinition(TagDecl* tag_decl) override { 
+    generator.handleTagDeclDefinition(tag_decl);
+  }
+
 };
 
 class GenerateAbiAction : public PluginASTAction {
-  set<string> parsed_templates;
-  const string destination_file_param = "-destination-file=";
-  const string abi_contex_param = "-context=";
+  set<string>   parsed_templates;
+  AbiGenerator& generator; 
+public:
+  GenerateAbiAction() : generator(AbiGenerator::get()) {
+  }
 
 protected:
   unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &compiler_instance,
@@ -389,40 +496,26 @@ protected:
 
   bool ParseArgs(const CompilerInstance &compiler_instance,
                  const vector<string> &args) override {
-    
-    size_t total_args = args.size();
-    for (size_t i=0; i<total_args; ++i) {
-      if(args[i].find(destination_file_param) == 0) 
-        destination_file = args[i].substr(destination_file_param.size());
-      else if(args[i].find(abi_contex_param) == 0) 
-        abi_contex = args[i].substr(abi_contex_param.size());
 
-    }
-
+    generator.parseArgs(args);    
     return true;
   }
 
   void PrintHelp(llvm::raw_ostream& ros) {
-    ros << "Help\n";
+    generator.printHelp(ros);
   }
 
 };
 
-}
-
-
 class NoAbiPragmaHandler : public PragmaHandler {
+  AbiGenerator& generator;
 public:
-  NoAbiPragmaHandler() : PragmaHandler("no_abi") { }
+  NoAbiPragmaHandler() : PragmaHandler("no_abi"), generator(AbiGenerator::get()) { }
   void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
                     Token &PragmaTok) {
 
-    OnDisable();
-  }
-
-  void OnDisable() {
-    setEnabled(false);
-    touch(getDisabledAbiFile());
+    generator.onUserDisable();
+    cerr << "ABI Generation disabled (#pragma no_abi)\n";
   }
 };
 
