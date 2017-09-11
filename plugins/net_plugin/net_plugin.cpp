@@ -97,14 +97,16 @@ namespace eos {
 
   class connection : public std::enable_shared_from_this<connection> {
   public:
+    const size_t                   kBufferSize{1024*1024*4};
     connection( string endpoint )
       : block_state(),
         trx_state(),
         sync_received(),
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
-        pending_message_size(),
-        pending_message_buffer(),
+        pending_message_size(0),
+        pending_message_buffer(kBufferSize),
+        send_buffer(kBufferSize),
         remote_node_id(),
         last_handshake(),
         out_queue(),
@@ -122,8 +124,9 @@ namespace eos {
         sync_received(),
         sync_requested(),
         socket( s ),
-        pending_message_size(),
-        pending_message_buffer(),
+        pending_message_size(0),
+        pending_message_buffer(kBufferSize),
+        send_buffer(kBufferSize),
         remote_node_id(),
         last_handshake(),
         out_queue(),
@@ -131,7 +134,7 @@ namespace eos {
         syncing (false),
         peer_addr ()
     {
-      wlog( "created connection from client" );
+      wlog( "created network connection" );
       boost::asio::ip::tcp::no_delay option(true);
       socket->set_option(option);
       initialize ();
@@ -145,7 +148,6 @@ namespace eos {
     }
 
     void initialize () {
-      pending_message_buffer.resize( 1024*1024*4 );
       auto *rnd = remote_node_id.data();
       rnd[0] = 0;
     }
@@ -158,6 +160,8 @@ namespace eos {
 
     uint32_t                       pending_message_size;
     vector<char>                   pending_message_buffer;
+    uint32_t                       send_message_size;
+    vector<char>                   send_buffer;
     vector<char>                   blk_buffer;
     size_t                         message_size;
 
@@ -215,14 +219,13 @@ namespace eos {
       }
 
       auto& m = out_queue.front();
-      vector<char> buffer;
-      uint32_t size = fc::raw::pack_size( m );
-      buffer.resize(  size + sizeof(uint32_t) );
-      fc::datastream<char*> ds( buffer.data(), buffer.size() );
-      ds.write( (char*)&size, sizeof(size) );
+      send_message_size = fc::raw::pack_size( m );
+      fc::datastream<char*> ds( send_buffer.data(), send_message_size + sizeof(send_message_size) );
+      ds.write( (char*)&send_message_size, sizeof(send_message_size) );
       fc::raw::pack( ds, m );
-      boost::asio::async_write( *socket, boost::asio::buffer( buffer.data(), buffer.size() ),
-                   [this,buf=std::move(buffer)]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+
+      boost::asio::async_write( *socket, boost::asio::buffer( send_buffer, send_message_size + sizeof(send_message_size) ),
+                   [this]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
                      if( ec ) {
                        elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
                      } else  {
@@ -325,13 +328,13 @@ namespace eos {
     boost::asio::steady_timer::duration   connector_period;
     boost::asio::steady_timer::duration   txn_exp_period;
 
-    int16_t                       network_version;
+    int16_t                       network_version{0};
     chain_id_type                 chain_id;
     fc::sha256                    node_id;
 
     string                        user_agent_name;
     chain_plugin*                 chain_plug;
-    int32_t                       just_send_it_max;
+    size_t                        just_send_it_max;
     bool                          send_whole_blocks;
 
     node_transaction_index        local_txns;
@@ -416,10 +419,10 @@ namespace eos {
 
       boost::asio::async_read( *conn->socket,
                                boost::asio::buffer((char *)buff, sizeof(conn->pending_message_size)),
-                               [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+                               [this,c]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
                                  //ilog( "read size handler..." );
                                  if( !ec ) {
-                                     connection_ptr conn = c.lock();
+                                   connection_ptr conn = c.lock();
                                    if( conn->pending_message_size <= conn->pending_message_buffer.size() ) {
                                      start_reading_pending_buffer( conn );
                                      return;

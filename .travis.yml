@@ -23,7 +23,8 @@ before_install:
   - cd $TRAVIS_BUILD_DIR/ext && git clone --depth=1 --single-branch git://github.com/oci-labs/clang-WebAssembly wasm-compiler
   - cd $TRAVIS_BUILD_DIR
 script:
-  - ext/cmake-3.9.0-Linux-x86_64/bin/cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler/
+  - mkdir build && cd build
+  - ../ext/cmake-3.9.0-Linux-x86_64/bin/cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler/ ..
   - ninja -j4
   - tests/eosd_run_test.sh
   - tests/chain_test

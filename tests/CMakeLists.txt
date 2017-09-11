@@ -23,3 +23,5 @@ if(WASM_TOOLCHAIN)
   target_include_directories( api_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts )
   add_dependencies(api_test test_api)
 endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.sh COPYONLY)
