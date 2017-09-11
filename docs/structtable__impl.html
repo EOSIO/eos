@@ -68,13 +68,7 @@ $(function() {
 <div class="textblock"><h3>template&lt;int Primary, int Secondary&gt;<br />
 struct table_impl&lt; Primary, Secondary &gt;</h3>
 
-<p>struct Db {</p>
-<p>template&lt;typename T&gt; static bool get( TableName table, uint64_t key, T&amp; value ){ return get( currentCode(), table, key, value ); }</p>
-<p>template&lt;typename T&gt; static bool get( AccountName scope, TableName table, uint64_t key, T&amp; value ){ return get( scope, currentCode(), table, key, value ); }</p>
-<p>template&lt;typename T&gt; static bool get( AccountName scope, AccountName code, TableName table, uint64_t key, T&amp; result ) { auto read = load_i64( scope, code, table, key, &amp;result, sizeof(result) ); return read &gt; 0; }</p>
-<p>template&lt;typename T&gt; static int32_t store( TableName table, uint64_t key, const T&amp; value ) { return store( currentCode(), key, value ); }</p>
-<p>template&lt;typename T&gt; static int32_t store( Name scope, TableName table, const T&amp; value ) { return store_i64( scope, table,  &amp;value, sizeof(value) ); }</p>
-<p>static bool remove( Name scope, TableName table, uint64_t key ) { return remove_i64( scope, table, key ); } }; </p>
+<p>Cpp implementation of database API. It is based on pimpl idiom. </p><dl class="section see"><dt>See also</dt><dd><a class="el" href="struct_table.html">Table</a> class and <a class="el" href="structtable__impl.html">table_impl</a> class </dd></dl>
 </div><hr/>The documentation for this struct was generated from the following file:<ul>
 <li>contracts/eoslib/<a class="el" href="db_8hpp_source.html">db.hpp</a></li>
 </ul>

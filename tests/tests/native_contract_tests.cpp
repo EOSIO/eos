@@ -152,30 +152,30 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters, testing_fixture)
       chain.produce_blocks(21);
 
       vector<BlockchainConfiguration> votes{
-         {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   , 6},
-         {10000 , 100   , 4096  , Asset(3333   ).amount, Asset(27109  ).amount, Asset(10   ).amount, 100   , 6},
-         {2048  , 1500  , 1000  , Asset(5432   ).amount, Asset(2000   ).amount, Asset(50   ).amount, 1500  , 6},
-         {100   , 25    , 1024  , Asset(90000  ).amount, Asset(0      ).amount, Asset(433  ).amount, 25    , 6},
-         {1024  , 1000  , 100   , Asset(10     ).amount, Asset(50     ).amount, Asset(200  ).amount, 1000  , 6},
-         {420   , 400   , 2710  , Asset(27599  ).amount, Asset(1177   ).amount, Asset(27720).amount, 400   , 6},
-         {271   , 200   , 66629 , Asset(2666   ).amount, Asset(99991  ).amount, Asset(277  ).amount, 200   , 6},
-         {1057  , 1000  , 2770  , Asset(972    ).amount, Asset(302716 ).amount, Asset(578  ).amount, 1000  , 6},
-         {9926  , 27    , 990   , Asset(99999  ).amount, Asset(39651  ).amount, Asset(4402 ).amount, 27    , 6},
-         {1005  , 1000  , 1917  , Asset(937111 ).amount, Asset(2734   ).amount, Asset(1    ).amount, 1000  , 6},
-         {80    , 70    , 5726  , Asset(63920  ).amount, Asset(231561 ).amount, Asset(27100).amount, 70    , 6},
-         {471617, 333333, 100   , Asset(2666   ).amount, Asset(2650   ).amount, Asset(2772 ).amount, 33333 , 6},
-         {2222  , 1000  , 100   , Asset(33619  ).amount, Asset(1046   ).amount, Asset(10577).amount, 1000  , 6},
-         {8     , 7     , 100   , Asset(5757267).amount, Asset(2257   ).amount, Asset(2888 ).amount, 7     , 6},
-         {2717  , 2000  , 57797 , Asset(3366   ).amount, Asset(205    ).amount, Asset(4472 ).amount, 2000  , 6},
-         {9997  , 5000  , 27700 , Asset(29199  ).amount, Asset(100    ).amount, Asset(221  ).amount, 5000  , 6},
-         {163900, 200   , 882   , Asset(100    ).amount, Asset(5720233).amount, Asset(105  ).amount, 200   , 6},
-         {728   , 80    , 27100 , Asset(28888  ).amount, Asset(6205   ).amount, Asset(5011 ).amount, 80    , 6},
-         {91937 , 44444 , 652589, Asset(87612  ).amount, Asset(123    ).amount, Asset(2044 ).amount, 44444 , 6},
-         {171   , 96    , 123456, Asset(8402   ).amount, Asset(321    ).amount, Asset(816  ).amount, 96    , 6},
-         {17177 , 6767  , 654321, Asset(9926   ).amount, Asset(9264   ).amount, Asset(8196 ).amount, 6767  , 6},
+         {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512   , 6, 5000, 4, 4096, 65536 },
+         {10000 , 100   , 4096  , Asset(3333   ).amount, Asset(27109  ).amount, Asset(10   ).amount, 100   , 6, 5000, 4, 4096, 65536 },
+         {2048  , 1500  , 1000  , Asset(5432   ).amount, Asset(2000   ).amount, Asset(50   ).amount, 1500  , 6, 5000, 4, 4096, 65536 },
+         {100   , 25    , 1024  , Asset(90000  ).amount, Asset(0      ).amount, Asset(433  ).amount, 25    , 6, 5000, 4, 4096, 65536 },
+         {1024  , 1000  , 100   , Asset(10     ).amount, Asset(50     ).amount, Asset(200  ).amount, 1000  , 6, 5000, 4, 4096, 65536 },
+         {420   , 400   , 2710  , Asset(27599  ).amount, Asset(1177   ).amount, Asset(27720).amount, 400   , 6, 5000, 4, 4096, 65536 },
+         {271   , 200   , 66629 , Asset(2666   ).amount, Asset(99991  ).amount, Asset(277  ).amount, 200   , 6, 5000, 4, 4096, 65536 },
+         {1057  , 1000  , 2770  , Asset(972    ).amount, Asset(302716 ).amount, Asset(578  ).amount, 1000  , 6, 5000, 4, 4096, 65536 },
+         {9926  , 27    , 990   , Asset(99999  ).amount, Asset(39651  ).amount, Asset(4402 ).amount, 27    , 6, 5000, 4, 4096, 65536 },
+         {1005  , 1000  , 1917  , Asset(937111 ).amount, Asset(2734   ).amount, Asset(1    ).amount, 1000  , 6, 5000, 4, 4096, 65536 },
+         {80    , 70    , 5726  , Asset(63920  ).amount, Asset(231561 ).amount, Asset(27100).amount, 70    , 6, 5000, 4, 4096, 65536 },
+         {471617, 333333, 100   , Asset(2666   ).amount, Asset(2650   ).amount, Asset(2772 ).amount, 33333 , 6, 5000, 4, 4096, 65536 },
+         {2222  , 1000  , 100   , Asset(33619  ).amount, Asset(1046   ).amount, Asset(10577).amount, 1000  , 6, 5000, 4, 4096, 65536 },
+         {8     , 7     , 100   , Asset(5757267).amount, Asset(2257   ).amount, Asset(2888 ).amount, 7     , 6, 5000, 4, 4096, 65536 },
+         {2717  , 2000  , 57797 , Asset(3366   ).amount, Asset(205    ).amount, Asset(4472 ).amount, 2000  , 6, 5000, 4, 4096, 65536 },
+         {9997  , 5000  , 27700 , Asset(29199  ).amount, Asset(100    ).amount, Asset(221  ).amount, 5000  , 6, 5000, 4, 4096, 65536 },
+         {163900, 200   , 882   , Asset(100    ).amount, Asset(5720233).amount, Asset(105  ).amount, 200   , 6, 5000, 4, 4096, 65536 },
+         {728   , 80    , 27100 , Asset(28888  ).amount, Asset(6205   ).amount, Asset(5011 ).amount, 80    , 6, 5000, 4, 4096, 65536 },
+         {91937 , 44444 , 652589, Asset(87612  ).amount, Asset(123    ).amount, Asset(2044 ).amount, 44444 , 6, 5000, 4, 4096, 65536 },
+         {171   , 96    , 123456, Asset(8402   ).amount, Asset(321    ).amount, Asset(816  ).amount, 96    , 6, 5000, 4, 4096, 65536 },
+         {17177 , 6767  , 654321, Asset(9926   ).amount, Asset(9264   ).amount, Asset(8196 ).amount, 6767  , 6, 5000, 4, 4096, 65536 },
       };
       BlockchainConfiguration medians =
-         {1057, 512, 2770, Asset(9926).amount, Asset(2650).amount, Asset(816).amount, 512, 6};
+         {1057, 512, 2770, Asset(9926).amount, Asset(2650).amount, Asset(816).amount, 512, 6, 5000, 4, 4096, 65536 };
       // If this fails, the medians variable probably needs to be updated to have the medians of the votes above
       BOOST_REQUIRE_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 
@@ -198,30 +198,30 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_parameters_2, testing_fixture)
       chain.produce_blocks(21);
 
       vector<BlockchainConfiguration> votes{
-         {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512    , 6},
-         {10000 , 100   , 4096  , Asset(3333   ).amount, Asset(27109  ).amount, Asset(10   ).amount, 100    , 6},
-         {2048  , 1500  , 1000  , Asset(5432   ).amount, Asset(2000   ).amount, Asset(50   ).amount, 1500   , 6},
-         {100   , 25    , 1024  , Asset(90000  ).amount, Asset(0      ).amount, Asset(433  ).amount, 25     , 6},
-         {1024  , 1000  , 100   , Asset(10     ).amount, Asset(50     ).amount, Asset(200  ).amount, 1000   , 6},
-         {420   , 400   , 2710  , Asset(27599  ).amount, Asset(1177   ).amount, Asset(27720).amount, 400    , 6},
-         {271   , 200   , 66629 , Asset(2666   ).amount, Asset(99991  ).amount, Asset(277  ).amount, 200    , 6},
-         {1057  , 1000  , 2770  , Asset(972    ).amount, Asset(302716 ).amount, Asset(578  ).amount, 1000   , 6},
-         {9926  , 27    , 990   , Asset(99999  ).amount, Asset(39651  ).amount, Asset(4402 ).amount, 27     , 6},
-         {1005  , 1000  , 1917  , Asset(937111 ).amount, Asset(2734   ).amount, Asset(1    ).amount, 1000   , 6},
-         {80    , 70    , 5726  , Asset(63920  ).amount, Asset(231561 ).amount, Asset(27100).amount, 70     , 6},
-         {471617, 333333, 100   , Asset(2666   ).amount, Asset(2650   ).amount, Asset(2772 ).amount, 333333 , 6},
-         {2222  , 1000  , 100   , Asset(33619  ).amount, Asset(1046   ).amount, Asset(10577).amount, 1000   , 6},
-         {8     , 7     , 100   , Asset(5757267).amount, Asset(2257   ).amount, Asset(2888 ).amount, 7      , 6},
-         {2717  , 2000  , 57797 , Asset(3366   ).amount, Asset(205    ).amount, Asset(4472 ).amount, 2000   , 6},
-         {9997  , 5000  , 27700 , Asset(29199  ).amount, Asset(100    ).amount, Asset(221  ).amount, 5000   , 6},
-         {163900, 200   , 882   , Asset(100    ).amount, Asset(5720233).amount, Asset(105  ).amount, 200    , 6},
-         {728   , 80    , 27100 , Asset(28888  ).amount, Asset(6205   ).amount, Asset(5011 ).amount, 80     , 6},
-         {91937 , 44444 , 652589, Asset(87612  ).amount, Asset(123    ).amount, Asset(2044 ).amount, 44444  , 6},
-         {171   , 96    , 123456, Asset(8402   ).amount, Asset(321    ).amount, Asset(816  ).amount, 96     , 6},
-         {17177 , 6767  , 654321, Asset(9926   ).amount, Asset(9264   ).amount, Asset(8196 ).amount, 6767   , 6},
+         {1024  , 512   , 4096  , Asset(5000   ).amount, Asset(4000   ).amount, Asset(100  ).amount, 512    , 6, 5000, 4, 4096, 65536 },
+         {10000 , 100   , 4096  , Asset(3333   ).amount, Asset(27109  ).amount, Asset(10   ).amount, 100    , 6, 5000, 4, 4096, 65536 },
+         {2048  , 1500  , 1000  , Asset(5432   ).amount, Asset(2000   ).amount, Asset(50   ).amount, 1500   , 6, 5000, 4, 4096, 65536 },
+         {100   , 25    , 1024  , Asset(90000  ).amount, Asset(0      ).amount, Asset(433  ).amount, 25     , 6, 5000, 4, 4096, 65536 },
+         {1024  , 1000  , 100   , Asset(10     ).amount, Asset(50     ).amount, Asset(200  ).amount, 1000   , 6, 5000, 4, 4096, 65536 },
+         {420   , 400   , 2710  , Asset(27599  ).amount, Asset(1177   ).amount, Asset(27720).amount, 400    , 6, 5000, 4, 4096, 65536 },
+         {271   , 200   , 66629 , Asset(2666   ).amount, Asset(99991  ).amount, Asset(277  ).amount, 200    , 6, 5000, 4, 4096, 65536 },
+         {1057  , 1000  , 2770  , Asset(972    ).amount, Asset(302716 ).amount, Asset(578  ).amount, 1000   , 6, 5000, 4, 4096, 65536 },
+         {9926  , 27    , 990   , Asset(99999  ).amount, Asset(39651  ).amount, Asset(4402 ).amount, 27     , 6, 5000, 4, 4096, 65536 },
+         {1005  , 1000  , 1917  , Asset(937111 ).amount, Asset(2734   ).amount, Asset(1    ).amount, 1000   , 6, 5000, 4, 4096, 65536 },
+         {80    , 70    , 5726  , Asset(63920  ).amount, Asset(231561 ).amount, Asset(27100).amount, 70     , 6, 5000, 4, 4096, 65536 },
+         {471617, 333333, 100   , Asset(2666   ).amount, Asset(2650   ).amount, Asset(2772 ).amount, 333333 , 6, 5000, 4, 4096, 65536 },
+         {2222  , 1000  , 100   , Asset(33619  ).amount, Asset(1046   ).amount, Asset(10577).amount, 1000   , 6, 5000, 4, 4096, 65536 },
+         {8     , 7     , 100   , Asset(5757267).amount, Asset(2257   ).amount, Asset(2888 ).amount, 7      , 6, 5000, 4, 4096, 65536 },
+         {2717  , 2000  , 57797 , Asset(3366   ).amount, Asset(205    ).amount, Asset(4472 ).amount, 2000   , 6, 5000, 4, 4096, 65536 },
+         {9997  , 5000  , 27700 , Asset(29199  ).amount, Asset(100    ).amount, Asset(221  ).amount, 5000   , 6, 5000, 4, 4096, 65536 },
+         {163900, 200   , 882   , Asset(100    ).amount, Asset(5720233).amount, Asset(105  ).amount, 200    , 6, 5000, 4, 4096, 65536 },
+         {728   , 80    , 27100 , Asset(28888  ).amount, Asset(6205   ).amount, Asset(5011 ).amount, 80     , 6, 5000, 4, 4096, 65536 },
+         {91937 , 44444 , 652589, Asset(87612  ).amount, Asset(123    ).amount, Asset(2044 ).amount, 44444  , 6, 5000, 4, 4096, 65536 },
+         {171   , 96    , 123456, Asset(8402   ).amount, Asset(321    ).amount, Asset(816  ).amount, 96     , 6, 5000, 4, 4096, 65536 },
+         {17177 , 6767  , 654321, Asset(9926   ).amount, Asset(9264   ).amount, Asset(8196 ).amount, 6767   , 6, 5000, 4, 4096, 65536 },
       };
       BlockchainConfiguration medians =
-         {1057, 512, 2770, Asset(9926).amount, Asset(2650).amount, Asset(816).amount, 512, 6};
+         {1057, 512, 2770, Asset(9926).amount, Asset(2650).amount, Asset(816).amount, 512, 6, 5000, 4, 4096, 65536 };
       // If this fails, the medians variable probably needs to be updated to have the medians of the votes above
       BOOST_REQUIRE_EQUAL(BlockchainConfiguration::get_median_values(votes), medians);
 

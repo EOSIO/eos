@@ -70,6 +70,9 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
+<p>The Primary Index.  
+</p>
+
 <p><code>#include &lt;<a class="el" href="db_8hpp_source.html">db.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
@@ -127,6 +130,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to a record to store the back record based on primary index. </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successful read. </dd></dl>
 
 </div>
 </div>
@@ -165,6 +176,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to a record to store the front record based on primary index. </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successful read. </dd></dl>
 
 </div>
 </div>
@@ -209,6 +228,15 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">p</td><td>- reference to primary key to load; must be initialized with a value; </td></tr>
+    <tr><td class="paramname">r</td><td>- reference to a record to load the value to. </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successful read. </dd></dl>
 
 </div>
 </div>
@@ -247,6 +275,15 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">p</td><td>- reference to primary key to get the lower bound of; must be initialized with a value; </td></tr>
+    <tr><td class="paramname">r</td><td>- reference to a record to load the value to. </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successful read. </dd></dl>
 
 </div>
 </div>
@@ -285,6 +322,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to a record to store next value; must be initialized with current. </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successful read. </dd></dl>
 
 </div>
 </div>
@@ -323,6 +368,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to a record to store previous value; must be initialized with current. </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successful read. </dd></dl>
 
 </div>
 </div>
@@ -361,6 +414,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to a record to remove from table; </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully removed; </dd></dl>
 
 </div>
 </div>
@@ -399,6 +460,15 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">p</td><td>- reference to primary key to get the upper bound of; must be initialized with a value; </td></tr>
+    <tr><td class="paramname">r</td><td>- reference to a record to load the value to. </td></tr>
+    <tr><td class="paramname">s</td><td>- account scope. default is current scope of the class</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successful read. </dd></dl>
 
 </div>
 </div>

@@ -19,7 +19,8 @@ public:
                  const chain::Message& m,
                  const types::AccountName& code)
       : controller(con), db(db), trx(t), msg(m), code(code), mutable_controller(con),
-        mutable_db(db), used_authorizations(msg.authorization.size(), false){}
+        mutable_db(db), used_authorizations(msg.authorization.size(), false),
+        next_pending_transaction_serial(0){}
 
    template <typename ObjectType>
    int32_t store_record( Name scope, Name code, Name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
@@ -270,6 +271,7 @@ public:
     * @throws tx_missing_auth If no sufficient permission was found
     */
    void require_authorization(const types::AccountName& account);
+   void require_authorization(const types::AccountName& account, const types::PermissionName& permission);
    void require_scope(const types::AccountName& account)const;
    void require_recipient(const types::AccountName& account);
 
@@ -285,12 +287,55 @@ public:
    chain_controller&    mutable_controller;
    chainbase::database& mutable_db;
 
-   std::deque<AccountName>          notified;
-   std::deque<ProcessedTransaction> sync_transactions; ///< sync calls made
-   std::deque<GeneratedTransaction> async_transactions; ///< async calls requested
+   std::deque<AccountName>              notified;
+   std::vector<types::Message>          inline_messages; ///< queued inline messages
+   std::vector<types::Transaction>      deferred_transactions; ///< deferred txs
 
    ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
    vector<bool> used_authorizations;
+
+   ///< pending transaction construction
+   typedef uint32_t pending_transaction_handle;
+   struct pending_transaction : public types::Transaction {
+      typedef uint32_t handle_type;
+      
+      pending_transaction(const handle_type& _handle, const apply_context& _context, const UInt16& block_num, const UInt32& block_ref, const Time& expiration )
+         : types::Transaction(block_num, block_ref, expiration, vector<types::AccountName>(),  vector<types::AccountName>(), vector<types::Message>())
+         , handle(_handle)
+         , context(_context) {}
+      
+      
+      handle_type handle;
+      const apply_context& context;
+
+      void check_size() const;
+   };
+
+   pending_transaction::handle_type next_pending_transaction_serial;
+   vector<pending_transaction> pending_transactions;
+
+   pending_transaction& get_pending_transaction(pending_transaction::handle_type handle);
+   pending_transaction& create_pending_transaction();
+   void release_pending_transaction(pending_transaction::handle_type handle);
+
+   ///< pending message construction
+   typedef uint32_t pending_message_handle;
+   struct pending_message : public types::Message {
+      typedef uint32_t handle_type;
+      
+      pending_message(const handle_type& _handle, const AccountName& code, const FuncName& type, const Bytes& data)
+         : types::Message(code, type, vector<types::AccountPermission>(), data)
+         , handle(_handle) {}
+
+      handle_type handle;
+   };
+
+   pending_transaction::handle_type next_pending_message_serial;
+   vector<pending_message> pending_messages;
+
+   pending_message& get_pending_message(pending_message::handle_type handle);
+   pending_message& create_pending_message(const AccountName& code, const FuncName& type, const Bytes& data);
+   void release_pending_message(pending_message::handle_type handle);
 };
 
 using apply_handler = std::function<void(apply_context&)>;

@@ -381,7 +381,7 @@ namespace eos {
     *  MeToYou.quantity = Tokens(100);
     *  @endcode
     */
-   struct Transfer {
+   struct PACKED(Transfer) {
      /**
       * Defines transfer action type
       * @brief Defines transfer action type
@@ -402,6 +402,12 @@ namespace eos {
       * @brief Quantity of token to be transferred
       */
      Tokens       quantity;
+
+     /**
+      * Length of the memo field, included for binary compatibility
+      * @brief Length of the memo field
+      */
+     const uint8_t memo_length = 0;
    };
    /// @} tokenhppapi
 } // namespace eos

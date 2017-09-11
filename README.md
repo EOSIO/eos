@@ -96,7 +96,7 @@ cmake . && make
 
 ```
 
-Add BINARYEN_ROOT to your .bash_profile:
+Add `BINARYEN_ROOT` to your .bash_profile:
 
 ```bash
 echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
@@ -144,7 +144,7 @@ Install the dependencies:
 
 ```bash
 brew update
-brew install git automake libtool boost openssl llvm
+brew install git automake libtool boost openssl llvm gmp
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -169,7 +169,7 @@ git checkout tags/1.37.14
 cmake . && make
 ```
 
-Add BINARYEN_ROOT to your .bash_profile:
+Add `BINARYEN_ROOT` to your .bash_profile:
 
 ```bash
 echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
@@ -228,7 +228,7 @@ This is needed to compile the example contracts inside `eos/contracts` folder an
 cd ~
 git clone https://github.com/eosio/eos --recursive
 mkdir -p ~/eos/build && cd ~/eos/build
-cmake -DBINARYEN_BIN=~/binaryen/bin ..
+cmake -DBINARYEN_BIN=~/binaryen/bin -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib ..
 make -j4
 ```
 
@@ -250,7 +250,7 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet 
 
-After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with `Ctrl-C`. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
+After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
 
 Edit the `config.ini` file, adding the following settings to the defaults already in place:
 
@@ -456,7 +456,8 @@ After this you can send a message to the contract:
 As a confirmation of a successfully submitted transaction you will get a json with a `transaction_id` field.
 
 <a name="readingcontract"></a>
-### Reading Currency Contract Balance 
+### Reading currency contract balance 
+
 
 ```bash
 ./eosc get table inita currency account
@@ -529,7 +530,8 @@ Simple and fast setup of EOS in Docker is also available. Firstly, install depen
  - [Docker-compose](https://github.com/docker/compose)
  - [Docker-volumes](https://github.com/cpuguy83/docker-volumes)
 
-Build EOS image
+Build eos image:
+
 
 ```bash
 git clone https://github.com/EOSIO/eos.git --recursive

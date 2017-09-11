@@ -94,7 +94,7 @@ namespace eos {
     *  make it easy to print any native type. You can even overload
     *  the `print()` method for your own custom types.
     *
-    *  ### Example:
+    *  **Example:**
     *  ```
     *     print( "hello world, this is a number: ", 5 );
     *  ```

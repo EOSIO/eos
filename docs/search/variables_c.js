@@ -1,11 +1,4 @@
 var searchData=
 [
-  ['phone',['phone',['../struct_test_model.html#a8013df125ab65020ecc79559743b651c',1,'TestModel']]],
-  ['player',['player',['../structdice_1_1_offer_bet.html#aa3c5d3ee1d3077c8573564cbe0e60a1c',1,'dice::OfferBet']]],
-  ['postid',['postid',['../struct_post_action.html#a6a2f4331e759c5b263202664631ff5fe',1,'PostAction::postid()'],['../struct_vote_action.html#a074d55875f77924c4bf9cd53c92eefa8',1,'VoteAction::postid()']]],
-  ['precision',['precision',['../structeos_1_1price.html#acc37f49e03b96f6ca1642a937280a533',1,'eos::price']]],
-  ['price',['price',['../struct_test_model128x2.html#ab222dabb3fb2f46837fc24d976444044',1,'TestModel128x2']]],
-  ['primary',['primary',['../test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f',1,'test_db.cpp']]],
-  ['primary_5flb',['primary_lb',['../test__db_8cpp.html#a5e95d3f9c6d380457f204b50ed4fa2fc',1,'test_db.cpp']]],
-  ['primary_5fub',['primary_ub',['../test__db_8cpp.html#a59d12b3568e1bf7123dc217cb9b7bc6b',1,'test_db.cpp']]]
+  ['quantity',['quantity',['../struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html#a2892db9fb7756afd55846ef6979406e4',1,'TOKEN_NAME::Transfer::quantity()'],['../structeos_1_1token.html#a3daddb64094c45d8f51897aabd44ba3d',1,'eos::token::quantity()'],['../structeos_1_1_transfer.html#a7def55a64767b812debfa5fa0407b1ab',1,'eos::Transfer::quantity()'],['../structinfinite_1_1_transfer.html#a7bb1f54a3a58f42f067d9a020c900ddf',1,'infinite::Transfer::quantity()']]]
 ];

@@ -78,14 +78,16 @@ Classes</h2></td></tr>
 Functions</h2></td></tr>
 <tr class="memitem:gadf253cd14769024187b6aaba198a588d"><td class="memTemplParams" colspan="2">template&lt;typename Arg , typename... Args&gt; </td></tr>
 <tr class="memitem:gadf253cd14769024187b6aaba198a588d"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#gadf253cd14769024187b6aaba198a588d">eos::print</a> (Arg a, Args... args)</td></tr>
+<tr class="memdesc:gadf253cd14769024187b6aaba198a588d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Print out value / list of values.  <a href="group__console_cppapi.html#gadf253cd14769024187b6aaba198a588d">More...</a><br /></td></tr>
 <tr class="separator:gadf253cd14769024187b6aaba198a588d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gad4459f4a84575efe71fa3637298b8510"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:gad4459f4a84575efe71fa3637298b8510"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classeos_1_1iostream.html">iostream</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#gad4459f4a84575efe71fa3637298b8510">eos::operator&lt;&lt;</a> (<a class="el" href="classeos_1_1iostream.html">iostream</a> &amp;out, const T &amp;v)</td></tr>
+<tr class="memdesc:gad4459f4a84575efe71fa3637298b8510"><td class="mdescLeft">&#160;</td><td class="mdescRight">Overload c++ iostream.  <a href="group__console_cppapi.html#gad4459f4a84575efe71fa3637298b8510">More...</a><br /></td></tr>
 <tr class="separator:gad4459f4a84575efe71fa3637298b8510"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<p>This API uses C++ varidic templates and type detection to make it easy to print any native type. You can even overload the <code><a class="el" href="namespaceeos.html#a1df73defa04d39763089df7faa35a934">print()</a></code> method for your own custom types.</p>
-<p>### Example: </p><div class="fragment"><div class="line"><a class="code" href="namespaceeos.html#a1df73defa04d39763089df7faa35a934">print</a>( <span class="stringliteral">&quot;hello world, this is a number: &quot;</span>, 5 );</div></div><!-- fragment --><h1><a class="anchor" id="override"></a>
+<p>This API uses C++ varidic templates and type detection to make it easy to print any native type. You can even overload the <code><a class="el" href="namespaceeos.html#a1df73defa04d39763089df7faa35a934" title="Prints string. ">print()</a></code> method for your own custom types.</p>
+<p><b>Example:</b> </p><div class="fragment"><div class="line"><a class="code" href="namespaceeos.html#a1df73defa04d39763089df7faa35a934">print</a>( <span class="stringliteral">&quot;hello world, this is a number: &quot;</span>, 5 );</div></div><!-- fragment --><h1><a class="anchor" id="override"></a>
 Overriding Print for your Types</h1>
 <p>There are two ways to overload print:</p><ol type="1">
 <li>implement void print( const T&amp; )</li>
@@ -127,7 +129,14 @@ template&lt;typename T &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-
+<p>Overload c++ iostream </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">out</td><td>Output strem </td></tr>
+    <tr><td class="paramname">v</td><td>Value to be printed</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">const</span> <span class="keywordtype">char</span> *s = <span class="stringliteral">&quot;Hello World!&quot;</span>;</div><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> unsigned_64_bit_int = 1e+18;</div><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> unsigned_128_bit_int (87654323456);</div><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> string_as_unsigned_64_bit = <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(abcde);</div><div class="line">std::out &lt;&lt; s &lt;&lt; <span class="stringliteral">&quot; &quot;</span> &lt;&lt; unsigned_64_bit_int &lt;&lt; <span class="stringliteral">&quot; &quot;</span>  &lt;&lt; unsigned_128_bit_int &lt;&lt; <span class="stringliteral">&quot; &quot;</span> &lt;&lt; string_as_unsigned_64_bit);</div><div class="line"><span class="comment">// Ouput: Hello World! 1000000000000000000 87654323456 abcde</span></div></div><!-- fragment --> 
 </div>
 </div>
 <a id="gadf253cd14769024187b6aaba198a588d"></a>
@@ -157,7 +166,14 @@ template&lt;typename Arg , typename... Args&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-
+<p>Print out value / list of values (except double) </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">a</td><td>Value to be printed </td></tr>
+    <tr><td class="paramname">args</td><td>Other values to be printed</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Example: </p><div class="fragment"><div class="line"><span class="keywordtype">char</span> *s = <span class="stringliteral">&quot;Hello World!&quot;</span>;</div><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> unsigned_64_bit_int = 1e+18;</div><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> unsigned_128_bit_int (87654323456);</div><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> string_as_unsigned_64_bit = <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(abcde);</div><div class="line"><a class="code" href="namespaceeos.html#a1df73defa04d39763089df7faa35a934">print</a>(s , unsigned_64_bit_int, unsigned_128_bit_int, string_as_unsigned_64_bit);</div><div class="line"><span class="comment">// Ouput: Hello World!100000000000000000087654323456abcde</span></div></div><!-- fragment --> 
 </div>
 </div>
 </div><!-- contents -->

@@ -4,6 +4,8 @@ var searchData=
   ['tableid',['tableId',['../struct_post_record.html#afb0a79a2870fe1e4363bf0c192a80470',1,'PostRecord::tableId()'],['../struct_account.html#a7fbadc2df42ed474ce339a17adfb91da',1,'Account::tableId()']]],
   ['test_5fdiveq_5fi128',['test_diveq_i128',['../structtest__math.html#a00bb8e02d1758d000a77f0e22e79139a',1,'test_math']]],
   ['test_5fdiveq_5fi128_5fby_5f0',['test_diveq_i128_by_0',['../structtest__math.html#addd6fde69b24305f928895e1d820a8ee',1,'test_math']]],
+  ['test_5fdouble_5fapi',['test_double_api',['../structtest__math.html#a3d50fc133a6e6951fd66f63c200fe876',1,'test_math']]],
+  ['test_5fdouble_5fapi_5fdiv_5f0',['test_double_api_div_0',['../structtest__math.html#ad257828d9355540ee9c62de12292fe03',1,'test_math']]],
   ['test_5fmulteq_5fi128',['test_multeq_i128',['../structtest__math.html#a7a329c026292f919d5207f38ab1cbe9f',1,'test_math']]],
   ['test_5fprinti',['test_printi',['../structtest__print.html#aa14d348af4d4f562a98b92f693c963dd',1,'test_print']]],
   ['test_5fprinti128',['test_printi128',['../structtest__print.html#abeb45b435d9084b243e18e8919c84834',1,'test_print']]],
