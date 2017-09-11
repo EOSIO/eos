@@ -173,10 +173,22 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
 }
 
 
+vector<types::AccountPermission> get_account_permissions(const vector<string>& permissions) {
+   auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
+      vector<string> pieces;
+      split(pieces, p, boost::algorithm::is_any_of("@"));
+      FC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+      return types::AccountPermission(pieces[0], pieces[1]);
+   });
+   vector<types::AccountPermission> accountPermissions;
+   boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
+   return accountPermissions;
+}
 
 fc::variant call( const std::string& server, uint16_t port,
                   const std::string& path,
                   const fc::variant& postdata = fc::variant() );
+
 
 template<typename T>
 fc::variant call( const std::string& server, uint16_t port,
@@ -266,6 +278,28 @@ int main( int argc, char** argv ) {
    createAccount->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
    createAccount->set_callback([&] {
       create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign);
+   });
+
+   // create producer
+   vector<string> permissions;
+   auto createProducer = create->add_subcommand("producer", "Create a new producer on the blockchain", false);
+   createProducer->add_option("name", name, "The name of the new producer")->required();
+   createProducer->add_option("OwnerKey", ownerKey, "The public key for the producer")->required();
+   createProducer->add_option("-p,--permission", permissions,
+                              "An account and permission level to authorize, as in 'account@permission' (default user@active)");
+   createProducer->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   createProducer->set_callback([&name, &ownerKey, &permissions, &skip_sign] {
+      if (permissions.empty()) {
+         permissions.push_back(name + "@active");
+      }
+      auto account_permissions = get_account_permissions(permissions);
+
+      SignedTransaction trx;
+      trx.scope = sort_names({config::EosContractName, name});
+      transaction_emplace_message(trx, config::EosContractName, account_permissions,
+                                  "setproducer", types::setproducer{name, public_key_type(ownerKey), BlockchainConfiguration{}});
+
+      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
    });
 
    // Get subcommand
@@ -411,12 +445,14 @@ int main( int argc, char** argv ) {
 
    });
 
-   // Contract subcommand
+   // set subcommand
+   auto setSubcommand = app.add_subcommand("set", "Set or update blockchain state");
+   setSubcommand->require_subcommand();
+
+   // set contract subcommand
    string account;
    string wastPath;
    string abiPath;
-   auto setSubcommand = app.add_subcommand("set", "Set or update blockchain state");
-   setSubcommand->require_subcommand();
    auto contractSubcommand = setSubcommand->add_subcommand("contract", "Create or update the contract on an account");
    contractSubcommand->add_option("account", account, "The account to publish a contract for")->required();
    contractSubcommand->add_option("wast-file", wastPath, "The file containing the contract WAST")->required()
@@ -444,6 +480,35 @@ int main( int argc, char** argv ) {
 
       std::cout << "Publishing contract..." << std::endl;
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
+   });
+
+   // set producer approve/unapprove subcommand
+   string producer;
+   auto producerSubcommand = setSubcommand->add_subcommand("producer", "Approve/unapprove producer");
+   producerSubcommand->require_subcommand();
+   auto approveCommand = producerSubcommand->add_subcommand("approve", "Approve producer");
+   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", "Unapprove producer");
+   producerSubcommand->add_option("user-name", name, "The name of the account approving")->required();
+   producerSubcommand->add_option("producer-name", producer, "The name of the producer to approve")->required();
+   producerSubcommand->add_option("-p,--permission", permissions,
+                              "An account and permission level to authorize, as in 'account@permission' (default user@active)");
+   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   producerSubcommand->set_callback([&] {
+      // don't need to check unapproveCommand because one of approve or unapprove is required
+      bool approve = producerSubcommand->got_subcommand(approveCommand);
+      if (permissions.empty()) {
+         permissions.push_back(name + "@active");
+      }
+      auto account_permissions = get_account_permissions(permissions);
+
+      SignedTransaction trx;
+      trx.scope = sort_names({config::EosContractName, name});
+      transaction_emplace_message(trx, config::EosContractName, account_permissions,
+                                  "okproducer", types::okproducer{name, producer, approve});
+
+      push_transaction(trx, !skip_sign);
+      std::cout << "Set producer approval from " << name << " for " << producer << " to "
+                << (approve ? "" : "un") << "approve." << std::endl;
    });
 
    // Transfer subcommand
@@ -687,7 +752,6 @@ int main( int argc, char** argv ) {
    push->require_subcommand();
 
    // push message
-   vector<string> permissions;
    string contract;
    string action;
    string data;
@@ -711,16 +775,9 @@ int main( int argc, char** argv ) {
                 ("args", fc::json::from_string(data));
       auto result = call(json_to_bin_func, arg);
 
-      auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
-         vector<string> pieces;
-         boost::split(pieces, p, boost::is_any_of("@"));
-         FC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
-         return types::AccountPermission(pieces[0], pieces[1]);
-      });
+      auto accountPermissions = get_account_permissions(permissions);
 
       SignedTransaction trx;
-      vector<types::AccountPermission> accountPermissions;
-      boost::copy(fixedPermissions, std::back_inserter(accountPermissions)); 
       transaction_emplace_serialized_message(trx, contract, action, accountPermissions,
                                                       result.get_object()["binargs"].as<Bytes>());
       for( const auto& scope : scopes ) {
