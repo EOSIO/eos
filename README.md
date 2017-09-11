@@ -286,7 +286,7 @@ plugin = eos::chain_api_plugin
 plugin = eos::http_plugin
 ```
 
-Now it should be possible to run `eosd` and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, these instructions will be updated to show how to create an example multi-node testnet.
+Now it should be possible to run `eosd` and see it begin producing blocks.
 
 When running `eosd` you should get log messages similar to below. It means the blocks are successfully produced.
 
@@ -485,10 +485,10 @@ For testing purposes you will run 2 local production nodes talking to each other
 ```bash
 cd ~/eos/build
 cp ../genesis.json ./
-./programs/launcher/launcher -p2 -o testnet.json --skip-signature -l local
+./programs/launcher/launcher -p2 —skip-signatures
 ```
 
-This command will generate 2 data folder for each instance of the node: `tn_data_0` and `tn_data_1`, as well as `testnet.json` file for the testnet configuration.
+This command will generate 2 data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
 
 You should see a following response:
 
