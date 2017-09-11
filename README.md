@@ -192,7 +192,7 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j4 install
 ```
 
-Add WASM_LLVM_CONFIG and LLVM_DIR to your .bash_profile:
+Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
