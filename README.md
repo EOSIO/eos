@@ -208,11 +208,15 @@ source ~/.bash_profile
 
 To download all of the code, download EOS source code and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
 
-`git clone https://github.com/eosio/eos --recursive`
+```bash
+git clone https://github.com/eosio/eos --recursive
+```
 
 If a repo is cloned without the `--recursive` flag, the submodules can be retrieved after the fact by running this command from within the repo:
 
-`git submodule update --init --recursive`
+```bash
+git submodule update --init --recursive
+```
 
 <a name="build"></a>
 ### Building from source code 
