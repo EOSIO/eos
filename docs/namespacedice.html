@@ -84,7 +84,7 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a72186884f38f963618fea0644ea10df3"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacedice.html#a72186884f38f963618fea0644ea10df3">EosTokens</a> = <a class="el" href="namespaceeos.html#a100da99668f0d5c65bf15dae78926104">eos::Tokens</a></td></tr>
+<tr class="memitem:a72186884f38f963618fea0644ea10df3"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacedice.html#a72186884f38f963618fea0644ea10df3">EosTokens</a> = <a class="el" href="group__tokens.html#ga100da99668f0d5c65bf15dae78926104">eos::Tokens</a></td></tr>
 <tr class="separator:a72186884f38f963618fea0644ea10df3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9cd405289e076229c908b10f3777a442"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacedice.html#a9cd405289e076229c908b10f3777a442">Accounts</a> = <a class="el" href="struct_table.html">Table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(dice), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(dice), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account), <a class="el" href="struct_account.html">Account</a>, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
 <tr class="separator:a9cd405289e076229c908b10f3777a442"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -136,7 +136,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">using <a class="el" href="namespacedice.html#a72186884f38f963618fea0644ea10df3">dice::EosTokens</a> = typedef <a class="el" href="namespaceeos.html#a100da99668f0d5c65bf15dae78926104">eos::Tokens</a></td>
+          <td class="memname">using <a class="el" href="namespacedice.html#a72186884f38f963618fea0644ea10df3">dice::EosTokens</a> = typedef <a class="el" href="group__tokens.html#ga100da99668f0d5c65bf15dae78926104">eos::Tokens</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -207,7 +207,7 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>No authority required by this so long as </p>
-<p>lookup Game by id, assert <a class="el" href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d">now()</a> &gt; deadline and deadline != 0 pay the player that revealed delete game and open offers </p>
+<p>lookup Game by id, assert <a class="el" href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d" title="Get time of the last accepted block. ">now()</a> &gt; deadline and deadline != 0 pay the player that revealed delete game and open offers </p>
 
 </div>
 </div>
@@ -250,7 +250,7 @@ Functions</h2></td></tr>
 <p>No authority required on this message so long as it is properly revealed </p>
 <p>assert offer already exists assert offer has a gameid &gt; 0</p>
 <p>Lookup Game by gameid assert Game.player[x].reveal is 0 hasn't already been revealed set Game.player[x].reveal to revealed</p>
-<p>if( Game.player[!x].reveal != 0 ) { uint256_t result; sha256( &amp;game.player1, sizeof(Player)*2, result); if( result.words[1] &lt; result.words[0] ) { payPlayer1 by incrementing account by bet and decrement open games } else payPlayer2 by incrmenting account by bet and decrement open games delete game, and both offers } else { set Game.deadline = <a class="el" href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d">now()</a> + timeout (5 minutes) }</p>
+<p>if( Game.player[!x].reveal != 0 ) { uint256_t result; sha256( &amp;game.player1, sizeof(Player)*2, result); if( result.words[1] &lt; result.words[0] ) { payPlayer1 by incrementing account by bet and decrement open games } else payPlayer2 by incrmenting account by bet and decrement open games delete game, and both offers } else { set Game.deadline = <a class="el" href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d" title="Get time of the last accepted block. ">now()</a> + timeout (5 minutes) }</p>
 
 </div>
 </div>

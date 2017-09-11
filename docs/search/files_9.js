@@ -2,7 +2,6 @@ var searchData=
 [
   ['test_5fapi_2ecpp',['test_api.cpp',['../test__api_8cpp.html',1,'']]],
   ['test_5fapi_2ehpp',['test_api.hpp',['../test__api_8hpp.html',1,'']]],
-  ['test_5fapi_2ewast_2ehpp',['test_api.wast.hpp',['../test__api_8wast_8hpp.html',1,'']]],
   ['test_5fcrypto_2ecpp',['test_crypto.cpp',['../test__crypto_8cpp.html',1,'']]],
   ['test_5fdb_2ecpp',['test_db.cpp',['../test__db_8cpp.html',1,'']]],
   ['test_5fmath_2ecpp',['test_math.cpp',['../test__math_8cpp.html',1,'']]],

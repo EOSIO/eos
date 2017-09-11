@@ -65,7 +65,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Interface to a database table with 64 bit primary, secondary and tertiary keys and arbitary binary data value.  
+<p>Interface to a database table with 64 bit primary, secondary and tertiary keys and arbitrary binary data value.  
 <a href="#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
@@ -132,9 +132,9 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>the total number of bytes read or -1 for "not found" or "end" where bytes read includes 24 bytes of the key</dd></dl>
 <p>These methods assume a database table with records of the form:</p>
-<div class="fragment"><div class="line"><span class="keyword">struct </span>Record {</div><div class="line">   uint64  <a class="code" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>;</div><div class="line">   uint64  <a class="code" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>;</div><div class="line">   uint64  <a class="code" href="test__db_8cpp.html#a632e136a0d941bad1256d19a04735542">tertiary</a>;</div><div class="line">   ... arbitrary data ...</div><div class="line">};</div></div><!-- fragment --><p>You can iterate over these indicies with primary index sorting records by { primary, secondary, tertiary }, the secondary index sorting records by { secondary, tertiary } and the tertiary index sorting records by { tertiary }.</p>
-<dl class="section see"><dt>See also</dt><dd><a class="el" href="struct_table.html" title="defines a type-safe C++ wrapper around the Database C API ">Table</a> class in C++ API </dd></dl>
-<h2 class="groupheader">Function Documentation</h2>
+<div class="fragment"><div class="line"><span class="keyword">struct </span>Record {</div><div class="line">   uint64  <a class="code" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>;</div><div class="line">   uint64  <a class="code" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>;</div><div class="line">   uint64  <a class="code" href="test__db_8cpp.html#a632e136a0d941bad1256d19a04735542">tertiary</a>;</div><div class="line">   ... arbitrary data ...</div><div class="line">};</div></div><!-- fragment --><p>You can iterate over these indices with primary index sorting records by { primary, secondary, tertiary }, the secondary index sorting records by { secondary, tertiary } and the tertiary index sorting records by { tertiary }.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="struct_table.html">Table</a> class in C++ API</dd></dl>
+<p>Example </p><div class="fragment"><div class="line"><span class="keyword">struct </span><a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a> {</div><div class="line">       <a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="code" href="struct_test_model3xi64.html#aea523fe114c14a8759471342235c5ae8">a</a>;</div><div class="line">       <a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="code" href="struct_test_model3xi64.html#ae5d2cf31bb5c565e0b7b5c1c91b9f414">b</a>;</div><div class="line">       <a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="code" href="struct_test_model3xi64.html#ad774e8c5f27a061e2c29e7ff009e6af8">c</a>;</div><div class="line">       <a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> name;</div><div class="line">};</div><div class="line"></div><div class="line"><a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a> alice{ 0, 0, 0, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(alice) };</div><div class="line"><a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a> bob{ 1, 1, 1, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(bob) };</div><div class="line"><a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a> carol{ 2, 2, 2, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(carol) };</div><div class="line"><a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a> dave{ 3, 3, 3, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(dave) };</div><div class="line"></div><div class="line"><a class="code" href="types_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> res = <a class="code" href="group__dbi64i64i64.html#ga7826d0ee243e493267f6c046774ecf66">store_i64i64i64</a>(CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;alice, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#ga7826d0ee243e493267f6c046774ecf66">store_i64i64i64</a>(CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;bob, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#ga7826d0ee243e493267f6c046774ecf66">store_i64i64i64</a>(CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;carol, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#ga7826d0ee243e493267f6c046774ecf66">store_i64i64i64</a>(CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;dave, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line"></div><div class="line"><a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a> query;</div><div class="line">query.<a class="code" href="struct_test_model3xi64.html#aea523fe114c14a8759471342235c5ae8">a</a> = 0;</div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#ga13d5affb0198bb34d9a1268c2ae01a64">load_primary_i64i64i64</a>(CurrentCode(), CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;query, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">ASSERT(res == <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>) &amp;&amp; query.name == <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(alice), <span class="stringliteral">&quot;load&quot;</span>);</div><div class="line"></div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#ga08198c5930bf690ba7c4ce2c867b14ad">front_primary_i64i64i64</a>(CurrentCode(), CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;query, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">ASSERT(res == <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>) &amp;&amp; query.name == <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(dave), <span class="stringliteral">&quot;front&quot;</span>);</div><div class="line"></div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#gae20c37c57d67ab80cb5cbeb660299e3a">back_primary_i64i64i64</a>(CurrentCode(), CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;query, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">ASSERT(res == <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>) &amp;&amp; query.name == <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(alice), <span class="stringliteral">&quot;back&quot;</span>);</div><div class="line"></div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#gaedcd3ca593ac4f99b103c24b139c6d46">previous_primary_i64i64i64</a>(CurrentCode(), CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;query, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">ASSERT(res == <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>) &amp;&amp; query.name == <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(bob), <span class="stringliteral">&quot;previous&quot;</span>);</div><div class="line"></div><div class="line">res = <a class="code" href="group__dbi64i64i64.html#ga99cb7c9ef114891818db8a33f35a8823">next_primary_i64i64i64</a>(CurrentCode(), CurrentCode(), <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table_name), &amp;query, <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>));</div><div class="line">ASSERT(res == <span class="keyword">sizeof</span>(<a class="code" href="struct_test_model3xi64.html">TestModel3xi64</a>) &amp;&amp; query.name == <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(alice), <span class="stringliteral">&quot;next&quot;</span>);*</div></div><!-- fragment --> <h2 class="groupheader">Function Documentation</h2>
 <a id="gae20c37c57d67ab80cb5cbeb660299e3a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#gae20c37c57d67ab80cb5cbeb660299e3a">&#9670;&nbsp;</a></span>back_primary_i64i64i64()</h2>
 
@@ -178,6 +178,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the back record of primary key </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -224,6 +235,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the back record of secondary key </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -270,6 +292,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the back record of a tertiary key </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -316,6 +349,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the front record of primary key </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -362,6 +406,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the front record of a secondary key </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -408,6 +463,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the front record of a tertiary key </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -454,6 +520,31 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- the code which owns the table </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the current scope/code context to modify </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the record, must be initialized with the (primary,secondary,tertiary) to load </td></tr>
+    <tr><td class="paramname">len</td><td>- length of record to copy </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read, -1 if key was not found</dd></dl>
+<dl class="section pre"><dt>Precondition</dt><dd>data is a valid pointer to a range of memory at least len bytes long </dd>
+<dd>
+*((uint64_t*)data) stores the primary key </dd>
+<dd>
+scope is declared by the current transaction </dd>
+<dd>
+this method is being called from an apply context (not validate or precondition)</dd></dl>
+<dl class="section post"><dt>Postcondition</dt><dd>data will be initialized with the len bytes of record matching the key.</dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">if</td><td>called with an invalid precondition execution will be aborted </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -500,6 +591,31 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- the code which owns the table </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the current scope/code context to modify </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the record, must be initialized with the (secondary,tertiary) to load </td></tr>
+    <tr><td class="paramname">len</td><td>- length of record to copy </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read, -1 if key was not found</dd></dl>
+<dl class="section pre"><dt>Precondition</dt><dd>data is a valid pointer to a range of memory at least len bytes long </dd>
+<dd>
+*((uint64_t*)data) stores the secondary key </dd>
+<dd>
+scope is declared by the current transaction </dd>
+<dd>
+this method is being called from an apply context (not validate or precondition)</dd></dl>
+<dl class="section post"><dt>Postcondition</dt><dd>data will be initialized with the len bytes of record matching the key.</dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">if</td><td>called with an invalid precondition execution will be aborted </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -546,6 +662,31 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- the code which owns the table </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the current scope/code context to modify </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the record, must be initialized with the (tertiary) to load </td></tr>
+    <tr><td class="paramname">len</td><td>- length of record to copy </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read, -1 if key was not found</dd></dl>
+<dl class="section pre"><dt>Precondition</dt><dd>data is a valid pointer to a range of memory at least len bytes long </dd>
+<dd>
+*((uint64_t*)data) stores the tertiary key </dd>
+<dd>
+scope is declared by the current transaction </dd>
+<dd>
+this method is being called from an apply context (not validate or precondition)</dd></dl>
+<dl class="section post"><dt>Postcondition</dt><dd>data will be initialized with the len bytes of record matching the key.</dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">if</td><td>called with an invalid precondition execution will be aborted </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -592,6 +733,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the lower bound of primary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -638,6 +790,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the lower bound of secondary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -684,6 +847,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the lower bound of tertiary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -730,6 +904,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the next record of primary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -776,6 +961,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the next record; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -822,6 +1018,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the next record; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -868,6 +1075,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the previous record of primary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -914,6 +1132,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the previous record; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -960,6 +1189,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the previous record; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -996,7 +1236,9 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">data</td><td>- must point to at lest 24 bytes containing {primary,secondary,tertiary}</td></tr>
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">table</td><td>- the name of table where record is stored </td></tr>
+    <tr><td class="paramname">data</td><td>- must point to at least 24 bytes containing {primary,secondary,tertiary}</td></tr>
   </table>
   </dd>
 </dl>
@@ -1041,6 +1283,15 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">table</td><td>- the name of table where record is stored </td></tr>
+    <tr><td class="paramname">data</td><td>- must point to at least 24 bytes containing (primary,secondary,tertiary) </td></tr>
+    <tr><td class="paramname">len</td><td>- length of the data </td></tr>
+  </table>
+  </dd>
+</dl>
 <dl class="section return"><dt>Returns</dt><dd>1 if a new record was created, 0 if an existing record was updated </dd></dl>
 
 </div>
@@ -1082,6 +1333,15 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">table</td><td>- the name of table where record is stored </td></tr>
+    <tr><td class="paramname">data</td><td>- must point to at least 24 bytes containing (primary,secondary,tertiary) </td></tr>
+    <tr><td class="paramname">len</td><td>- length of the data </td></tr>
+  </table>
+  </dd>
+</dl>
 <dl class="section return"><dt>Returns</dt><dd>1 if the record was updated, 0 if no record with key was found </dd></dl>
 
 </div>
@@ -1129,6 +1389,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the upper bound of a primary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -1175,6 +1446,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the upper bound of tertiary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -1221,6 +1503,17 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the upper bound of tertiary key; must be initialized with a key value </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read, must be greater than sizeof(uint64_t)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>

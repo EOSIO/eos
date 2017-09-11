@@ -157,6 +157,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the back record based on primary index. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -211,6 +222,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the back record based on secondary index. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -265,6 +287,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the front record based on primary index. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -319,6 +352,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the front record based on secondary index. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -373,6 +417,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the data; must be initialized with the primary key. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -427,6 +482,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the record based on secondary index; must be initialized with secondary key. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -481,6 +547,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the record. must be initialized with the primary key to fetch lower bound of. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -535,6 +612,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the lower bound record; must be initialized with a key to find the lower bound. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -589,6 +677,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the data; must be initialized with the primary key to fetch next record. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -643,6 +742,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the next record based on secondary index; must be initialized with a key. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -697,6 +807,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the record; must be initialized with the primary key to fetch previous record. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -751,6 +872,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the previous record; must be initialized with a key. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -793,6 +925,15 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- must be initialized with the key (primary, secondary) of the record to remove.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>1 if remove successful else -1 </dd></dl>
 
 </div>
 </div>
@@ -841,6 +982,16 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- must be initialized with the data to be stored. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to be be stored.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>1 if store successful else -1 </dd></dl>
 
 </div>
 </div>
@@ -889,6 +1040,16 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- must be initialized with the data to be updated. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to be updated.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>1 if update successful else -1 </dd></dl>
 
 </div>
 </div>
@@ -943,6 +1104,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the record. must be initialized with the primary key to fetch upper bound of. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>
@@ -997,6 +1169,17 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scope</td><td>- the account scope that will be read, must exist in the transaction scopes list </td></tr>
+    <tr><td class="paramname">code</td><td>- identifies the code that controls write-access to the data </td></tr>
+    <tr><td class="paramname">table</td><td>- the ID/name of the table within the scope/code context to query </td></tr>
+    <tr><td class="paramname">data</td><td>- location to copy the upper bound record; must be initialized with a key to find the upper bound. </td></tr>
+    <tr><td class="paramname">len</td><td>- the maximum length of data to read</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes read or -1 if no record found </dd></dl>
 
 </div>
 </div>

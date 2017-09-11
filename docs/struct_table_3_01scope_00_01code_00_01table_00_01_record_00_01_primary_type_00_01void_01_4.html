@@ -64,18 +64,16 @@ $(function() {
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">Table&lt; scope, code, table, Record, PrimaryType, void &gt; Struct Template Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__database.html">Database API</a> &raquo; <a class="el" href="group__database_cpp.html">Database C++ API</a></div></div>  </div>
+<div class="title">Table&lt; scope, code, table, Record, PrimaryType, void &gt; Struct Template Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__database.html">Database API</a> &raquo; <a class="el" href="group__database_cpp.html">Database C++ API</a> &raquo; <a class="el" href="group___singleindextable.html">Single Index Table</a></div></div>  </div>
 </div><!--header-->
 <div class="contents">
-
-<p>this specialization of <a class="el" href="struct_table.html" title="defines a type-safe C++ wrapper around the Database C API ">Table</a> is for single-index tables  
- <a href="struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="db_8hpp_source.html">db.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4_1_1_primary_index.html">PrimaryIndex</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Primary Index of <a class="el" href="struct_table.html">Table</a>.  <a href="struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4_1_1_primary_index.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
@@ -100,21 +98,7 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a0f4509d1612728dca40ae1d5bc5bef9c"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4.html#a0f4509d1612728dca40ae1d5bc5bef9c">remove</a> (const Record &amp;r, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> s=scope)</td></tr>
 <tr class="separator:a0f4509d1612728dca40ae1d5bc5bef9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><h3>template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record, typename PrimaryType&gt;<br />
-struct Table&lt; scope, code, table, Record, PrimaryType, void &gt;</h3>
-
-<dl class="tparams"><dt>Template Parameters</dt><dd>
-  <table class="tparams">
-    <tr><td class="paramname">scope</td><td>- the default account name scope that this table is located within </td></tr>
-    <tr><td class="paramname">code</td><td>- the code account name which has write permission to this table </td></tr>
-    <tr><td class="paramname">table</td><td>- a unique identifier (name) for this table </td></tr>
-    <tr><td class="paramname">Record</td><td>- the type of data stored in each row </td></tr>
-    <tr><td class="paramname">PrimaryType</td><td>- the type of the first field stored in Record </td></tr>
-  </table>
-  </dd>
-</dl>
-</div><h2 class="groupheader">Member Typedef Documentation</h2>
+<h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="af6686d4a11f2e9d38c9aa19e97633391"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#af6686d4a11f2e9d38c9aa19e97633391">&#9670;&nbsp;</a></span>Primary</h2>
 
@@ -157,6 +141,13 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<p>fetches the back of the table </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to hold the value </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the back </dd></dl>
 
 </div>
 </div>
@@ -185,6 +176,13 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<p>fetches the front of the table </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference to hold the value </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if successfully retrieved the front </dd></dl>
 
 </div>
 </div>
@@ -229,6 +227,15 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<p>retrieves the record for the specified primary key </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">p</td><td>- the primary key of the record to fetch </td></tr>
+    <tr><td class="paramname">r</td><td>- reference of record to hold return value </td></tr>
+    <tr><td class="paramname">s</td><td>- scope; defaults to scope of the class. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if get succeeds. </dd></dl>
 
 </div>
 </div>
@@ -267,6 +274,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<p>retrieves a record based on initialized primary key value </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- reference of a record to hold return value; must be initialized to the primary key to be fetched. </td></tr>
+    <tr><td class="paramname">s</td><td>- scope; defaults to scope of the class. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if get succeeds. </dd></dl>
 
 </div>
 </div>
@@ -305,6 +320,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<p>remove a record from the table. </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- the record to be removed. </td></tr>
+    <tr><td class="paramname">s</td><td>- scope; defaults to scope of the class. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if remove succeeds. </dd></dl>
 
 </div>
 </div>
@@ -343,6 +366,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<p>store a record to the table </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- the record to be stored. </td></tr>
+    <tr><td class="paramname">s</td><td>- scope; defaults to scope of the class. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if store succeeds. </dd></dl>
 
 </div>
 </div>
@@ -381,6 +412,14 @@ template&lt;uint64_t scope, uint64_t code, uint64_t table, typename Record , typ
   </tr>
 </table>
 </div><div class="memdoc">
+<p>update a record in the table. </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">r</td><td>- the record to be updated including the updated values (cannot update the index). </td></tr>
+    <tr><td class="paramname">s</td><td>- scope; defaults to scope of the class. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if update succeeds. </dd></dl>
 
 </div>
 </div>

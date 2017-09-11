@@ -1,6 +1,9 @@
 var searchData=
 [
-  ['reply_5fto_5fauthor',['reply_to_author',['../struct_post_action.html#abf9cfe14896ee4c46f96946150d1d000',1,'PostAction']]],
-  ['reply_5fto_5fid',['reply_to_id',['../struct_post_action.html#a44dd78c6c6386998dd58b8613c972755',1,'PostAction']]],
-  ['reveal',['reveal',['../structdice_1_1_player.html#a1fcc6b53309688f54e038ea5f8f58939',1,'dice::Player']]]
+  ['secondary',['secondary',['../test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9',1,'test_db.cpp']]],
+  ['secondary_5flb',['secondary_lb',['../test__db_8cpp.html#a3a053cdd3b35a352f5411f860576d23c',1,'test_db.cpp']]],
+  ['secondary_5fub',['secondary_ub',['../test__db_8cpp.html#af3f9e631140dda536829f7fdcf98ebbb',1,'test_db.cpp']]],
+  ['social',['social',['../struct_account.html#a9b3193bc138c923876e5f598bfd7897b',1,'Account']]],
+  ['social_5fpower',['social_power',['../struct_account.html#aa9dfb41c50dc90cbb590f3902b35d6a3',1,'Account']]],
+  ['source',['source',['../structdice_1_1_reveal.html#a5a8478999080e6ba0380eda8d2189661',1,'dice::Reveal']]]
 ];
