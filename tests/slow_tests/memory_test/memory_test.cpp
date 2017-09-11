@@ -13,7 +13,7 @@ extern "C" {
        const char* char_ptr = (const char*)ptr;
        for (uint32_t i = 0; i < size; ++i)
        {
-          assert(static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])) == val, "buffer slot not empty");
+          assert(static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])) == val, "buffer slot doesn't match");
        }
     }
 
@@ -132,6 +132,35 @@ extern "C" {
        verify(buf1, 0x22, 1);
        verify(&buf1[1], 1, 1);
        verify(&buf1[2], 0x22, 8);
+
+       // verify adjacent non-overlapping buffers
+       char buf3[50] = {};
+       memset(&buf3[25], 0xee, 25);
+       verify(buf3, 0, 25);
+       memcpy(buf3, &buf3[25], 25);
+       verify(buf3, 0xee, 50);
+
+       memset(buf3, 0, 25);
+       verify(&buf3[25], 0xee, 25);
+       memcpy(&buf3[25], buf3, 25);
+       verify(buf3, 0, 50);
+    }
+
+    void test_memcpy_overlap_start()
+    {
+       char buf3[99] = {};
+       memset(buf3, 0xee, 50);
+       memset(&buf3[50], 0xff, 49);
+       memcpy(&buf3[49], buf3, 50);
+    }
+
+
+    void test_memcpy_overlap_end()
+    {
+       char buf3[99] = {};
+       memset(buf3, 0xee, 50);
+       memset(&buf3[50], 0xff, 49);
+       memcpy(buf3, &buf3[49], 50);
     }
 
     /// The apply method implements the dispatch of events to this contract
@@ -156,6 +185,20 @@ extern "C" {
           if( action == N(transfer) )
           {
              test_memset_memcpy();
+          }
+       }
+       else if( code == N(testolstart) )
+       {
+          if( action == N(transfer) )
+          {
+             test_memcpy_overlap_start();
+          }
+       }
+       else if( code == N(testolend) )
+       {
+          if( action == N(transfer) )
+          {
+             test_memcpy_overlap_end();
           }
        }
     }
