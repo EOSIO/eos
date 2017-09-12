@@ -511,6 +511,32 @@ int main( int argc, char** argv ) {
                 << (approve ? "" : "un") << "approve." << std::endl;
    });
 
+   // set proxy subcommand
+   string proxy;
+   auto proxySubcommand = setSubcommand->add_subcommand("proxy", "Set proxy account for voting");
+   proxySubcommand->add_option("user-name", name, "The name of the account to proxy from")->required();
+   proxySubcommand->add_option("proxy-name", proxy, "The name of the account to proxy (unproxy if not provided)");
+   proxySubcommand->add_option("-p,--permission", permissions,
+                                  "An account and permission level to authorize, as in 'account@permission' (default user@active)");
+   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   proxySubcommand->set_callback([&] {
+      if (permissions.empty()) {
+         permissions.push_back(name + "@active");
+      }
+      auto account_permissions = get_account_permissions(permissions);
+      if (proxy.empty()) {
+         proxy = name;
+      }
+
+      SignedTransaction trx;
+      trx.scope = sort_names({config::EosContractName, name});
+      transaction_emplace_message(trx, config::EosContractName, account_permissions,
+                                  "setproxy", types::setproxy{name, proxy});
+
+      push_transaction(trx, !skip_sign);
+      std::cout << "Set proxy for " << name << " to " << proxy << std::endl;
+   });
+
    // Transfer subcommand
    string sender;
    string recipient;
