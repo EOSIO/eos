@@ -62,7 +62,7 @@ namespace eos {
     transaction_id_type id;
     bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
     bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
-    uint32_t            block_num = -1; ///< the block number the transaction was included in
+    UInt16              block_num = -1; ///< the block number the transaction was included in
     time_point          validated_time; ///< infinity for unvalidated
     time_point          requested_time; /// incase we fetch large trx
   };
@@ -661,7 +661,7 @@ namespace eos {
           });
         c->send(req);
       }
-      }
+    }
 
     void handle_message (connection_ptr c, const request_message &msg) {
         // collect a list of transactions that were found.
@@ -759,6 +759,22 @@ namespace eos {
       transaction_id_type txnid = msg.id();
       if( local_txns.get<by_id>().find( txnid ) != local_txns.end () ) { //found
         return;
+      }
+
+      auto tx = c->trx_state.find(txnid);
+      if (tx == c->trx_state.end()) {
+        c->trx_state.insert((transaction_state){txnid,true,true,msg.refBlockNum,
+              fc::time_point(),fc::time_point()});
+      } else {
+        struct trx_mod {
+          UInt16 block;
+          trx_mod( UInt16 bn) : block(bn) {}
+          void operator () (transaction_state &t) {
+            t.is_known_by_peer = true;
+            t.block_num = block;
+          }
+        };
+        c->trx_state.modify(tx,trx_mod(msg.refBlockNum));
       }
 
       try {
@@ -1047,8 +1063,6 @@ namespace eos {
           }
         }
       }
-
-
 
       if (!send_whole_blocks) {
         block_summary_message bsm = {sb.id(), trxs};
