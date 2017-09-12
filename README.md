@@ -144,7 +144,7 @@ Install the dependencies:
 
 ```bash
 brew update
-brew install git automake libtool boost openssl llvm gmp
+brew install git automake libtool boost openssl llvm@4 gmp cmake
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -166,7 +166,7 @@ cd ~
 git clone https://github.com/WebAssembly/binaryen.git
 cd ~/binaryen
 git checkout tags/1.37.14
-cmake . && make
+cmake -DCMAKE_C_COMPILER="$(brew --prefix llvm@4)/bin/clang" -DCMAKE_CXX_COMPILER="$(brew --prefix llvm@4)/bin/clang++" . && make
 ```
 
 Add `BINARYEN_ROOT` to your .bash_profile:
@@ -196,7 +196,7 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+echo "export LLVM_DIR=$(brew --prefix llvm@4)/lib/cmake" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
