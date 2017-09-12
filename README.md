@@ -490,7 +490,7 @@ For testing purposes you will run 2 local production nodes talking to each other
 ```bash
 cd ~/eos/build
 cp ../genesis.json ./
-./programs/launcher/launcher -p2 —skip-signatures
+./programs/launcher/launcher -p2 --skip-signatures
 ```
 
 This command will generate 2 data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
