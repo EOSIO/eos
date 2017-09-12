@@ -373,6 +373,37 @@ if [ $count == 0 ]; then
   error "FAILURE - get table currency account failed: $ACCOUNT_INFO"
 fi
 
+#
+# Producer
+#
+
+INFO="$(programs/eosc/eosc --wallet-port 8899 create producer testera $PUB_KEY1)"
+verifyErrorCode "eosc create producer"
+getTransactionId "$INFO"
+
+# lock via lock_all
+programs/eosc/eosc --wallet-port 8899 wallet lock_all
+verifyErrorCode "eosc wallet lock_all"
+
+# unlock wallet inita
+echo $PASSWORD_INITA | programs/eosc/eosc --wallet-port 8899 wallet unlock --name inita
+verifyErrorCode "eosc wallet unlock inita"
+
+# approve producer
+INFO="$(programs/eosc/eosc --wallet-port 8899 set producer inita testera approve)"
+verifyErrorCode "eosc approve producer"
+
+ACCOUNT_INFO="$(programs/eosc/eosc --wallet-port 8899 get account inita)"
+verifyErrorCode "eosc get account"
+
+# unapprove producer
+INFO="$(programs/eosc/eosc --wallet-port 8899 set producer inita testera unapprove)"
+verifyErrorCode "eosc unapprove producer"
+
+#
+# Proxy
+#
+# not implemented
 
 # should be able to get every block from beginning to end
 getHeadBlockNum
