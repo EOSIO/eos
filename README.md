@@ -60,6 +60,9 @@ cd eos
 ./build.sh darwin # For macOS
 ```
 
+Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
+
+Alternatively, see below on manual installation of the dependencies.
 
 <a name="ubuntu"></a>
 ### Clean install Ubuntu 16.10 
