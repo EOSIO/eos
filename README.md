@@ -399,6 +399,12 @@ Before uploading a contract, you can verify that there is no current contract:
 code hash: 0000000000000000000000000000000000000000000000000000000000000000
 ```
 
+Before you can upload currency contract you need to import its private key that you generated using `create key` command:
+
+```bash
+./eosc wallet import PRIVATE_KEY_2
+```
+
 With an account for a contract created, you can upload a sample contract:
 
 ```bash
