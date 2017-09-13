@@ -205,6 +205,7 @@ struct launcher_def {
   bf::path genesis;
   bf::path output;
   bool skip_transaction_signatures = false;
+  string eosd_extra_args;
   testnet_def network;
   string data_dir_base;
   string alias_base;
@@ -236,7 +237,9 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("shape,s",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(),"save a copy of the generated topology in this file")
-    ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.");
+    ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.")
+    ("eosd", bpo::value<string>(), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
+        ;
 }
 
 void
@@ -253,6 +256,8 @@ launcher_def::initialize (const variables_map &vmap) {
     output = vmap["output"].as<bf::path>();
   if (vmap.count("skip-signature"))
     skip_transaction_signatures = vmap["skip-signature"].as<bool>();
+  if (vmap.count("eosd"))
+    eosd_extra_args = vmap["eosd"].as<string>();
 
   producers = 21;
   data_dir_base = "tn_data_";
@@ -380,6 +385,7 @@ launcher_def::write_config_file (eosd_def &node) {
     }
     cfg << "plugin = eos::producer_plugin\n"
         << "plugin = eos::chain_api_plugin\n"
+        << "plugin = eos::wallet_api_plugin\n"
         << "plugin = eos::account_history_plugin\n"
         << "plugin = eos::account_history_api_plugin\n";
     for (auto &p : node.producers) {
@@ -445,8 +451,12 @@ launcher_def::make_star () {
   }
   size_t gap = total_nodes > 6 ? 4 : total_nodes - links;
 
+  // use to prevent duplicates since all connections are bidirectional
+  std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
-    auto &current = network.nodes.find(aliases[i])->second;
+    const auto& iter = network.nodes.find(aliases[i]);
+    auto &current = iter->second;
+    const auto& current_name = iter->first;
     for (size_t l = 1; l <= links; l++) {
       size_t ndx = (i + l * gap) % total_nodes;
       if (i == ndx) {
@@ -463,7 +473,12 @@ launcher_def::make_star () {
           }
         }
       }
-      current.peers.push_back (peer);
+      // if already established, don't add to list
+      if (peers_to_from[peer].count(current_name) == 0) {
+        current.peers.push_back(peer); // current_name -> peer
+        // keep track of bidirectional relationships to prevent duplicates
+        peers_to_from[current_name].insert(peer);
+      }
     }
   }
 }
@@ -471,11 +486,21 @@ launcher_def::make_star () {
 void
 launcher_def::make_mesh () {
   define_nodes ();
+  // use to prevent duplicates since all connections are bidirectional
+  std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
-    auto &current = network.nodes.find(aliases[i])->second;
+    const auto& iter = network.nodes.find(aliases[i]);
+    auto &current = iter->second;
+    const auto& current_name = iter->first;
     for (size_t j = 1; j < total_nodes; j++) {
       size_t ndx = (i + j) % total_nodes;
-      current.peers.push_back (aliases[ndx]);
+      const auto& peer = aliases[ndx];
+      // if already established, don't add to list
+      if (peers_to_from[peer].count(current_name) == 0) {
+        current.peers.push_back (peer);
+        // keep track of bidirectional relationships to prevent duplicates
+        peers_to_from[current_name].insert(peer);
+      }
     }
   }
 }
@@ -554,6 +579,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }
+  eosdcmd += eosd_extra_args + " ";
   eosdcmd += "--data-dir " + node.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
