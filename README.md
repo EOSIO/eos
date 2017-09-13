@@ -144,7 +144,7 @@ Install the dependencies:
 
 ```bash
 brew update
-brew install git automake libtool boost openssl llvm gmp
+brew install git automake libtool boost openssl llvm@4 gmp
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
