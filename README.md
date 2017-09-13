@@ -36,17 +36,6 @@ The following instructions overview the process of getting the software, buildin
 
 <a name="setup"></a>
 ## Setting up a build/development environment
-This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
-
-Dependencies:
-
-* Clang 4.0.0
-* CMake 3.5.1
-* Boost 1.64
-* OpenSSL
-* LLVM 4.0
-* [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
-* [binaryen](https://github.com/WebAssembly/binaryen.git)
 
 <a name="autobuild"></a>
 ### Automated build script
@@ -91,6 +80,18 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 ### Manual installation of the dependencies
 
 If you prefer to manually build dependencies - follow the steps below.
+
+This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
+
+Dependencies:
+
+* Clang 4.0.0
+* CMake 3.5.1
+* Boost 1.64
+* OpenSSL
+* LLVM 4.0
+* [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
+* [binaryen](https://github.com/WebAssembly/binaryen.git)
 
 <a name="ubuntu"></a>
 #### Clean install Ubuntu 16.10 
