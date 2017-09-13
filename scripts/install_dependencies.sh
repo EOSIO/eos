@@ -1,0 +1,104 @@
+# Install dependencies script
+
+if [ $ARCH == "ubuntu" ]; then
+    # install dev toolkit
+    sudo apt-get update
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+    sudo apt-get install clang-4.0 lldb-4.0 cmake make \
+                         libbz2-dev libssl-dev libgmp3-dev \
+                         autotools-dev build-essential \
+                         libbz2-dev libicu-dev python-dev \
+                         autoconf libtool git
+    OPENSSL_ROOT_DIR= /usr/local/opt/openssl
+    OPENSSL_LIBRARIES= /usr/local/opt/openssl/lib
+
+    # install boost
+    cd ${TEMP_DIR}
+    wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
+    tar xjf boost_1.64.0.tar.bz2
+    cd boost_1_64_0/
+    BOOST_ROOT=usr/
+    ./bootstrap.sh "--prefix=$BOOST_ROOT"
+    ./b2 install
+    rm -rf ${TEMP_DIR}/boost_1_64_0/
+
+    # install secp256k1-zkp (Cryptonomex branch)
+    cd ${TEMP_DIR}
+    git clone https://github.com/cryptonomex/secp256k1-zkp.git
+    cd secp256k1-zkp
+    ./autogen.sh
+    ./configure
+    make
+    sudo make install
+    ldconfig
+    rm -rf cd ${TEMP_DIR}/secp256k1-zkp
+
+    # install binaryen
+    cd ${TEMP_DIR}
+    git clone https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.gz
+    tar zxf 1.37.21.tar.gz
+    cd binaryen-1.37.21
+    git checkout tags/1.37.14
+    cmake . && make
+    mkdir /opt/binaryen
+    mv ${TEMP_DIR}/binaryen-1.37.21/bin /opt/binaryen
+    ln -s /opt/binaryen/bin/* /usr/local
+    rm -rf ${TEMP_DIR}/binaryen-1.37.21
+    BINARYEN_BIN=/opt/binaryen/bin/
+
+    # build llvm with wasm build target:
+    cd ${TEMP_DIR}
+    mkdir wasm-compiler
+    cd wasm-compiler
+    git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+    cd llvm/tools
+    git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+    cd ..
+    mkdir build
+    cd build
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    make -j4 install
+    rm -rf ${TEMP_DIR}/wasm-compiler
+fi
+
+if [ $ARCH == "darwin" ]; then
+    # update xcode:
+    xcode-select --install
+
+    DEPS="git automake libtool boost openssl llvm gmp"
+    brew update
+    brew install --force $DEPS
+    brew unlink $DEPS && brew link --force $DEPS
+
+    # install secp256k1-zkp (Cryptonomex branch)
+    cd ~
+    git clone https://github.com/cryptonomex/secp256k1-zkp.git
+    cd secp256k1-zkp
+    ./autogen.sh
+    ./configure
+    make
+    sudo make install
+
+    # Install binaryen v1.37.14:
+    cd ~
+    git clone https://github.com/WebAssembly/binaryen.git
+    cd ~/binaryen
+    git checkout tags/1.37.14
+    cmake . && make
+    BINARYEN_BIN=/opt/binaryen/bin/
+
+    # Build LLVM and clang for WASM:
+    mkdir  ~/wasm-compiler
+    cd ~/wasm-compiler
+    git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+    cd llvm/tools
+    git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+    cd ..
+    mkdir build
+    cd build
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    make -j4 install
+
+    WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config
+    LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm
+fi
