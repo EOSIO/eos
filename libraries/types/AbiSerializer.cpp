@@ -154,7 +154,6 @@ namespace eos { namespace types {
       {
          FC_ASSERT( isType(td.type), "invalid type", ("type",td.type));
          typedefs[td.newTypeName] = td.type;
-         std::cout << "type_edges (" <<  td.type << "," << td.newTypeName << ")\n";
          type_edges.push_back({td.type, td.newTypeName});
       }
       FC_ASSERT( !hasCycle(type_edges) );
@@ -162,7 +161,6 @@ namespace eos { namespace types {
       vector<pair<string,string>> struct_edges;
       for( const auto& st : abi.structs ) {
          structs[st.name] = st;
-         std::cout << "type_edges (" <<  st.name << "," << st.base << ")\n";
          if(st.base != TypeName())
             struct_edges.push_back({st.name, resolveType(st.base)});
       }
