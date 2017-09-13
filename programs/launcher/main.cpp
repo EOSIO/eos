@@ -380,6 +380,7 @@ launcher_def::write_config_file (eosd_def &node) {
     }
     cfg << "plugin = eos::producer_plugin\n"
         << "plugin = eos::chain_api_plugin\n"
+        << "plugin = eos::wallet_api_plugin\n"
         << "plugin = eos::account_history_plugin\n"
         << "plugin = eos::account_history_api_plugin\n";
     for (auto &p : node.producers) {
