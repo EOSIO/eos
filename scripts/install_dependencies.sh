@@ -14,7 +14,7 @@ if [ $ARCH == "ubuntu" ]; then
 
     # install boost
     cd ${TEMP_DIR}
-    BOOST_ROOT=${HOME}/opt/boost_1_64_0
+    export BOOST_ROOT=${HOME}/opt/boost_1_64_0
     curl -L https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2 > boost_1.64.0.tar.bz2
     tar xvf boost_1.64.0.tar.bz2
     cd boost_1_64_0/
