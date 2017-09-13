@@ -9,7 +9,7 @@ Welcome to the EOS.IO source code repository!
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
-	    1. [Ubuntu 16.10](#autoubuntu)
+	    1. [Clean install Ubuntu 16.10](#autoubuntu)
 	    2. [macOS Sierra 10.12.6](#automac)
 	2. [Manual installation of the dependencies](#manualdep)
         1. [Clean install Ubuntu 16.10](#ubuntu)
