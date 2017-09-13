@@ -1,0 +1,85 @@
+#!/bin/bash -e
+
+function copy_skeleton {
+    cp -r /home/ubuntu/eos/contracts/skeleton/. $newname
+
+    for file in $(find ./$newname -name 'skeleton.*')
+    do
+        mv "${file}" "`echo $file | sed 's/skeleton\./'"$newname"'./'`"
+    done
+    echo "skeleton $newname contract created"
+}
+
+function build_contract {
+    output=$1
+    shift
+
+    workdir=`mktemp -d`
+    mkdir $workdir/built
+
+    for file in $@; do
+        name=`basename $file`
+        filePath=`dirname $file`
+
+        @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I @CMAKE_SOURCE_DIR@/contracts -I $filePath -c $file -o $workdir/built/$name
+    done
+
+    @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
+    @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
+    @BINARYEN_BIN@/s2wasm -o $output -s 16384 $workdir/assembly.s
+
+    rm -rf $workdir
+}
+
+function print_help {
+    echo "Usage: $0 output.wast contract.cpp [other.cpp ...]"
+    echo "       OR"
+    echo "       $0 -n mycontract"
+    echo
+    echo "Options:"
+    echo "   -n | --newcontract [name]"
+    echo "      Create a new contract in the [name] folder, based on the example contract"
+}
+
+OPTIONS=$(getopt --options=hn: --longoptions=help,newcontract: --name "$0" -- "$@")
+if [[ $? -ne 0 ]]; then
+    # getopt failed
+    exit 2
+fi
+
+eval set -- "$OPTIONS"
+
+while true; do
+    case "$1" in
+        -n|--newcontract)
+            newname=$2
+            shift 2
+            ;;
+        -h|--help)
+            print_help
+            exit 1
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unrecognized option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "x" == "x$newname" ]]; then
+    if [[ $# -le 1 ]]; then
+        print_help
+        exit 1
+    fi
+    build_contract $@
+else
+    if [[ $# -ne 0 ]]; then
+        print_help
+        exit 1
+    fi
+    copy_skeleton $newname
+fi
