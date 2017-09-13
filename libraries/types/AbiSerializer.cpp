@@ -1,12 +1,29 @@
 #include <eos/types/AbiSerializer.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/depth_first_search.hpp>
+
+using namespace boost;
 
 namespace eos { namespace types {
 
    using boost::algorithm::ends_with;
    using std::vector;
    using std::string;
+
+   struct cycle_detector : public dfs_visitor<>
+   {
+     cycle_detector( bool& has_cycle)
+       : _has_cycle(has_cycle) { }
+
+     template <class Edge, class Graph>
+     void back_edge(Edge, Graph&) {
+       _has_cycle = true;
+     }
+   protected:
+     bool& _has_cycle;
+   };
 
    template <typename T>
    inline fc::variant variantFromStream(fc::datastream<const char*>& stream) {
@@ -93,20 +110,63 @@ namespace eos { namespace types {
       built_in_types.emplace("Abi",                     packUnpack<Abi>());
    }
 
+   bool AbiSerializer::hasCycle( const vector<pair<string,string>>& sedges )const {
+      auto addVertex = [](vector<string>& vertexs, const string& name) -> int {
+         auto itr = find(vertexs.begin(), vertexs.end(), name);
+            if(itr == vertexs.end()) {
+               vertexs.push_back(name);
+               return (int)vertexs.size()-1;
+            }
+            return (int)distance(vertexs.begin(), itr);
+      };
+
+      typedef adjacency_list <vecS, vecS, directedS> Graph;
+      typedef pair<int,int> Edge;
+
+      vector<string> vertexs;
+      vector<Edge> edges;
+      for( const auto& se : sedges ) {
+         edges.push_back( Edge{
+            addVertex(vertexs, se.first),
+            addVertex(vertexs, se.second)
+         });
+      }
+
+      Graph g(vertexs.size());
+
+      for( const auto& edge : edges )
+         add_edge(edge.first, edge.second, g);
+
+      bool has_cycle = false;
+      cycle_detector vis(has_cycle);
+      boost::depth_first_search(g, visitor(vis));
+      return has_cycle;
+   }
+
    void AbiSerializer::setAbi( const Abi& abi ) {
       typedefs.clear();
       structs.clear();
       actions.clear();
       tables.clear();
 
+      vector<pair<string,string>> type_edges;
       for( const auto& td : abi.types )
       {
          FC_ASSERT( isType(td.type), "invalid type", ("type",td.type));
          typedefs[td.newTypeName] = td.type;
+         std::cout << "type_edges (" <<  td.type << "," << td.newTypeName << ")\n";
+         type_edges.push_back({td.type, td.newTypeName});
       }
+      FC_ASSERT( !hasCycle(type_edges) );
 
-      for( const auto& st : abi.structs )
+      vector<pair<string,string>> struct_edges;
+      for( const auto& st : abi.structs ) {
          structs[st.name] = st;
+         std::cout << "type_edges (" <<  st.name << "," << st.base << ")\n";
+         if(st.base != TypeName())
+            struct_edges.push_back({st.name, resolveType(st.base)});
+      }
+      FC_ASSERT( !hasCycle(struct_edges) );
       
       for( const auto& a : abi.actions )
          actions[a.action] = a.type;
@@ -153,7 +213,7 @@ namespace eos { namespace types {
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
          if( s.second.base != TypeName() )
-            FC_ASSERT( isType( s.second.base ) );
+            getStruct( s.second.base ); //FC_ASSERT( isType( s.second.base ) );
          for( const auto& field : s.second.fields ) { try {
             FC_ASSERT( isType( field.type ) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }
