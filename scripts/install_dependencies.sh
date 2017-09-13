@@ -38,8 +38,8 @@ if [ $ARCH == "ubuntu" ]; then
     cd binaryen
     git checkout tags/1.37.14
     cmake . && make
-    mkdir -p ${HOME}/opt/binaryen/bin
-    mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/bin
+    mkdir -p ${HOME}/opt/binaryen/
+    mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/
     rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=${HOME}/opt/binaryen/bin
 
