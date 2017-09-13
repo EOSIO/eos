@@ -205,6 +205,7 @@ struct launcher_def {
   bf::path genesis;
   bf::path output;
   bool skip_transaction_signatures = false;
+  string eosd_extra_args;
   testnet_def network;
   string data_dir_base;
   string alias_base;
@@ -236,7 +237,9 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("shape,s",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(),"save a copy of the generated topology in this file")
-    ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.");
+    ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.")
+    ("eosd", bpo::value<string>(), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
+        ;
 }
 
 void
@@ -253,6 +256,8 @@ launcher_def::initialize (const variables_map &vmap) {
     output = vmap["output"].as<bf::path>();
   if (vmap.count("skip-signature"))
     skip_transaction_signatures = vmap["skip-signature"].as<bool>();
+  if (vmap.count("eosd"))
+    eosd_extra_args = vmap["eosd"].as<string>();
 
   producers = 21;
   data_dir_base = "tn_data_";
@@ -574,6 +579,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }
+  eosdcmd += eosd_extra_args + " ";
   eosdcmd += "--data-dir " + node.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
