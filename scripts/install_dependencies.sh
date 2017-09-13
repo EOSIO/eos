@@ -9,8 +9,8 @@ if [ $ARCH == "ubuntu" ]; then
                          autotools-dev build-essential \
                          libbz2-dev libicu-dev python-dev \
                          autoconf libtool git
-    OPENSSL_ROOT_DIR= /usr/local/opt/openssl
-    OPENSSL_LIBRARIES= /usr/local/opt/openssl/lib
+    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+    OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
 
     # install boost
     cd ${TEMP_DIR}
