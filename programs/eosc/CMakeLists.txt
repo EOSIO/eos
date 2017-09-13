@@ -1,4 +1,4 @@
-add_executable( eosc main.cpp httpc.cpp )
+add_executable( eosc main.cpp httpc.cpp help_text.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
