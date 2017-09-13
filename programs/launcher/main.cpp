@@ -445,8 +445,12 @@ launcher_def::make_star () {
   }
   size_t gap = total_nodes > 6 ? 4 : total_nodes - links;
 
+  // use to prevent duplicates since all connections are bidirectional
+  std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
-    auto &current = network.nodes.find(aliases[i])->second;
+    const auto& iter = network.nodes.find(aliases[i]);
+    auto &current = iter->second;
+    const auto& current_name = iter->first;
     for (size_t l = 1; l <= links; l++) {
       size_t ndx = (i + l * gap) % total_nodes;
       if (i == ndx) {
@@ -463,7 +467,12 @@ launcher_def::make_star () {
           }
         }
       }
-      current.peers.push_back (peer);
+      // if already established, don't add to list
+      if (peers_to_from[peer].count(current_name) == 0) {
+        current.peers.push_back(peer); // current_name -> peer
+        // keep track of bidirectional relationships to prevent duplicates
+        peers_to_from[current_name].insert(peer);
+      }
     }
   }
 }
@@ -471,11 +480,21 @@ launcher_def::make_star () {
 void
 launcher_def::make_mesh () {
   define_nodes ();
+  // use to prevent duplicates since all connections are bidirectional
+  std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
-    auto &current = network.nodes.find(aliases[i])->second;
+    const auto& iter = network.nodes.find(aliases[i]);
+    auto &current = iter->second;
+    const auto& current_name = iter->first;
     for (size_t j = 1; j < total_nodes; j++) {
       size_t ndx = (i + j) % total_nodes;
-      current.peers.push_back (aliases[ndx]);
+      const auto& peer = aliases[ndx];
+      // if already established, don't add to list
+      if (peers_to_from[peer].count(current_name) == 0) {
+        current.peers.push_back (peer);
+        // keep track of bidirectional relationships to prevent duplicates
+        peers_to_from[current_name].insert(peer);
+      }
     }
   }
 }
