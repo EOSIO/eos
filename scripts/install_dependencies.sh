@@ -14,7 +14,7 @@ if [ $ARCH == "ubuntu" ]; then
 
     # install boost
     cd ${TEMP_DIR}
-    BOOST_ROOT=$HOME/opt/boost_1_64_0
+    BOOST_ROOT=${HOME}/opt/boost_1_64_0
     curl -L https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2 > boost_1.64.0.tar.bz2
     tar xvf boost_1.64.0.tar.bz2
     cd boost_1_64_0/
@@ -38,11 +38,10 @@ if [ $ARCH == "ubuntu" ]; then
     cd binaryen
     git checkout tags/1.37.14
     cmake . && make
-    mkdir /opt/binaryen
-    mv ${TEMP_DIR}/binaryen/bin/* /opt/binaryen
-    ln -s /opt/binaryen/bin/* /usr/local
+    mkdir -p ${HOME}/opt/binaryen/bin
+    mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/bin
     rm -rf ${TEMP_DIR}/binaryen
-    BINARYEN_BIN=/opt/binaryen/bin/
+    BINARYEN_BIN=${HOME}/opt/binaryen/bin
 
     # build llvm with wasm build target:
     cd ${TEMP_DIR}
@@ -54,10 +53,10 @@ if [ $ARCH == "ubuntu" ]; then
     cd ..
     mkdir build
     cd build
-    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
     make -j4 install
     rm -rf ${TEMP_DIR}/wasm-compiler
-    WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config
+    WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
 fi
 
 if [ $ARCH == "darwin" ]; then
