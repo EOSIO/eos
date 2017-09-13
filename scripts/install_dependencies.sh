@@ -63,7 +63,7 @@ if [ $ARCH == "ubuntu" ]; then
 fi
 
 if [ $ARCH == "darwin" ]; then
-    DEPS="git automake libtool boost openssl llvm@4 gmp"
+    DEPS="git automake libtool boost openssl llvm@4 gmp wget"
     brew update
     brew install --force $DEPS
     brew unlink $DEPS && brew link --force $DEPS
@@ -82,7 +82,7 @@ if [ $ARCH == "darwin" ]; then
 
     # Install binaryen v1.37.14:
     cd ${TEMP_DIR}
-    git clone https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.gz
+    wget https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.gz
     tar zxf 1.37.21.tar.gz
     cd binaryen-1.37.21
     git checkout tags/1.37.14
