@@ -63,10 +63,7 @@ if [ $ARCH == "ubuntu" ]; then
 fi
 
 if [ $ARCH == "darwin" ]; then
-    # update xcode:
-    xcode-select --install
-
-    DEPS="git automake libtool boost openssl llvm gmp"
+    DEPS="git automake libtool boost openssl llvm@4 gmp"
     brew update
     brew install --force $DEPS
     brew unlink $DEPS && brew link --force $DEPS
@@ -90,11 +87,11 @@ if [ $ARCH == "darwin" ]; then
     cd binaryen-1.37.21
     git checkout tags/1.37.14
     cmake . && make
-    mkdir /opt/binaryen
-    mv ${TEMP_DIR}/binaryen-1.37.21/bin /opt/binaryen
-    ln -s /opt/binaryen/bin/* /usr/local
+    mkdir /usr/local/binaryen
+    mv ${TEMP_DIR}/binaryen-1.37.21/bin /usr/local/binaryen
+    ln -s /usr/local/binaryen/bin/* /usr/local
     rm -rf ${TEMP_DIR}/binaryen-1.37.21
-    BINARYEN_BIN=/opt/binaryen/bin/
+    BINARYEN_BIN=/usr/local/binaryen/bin/
 
     # Build LLVM and clang for WASM:
     cd ${TEMP_DIR}
@@ -106,9 +103,9 @@ if [ $ARCH == "darwin" ]; then
     cd ..
     mkdir build
     cd build
-    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
     make -j4 install
     rm -rf ${TEMP_DIR}/wasm-compiler
-    WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config
+    WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
 
 fi
