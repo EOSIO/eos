@@ -35,15 +35,14 @@ if [ $ARCH == "ubuntu" ]; then
 
     # install binaryen
     cd ${TEMP_DIR}
-    git clone https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.gz
-    tar zxf 1.37.21.tar.gz
-    cd binaryen-1.37.21
+    git clone https://github.com/WebAssembly/binaryen
+    cd binaryen
     git checkout tags/1.37.14
     cmake . && make
     mkdir /opt/binaryen
-    mv ${TEMP_DIR}/binaryen-1.37.21/bin /opt/binaryen
+    mv ${TEMP_DIR}/binaryen/bin /opt/binaryen
     ln -s /opt/binaryen/bin/* /usr/local
-    rm -rf ${TEMP_DIR}/binaryen-1.37.21
+    rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/opt/binaryen/bin/
 
     # build llvm with wasm build target:
@@ -82,15 +81,14 @@ if [ $ARCH == "darwin" ]; then
 
     # Install binaryen v1.37.14:
     cd ${TEMP_DIR}
-    wget https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.gz
-    tar zxf 1.37.21.tar.gz
-    cd binaryen-1.37.21
+    git clone https://github.com/WebAssembly/binaryen
+    cd binaryen
     git checkout tags/1.37.14
     cmake . && make
     mkdir /usr/local/binaryen
-    mv ${TEMP_DIR}/binaryen-1.37.21/bin /usr/local/binaryen
+    mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
     ln -s /usr/local/binaryen/bin/* /usr/local
-    rm -rf ${TEMP_DIR}/binaryen-1.37.21
+    rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/usr/local/binaryen/bin/
 
     # Build LLVM and clang for WASM:
