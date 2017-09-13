@@ -14,7 +14,7 @@ if [ $ARCH == "ubuntu" ]; then
 
     # install boost
     cd ${TEMP_DIR}
-    wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
+    wget --tries=50 -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
     tar xvf boost_1.64.0.tar.bz2
     cd boost_1_64_0/
     ./bootstrap.sh
