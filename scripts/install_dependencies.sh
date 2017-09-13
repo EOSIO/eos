@@ -14,11 +14,12 @@ if [ $ARCH == "ubuntu" ]; then
 
     # install boost
     cd ${TEMP_DIR}
+    BOOST_ROOT=$HOME/opt/boost_1_64_0
     curl -L https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2 > boost_1.64.0.tar.bz2
     tar xvf boost_1.64.0.tar.bz2
     cd boost_1_64_0/
-    ./bootstrap.sh
-    ./b2 install --prefix=/usr
+    ./bootstrap.sh "--prefix=$BOOST_ROOT"
+    ./b2 install
     rm -rf ${TEMP_DIR}/boost_1_64_0/
 
     # install secp256k1-zkp (Cryptonomex branch)
@@ -38,7 +39,7 @@ if [ $ARCH == "ubuntu" ]; then
     git checkout tags/1.37.14
     cmake . && make
     mkdir /opt/binaryen
-    mv ${TEMP_DIR}/binaryen/bin /opt/binaryen
+    mv ${TEMP_DIR}/binaryen/bin/* /opt/binaryen
     ln -s /opt/binaryen/bin/* /usr/local
     rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/opt/binaryen/bin/
