@@ -366,8 +366,8 @@ First, generate public/private key pairs for the `owner_key` and `active_key`. Y
 
 ```bash
 cd ~/eos/build/programs/eosc/
-./eosc create key
-./eosc create key
+./eosc create key # owner_key
+./eosc create key # active_key
 ```
 
 You will get two pairs of a public and private key:
@@ -404,6 +404,12 @@ You should get a response similar to this:
   "unstaking_balance": 0,
   "last_unstaking_time": "2106-02-07T06:28:15"
 }
+```
+
+Now import the owner private key generated previously in the wallet:
+
+```bash
+./eosc wallet import XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 <a name="uploadsmartcontract"></a>
