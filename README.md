@@ -1,8 +1,22 @@
-# Eos
+# EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
 
 [![Build Status](https://travis-ci.org/EOSIO/eos.svg?branch=master)](https://travis-ci.org/EOSIO/eos)
 
-Welcome to the EOS.IO source code repository!
+Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy
+high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications
+can be built. 
+
+This code is currently alpha-quality and under rapid development. That said,
+there is plenty early experimenters can do including, running a private multi-node test network and
+develop applications (smart contracts).  
+
+# Resources
+1. [EOS.IO Website](https://eos.io)
+2. [Blog](https://steemit.com/@eosio)
+2. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
+3. [Telegram](https://eos.io/chat)
+4. [Documentation](https://eosio.github.io/eos/)
+5. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
 
 # Table of contents
 
