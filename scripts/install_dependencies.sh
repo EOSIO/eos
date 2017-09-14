@@ -60,7 +60,7 @@ if [ $ARCH == "ubuntu" ]; then
 fi
 
 if [ $ARCH == "darwin" ]; then
-    DEPS="git automake libtool boost openssl llvm@4 gmp wget"
+    DEPS="git automake libtool boost openssl llvm@4 gmp wget cmake"
     brew update
     brew install --force $DEPS
     brew unlink $DEPS && brew link --force $DEPS
@@ -74,7 +74,7 @@ if [ $ARCH == "darwin" ]; then
     ./configure
     make
     sudo make install
-    rm -rf cd ${TEMP_DIR}/secp256k1-zkp
+    sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
 
     # Install binaryen v1.37.14:
     cd ${TEMP_DIR}
@@ -82,10 +82,10 @@ if [ $ARCH == "darwin" ]; then
     cd binaryen
     git checkout tags/1.37.14
     cmake . && make
-    mkdir /usr/local/binaryen
-    mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-    ln -s /usr/local/binaryen/bin/* /usr/local
-    rm -rf ${TEMP_DIR}/binaryen
+    sudo mkdir /usr/local/binaryen
+    sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
+    sudo ln -s /usr/local/binaryen/bin/* /usr/local
+    sudo rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/usr/local/binaryen/bin/
 
     # Build LLVM and clang for WASM:
@@ -98,9 +98,9 @@ if [ $ARCH == "darwin" ]; then
     cd ..
     mkdir build
     cd build
-    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-    make -j4 install
-    rm -rf ${TEMP_DIR}/wasm-compiler
+    sudo cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    sudo make -j4 install
+    sudo rm -rf ${TEMP_DIR}/wasm-compiler
     WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
 
 fi
