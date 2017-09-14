@@ -1,10 +1,12 @@
 #pragma once
 #include <eoslib/types.h>
-  
+
 namespace  eos {
 
    /**
     *  Converts a base32 symbol into its binary representation, used by string_to_name()
+    *
+    *  @ingroup types
     */
    static constexpr char char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
@@ -53,11 +55,13 @@ namespace  eos {
 
    /**
     *  @class Name
-    *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name and
+    *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
+    *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and
     *         that no mathematical operations occur.  It also enables specialization of print
     *         so that it is printed as a base32 string.
     *
     *  @ingroup types
+    *  @{
     */
    struct Name {
       Name( uint64_t v = 0 ): value(v) {}
@@ -67,6 +71,7 @@ namespace  eos {
       AccountName value = 0;
    };
 
+   /// @}
 
    /**
     * @ingroup types
