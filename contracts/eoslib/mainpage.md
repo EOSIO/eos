@@ -1,17 +1,18 @@
-Welcome to the EOS.io Documentation
+Welcome to the EOS.IO Documentation
 -----------------------------------
 
-@note This documentation is in progress and subject to change due present rapid development. Please report inaccuracies identified to the [EOS developer telegram group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
+@note This documentation is in progress and subject to change due present rapid development. Please report inaccuracies identified to the [EOS.IO Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ) and/or open an issue on 
 
-## EOS
+## EOS.IO
  - [EOS.IO Official Website](https://www.eos.io/)
+ - [Github](https://github.com/eosio)
  - [Blog](https://steemit.com/@eosio)
  - [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md/)
  - [Telegram](https://www.eos.io/chat/)
  - [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md/)
 
-## Building EOS
-- [Environment Setup]()
+## Building EOS.IO
+- Environment Setup
 	- Automatic Build Script [Ubuntu 16.10](https://github.com/EOSIO/eos#autoubuntu) [macOS Sierra 10.12.6](https://github.com/EOSIO/eos#automac)
 	- Manual Build [Ubuntu 16.10](https://github.com/EOSIO/eos#ubuntu) [macOS Sierra 10.12.6](https://github.com/EOSIO/eos#macos)
 	- [Docker](https://github.com/EOSIO/eos/tree/master/Docker)
@@ -26,15 +27,12 @@ Welcome to the EOS.io Documentation
 	- [Getting Transaction](https://eosio.github.io/eos/group__eosc.html#gettingtransaction)
 
 ## Smart Contract Developers
-- [Introduction](https://eosio.github.io/eos/group__contractdev.html)
-- [Smart Contracts](https://github.com/EOSIO/eos#accountssmartcontracts)
-	- [Hello World ](https://eosio.github.io/eos/md_contracts_eoslib_tutorial.html)
-	- [Example Contracts](https://github.com/EOSIO/eos#example-smart-contracts)
-	- [Deploying Contracts](https://github.com/EOSIO/eos#upload-sample-contract-to-blockchain)
-- [Benchmarking]()
+- [Introduction to Contract Development Tutorial](https://eosio.github.io/eos/md_contracts_eoslib_tutorial.html)
+- [Reference Introduction](https://eosio.github.io/eos/group__contractdev.html)
+- [How to Deploy Example Smart Contracts](https://github.com/EOSIO/eos#accountssmartcontracts)
 - [RPC Interface](https://eosio.github.io/eos/group__eosiorpc.html)
-- API Reference
-	- @ref databaseapi - APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following broad structure
+- @ref contractdev
+	- @ref database - APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following broad structure
 	- @ref mathapi - Defines common math function
 	- @ref messageapi - Define API for querying message properties
 	- @ref consoleapi - Enables applications to log/print text messages

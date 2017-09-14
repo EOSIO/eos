@@ -20,6 +20,7 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
    &#160;<span id="projectnumber">DAWN1.0</span>
@@ -80,9 +81,9 @@ Macros</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:ga7a095ea0165891d5ee1dbd8ee40e32cb"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a></td></tr>
+<tr class="memitem:ga7a095ea0165891d5ee1dbd8ee40e32cb"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a></td></tr>
 <tr class="separator:ga7a095ea0165891d5ee1dbd8ee40e32cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaa42fca851fc0bcfd9dffc229c9552ce5"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a></td></tr>
+<tr class="memitem:gaa42fca851fc0bcfd9dffc229c9552ce5"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a></td></tr>
 <tr class="separator:gaa42fca851fc0bcfd9dffc229c9552ce5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
@@ -90,7 +91,7 @@ Functions</h2></td></tr>
 <tr class="memitem:ga180dc33e735f9631ed9a800d7b0a511e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga180dc33e735f9631ed9a800d7b0a511e">transactionCreate</a> ()</td></tr>
 <tr class="memdesc:ga180dc33e735f9631ed9a800d7b0a511e"><td class="mdescLeft">&#160;</td><td class="mdescRight">create a pending transaction  <a href="#ga180dc33e735f9631ed9a800d7b0a511e">More...</a><br /></td></tr>
 <tr class="separator:ga180dc33e735f9631ed9a800d7b0a511e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga347cc9c284bc25ed1d67b596e2320cdc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga347cc9c284bc25ed1d67b596e2320cdc">transactionRequireScope</a> (<a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a> trx, <a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> scope, int readOnly=0)</td></tr>
+<tr class="memitem:ga347cc9c284bc25ed1d67b596e2320cdc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga347cc9c284bc25ed1d67b596e2320cdc">transactionRequireScope</a> (<a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a> trx, <a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a> scope, int readOnly=0)</td></tr>
 <tr class="memdesc:ga347cc9c284bc25ed1d67b596e2320cdc"><td class="mdescLeft">&#160;</td><td class="mdescRight">require a scope to process a pending transaction  <a href="#ga347cc9c284bc25ed1d67b596e2320cdc">More...</a><br /></td></tr>
 <tr class="separator:ga347cc9c284bc25ed1d67b596e2320cdc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga1290a226d7828410020ed2954ffa5fa5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga1290a226d7828410020ed2954ffa5fa5">transactionAddMessage</a> (<a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a> trx, <a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a> msg)</td></tr>
@@ -102,10 +103,10 @@ Functions</h2></td></tr>
 <tr class="memitem:ga37162c1f843ae69d0134be29b1cde61f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga37162c1f843ae69d0134be29b1cde61f">transactionDrop</a> (<a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a> trx)</td></tr>
 <tr class="memdesc:ga37162c1f843ae69d0134be29b1cde61f"><td class="mdescLeft">&#160;</td><td class="mdescRight">drop a pending transaction  <a href="#ga37162c1f843ae69d0134be29b1cde61f">More...</a><br /></td></tr>
 <tr class="separator:ga37162c1f843ae69d0134be29b1cde61f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga6940a3e31486bef36409f857e0ed7c72"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga6940a3e31486bef36409f857e0ed7c72">messageCreate</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> code, <a class="el" href="types_8h.html#a4c11ea58b1daa61a364225a757a05cd2">FuncName</a> type, void const *data, int size)</td></tr>
+<tr class="memitem:ga6940a3e31486bef36409f857e0ed7c72"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga6940a3e31486bef36409f857e0ed7c72">messageCreate</a> (<a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a> code, <a class="el" href="group__types.html#ga4c11ea58b1daa61a364225a757a05cd2">FuncName</a> type, void const *data, int size)</td></tr>
 <tr class="memdesc:ga6940a3e31486bef36409f857e0ed7c72"><td class="mdescLeft">&#160;</td><td class="mdescRight">create a pending message  <a href="#ga6940a3e31486bef36409f857e0ed7c72">More...</a><br /></td></tr>
 <tr class="separator:ga6940a3e31486bef36409f857e0ed7c72"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gabf3f53f695c30abe4bd48f9b3341a016"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#gabf3f53f695c30abe4bd48f9b3341a016">messageRequirePermission</a> (<a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a> msg, <a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> account, <a class="el" href="types_8h.html#a4bd93be9c597a8d7b6a1a3504ca63e83">PermissionName</a> permission)</td></tr>
+<tr class="memitem:gabf3f53f695c30abe4bd48f9b3341a016"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#gabf3f53f695c30abe4bd48f9b3341a016">messageRequirePermission</a> (<a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a> msg, <a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a> account, <a class="el" href="group__types.html#ga4bd93be9c597a8d7b6a1a3504ca63e83">PermissionName</a> permission)</td></tr>
 <tr class="memdesc:gabf3f53f695c30abe4bd48f9b3341a016"><td class="mdescLeft">&#160;</td><td class="mdescRight">require a permission for the pending message  <a href="#gabf3f53f695c30abe4bd48f9b3341a016">More...</a><br /></td></tr>
 <tr class="separator:gabf3f53f695c30abe4bd48f9b3341a016"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga1f9346e3ef3fae10cf5fee5b9a0270ca"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncapi.html#ga1f9346e3ef3fae10cf5fee5b9a0270ca">messageSend</a> (<a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a> msg)</td></tr>
@@ -153,7 +154,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef <a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a></td>
+          <td class="memname">typedef <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -167,7 +168,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef <a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a></td>
+          <td class="memname">typedef <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb">TransactionHandle</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -184,13 +185,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5">MessageHandle</a> messageCreate </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
           <td class="paramname"><em>code</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a4c11ea58b1daa61a364225a757a05cd2">FuncName</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga4c11ea58b1daa61a364225a757a05cd2">FuncName</a>&#160;</td>
           <td class="paramname"><em>type</em>, </td>
         </tr>
         <tr>
@@ -266,13 +267,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
           <td class="paramname"><em>account</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a4bd93be9c597a8d7b6a1a3504ca63e83">PermissionName</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga4bd93be9c597a8d7b6a1a3504ca63e83">PermissionName</a>&#160;</td>
           <td class="paramname"><em>permission</em>&#160;</td>
         </tr>
         <tr>
@@ -415,7 +416,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
           <td class="paramname"><em>scope</em>, </td>
         </tr>
         <tr>

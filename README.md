@@ -1,4 +1,4 @@
-# EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
+## EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
 
 [![Build Status](https://travis-ci.org/EOSIO/eos.svg?branch=master)](https://travis-ci.org/EOSIO/eos)
 
@@ -12,11 +12,12 @@ develop applications (smart contracts).
 
 # Resources
 1. [EOS.IO Website](https://eos.io)
-2. [Blog](https://steemit.com/@eosio)
-2. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
-3. [Telegram](https://eos.io/chat)
-4. [Documentation](https://eosio.github.io/eos/)
-5. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
+2. [Documentation](https://eosio.github.io/eos/)
+3. [Blog](https://steemit.com/@eosio)
+4. [Community Telegram Group](https://eos.io/chat)
+5. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
+6. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
+7. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
 # Table of contents
 
@@ -24,10 +25,10 @@ develop applications (smart contracts).
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
 	    1. [Clean install Ubuntu 16.10](#autoubuntu)
-	    2. [macOS Sierra 10.12.6](#automac)
+	    2. [MacOS Sierra 10.12.6](#automac)
 	2. [Manual installation of the dependencies](#manualdep)
-        1. [Clean install Ubuntu 16.10](#ubuntu)
-        2. [macOS Sierra 10.12.6](#macos)
+      1. [Clean install Ubuntu 16.10](#ubuntu)
+      2. [MacOS Sierra 10.12.6](#macos)
 3. [Building EOS and running a node](#runanode)
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
@@ -53,7 +54,7 @@ The following instructions overview the process of getting the software, buildin
 <a name="autobuild"></a>
 ### Automated build script
 
-For Ubuntu 16.10 and macOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
+For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
 
 Clone EOS repository recursively as below and run build.sh located in root `eos` folder.
 
@@ -70,7 +71,7 @@ cd eos
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="automac"></a>
-#### macOS Sierra
+#### MacOS Sierra
 
 Before running the script make sure you have updated XCode and brew:
 
@@ -87,179 +88,6 @@ cd eos
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
-
-<a name="manualdep"></a>
-### Manual installation of the dependencies
-
-If you prefer to manually build dependencies - follow the steps below.
-
-This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
-
-Dependencies:
-
-* Clang 4.0.0
-* CMake 3.5.1
-* Boost 1.64
-* OpenSSL
-* LLVM 4.0
-* [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
-* [binaryen](https://github.com/WebAssembly/binaryen.git)
-
-<a name="ubuntu"></a>
-#### Clean install Ubuntu 16.10 
-
-Install the development toolkit:
-
-```bash
-sudo apt-get update
-wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-sudo apt-get install clang-4.0 lldb-4.0 cmake make \
-                     libbz2-dev libssl-dev libgmp3-dev \
-                     autotools-dev build-essential \
-                     libbz2-dev libicu-dev python-dev \
-                     autoconf libtool git
-```
-
-Install Boost 1.64:
-
-```bash
-cd ~
-wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
-tar xjf boost_1.64.0.tar.bz2
-cd boost_1_64_0/
-echo "export BOOST_ROOT=$HOME/opt/boost_1_64_0" >> ~/.bash_profile
-source ~/.bash_profile
-./bootstrap.sh "--prefix=$BOOST_ROOT"
-./b2 install
-source ~/.bash_profile
-```
-
-Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
-        
-```bash
-cd ~
-git clone https://github.com/cryptonomex/secp256k1-zkp.git
-cd secp256k1-zkp
-./autogen.sh
-./configure
-make
-sudo make install
-```
-
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
-By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
-
-```bash
-mkdir  ~/wasm-compiler
-cd ~/wasm-compiler
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
-cd llvm/tools
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
-cd ..
-mkdir build
-cd build
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-make -j4 install
-```
-
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>. 
-
-<a name="macos"></a>
-#### macOS Sierra 10.12.6 
-
-macOS additional Dependencies:
-
-* Brew
-* Newest XCode
-
-Upgrade your XCode to the newest version:
-
-```bash
-xcode-select --install
-```
-
-Install homebrew:
-
-```bash
-ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-```
-
-Install the dependencies:
-
-```bash
-brew update
-brew install git automake libtool boost openssl llvm@4 gmp
-```
-
-Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
-        
-```bash
-cd ~
-git clone https://github.com/cryptonomex/secp256k1-zkp.git
-cd secp256k1-zkp
-./autogen.sh
-./configure
-make
-sudo make install
-```
-
-Install [binaryen v1.37.14](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
-
-Build LLVM and clang for WASM:
-
-```bash
-mkdir  ~/wasm-compiler
-cd ~/wasm-compiler
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
-cd llvm/tools
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
-cd ..
-mkdir build
-cd build
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-make -j4 install
-```
-
-Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
-
-```bash
-echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
-source ~/.bash_profile
-```
 
 <a name="runanode"></a>
 ## Building EOS and running a node 
@@ -360,17 +188,13 @@ When running `eosd` you should get log messages similar to below. It means the b
 1575001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initm generated block #1 @ 2017-09-04T04:26:15 with 0 trxs  0 pending
 1578001ms thread-0   chain_controller.cpp:235      _push_block          ] initc #2 @2017-09-04T04:26:18  | 0 trx, 0 pending, exectime_ms=0
 1578001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initc generated block #2 @ 2017-09-04T04:26:18 with 0 trxs  0 pending
-1581001ms thread-0   chain_controller.cpp:235      _push_block          ] initd #3 @2017-09-04T04:26:21  | 0 trx, 0 pending, exectime_ms=0
-1581001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initd generated block #3 @ 2017-09-04T04:26:21 with 0 trxs  0 pending
-1584000ms thread-0   chain_controller.cpp:235      _push_block          ] inite #4 @2017-09-04T04:26:24  | 0 trx, 0 pending, exectime_ms=0
-1584000ms thread-0   producer_plugin.cpp:207       block_production_loo ] inite generated block #4 @ 2017-09-04T04:26:24 with 0 trxs  0 pending
-1587000ms thread-0   chain_controller.cpp:235      _push_block          ] initf #5 @2017-09-04T04:26:27  | 0 trx, 0 pending, exectime_ms=0
+...
 ```
 
 <a name="accountssmartcontracts"></a>
 ## Example "Currency" Contract Walkthrough
 
-EOS comes with example contracts that can be uploaded and run for testing purposes. Below is demonstrated how to upload and interact with the sample contract "currency". 
+EOS comes with example contracts that can be uploaded and run for testing purposes. Next we demonstrate how to upload and interact with the sample contract "currency". 
 
 <a name="smartcontractexample"></a>
 ### Example smart contracts
@@ -495,13 +319,28 @@ Next verify the currency contract has the proper initial balance:
 ```
 
 <a name="pushamessage"></a>
-### Pushing a message to sample "currency" contract 
+### Transfering funds with the sample "currency" contract 
 
-Send a message from the **currency** account to account **inita** 
+Anyone can send any message to any contract at any time, but the contracts may reject messages which are not given necessary permission. Messages are not
+sent "from" anyone, they are sent "with permission of" one or more accounts and permission levels. The following commands shows a "transfer" message being
+sent to the "currency" contact.  
+
+The content of the message is `'{"from":"currency","to":"inita","amount":50}'`. In this case we are asking the currency contract to transfer funds from itself to
+someone else.  This requires the permission of the currency contract.
+
 
 ```bash
 ./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
 ```
+
+Below is a generalization that shows the `currency` account is only referenced once, to specify which contact to deliver the `transfer` message to.
+
+```bash
+./eosc push message currency transfer '{"from":"${usera}","to":"${userb}","amount":50}' --scope ${usera},${userb} --permission ${usera}@active
+```
+
+We specify the `--scope ...` argument to give the currency contract read/write permission to those users so it can modify their balances.  In a future release scope
+will be determined automatically.
 
 As a confirmation of a successfully submitted transaction you will receive json output that includes a `transaction_id` field.
 
@@ -534,7 +373,7 @@ So now check the state of both of the accounts involved in the previous transact
 As expected, the receiving account **inita** now has a balance of **50** tokens, and the sending account now has **50** less tokens than its initial supply. 
 
 <a name="localtestnet"></a>
-## Running local testnet 
+## Running multi-node local testnet 
 
 To run a local testnet you can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
 
@@ -578,3 +417,178 @@ You can find more detailed API documentation in Doxygen reference: https://eosio
 ## Running EOS in Docker 
 
 You can find up to date information about EOS Docker in the [Docker Readme](https://github.com/EOSIO/eos/blob/master/Docker/README.md)
+
+
+
+<a name="manualdep"></a>
+### Manual installation of the dependencies
+
+If you prefer to manually build dependencies - follow the steps below.
+
+This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
+
+Dependencies:
+
+* Clang 4.0.0
+* CMake 3.5.1
+* Boost 1.64
+* OpenSSL
+* LLVM 4.0
+* [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
+* [binaryen](https://github.com/WebAssembly/binaryen.git)
+
+<a name="ubuntu"></a>
+#### Clean install Ubuntu 16.10 
+
+Install the development toolkit:
+
+```bash
+sudo apt-get update
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+sudo apt-get install clang-4.0 lldb-4.0 cmake make \
+                     libbz2-dev libssl-dev libgmp3-dev \
+                     autotools-dev build-essential \
+                     libbz2-dev libicu-dev python-dev \
+                     autoconf libtool git
+```
+
+Install Boost 1.64:
+
+```bash
+cd ~
+wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
+tar xjf boost_1.64.0.tar.bz2
+cd boost_1_64_0/
+echo "export BOOST_ROOT=$HOME/opt/boost_1_64_0" >> ~/.bash_profile
+source ~/.bash_profile
+./bootstrap.sh "--prefix=$BOOST_ROOT"
+./b2 install
+source ~/.bash_profile
+```
+
+Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
+        
+```bash
+cd ~
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
+./autogen.sh
+./configure
+make
+sudo make install
+```
+
+To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
+
+```bash
+cd ~
+git clone https://github.com/WebAssembly/binaryen.git
+cd ~/binaryen
+git checkout tags/1.37.14
+cmake . && make
+
+```
+
+Add `BINARYEN_ROOT` to your .bash_profile:
+
+```bash
+echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
+source ~/.bash_profile
+```
+
+By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
+
+```bash
+mkdir  ~/wasm-compiler
+cd ~/wasm-compiler
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+cd llvm/tools
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+cd ..
+mkdir build
+cd build
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+make -j4 install
+```
+
+Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>. 
+
+<a name="macos"></a>
+#### MacOS Sierra 10.12.6 
+
+macOS additional Dependencies:
+
+* Brew
+* Newest XCode
+
+Upgrade your XCode to the newest version:
+
+```bash
+xcode-select --install
+```
+
+Install homebrew:
+
+```bash
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
+
+Install the dependencies:
+
+```bash
+brew update
+brew install git automake libtool boost openssl llvm@4 gmp
+```
+
+Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
+        
+```bash
+cd ~
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
+./autogen.sh
+./configure
+make
+sudo make install
+```
+
+Install [binaryen v1.37.14](https://github.com/WebAssembly/binaryen.git):
+
+```bash
+cd ~
+git clone https://github.com/WebAssembly/binaryen.git
+cd ~/binaryen
+git checkout tags/1.37.14
+cmake . && make
+```
+
+Add `BINARYEN_ROOT` to your .bash_profile:
+
+```bash
+echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
+source ~/.bash_profile
+```
+
+
+Build LLVM and clang for WASM:
+
+```bash
+mkdir  ~/wasm-compiler
+cd ~/wasm-compiler
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+cd llvm/tools
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+cd ..
+mkdir build
+cd build
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+make -j4 install
+```
+
+Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
+
+```bash
+echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+source ~/.bash_profile
+```

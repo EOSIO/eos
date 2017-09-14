@@ -20,7 +20,7 @@ var searchData=
   ['currency_2ewast_2ehpp',['currency.wast.hpp',['../currency_2currency_8wast_8hpp.html',1,'(Global Namespace)'],['../system_2currency_8wast_8hpp.html',1,'(Global Namespace)']]],
   ['currency_5ftype',['currency_type',['../structeos_1_1token.html#a185ffd9fee7a6383ef028c3a4d7c2dee',1,'eos::token']]],
   ['currency_5fwast',['currency_wast',['../currency_2currency_8wast_8hpp.html#af81b0cff9cea75a78074db8df522e772',1,'currency_wast():&#160;currency.wast.hpp'],['../system_2currency_8wast_8hpp.html#af81b0cff9cea75a78074db8df522e772',1,'currency_wast():&#160;currency.wast.hpp']]],
-  ['currency_20contract_20api',['Currency Contract API',['../group__currencyapi.html',1,'']]],
+  ['currency_20contract',['Currency Contract',['../group__currencyapi.html',1,'']]],
   ['currencytokens',['CurrencyTokens',['../group__currencyapi.html#ga0c4afa08ec2e44777543fe547d60e9e6',1,'TOKEN_NAME::CurrencyTokens()'],['../namespaceinfinite.html#af2b1a7bf54ff8a0a2072831d4a7b28d5',1,'infinite::CurrencyTokens()']]],
   ['currentcode',['currentCode',['../group__messagecapi.html#ga1f06c06adc584456cf30e8086d6b55b1',1,'message.h']]],
   ['currentmessage',['currentMessage',['../group__messagecppapi.html#ga82362482cd5c990d4b25708a96f72c32',1,'eos']]]

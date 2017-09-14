@@ -20,6 +20,7 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
    &#160;<span id="projectnumber">DAWN1.0</span>
@@ -78,10 +79,10 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ga23801e95fdf200a183909b3f4e819680"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__mathcppapi.html#ga23801e95fdf200a183909b3f4e819680">eos::multeq</a> (<a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;self, const <a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;other)</td></tr>
+<tr class="memitem:ga23801e95fdf200a183909b3f4e819680"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__mathcppapi.html#ga23801e95fdf200a183909b3f4e819680">eos::multeq</a> (<a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;self, const <a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;other)</td></tr>
 <tr class="memdesc:ga23801e95fdf200a183909b3f4e819680"><td class="mdescLeft">&#160;</td><td class="mdescRight">wraps multeq_i128 from <a class="el" href="group__mathcapi.html">Math C API</a>  <a href="group__mathcppapi.html#ga23801e95fdf200a183909b3f4e819680">More...</a><br /></td></tr>
 <tr class="separator:ga23801e95fdf200a183909b3f4e819680"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga1ed045c04de3094739808554e3791359"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__mathcppapi.html#ga1ed045c04de3094739808554e3791359">eos::diveq</a> (<a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;self, const <a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;other)</td></tr>
+<tr class="memitem:ga1ed045c04de3094739808554e3791359"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__mathcppapi.html#ga1ed045c04de3094739808554e3791359">eos::diveq</a> (<a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;self, const <a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;other)</td></tr>
 <tr class="memdesc:ga1ed045c04de3094739808554e3791359"><td class="mdescLeft">&#160;</td><td class="mdescRight">wraps diveq_i128 from <a class="el" href="group__mathcapi.html">Math C API</a>  <a href="group__mathcppapi.html#ga1ed045c04de3094739808554e3791359">More...</a><br /></td></tr>
 <tr class="separator:ga1ed045c04de3094739808554e3791359"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga8cfe8cb6da0460d4502c320025bbd9c8"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
@@ -107,13 +108,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void eos::diveq </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
           <td class="paramname"><em>self</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
           <td class="paramname"><em>other</em>&#160;</td>
         </tr>
         <tr>
@@ -135,7 +136,7 @@ Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
-<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> <span class="keyword">self</span>(100);</div><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> other(100);</div><div class="line"><a class="code" href="group__mathcppapi.html#ga1ed045c04de3094739808554e3791359">diveq</a>(<span class="keyword">self</span>, other);</div><div class="line">std::cout &lt;&lt; <span class="keyword">self</span>; <span class="comment">// Output: 1</span></div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> <span class="keyword">self</span>(100);</div><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> other(100);</div><div class="line"><a class="code" href="group__mathcppapi.html#ga1ed045c04de3094739808554e3791359">diveq</a>(<span class="keyword">self</span>, other);</div><div class="line">std::cout &lt;&lt; <span class="keyword">self</span>; <span class="comment">// Output: 1</span></div></div><!-- fragment --> 
 </div>
 </div>
 <a id="ga422f063ec99a30ab7a395f0fafeffcb2"></a>
@@ -173,7 +174,7 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The greater of a and b. If they are equivalent, returns a</dd></dl>
-<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> a(1);</div><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> b(2);</div><div class="line">std::cout &lt;&lt; <a class="code" href="group__mathcppapi.html#ga422f063ec99a30ab7a395f0fafeffcb2">max</a>(a, b); <span class="comment">// Output: 2</span></div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> a(1);</div><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> b(2);</div><div class="line">std::cout &lt;&lt; <a class="code" href="group__mathcppapi.html#ga422f063ec99a30ab7a395f0fafeffcb2">max</a>(a, b); <span class="comment">// Output: 2</span></div></div><!-- fragment --> 
 </div>
 </div>
 <a id="ga8cfe8cb6da0460d4502c320025bbd9c8"></a>
@@ -211,7 +212,7 @@ template&lt;typename T &gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>The smaller of a and b. If they are equivalent, returns a</dd></dl>
-<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> a(1);</div><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> b(2);</div><div class="line">std::cout &lt;&lt; <a class="code" href="group__mathcppapi.html#ga8cfe8cb6da0460d4502c320025bbd9c8">min</a>(a, b); <span class="comment">// Output: 1</span></div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> a(1);</div><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> b(2);</div><div class="line">std::cout &lt;&lt; <a class="code" href="group__mathcppapi.html#ga8cfe8cb6da0460d4502c320025bbd9c8">min</a>(a, b); <span class="comment">// Output: 1</span></div></div><!-- fragment --> 
 </div>
 </div>
 <a id="ga23801e95fdf200a183909b3f4e819680"></a>
@@ -226,13 +227,13 @@ template&lt;typename T &gt; </div>
         <tr>
           <td class="memname">void eos::multeq </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
           <td class="paramname"><em>self</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;&#160;</td>
           <td class="paramname"><em>other</em>&#160;</td>
         </tr>
         <tr>
@@ -254,7 +255,7 @@ template&lt;typename T &gt; </div>
   </table>
   </dd>
 </dl>
-<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> <span class="keyword">self</span>(100);</div><div class="line"><a class="code" href="types_8h.html#a396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> other(100);</div><div class="line"><a class="code" href="group__mathcppapi.html#ga23801e95fdf200a183909b3f4e819680">multeq</a>(<span class="keyword">self</span>, other);</div><div class="line">std::cout &lt;&lt; <span class="keyword">self</span>; <span class="comment">// Output: 10000</span></div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> <span class="keyword">self</span>(100);</div><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> other(100);</div><div class="line"><a class="code" href="group__mathcppapi.html#ga23801e95fdf200a183909b3f4e819680">multeq</a>(<span class="keyword">self</span>, other);</div><div class="line">std::cout &lt;&lt; <span class="keyword">self</span>; <span class="comment">// Output: 10000</span></div></div><!-- fragment --> 
 </div>
 </div>
 </div><!-- contents -->

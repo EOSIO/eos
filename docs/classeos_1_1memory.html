@@ -20,6 +20,7 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
    &#160;<span id="projectnumber">DAWN1.0</span>
@@ -69,7 +70,7 @@ $(function() {
 <a href="#friends">Friends</a> &#124;
 <a href="classeos_1_1memory-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">eos::memory Class Reference<div class="ingroups"><a class="el" href="group__memorycppapi.html">Memory C++ API</a></div></div>  </div>
+<div class="title">eos::memory Class Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__memoryapi.html">Memory API</a> &raquo; <a class="el" href="group__memorycppapi.html">Memory C++ API</a></div></div>  </div>
 </div><!--header-->
 <div class="contents">
 
@@ -82,10 +83,10 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="friends"></a>
 Friends</h2></td></tr>
-<tr class="memitem:a8704c31c2d7a73953f3c1c320447c24a"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a> (<a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
+<tr class="memitem:a8704c31c2d7a73953f3c1c320447c24a"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a> (<a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
 <tr class="memdesc:a8704c31c2d7a73953f3c1c320447c24a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate a block of memory.  <a href="#a8704c31c2d7a73953f3c1c320447c24a">More...</a><br /></td></tr>
 <tr class="separator:a8704c31c2d7a73953f3c1c320447c24a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8499edb5f09d8455c15c667c36abaac6"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1memory.html#a8499edb5f09d8455c15c667c36abaac6">realloc</a> (void *ptr, <a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
+<tr class="memitem:a8499edb5f09d8455c15c667c36abaac6"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1memory.html#a8499edb5f09d8455c15c667c36abaac6">realloc</a> (void *ptr, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
 <tr class="memdesc:a8499edb5f09d8455c15c667c36abaac6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate a block of memory.  <a href="#a8499edb5f09d8455c15c667c36abaac6">More...</a><br /></td></tr>
 <tr class="separator:a8499edb5f09d8455c15c667c36abaac6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afbedc913aa4651b3c3b4b3aecd9b4711"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1memory.html#afbedc913aa4651b3c3b4b3aecd9b4711">free</a> (void *ptr)</td></tr>
@@ -148,7 +149,7 @@ Friends</h2></td></tr>
   </table>
   </dd>
 </dl>
-<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>* int_buffer = <a class="code" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a>(500 * <span class="keyword">sizeof</span>(<a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div><div class="line">...</div><div class="line">free(int_buffer);</div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>* int_buffer = <a class="code" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a>(500 * <span class="keyword">sizeof</span>(<a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div><div class="line">...</div><div class="line">free(int_buffer);</div></div><!-- fragment --> 
 </div>
 </div>
 <a id="a8704c31c2d7a73953f3c1c320447c24a"></a>
@@ -163,7 +164,7 @@ Friends</h2></td></tr>
         <tr>
           <td class="memname">void* malloc </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
           <td class="paramname"><em>size</em></td><td>)</td>
           <td></td>
         </tr>
@@ -180,7 +181,7 @@ Friends</h2></td></tr>
   </table>
   </dd>
 </dl>
-<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>* int_buffer = <a class="code" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a>(500 * <span class="keyword">sizeof</span>(<a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>* int_buffer = <a class="code" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a>(500 * <span class="keyword">sizeof</span>(<a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div></div><!-- fragment --> 
 </div>
 </div>
 <a id="a8499edb5f09d8455c15c667c36abaac6"></a>
@@ -201,7 +202,7 @@ Friends</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
           <td class="paramname"><em>size</em>&#160;</td>
         </tr>
         <tr>
@@ -222,7 +223,7 @@ Friends</h2></td></tr>
   </table>
   </dd>
 </dl>
-<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>* int_buffer = <a class="code" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a>(500 * <span class="keyword">sizeof</span>(<a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div><div class="line">...</div><div class="line">uint64_t* bigger_int_buffer = <a class="code" href="classeos_1_1memory.html#a8499edb5f09d8455c15c667c36abaac6">realloc</a>(int_buffer, 600 * <span class="keyword">sizeof</span>(<a class="code" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>* int_buffer = <a class="code" href="classeos_1_1memory.html#a8704c31c2d7a73953f3c1c320447c24a">malloc</a>(500 * <span class="keyword">sizeof</span>(<a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div><div class="line">...</div><div class="line">uint64_t* bigger_int_buffer = <a class="code" href="classeos_1_1memory.html#a8499edb5f09d8455c15c667c36abaac6">realloc</a>(int_buffer, 600 * <span class="keyword">sizeof</span>(<a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>));</div></div><!-- fragment --> 
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
