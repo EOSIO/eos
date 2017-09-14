@@ -20,6 +20,7 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
    &#160;<span id="projectnumber">DAWN1.0</span>
@@ -95,12 +96,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a2e9d2f29e776e784a2001526694c4b11"><td class="mdescLeft">&#160;</td><td class="mdescRight">Construction for price given the base token and quote token.  <a href="#a2e9d2f29e776e784a2001526694c4b11">More...</a><br /></td></tr>
 <tr class="separator:a2e9d2f29e776e784a2001526694c4b11"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a28ea75d4c606d22e2c0473daccfe504f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1price.html#a28ea75d4c606d22e2c0473daccfe504f">print</a> ()</td></tr>
-<tr class="memdesc:a28ea75d4c606d22e2c0473daccfe504f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Print as string.  <a href="#a28ea75d4c606d22e2c0473daccfe504f">More...</a><br /></td></tr>
+<tr class="memdesc:a28ea75d4c606d22e2c0473daccfe504f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints as string.  <a href="#a28ea75d4c606d22e2c0473daccfe504f">More...</a><br /></td></tr>
 <tr class="separator:a28ea75d4c606d22e2c0473daccfe504f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
-<tr class="memitem:acc37f49e03b96f6ca1642a937280a533"><td class="memItemLeft" align="right" valign="top">static const <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1price.html#acc37f49e03b96f6ca1642a937280a533">precision</a> = 1000ll*1000ll*1000ll*1000ll*1000ll</td></tr>
+<tr class="memitem:acc37f49e03b96f6ca1642a937280a533"><td class="memItemLeft" align="right" valign="top">static const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1price.html#acc37f49e03b96f6ca1642a937280a533">precision</a> = 1000ll*1000ll*1000ll*1000ll*1000ll</td></tr>
+<tr class="memdesc:acc37f49e03b96f6ca1642a937280a533"><td class="mdescLeft">&#160;</td><td class="mdescRight">Precision of the price.  <a href="#acc37f49e03b96f6ca1642a937280a533">More...</a><br /></td></tr>
 <tr class="separator:acc37f49e03b96f6ca1642a937280a533"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="friends"></a>
@@ -134,14 +136,15 @@ Friends</h2></td></tr>
 <div class="textblock"><h3>template&lt;typename BaseToken, typename QuoteToken&gt;<br />
 struct eos::price&lt; BaseToken, QuoteToken &gt;</h3>
 
-<p>Defines a fixed precision price between two tokens. A price is written as X Base/Quote. Where X is a power of 10 which makes it simpler to just shift the decimal. It supports the following operator: /, \, &lt;=, &lt;, ==, !=, &gt;=, &gt; and also print functionality </p><dl class="tparams"><dt>Template Parameters</dt><dd>
+<dl class="tparams"><dt>Template Parameters</dt><dd>
   <table class="tparams">
     <tr><td class="paramname">BaseToken</td><td>- represents the type of the base token </td></tr>
     <tr><td class="paramname">QuoteToken</td><td>- represents the type of the quote token</td></tr>
   </table>
   </dd>
 </dl>
-<div class="fragment"><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eos::token&lt;uint64_t, N(MyBaseToken)&gt;</a> MyBaseToken;</div><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eos::token&lt;uint64_t, N(MyQuoteToken)&gt;</a> MyQuoteToken;</div><div class="line"><span class="keyword">typedef</span> price&lt;MyBaseToken, MyQuoteToken&gt; MyBaseToQuotePrice;</div><div class="line">MyBaseToken zeroBaseToken;</div><div class="line">MyQuoteToken zeroQuoteToken;</div><div class="line">MyBaseToQuotePrice zeroBaseToQuote(zeroBaseToken, zeroQuoteToken); <span class="comment">// throws invalid price exception</span></div><div class="line">MyBaseToken baseToken(128);</div><div class="line">MyQuoteToken quoteToken(128);</div><div class="line">MyBaseToQuotePrice aPrice(baseToken, quoteToken);</div><div class="line">aPrice.print(); <span class="comment">// Output: 1e+15. MyBaseToken / MyQuoteToken</span></div><div class="line">MyQuoteToken anotherQuote = baseToken / <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherQuote == quoteToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToken anotherBase = quoteToken * <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherBase == baseToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToQuotePrice anotherPrice(baseToken, quoteToken);</div><div class="line">std::cout &lt;&lt; (aPrice == anotherPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice != anotherPrice); <span class="comment">// Output: false</span></div><div class="line">MyBaseToken base256(256);</div><div class="line">MyBaseToQuotePrice price2(base256, quoteToken);</div><div class="line">std::cout &lt;&lt; (price2 &gt; aPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice &lt; price2); <span class="comment">// Output: true</span></div></div><!-- fragment --> </div><h2 class="groupheader">Member Typedef Documentation</h2>
+<p>Defines a fixed precision price between two tokens. A price is written as X Base/Quote. Where X is a power of 10 which makes it simpler to just shift the decimal. It supports the following operator: /, \, &lt;=, &lt;, ==, !=, &gt;=, &gt; and also print functionality</p>
+<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eos::token&lt;uint64_t, N(MyBaseToken)&gt;</a> MyBaseToken;</div><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eos::token&lt;uint64_t, N(MyQuoteToken)&gt;</a> MyQuoteToken;</div><div class="line"><span class="keyword">typedef</span> price&lt;MyBaseToken, MyQuoteToken&gt; MyBaseToQuotePrice;</div><div class="line">MyBaseToken zeroBaseToken;</div><div class="line">MyQuoteToken zeroQuoteToken;</div><div class="line">MyBaseToQuotePrice zeroBaseToQuote(zeroBaseToken, zeroQuoteToken); <span class="comment">// throws invalid price exception</span></div><div class="line">MyBaseToken baseToken(128);</div><div class="line">MyQuoteToken quoteToken(128);</div><div class="line">MyBaseToQuotePrice aPrice(baseToken, quoteToken);</div><div class="line">aPrice.print(); <span class="comment">// Output: 1e+15. MyBaseToken / MyQuoteToken</span></div><div class="line">MyQuoteToken anotherQuote = baseToken / <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherQuote == quoteToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToken anotherBase = quoteToken * <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherBase == baseToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToQuotePrice anotherPrice(baseToken, quoteToken);</div><div class="line">std::cout &lt;&lt; (aPrice == anotherPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice != anotherPrice); <span class="comment">// Output: false</span></div><div class="line">MyBaseToken base256(256);</div><div class="line">MyBaseToQuotePrice price2(base256, quoteToken);</div><div class="line">std::cout &lt;&lt; (price2 &gt; aPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice &lt; price2); <span class="comment">// Output: true</span></div></div><!-- fragment --> </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="a05476d75e3da2435489d4360ae0aa9c8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a05476d75e3da2435489d4360ae0aa9c8">&#9670;&nbsp;</a></span>base_token_type</h2>
 
@@ -238,7 +241,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Construction for price given the base token and quote token </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Construction for price given the base token and quote token. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">base</td><td>- base token </td></tr>
     <tr><td class="paramname">quote</td><td>- quote token </td></tr>
@@ -273,7 +276,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Print as string representing the conversion </p>
+<p>Prints as string representing the conversion. </p>
 
 </div>
 </div>
@@ -313,7 +316,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Inequality comparison operator </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Inequality comparison operator. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">a</td><td>price to be compared </td></tr>
     <tr><td class="paramname">b</td><td>price to be compared </td></tr>
@@ -359,7 +362,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Operator returns a base token given a quote token and the conversion price </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Operator returns a base token given a quote token and the conversion price. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">b</td><td>- quote token </td></tr>
     <tr><td class="paramname">q</td><td>- price </td></tr>
@@ -405,7 +408,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Operator returns a quote token given a base token and the conversion price </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Operator returns a quote token given a base token and the conversion price. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">b</td><td>- base token </td></tr>
     <tr><td class="paramname">q</td><td>- price </td></tr>
@@ -451,7 +454,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Less than comparison operator </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Less than comparison operator. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">a</td><td>price to be compared </td></tr>
     <tr><td class="paramname">b</td><td>price to be compared </td></tr>
@@ -497,7 +500,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Less than or equal to comparison operator </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Less than or equal to comparison operator. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">a</td><td>price to be compared </td></tr>
     <tr><td class="paramname">b</td><td>price to be compared </td></tr>
@@ -543,7 +546,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Equality comparison operator </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Equality comparison operator. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">a</td><td>price to be compared </td></tr>
     <tr><td class="paramname">b</td><td>price to be compared </td></tr>
@@ -589,7 +592,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Greater than comparison operator </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Greater than comparison operator. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">a</td><td>price to be compared </td></tr>
     <tr><td class="paramname">b</td><td>price to be compared </td></tr>
@@ -635,7 +638,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Greater than or equal to comparison operator </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Greater than or equal to comparison operator. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">a</td><td>price to be compared </td></tr>
     <tr><td class="paramname">b</td><td>price to be compared </td></tr>
@@ -659,7 +662,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::precision = 1000ll*1000ll*1000ll*1000ll*1000ll</td>
+          <td class="memname">const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::precision = 1000ll*1000ll*1000ll*1000ll*1000ll</td>
         </tr>
       </table>
   </td>

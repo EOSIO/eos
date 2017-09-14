@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: Currency Contract API</title>
+<title>EOS.IO: Currency Contract</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -20,6 +20,7 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
    &#160;<span id="projectnumber">DAWN1.0</span>
@@ -65,11 +66,11 @@ $(function() {
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
-<div class="title">Currency Contract API</div>  </div>
+<div class="title">Currency Contract<div class="ingroups"><a class="el" href="group__examplecontract.html">Example Contract</a></div></div>  </div>
 </div><!--header-->
 <div class="contents">
 
-<p>Defines the curency contract.  
+<p>Defines the curency contract example.  
 <a href="#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
@@ -82,9 +83,9 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:ga0c4afa08ec2e44777543fe547d60e9e6"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga0c4afa08ec2e44777543fe547d60e9e6">TOKEN_NAME::CurrencyTokens</a></td></tr>
+<tr class="memitem:ga0c4afa08ec2e44777543fe547d60e9e6"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga0c4afa08ec2e44777543fe547d60e9e6">TOKEN_NAME::CurrencyTokens</a></td></tr>
 <tr class="separator:ga0c4afa08ec2e44777543fe547d60e9e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga90f15481940a6f47f7f86fe0ab21bda4"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga90f15481940a6f47f7f86fe0ab21bda4">TOKEN_NAME::Accounts</a> = <a class="el" href="struct_table.html">Table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account), <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
+<tr class="memitem:ga90f15481940a6f47f7f86fe0ab21bda4"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga90f15481940a6f47f7f86fe0ab21bda4">TOKEN_NAME::Accounts</a> = <a class="el" href="struct_table.html">Table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account), <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
 <tr class="separator:ga90f15481940a6f47f7f86fe0ab21bda4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
@@ -93,18 +94,18 @@ Functions</h2></td></tr>
 <tr class="separator:gacc96b530db9c63a37c07de6b062c2e9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga9054490f61b926c7392384b48e2b0ca8"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga9054490f61b926c7392384b48e2b0ca8">TOKEN_NAME::Account::isEmpty</a> () const</td></tr>
 <tr class="separator:ga9054490f61b926c7392384b48e2b0ca8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga1de45851aa74bc1e9b4793dfe99717db"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga1de45851aa74bc1e9b4793dfe99717db">TOKEN_NAME::getAccount</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> owner)</td></tr>
+<tr class="memitem:ga1de45851aa74bc1e9b4793dfe99717db"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga1de45851aa74bc1e9b4793dfe99717db">TOKEN_NAME::getAccount</a> (<a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a> owner)</td></tr>
 <tr class="separator:ga1de45851aa74bc1e9b4793dfe99717db"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:ga362f583628aa3e17ea756cb060a94779"><td class="memItemLeft" align="right" valign="top"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga362f583628aa3e17ea756cb060a94779">TOKEN_NAME::Transfer::from</a></td></tr>
+<tr class="memitem:ga362f583628aa3e17ea756cb060a94779"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga362f583628aa3e17ea756cb060a94779">TOKEN_NAME::Transfer::from</a></td></tr>
 <tr class="separator:ga362f583628aa3e17ea756cb060a94779"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga75350616e02bd681c0e8b12ca4cf7a38"><td class="memItemLeft" align="right" valign="top"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga75350616e02bd681c0e8b12ca4cf7a38">TOKEN_NAME::Transfer::to</a></td></tr>
+<tr class="memitem:ga75350616e02bd681c0e8b12ca4cf7a38"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga75350616e02bd681c0e8b12ca4cf7a38">TOKEN_NAME::Transfer::to</a></td></tr>
 <tr class="separator:ga75350616e02bd681c0e8b12ca4cf7a38"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga2892db9fb7756afd55846ef6979406e4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__currencyapi.html#ga0c4afa08ec2e44777543fe547d60e9e6">CurrencyTokens</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga2892db9fb7756afd55846ef6979406e4">TOKEN_NAME::Transfer::quantity</a></td></tr>
 <tr class="separator:ga2892db9fb7756afd55846ef6979406e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaf828b3fc2f24217280b1649078f56361"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#gaf828b3fc2f24217280b1649078f56361">TOKEN_NAME::Account::key</a> = <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account)</td></tr>
+<tr class="memitem:gaf828b3fc2f24217280b1649078f56361"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#gaf828b3fc2f24217280b1649078f56361">TOKEN_NAME::Account::key</a> = <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account)</td></tr>
 <tr class="separator:gaf828b3fc2f24217280b1649078f56361"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gac30ba5f614e7408e3c66804d15aa5db8"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__currencyapi.html#ga0c4afa08ec2e44777543fe547d60e9e6">CurrencyTokens</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#gac30ba5f614e7408e3c66804d15aa5db8">TOKEN_NAME::Account::balance</a></td></tr>
 <tr class="separator:gac30ba5f614e7408e3c66804d15aa5db8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -118,7 +119,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">using <a class="el" href="group__currencyapi.html#ga90f15481940a6f47f7f86fe0ab21bda4">TOKEN_NAME::Accounts</a> = typedef <a class="el" href="struct_table.html">Table</a>&lt;<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account),<a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>,<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&gt;</td>
+          <td class="memname">using <a class="el" href="group__currencyapi.html#ga90f15481940a6f47f7f86fe0ab21bda4">TOKEN_NAME::Accounts</a> = typedef <a class="el" href="struct_table.html">Table</a>&lt;<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account),<a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>,<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&gt;</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -133,7 +134,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef <a class="el" href="structeos_1_1token.html">eos::token</a>&lt;<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>,<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt; <a class="el" href="group__currencyapi.html#ga0c4afa08ec2e44777543fe547d60e9e6">TOKEN_NAME::CurrencyTokens</a></td>
+          <td class="memname">typedef <a class="el" href="structeos_1_1token.html">eos::token</a>&lt;<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>,<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt; <a class="el" href="group__currencyapi.html#ga0c4afa08ec2e44777543fe547d60e9e6">TOKEN_NAME::CurrencyTokens</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -181,7 +182,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a> TOKEN_NAME::getAccount </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
           <td class="paramname"><em>owner</em></td><td>)</td>
           <td></td>
         </tr>
@@ -254,7 +255,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> TOKEN_NAME::Transfer::from</td>
+          <td class="memname"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a> TOKEN_NAME::Transfer::from</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -269,7 +270,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> TOKEN_NAME::Account::key = <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account)</td>
+          <td class="memname">const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> TOKEN_NAME::Account::key = <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -299,7 +300,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> TOKEN_NAME::Transfer::to</td>
+          <td class="memname"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a> TOKEN_NAME::Transfer::to</td>
         </tr>
       </table>
 </div><div class="memdoc">

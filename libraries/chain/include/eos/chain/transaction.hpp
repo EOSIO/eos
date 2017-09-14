@@ -211,8 +211,8 @@ namespace eos { namespace chain {
       explicit ProcessedGeneratedTransaction( const GeneratedTransaction& t ):id(t.id){}
       ProcessedGeneratedTransaction(){}
 
-      generated_transaction_id_type id;
-      vector<MessageOutput> output;
+      generated_transaction_id_type   id;
+      vector<optional<MessageOutput>> output;
    };
    /// @} transactions group
 

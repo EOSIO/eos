@@ -14,6 +14,7 @@ var searchData=
   ['memory_2eh',['memory.h',['../memory_8h.html',1,'']]],
   ['memory_2ehpp',['memory.hpp',['../memory_8hpp.html',1,'']]],
   ['memory_5fheap',['memory_heap',['../group__memorycppapi.html#gaa934a0d3dbc1fdc1f6ab191314bcfec4',1,'eos']]],
+  ['memory_20api',['Memory API',['../group__memoryapi.html',1,'']]],
   ['memory_20c_20api',['Memory C API',['../group__memorycapi.html',1,'']]],
   ['memory_20c_2b_2b_20api',['Memory C++ API',['../group__memorycppapi.html',1,'']]],
   ['memset',['memset',['../group__memorycapi.html#gad8eef9133e11fe77cd34792771f81761',1,'memory.h']]],

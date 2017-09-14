@@ -20,6 +20,7 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
    &#160;<span id="projectnumber">DAWN1.0</span>
@@ -73,21 +74,21 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>wraps a uint64_t to ensure it is only passed to methods that expect a <a class="el" href="structeos_1_1_name.html" title="wraps a uint64_t to ensure it is only passed to methods that expect a Name and that no mathematical o...">Name</a> and that no mathematical operations occur. It also enables specialization of print so that it is printed as a base32 string.  
-</p>
+<p>wraps a uint64_t to ensure it is only passed to methods that expect a <a class="el" href="structeos_1_1_name.html" title="wraps a uint64_t to ensure it is only passed to methods that expect a Name ">Name</a>  
+ <a href="structeos_1_1_name.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="types_8hpp_source.html">types.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a671ad25d845f18cc43236a4557ef3ed5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_name.html#a671ad25d845f18cc43236a4557ef3ed5">Name</a> (<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> v=0)</td></tr>
+<tr class="memitem:a671ad25d845f18cc43236a4557ef3ed5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_name.html#a671ad25d845f18cc43236a4557ef3ed5">Name</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> v=0)</td></tr>
 <tr class="separator:a671ad25d845f18cc43236a4557ef3ed5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0a0e724ce7e1b35aa1e5d32b32b6df0e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_name.html#a0a0e724ce7e1b35aa1e5d32b32b6df0e">operator uint64_t</a> () const</td></tr>
 <tr class="separator:a0a0e724ce7e1b35aa1e5d32b32b6df0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a5d5bf2890d44c3d53e902599e95da38a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_name.html#a5d5bf2890d44c3d53e902599e95da38a">value</a> = 0</td></tr>
+<tr class="memitem:a5d5bf2890d44c3d53e902599e95da38a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_name.html#a5d5bf2890d44c3d53e902599e95da38a">value</a> = 0</td></tr>
 <tr class="separator:a5d5bf2890d44c3d53e902599e95da38a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="friends"></a>
@@ -95,7 +96,9 @@ Friends</h2></td></tr>
 <tr class="memitem:a32df73b17ea53322340af95b243e2cb6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_name.html#a32df73b17ea53322340af95b243e2cb6">operator==</a> (const <a class="el" href="structeos_1_1_name.html">Name</a> &amp;a, const <a class="el" href="structeos_1_1_name.html">Name</a> &amp;b)</td></tr>
 <tr class="separator:a32df73b17ea53322340af95b243e2cb6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>wraps a uint64_t to ensure it is only passed to methods that expect a <a class="el" href="structeos_1_1_name.html" title="wraps a uint64_t to ensure it is only passed to methods that expect a Name ">Name</a> and that no mathematical operations occur. It also enables specialization of print so that it is printed as a base32 string. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a671ad25d845f18cc43236a4557ef3ed5"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a671ad25d845f18cc43236a4557ef3ed5">&#9670;&nbsp;</a></span>Name()</h2>
 
@@ -108,7 +111,7 @@ Friends</h2></td></tr>
         <tr>
           <td class="memname">eos::Name::Name </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
           <td class="paramname"><em>v</em> = <code>0</code></td><td>)</td>
           <td></td>
         </tr>
@@ -133,7 +136,7 @@ Friends</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">eos::Name::operator <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> </td>
+          <td class="memname">eos::Name::operator <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -193,7 +196,7 @@ Friends</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> eos::Name::value = 0</td>
+          <td class="memname"><a class="el" href="group__types.html#gad67b43dc23285b01176f4c181c59fc23">AccountName</a> eos::Name::value = 0</td>
         </tr>
       </table>
 </div><div class="memdoc">
