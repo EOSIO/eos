@@ -39,10 +39,23 @@ develop applications (smart contracts).
 	4. [Upload sample contract to blockchain](#uploadsmartcontract)
 	5. [Pushing a message to a sample contract](#pushamessage)
 	6. [Reading Currency Contract Balance](#readingcontract)
-5. [Running local testnet](#localtestnet)
-6. [Doxygen documentation](#doxygen)
-7. [Running EOS in Docker](#docker)
+6. [Running local testnet](#localtestnet)
+7. [Doxygen documentation](#doxygen)
+8. [Running EOS in Docker](#docker)
 	1. [Running contract in docker example](#dockercontract)
+9. [General Use Examples](#generaluse)
+	1. [Wallets](#generaluse-wallets)
+   		1. [Create Wallet](#generaluse-createwallet)
+    	2. [Generate Keys](#generaluse-generatekeys)
+    	3. [Creating an Account](#generaluse-createaccount)
+    	4. [Checking Existence of Account](#generaluse-accountexists)
+    	5. [Import Wallet](#generaluse-walletimport)
+	1. [Contracts]()
+  		1. [Contracts]() 
+  		2. [Contracts]()
+  		3. [Contracts]() 
+  		4. [Contracts]() 
+  		5. [Contracts]()
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -445,7 +458,7 @@ If all went well, you will receive output similar to the following
 }
 ```
 
-Now import the owner private key generated previously in the wallet:
+Now import the active private key generated previously in the wallet:
 
 ```bash
 ./eosc wallet import XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
