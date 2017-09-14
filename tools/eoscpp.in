@@ -1,30 +1,44 @@
 #!/bin/bash -e
 
+EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
+
 function copy_skeleton {
-    cp -r @CMAKE_SOURCE_DIR@/contracts/skeleton/. $newname
+    cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname
 
     for file in $(find ./$newname -name 'skeleton.*')
     do
-        mv "${file}" "`echo $file | sed 's/skeleton\./'"$newname"'./'`"
+        newfile=`echo $file | sed 's/skeleton\./'"$newname"'./'`
+#        echo mv "${file}" "${newfile}"
+        mv "${file}" "${newfile}"
+        exp=s/skeleton/${newname}/g
+#        echo sed -i ${exp}  ${newfile}
+        sed ${exp}  ${newfile} > ${newfile}1
+        mv ${newfile}1 ${newfile}
     done
-    echo "skeleton $newname contract created"
+    echo "created $newname from skeleton"
 }
 
 function build_contract {
     workdir=`mktemp -d`
+#    echo mkdir $workdir/built
     mkdir $workdir/built
 
     for file in $@; do
         name=`basename $file`
         filePath=`dirname $file`
 
-        @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I @CMAKE_SOURCE_DIR@/contracts -I $filePath -c $file -o $workdir/built/$name
+        echo @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include -I $filePath -c $file -o $workdir/built/$name
+        @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include -I $filePath -c $file -o $workdir/built/$name
     done
 
+#    echo @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
     @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
+#    echo @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
     @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
+#  echo @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
     @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
 
+#    echo rm -rf $workdir
     rm -rf $workdir
 }
 

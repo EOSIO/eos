@@ -197,9 +197,9 @@ void apply_eos_setcode(apply_context& context) {
 
 
    const auto& account = db.get<account_object,by_name>(msg.account);
-   wlog( "set code: ${size}", ("size",msg.code.size()));
+//   wlog( "set code: ${size}", ("size",msg.code.size()));
    db.modify( account, [&]( auto& a ) {
-      /** TODO: consider whether a microsecond level local timestamp is sufficient */
+      /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate 
       a.code_version = fc::sha256::hash( msg.code.data(), msg.code.size() );
       a.code.resize( msg.code.size() );

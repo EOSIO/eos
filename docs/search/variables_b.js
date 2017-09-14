@@ -1,11 +1,6 @@
 var searchData=
 [
-  ['phone',['phone',['../struct_test_model.html#a8013df125ab65020ecc79559743b651c',1,'TestModel']]],
-  ['player',['player',['../structdice_1_1_offer_bet.html#aa3c5d3ee1d3077c8573564cbe0e60a1c',1,'dice::OfferBet']]],
-  ['postid',['postid',['../struct_post_action.html#a6a2f4331e759c5b263202664631ff5fe',1,'PostAction::postid()'],['../struct_vote_action.html#a074d55875f77924c4bf9cd53c92eefa8',1,'VoteAction::postid()']]],
-  ['precision',['precision',['../structeos_1_1price.html#acc37f49e03b96f6ca1642a937280a533',1,'eos::price']]],
-  ['price',['price',['../struct_test_model128x2.html#ab222dabb3fb2f46837fc24d976444044',1,'TestModel128x2']]],
-  ['primary',['primary',['../test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f',1,'test_db.cpp']]],
-  ['primary_5flb',['primary_lb',['../test__db_8cpp.html#a5e95d3f9c6d380457f204b50ed4fa2fc',1,'test_db.cpp']]],
-  ['primary_5fub',['primary_ub',['../test__db_8cpp.html#a59d12b3568e1bf7123dc217cb9b7bc6b',1,'test_db.cpp']]]
+  ['name',['name',['../structexchange_1_1_order_i_d.html#ace33e68445f307e12c36b69c55edc526',1,'exchange::OrderID::name()'],['../struct_test_model.html#ac5fefdad999c22c304761fbca4e090a1',1,'TestModel::name()']]],
+  ['new_5ffield',['new_field',['../struct_test_model_v2.html#a7f8ee7b77960c6e15a653040d9d8d934',1,'TestModelV2::new_field()'],['../struct_test_model128x2___v2.html#af0e5083368419917c205dd763be5f9b7',1,'TestModel128x2_V2::new_field()'],['../struct_test_model3xi64___v2.html#a014b817a26e4fd92768f21b286d944b7',1,'TestModel3xi64_V2::new_field()']]],
+  ['number',['number',['../structexchange_1_1_order_i_d.html#a7e557eea50518e99975b511f27e16eb2',1,'exchange::OrderID::number()'],['../struct_test_model128x2.html#ab84c4ac3eb98dbdfe703aa77c5bc6b75',1,'TestModel128x2::number()']]]
 ];

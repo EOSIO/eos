@@ -14,6 +14,12 @@ var searchData=
   ['test_5fsha256',['test_sha256',['../structtest__crypto.html#aaf02d8ff97aa6bd8d22eaabbb0d7961f',1,'test_crypto']]],
   ['testmodelv2',['TestModelV2',['../struct_test_model_v2.html#a987a8e0c0429e9f85237d91805283a59',1,'TestModelV2']]],
   ['token',['token',['../structeos_1_1token.html#ada7226b583058a8209db2267375ff2d9',1,'eos::token::token()'],['../structeos_1_1token.html#a8d162f3708ec76236f37e74a9a9d0f49',1,'eos::token::token(NumberType v)']]],
+  ['transaction',['Transaction',['../classeos_1_1_transaction.html#a8eb27619d1624e0f8ba2e29d203a2aa1',1,'eos::Transaction::Transaction()'],['../classeos_1_1_transaction.html#af6a09fcdb0eee976d60ce271e56c4d67',1,'eos::Transaction::Transaction(const Transaction &amp;)=delete'],['../classeos_1_1_transaction.html#a6e98939c13c55676c96103c751c58af1',1,'eos::Transaction::Transaction(Transaction &amp;&amp;trx)']]],
+  ['transactionaddmessage',['transactionAddMessage',['../group__transactioncapi.html#ga1290a226d7828410020ed2954ffa5fa5',1,'transaction.h']]],
+  ['transactioncreate',['transactionCreate',['../group__transactioncapi.html#ga180dc33e735f9631ed9a800d7b0a511e',1,'transaction.h']]],
+  ['transactiondrop',['transactionDrop',['../group__transactioncapi.html#ga37162c1f843ae69d0134be29b1cde61f',1,'transaction.h']]],
+  ['transactionrequirescope',['transactionRequireScope',['../group__transactioncapi.html#ga347cc9c284bc25ed1d67b596e2320cdc',1,'transaction.h']]],
+  ['transactionsend',['transactionSend',['../group__transactioncapi.html#ga01eab43648b29422885d4d59a2864aaf',1,'transaction.h']]],
   ['transfer',['transfer',['../structnative_1_1eos.html#a972dd49fcfaba33fb88c8e458f55d168',1,'native::eos']]],
   ['types_5fsize',['types_size',['../structtest__types.html#ac7a7efde29ff9cfbede493859cd29b9f',1,'test_types']]]
 ];

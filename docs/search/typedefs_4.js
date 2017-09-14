@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['globaldice',['GlobalDice',['../namespacedice.html#a02d8f4825162bff31029735c354fbffc',1,'dice']]]
+  ['funcname',['FuncName',['../types_8h.html#a4c11ea58b1daa61a364225a757a05cd2',1,'types.h']]]
 ];

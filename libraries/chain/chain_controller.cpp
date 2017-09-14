@@ -1476,7 +1476,8 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
 #undef GET_FIELD
 }
 
-vector<char> chain_controller::message_to_binary( Name code, Name type, const fc::variant& obj )const {
+vector<char> chain_controller::message_to_binary( Name code, Name type, const fc::variant& obj )const 
+{ try {
    const auto& code_account = _db.get<account_object,by_name>( code );
    if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
       fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
@@ -1486,7 +1487,7 @@ vector<char> chain_controller::message_to_binary( Name code, Name type, const fc
       return abis.variantToBinary( abis.getActionType( type ), obj );
    }
    return vector<char>();
-}
+} FC_CAPTURE_AND_RETHROW( (code)(type)(obj) ) }
 fc::variant chain_controller::message_from_binary( Name code, Name type, const vector<char>& data )const {
    const auto& code_account = _db.get<account_object,by_name>( code );
    if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi

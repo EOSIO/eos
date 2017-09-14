@@ -44,7 +44,11 @@ std::string wallet_manager::create(const std::string& name) {
    wallet->set_wallet_filename(wallet_filename.string());
    wallet->unlock(password);
    wallet->save_wallet_file();
+   wallet->lock();
+   wallet->unlock(password);
    wallets.emplace(name, std::move(wallet));
+
+   idump((name)(password));
 
    return password;
 }
@@ -133,6 +137,7 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
    if (!w->is_locked()) {
       return;
    }
+   idump((name)(password));
    w->unlock(password);
 }
 

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['owner',['owner',['../structdice_1_1_offer_primary_key.html#a9788afed35028df26a926f1d91587fa7',1,'dice::OfferPrimaryKey']]]
+  ['memory_5fheap',['memory_heap',['../group__memorycppapi.html#gaa934a0d3dbc1fdc1f6ab191314bcfec4',1,'eos']]]
 ];

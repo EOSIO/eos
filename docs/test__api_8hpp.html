@@ -22,6 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
+   &#160;<span id="projectnumber">DAWN1.0</span>
    </div>
   </td>
  </tr>
@@ -90,6 +91,8 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__db.html">test_db</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__crypto.html">test_crypto</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__transaction.html">test_transaction</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
@@ -258,8 +261,7 @@ Typedefs</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>( <a class="code" href="test__api_8hpp.html#a10e94b422ef0c20dcdec20d31a1f5049">u32</a>(action&gt;&gt;32) == DJBH(#CLASS) &amp;&amp; <a class="code" href="test__api_8hpp.html#a10e94b422ef0c20dcdec20d31a1f5049">u32</a>(action) == DJBH(#METHOD) ) { \</div><div class="line">     WASM_TEST_ERROR_CODE = CLASS::METHOD(); \</div><div class="line">     return; \</div><div class="line">  }</div><div class="ttc" id="test__api_8hpp_html_a10e94b422ef0c20dcdec20d31a1f5049"><div class="ttname"><a href="test__api_8hpp.html#a10e94b422ef0c20dcdec20d31a1f5049">u32</a></div><div class="ttdeci">unsigned int u32</div><div class="ttdef"><b>Definition:</b> test_api.hpp:18</div></div>
-</div><!-- fragment -->
+<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \</div><div class="line">     WASM_TEST_ERROR_CODE = CLASS::METHOD(); \</div><div class="line">     return; \</div><div class="line">  }</div></div><!-- fragment -->
 </div>
 </div>
 <a id="a0ef7aa5de5b842c4a4f166cfd825495d"></a>

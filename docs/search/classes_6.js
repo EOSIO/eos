@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['name',['Name',['../structeos_1_1_name.html',1,'eos']]]
+  ['memory',['memory',['../classeos_1_1memory.html',1,'eos']]],
+  ['message',['Message',['../classeos_1_1_message.html',1,'eos']]]
 ];
