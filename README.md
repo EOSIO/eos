@@ -445,7 +445,7 @@ If all went well, you will receive output similar to the following
 }
 ```
 
-Now import the owner private key generated previously in the wallet:
+Now import the active private key generated previously in the wallet:
 
 ```bash
 ./eosc wallet import XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
