@@ -18,11 +18,12 @@ Welcome to the EOS.io Documentation
 
 ## End User
 - Wallet Creation and Management
-	- [Create a wallet](https://github.com/EOSIO/eos/tree/docs-432#generaluse-createwallet)
-	- [Generate keypair](https://github.com/EOSIO/eos/tree/docs-432#generaluse-generatekeys)
-	- [Create an Account](https://github.com/EOSIO/eos/tree/docs-432#generaluse-createaccount)
-	- [Check if Account Exists](https://github.com/EOSIO/eos/tree/docs-432#generaluse-accountexists)
-	- [Importing a Wallet](https://github.com/EOSIO/eos/tree/docs-432#generaluse-walletimport)
+	- [Create a wallet](https://eosio.github.io/eos/group__eosc.html#createwallet)
+	- [Import Key to Wallet](https://eosio.github.io/eos/group__eosc.html#importkey)
+	- [Locking and Unlocking Wallet](https://eosio.github.io/eos/group__eosc.html#lockwallets)
+	- [Create an Account](https://eosio.github.io/eos/group__eosc.html#createaccount)
+	- [Transfer EOS](https://eosio.github.io/eos/group__eosc.html#transfereos)
+	- [Getting Transaction](https://eosio.github.io/eos/group__eosc.html#gettingtransaction)
 
 ## Smart Contract Developers
 - [Introduction](https://eosio.github.io/eos/group__contractdev.html)
