@@ -65,8 +65,7 @@ Clone EOS repository recursively as below and run build.sh located in root `eos`
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./build.sh ubuntu # For ubuntu 
-./build.sh darwin # For macOS
+./build.sh ubuntu 
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
