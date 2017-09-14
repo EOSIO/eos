@@ -54,6 +54,39 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_APP_HANDLER( eos, eos, unlinkauth );
 }
 
+types::Abi native_contract_chain_initializer::eos_contract_abi()
+{
+   types::Abi eos_abi;
+   eos_abi.types.push_back( types::TypeDef{"AccountName","Name"} );
+   eos_abi.types.push_back( types::TypeDef{"ShareType","Int64"} );
+   eos_abi.actions.push_back( types::Action{Name("transfer"), "transfer"} );
+   eos_abi.actions.push_back( types::Action{Name("lock"), "lock"} );
+   eos_abi.actions.push_back( types::Action{Name("unlock"), "unlock"} );
+   eos_abi.actions.push_back( types::Action{Name("claim"), "claim"} );
+   eos_abi.actions.push_back( types::Action{Name("okproducer"), "okproducer"} );
+   eos_abi.actions.push_back( types::Action{Name("setproducer"), "setproducer"} );
+   eos_abi.actions.push_back( types::Action{Name("setproxy"), "setproxy"} );
+   eos_abi.actions.push_back( types::Action{Name("linkauth"), "linkauth"} );
+   eos_abi.actions.push_back( types::Action{Name("unlinkauth"), "unlinkauth"} );
+   eos_abi.actions.push_back( types::Action{Name("updateauth"), "updateauth"} );
+   eos_abi.actions.push_back( types::Action{Name("deleteauth"), "deleteauth"} );
+   eos_abi.actions.push_back( types::Action{Name("newaccount"), "newaccount"} );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::transfer>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::lock>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlock>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::claim>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::okproducer>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproducer>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproxy>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::updateauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::linkauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlinkauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::deleteauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::newaccount>::type() );
+
+   return eos_abi;
+}
+
 std::vector<chain::Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
                                                                                 chainbase::database& db) {
    std::vector<chain::Message> messages_to_process;
@@ -68,33 +101,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
          a.creation_date = genesis.initial_timestamp;
 
          if( name == config::EosContractName ) {
-            types::Abi eos_abi;
-            eos_abi.types.push_back( types::TypeDef{"AccountName","Name"} );
-            eos_abi.actions.push_back( types::Action{Name("transfer"), "transfer"} );
-            eos_abi.actions.push_back( types::Action{Name("lock"), "lock"} );
-            eos_abi.actions.push_back( types::Action{Name("unlock"), "unlock"} );
-            eos_abi.actions.push_back( types::Action{Name("claim"), "claim"} );
-            eos_abi.actions.push_back( types::Action{Name("okproducer"), "okproducer"} );
-            eos_abi.actions.push_back( types::Action{Name("setproducer"), "setproducer"} );
-            eos_abi.actions.push_back( types::Action{Name("setproxy"), "setproxy"} );
-            eos_abi.actions.push_back( types::Action{Name("linkauth"), "linkauth"} );
-            eos_abi.actions.push_back( types::Action{Name("unlinkauth"), "unlinkauth"} );
-            eos_abi.actions.push_back( types::Action{Name("updateauth"), "updateauth"} );
-            eos_abi.actions.push_back( types::Action{Name("deleteauth"), "deleteauth"} );
-            eos_abi.actions.push_back( types::Action{Name("newaccount"), "newaccount"} );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::transfer>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::lock>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlock>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::claim>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::okproducer>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproducer>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproxy>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::updateauth>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::linkauth>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlinkauth>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::deleteauth>::type() );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::newaccount>::type() );
-            a.set_abi(eos_abi);
+            a.set_abi(eos_contract_abi());
          }
       });
       db.create<native::eos::BalanceObject>([&name, liquidBalance]( auto& b) {
