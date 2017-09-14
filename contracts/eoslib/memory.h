@@ -2,11 +2,17 @@
 
 #include <eoslib/types.h>
 
+/**
+ *  @defgroup memoryapi Memory API
+ *  @brief Defines common memory functions
+ *  @ingroup contractdev
+ */
+
 extern "C" {
   /**
    *  @defgroup memorycapi Memory C API
    *  @brief Defines common memory functions
-   *  @ingroup TBD
+   *  @ingroup memoryapi
    *
    *  @{
    */
