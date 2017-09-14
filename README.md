@@ -65,8 +65,7 @@ Clone EOS repository recursively as below and run build.sh located in root `eos`
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./build.sh ubuntu # For ubuntu 
-./build.sh darwin # For macOS
+./build.sh ubuntu 
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -369,16 +368,15 @@ When running `eosd` you should get log messages similar to below. It means the b
 1587000ms thread-0   chain_controller.cpp:235      _push_block          ] initf #5 @2017-09-04T04:26:27  | 0 trx, 0 pending, exectime_ms=0
 ```
 
+<a name="accountssmartcontracts"></a>
 ## Example "Currency" Contract Walkthrough
 
-EOS comes with example contracts that can be uploaded and run for testing purposes. Below we will demonstrate how to upload and interact with it. 
+EOS comes with example contracts that can be uploaded and run for testing purposes. Below is demonstrated how to upload and interact with the sample contract "currency". 
 
 <a name="smartcontractexample"></a>
-### Example smart contracts 
+### Example smart contracts
 
-Before we can publish the **currency** contract we'll need some accounts. 
-
-Run the node:
+First, run the node
 
 ```bash
 cd ~/eos/build/programs/eosd/
@@ -388,9 +386,7 @@ cd ~/eos/build/programs/eosd/
 <a name="walletimport"></a>
 ### Setting up a wallet and importing account key 
 
-As you've previously added `plugin = eos::wallet_api_plugin` into `config.ini`, EOS wallet will be running as a part of `eosd` process.
-
-First we need to create a wallet, or load 
+As you've previously added `plugin = eos::wallet_api_plugin` into `config.ini`, EOS wallet will be running as a part of `eosd` process. Every contract requires an associated account, so first, create a wallet.
 
 ```bash
 cd ~/eos/build/programs/eosc/
@@ -399,12 +395,13 @@ cd ~/eos/build/programs/eosc/
 
 For the purpose of this walkthrough, we'll import the private key of the `inita` account so that you can issue API commands under authority of an existing account. This private key can be found within your `config.ini` and is provided for testing purposes. 
 
-```./eosc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3```
+```bash
+./eosc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3```
 
 <a name="createaccounts"></a>
 ### Creating accounts for sample "currency" contract
 
-First, we need to generate some public/private key pairs that will be later assigned as `owner_key` and `active_key`.
+First, generate some public/private key pairs that will be later assigned as `owner_key` and `active_key`.
 
 ```bash
 cd ~/eos/build/programs/eosc/
@@ -412,7 +409,7 @@ cd ~/eos/build/programs/eosc/
 ./eosc create key # active_key
 ```
 
-This will output two pairs of a public and private key
+This will output two pairs of public and private keys
 
 ```
 Private key: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -430,13 +427,13 @@ Run the `create` command where `inita` is the account authorizing the creation o
 
 You should then get a json response back with a transaction ID confirming it was executed successfully.
 
-We will now go ahead and check that the account was successfully created
+Go ahead and check that the account was successfully created
 
 ```bash
 ./eosc get account currency
 ```
 
-If all went well, you will recieve output similar to the following
+If all went well, you will receive output similar to the following
 
 ```json
 {
@@ -457,14 +454,14 @@ Now import the owner private key generated previously in the wallet:
 <a name="uploadsmartcontract"></a>
 ### Upload sample "currency" contract to blockchain 
 
-Before uploading a contract, we will verify that there is no current contract:
+Before uploading a contract, verify that there is no current contract:
 
 ```bash
 ./eosc get code currency 
 code hash: 0000000000000000000000000000000000000000000000000000000000000000
 ```
 
-With an account for a contract created, we will upload a sample contract:
+With an account for a contract created, upload a sample contract:
 
 ```bash
 ./eosc set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
@@ -483,7 +480,7 @@ It will return something like
 code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 ```
 
-Next let's verify the currency contract has the proper initial balance:
+Next verify the currency contract has the proper initial balance:
 
 ```bash
 ./eosc get table currency currency account
@@ -500,18 +497,18 @@ Next let's verify the currency contract has the proper initial balance:
 <a name="pushamessage"></a>
 ### Pushing a message to sample "currency" contract 
 
-Let's send a message from the **currency** account to account **inita** 
+Send a message from the **currency** account to account **inita** 
 
 ```bash
 ./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
 ```
 
-As a confirmation of a successfully submitted transaction you will recieve json output that includes a `transaction_id` field.
+As a confirmation of a successfully submitted transaction you will receive json output that includes a `transaction_id` field.
 
 <a name="readingcontract"></a>
 ### Reading sample "currency" contract balance 
 
-So now we will check the state of both of the accounts involved in the previous transaction. 
+So now check the state of both of the accounts involved in the previous transaction. 
 
 ```bash
 ./eosc get table inita currency account
@@ -534,7 +531,7 @@ So now we will check the state of both of the accounts involved in the previous 
 }
 ```
 
-As expected, the recieving account **inita** now has a balance of **50** tokens, and the sending account now has **50** less tokens than its initial supply. 
+As expected, the receiving account **inita** now has a balance of **50** tokens, and the sending account now has **50** less tokens than its initial supply. 
 
 <a name="localtestnet"></a>
 ## Running local testnet 
