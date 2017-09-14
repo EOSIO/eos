@@ -212,7 +212,7 @@ namespace eos { namespace chain {
       ProcessedGeneratedTransaction(){}
 
       generated_transaction_id_type   id;
-      vector<optional<MessageOutput>> output;
+      vector<MessageOutput> output;
    };
    /// @} transactions group
 
