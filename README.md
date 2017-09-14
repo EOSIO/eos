@@ -50,12 +50,10 @@ develop applications (smart contracts).
     	3. [Creating an Account](#generaluse-createaccount)
     	4. [Checking Existence of Account](#generaluse-accountexists)
     	5. [Import Wallet](#generaluse-walletimport)
-	1. [Contracts]()
-  		1. [Contracts]() 
-  		2. [Contracts]()
-  		3. [Contracts]() 
-  		4. [Contracts]() 
-  		5. [Contracts]()
+	1. [Contracts](#generaluse-contracts)
+  		1. [Checking Existence of Contract](#generaluse-contracts) 
+  		2. [Uploading a Contract](#generaluse-uploadingcontract)
+  		4. [Sending Message to Contract](#generaluse-sendingmessage)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -546,6 +544,52 @@ So now check the state of both of the accounts involved in the previous transact
 
 As expected, the receiving account **inita** now has a balance of **50** tokens, and the sending account now has **50** less tokens than its initial supply. 
 
+<a name="localtestnet"></a>
+## Running local testnet 
+
+To run a local testnet you can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
+
+For testing purposes you will run 2 local production nodes talking to each other.
+
+```bash
+cd ~/eos/build
+cp ../genesis.json ./
+./programs/launcher/launcher -p2 --skip-signature
+```
+
+This command will generate 2 data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
+
+You should see a following response:
+
+```bash
+adding hostname ip-XXX-XXX-XXX
+found interface 127.0.0.1
+found interface XXX.XX.XX.XX
+spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_data_0
+spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_data_1
+```
+
+To confirm the nodes are running, run following `eosc` commands:
+```bash
+~/eos/build/programs/eosc
+./eosc -p 8888 get info
+./eosc -p 8889 get info
+```
+
+For each you should get a json with a blockchain information.
+
+You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
+
+<a name="doxygen"></a>
+## Doxygen documentation 
+
+You can find more detailed API documentation in Doxygen reference: https://eosio.github.io/eos/
+
+<a name="docker"></a>
+## Running EOS in Docker 
+
+You can find up to date information about EOS Docker in the [Docker Readme](https://github.com/EOSIO/eos/blob/master/Docker/README.md)
+
 <a name="generaluse"></a>
 ## General Use Examples
 
@@ -557,6 +601,8 @@ Below are a list of general purpose examples
 Wallets may contain several accounts, and each account is has various permissions for different levels of authentication. Wallets are either in a locked or unlocked state. 
 
 To interact with a wallet, you need to have the `eos::wallet_api_plugin`, which is done by including `plugin = eos::wallet_api_plugin` within `config.ini`
+
+The examples below create an account for a user named **bob** 
 
 <a name="walletimport"></a>
 #### Creating a wallet
@@ -625,13 +671,13 @@ You should get a response similar to this:
 
 #### Importing
 
-`wallet import` accepts a private key as the first positional argument. The private key used to important needs to be for the `active` permission of the account you wish to import.
+`wallet import` accepts a private key as the first positional argument, the private key imported should be for the **active** permission of the account you wish to import.
 
 ```bash
 ./eosc wallet import 5XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
-The `bob` account is now imported into your wallet
+The **bob** account is now imported into your wallet
 
 ### Contracts
 
@@ -650,7 +696,7 @@ code hash: 0000000000000000000000000000000000000000000000000000000000000000
 <a name="generaluse-uploadcontract"></a>
 #### Uploading a Contract
 
-To deploy a contract, you must have an account created. Contracts are uploaded by calling the `set` with the `contract` subcommand, including the account creating the contract and including paths to your contract's `wast` and `abi` files. 
+To deploy a contract, you must have an account created. Contracts are uploaded by calling the `set` with the `contract` subcommand, including the account creating the contract and including paths to your contract's **wast** and **abi** files. 
 
 ```bash
 ./eosc set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
@@ -673,7 +719,7 @@ Lets say you would like the get the balance of a contract named **currency** for
 }
 ```
 
-To get the balance of user **bob** in the currenct **currency** contract, the command is formatted as follows. 
+To get the balance of user **bob** from **currency** contract, the command is formatted as follows. 
 
 ```bash
 ./eosc get table bob currency account
@@ -688,56 +734,10 @@ To get the balance of user **bob** in the currenct **currency** contract, the co
 ```
 
 <a name="generaluse-contractmessage"></a>
-#### Sending message to Contract
+#### Push message to Contract
 
-To send a message to a contract, we need to specify the **contract** we are pushing the message to, the **method** we are executing, the **parameters** anticipated by the contract's method and then some additional arguments. 
+To send a message to a contract, we need to specify the **contract** and its **method** we are pushing the message to, the **parameters** anticipated by the contract's method and then some additional arguments depending on the nature of the message. 
 
-For this example, we will send a message to the **transfer** method of the sample **currency** contract from user **bob**, it will include parameters that specific the from (*bob*) and to (*inita*) account, and the amount to transfer (*50*), we'll set the `--scope` of the message to include these two accounts `bob,inita`, and the `--permissions` required to send the message, which are bob's active permissions, expressed with `bob@active`. 
+The below example pushes a message to the **transfer** method of the sample **currency** contract from user **bob**, it will include parameters that specify the from (*bob*) and to (*inita*) account, and the amount to transfer (*50*), we'll set the `--scope` of the message to include these two accounts `bob,inita`, and the `--permissions` required to send the message, which are bob's active permissions, expressed with `bob@active`.
 
-```./eosc push message bob transfer '{"from":"currency","to":"inita","amount":50}' --scope bob,inita --permission bob@active```
-
-<a name="localtestnet"></a>
-## Running local testnet 
-
-To run a local testnet you can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
-
-For testing purposes you will run 2 local production nodes talking to each other.
-
-```bash
-cd ~/eos/build
-cp ../genesis.json ./
-./programs/launcher/launcher -p2 --skip-signature
-```
-
-This command will generate 2 data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
-
-You should see a following response:
-
-```bash
-adding hostname ip-XXX-XXX-XXX
-found interface 127.0.0.1
-found interface XXX.XX.XX.XX
-spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_data_0
-spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_data_1
-```
-
-To confirm the nodes are running, run following `eosc` commands:
-```bash
-~/eos/build/programs/eosc
-./eosc -p 8888 get info
-./eosc -p 8889 get info
-```
-
-For each you should get a json with a blockchain information.
-
-You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
-
-<a name="doxygen"></a>
-## Doxygen documentation 
-
-You can find more detailed API documentation in Doxygen reference: https://eosio.github.io/eos/
-
-<a name="docker"></a>
-## Running EOS in Docker 
-
-You can find up to date information about EOS Docker in the [Docker Readme](https://github.com/EOSIO/eos/blob/master/Docker/README.md)
+```./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope bob,inita --permission bob@active```
