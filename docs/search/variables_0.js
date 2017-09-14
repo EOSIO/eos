@@ -1,7 +1,6 @@
 var searchData=
 [
   ['a',['a',['../structdummy__message.html#ab1e0b17fb23db8c5b865afd3ec77f347',1,'dummy_message::a()'],['../struct_test_model3xi64.html#aea523fe114c14a8759471342235c5ae8',1,'TestModel3xi64::a()']]],
-  ['action_5ftype',['action_type',['../structeos_1_1_transfer.html#aaac21d57f1ccb0f7970bbf01e5b04e56',1,'eos::Transfer']]],
   ['age',['age',['../struct_test_model.html#abc50651849938a8bf97e986a210fc503',1,'TestModel']]],
   ['amount',['amount',['../structdice_1_1_offer_bet.html#a9b71a51ccf5e241fcb09d82757aaf02a',1,'dice::OfferBet']]],
   ['another_5ffield',['another_field',['../struct_test_model_v3.html#adc2999f2f7be3054cf7f29236312c789',1,'TestModelV3']]],

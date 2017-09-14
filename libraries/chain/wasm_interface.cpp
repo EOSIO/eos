@@ -511,12 +511,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    void  wasm_interface::vm_onInit()
    { try {
       try {
-          wlog( "on_init" );
             FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"init"));
             if( !apply ) {
                elog( "no onInit method found" );
                return; /// if not found then it is a no-op
-         }
+            }
 
          checktimeStart = fc::time_point::now();
 
@@ -598,8 +597,8 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 
         try
         {
-          wlog( "LOADING CODE" );
-          auto start = fc::time_point::now();
+//          wlog( "LOADING CODE" );
+ //         auto start = fc::time_point::now();
           Serialization::MemoryInputStream stream((const U8*)recipient.code.data(),recipient.code.size());
           WASM::serializeWithInjection(stream,*state.module);
 
@@ -607,11 +606,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
           LinkResult linkResult = linkModule(*state.module,rootResolver);
           state.instance = instantiateModule( *state.module, std::move(linkResult.resolvedImports) );
           FC_ASSERT( state.instance );
-          auto end = fc::time_point::now();
-          idump(( (end-start).count()/1000000.0) );
+  //        auto end = fc::time_point::now();
+ //         idump(( (end-start).count()/1000000.0) );
 
           current_memory = Runtime::getDefaultMemory(state.instance);
-
+            
           char* memstart = &memoryRef<char>( current_memory, 0 );
          // state.init_memory.resize(1<<16); /// TODO: actually get memory size
           for( uint32_t i = 0; i < 10000; ++i )
@@ -619,13 +618,13 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
                    state.mem_end = i+1;
                    //std::cerr << (char)memstart[i];
               }
-          ilog( "INIT MEMORY: ${size}", ("size", state.mem_end) );
+          //ilog( "INIT MEMORY: ${size}", ("size", state.mem_end) );
 
           state.init_memory.resize(state.mem_end);
           memcpy( state.init_memory.data(), memstart, state.mem_end ); //state.init_memory.size() );
-          std::cerr <<"\n";
+          //std::cerr <<"\n";
           state.code_version = recipient.code_version;
-          idump((state.code_version));
+//          idump((state.code_version));
         }
         catch(Serialization::FatalSerializationException exception)
         {

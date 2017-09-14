@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['packed',['Packed',['../namespacedice.html#a4600eb23d9ac0efe2afb987b43b99a53',1,'dice::Packed()'],['../types_8h.html#a50d5ac027323a8c324137fc14c46ec7a',1,'PACKED():&#160;types.h'],['../namespacedice.html#a1fb03a133423a7202ae10a51420efcd1',1,'dice::PACKED(Offer)'],['../namespacedice.html#a59c50891eaf1def868e13d7eb1b5c7dd',1,'dice::PACKED(Game)'],['../namespacedice.html#a7a88ad77f1bf6cf6a132f7d0042faa51',1,'dice::PACKED(Account)'],['../namespaceexchange.html#afc17cc7e1c31b58457445c5073e0e8a8',1,'exchange::PACKED(Bid)'],['../namespaceexchange.html#aa70ccac628e3c1c6679e6e8fbcfe6061',1,'exchange::PACKED(Ask)'],['../namespaceexchange.html#aebfbd37f25d1bd71a64694a6778a02a9',1,'exchange::PACKED(Account)'],['../simpledb_8hpp.html#a8d913a38dc120fb4c0f3c8ba7adc36c2',1,'PACKED(record1):&#160;simpledb.hpp'],['../simpledb_8hpp.html#ac3213d84f6369e1fa8bd8b9491f8b8a4',1,'PACKED(record2):&#160;simpledb.hpp'],['../simpledb_8hpp.html#aca2916440a798139dd873741fd0aea30',1,'PACKED(record3):&#160;simpledb.hpp']]],
+  ['packed',['PACKED',['../types_8h.html#a50d5ac027323a8c324137fc14c46ec7a',1,'PACKED():&#160;types.h'],['../namespacedice.html#a1fb03a133423a7202ae10a51420efcd1',1,'dice::PACKED(Offer)'],['../namespacedice.html#a59c50891eaf1def868e13d7eb1b5c7dd',1,'dice::PACKED(Game)'],['../namespacedice.html#a7a88ad77f1bf6cf6a132f7d0042faa51',1,'dice::PACKED(Account)'],['../group__tokens.html#gad77b3245541366876c8e87b9d36a3059',1,'eos::PACKED()'],['../namespaceexchange.html#afc17cc7e1c31b58457445c5073e0e8a8',1,'exchange::PACKED(Bid)'],['../namespaceexchange.html#aa70ccac628e3c1c6679e6e8fbcfe6061',1,'exchange::PACKED(Ask)'],['../namespaceexchange.html#aebfbd37f25d1bd71a64694a6778a02a9',1,'exchange::PACKED(Account)'],['../namespaceproxy.html#aa9770c0f74743b4c75368ce5c23f8836',1,'proxy::PACKED()'],['../simpledb_8hpp.html#a8d913a38dc120fb4c0f3c8ba7adc36c2',1,'PACKED(record1):&#160;simpledb.hpp'],['../simpledb_8hpp.html#ac3213d84f6369e1fa8bd8b9491f8b8a4',1,'PACKED(record2):&#160;simpledb.hpp'],['../simpledb_8hpp.html#aca2916440a798139dd873741fd0aea30',1,'PACKED(record3):&#160;simpledb.hpp'],['../namespacedice.html#a4600eb23d9ac0efe2afb987b43b99a53',1,'dice::Packed()']]],
+  ['permissionname',['PermissionName',['../types_8h.html#a4bd93be9c597a8d7b6a1a3504ca63e83',1,'types.h']]],
   ['phone',['phone',['../struct_test_model.html#a8013df125ab65020ecc79559743b651c',1,'TestModel']]],
   ['player',['Player',['../structdice_1_1_player.html',1,'dice::Player'],['../structdice_1_1_offer_bet.html#aa3c5d3ee1d3077c8573564cbe0e60a1c',1,'dice::OfferBet::player()']]],
   ['postaction',['PostAction',['../struct_post_action.html',1,'']]],
@@ -30,5 +31,10 @@ var searchData=
   ['printi',['printi',['../group__consolecapi.html#ga23902e1572b43c290fed01d9ae736a78',1,'print.h']]],
   ['printi128',['printi128',['../group__consolecapi.html#ga0ac41ae1c31cf87a4adc14d9edb3e6a5',1,'print.h']]],
   ['printn',['printn',['../group__consolecapi.html#ga9ec6a2d163a27b98984065d55fb41475',1,'print.h']]],
-  ['prints',['prints',['../group__consolecapi.html#gaa99be0cc1b9e5cbbc2b12a43537e7ed3',1,'print.h']]]
+  ['prints',['prints',['../group__consolecapi.html#gaa99be0cc1b9e5cbbc2b12a43537e7ed3',1,'print.h']]],
+  ['proxy',['proxy',['../namespaceproxy.html',1,'']]],
+  ['proxy_2ecpp',['proxy.cpp',['../proxy_8cpp.html',1,'']]],
+  ['proxy_2ehpp',['proxy.hpp',['../proxy_8hpp.html',1,'']]],
+  ['proxy_2ewast_2ehpp',['proxy.wast.hpp',['../proxy_8wast_8hpp.html',1,'']]],
+  ['proxy_5fwast',['proxy_wast',['../proxy_8wast_8hpp.html#a9de1008265399268b221af6bc3ec5cfb',1,'proxy.wast.hpp']]]
 ];

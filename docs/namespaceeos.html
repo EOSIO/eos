@@ -22,6 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
+   &#160;<span id="projectnumber">DAWN1.0</span>
    </div>
   </td>
  </tr>
@@ -61,7 +62,8 @@ $(function() {
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#typedef-members">Typedefs</a> &#124;
-<a href="#func-members">Functions</a>  </div>
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
 <div class="title">eos Namespace Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__tokens.html">Token API</a></div></div>  </div>
 </div><!--header-->
@@ -70,6 +72,10 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1iostream.html">iostream</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1memory.html">memory</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1_message.html">Message</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_name.html">Name</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">wraps a uint64_t to ensure it is only passed to methods that expect a <a class="el" href="structeos_1_1_name.html" title="wraps a uint64_t to ensure it is only passed to methods that expect a Name and that no mathematical o...">Name</a> and that no mathematical operations occur. It also enables specialization of print so that it is printed as a base32 string.  <a href="structeos_1_1_name.html#details">More...</a><br /></td></tr>
@@ -86,8 +92,7 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1token.html">token</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">a uint64_t wrapper with checks for proper types and over/underflows.  <a href="structeos_1_1token.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1_transfer.html">Transfer</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">The binary structure of the <code>transfer</code> message type for the <code>eos</code> contract.  <a href="structeos_1_1_transfer.html#details">More...</a><br /></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeos_1_1_transaction.html">Transaction</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeos_1_1uint128.html">uint128</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A struct that wraps <a class="el" href="structeos_1_1uint128.html" title="A struct that wraps uint128 integer and defines common operator overloads. ">uint128</a> integer and defines common operator overloads.  <a href="structeos_1_1uint128.html#details">More...</a><br /></td></tr>
@@ -115,6 +120,15 @@ Functions</h2></td></tr>
 <tr class="memitem:ga422f063ec99a30ab7a395f0fafeffcb2"><td class="memTemplItemLeft" align="right" valign="top">T&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__mathcppapi.html#ga422f063ec99a30ab7a395f0fafeffcb2">max</a> (const T &amp;a, const T &amp;b)</td></tr>
 <tr class="memdesc:ga422f063ec99a30ab7a395f0fafeffcb2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define similar to <a class="el" href="group__mathcppapi.html#ga422f063ec99a30ab7a395f0fafeffcb2" title="Define similar to std::max() ">std::max()</a>  <a href="group__mathcppapi.html#ga422f063ec99a30ab7a395f0fafeffcb2">More...</a><br /></td></tr>
 <tr class="separator:ga422f063ec99a30ab7a395f0fafeffcb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga733d053a4e90451886d476e7f560bf9c"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#ga733d053a4e90451886d476e7f560bf9c">malloc</a> (<a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
+<tr class="memdesc:ga733d053a4e90451886d476e7f560bf9c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate a block of memory.  <a href="group__memorycppapi.html#ga733d053a4e90451886d476e7f560bf9c">More...</a><br /></td></tr>
+<tr class="separator:ga733d053a4e90451886d476e7f560bf9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga81777726cb6a3986119679b0ad2383c8"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#ga81777726cb6a3986119679b0ad2383c8">realloc</a> (void *ptr, <a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
+<tr class="memdesc:ga81777726cb6a3986119679b0ad2383c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate a block of memory.  <a href="group__memorycppapi.html#ga81777726cb6a3986119679b0ad2383c8">More...</a><br /></td></tr>
+<tr class="separator:ga81777726cb6a3986119679b0ad2383c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gae49c5c6856e62490cbc50145af7ae5a8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#gae49c5c6856e62490cbc50145af7ae5a8">free</a> (void *ptr)</td></tr>
+<tr class="memdesc:gae49c5c6856e62490cbc50145af7ae5a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Free a block of memory.  <a href="group__memorycppapi.html#gae49c5c6856e62490cbc50145af7ae5a8">More...</a><br /></td></tr>
+<tr class="separator:gae49c5c6856e62490cbc50145af7ae5a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga82362482cd5c990d4b25708a96f72c32"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:ga82362482cd5c990d4b25708a96f72c32"><td class="memTemplItemLeft" align="right" valign="top">T&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__messagecppapi.html#ga82362482cd5c990d4b25708a96f72c32">currentMessage</a> ()</td></tr>
 <tr class="memdesc:ga82362482cd5c990d4b25708a96f72c32"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interpret the message body as type T.  <a href="group__messagecppapi.html#ga82362482cd5c990d4b25708a96f72c32">More...</a><br /></td></tr>
@@ -158,6 +172,14 @@ Functions</h2></td></tr>
 <tr class="memitem:gad4459f4a84575efe71fa3637298b8510"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classeos_1_1iostream.html">iostream</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#gad4459f4a84575efe71fa3637298b8510">operator&lt;&lt;</a> (<a class="el" href="classeos_1_1iostream.html">iostream</a> &amp;out, const T &amp;v)</td></tr>
 <tr class="memdesc:gad4459f4a84575efe71fa3637298b8510"><td class="mdescLeft">&#160;</td><td class="mdescRight">Overload c++ iostream.  <a href="group__console_cppapi.html#gad4459f4a84575efe71fa3637298b8510">More...</a><br /></td></tr>
 <tr class="separator:gad4459f4a84575efe71fa3637298b8510"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gad77b3245541366876c8e87b9d36a3059"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__tokens.html#gad77b3245541366876c8e87b9d36a3059">PACKED</a> (Transfer)</td></tr>
+<tr class="memdesc:gad77b3245541366876c8e87b9d36a3059"><td class="mdescLeft">&#160;</td><td class="mdescRight">The binary structure of the <code>transfer</code> message type for the <code>eos</code> contract.  <a href="group__tokens.html#gad77b3245541366876c8e87b9d36a3059">More...</a><br /></td></tr>
+<tr class="separator:gad77b3245541366876c8e87b9d36a3059"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:gaa934a0d3dbc1fdc1f6ab191314bcfec4"><td class="memItemLeft" align="right" valign="top">class <a class="el" href="classeos_1_1memory.html">eos::memory</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#gaa934a0d3dbc1fdc1f6ab191314bcfec4">memory_heap</a></td></tr>
+<tr class="separator:gaa934a0d3dbc1fdc1f6ab191314bcfec4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
 <a id="a1df73defa04d39763089df7faa35a934"></a>

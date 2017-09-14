@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['key',['key',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#af828b3fc2f24217280b1649078f56361',1,'TOKEN_NAME::Account::key()'],['../structinfinite_1_1_account.html#a8d8bddac673b236b04a576f15c99008c',1,'infinite::Account::key()']]],
+  ['key',['key',['../group__currencyapi.html#gaf828b3fc2f24217280b1649078f56361',1,'TOKEN_NAME::Account::key()'],['../structinfinite_1_1_account.html#a8d8bddac673b236b04a576f15c99008c',1,'infinite::Account::key()'],['../structsystem_1_1_account.html#a5c41e0102a4e8b9ea870505b68592911',1,'system::Account::key()']]],
   ['key_5fi128i128_5fgeneral',['key_i128i128_general',['../structtest__db.html#ab08fefce1c6840ced885253a49f07fca',1,'test_db']]],
   ['key_5fi64_5ffront_5fback',['key_i64_front_back',['../structtest__db.html#a8b6a744f13395f52dffe5120dec0d89e',1,'test_db']]],
   ['key_5fi64_5fgeneral',['key_i64_general',['../structtest__db.html#affa781c69014e028bf98466a8780e30a',1,'test_db']]],

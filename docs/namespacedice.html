@@ -22,6 +22,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
+   &#160;<span id="projectnumber">DAWN1.0</span>
    </div>
   </td>
  </tr>
@@ -207,7 +208,7 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>No authority required by this so long as </p>
-<p>lookup Game by id, assert <a class="el" href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d" title="Get time of the last accepted block. ">now()</a> &gt; deadline and deadline != 0 pay the player that revealed delete game and open offers </p>
+<p>lookup Game by id, assert <a class="el" href="group__systemcapi.html#ga34bcb797186fc81170ac182f8bba1e7d" title="Get time of the last accepted block. ">now()</a> &gt; deadline and deadline != 0 pay the player that revealed delete game and open offers </p>
 
 </div>
 </div>
@@ -250,7 +251,7 @@ Functions</h2></td></tr>
 <p>No authority required on this message so long as it is properly revealed </p>
 <p>assert offer already exists assert offer has a gameid &gt; 0</p>
 <p>Lookup Game by gameid assert Game.player[x].reveal is 0 hasn't already been revealed set Game.player[x].reveal to revealed</p>
-<p>if( Game.player[!x].reveal != 0 ) { uint256_t result; sha256( &amp;game.player1, sizeof(Player)*2, result); if( result.words[1] &lt; result.words[0] ) { payPlayer1 by incrementing account by bet and decrement open games } else payPlayer2 by incrmenting account by bet and decrement open games delete game, and both offers } else { set Game.deadline = <a class="el" href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d" title="Get time of the last accepted block. ">now()</a> + timeout (5 minutes) }</p>
+<p>if( Game.player[!x].reveal != 0 ) { uint256_t result; sha256( &amp;game.player1, sizeof(Player)*2, result); if( result.words[1] &lt; result.words[0] ) { payPlayer1 by incrementing account by bet and decrement open games } else payPlayer2 by incrmenting account by bet and decrement open games delete game, and both offers } else { set Game.deadline = <a class="el" href="group__systemcapi.html#ga34bcb797186fc81170ac182f8bba1e7d" title="Get time of the last accepted block. ">now()</a> + timeout (5 minutes) }</p>
 
 </div>
 </div>

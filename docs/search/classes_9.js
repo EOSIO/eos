@@ -1,7 +1,8 @@
 var searchData=
 [
-  ['remove_5freference',['remove_reference',['../structeos_1_1remove__reference.html',1,'eos']]],
-  ['remove_5freference_3c_20const_20t_20_26_20_3e',['remove_reference&lt; const T &amp; &gt;',['../structeos_1_1remove__reference_3_01const_01_t_01_6_01_4.html',1,'eos']]],
-  ['remove_5freference_3c_20t_20_26_20_3e',['remove_reference&lt; T &amp; &gt;',['../structeos_1_1remove__reference_3_01_t_01_6_01_4.html',1,'eos']]],
-  ['reveal',['Reveal',['../structdice_1_1_reveal.html',1,'dice']]]
+  ['player',['Player',['../structdice_1_1_player.html',1,'dice']]],
+  ['postaction',['PostAction',['../struct_post_action.html',1,'']]],
+  ['postrecord',['PostRecord',['../struct_post_record.html',1,'']]],
+  ['price',['price',['../structeos_1_1price.html',1,'eos']]],
+  ['primaryindex',['PrimaryIndex',['../struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4_1_1_primary_index.html',1,'Table&lt; scope, code, table, Record, PrimaryType, void &gt;::PrimaryIndex'],['../struct_table_1_1_primary_index.html',1,'Table&lt; scope, code, table, Record, PrimaryType, SecondaryType &gt;::PrimaryIndex']]]
 ];

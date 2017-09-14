@@ -1,7 +1,10 @@
 var searchData=
 [
-  ['account',['Account',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#acc96b530db9c63a37c07de6b062c2e9d',1,'TOKEN_NAME::Account::Account()'],['../structinfinite_1_1_account.html#a8551ff19a516a724e6a18b393bbd7fd5',1,'infinite::Account::Account()']]],
-  ['apply',['apply',['../currency_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;currency.cpp'],['../exchange_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;exchange.cpp'],['../infinite_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;infinite.cpp'],['../simpledb_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;simpledb.cpp'],['../test__api_8cpp.html#ae515545cb26793406ab2ae133bb5be3f',1,'apply(unsigned long long code, unsigned long long action):&#160;test_api.cpp']]],
+  ['account',['Account',['../group__currencyapi.html#gacc96b530db9c63a37c07de6b062c2e9d',1,'TOKEN_NAME::Account::Account()'],['../structinfinite_1_1_account.html#a8551ff19a516a724e6a18b393bbd7fd5',1,'infinite::Account::Account()'],['../structsystem_1_1_account.html#a74cc85949a2e65b8a2e4efcc45402d02',1,'system::Account::Account()']]],
+  ['addmessage',['addMessage',['../classeos_1_1_transaction.html#a223c31ce9b4395d81a7ba8d882202d09',1,'eos::Transaction']]],
+  ['addpermissions',['addPermissions',['../classeos_1_1_message.html#a0e68f632ec8aee71f4a8a909c8ed7c40',1,'eos::Message::addPermissions(AccountName account, PermissionName permission)'],['../classeos_1_1_message.html#ae7d568bb9c56b6d0824ee03c58c702fc',1,'eos::Message::addPermissions(AccountName account, PermissionName permission, Permissions... permissions)']]],
+  ['addscope',['addScope',['../classeos_1_1_transaction.html#a635d3c6c6c6dd64855c5ccc5daecb93c',1,'eos::Transaction']]],
+  ['apply',['apply',['../currency_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;currency.cpp'],['../exchange_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;exchange.cpp'],['../infinite_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;infinite.cpp'],['../proxy_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;proxy.cpp'],['../simpledb_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;simpledb.cpp'],['../skeleton_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;skeleton.cpp'],['../system_8cpp.html#a3c01edc4ed313916967237c16feb1446',1,'apply(uint64_t code, uint64_t action):&#160;system.cpp'],['../test__api_8cpp.html#ae515545cb26793406ab2ae133bb5be3f',1,'apply(unsigned long long code, unsigned long long action):&#160;test_api.cpp']]],
   ['apply_5fcancel',['apply_cancel',['../namespacedice.html#a4c2511904a4b2f4fef17ab4f61c0c50d',1,'dice']]],
   ['apply_5fclaim',['apply_claim',['../namespacedice.html#af29d46f6deab4ca869fa769cf2c14262',1,'dice']]],
   ['apply_5fcurrency_5ftransfer',['apply_currency_transfer',['../namespace_t_o_k_e_n___n_a_m_e.html#ad480ac2ff519e253e8d947fca896a12f',1,'TOKEN_NAME::apply_currency_transfer()'],['../namespaceexchange.html#a7d1831d86ebf1c90cc808e7dbab7b33d',1,'exchange::apply_currency_transfer()'],['../namespaceinfinite.html#abebc45fa203a152ec82621ad207327ae',1,'infinite::apply_currency_transfer()']]],
@@ -12,12 +15,14 @@ var searchData=
   ['apply_5fexchange_5fsell',['apply_exchange_sell',['../namespaceexchange.html#ab470301ace28436a6fee53e27cd33f8f',1,'exchange']]],
   ['apply_5foffer',['apply_offer',['../namespacedice.html#a3408c135d50ff02e7705642648cd140b',1,'dice']]],
   ['apply_5freveal',['apply_reveal',['../namespacedice.html#a2a47726cde14750739de02a9e584ee95',1,'dice']]],
+  ['apply_5fsetowner',['apply_setowner',['../namespaceproxy.html#a6e47037779bfc0befcc344f6c4663483',1,'proxy']]],
   ['apply_5fsocial_5fpost',['apply_social_post',['../social_8cpp.html#a2f4b1a700aef8a99b9d4c12d252d231a',1,'social.cpp']]],
   ['apply_5fsocial_5fvote',['apply_social_vote',['../social_8cpp.html#ac3d5473926cea7fd3ad0bbcb7186fc6f',1,'social.cpp']]],
+  ['apply_5ftransfer',['apply_transfer',['../namespaceproxy.html#a7f6badf52019042035b24215e0d69ff2',1,'proxy']]],
   ['asert_5fno_5fdata',['asert_no_data',['../structtest__crypto.html#a0a8b90c9737cd8ec569d66f01459fc29',1,'test_crypto']]],
   ['asert_5fsha256_5ffalse',['asert_sha256_false',['../structtest__crypto.html#a11e604c93c75396def49e7f03fe6ca41',1,'test_crypto']]],
   ['asert_5fsha256_5ftrue',['asert_sha256_true',['../structtest__crypto.html#a02a62dbf9b03202bf97a6a324a41c94d',1,'test_crypto']]],
-  ['assert',['assert',['../group__messagecapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a',1,'message.h']]],
+  ['assert',['assert',['../group__systemcapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a',1,'system.h']]],
   ['assert_5ffalse',['assert_false',['../structtest__message.html#a7f37d26b636b9f29f6056defa4b00c9d',1,'test_message']]],
   ['assert_5fsha256',['assert_sha256',['../crypto_8h.html#a9cb6f46f0e4193e72b9ad63107dce8b8',1,'crypto.h']]],
   ['assert_5ftrue',['assert_true',['../structtest__message.html#a320d2a806fd9602395b25f5361eb10ad',1,'test_message']]]

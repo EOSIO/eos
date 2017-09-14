@@ -1,6 +1,7 @@
 var searchData=
 [
   ['welcome_20to_20the_20eos_2eio_20documentation',['Welcome to the eos.io Documentation',['../index.html',1,'']]],
+  ['welcome_20to_20the_20eos_2eio_20documentation',['Welcome to the eos.io Documentation',['../md_contracts_docs_mainpage.html',1,'']]],
   ['wasm_5fassert',['WASM_ASSERT',['../test__api_8hpp.html#ae81ef2e949de0dcfdccf6a7df7e3114d',1,'test_api.hpp']]],
   ['wasm_5ftest_5ferror_5fcode',['WASM_TEST_ERROR_CODE',['../test__api_8hpp.html#a983cc68cb9433ae18c8f4989483fabba',1,'test_api.hpp']]],
   ['wasm_5ftest_5ferror_5fmessage',['WASM_TEST_ERROR_MESSAGE',['../test__api_8hpp.html#af339529156efa6e07c2dabf284a8287f',1,'test_api.hpp']]],

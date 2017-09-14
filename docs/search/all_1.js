@@ -11,7 +11,7 @@ var searchData=
   ['back_5fsecondary_5fi128i128',['back_secondary_i128i128',['../group__dbi128i128.html#ga3f5654fc7a706aa7f9b042583606b945',1,'db.h']]],
   ['back_5fsecondary_5fi64i64i64',['back_secondary_i64i64i64',['../group__dbi64i64i64.html#gaa56818da64c4b83f5dd5a9c791bc97de',1,'db.h']]],
   ['back_5ftertiary_5fi64i64i64',['back_tertiary_i64i64i64',['../group__dbi64i64i64.html#ga79e0c968d1a0881ec4bd8ff7b7c31870',1,'db.h']]],
-  ['balance',['balance',['../struct_t_o_k_e_n___n_a_m_e_1_1_account.html#ac30ba5f614e7408e3c66804d15aa5db8',1,'TOKEN_NAME::Account::balance()'],['../structinfinite_1_1_account.html#a0e951c8ffe750c33551d4f0497bfad9a',1,'infinite::Account::balance()']]],
+  ['balance',['balance',['../group__currencyapi.html#gac30ba5f614e7408e3c66804d15aa5db8',1,'TOKEN_NAME::Account::balance()'],['../structinfinite_1_1_account.html#a0e951c8ffe750c33551d4f0497bfad9a',1,'infinite::Account::balance()'],['../structsystem_1_1_account.html#a6810aba542d3ce907b8a3302bd83d2af',1,'system::Account::balance()']]],
   ['base_5ftoken_5ftype',['base_token_type',['../structeos_1_1price.html#a05476d75e3da2435489d4360ae0aa9c8',1,'eos::price']]],
   ['bet',['bet',['../structdice_1_1_offer_primary_key.html#a5e15bf364e70c1f1f577216af269e457',1,'dice::OfferPrimaryKey']]],
   ['bs',['BS',['../test__db_8cpp.html#a85f8a9ac2543ab620606382f9d8fb5ad',1,'test_db.cpp']]],
