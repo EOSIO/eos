@@ -8,6 +8,7 @@
 *.wasm
 *.s
 *.dot
+*.cmake
 \#*
 \.#*
 CMakeCache.txt
