@@ -74,6 +74,7 @@ Options:
 #include <eos/chain/config.hpp>
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/utilities/key_conversion.hpp>
+#include <boost/locale.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -98,6 +99,7 @@ using namespace eos;
 using namespace eos::chain;
 using namespace eos::utilities;
 using namespace eos::client::help;
+using namespace boost::locale;
 
 string program = "eosc";
 string host = "localhost";
@@ -273,6 +275,24 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
 }
 
 int main( int argc, char** argv ) {
+   generator gen;
+   gen.add_messages_path("./locale");
+   gen.add_messages_domain("eosc");
+   locale::global(gen(""));
+
+   bool localization_available = false;
+   if (std::has_facet<message_format<char>>(std::locale())) {
+      localization_available = std::use_facet<message_format<char>>(std::locale()).get(0, nullptr, "translation_canary") != nullptr;
+   }
+
+   if (!localization_available) {
+      // make sure we translate our ID's to a "reasonable" default
+      locale::global(gen("en_US.UTF-8"));
+   }
+   
+   cout.imbue(locale());
+   cerr.imbue(locale());
+
    CLI::App app{"Command Line Interface to Eos Daemon"};
    app.require_subcommand();
    app.add_option( "-H,--host", host, "the host where eosd is running", true );

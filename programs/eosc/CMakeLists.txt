@@ -1,3 +1,7 @@
+if(LOCALIZATION_ENABLED)
+  add_subdirectory(locale)
+endif()
+
 add_executable( eosc main.cpp httpc.cpp help_text.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )

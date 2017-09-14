@@ -1,0 +1,53 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2017-09-14 16:36+0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ENCODING\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "translation_canary"
+msgstr ""
+
+msgid "transaction_help_text_header"
+msgstr ""
+
+msgid "duplicate_transaction_help_text"
+msgstr ""
+
+msgid "missing_perms_help_text"
+msgstr ""
+
+msgid "missing_sigs_help_text"
+msgstr ""
+
+msgid "missing_scope_help_text"
+msgstr ""
+
+msgid "tx_unknown_account_help_text"
+msgstr ""
+
+msgid "unknown_account_help_text"
+msgstr ""
+
+msgid "missing_abi_help_text"
+msgstr ""
+
+msgid "unknown_wallet_help_text"
+msgstr ""
+
+msgid "bad_wallet_password_help_text"
+msgstr " "
+
+msgid "locked_wallet_help_text"
+msgstr ""
+
+msgid "duplicate_key_import_help_text"
+msgstr ""
+
+msgid "unknown_abi_table_help_text"
+msgstr ""
+
+msgid "err_locate_help_text"
+msgstr "Error locating help text: "
