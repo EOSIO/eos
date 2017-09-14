@@ -773,9 +773,9 @@ namespace eos {
 
     void handle_message (connection_ptr c, const block_summary_message &msg) {
       const auto& itr = c->block_state.get<by_id>();
-      auto bs = itr.find(msg.block);
+      auto bs = itr.find(msg.block.id());
       if (bs == c->block_state.end()) {
-        c->block_state.insert (block_state({msg.block,true,true,fc::time_point()}));
+        c->block_state.insert ((block_state){msg.block.id(),true,true,fc::time_point()});
         send_all (msg, [c](connection_ptr cptr) -> bool {
             return cptr != c;
           });
@@ -792,7 +792,7 @@ namespace eos {
 #warning ("TODO: reconstruct actual block from cached transactions")
       signed_block sb;
       chain_controller &cc = chain_plug->chain();
-      if (!cc.is_known_block(msg.block) ) {
+      if (!cc.is_known_block(msg.block.id()) ) {
         try {
           chain_plug->accept_block(sb, false);
         } catch (const unlinkable_block_exception &ex) {
@@ -801,7 +801,6 @@ namespace eos {
         } catch (const assert_exception &ex) {
           // received a block due to out of sequence
           elog ("  caught assertion #${n}",("n",sb.block_num()));
-          close (c);
         }
       }
     }
@@ -867,11 +866,15 @@ namespace eos {
               sync_master->take_chunk (c);
             }
           } catch (const unlinkable_block_exception &ex) {
-            elog ("unable to accept block #${n} syncing",("n",num));
+            elog ("unlinkable_block_exception accept block #${n} syncing",("n",num));
+            close (c);
           } catch (const assert_exception &ex) {
-            elog ("unable to accept block on assert exception #${n}",("n",ex.what()));
+            elog ("unable to accept block on assert exception ${n}",("n",ex.what()));
+          } catch (const fc::exception &ex) {
+            elog ("accept_block threw a non-assert exception ${x}", ("x",ex.what()));
+          } catch (...) {
+            elog ("handle sync block caught something else");
           }
-
         } else {
           if (has_chunk) {
             c->sync_receiving->block_cache.emplace_back(std::move(c->blk_buffer));
@@ -888,24 +891,25 @@ namespace eos {
         return;
       }
 
+      send_all (msg, [c](connection_ptr conn) -> bool {
+          return (c != conn); // need to check if we know that they know about this block.
+        });
+
       try {
         chain_plug->accept_block(msg, false);
-
-        send_all (msg, [c](connection_ptr conn) -> bool {
-            return (c != conn); //
-          });
-
-
       } catch (const unlinkable_block_exception &ex) {
-        elog ("unable to accept block #${n}",("n",num));
-        //close (c);
+        elog ("unlinkable block to accept block #${n}",("n",num));
+        close (c);
       } catch (const assert_exception &ex) {
         elog ("unable to accept block on assert exception #${n}",("n",num));
-        //close (c);
+      } catch (const fc::exception &ex) {
+        elog ("accept_block threw a non-assert exception ${x}", ("x",ex.what()));
+      } catch (...) {
+        elog ("handle non-sync full block caught something else");
       }
     }
 
-  struct precache : public fc::visitor<void> {
+    struct precache : public fc::visitor<void> {
       connection_ptr c;
       precache (connection_ptr conn) : c(conn) {}
 
@@ -1126,7 +1130,7 @@ namespace eos {
       }
 
       if (!send_whole_blocks) {
-        block_summary_message bsm = {sb.id(), trxs};
+        block_summary_message bsm = {sb, trxs};
         send_all (bsm,[sb](connection_ptr c) -> bool {
             return true;
             const auto& bs = c->block_state.find(sb.id());
