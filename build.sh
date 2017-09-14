@@ -56,7 +56,7 @@ CMAKE_BUILD_TYPE=Debug
 # Install dependencies
 if [ ${INSTALL_DEPS} == "1" ]; then
 
-  print ">> Install dependencies"
+  echo ">> Install dependencies"
   . ${WORK_DIR}/scripts/install_dependencies.sh
 
 fi
