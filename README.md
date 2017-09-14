@@ -51,9 +51,9 @@ develop applications (smart contracts).
     	4. [Checking Existence of Account](#generaluse-accountexists)
     	5. [Import Wallet](#generaluse-walletimport)
 	1. [Contracts](#generaluse-contracts)
-  		1. [Checking Existence of Contract](#generaluse-contracts) 
-  		2. [Uploading a Contract](#generaluse-uploadingcontract)
-  		4. [Sending Message to Contract](#generaluse-sendingmessage)
+  		1. [Checking Existence of Contract](#generaluse-contractexists) 
+  		2. [Uploading a Contract](#generaluse-uploadcontract)
+  		4. [Push Message to Contract](#generaluse-pushmessage)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -685,11 +685,13 @@ The **bob** account is now imported into your wallet
 
 ### Contracts
 
+For sake of understanding API interaction with contracts, the examples below are based on a hypothetical **grocery** contract that would probably not have any real purpose on EOS, but allows for a simplistic interpretation that most people can identify with.  
+
 <a name="generaluse-contractexists"></a>
 #### Checking Existence of Contract
 
 ```bash
-./eosc get code currency 
+./eosc get code grocery 
 ```
 
 If no contract exists, it will return
@@ -704,56 +706,61 @@ code hash: 0000000000000000000000000000000000000000000000000000000000000000
 To deploy a contract, you must have an account created. Contracts are uploaded by calling the `set` with the `contract` subcommand, including the account creating the contract and including paths to your contract's **wast** and **abi** files. 
 
 ```bash
-./eosc set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
+./eosc set contract grocery ../../contracts/grocery/grocery.wast ../../contracts/grocery/grocery.abi
 ```
+
+This hypothetical contract has tables for various types of inventory with fields name, quantity and price. 
 
 <a name="generaluse-readmessage"></a>
 #### Reading Tables
 
-The example finds the balance of the associated contract's account. To do this, we get the table of **currency** for the contract **currency** from the table **account**
+The example finds the balance of the associated contract's account. To do this, we get the table of **groceryt** for the contract **grocery** from the table **account**
 
 ```bash
-./eosc get table currency currency account
+./eosc get table grocery grocery account
 {
   "rows": [{
      "account": "account",
-     "balance": 1000000000
+     "balance": 359202
      }
   ],
   "more": false
 }
 ```
 
-To get the balance of user **bob** from **currency** contract, the command and output is as follows
+This hypothetical grocery requires that its customers have credit with it. Account **bob** is wondering whether his balance can cover the purchase. 
 
 ```bash
-./eosc get table bob currency account
+./eosc get table bob grocery account
 {
   "rows": [{
       "account": "account",
-      "balance": 50 
+      "balance": 2
        }
     ],
   "more": false
 }
 ```
 
-An abstract example would be a table inside of a hypothetical **market** contract, that returns the name of the fruit and quantity in stock
+The below queries the **fruits** table of the **grocery** contract and returns the name of the fruit, quantity in stock and price 
 
 ```bash
-./eosc get table bob market fruits
+./eosc get table bob grocery fruits
 {
   "rows": [{
       "name": "apple",
-      "quantity": 50
+      "quantity": 0,
+      "price": 1
       },
       {
       "name": "orange",
-      "quantity": 77
+      "quantity": 77,
+      "price": 1
       },
       {
       "name": "banana",
-      "quantity": 11
+      "quantity": 11,
+      "price": 1
       }
     ],
   "more": false
@@ -767,4 +774,4 @@ To send a message to a contract, we need to specify the **contract** and its **m
 
 The below example pushes a message to the **transfer** method of the sample **currency** contract from user **bob**, it will include parameters that specify the from (*bob*) and to (*inita*) account, and the amount to transfer (*50*), we'll set the `--scope` of the message to include these two accounts `bob,inita`, and the `--permissions` required to send the message, which are bob's active permissions, expressed with `bob@active`.
 
-```./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope bob,inita --permission bob@active```
+```./eosc push message grocery transfer '{"from":"grocery","to":"bob","amount":50}' --scope grocery,inita --permission grocery@activex```
