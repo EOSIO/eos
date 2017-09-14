@@ -590,12 +590,14 @@ You can find more detailed API documentation in Doxygen reference: https://eosio
 
 You can find up to date information about EOS Docker in the [Docker Readme](https://github.com/EOSIO/eos/blob/master/Docker/README.md)
 
+
+
 <a name="generaluse"></a>
 ## General Use Examples
 
 Below are a list of general purpose examples
 
-<a name="wallets"></a>
+<a name="generaluse-wallets"></a>
 ### Wallets
 
 Wallets may contain several accounts, and each account is has various permissions for different levels of authentication. Wallets are either in a locked or unlocked state. 
@@ -604,14 +606,14 @@ To interact with a wallet, you need to have the `eos::wallet_api_plugin`, which 
 
 The examples below create an account for a user named **bob** 
 
-<a name="walletimport"></a>
+<a name="eneraluse-createwallet"></a>
 #### Creating a wallet
 
 ```bash
 ./eosc wallet create #Outputs a password that you need to save to be able to lock/unlock the wallet
 ```
 
-<a name="walletkeys"></a>
+<a name="generaluse-generatekeys"></a>
 #### Generate Keys
 
 The below example generates a public/private key pair for the `owner_key` and `active_key` permissions. 
@@ -634,7 +636,7 @@ These keypairs are then assigned at a later time to an accounts permission(s)
 **Important:**
 Save these values in a safe place for future reference.
 
-<a name="createaccount"></a>
+<a name="generaluse-createaccount"></a>
 #### Creating an account
 
 Creating an account requires that you have keypairs to set as `owner` and `active` permissions. 
@@ -649,6 +651,7 @@ _Note: Keys are generated arbitrarily, it's up to you which key is used for a pa
 
 You should get a json response back with a transaction ID confirming it was executed successfully.
 
+<a name="generaluse-accountexists"></a>
 #### Checking Existence of Account
 
 Check that account an account exists or was created successfully. 
@@ -669,6 +672,7 @@ You should get a response similar to this:
 }
 ```
 
+<a name="generaluse-walletimport"></a>
 #### Importing
 
 `wallet import` accepts a private key as the first positional argument, the private key imported should be for the **active** permission of the account you wish to import.
@@ -681,6 +685,7 @@ The **bob** account is now imported into your wallet
 
 ### Contracts
 
+<a name="generaluse-contractexists"></a>
 #### Checking Existence of Contract
 
 ```bash
@@ -703,9 +708,9 @@ To deploy a contract, you must have an account created. Contracts are uploaded b
 ```
 
 <a name="generaluse-readmessage"></a>
-#### Reading Contract Balance
+#### Reading Tables
 
-Lets say you would like the get the balance of a contract named **currency** for the contract's account **currency**. To do this, we get the table of **currency** for the contract **currency** from the table **account**
+The example finds the balance of the associated contract's account. To do this, we get the table of **currency** for the contract **currency** from the table **account**
 
 ```bash
 ./eosc get table currency currency account
@@ -719,7 +724,7 @@ Lets say you would like the get the balance of a contract named **currency** for
 }
 ```
 
-To get the balance of user **bob** from **currency** contract, the command is formatted as follows. 
+To get the balance of user **bob** from **currency** contract, the command and output is as follows
 
 ```bash
 ./eosc get table bob currency account
@@ -733,7 +738,29 @@ To get the balance of user **bob** from **currency** contract, the command is fo
 }
 ```
 
-<a name="generaluse-contractmessage"></a>
+An abstract example would be a table inside of a hypothetical **market** contract, that returns the name of the fruit and quantity in stock
+
+```bash
+./eosc get table bob market fruits
+{
+  "rows": [{
+      "name": "apple",
+      "quantity": 50
+      },
+      {
+      "name": "orange",
+      "quantity": 77
+      },
+      {
+      "name": "banana",
+      "quantity": 11
+      }
+    ],
+  "more": false
+}
+```
+
+<a name="generaluse-pushmessage"></a>
 #### Push message to Contract
 
 To send a message to a contract, we need to specify the **contract** and its **method** we are pushing the message to, the **parameters** anticipated by the contract's method and then some additional arguments depending on the nature of the message. 
