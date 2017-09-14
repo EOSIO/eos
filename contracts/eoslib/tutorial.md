@@ -108,7 +108,7 @@ Publishing contract...
     "expiration": "2017-09-14T05:39:15",
     "scope": [
       "eos",
-      "hello"
+      "${account}"
     ],
     "signatures": [
       "2064610856c773423d239a388d22cd30b7ba98f6a9fbabfa621e42cec5dd03c3b87afdcbd68a3a82df020b78126366227674dfbdd33de7d488f2d010ada914b438"
@@ -117,7 +117,7 @@ Publishing contract...
         "code": "eos",
         "type": "setcode",
         "authorization": [{
-            "account": "hello",
+            "account": "${account}",
             "permission": "active"
           }
         ],
