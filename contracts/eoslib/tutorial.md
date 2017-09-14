@@ -97,22 +97,21 @@ Assuming your wallet is unlocked and has keys for `${account}`, you can now uplo
 
 ```bash
 $ eosc set contract ${account} hello.wast hello.abi
-
 Reading WAST...
 Assembling WASM...
 Publishing contract...
 {
-  "transaction_id": "1bb98d70dd848787d27d98c1bb58354094126e83c2227188fcf30f0f1815594e",
+  "transaction_id": "1abb46f1b69feb9a88dbff881ea421fd4f39914df769ae09f66bd684436443d5",
   "processed": {
-    "refBlockNum": 57177,
-    "refBlockPrefix": 3164081847,
-    "expiration": "2017-09-13T22:02:04",
+    "refBlockNum": 144,
+    "refBlockPrefix": 2192682225,
+    "expiration": "2017-09-14T05:39:15",
     "scope": [
       "eos",
       "${account}"
     ],
     "signatures": [
-      "1f5b109d3973cb356d88804313cd0c4dce9cef589679b61a99c34786f5aa73e2ce0c5364eca9320da8ba84cfe267df28c8eb2f1887e13b184204e72854ef010177"
+      "2064610856c773423d239a388d22cd30b7ba98f6a9fbabfa621e42cec5dd03c3b87afdcbd68a3a82df020b78126366227674dfbdd33de7d488f2d010ada914b438"
     ],
     "messages": [{
         "code": "eos",
@@ -122,13 +121,12 @@ Publishing contract...
             "permission": "active"
           }
         ],
-        "data": "000000008041934b0000e4010061736d0100000001110460017f0060017e0060000060027e7e00021b0203656e76067072696e746e000103656e76067072696e7473000003030202030404017000000503010001071903066d656d6f7279020004696e69740002056170706c7900030a1b020600411010010b1200412010012000100041301001200110000b0b37040041040b04404000000041100b0d496e697420576f726c64210a000041200b0e48656c6c6f20576f726c643a20000041300b032d3e000029046e616d6504067072696e746e0100067072696e7473010004696e697400056170706c790201300131010b4163636f756e744e616d65044e616d6502087472616e7366657200030466726f6d0b4163636f756e744e616d6502746f0b4163636f756e744e616d6506616d6f756e740655496e743634076163636f756e740002076163636f756e74044e616d650762616c616e63650655496e74363401000000b298e982a4087472616e736665720100000080bafac6080369363401076163636f756e7400076163636f756e74"
+        "data": "0000000080c758410000f1010061736d0100000001110460017f0060017e0060000060027e7e00021b0203656e76067072696e746e000103656e76067072696e7473000003030202030404017000000503010001071903066d656d6f7279020004696e69740002056170706c7900030a20020600411010010b17004120100120001000413010012001100041c00010010b0b3f050041040b04504000000041100b0d496e697420576f726c64210a000041200b0e48656c6c6f20576f726c643a20000041300b032d3e000041c0000b020a000029046e616d6504067072696e746e0100067072696e7473010004696e697400056170706c790201300131010b4163636f756e744e616d65044e616d6502087472616e7366657200030466726f6d0b4163636f756e744e616d6502746f0b4163636f756e744e616d6506616d6f756e740655496e743634076163636f756e740002076163636f756e74044e616d650762616c616e63650655496e74363401000000b298e982a4087472616e736665720100000080bafac6080369363401076163636f756e7400076163636f756e74"
       }
     ],
     "output": [{
         "notify": [],
-        "sync_transactions": [],
-        "async_transactions": []
+        "deferred_transactions": []
       }
     ]
   }
@@ -193,8 +191,7 @@ The result is:
     ],
     "output": [{
         "notify": [],
-        "sync_transactions": [],
-        "async_transactions": []
+        "deferred_transactions": []
       }
     ]
   }
@@ -337,9 +334,9 @@ eosc push message ${account} transfer '{"from":"currency","to":"inita","amount":
 If you observe the output of `eosd` you should see:
 
 ```
-Hello World: initc->transfer
-Hello World: initc->transfer
-Hello World: initc->transfer
+Hello World: ${account}->transfer
+Hello World: ${account}->transfer
+Hello World: ${account}->transfer
 ```
 
 ## Processing Arguments of Transfer Message
@@ -546,7 +543,7 @@ The EOS.IO software will take care of enforcing and validating the signatures, a
 After building and deploying we can attempt to transfer again:
 
 ```bash
- eosc push message initc transfer '{"from":"initb","to":"inita","amount":50}' --scope initc
+ eosc push message ${account} transfer '{"from":"initb","to":"inita","amount":50}' --scope ${account}
  1881603ms thread-0   main.cpp:797                  operator()           ] Converting argument to binary...
  1881630ms thread-0   main.cpp:851                  main                 ] Failed with error: 10 assert_exception: Assert Exception
  status_code == 200: Error
@@ -569,7 +566,7 @@ This shows that it attempted to apply your transaction, printed the initial "Hel
 We can fix that by telling `eosc` to add the required permission:
 
 ```bash
- eosc push message initc transfer '{"from":"initb","to":"inita","amount":50}' --scope initc --permission initb@active
+ eosc push message ${account} transfer '{"from":"initb","to":"inita","amount":50}' --scope ${account} --permission initb@active
 ```
 
 The `--permission` command defines the account and permission level, in this case we use the `active` authority which is the default.

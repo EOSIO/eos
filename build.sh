@@ -12,10 +12,6 @@ VERSION=1.0
 WORK_DIR=$PWD
 BUILD_DIR=${WORK_DIR}/build
 TEMP_DIR=/tmp
-BINARYEN_BIN=/opt/binaryen/bin/
-OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config
 
 # Target architectures
 ARCH=$1
@@ -45,8 +41,23 @@ fi
 echo ""
 echo ">>> ARCHITECTURE \"$ARCH\""
 
+if [ $ARCH == "ubuntu" ]; then
+    BOOST_ROOT=${HOME}/opt/boost_1_64_0
+    BINARYEN_BIN=${HOME}/opt/binaryen/bin
+    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+    OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
+    WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
+fi
+
+if [ $ARCH == "darwin" ]; then
+    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+    OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
+    BINARYEN_BIN=/usr/local/binaryen/bin/
+    WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
+fi
+
 # Debug flags
-INSTALL_DEPS=1
+INSTALL_DEPS=0
 COMPILE_EOS=1
 COMPILE_CONTRACTS=1
 
