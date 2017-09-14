@@ -50,10 +50,6 @@ develop applications (smart contracts).
     	3. [Creating an Account](#generaluse-createaccount)
     	4. [Checking Existence of Account](#generaluse-accountexists)
     	5. [Import Wallet](#generaluse-walletimport)
-	1. [Contracts](#generaluse-contracts)
-  		1. [Checking Existence of Contract](#generaluse-contractexists) 
-  		2. [Uploading a Contract](#generaluse-uploadcontract)
-  		4. [Push Message to Contract](#generaluse-pushmessage)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -600,7 +596,7 @@ Below are a list of general purpose examples
 <a name="generaluse-wallets"></a>
 ### Wallets
 
-Wallets may contain several accounts, and each account is has various permissions for different levels of authentication. Wallets are either in a locked or unlocked state. 
+Wallets may contain several accounts, and each account has various permissions for different levels of authentication. Wallets are either in a locked or unlocked state. 
 
 To interact with a wallet, you need to have the `eos::wallet_api_plugin`, which is done by including `plugin = eos::wallet_api_plugin` within `config.ini`
 
@@ -622,7 +618,7 @@ The below example generates a public/private key pair for the `owner_key` and `a
 ./eosc create key
 ```
 
-Each time you `create key` you wil recieve a keypair. 
+Each time you `create key` you wil receive a keypair. 
 
 ```
 Private key: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -654,7 +650,7 @@ You should get a json response back with a transaction ID confirming it was exec
 <a name="generaluse-accountexists"></a>
 #### Checking Existence of Account
 
-Check that account an account exists or was created successfully. 
+Check that account exists or was created successfully. 
 
 ```bash
 ./eosc get account bob
@@ -682,13 +678,3 @@ You should get a response similar to this:
 ```
 
 The **bob** account is now imported into your wallet
-
-
-<a name="generaluse-pushmessage"></a>
-#### Push message to Contract
-
-To send a message to a contract, we need to specify the **contract** and its **method** we are pushing the message to, the **parameters** anticipated by the contract's method and then some additional arguments depending on the nature of the message. 
-
-The below example pushes a message to the **transfer** method of the sample **currency** contract from user **bob**, it will include parameters that specify the from (*bob*) and to (*inita*) account, and the amount to transfer (*50*), we'll set the `--scope` of the message to include these two accounts `bob,inita`, and the `--permissions` required to send the message, which are bob's active permissions, expressed with `bob@active`.
-
-```./eosc push message grocery transfer '{"from":"grocery","to":"bob","amount":50}' --scope grocery,inita --permission grocery@activex```
