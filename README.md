@@ -42,7 +42,6 @@ develop applications (smart contracts).
 5. [Running local testnet](#localtestnet)
 6. [Doxygen documentation](#doxygen)
 7. [Running EOS in Docker](#docker)
-	1. [Running contract in docker example](#dockercontract)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -393,10 +392,11 @@ cd ~/eos/build/programs/eosc/
 ./eosc wallet create # Outputs a password that you need to save to be able to lock/unlock the wallet
 ```
 
-For the purpose of this walkthrough, we'll import the private key of the `inita` account so that you can issue API commands under authority of an existing account. This private key can be found within your `config.ini` and is provided for testing purposes. 
+For the purpose of this walkthrough, import the private key of the `inita` account, a test account included within genesis.json, so that you're able to issue API commands under authority of an existing account. The private key referenced below is found within your `config.ini` and is provided to you for testing purposes. 
 
 ```bash
-./eosc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3```
+./eosc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+```
 
 <a name="createaccounts"></a>
 ### Creating accounts for sample "currency" contract
@@ -445,7 +445,7 @@ If all went well, you will receive output similar to the following
 }
 ```
 
-Now import the owner private key generated previously in the wallet:
+Now import the active private key generated previously in the wallet:
 
 ```bash
 ./eosc wallet import XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
