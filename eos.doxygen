@@ -7,7 +7,7 @@ DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "EOS.IO"
 PROJECT_NUMBER         = DAWN 1.0
 PROJECT_BRIEF          =
-PROJECT_LOGO           =
+PROJECT_LOGO           = eos-logo.png
 OUTPUT_DIRECTORY       =
 CREATE_SUBDIRS         = NO
 ALLOW_UNICODE_NAMES    = NO
@@ -251,7 +251,7 @@ EXTRA_SEARCH_MAPPINGS  =
 #---------------------------------------------------------------------------
 # Configuration options related to the LaTeX output
 #---------------------------------------------------------------------------
-GENERATE_LATEX         = YES
+GENERATE_LATEX         = NO
 LATEX_OUTPUT           = latex
 LATEX_CMD_NAME         = latex
 MAKEINDEX_CMD_NAME     = makeindex
