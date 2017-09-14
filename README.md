@@ -32,10 +32,6 @@ develop applications (smart contracts).
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
 	3. [Creating and launching a single-node testnet](#singlenode)
-4. [Accounts](#accounts)
-	1. Creating a Wallet
-	2. Generating a Key
-	2. Importing a Key 
 4. [Example Currency Contract Walkthrough](#smartcontracts)
 	1. [Example Contracts](#smartcontractexample)
 	2. [Setting up a wallet and importing account key](#walletimport)
