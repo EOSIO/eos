@@ -3,6 +3,14 @@
 #include <eoslib/db.hpp>
 
 /**
+ *  @defgroup examplecontract Example Contract
+ *  @brief Example Contract
+ *  @ingroup contractapi
+ *
+ */
+
+
+/**
  * Make it easy to change the account name the currency is deployed to.
  */
 #ifndef TOKEN_NAME
@@ -12,9 +20,9 @@
 namespace TOKEN_NAME {
 
   /**
-   *  @defgroup currencyapi Currency Contract API
-   *  @brief Defines the curency contract
-   *  @ingroup contractapi
+   *  @defgroup currencyapi Currency Contract
+   *  @brief Defines the curency contract example
+   *  @ingroup examplecontract
    *
    *  @{
    */
@@ -56,7 +64,7 @@ namespace TOKEN_NAME {
        *  The key is constant because there is only one record per scope/currency/accounts
        */
       const uint64_t     key = N(account);
-      
+
       /**
       * Balance number of tokens in account
       **/
@@ -64,7 +72,7 @@ namespace TOKEN_NAME {
 
       /**
       Method to check if accoutn is empty.
-      @return true if account balance is zero.      
+      @return true if account balance is zero.
       **/
       bool  isEmpty()const  { return balance.quantity == 0; }
    };
@@ -98,4 +106,3 @@ namespace TOKEN_NAME {
    }
 
 } /// @} /// currencyapi
-

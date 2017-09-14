@@ -11,7 +11,7 @@ namespace eos {
   /**
    *  @defgroup memorycppapi Memory C++ API
    *  @brief Defines common memory functions
-   *  @ingroup TBD
+   *  @ingroup memoryapi
    *
    *  @{
    */
