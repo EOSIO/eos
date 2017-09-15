@@ -507,7 +507,7 @@ git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-
 cd ..
 mkdir build
 cd build
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+cmake -G "Unix Makefiles" -DLLVM_ENABLE_RTTI=ON -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 make -j4 install
 ```
 
@@ -581,7 +581,7 @@ git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-
 cd ..
 mkdir build
 cd build
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+cmake -G "Unix Makefiles" -DLLVM_ENABLE_RTTI=ON -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 make -j4 install
 ```
 
