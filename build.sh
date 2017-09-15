@@ -57,7 +57,7 @@ if [ $ARCH == "darwin" ]; then
 fi
 
 # Debug flags
-INSTALL_DEPS=0
+INSTALL_DEPS=1
 COMPILE_EOS=1
 COMPILE_CONTRACTS=1
 
