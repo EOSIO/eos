@@ -93,13 +93,14 @@ Options:
 #include "help_text.hpp"
 
 #define format_output(format, ...) fc::format_string(format, fc::mutable_variant_object() __VA_ARGS__ )
+#define localize(str) (boost::locale::gettext(str))
 
+using namespace boost::locale;
 using namespace std;
 using namespace eos;
 using namespace eos::chain;
 using namespace eos::utilities;
 using namespace eos::client::help;
-using namespace boost::locale;
 
 string program = "eosc";
 string host = "localhost";
@@ -190,8 +191,8 @@ void add_standard_transaction_options(CLI::App* cmd) {
       return true;
    };
 
-   cmd->add_option("-x,--expiration", parse_exipration, gettext("option_expiration_description"));
-   cmd->add_flag("-f,--force-unique", tx_force_unique, gettext("flag_force_unique_description"));
+   cmd->add_option("-x,--expiration", parse_exipration, localize("!?expiration"));
+   cmd->add_flag("-f,--force-unique", tx_force_unique, localize("!?force_unique"));
 }
 
 std::string generate_nonce_string() {
@@ -295,20 +296,20 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to Eos Daemon"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, gettext("option_host_description"), true );
-   app.add_option( "-p,--port", port, gettext("option_port_description"), true );
-   app.add_option( "--wallet-host", wallet_host, gettext("option_wallet_host_description"), true );
-   app.add_option( "--wallet-port", wallet_port, gettext("option_wallet_port_description"), true );
+   app.add_option( "-H,--host", host, localize("!?host"), true );
+   app.add_option( "-p,--port", port, localize("!?port"), true );
+   app.add_option( "--wallet-host", wallet_host, localize("!?wallet_host"), true );
+   app.add_option( "--wallet-port", wallet_port, localize("!?wallet_port"), true );
 
    bool verbose_errors = false;
-   app.add_flag( "-v,--verbose", verbose_errors, gettext("flag_verbose_description"));
+   app.add_flag( "-v,--verbose", verbose_errors, localize("!?verbose"));
 
    // Create subcommand
-   auto create = app.add_subcommand("create", gettext("subcommand_create_description"), false);
+   auto create = app.add_subcommand("create", localize("!create"), false);
    create->require_subcommand();
 
    // create key
-   create->add_subcommand("key", gettext("subcommand_create_key_description"))->set_callback([] {
+   create->add_subcommand("key", localize("!create_key"))->set_callback([] {
       auto privateKey = fc::ecc::private_key::generate();
       std::cout << "Private key: " << key_to_wif(privateKey.get_secret()) << "\n";
       std::cout << "Public key:  " << string(public_key_type(privateKey.get_public_key())) << std::endl;
@@ -320,24 +321,24 @@ int main( int argc, char** argv ) {
    string ownerKey;
    string activeKey;
    bool skip_sign = false;
-   auto createAccount = create->add_subcommand("account", gettext("subcommand_create_account_description"), false);
-   createAccount->add_option("creator", creator, gettext("option_creator_description"))->required();
-   createAccount->add_option("name", name, gettext("option_name_description"))->required();
-   createAccount->add_option("OwnerKey", ownerKey, gettext("option_OwnerKey_description"))->required();
-   createAccount->add_option("ActiveKey", activeKey, gettext("option_ActiveKey_description"))->required();
-   createAccount->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
+   auto createAccount = create->add_subcommand("account", localize("!create_account"), false);
+   createAccount->add_option("creator", creator, localize("!create_account?creator"))->required();
+   createAccount->add_option("name", name, localize("!create_account?name"))->required();
+   createAccount->add_option("OwnerKey", ownerKey, localize("!create_account?OwnerKey"))->required();
+   createAccount->add_option("ActiveKey", activeKey, localize("!create_account?ActiveKey"))->required();
+   createAccount->add_flag("-s,--skip-signature", skip_sign, localize("!create_account?skip_signature"));
    createAccount->set_callback([&] {
       create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign);
    });
 
    // create producer
    vector<string> permissions;
-   auto createProducer = create->add_subcommand("producer", gettext("subcommand_create_producer_description"), false);
-   createProducer->add_option("name", name, gettext("option_producer_name_description"))->required();
-   createProducer->add_option("OwnerKey", ownerKey, gettext("option_producer_OwnerKey_description"))->required();
+   auto createProducer = create->add_subcommand("producer", localize("!create_producer"), false);
+   createProducer->add_option("name", name, localize("!create_producer?producer_name"))->required();
+   createProducer->add_option("OwnerKey", ownerKey, localize("!create_producer?producer_OwnerKey"))->required();
    createProducer->add_option("-p,--permission", permissions,
-                              gettext("option_permission_description"));
-   createProducer->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
+                              localize("!create_producer?permission"));
+   createProducer->add_flag("-s,--skip-signature", skip_sign, localize("!create_producer?skip_signature"));
    createProducer->set_callback([&name, &ownerKey, &permissions, &skip_sign] {
       if (permissions.empty()) {
          permissions.push_back(name + "@active");
@@ -353,18 +354,18 @@ int main( int argc, char** argv ) {
    });
 
    // Get subcommand
-   auto get = app.add_subcommand("get", gettext("subcommand_get_description"), false);
+   auto get = app.add_subcommand("get", localize("!get"), false);
    get->require_subcommand();
 
    // get info
-   get->add_subcommand("info", gettext("subcommand_get_info_description"))->set_callback([] {
+   get->add_subcommand("info", localize("!get_info"))->set_callback([] {
       std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
    });
 
    // get block
    string blockArg;
-   auto getBlock = get->add_subcommand("block", gettext("subcommand_get_block_description"), false);
-   getBlock->add_option("block", blockArg, gettext("option_block_description"))->required();
+   auto getBlock = get->add_subcommand("block", localize("!get_block"), false);
+   getBlock->add_option("block", blockArg, localize("!get_block?block"))->required();
    getBlock->set_callback([&blockArg] {
       auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
       std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
@@ -372,8 +373,8 @@ int main( int argc, char** argv ) {
 
    // get account
    string accountName;
-   auto getAccount = get->add_subcommand("account", gettext("subcommand_get_account_description"), false);
-   getAccount->add_option("name", accountName, gettext("option_name_description"))->required();
+   auto getAccount = get->add_subcommand("account", localize("!get_account"), false);
+   getAccount->add_option("name", accountName, localize("!get_account?name"))->required();
    getAccount->set_callback([&] {
       std::cout << fc::json::to_pretty_string(call(get_account_func,
                                                    fc::mutable_variant_object("name", accountName)))
@@ -383,10 +384,10 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
-   auto getCode = get->add_subcommand("code", gettext("subcommand_get_code_description"), false);
-   getCode->add_option("name", accountName, gettext("option_name_description"))->required();
-   getCode->add_option("-c,--code",codeFilename, gettext("option_code_description") );
-   getCode->add_option("-a,--abi",abiFilename, gettext("option_abi_description") );
+   auto getCode = get->add_subcommand("code", localize("!get_code"), false);
+   getCode->add_option("name", accountName, localize("!get_code?name"))->required();
+   getCode->add_option("-c,--code",codeFilename, localize("!get_code?code") );
+   getCode->add_option("-a,--abi",abiFilename, localize("!get_code?abi") );
    getCode->set_callback([&] {
       auto result = call(get_code_func, fc::mutable_variant_object("name", accountName));
 
@@ -414,15 +415,15 @@ int main( int argc, char** argv ) {
    string upper;
    bool binary = false;
    uint32_t limit = 10;
-   auto getTable = get->add_subcommand( "table", gettext("subcommand_get_table_description"), false);
-   getTable->add_option( "scope", scope, gettext("option_scope_description") )->required();
-   getTable->add_option( "contract", code, gettext("option_contract_description") )->required();
-   getTable->add_option( "table", table, gettext("option_table_description") )->required();
-   getTable->add_option( "-b,--binary", binary, gettext("option_binary_description") );
-   getTable->add_option( "-l,--limit", limit, gettext("option_limit_description") );
-   getTable->add_option( "-k,--key", limit, gettext("option_key_description") );
-   getTable->add_option( "-L,--lower", lower, gettext("option_lower_description") );
-   getTable->add_option( "-U,--upper", upper, gettext("option_upper_description") );
+   auto getTable = get->add_subcommand( "table", localize("!get_table"), false);
+   getTable->add_option( "scope", scope, localize("!get_table?scope") )->required();
+   getTable->add_option( "contract", code, localize("!get_table?contract") )->required();
+   getTable->add_option( "table", table, localize("!get_table?table") )->required();
+   getTable->add_option( "-b,--binary", binary, localize("!get_table?binary") );
+   getTable->add_option( "-l,--limit", limit, localize("!get_table?limit") );
+   getTable->add_option( "-k,--key", limit, localize("!get_table?key") );
+   getTable->add_option( "-L,--lower", lower, localize("!get_table?lower") );
+   getTable->add_option( "-U,--upper", upper, localize("!get_table?upper") );
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
@@ -439,8 +440,8 @@ int main( int argc, char** argv ) {
 
    // get accounts
    string publicKey;
-   auto getAccounts = get->add_subcommand("accounts", gettext("subcommand_get_accounts_description"), false);
-   getAccounts->add_option("public_key", publicKey, gettext("option_public_key_description"))->required();
+   auto getAccounts = get->add_subcommand("accounts", localize("!get_accounts"), false);
+   getAccounts->add_option("public_key", publicKey, localize("!get_accounts?public_key"))->required();
    getAccounts->set_callback([&] {
       auto arg = fc::mutable_variant_object( "public_key", publicKey);
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
@@ -448,8 +449,8 @@ int main( int argc, char** argv ) {
 
    // get servants
    string controllingAccount;
-   auto getServants = get->add_subcommand("servants", gettext("subcommand_get_servants_description"), false);
-   getServants->add_option("account", controllingAccount, gettext("option_account_description"))->required();
+   auto getServants = get->add_subcommand("servants", localize("!get_servants"), false);
+   getServants->add_option("account", controllingAccount, localize("!get_servants?account"))->required();
    getServants->set_callback([&] {
       auto arg = fc::mutable_variant_object( "controlling_account", controllingAccount);
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
@@ -457,8 +458,8 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transactionId;
-   auto getTransaction = get->add_subcommand("transaction", gettext("subcommand_get_transaction_description"), false);
-   getTransaction->add_option("id", transactionId, gettext("option_id_description"))->required();
+   auto getTransaction = get->add_subcommand("transaction", localize("!get_transaction"), false);
+   getTransaction->add_option("id", transactionId, localize("!get_transaction?id"))->required();
    getTransaction->set_callback([&] {
       auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
@@ -468,10 +469,10 @@ int main( int argc, char** argv ) {
    string account_name;
    string skip_seq;
    string num_seq;
-   auto getTransactions = get->add_subcommand("transactions", gettext("subcommand_get_transactions_description"), false);
-   getTransactions->add_option("account_name", account_name, gettext("option_account_name_description"))->required();
-   getTransactions->add_option("skip_seq", skip_seq, gettext("option_skip_seq_description"));
-   getTransactions->add_option("num_seq", num_seq, gettext("option_num_seq_description"));
+   auto getTransactions = get->add_subcommand("transactions", localize("!get_transactions"), false);
+   getTransactions->add_option("account_name", account_name, localize("!get_transactions?account_name"))->required();
+   getTransactions->add_option("skip_seq", skip_seq, localize("!get_transactions?skip_seq"));
+   getTransactions->add_option("num_seq", num_seq, localize("!get_transactions?num_seq"));
    getTransactions->set_callback([&] {
       auto arg = (skip_seq.empty())
                   ? fc::mutable_variant_object( "account_name", account_name)
@@ -496,20 +497,20 @@ int main( int argc, char** argv ) {
    });
 
    // set subcommand
-   auto setSubcommand = app.add_subcommand("set", gettext("subcommand_set_description"));
+   auto setSubcommand = app.add_subcommand("set", localize("!set"));
    setSubcommand->require_subcommand();
 
    // set contract subcommand
    string account;
    string wastPath;
    string abiPath;
-   auto contractSubcommand = setSubcommand->add_subcommand("contract", gettext("subcommand_set_contract_description"));
-   contractSubcommand->add_option("account", account, gettext("option_account_description"))->required();
-   contractSubcommand->add_option("wast-file", wastPath, gettext("option_wast_file_description"))->required()
+   auto contractSubcommand = setSubcommand->add_subcommand("contract", localize("!set_contract"));
+   contractSubcommand->add_option("account", account, localize("!set_contract?account"))->required();
+   contractSubcommand->add_option("wast-file", wastPath, localize("!set_contract?wast_file"))->required()
          ->check(CLI::ExistingFile);
-   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, gettext("option_abi_file_description"))
+   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localize("!set_contract?abi_file"))
               ->check(CLI::ExistingFile);
-   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, gettext("flag_skip_sign_description"));
+   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, localize("!set_contract?skip_sign"));
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << "Reading WAST..." << std::endl;
@@ -534,15 +535,15 @@ int main( int argc, char** argv ) {
 
    // set producer approve/unapprove subcommand
    string producer;
-   auto producerSubcommand = setSubcommand->add_subcommand("producer", gettext("subcommand_set_producer_description"));
+   auto producerSubcommand = setSubcommand->add_subcommand("producer", localize("!set_producer"));
    producerSubcommand->require_subcommand();
-   auto approveCommand = producerSubcommand->add_subcommand("approve", gettext("subcommand_set_producer_approve_description"));
-   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", gettext("subcommand_set_producer_unapprove_description"));
-   producerSubcommand->add_option("user-name", name, gettext("option_user_name_description"))->required();
-   producerSubcommand->add_option("producer-name", producer, gettext("option_producer_name_description"))->required();
+   auto approveCommand = producerSubcommand->add_subcommand("approve", localize("!set_producer_approve"));
+   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", localize("!set_producer_unapprove"));
+   producerSubcommand->add_option("user-name", name, localize("!set_producer_unapprove?user_name"))->required();
+   producerSubcommand->add_option("producer-name", producer, localize("!set_producer_unapprove?producer_name"))->required();
    producerSubcommand->add_option("-p,--permission", permissions,
-                              gettext("option_permission_description"));
-   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
+                              localize("!set_producer_unapprove?permission"));
+   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, localize("!set_producer_unapprove?skip_signature"));
    producerSubcommand->set_callback([&] {
       // don't need to check unapproveCommand because one of approve or unapprove is required
       bool approve = producerSubcommand->got_subcommand(approveCommand);
@@ -563,12 +564,12 @@ int main( int argc, char** argv ) {
 
    // set proxy subcommand
    string proxy;
-   auto proxySubcommand = setSubcommand->add_subcommand("proxy", gettext("subcommand_set_proxy_description"));
-   proxySubcommand->add_option("user-name", name, gettext("option_user_name_description"))->required();
-   proxySubcommand->add_option("proxy-name", proxy, gettext("option_proxy_name_description"));
+   auto proxySubcommand = setSubcommand->add_subcommand("proxy", localize("!set_proxy"));
+   proxySubcommand->add_option("user-name", name, localize("!set_proxy?user_name"))->required();
+   proxySubcommand->add_option("proxy-name", proxy, localize("!set_proxy?proxy_name"));
    proxySubcommand->add_option("-p,--permission", permissions,
-                                  gettext("option_permission_description"));
-   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
+                                  localize("!set_proxy?permission"));
+   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, localize("!set_proxy?skip_signature"));
    proxySubcommand->set_callback([&] {
       if (permissions.empty()) {
          permissions.push_back(name + "@active");
@@ -592,12 +593,12 @@ int main( int argc, char** argv ) {
    string recipient;
    uint64_t amount;
    string memo;
-   auto transfer = app.add_subcommand("transfer", gettext("subcommand_transfer_description"), false);
-   transfer->add_option("sender", sender, gettext("option_sender_description"))->required();
-   transfer->add_option("recipient", recipient, gettext("option_recipient_description"))->required();
-   transfer->add_option("amount", amount, gettext("option_amount_description"))->required();
-   transfer->add_option("memo", memo, gettext("option_memo_description"));
-   transfer->add_flag("-s,--skip-sign", skip_sign, gettext("flag_skip_sign_description"));
+   auto transfer = app.add_subcommand("transfer", localize("!transfer"), false);
+   transfer->add_option("sender", sender, localize("!transfer?sender"))->required();
+   transfer->add_option("recipient", recipient, localize("!transfer?recipient"))->required();
+   transfer->add_option("amount", amount, localize("!transfer?amount"))->required();
+   transfer->add_option("memo", memo, localize("!transfer?memo"));
+   transfer->add_flag("-s,--skip-sign", skip_sign, localize("!transfer?skip_sign"));
    add_standard_transaction_options(transfer);
    transfer->set_callback([&] {
       SignedTransaction trx;
@@ -630,12 +631,12 @@ int main( int argc, char** argv ) {
 
 
    // Wallet subcommand
-   auto wallet = app.add_subcommand( "wallet", gettext("subcommand_wallet_description"), false );
+   auto wallet = app.add_subcommand( "wallet", localize("!wallet"), false );
    wallet->require_subcommand();
    // create wallet
    string wallet_name = "default";
-   auto createWallet = wallet->add_subcommand("create", gettext("subcommand_wallet_create_description"), false);
-   createWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"), true);
+   auto createWallet = wallet->add_subcommand("create", localize("!wallet_create"), false);
+   createWallet->add_option("-n,--name", wallet_name, localize("!wallet_create?name"), true);
    createWallet->set_callback([&wallet_name] {
       const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
       std::cout << "Creating wallet: " << wallet_name << std::endl;
@@ -645,8 +646,8 @@ int main( int argc, char** argv ) {
    });
 
    // open wallet
-   auto openWallet = wallet->add_subcommand("open", gettext("subcommand_wallet_open_description"), false);
-   openWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
+   auto openWallet = wallet->add_subcommand("open", localize("!wallet_open"), false);
+   openWallet->add_option("-n,--name", wallet_name, localize("!wallet_open?name"));
    openWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -654,8 +655,8 @@ int main( int argc, char** argv ) {
    });
 
    // lock wallet
-   auto lockWallet = wallet->add_subcommand("lock", gettext("subcommand_wallet_lock_description"), false);
-   lockWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
+   auto lockWallet = wallet->add_subcommand("lock", localize("!wallet_lock"), false);
+   lockWallet->add_option("-n,--name", wallet_name, localize("!wallet_lock?name"));
    lockWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
       std::cout << "Locked: '"<<wallet_name<<"'\n";
@@ -664,7 +665,7 @@ int main( int argc, char** argv ) {
    });
 
    // lock all wallets
-   auto locakAllWallets = wallet->add_subcommand("lock_all", gettext("subcommand_wallet_lock_all_description"), false);
+   auto locakAllWallets = wallet->add_subcommand("lock_all", localize("!wallet_lock_all"), false);
    locakAllWallets->set_callback([] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -673,9 +674,9 @@ int main( int argc, char** argv ) {
 
    // unlock wallet
    string wallet_pw;
-   auto unlockWallet = wallet->add_subcommand("unlock", gettext("subcommand_wallet_unlock_description"), false);
-   unlockWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
-   unlockWallet->add_option("--password", wallet_pw, gettext("option_password_description"));
+   auto unlockWallet = wallet->add_subcommand("unlock", localize("!wallet_unlock"), false);
+   unlockWallet->add_option("-n,--name", wallet_name, localize("!wallet_unlock?name"));
+   unlockWallet->add_option("--password", wallet_pw, localize("!wallet_unlock?password"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
       if( wallet_pw.size() == 0 ) {
          std::cout << "password: ";
@@ -693,9 +694,9 @@ int main( int argc, char** argv ) {
 
    // import keys into wallet
    string wallet_key;
-   auto importWallet = wallet->add_subcommand("import", gettext("subcommand_wallet_import_description"), false);
-   importWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
-   importWallet->add_option("key", wallet_key, gettext("option_key_description"))->required();
+   auto importWallet = wallet->add_subcommand("import", localize("!wallet_import"), false);
+   importWallet->add_option("-n,--name", wallet_name, localize("!wallet_import?name"));
+   importWallet->add_option("key", wallet_key, localize("!wallet_import?key"))->required();
    importWallet->set_callback([&wallet_name, &wallet_key] {
       auto key = utilities::wif_to_key(wallet_key);
       FC_ASSERT( key, "invalid private key: ${k}", ("k",wallet_key) );
@@ -708,7 +709,7 @@ int main( int argc, char** argv ) {
    });
 
    // list wallets
-   auto listWallet = wallet->add_subcommand("list", gettext("subcommand_wallet_list_description"), false);
+   auto listWallet = wallet->add_subcommand("list", localize("!wallet_list"), false);
    listWallet->set_callback([] {
       std::cout << "Wallets: \n";
       const auto& v = call(wallet_host, wallet_port, wallet_list);
@@ -716,18 +717,18 @@ int main( int argc, char** argv ) {
    });
 
    // list keys
-   auto listKeys = wallet->add_subcommand("keys", gettext("subcommand_wallet_keys_description"), false);
+   auto listKeys = wallet->add_subcommand("keys", localize("!wallet_keys"), false);
    listKeys->set_callback([] {
       const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // Benchmark subcommand
-   auto benchmark = app.add_subcommand( "benchmark", gettext("subcommand_benchmark_description"), false );
+   auto benchmark = app.add_subcommand( "benchmark", localize("!benchmark"), false );
    benchmark->require_subcommand();
-   auto benchmark_setup = benchmark->add_subcommand( "setup", gettext("subcommand_setup_description") );
+   auto benchmark_setup = benchmark->add_subcommand( "setup", localize("!setup") );
    uint64_t number_of_accounts = 2;
-   benchmark_setup->add_option("accounts", number_of_accounts, gettext("option_accounts_description"))->required();
+   benchmark_setup->add_option("accounts", number_of_accounts, localize("!setup?accounts"))->required();
    benchmark_setup->set_callback([&]{
       std::cerr << "Creating " << number_of_accounts <<" accounts with initial balances\n";
       FC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
@@ -761,12 +762,12 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(result) << std::endl;
    });
 
-   auto benchmark_transfer = benchmark->add_subcommand( "transfer", gettext("subcommand_benchmark_transfer_description") );
+   auto benchmark_transfer = benchmark->add_subcommand( "transfer", localize("!benchmark_transfer") );
    uint64_t number_of_transfers = 0;
    bool loop = false;
-   benchmark_transfer->add_option("accounts", number_of_accounts, gettext("option_accounts_description"))->required();
-   benchmark_transfer->add_option("count", number_of_transfers, gettext("option_count_description"))->required();
-   benchmark_transfer->add_option("loop", loop, gettext("option_loop_description"));
+   benchmark_transfer->add_option("accounts", number_of_accounts, localize("!benchmark_transfer?accounts"))->required();
+   benchmark_transfer->add_option("count", number_of_transfers, localize("!benchmark_transfer?count"))->required();
+   benchmark_transfer->add_option("loop", loop, localize("!benchmark_transfer?loop"));
    benchmark_transfer->set_callback([&]{
       FC_ASSERT( number_of_accounts > 1 );
 
@@ -838,7 +839,7 @@ int main( int argc, char** argv ) {
    
 
    // Push subcommand
-   auto push = app.add_subcommand("push", gettext("subcommand_push_description"), false);
+   auto push = app.add_subcommand("push", localize("!push"), false);
    push->require_subcommand();
 
    // push message
@@ -846,17 +847,17 @@ int main( int argc, char** argv ) {
    string action;
    string data;
    vector<string> scopes;
-   auto messageSubcommand = push->add_subcommand("message", gettext("subcommand_push_message_description"));
+   auto messageSubcommand = push->add_subcommand("message", localize("!push_message"));
    messageSubcommand->fallthrough(false);
    messageSubcommand->add_option("contract", contract,
-                                 gettext("option_contract_description"), true)->required();
-   messageSubcommand->add_option("action", action, gettext("option_action_description"), true)
+                                 localize("!push_message?contract"), true)->required();
+   messageSubcommand->add_option("action", action, localize("!push_message?action"), true)
          ->required();
-   messageSubcommand->add_option("data", data, gettext("option_data_description"))->required();
+   messageSubcommand->add_option("data", data, localize("!push_message?data"))->required();
    messageSubcommand->add_option("-p,--permission", permissions,
-                                 gettext("option_permission_description"));
-   messageSubcommand->add_option("-S,--scope", scopes, gettext("option_scope_description"), true);
-   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, gettext("flag_skip_sign_description"));
+                                 localize("!push_message?permission"));
+   messageSubcommand->add_option("-S,--scope", scopes, localize("!push_message?scope"), true);
+   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, localize("!push_message?skip_sign"));
    messageSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
@@ -886,8 +887,8 @@ int main( int argc, char** argv ) {
 
    // push transaction
    string trxJson;
-   auto trxSubcommand = push->add_subcommand("transaction", gettext("subcommand_push_transaction_description"));
-   trxSubcommand->add_option("transaction", trxJson, gettext("option_transaction_description"))->required();
+   auto trxSubcommand = push->add_subcommand("transaction", localize("!push_transaction"));
+   trxSubcommand->add_option("transaction", trxJson, localize("!push_transaction?transaction"))->required();
    trxSubcommand->set_callback([&] {
       auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -895,8 +896,8 @@ int main( int argc, char** argv ) {
 
 
    string trxsJson;
-   auto trxsSubcommand = push->add_subcommand("transactions", gettext("subcommand_push_transactions_description"));
-   trxsSubcommand->add_option("transactions", trxsJson, gettext("option_transactions_description"))->required();
+   auto trxsSubcommand = push->add_subcommand("transactions", localize("!push_transactions"));
+   trxsSubcommand->add_option("transactions", trxsJson, localize("!push_transactions?transactions"))->required();
    trxsSubcommand->set_callback([&] {
       auto trxs_result = call(push_txn_func, fc::json::from_string(trxsJson));
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;

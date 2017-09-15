@@ -52,327 +52,327 @@ msgstr ""
 msgid "err_locate_help_text"
 msgstr ""
 
-msgid "option_expiration_description"
+msgid "!?expiration"
 msgstr ""
 
-msgid "flag_force_unique_description"
+msgid "!?force_unique"
 msgstr ""
 
-msgid "option_host_description"
+msgid "!?host"
 msgstr ""
 
-msgid "option_port_description"
+msgid "!?port"
 msgstr ""
 
-msgid "option_wallet_host_description"
+msgid "!?wallet_host"
 msgstr ""
 
-msgid "option_wallet_port_description"
+msgid "!?wallet_port"
 msgstr ""
 
-msgid "flag_verbose_description"
+msgid "!?verbose"
 msgstr ""
 
-msgid "subcommand_create_description"
+msgid "!create"
 msgstr ""
 
-msgid "subcommand_create_key_description"
+msgid "!create_key"
 msgstr ""
 
-msgid "subcommand_create_account_description"
+msgid "!create_account"
 msgstr ""
 
-msgid "option_creator_description"
+msgid "!create_account?creator"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!create_account?name"
 msgstr ""
 
-msgid "option_OwnerKey_description"
+msgid "!create_account?OwnerKey"
 msgstr ""
 
-msgid "option_ActiveKey_description"
+msgid "!create_account?ActiveKey"
 msgstr ""
 
-msgid "flag_skip_signature_description"
+msgid "!create_account?skip_signature"
 msgstr ""
 
-msgid "subcommand_create_producer_description"
+msgid "!create_producer"
 msgstr ""
 
-msgid "option_producer_name_description"
+msgid "!create_producer?producer_name"
 msgstr ""
 
-msgid "option_producer_OwnerKey_description"
+msgid "!create_producer?producer_OwnerKey"
 msgstr ""
 
-msgid "option_permission_description"
+msgid "!create_producer?permission"
 msgstr ""
 
-#msgid "flag_skip_signature_description"
-#msgstr ""
+msgid "!create_producer?skip_signature"
+msgstr ""
 
-msgid "subcommand_get_description"
+msgid "!get"
 msgstr ""
 
-msgid "subcommand_get_info_description"
+msgid "!get_info"
 msgstr ""
 
-msgid "subcommand_get_block_description"
+msgid "!get_block"
 msgstr ""
 
-msgid "option_block_description"
+msgid "!get_block?block"
 msgstr ""
 
-msgid "subcommand_get_account_description"
+msgid "!get_account"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!get_account?name"
 msgstr ""
 
-msgid "subcommand_get_code_description"
+msgid "!get_code"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!get_code?name"
 msgstr ""
 
-msgid "option_code_description"
+msgid "!get_code?code"
 msgstr ""
 
-msgid "option_abi_description"
+msgid "!get_code?abi"
 msgstr ""
 
-msgid "subcommand_get_table_description"
+msgid "!get_table"
 msgstr ""
 
-msgid "option_scope_description"
+msgid "!get_table?scope"
 msgstr ""
 
-msgid "option_contract_description"
+msgid "!get_table?contract"
 msgstr ""
 
-msgid "option_table_description"
+msgid "!get_table?table"
 msgstr ""
 
-msgid "option_binary_description"
+msgid "!get_table?binary"
 msgstr ""
 
-msgid "option_limit_description"
+msgid "!get_table?limit"
 msgstr ""
 
-msgid "option_key_description"
+msgid "!get_table?key"
 msgstr ""
 
-msgid "option_lower_description"
+msgid "!get_table?lower"
 msgstr ""
 
-msgid "option_upper_description"
+msgid "!get_table?upper"
 msgstr ""
 
-msgid "subcommand_get_accounts_description"
+msgid "!get_accounts"
 msgstr ""
 
-msgid "option_public_key_description"
+msgid "!get_accounts?public_key"
 msgstr ""
 
-msgid "subcommand_get_servants_description"
+msgid "!get_servants"
 msgstr ""
 
-msgid "option_account_description"
+msgid "!get_servants?account"
 msgstr ""
 
-msgid "subcommand_get_transaction_description"
+msgid "!get_transaction"
 msgstr ""
 
-msgid "option_id_description"
+msgid "!get_transaction?id"
 msgstr ""
 
-msgid "subcommand_get_transactions_description"
+msgid "!get_transactions"
 msgstr ""
 
-msgid "option_account_name_description"
+msgid "!get_transactions?account_name"
 msgstr ""
 
-msgid "option_skip_seq_description"
+msgid "!get_transactions?skip_seq"
 msgstr ""
 
-msgid "option_num_seq_description"
+msgid "!get_transactions?num_seq"
 msgstr ""
 
-msgid "subcommand_set_description"
+msgid "!set"
 msgstr ""
 
-msgid "subcommand_set_contract_description"
+msgid "!set_contract"
 msgstr ""
 
-msgid "option_account_description"
+msgid "!set_contract?account"
 msgstr ""
 
-msgid "option_wast_file_description"
+msgid "!set_contract?wast_file"
 msgstr ""
 
-msgid "option_abi_file_description"
+msgid "!set_contract?abi_file"
 msgstr ""
 
-msgid "flag_skip_sign_description"
+msgid "!set_contract?skip_sign"
 msgstr ""
 
-msgid "subcommand_set_producer_description"
+msgid "!set_producer"
 msgstr ""
 
-msgid "subcommand_set_producer_approve_description"
+msgid "!set_producer_approve"
 msgstr ""
 
-msgid "subcommand_set_producer_unapprove_description"
+msgid "!set_producer_unapprove"
 msgstr ""
 
-msgid "option_user_name_description"
+msgid "!set_producer_unapprove?user_name"
 msgstr ""
 
-msgid "option_producer_name_description"
+msgid "!set_producer_unapprove?producer_name"
 msgstr ""
 
-msgid "option_permission_description"
+msgid "!set_producer_unapprove?permission"
 msgstr ""
 
-msgid "flag_skip_signature_description"
+msgid "!set_producer_unapprove?skip_signature"
 msgstr ""
 
-msgid "subcommand_set_proxy_description"
+msgid "!set_proxy"
 msgstr ""
 
-msgid "option_user_name_description"
+msgid "!set_proxy?user_name"
 msgstr ""
 
-msgid "option_proxy_name_description"
+msgid "!set_proxy?proxy_name"
 msgstr ""
 
-msgid "option_permission_description"
+msgid "!set_proxy?permission"
 msgstr ""
 
-msgid "flag_skip_signature_description"
+msgid "!set_proxy?skip_signature"
 msgstr ""
 
-msgid "subcommand_transfer_description"
+msgid "!transfer"
 msgstr ""
 
-msgid "option_sender_description"
+msgid "!transfer?sender"
 msgstr ""
 
-msgid "option_recipient_description"
+msgid "!transfer?recipient"
 msgstr ""
 
-msgid "option_amount_description"
+msgid "!transfer?amount"
 msgstr ""
 
-msgid "option_memo_description"
+msgid "!transfer?memo"
 msgstr ""
 
-msgid "flag_skip_sign_description"
+msgid "!transfer?skip_sign"
 msgstr ""
 
-msgid "subcommand_wallet_description"
+msgid "!wallet"
 msgstr ""
 
-msgid "subcommand_wallet_create_description"
+msgid "!wallet_create"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!wallet_create?name"
 msgstr ""
 
-msgid "subcommand_wallet_open_description"
+msgid "!wallet_open"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!wallet_open?name"
 msgstr ""
 
-msgid "subcommand_wallet_lock_description"
+msgid "!wallet_lock"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!wallet_lock?name"
 msgstr ""
 
-msgid "subcommand_wallet_lock_all_description"
+msgid "!wallet_lock_all"
 msgstr ""
 
-msgid "subcommand_wallet_unlock_description"
+msgid "!wallet_unlock"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!wallet_unlock?name"
 msgstr ""
 
-msgid "option_password_description"
+msgid "!wallet_unlock?password"
 msgstr ""
 
-msgid "subcommand_wallet_import_description"
+msgid "!wallet_import"
 msgstr ""
 
-msgid "option_name_description"
+msgid "!wallet_import?name"
 msgstr ""
 
-msgid "option_key_description"
+msgid "!wallet_import?key"
 msgstr ""
 
-msgid "subcommand_wallet_list_description"
+msgid "!wallet_list"
 msgstr ""
 
-msgid "subcommand_wallet_keys_description"
+msgid "!wallet_keys"
 msgstr ""
 
-msgid "subcommand_benchmark_description"
+msgid "!benchmark"
 msgstr ""
 
-msgid "subcommand_setup_description"
+msgid "!setup"
 msgstr ""
 
-msgid "option_accounts_description"
+msgid "!setup?accounts"
 msgstr ""
 
-msgid "subcommand_benchmark_transfer_description"
+msgid "!benchmark_transfer"
 msgstr ""
 
-msgid "option_accounts_description"
+msgid "!benchmark_transfer?accounts"
 msgstr ""
 
-msgid "option_count_description"
+msgid "!benchmark_transfer?count"
 msgstr ""
 
-msgid "option_loop_description"
+msgid "!benchmark_transfer?loop"
 msgstr ""
 
-msgid "subcommand_push_description"
+msgid "!push"
 msgstr ""
 
-msgid "subcommand_push_message_description"
+msgid "!push_message"
 msgstr ""
 
-msgid "option_contract_description"
+msgid "!push_message?contract"
 msgstr ""
 
-msgid "option_action_description"
+msgid "!push_message?action"
 msgstr ""
 
-msgid "option_data_description"
+msgid "!push_message?data"
 msgstr ""
 
-msgid "option_permission_description"
+msgid "!push_message?permission"
 msgstr ""
 
-msgid "option_scope_description"
+msgid "!push_message?scope"
 msgstr ""
 
-msgid "flag_skip_sign_description"
+msgid "!push_message?skip_sign"
 msgstr ""
 
-msgid "subcommand_push_transaction_description"
+msgid "!push_transaction"
 msgstr ""
 
-msgid "option_transaction_description"
+msgid "!push_transaction?transaction"
 msgstr ""
 
-msgid "subcommand_push_transactions_description"
+msgid "!push_transactions"
 msgstr ""
 
-msgid "option_transactions_description"
+msgid "!push_transactions?transactions"
 msgstr ""
 
