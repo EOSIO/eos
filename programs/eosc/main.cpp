@@ -190,8 +190,8 @@ void add_standard_transaction_options(CLI::App* cmd) {
       return true;
    };
 
-   cmd->add_option("-x,--expiration", parse_exipration, "set the time in milliseconds before a transaction expires, defaults to 0.1ms");
-   cmd->add_flag("-f,--force-unique", tx_force_unique, "force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times");
+   cmd->add_option("-x,--expiration", parse_exipration, gettext("option_expiration_description"));
+   cmd->add_flag("-f,--force-unique", tx_force_unique, gettext("flag_force_unique_description"));
 }
 
 std::string generate_nonce_string() {
@@ -295,20 +295,20 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to Eos Daemon"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, "the host where eosd is running", true );
-   app.add_option( "-p,--port", port, "the port where eosd is running", true );
-   app.add_option( "--wallet-host", wallet_host, "the host where eos-walletd is running", true );
-   app.add_option( "--wallet-port", wallet_port, "the port where eos-walletd is running", true );
+   app.add_option( "-H,--host", host, gettext("option_host_description"), true );
+   app.add_option( "-p,--port", port, gettext("option_port_description"), true );
+   app.add_option( "--wallet-host", wallet_host, gettext("option_wallet_host_description"), true );
+   app.add_option( "--wallet-port", wallet_port, gettext("option_wallet_port_description"), true );
 
    bool verbose_errors = false;
-   app.add_flag( "-v,--verbose", verbose_errors, "output verbose messages on error");
+   app.add_flag( "-v,--verbose", verbose_errors, gettext("flag_verbose_description"));
 
    // Create subcommand
-   auto create = app.add_subcommand("create", "Create various items, on and off the blockchain", false);
+   auto create = app.add_subcommand("create", gettext("subcommand_create_description"), false);
    create->require_subcommand();
 
    // create key
-   create->add_subcommand("key", "Create a new keypair and print the public and private keys")->set_callback([] {
+   create->add_subcommand("key", gettext("subcommand_create_key_description"))->set_callback([] {
       auto privateKey = fc::ecc::private_key::generate();
       std::cout << "Private key: " << key_to_wif(privateKey.get_secret()) << "\n";
       std::cout << "Public key:  " << string(public_key_type(privateKey.get_public_key())) << std::endl;
@@ -320,24 +320,24 @@ int main( int argc, char** argv ) {
    string ownerKey;
    string activeKey;
    bool skip_sign = false;
-   auto createAccount = create->add_subcommand("account", "Create a new account on the blockchain", false);
-   createAccount->add_option("creator", creator, "The name of the account creating the new account")->required();
-   createAccount->add_option("name", name, "The name of the new account")->required();
-   createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
-   createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
-   createAccount->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   auto createAccount = create->add_subcommand("account", gettext("subcommand_create_account_description"), false);
+   createAccount->add_option("creator", creator, gettext("option_creator_description"))->required();
+   createAccount->add_option("name", name, gettext("option_name_description"))->required();
+   createAccount->add_option("OwnerKey", ownerKey, gettext("option_OwnerKey_description"))->required();
+   createAccount->add_option("ActiveKey", activeKey, gettext("option_ActiveKey_description"))->required();
+   createAccount->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
    createAccount->set_callback([&] {
       create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign);
    });
 
    // create producer
    vector<string> permissions;
-   auto createProducer = create->add_subcommand("producer", "Create a new producer on the blockchain", false);
-   createProducer->add_option("name", name, "The name of the new producer")->required();
-   createProducer->add_option("OwnerKey", ownerKey, "The public key for the producer")->required();
+   auto createProducer = create->add_subcommand("producer", gettext("subcommand_create_producer_description"), false);
+   createProducer->add_option("name", name, gettext("option_producer_name_description"))->required();
+   createProducer->add_option("OwnerKey", ownerKey, gettext("option_producer_OwnerKey_description"))->required();
    createProducer->add_option("-p,--permission", permissions,
-                              "An account and permission level to authorize, as in 'account@permission' (default user@active)");
-   createProducer->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                              gettext("option_permission_description"));
+   createProducer->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
    createProducer->set_callback([&name, &ownerKey, &permissions, &skip_sign] {
       if (permissions.empty()) {
          permissions.push_back(name + "@active");
@@ -353,18 +353,18 @@ int main( int argc, char** argv ) {
    });
 
    // Get subcommand
-   auto get = app.add_subcommand("get", "Retrieve various items and information from the blockchain", false);
+   auto get = app.add_subcommand("get", gettext("subcommand_get_description"), false);
    get->require_subcommand();
 
    // get info
-   get->add_subcommand("info", "Get current blockchain information")->set_callback([] {
+   get->add_subcommand("info", gettext("subcommand_get_info_description"))->set_callback([] {
       std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
    });
 
    // get block
    string blockArg;
-   auto getBlock = get->add_subcommand("block", "Retrieve a full block from the blockchain", false);
-   getBlock->add_option("block", blockArg, "The number or ID of the block to retrieve")->required();
+   auto getBlock = get->add_subcommand("block", gettext("subcommand_get_block_description"), false);
+   getBlock->add_option("block", blockArg, gettext("option_block_description"))->required();
    getBlock->set_callback([&blockArg] {
       auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
       std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
@@ -372,8 +372,8 @@ int main( int argc, char** argv ) {
 
    // get account
    string accountName;
-   auto getAccount = get->add_subcommand("account", "Retrieve an account from the blockchain", false);
-   getAccount->add_option("name", accountName, "The name of the account to retrieve")->required();
+   auto getAccount = get->add_subcommand("account", gettext("subcommand_get_account_description"), false);
+   getAccount->add_option("name", accountName, gettext("option_name_description"))->required();
    getAccount->set_callback([&] {
       std::cout << fc::json::to_pretty_string(call(get_account_func,
                                                    fc::mutable_variant_object("name", accountName)))
@@ -383,10 +383,10 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
-   auto getCode = get->add_subcommand("code", "Retrieve the code and ABI for an account", false);
-   getCode->add_option("name", accountName, "The name of the account whose code should be retrieved")->required();
-   getCode->add_option("-c,--code",codeFilename, "The name of the file to save the contract .wast to" );
-   getCode->add_option("-a,--abi",abiFilename, "The name of the file to save the contract .abi to" );
+   auto getCode = get->add_subcommand("code", gettext("subcommand_get_code_description"), false);
+   getCode->add_option("name", accountName, gettext("option_name_description"))->required();
+   getCode->add_option("-c,--code",codeFilename, gettext("option_code_description") );
+   getCode->add_option("-a,--abi",abiFilename, gettext("option_abi_description") );
    getCode->set_callback([&] {
       auto result = call(get_code_func, fc::mutable_variant_object("name", accountName));
 
@@ -414,15 +414,15 @@ int main( int argc, char** argv ) {
    string upper;
    bool binary = false;
    uint32_t limit = 10;
-   auto getTable = get->add_subcommand( "table", "Retrieve the contents of a database table", false);
-   getTable->add_option( "scope", scope, "The account scope where the table is found" )->required();
-   getTable->add_option( "contract", code, "The contract within scope who owns the table" )->required();
-   getTable->add_option( "table", table, "The name of the table as specified by the contract abi" )->required();
-   getTable->add_option( "-b,--binary", binary, "Return the value as BINARY rather than using abi to interpret as JSON" );
-   getTable->add_option( "-l,--limit", limit, "The maximum number of rows to return" );
-   getTable->add_option( "-k,--key", limit, "The name of the key to index by as defined by the abi, defaults to primary key" );
-   getTable->add_option( "-L,--lower", lower, "JSON representation of lower bound value of key, defaults to first" );
-   getTable->add_option( "-U,--upper", upper, "JSON representation of upper bound value value of key, defaults to last" );
+   auto getTable = get->add_subcommand( "table", gettext("subcommand_get_table_description"), false);
+   getTable->add_option( "scope", scope, gettext("option_scope_description") )->required();
+   getTable->add_option( "contract", code, gettext("option_contract_description") )->required();
+   getTable->add_option( "table", table, gettext("option_table_description") )->required();
+   getTable->add_option( "-b,--binary", binary, gettext("option_binary_description") );
+   getTable->add_option( "-l,--limit", limit, gettext("option_limit_description") );
+   getTable->add_option( "-k,--key", limit, gettext("option_key_description") );
+   getTable->add_option( "-L,--lower", lower, gettext("option_lower_description") );
+   getTable->add_option( "-U,--upper", upper, gettext("option_upper_description") );
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
@@ -439,8 +439,8 @@ int main( int argc, char** argv ) {
 
    // get accounts
    string publicKey;
-   auto getAccounts = get->add_subcommand("accounts", "Retrieve accounts associated with a public key", false);
-   getAccounts->add_option("public_key", publicKey, "The public key to retrieve accounts for")->required();
+   auto getAccounts = get->add_subcommand("accounts", gettext("subcommand_get_accounts_description"), false);
+   getAccounts->add_option("public_key", publicKey, gettext("option_public_key_description"))->required();
    getAccounts->set_callback([&] {
       auto arg = fc::mutable_variant_object( "public_key", publicKey);
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
@@ -448,8 +448,8 @@ int main( int argc, char** argv ) {
 
    // get servants
    string controllingAccount;
-   auto getServants = get->add_subcommand("servants", "Retrieve accounts which are servants of a given account ", false);
-   getServants->add_option("account", controllingAccount, "The name of the controlling account")->required();
+   auto getServants = get->add_subcommand("servants", gettext("subcommand_get_servants_description"), false);
+   getServants->add_option("account", controllingAccount, gettext("option_account_description"))->required();
    getServants->set_callback([&] {
       auto arg = fc::mutable_variant_object( "controlling_account", controllingAccount);
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
@@ -457,8 +457,8 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transactionId;
-   auto getTransaction = get->add_subcommand("transaction", "Retrieve a transaction from the blockchain", false);
-   getTransaction->add_option("id", transactionId, "ID of the transaction to retrieve")->required();
+   auto getTransaction = get->add_subcommand("transaction", gettext("subcommand_get_transaction_description"), false);
+   getTransaction->add_option("id", transactionId, gettext("option_id_description"))->required();
    getTransaction->set_callback([&] {
       auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
@@ -468,10 +468,10 @@ int main( int argc, char** argv ) {
    string account_name;
    string skip_seq;
    string num_seq;
-   auto getTransactions = get->add_subcommand("transactions", "Retrieve all transactions with specific account name referenced in their scope", false);
-   getTransactions->add_option("account_name", account_name, "Name of account to query on")->required();
-   getTransactions->add_option("skip_seq", skip_seq, "Number of most recent transactions to skip (0 would start at most recent transaction)");
-   getTransactions->add_option("num_seq", num_seq, "Number of transactions to return");
+   auto getTransactions = get->add_subcommand("transactions", gettext("subcommand_get_transactions_description"), false);
+   getTransactions->add_option("account_name", account_name, gettext("option_account_name_description"))->required();
+   getTransactions->add_option("skip_seq", skip_seq, gettext("option_skip_seq_description"));
+   getTransactions->add_option("num_seq", num_seq, gettext("option_num_seq_description"));
    getTransactions->set_callback([&] {
       auto arg = (skip_seq.empty())
                   ? fc::mutable_variant_object( "account_name", account_name)
@@ -496,20 +496,20 @@ int main( int argc, char** argv ) {
    });
 
    // set subcommand
-   auto setSubcommand = app.add_subcommand("set", "Set or update blockchain state");
+   auto setSubcommand = app.add_subcommand("set", gettext("subcommand_set_description"));
    setSubcommand->require_subcommand();
 
    // set contract subcommand
    string account;
    string wastPath;
    string abiPath;
-   auto contractSubcommand = setSubcommand->add_subcommand("contract", "Create or update the contract on an account");
-   contractSubcommand->add_option("account", account, "The account to publish a contract for")->required();
-   contractSubcommand->add_option("wast-file", wastPath, "The file containing the contract WAST")->required()
+   auto contractSubcommand = setSubcommand->add_subcommand("contract", gettext("subcommand_set_contract_description"));
+   contractSubcommand->add_option("account", account, gettext("option_account_description"))->required();
+   contractSubcommand->add_option("wast-file", wastPath, gettext("option_wast_file_description"))->required()
          ->check(CLI::ExistingFile);
-   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
+   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, gettext("option_abi_file_description"))
               ->check(CLI::ExistingFile);
-   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, gettext("flag_skip_sign_description"));
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << "Reading WAST..." << std::endl;
@@ -534,15 +534,15 @@ int main( int argc, char** argv ) {
 
    // set producer approve/unapprove subcommand
    string producer;
-   auto producerSubcommand = setSubcommand->add_subcommand("producer", "Approve/unapprove producer");
+   auto producerSubcommand = setSubcommand->add_subcommand("producer", gettext("subcommand_set_producer_description"));
    producerSubcommand->require_subcommand();
-   auto approveCommand = producerSubcommand->add_subcommand("approve", "Approve producer");
-   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", "Unapprove producer");
-   producerSubcommand->add_option("user-name", name, "The name of the account approving")->required();
-   producerSubcommand->add_option("producer-name", producer, "The name of the producer to approve")->required();
+   auto approveCommand = producerSubcommand->add_subcommand("approve", gettext("subcommand_set_producer_approve_description"));
+   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", gettext("subcommand_set_producer_unapprove_description"));
+   producerSubcommand->add_option("user-name", name, gettext("option_user_name_description"))->required();
+   producerSubcommand->add_option("producer-name", producer, gettext("option_producer_name_description"))->required();
    producerSubcommand->add_option("-p,--permission", permissions,
-                              "An account and permission level to authorize, as in 'account@permission' (default user@active)");
-   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                              gettext("option_permission_description"));
+   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
    producerSubcommand->set_callback([&] {
       // don't need to check unapproveCommand because one of approve or unapprove is required
       bool approve = producerSubcommand->got_subcommand(approveCommand);
@@ -563,12 +563,12 @@ int main( int argc, char** argv ) {
 
    // set proxy subcommand
    string proxy;
-   auto proxySubcommand = setSubcommand->add_subcommand("proxy", "Set proxy account for voting");
-   proxySubcommand->add_option("user-name", name, "The name of the account to proxy from")->required();
-   proxySubcommand->add_option("proxy-name", proxy, "The name of the account to proxy (unproxy if not provided)");
+   auto proxySubcommand = setSubcommand->add_subcommand("proxy", gettext("subcommand_set_proxy_description"));
+   proxySubcommand->add_option("user-name", name, gettext("option_user_name_description"))->required();
+   proxySubcommand->add_option("proxy-name", proxy, gettext("option_proxy_name_description"));
    proxySubcommand->add_option("-p,--permission", permissions,
-                                  "An account and permission level to authorize, as in 'account@permission' (default user@active)");
-   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                                  gettext("option_permission_description"));
+   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, gettext("flag_skip_signature_description"));
    proxySubcommand->set_callback([&] {
       if (permissions.empty()) {
          permissions.push_back(name + "@active");
@@ -592,12 +592,12 @@ int main( int argc, char** argv ) {
    string recipient;
    uint64_t amount;
    string memo;
-   auto transfer = app.add_subcommand("transfer", "Transfer EOS from account to account", false);
-   transfer->add_option("sender", sender, "The account sending EOS")->required();
-   transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
-   transfer->add_option("amount", amount, "The amount of EOS to send")->required();
-   transfer->add_option("memo", memo, "The memo for the transfer");
-   transfer->add_flag("-s,--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   auto transfer = app.add_subcommand("transfer", gettext("subcommand_transfer_description"), false);
+   transfer->add_option("sender", sender, gettext("option_sender_description"))->required();
+   transfer->add_option("recipient", recipient, gettext("option_recipient_description"))->required();
+   transfer->add_option("amount", amount, gettext("option_amount_description"))->required();
+   transfer->add_option("memo", memo, gettext("option_memo_description"));
+   transfer->add_flag("-s,--skip-sign", skip_sign, gettext("flag_skip_sign_description"));
    add_standard_transaction_options(transfer);
    transfer->set_callback([&] {
       SignedTransaction trx;
@@ -630,12 +630,12 @@ int main( int argc, char** argv ) {
 
 
    // Wallet subcommand
-   auto wallet = app.add_subcommand( "wallet", "Interact with local wallet", false );
+   auto wallet = app.add_subcommand( "wallet", gettext("subcommand_wallet_description"), false );
    wallet->require_subcommand();
    // create wallet
    string wallet_name = "default";
-   auto createWallet = wallet->add_subcommand("create", "Create a new wallet locally", false);
-   createWallet->add_option("-n,--name", wallet_name, "The name of the new wallet", true);
+   auto createWallet = wallet->add_subcommand("create", gettext("subcommand_wallet_create_description"), false);
+   createWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"), true);
    createWallet->set_callback([&wallet_name] {
       const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
       std::cout << "Creating wallet: " << wallet_name << std::endl;
@@ -645,8 +645,8 @@ int main( int argc, char** argv ) {
    });
 
    // open wallet
-   auto openWallet = wallet->add_subcommand("open", "Open an existing wallet", false);
-   openWallet->add_option("-n,--name", wallet_name, "The name of the wallet to open");
+   auto openWallet = wallet->add_subcommand("open", gettext("subcommand_wallet_open_description"), false);
+   openWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
    openWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -654,8 +654,8 @@ int main( int argc, char** argv ) {
    });
 
    // lock wallet
-   auto lockWallet = wallet->add_subcommand("lock", "Lock wallet", false);
-   lockWallet->add_option("-n,--name", wallet_name, "The name of the wallet to lock");
+   auto lockWallet = wallet->add_subcommand("lock", gettext("subcommand_wallet_lock_description"), false);
+   lockWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
    lockWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
       std::cout << "Locked: '"<<wallet_name<<"'\n";
@@ -664,7 +664,7 @@ int main( int argc, char** argv ) {
    });
 
    // lock all wallets
-   auto locakAllWallets = wallet->add_subcommand("lock_all", "Lock all unlocked wallets", false);
+   auto locakAllWallets = wallet->add_subcommand("lock_all", gettext("subcommand_wallet_lock_all_description"), false);
    locakAllWallets->set_callback([] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -673,9 +673,9 @@ int main( int argc, char** argv ) {
 
    // unlock wallet
    string wallet_pw;
-   auto unlockWallet = wallet->add_subcommand("unlock", "Unlock wallet", false);
-   unlockWallet->add_option("-n,--name", wallet_name, "The name of the wallet to unlock");
-   unlockWallet->add_option("--password", wallet_pw, "The password returned by wallet create");
+   auto unlockWallet = wallet->add_subcommand("unlock", gettext("subcommand_wallet_unlock_description"), false);
+   unlockWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
+   unlockWallet->add_option("--password", wallet_pw, gettext("option_password_description"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
       if( wallet_pw.size() == 0 ) {
          std::cout << "password: ";
@@ -693,9 +693,9 @@ int main( int argc, char** argv ) {
 
    // import keys into wallet
    string wallet_key;
-   auto importWallet = wallet->add_subcommand("import", "Import private key into wallet", false);
-   importWallet->add_option("-n,--name", wallet_name, "The name of the wallet to import key into");
-   importWallet->add_option("key", wallet_key, "Private key in WIF format to import")->required();
+   auto importWallet = wallet->add_subcommand("import", gettext("subcommand_wallet_import_description"), false);
+   importWallet->add_option("-n,--name", wallet_name, gettext("option_name_description"));
+   importWallet->add_option("key", wallet_key, gettext("option_key_description"))->required();
    importWallet->set_callback([&wallet_name, &wallet_key] {
       auto key = utilities::wif_to_key(wallet_key);
       FC_ASSERT( key, "invalid private key: ${k}", ("k",wallet_key) );
@@ -708,7 +708,7 @@ int main( int argc, char** argv ) {
    });
 
    // list wallets
-   auto listWallet = wallet->add_subcommand("list", "List opened wallets, * = unlocked", false);
+   auto listWallet = wallet->add_subcommand("list", gettext("subcommand_wallet_list_description"), false);
    listWallet->set_callback([] {
       std::cout << "Wallets: \n";
       const auto& v = call(wallet_host, wallet_port, wallet_list);
@@ -716,18 +716,18 @@ int main( int argc, char** argv ) {
    });
 
    // list keys
-   auto listKeys = wallet->add_subcommand("keys", "List of private keys from all unlocked wallets in wif format.", false);
+   auto listKeys = wallet->add_subcommand("keys", gettext("subcommand_wallet_keys_description"), false);
    listKeys->set_callback([] {
       const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // Benchmark subcommand
-   auto benchmark = app.add_subcommand( "benchmark", "Configure and execute benchmarks", false );
+   auto benchmark = app.add_subcommand( "benchmark", gettext("subcommand_benchmark_description"), false );
    benchmark->require_subcommand();
-   auto benchmark_setup = benchmark->add_subcommand( "setup", "Configures initial condition for benchmark" );
+   auto benchmark_setup = benchmark->add_subcommand( "setup", gettext("subcommand_setup_description") );
    uint64_t number_of_accounts = 2;
-   benchmark_setup->add_option("accounts", number_of_accounts, "the number of accounts in transfer among")->required();
+   benchmark_setup->add_option("accounts", number_of_accounts, gettext("option_accounts_description"))->required();
    benchmark_setup->set_callback([&]{
       std::cerr << "Creating " << number_of_accounts <<" accounts with initial balances\n";
       FC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
@@ -761,12 +761,12 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(result) << std::endl;
    });
 
-   auto benchmark_transfer = benchmark->add_subcommand( "transfer", "executes random transfers among accounts" );
+   auto benchmark_transfer = benchmark->add_subcommand( "transfer", gettext("subcommand_benchmark_transfer_description") );
    uint64_t number_of_transfers = 0;
    bool loop = false;
-   benchmark_transfer->add_option("accounts", number_of_accounts, "the number of accounts in transfer among")->required();
-   benchmark_transfer->add_option("count", number_of_transfers, "the number of transfers to execute")->required();
-   benchmark_transfer->add_option("loop", loop, "whether or not to loop for ever");
+   benchmark_transfer->add_option("accounts", number_of_accounts, gettext("option_accounts_description"))->required();
+   benchmark_transfer->add_option("count", number_of_transfers, gettext("option_count_description"))->required();
+   benchmark_transfer->add_option("loop", loop, gettext("option_loop_description"));
    benchmark_transfer->set_callback([&]{
       FC_ASSERT( number_of_accounts > 1 );
 
@@ -838,7 +838,7 @@ int main( int argc, char** argv ) {
    
 
    // Push subcommand
-   auto push = app.add_subcommand("push", "Push arbitrary transactions to the blockchain", false);
+   auto push = app.add_subcommand("push", gettext("subcommand_push_description"), false);
    push->require_subcommand();
 
    // push message
@@ -846,17 +846,17 @@ int main( int argc, char** argv ) {
    string action;
    string data;
    vector<string> scopes;
-   auto messageSubcommand = push->add_subcommand("message", "Push a transaction with a single message");
+   auto messageSubcommand = push->add_subcommand("message", gettext("subcommand_push_message_description"));
    messageSubcommand->fallthrough(false);
    messageSubcommand->add_option("contract", contract,
-                                 "The account providing the contract to execute", true)->required();
-   messageSubcommand->add_option("action", action, "The action to execute on the contract", true)
+                                 gettext("option_contract_description"), true)->required();
+   messageSubcommand->add_option("action", action, gettext("option_action_description"), true)
          ->required();
-   messageSubcommand->add_option("data", data, "The arguments to the contract")->required();
+   messageSubcommand->add_option("data", data, gettext("option_data_description"))->required();
    messageSubcommand->add_option("-p,--permission", permissions,
-                                 "An account and permission level to authorize, as in 'account@permission'");
-   messageSubcommand->add_option("-S,--scope", scopes, "An comma separated list of accounts in scope for this operation", true);
-   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                                 gettext("option_permission_description"));
+   messageSubcommand->add_option("-S,--scope", scopes, gettext("option_scope_description"), true);
+   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, gettext("flag_skip_sign_description"));
    messageSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
@@ -886,8 +886,8 @@ int main( int argc, char** argv ) {
 
    // push transaction
    string trxJson;
-   auto trxSubcommand = push->add_subcommand("transaction", "Push an arbitrary JSON transaction");
-   trxSubcommand->add_option("transaction", trxJson, "The JSON of the transaction to push")->required();
+   auto trxSubcommand = push->add_subcommand("transaction", gettext("subcommand_push_transaction_description"));
+   trxSubcommand->add_option("transaction", trxJson, gettext("option_transaction_description"))->required();
    trxSubcommand->set_callback([&] {
       auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -895,8 +895,8 @@ int main( int argc, char** argv ) {
 
 
    string trxsJson;
-   auto trxsSubcommand = push->add_subcommand("transactions", "Push an array of arbitrary JSON transactions");
-   trxsSubcommand->add_option("transactions", trxsJson, "The JSON array of the transactions to push")->required();
+   auto trxsSubcommand = push->add_subcommand("transactions", gettext("subcommand_push_transactions_description"));
+   trxsSubcommand->add_option("transactions", trxsJson, gettext("option_transactions_description"))->required();
    trxsSubcommand->set_callback([&] {
       auto trxs_result = call(push_txn_func, fc::json::from_string(trxsJson));
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;

@@ -38,7 +38,7 @@ msgid "unknown_wallet_help_text"
 msgstr ""
 
 msgid "bad_wallet_password_help_text"
-msgstr " "
+msgstr ""
 
 msgid "locked_wallet_help_text"
 msgstr ""
@@ -50,4 +50,329 @@ msgid "unknown_abi_table_help_text"
 msgstr ""
 
 msgid "err_locate_help_text"
-msgstr "Error locating help text: "
+msgstr ""
+
+msgid "option_expiration_description"
+msgstr ""
+
+msgid "flag_force_unique_description"
+msgstr ""
+
+msgid "option_host_description"
+msgstr ""
+
+msgid "option_port_description"
+msgstr ""
+
+msgid "option_wallet_host_description"
+msgstr ""
+
+msgid "option_wallet_port_description"
+msgstr ""
+
+msgid "flag_verbose_description"
+msgstr ""
+
+msgid "subcommand_create_description"
+msgstr ""
+
+msgid "subcommand_create_key_description"
+msgstr ""
+
+msgid "subcommand_create_account_description"
+msgstr ""
+
+msgid "option_creator_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "option_OwnerKey_description"
+msgstr ""
+
+msgid "option_ActiveKey_description"
+msgstr ""
+
+msgid "flag_skip_signature_description"
+msgstr ""
+
+msgid "subcommand_create_producer_description"
+msgstr ""
+
+msgid "option_producer_name_description"
+msgstr ""
+
+msgid "option_producer_OwnerKey_description"
+msgstr ""
+
+msgid "option_permission_description"
+msgstr ""
+
+#msgid "flag_skip_signature_description"
+#msgstr ""
+
+msgid "subcommand_get_description"
+msgstr ""
+
+msgid "subcommand_get_info_description"
+msgstr ""
+
+msgid "subcommand_get_block_description"
+msgstr ""
+
+msgid "option_block_description"
+msgstr ""
+
+msgid "subcommand_get_account_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "subcommand_get_code_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "option_code_description"
+msgstr ""
+
+msgid "option_abi_description"
+msgstr ""
+
+msgid "subcommand_get_table_description"
+msgstr ""
+
+msgid "option_scope_description"
+msgstr ""
+
+msgid "option_contract_description"
+msgstr ""
+
+msgid "option_table_description"
+msgstr ""
+
+msgid "option_binary_description"
+msgstr ""
+
+msgid "option_limit_description"
+msgstr ""
+
+msgid "option_key_description"
+msgstr ""
+
+msgid "option_lower_description"
+msgstr ""
+
+msgid "option_upper_description"
+msgstr ""
+
+msgid "subcommand_get_accounts_description"
+msgstr ""
+
+msgid "option_public_key_description"
+msgstr ""
+
+msgid "subcommand_get_servants_description"
+msgstr ""
+
+msgid "option_account_description"
+msgstr ""
+
+msgid "subcommand_get_transaction_description"
+msgstr ""
+
+msgid "option_id_description"
+msgstr ""
+
+msgid "subcommand_get_transactions_description"
+msgstr ""
+
+msgid "option_account_name_description"
+msgstr ""
+
+msgid "option_skip_seq_description"
+msgstr ""
+
+msgid "option_num_seq_description"
+msgstr ""
+
+msgid "subcommand_set_description"
+msgstr ""
+
+msgid "subcommand_set_contract_description"
+msgstr ""
+
+msgid "option_account_description"
+msgstr ""
+
+msgid "option_wast_file_description"
+msgstr ""
+
+msgid "option_abi_file_description"
+msgstr ""
+
+msgid "flag_skip_sign_description"
+msgstr ""
+
+msgid "subcommand_set_producer_description"
+msgstr ""
+
+msgid "subcommand_set_producer_approve_description"
+msgstr ""
+
+msgid "subcommand_set_producer_unapprove_description"
+msgstr ""
+
+msgid "option_user_name_description"
+msgstr ""
+
+msgid "option_producer_name_description"
+msgstr ""
+
+msgid "option_permission_description"
+msgstr ""
+
+msgid "flag_skip_signature_description"
+msgstr ""
+
+msgid "subcommand_set_proxy_description"
+msgstr ""
+
+msgid "option_user_name_description"
+msgstr ""
+
+msgid "option_proxy_name_description"
+msgstr ""
+
+msgid "option_permission_description"
+msgstr ""
+
+msgid "flag_skip_signature_description"
+msgstr ""
+
+msgid "subcommand_transfer_description"
+msgstr ""
+
+msgid "option_sender_description"
+msgstr ""
+
+msgid "option_recipient_description"
+msgstr ""
+
+msgid "option_amount_description"
+msgstr ""
+
+msgid "option_memo_description"
+msgstr ""
+
+msgid "flag_skip_sign_description"
+msgstr ""
+
+msgid "subcommand_wallet_description"
+msgstr ""
+
+msgid "subcommand_wallet_create_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "subcommand_wallet_open_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "subcommand_wallet_lock_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "subcommand_wallet_lock_all_description"
+msgstr ""
+
+msgid "subcommand_wallet_unlock_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "option_password_description"
+msgstr ""
+
+msgid "subcommand_wallet_import_description"
+msgstr ""
+
+msgid "option_name_description"
+msgstr ""
+
+msgid "option_key_description"
+msgstr ""
+
+msgid "subcommand_wallet_list_description"
+msgstr ""
+
+msgid "subcommand_wallet_keys_description"
+msgstr ""
+
+msgid "subcommand_benchmark_description"
+msgstr ""
+
+msgid "subcommand_setup_description"
+msgstr ""
+
+msgid "option_accounts_description"
+msgstr ""
+
+msgid "subcommand_benchmark_transfer_description"
+msgstr ""
+
+msgid "option_accounts_description"
+msgstr ""
+
+msgid "option_count_description"
+msgstr ""
+
+msgid "option_loop_description"
+msgstr ""
+
+msgid "subcommand_push_description"
+msgstr ""
+
+msgid "subcommand_push_message_description"
+msgstr ""
+
+msgid "option_contract_description"
+msgstr ""
+
+msgid "option_action_description"
+msgstr ""
+
+msgid "option_data_description"
+msgstr ""
+
+msgid "option_permission_description"
+msgstr ""
+
+msgid "option_scope_description"
+msgstr ""
+
+msgid "flag_skip_sign_description"
+msgstr ""
+
+msgid "subcommand_push_transaction_description"
+msgstr ""
+
+msgid "option_transaction_description"
+msgstr ""
+
+msgid "subcommand_push_transactions_description"
+msgstr ""
+
+msgid "option_transactions_description"
+msgstr ""
+

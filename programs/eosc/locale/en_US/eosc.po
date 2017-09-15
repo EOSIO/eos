@@ -94,3 +94,328 @@ msgstr ""
 
 msgid "err_locate_help_text"
 msgstr "Error locating help text: "
+
+msgid "option_expiration_description"
+msgstr "set the time in milliseconds before a transaction expires, defaults to 0.1ms"
+
+msgid "flag_force_unique_description"
+msgstr "force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"
+
+msgid "option_host_description"
+msgstr "the host where eosd is running"
+
+msgid "option_port_description"
+msgstr "the port where eosd is running"
+
+msgid "option_wallet_host_description"
+msgstr "the host where eos_walletd is running"
+
+msgid "option_wallet_port_description"
+msgstr "the port where eos_walletd is running"
+
+msgid "flag_verbose_description"
+msgstr "output verbose messages on error"
+
+msgid "subcommand_create_description"
+msgstr "Create various items, on and off the blockchain"
+
+msgid "subcommand_create_key_description"
+msgstr "Create a new keypair and print the public and private keys"
+
+msgid "subcommand_create_account_description"
+msgstr "Create a new account on the blockchain"
+
+msgid "option_creator_description"
+msgstr "The name of the account creating the new account"
+
+msgid "option_name_description"
+msgstr "The name of the new account"
+
+msgid "option_OwnerKey_description"
+msgstr "The owner public key for the account"
+
+msgid "option_ActiveKey_description"
+msgstr "The active public key for the account"
+
+msgid "flag_skip_signature_description"
+msgstr "Specify that unlocked wallet keys should not be used to sign transaction"
+
+msgid "subcommand_create_producer_description"
+msgstr "Create a new producer on the blockchain"
+
+msgid "option_producer_name_description"
+msgstr "The name of the new producer"
+
+msgid "option_producer_OwnerKey_description"
+msgstr "The public key for the producer"
+
+msgid "option_permission_description"
+msgstr "An account and permission level to authorize, as in 'account@permission' (default user@active)"
+
+#msgid "flag_skip_signature_description"
+#msgstr "Specify that unlocked wallet keys should not be used to sign transaction"
+
+msgid "subcommand_get_description"
+msgstr "Retrieve various items and information from the blockchain"
+
+msgid "subcommand_get_info_description"
+msgstr "Get current blockchain information"
+
+msgid "subcommand_get_block_description"
+msgstr "Retrieve a full block from the blockchain"
+
+msgid "option_block_description"
+msgstr "The number or ID of the block to retrieve"
+
+msgid "subcommand_get_account_description"
+msgstr "Retrieve an account from the blockchain"
+
+msgid "option_name_description"
+msgstr "The name of the account to retrieve"
+
+msgid "subcommand_get_code_description"
+msgstr "Retrieve the code and ABI for an account"
+
+msgid "option_name_description"
+msgstr "The name of the account whose code should be retrieved"
+
+msgid "option_code_description"
+msgstr "The name of the file to save the contract .wast to"
+
+msgid "option_abi_description"
+msgstr "The name of the file to save the contract .abi to"
+
+msgid "subcommand_get_table_description"
+msgstr "Retrieve the contents of a database table"
+
+msgid "option_scope_description"
+msgstr "The account scope where the table is found"
+
+msgid "option_contract_description"
+msgstr "The contract within scope who owns the table"
+
+msgid "option_table_description"
+msgstr "The name of the table as specified by the contract abi"
+
+msgid "option_binary_description"
+msgstr "Return the value as BINARY rather than using abi to interpret as JSON"
+
+msgid "option_limit_description"
+msgstr "The maximum number of rows to return"
+
+msgid "option_key_description"
+msgstr "The name of the key to index by as defined by the abi, defaults to primary key"
+
+msgid "option_lower_description"
+msgstr "JSON representation of lower bound value of key, defaults to first"
+
+msgid "option_upper_description"
+msgstr "JSON representation of upper bound value value of key, defaults to last"
+
+msgid "subcommand_get_accounts_description"
+msgstr "Retrieve accounts associated with a public key"
+
+msgid "option_public_key_description"
+msgstr "The public key to retrieve accounts for"
+
+msgid "subcommand_get_servants_description"
+msgstr "Retrieve accounts which are servants of a given account "
+
+msgid "option_account_description"
+msgstr "The name of the controlling account"
+
+msgid "subcommand_get_transaction_description"
+msgstr "Retrieve a transaction from the blockchain"
+
+msgid "option_id_description"
+msgstr "ID of the transaction to retrieve"
+
+msgid "subcommand_get_transactions_description"
+msgstr "Retrieve all transactions with specific account name referenced in their scope"
+
+msgid "option_account_name_description"
+msgstr "Name of account to query on"
+
+msgid "option_skip_seq_description"
+msgstr "Number of most recent transactions to skip (0 would start at most recent transaction)"
+
+msgid "option_num_seq_description"
+msgstr "Number of transactions to return"
+
+msgid "subcommand_set_description"
+msgstr "Set or update blockchain state"
+
+msgid "subcommand_set_contract_description"
+msgstr "Create or update the contract on an account"
+
+msgid "option_account_description"
+msgstr "The account to publish a contract for"
+
+msgid "option_wast_file_description"
+msgstr "The file containing the contract WAST"
+
+msgid "option_abi_file_description"
+msgstr "The ABI for the contract"
+
+msgid "flag_skip_sign_description"
+msgstr "Specify if unlocked wallet keys should be used to sign transaction"
+
+msgid "subcommand_set_producer_description"
+msgstr "Approve/unapprove producer"
+
+msgid "subcommand_set_producer_approve_description"
+msgstr "Approve producer"
+
+msgid "subcommand_set_producer_unapprove_description"
+msgstr "Unapprove producer"
+
+msgid "option_user_name_description"
+msgstr "The name of the account approving"
+
+msgid "option_producer_name_description"
+msgstr "The name of the producer to approve"
+
+msgid "option_permission_description"
+msgstr "An account and permission level to authorize, as in 'account@permission' (default user@active)"
+
+msgid "flag_skip_signature_description"
+msgstr "Specify that unlocked wallet keys should not be used to sign transaction"
+
+msgid "subcommand_set_proxy_description"
+msgstr "Set proxy account for voting"
+
+msgid "option_user_name_description"
+msgstr "The name of the account to proxy from"
+
+msgid "option_proxy_name_description"
+msgstr "The name of the account to proxy (unproxy if not provided)"
+
+msgid "option_permission_description"
+msgstr "An account and permission level to authorize, as in 'account@permission' (default user@active)"
+
+msgid "flag_skip_signature_description"
+msgstr "Specify that unlocked wallet keys should not be used to sign transaction"
+
+msgid "subcommand_transfer_description"
+msgstr "Transfer EOS from account to account"
+
+msgid "option_sender_description"
+msgstr "The account sending EOS"
+
+msgid "option_recipient_description"
+msgstr "The account receiving EOS"
+
+msgid "option_amount_description"
+msgstr "The amount of EOS to send"
+
+msgid "option_memo_description"
+msgstr "The memo for the transfer"
+
+msgid "flag_skip_sign_description"
+msgstr "Specify that unlocked wallet keys should not be used to sign transaction"
+
+msgid "subcommand_wallet_description"
+msgstr "Interact with local wallet"
+
+msgid "subcommand_wallet_create_description"
+msgstr "Create a new wallet locally"
+
+msgid "option_name_description"
+msgstr "The name of the new wallet"
+
+msgid "subcommand_wallet_open_description"
+msgstr "Open an existing wallet"
+
+msgid "option_name_description"
+msgstr "The name of the wallet to open"
+
+msgid "subcommand_wallet_lock_description"
+msgstr "Lock wallet"
+
+msgid "option_name_description"
+msgstr "The name of the wallet to lock"
+
+msgid "subcommand_wallet_lock_all_description"
+msgstr "Lock all unlocked wallets"
+
+msgid "subcommand_wallet_unlock_description"
+msgstr "Unlock wallet"
+
+msgid "option_name_description"
+msgstr "The name of the wallet to unlock"
+
+msgid "option_password_description"
+msgstr "The password returned by wallet create"
+
+msgid "subcommand_wallet_import_description"
+msgstr "Import private key into wallet"
+
+msgid "option_name_description"
+msgstr "The name of the wallet to import key into"
+
+msgid "option_key_description"
+msgstr "Private key in WIF format to import"
+
+msgid "subcommand_wallet_list_description"
+msgstr "List opened wallets, * = unlocked"
+
+msgid "subcommand_wallet_keys_description"
+msgstr "List of private keys from all unlocked wallets in wif format."
+
+msgid "subcommand_benchmark_description"
+msgstr "Configure and execute benchmarks"
+
+msgid "subcommand_setup_description"
+msgstr "Configures initial condition for benchmark"
+
+msgid "option_accounts_description"
+msgstr "the number of accounts in transfer among"
+
+msgid "subcommand_benchmark_transfer_description"
+msgstr "executes random transfers among accounts"
+
+msgid "option_accounts_description"
+msgstr "the number of accounts in transfer among"
+
+msgid "option_count_description"
+msgstr "the number of transfers to execute"
+
+msgid "option_loop_description"
+msgstr "whether or not to loop for ever"
+
+msgid "subcommand_push_description"
+msgstr "Push arbitrary transactions to the blockchain"
+
+msgid "subcommand_push_message_description"
+msgstr "Push a transaction with a single message"
+
+msgid "option_contract_description"
+msgstr "The account providing the contract to execute"
+
+msgid "option_action_description"
+msgstr "The action to execute on the contract"
+
+msgid "option_data_description"
+msgstr "The arguments to the contract"
+
+msgid "option_permission_description"
+msgstr "An account and permission level to authorize, as in 'account@permission'"
+
+msgid "option_scope_description"
+msgstr "An comma separated list of accounts in scope for this operation"
+
+msgid "flag_skip_sign_description"
+msgstr "Specify that unlocked wallet keys should not be used to sign transaction"
+
+msgid "subcommand_push_transaction_description"
+msgstr "Push an arbitrary JSON transaction"
+
+msgid "option_transaction_description"
+msgstr "The JSON of the transaction to push"
+
+msgid "subcommand_push_transactions_description"
+msgstr "Push an array of arbitrary JSON transactions"
+
+msgid "option_transactions_description"
+msgstr "The JSON array of the transactions to push"
+
