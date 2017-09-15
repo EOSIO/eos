@@ -126,12 +126,9 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
     OUTPUT ${DESTINATION_FOLDER}/${target}.abi.done
     OUTPUT ${DESTINATION_FOLDER}/${target}.abi
     DEPENDS ${target}.s abi_generator
-    COMMAND ${WASM_CLANG} -c --std=c++14 --target=wasm32 -I ${INCLUDE_FOLDERS} -fparse-all-comments
-            -Xclang -load -Xclang $<TARGET_FILE:abi_generator>
-            -Xclang -plugin -Xclang generate-abi ${SOURCE_FILES}
-            -Xclang -plugin-arg-generate-abi -Xclang -destination-file=${DESTINATION_FOLDER}/${target}
-            -Xclang -plugin-arg-generate-abi -Xclang -context=${target}
-            #-Xclang -plugin-arg-generate-abi -Xclang -verbose=1
+    COMMAND abi_generator -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32
+              -extra-arg=-I${INCLUDE_FOLDERS} -extra-arg=-fparse-all-comments
+              -destination-file=${DESTINATION_FOLDER}/${target} -context=${target} ${SOURCE_FILES} --             
     COMMENT "Generating ABI ${target}.abi"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM

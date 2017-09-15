@@ -1,3 +1,7 @@
+#include "clang/Driver/Options.h"
+#include "clang/AST/AST.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/ASTConsumer.h"
 #include <set>
 #include <regex>
 #include <algorithm>
@@ -9,25 +13,27 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Sema/Sema.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Tooling/Tooling.h"
+#include "clang/Tooling/CommonOptionsParser.h"
 #include "llvm/Support/raw_ostream.h"
-
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 
+#include <eos/types/AbiSerializer.hpp>
 #include <fc/io/json.hpp>
 #include <eos/types/types.hpp>
 
 using namespace clang;
 using namespace std;
+using namespace clang::tooling;
+namespace cl = llvm::cl;
+
 namespace bfs = boost::filesystem;
 
 struct AbiGenerator {
 
-  const string destination_file_param = "-destination-file=";
-  const string abi_context_param       = "-context=";
-  const string verbose_param          = "-verbose=";
-  const char*  NOABI_VARNAME          = "NOABI";
+  //const char*  NOABI_VARNAME = "NOABI";
 
   bool                      enabled;
   bool                      disabled_by_user;
@@ -41,20 +47,20 @@ struct AbiGenerator {
   string                    destination_file;
   string                    abi_context;
   
-  AbiGenerator() : enabled(true), error_found(false), disabled_by_user(false) {
+  AbiGenerator() : enabled(true), disabled_by_user(false), error_found(false), verbose(false)  {
     remove(destination_file + ".abi.done");
-    auto no_abi = std::getenv(NOABI_VARNAME);
-    if(no_abi && boost::lexical_cast<bool>(no_abi) ) {
-      onUserDisable();
-      cerr << "ABI Generation disabled ("<< NOABI_VARNAME << "=" << no_abi << ")\n";
-    }
+    //auto no_abi = std::getenv(NOABI_VARNAME);
+    //if(no_abi && boost::lexical_cast<bool>(no_abi) ) {
+    //  onUserDisable();
+    //  cerr << "ABI Generation disabled ("<< NOABI_VARNAME << "=" << no_abi << ")\n";
+    //}
   }
 
   ~AbiGenerator() {
     
     if(verbose) {
       cerr << "ABI Generation finished disabled_by_user:" << 
-        disabled_by_user << ",error_found:" << error_found << "\n";
+      disabled_by_user << ",error_found:" << error_found << "\n";
     }
     
     if(disabled_by_user) {
@@ -109,30 +115,6 @@ struct AbiGenerator {
     enabled = false;
   }
 
-  void parseArgs(const vector<string>& args) {
-    
-    size_t total_args = args.size();
-    
-    for (size_t i=0; i<total_args; ++i) {
-      if(args[i].find(destination_file_param) == 0) 
-        destination_file = args[i].substr(destination_file_param.size());
-      else if(args[i].find(abi_context_param) == 0) 
-        abi_context = args[i].substr(abi_context_param.size());
-      else if(args[i].find(verbose_param) == 0) 
-        verbose = boost::lexical_cast<bool>(args[i].substr(verbose_param.size()).c_str());
-    }
-
-    remove(destination_file + ".abi.done");
-    if(verbose) {
-      cerr << "AbiGenerator configured:\n file:" << 
-        destination_file << "\n abi_context:" << abi_context << "\n";
-    }
-  }
-
-  void printHelp(llvm::raw_ostream& ros) {
-    //TODO: show help
-  }
-
   string removeNamespace(const string& full_type_name) {
     string type_name = full_type_name;
     auto pos = type_name.find_last_of("::");
@@ -142,20 +124,8 @@ struct AbiGenerator {
   }
 
   bool isBuiltInType(const string& type_name) {
-    //HACK: Using AbiSerializer causes linking error (fPIC required for openssl-dev)
-    static const vector<string> built_in_types = vector<string> {
-      "PublicKey", "Asset", "Price", "String", "Time", "Signature",
-      "Checksum", "FieldName", "FixedString32", "FixedString16", "TypeName",
-      "Bytes", "UInt8", "UInt16", "UInt32", "UInt64", "UInt128", "UInt256",
-      "Int8", "Int16", "Int32", "Int64", "Int128", "Int256", "uint128_t",
-      "Name", "Field", "Struct", "Fields", "AccountName", "PermissionName",
-      "FuncName", "MessageName", "TypeName", "AccountPermission", "Message",
-      "AccountPermissionWeight", "Transaction", "SignedTransaction",
-      "KeyPermissionWeight", "Authority", "BlockchainConfiguration",
-      "TypeDef", "Action", "Table", "Abi"
-    };
-
-    return find(built_in_types.begin(), built_in_types.end(), type_name) != built_in_types.end();
+    eos::types::AbiSerializer serializer;
+    return serializer.isBuiltInType(type_name);
   }
 
   string translateType(const string& type_name) {
@@ -254,6 +224,7 @@ struct AbiGenerator {
           }
         } else if (type == "table") {
           eos::types::Table table;
+          table.table = boost::algorithm::to_lower_copy(type_name);
           table.type = type_name;
           
           if(params.size() >= 1)
@@ -459,15 +430,15 @@ struct AbiGenerator {
 
 class RecordConsumer : public ASTConsumer {
   set<string>        parsed_templates;
-  AbiGenerator&      generator;        
+  AbiGenerator&      generator;
 public:
   
   void Initialize(clang::ASTContext& context) override {
     AbiGenerator::get().setContext(context);
   }
 
-  RecordConsumer(CompilerInstance& compiler_instance,
-          set<string> parsed_templates) : parsed_templates(parsed_templates), generator(AbiGenerator::get()) {
+  RecordConsumer(CompilerInstance& compiler_instance, set<string> parsed_templates) : 
+      parsed_templates(parsed_templates), generator(AbiGenerator::get()) {
     generator.setCompilerInstance(compiler_instance);
   }
 
@@ -483,10 +454,8 @@ public:
 
 class GenerateAbiAction : public PluginASTAction {
   set<string>   parsed_templates;
-  AbiGenerator& generator; 
 public:
-  GenerateAbiAction() : generator(AbiGenerator::get()) {
-  }
+  GenerateAbiAction() {}
 
 protected:
   unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &compiler_instance,
@@ -494,17 +463,9 @@ protected:
     return llvm::make_unique<RecordConsumer>(compiler_instance, parsed_templates);
   }
 
-  bool ParseArgs(const CompilerInstance &compiler_instance,
-                 const vector<string> &args) override {
-
-    generator.parseArgs(args);    
+  bool ParseArgs(const CompilerInstance &CI, const vector<string>& args) override {
     return true;
   }
-
-  void PrintHelp(llvm::raw_ostream& ros) {
-    generator.printHelp(ros);
-  }
-
 };
 
 class NoAbiPragmaHandler : public PragmaHandler {
@@ -519,5 +480,34 @@ public:
   }
 };
 
-static PragmaHandlerRegistry::Add<NoAbiPragmaHandler> Y("no-abi","No ABI");
-static FrontendPluginRegistry::Add<GenerateAbiAction> X("generate-abi", "Generate ABI");
+static cl::OptionCategory AbiGeneratorCategory("ABI generator options");
+
+static cl::opt<std::string> ABIContext(
+    "context",
+    cl::desc("ABI context"),
+    cl::cat(AbiGeneratorCategory));
+
+static cl::opt<std::string> ABIDestination(
+    "destination-file",
+    cl::desc("destination json file"),
+    cl::cat(AbiGeneratorCategory));
+
+static cl::opt<bool> ABIVerbose(
+    "verbose",
+    cl::desc("show debug info"),
+    cl::cat(AbiGeneratorCategory));
+
+int main(int argc, const char **argv) {
+
+    CommonOptionsParser op(argc, argv, AbiGeneratorCategory);
+    ClangTool Tool(op.getCompilations(), op.getSourcePathList());
+
+    auto& generator = AbiGenerator::get();
+    generator.abi_context = ABIContext;
+    generator.destination_file = ABIDestination;
+    generator.verbose = ABIVerbose;
+
+    int result = Tool.run(newFrontendActionFactory<GenerateAbiAction>().get());
+
+    return result;
+}
