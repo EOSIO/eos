@@ -419,3 +419,94 @@ msgstr "Push an array of arbitrary JSON transactions"
 msgid "!push_transactions?transactions"
 msgstr "The JSON array of the transactions to push"
 
+msgid "wast_parse_error_help_text"
+msgstr "Error parsing WebAssembly text file:"
+
+msgid "wast_serialize_error_help_text"
+msgstr "Error serializing WebAssembly binary file:"
+
+# Note: for formatting the public and private labels should have 
+# the same length
+msgid "private_key_label"
+msgstr "Private key: "
+
+msgid "public_key_label"
+msgstr "Public key:  "
+
+msgid "code_hash_label"
+msgstr "code hash: "
+
+msgid "saving_wast_to_label"
+msgstr "saving wast to "
+
+msgid "saving_abi_to_label"
+msgstr "saving abi to "
+
+msgid "reading_wast_status"
+msgstr "Reading WAST..."
+
+msgid "assembling_wast_status"
+msgstr "Assembling WAST..."
+
+msgid "publishing_contract_status"
+msgstr "Publishing contract..."
+
+msgid "producer_approval_result"
+msgstr "Set producer approval from ${name} for ${producer} to ${value}."
+
+msgid "set_proxy_result"
+msgstr "Set proxy for ${name} to ${proxy}"
+
+msgid "wallet_create_result"
+msgstr ""
+"Creating wallet: ${name}\n"
+"Save password to use in the future to unlock this wallet.\n"
+"Without password imported keys will not be retrievable."
+
+msgid "wallet_open_result"
+msgstr "Opened: '${name}'"
+
+msgid "wallet_lock_result"
+msgstr "Locked: '${name}'"
+
+msgid "wallet_lock_all_result"
+msgstr "Locked All Wallets"
+
+msgid "password_prompt"
+msgstr "password: "
+
+msgid "wallet_unlock_result"
+msgstr "Unlocked: '${name}'"
+
+msgid "invalid_permission_assert"
+msgstr "Invalid permission: ${p}"
+
+msgid "invalid_private_key_assert"
+msgstr "invalid private key: ${k}"
+
+msgid "benchmark_too_few_accounts_assert"
+msgstr "must create at least 2 accounts"
+
+msgid "wallet_import_result"
+msgstr "imported private key for: ${pubkey}"
+
+msgid "wallet_list_result"
+msgstr "Wallets: "
+
+msgid "benchmark_create_accounts_status"
+msgstr "Creating ${accounts} accounts with initial balances"
+
+msgid "benchmark_fund_accounts_status"
+msgstr "funding ${accounts} accounts from init"
+
+msgid "benchmark_generate_transfer_status"
+msgstr "generating random ${transfers} transfers among ${accounts} benchmark accounts"
+
+msgid "connect_failure_eosd_help_text"
+msgstr "Failed to connect to eosd at ${ip}:${port}; is eosd running?"
+
+msgid "connect_failure_wallet_help_text"
+msgstr "Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?"
+
+msgid "connect_failure_generic_text"
+msgstr "Failed to connect"

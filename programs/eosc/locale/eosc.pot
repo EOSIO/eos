@@ -376,3 +376,91 @@ msgstr ""
 msgid "!push_transactions?transactions"
 msgstr ""
 
+msgid "wast_parse_error_help_text"
+msgstr ""
+
+msgid "wast_serialize_error_help_text"
+msgstr ""
+
+# Note: for formatting the public and private labels should have 
+# the same length
+msgid "private_key_label"
+msgstr ""
+
+msgid "public_key_label"
+msgstr ""
+
+msgid "code_hash_label"
+msgstr ""
+
+msgid "saving_wast_to_label"
+msgstr ""
+
+msgid "saving_abi_to_label"
+msgstr ""
+
+msgid "reading_wast_status"
+msgstr ""
+
+msgid "assembling_wast_status"
+msgstr ""
+
+msgid "publishing_contract_status"
+msgstr ""
+
+msgid "producer_approval_result"
+msgstr ""
+
+msgid "set_proxy_result"
+msgstr ""
+
+msgid "wallet_create_result"
+msgstr ""
+
+msgid "wallet_open_result"
+msgstr ""
+
+msgid "wallet_lock_result"
+msgstr ""
+
+msgid "wallet_lock_all_result"
+msgstr ""
+
+msgid "password_prompt"
+msgstr ""
+
+msgid "wallet_unlock_result"
+msgstr ""
+
+msgid "invalid_permission_assert"
+msgstr ""
+
+msgid "invalid_private_key_assert"
+msgstr ""
+
+msgid "benchmark_too_few_accounts_assert"
+msgstr ""
+
+msgid "wallet_import_result"
+msgstr ""
+
+msgid "wallet_list_result"
+msgstr ""
+
+msgid "benchmark_create_accounts_status"
+msgstr ""
+
+msgid "benchmark_fund_accounts_status"
+msgstr ""
+
+msgid "benchmark_generate_transfer_status"
+msgstr ""
+
+msgid "connect_failure_eosd_help_text"
+msgstr ""
+
+msgid "connect_failure_wallet_help_text"
+msgstr ""
+
+msgid "connect_failure_generic_text"
+msgstr ""
