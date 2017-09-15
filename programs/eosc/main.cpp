@@ -92,8 +92,7 @@ Options:
 #include "CLI11.hpp"
 #include "help_text.hpp"
 
-#define format_output(format, ...) fc::format_string(format, fc::mutable_variant_object() __VA_ARGS__ )
-#define localize(str) (boost::locale::gettext(str))
+#define localize(str, ...) fc::format_string(boost::locale::gettext(str), fc::mutable_variant_object() __VA_ARGS__ )
 
 using namespace boost::locale;
 using namespace std;
@@ -104,12 +103,12 @@ using namespace eos::client::help;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
-#define EOSC_ASSERT( TEST, FMT, ... ) \
+#define EOSC_ASSERT( TEST, ... ) \
   FC_EXPAND_MACRO( \
     FC_MULTILINE_MACRO_BEGIN \
       if( UNLIKELY(!(TEST)) ) \
       {                                                   \
-        std::cerr << fc::format_string(localize(#FMT), fc::mutable_variant_object() __VA_ARGS__ )) << std::endl;                    \            
+        std::cerr << localize( __VA_ARGS__ ) << std::endl;  \
         FC_THROW_EXCEPTION( explained_exception, #TEST ); \
       }                                                   \
     FC_MULTILINE_MACRO_END \
@@ -221,7 +220,7 @@ vector<types::AccountPermission> get_account_permissions(const vector<string>& p
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
       split(pieces, p, boost::algorithm::is_any_of("@"));
-      EOSC_ASSERT(pieces.size() == 2, invalid_permission_assert, ("p", p));
+      EOSC_ASSERT(pieces.size() == 2, "invalid_permission_assert", ("p", p));
       return types::AccountPermission(pieces[0], pieces[1]);
    });
    vector<types::AccountPermission> accountPermissions;
@@ -572,8 +571,7 @@ int main( int argc, char** argv ) {
                                   "okproducer", types::okproducer{name, producer, approve});
 
       push_transaction(trx, !skip_sign);
-      std::cout << format_output(
-            localize("producer_approval_result"), 
+      std::cout << localize("producer_approval_result", 
             ("name", name)("producer", producer)("value", approve ? "approve" : "unapprove"))
           << std::endl;
    });
@@ -601,7 +599,7 @@ int main( int argc, char** argv ) {
                                   "setproxy", types::setproxy{name, proxy});
 
       push_transaction(trx, !skip_sign);
-      std::cout << format_output(localize("set_proxy_result"), ("name", name)("proxy", proxy)) << std::endl;
+      std::cout << localize("set_proxy_result", ("name", name)("proxy", proxy)) << std::endl;
    });
 
    // Transfer subcommand
@@ -655,7 +653,7 @@ int main( int argc, char** argv ) {
    createWallet->add_option("-n,--name", wallet_name, localize("!wallet_create?name"), true);
    createWallet->set_callback([&wallet_name] {
       const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
-      std::cout << format_output(localize("wallet_create_result"), ("name", wallet_name)) << std::endl;
+      std::cout << localize("wallet_create_result", ("name", wallet_name)) << std::endl;
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -665,7 +663,7 @@ int main( int argc, char** argv ) {
    openWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
-      std::cout << format_output(localize("wallet_open_result"), ("name",wallet_name)) << std::endl;
+      std::cout << localize("wallet_open_result", ("name",wallet_name)) << std::endl;
    });
 
    // lock wallet
@@ -673,7 +671,7 @@ int main( int argc, char** argv ) {
    lockWallet->add_option("-n,--name", wallet_name, localize("!wallet_lock?name"));
    lockWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
-      std::cout << format_output(localize("wallet_lock_result"), ("name",wallet_name)) << std::endl;
+      std::cout << localize("wallet_lock_result", ("name",wallet_name)) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
 
    });
@@ -702,7 +700,7 @@ int main( int argc, char** argv ) {
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       /*const auto& v = */call(wallet_host, wallet_port, wallet_unlock, vs);
-      std::cout << format_output(localize("wallet_unlock_result"), ("name",wallet_name)) << std::endl;
+      std::cout << localize("wallet_unlock_result", ("name",wallet_name)) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -713,12 +711,12 @@ int main( int argc, char** argv ) {
    importWallet->add_option("key", wallet_key, localize("!wallet_import?key"))->required();
    importWallet->set_callback([&wallet_name, &wallet_key] {
       auto key = utilities::wif_to_key(wallet_key);
-      EOSC_ASSERT( key, invalid_private_key_assert, ("k",wallet_key) );
+      EOSC_ASSERT( key, "invalid_private_key_assert", ("k",wallet_key) );
       public_key_type pubkey = key->get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
-      std::cout << format_output(localize(wallet_import_result), ("pubkey", std::string(pubkey))) << std::endl;
+      std::cout << localize("wallet_import_result", ("pubkey", std::string(pubkey))) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -744,8 +742,8 @@ int main( int argc, char** argv ) {
    uint64_t number_of_accounts = 2;
    benchmark_setup->add_option("accounts", number_of_accounts, localize("!setup?accounts"))->required();
    benchmark_setup->set_callback([&]{
-      std::cerr << format_output(localize("benchmark_create_accounts_status"), ("accounts", number_of_accounts)) << std::endl;
-      EOSC_ASSERT( number_of_accounts >= 2, benchmark_too_few_accounts_assert );
+      std::cerr << localize("benchmark_create_accounts_status", ("accounts", number_of_accounts)) << std::endl;
+      EOSC_ASSERT( number_of_accounts >= 2, "benchmark_too_few_accounts_assert" );
 
       auto info = get_info();
 
@@ -783,9 +781,9 @@ int main( int argc, char** argv ) {
    benchmark_transfer->add_option("count", number_of_transfers, localize("!benchmark_transfer?count"))->required();
    benchmark_transfer->add_option("loop", loop, localize("!benchmark_transfer?loop"));
    benchmark_transfer->set_callback([&]{
-      EOSC_ASSERT( number_of_accounts >= 2, benchmark_too_few_accounts_assert );
+      EOSC_ASSERT( number_of_accounts >= 2, "benchmark_too_few_accounts_assert" );
 
-      std::cerr << format_output(localize("benchmark_fund_accounts_status"), ("accounts", number_of_accounts)) << std::endl;
+      std::cerr << localize("benchmark_fund_accounts_status", ("accounts", number_of_accounts)) << std::endl;
       auto info = get_info();
       vector<SignedTransaction> batch;
       batch.reserve(100);
@@ -816,7 +814,7 @@ int main( int argc, char** argv ) {
       }
 
 
-      std::cerr << format_output(localize("benchmark_generate_transfer_status"), ("transfers", number_of_transfers)("accounts", number_of_accounts)) << std::endl;
+      std::cerr << localize("benchmark_generate_transfer_status", ("transfers", number_of_transfers)("accounts", number_of_accounts)) << std::endl;
       while( true ) {
          auto info = get_info();
          uint64_t amount = 1;
@@ -921,13 +919,15 @@ int main( int argc, char** argv ) {
        app.parse(argc, argv);
    } catch (const CLI::ParseError &e) {
        return app.exit(e);
+   } catch (const explained_exception&) {
+      return 1;
    } catch (const fc::exception& e) {
       auto errorString = e.to_detail_string();
       if (errorString.find("Connection refused") != string::npos) {
          if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << format_output(localize("connect_failure_eosd_help_text"), ("ip", host)("port", port)) << std::endl;
+            std::cerr << localize("connect_failure_eosd_help_text", ("ip", host)("port", port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << format_output(localize("connect_failure_wallet_help_text"), ("ip", wallet_host)("port", wallet_port)) << std::endl;
+            std::cerr << localize("connect_failure_wallet_help_text", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
             std::cerr << localize("connect_failure_generic_text") << std::endl;
          }
