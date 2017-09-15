@@ -5,7 +5,7 @@
 Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy
 high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications
 can be built. 
-
+ 
 This code is currently alpha-quality and under rapid development. That said,
 there is plenty early experimenters can do including, running a private multi-node test network and
 develop applications (smart contracts).  
