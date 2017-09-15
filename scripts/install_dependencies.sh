@@ -53,7 +53,7 @@ if [ $ARCH == "ubuntu" ]; then
     cd ..
     mkdir build
     cd build
-    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    cmake -G "Unix Makefiles" -DLLVM_ENABLE_RTTI=ON -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
     make -j4 install
     rm -rf ${TEMP_DIR}/wasm-compiler
     WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
@@ -98,7 +98,7 @@ if [ $ARCH == "darwin" ]; then
     cd ..
     mkdir build
     cd build
-    sudo cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    sudo cmake -G "Unix Makefiles" -DLLVM_ENABLE_RTTI=ON -DCMAKE_INSTALL_PREFIX=/usr/local/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
     sudo make -j4 install
     sudo rm -rf ${TEMP_DIR}/wasm-compiler
     WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
