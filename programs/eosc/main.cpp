@@ -95,6 +95,7 @@ Options:
 #define localize(str, ...) fc::format_string(boost::locale::gettext(str), fc::mutable_variant_object() __VA_ARGS__ )
 
 using namespace boost::locale;
+using namespace boost::filesystem;
 using namespace std;
 using namespace eos;
 using namespace eos::chain;
@@ -289,8 +290,17 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
 }
 
 int main( int argc, char** argv ) {
+   path binPath = argv[0];
+   if (binPath.is_relative()) {
+      binPath = relative(binPath, current_path()); 
+   }
+
+   binPath = binPath.remove_filename().lexically_normal();
+   auto localePath = binPath / path("locale");
+   localePath = localePath.lexically_normal();
+
    generator gen;
-   gen.add_messages_path("./locale");
+   gen.add_messages_path(localePath.c_str());
    gen.add_messages_domain("eosc");
    locale::global(gen(""));
 
