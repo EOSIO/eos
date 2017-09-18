@@ -40,8 +40,6 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 
 You can run the `eosc` commands via `docker exec` command. For example:
 
-Some test commands
-
 ```bash
 docker exec docker_eos_1 eosc get info
 ```
@@ -50,7 +48,7 @@ docker exec docker_eos_1 eosc get info
 docker exec docker_eos_1 eosc get account inita
 ```
 
-Compile sample "exchange" contract to text WASM and upload it
+Upload sample exchange contract 
 
 ```bash
 docker exec docker_eos_1 eosc set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
