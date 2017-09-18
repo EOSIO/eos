@@ -11,13 +11,6 @@ else()
    set(LOCALIZATION_ENABLED FALSE)
 endif()
 
-find_package(ICU)
-if(ICU_FOUND)
-   set(Localization_LIBRARIES ICU_LIBRARIES)
-else()
-   set(Localization_LIBRARIES "")
-endif()
-
 function(LOCALIZATION_PROCESS_PO_FILES _lang)
    set(_options)
    set(_oneValueArgs)
