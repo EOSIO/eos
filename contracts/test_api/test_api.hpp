@@ -118,3 +118,7 @@ struct test_transaction {
   static unsigned int send_transaction_max();
   static unsigned int send_transaction_large();
 };
+
+struct test_chain {
+  static unsigned int test_activeprods();
+};

@@ -278,6 +278,8 @@ public:
    bool all_authorizations_used() const;
    vector<types::AccountPermission> unused_authorizations() const;
 
+   void get_active_producers(types::AccountName* producers, uint32_t len);
+
    const chain_controller&      controller;
    const chainbase::database&   db;  ///< database where state is stored
    const chain::Transaction&    trx; ///< used to gather the valid read/write scopes
