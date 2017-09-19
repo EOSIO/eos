@@ -59,7 +59,7 @@
       "subnetName": "EOSSubnet",
       "subnetPrefix": "10.0.0.0/24",
       "storageAccountType": "Standard_LRS",
-      "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'EOS')]",
+      "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'eos')]",
       "nsgName": "EOS-nsg",
       "nsgID": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
       "publicIPAddressName": "EOSPublicIP",
