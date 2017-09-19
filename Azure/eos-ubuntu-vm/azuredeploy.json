@@ -1,0 +1,245 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "adminUsername": {
+        "type": "string",
+        "metadata": {
+          "description": "Username for the Virtual Machine."
+        }
+      },
+      "adminPassword": {
+        "type": "securestring",
+        "metadata": {
+          "description": "Password for the Virtual Machine."
+        }
+      },
+      "dnsLabelPrefix": {
+        "type": "string",
+        "metadata": {
+          "description": "Hostname assigned to the Public IP, also used as the VM Name. Must be lowercase. It should match with the following regular expression: ^[a-z][a-z0-9-]{1,61}[a-z0-9]$ or it will raise an error."
+        }
+      },
+      "accountNamesCommaDelimited": {
+        "type": "string",
+        "metadata": {
+          "description": "A comma separated list of names. Must be lowercase. (e.g. alpha,bravo,charlie,delta,echo,foxtrot)"
+        }
+      },
+      "vmSize": {
+        "type": "string",
+        "defaultValue": "Standard_DS2_V2",
+        "allowedValues": [
+          "Standard_DS2_V2",
+          "Standard_DS3_V2",
+          "Standard_DS4_V2"
+        ],
+        "metadata": {
+          "description": "Size of VM"
+        }
+      },
+      "gitBranch": {
+        "type": "string",
+        "defaultValue": "master",
+        "allowedValues": [
+          "master"
+        ],
+        "metadata": {
+          "description": "Brach of code to checout from github source respository. default is 'master'"
+        }
+      }
+    },
+    "variables": {
+      "imagePublisher": "Canonical",
+      "imageOffer": "UbuntuServer",
+      "imageSKU": "16.04.0-LTS",
+      "OSDiskName": "EOSOSDisk",
+      "nicName": "EOSNic",
+      "addressPrefix": "10.0.0.0/16",
+      "subnetName": "EOSSubnet",
+      "subnetPrefix": "10.0.0.0/24",
+      "storageAccountType": "Standard_LRS",
+      "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'EOS')]",
+      "nsgName": "EOS-nsg",
+      "nsgID": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]",
+      "publicIPAddressName": "EOSPublicIP",
+      "publicIPAddressType": "Dynamic",
+      "vmStorageAccountContainerName": "vhds",
+      "vmName": "[parameters('dnsLabelPrefix')]",
+      "virtualNetworkName": "EOSVNET",
+      "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
+      "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]",
+      "apiVersion": "2015-06-15"
+    },
+    "resources": [
+      {
+        "type": "Microsoft.Storage/storageAccounts",
+        "name": "[variables('storageAccountName')]",
+        "apiVersion": "[variables('apiVersion')]",
+        "location": "[resourceGroup().location]",
+        "properties": {
+          "accountType": "[variables('storageAccountType')]"
+        }
+      },
+      {
+        "type": "Microsoft.Network/networkSecurityGroups",
+        "name": "[variables('nsgName')]",
+        "apiVersion": "[variables('apiVersion')]",
+        "location": "[resourceGroup().location]",
+        "properties": {
+          "securityRules": [
+            {
+              "name": "SSH",
+              "properties": {
+                "description": "SSH Access",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "22",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 230,
+                "direction": "Inbound"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "[variables('apiVersion')]",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "name": "[variables('publicIPAddressName')]",
+        "location": "[resourceGroup().location]",
+        "properties": {
+          "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+          "dnsSettings": {
+            "domainNameLabel": "[parameters('dnsLabelPrefix')]"
+          }
+        }
+      },
+      {
+        "apiVersion": "[variables('apiVersion')]",
+        "type": "Microsoft.Network/virtualNetworks",
+        "name": "[variables('virtualNetworkName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+          "[variables('nsgID')]"
+        ],
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "[variables('addressPrefix')]"
+            ]
+          },
+          "subnets": [
+            {
+              "name": "[variables('subnetName')]",
+              "properties": {
+                "addressPrefix": "[variables('subnetPrefix')]"
+              },
+                "networkSecurityGroup": {
+                  "id": "[variables('nsgID')]"
+                }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "[variables('apiVersion')]",
+        "type": "Microsoft.Network/networkInterfaces",
+        "name": "[variables('nicName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+          "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+          "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+        ],
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                },
+                "subnet": {
+                  "id": "[variables('subnetRef')]"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "[variables('apiVersion')]",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[variables('vmName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+          "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+          "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+        ],
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[parameters('vmSize')]"
+          },
+          "osProfile": {
+            "computerName": "[variables('vmName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "[variables('imagePublisher')]",
+              "offer": "[variables('imageOffer')]",
+              "sku": "[variables('imageSKU')]",
+              "version": "latest"
+            },
+            "osDisk": {
+              "name": "osdisk",
+              "vhd": {
+                "uri": "[concat('http://',variables('storageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+              },
+              "caching": "ReadWrite",
+              "createOption": "FromImage"
+            }
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+              }
+            ]
+          },
+          "diagnosticsProfile": {
+            "bootDiagnostics": {
+              "enabled": "true",
+              "storageUri": "[concat('http://',variables('storageAccountName'),'.blob.core.windows.net')]"
+            }
+          }
+        }
+      },  
+      {
+        "type": "Microsoft.Compute/virtualMachines/extensions",
+        "name": "[concat(variables('vmName'),'/newuserscript')]",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "[variables('apiVersion')]",
+        "dependsOn": [
+          "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
+        ],
+        "properties": {
+          "publisher": "Microsoft.OSTCExtensions",
+          "type": "CustomScriptForLinux",
+          "typeHandlerVersion": "1.4",
+          "autoUpgradeMinorVersion": true,
+          "settings": {
+            "fileUris": [
+              "https://raw.githubusercontent.com/ryanRfox/eos/master/eos-ubuntu-vm/add_eos_node.sh"
+            ],
+            "commandToExecute": "[concat('sh add_eos_node.sh ', parameters('adminUsername'), ' ', reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))).dnsSettings.fqdn, ' ', parameters('accountNamesCommaDelimited'), ' ', parameters('gitBranch'))]"
+          }
+        }
+      }
+    ]
+  }
+  

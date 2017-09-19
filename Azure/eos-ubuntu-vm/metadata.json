@@ -1,0 +1,7 @@
+{ 
+    "itemDisplayName": "The EOS.IO blockchain (local testnet) on Ubuntu 16.04 LTS", 
+    "description": "Deploy a local testnet of the EOS.IO blockchain in just a few clicks. Documentation is available at github.com/eosio/eos and eos.io", 
+    "summary": "Create a local testnet of EOS.IO running on Ubuntu.", 
+    "githubUsername": "ryanRfox", 
+    "dateUpdated": "2017-09-19" 
+  }
