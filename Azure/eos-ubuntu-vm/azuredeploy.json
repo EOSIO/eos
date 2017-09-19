@@ -234,7 +234,7 @@
           "autoUpgradeMinorVersion": true,
           "settings": {
             "fileUris": [
-              "https://raw.githubusercontent.com/ryanRfox/eos/master/eos-ubuntu-vm/add_eos_node.sh"
+              "https://raw.githubusercontent.com/ryanRfox/eos/master/Azure/eos-ubuntu-vm/add_eos_node.sh"
             ],
             "commandToExecute": "[concat('sh add_eos_node.sh ', parameters('adminUsername'), ' ', reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))).dnsSettings.fqdn, ' ', parameters('accountNamesCommaDelimited'), ' ', parameters('gitBranch'))]"
           }
