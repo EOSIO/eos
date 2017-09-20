@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 ##########################################################################
 # This is EOS bootstrapper script for Linux and OS X.
@@ -6,12 +6,12 @@
 # Feel free to change this file to fit your needs.
 ##########################################################################
 
-VERSION=1.0.2
+VERSION=1.0.3
 NPROC=$(nproc)
 
 # Define directories.
 WORK_DIR=$PWD
-BUILD_DIR=${WORK_DIR}/build
+BUILD_DIR=$WORK_DIR/build
 TEMP_DIR=/tmp
 
 # Target architectures
@@ -43,11 +43,11 @@ echo ""
 echo ">>> ARCHITECTURE \"$ARCH\""
 
 if [ $ARCH == "ubuntu" ]; then
-    BOOST_ROOT=${HOME}/opt/boost_1_64_0
-    BINARYEN_BIN=${HOME}/opt/binaryen/bin
+    BOOST_ROOT=$HOME/opt/boost_1_64_0
+    BINARYEN_BIN=$HOME/opt/binaryen/bin
     OPENSSL_ROOT_DIR=/usr/local/opt/openssl
     OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-    WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
+    WASM_LLVM_CONFIG=$HOME/opt/wasm/bin/llvm-config
 fi
 
 if [ $ARCH == "darwin" ]; then
@@ -66,18 +66,18 @@ COMPILE_CONTRACTS=1
 CMAKE_BUILD_TYPE=Debug
 
 # Install dependencies
-if [ ${INSTALL_DEPS} == "1" ]; then
+if [ $INSTALL_DEPS == "1" ]; then
 
   echo ">> Install dependencies"
-  . ${WORK_DIR}/scripts/install_dependencies.sh
+  . $WORK_DIR/scripts/install_dependencies.sh
 
 fi
 
 # Create the build dir
-cd ${WORK_DIR}
-mkdir -p ${BUILD_DIR}
-cd ${BUILD_DIR}
+cd $WORK_DIR
+mkdir -p $BUILD_DIR
+cd $BUILD_DIR
 
 # Build EOS
-cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DWASM_LLVM_CONFIG=${WASM_LLVM_CONFIG} -DBINARYEN_BIN=${BINARYEN_BIN} -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
+cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DWASM_LLVM_CONFIG=$WASM_LLVM_CONFIG -DBINARYEN_BIN=$BINARYEN_BIN -DOPENSSL_ROOT_DIR=$OPENSSL_ROOT_DIR -DOPENSSL_LIBRARIES=$OPENSSL_LIBRARIES ..
 make -j$NPROC

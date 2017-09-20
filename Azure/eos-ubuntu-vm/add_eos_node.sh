@@ -6,6 +6,7 @@ date
 ps axjf
 
 USER_NAME=$1
+HOME=/home/$USER_NAME
 FQDN=$2
 PRODUCER_NAME=$3
 NPROC=$(nproc)
@@ -21,6 +22,7 @@ CLI=eosc
 WALLET=eos-walletd
 
 echo "USER_NAME: $USER_NAME"
+echo "HOME: $HOME"
 echo "PRODUCER_NAME : $PRODUCER_NAME"
 echo "FQDN: $FQDN"
 echo "nproc: $NPROC"
