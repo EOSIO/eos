@@ -120,6 +120,9 @@ struct AbiGenerator {
     auto pos = type_name.find_last_of("::");
     if(pos != string::npos)
       type_name = type_name.substr(pos+1);
+    pos = type_name.find_last_of(" ");
+    if(pos != string::npos)
+      type_name = type_name.substr(pos+1);
     return type_name;
   }
 
@@ -252,8 +255,8 @@ struct AbiGenerator {
     return type_size[type] == 128;
   }
 
-  bool isCString(const string& type) {
-    return type == "CString";
+  bool isString(const string& type) {
+    return type == "String";
   }
 
   void getAllFields(const eos::types::Struct s, vector<eos::types::Field>& fields) {
@@ -280,7 +283,7 @@ struct AbiGenerator {
   }
 
   bool isstr(const vector<eos::types::Field>& fields) {
-    return fields.size() == 2 && isCString(fields[0].type) && isCString(fields[1].type); 
+    return fields.size() == 2 && isString(fields[0].type) && fields[0].name == "key" && fields[1].name == "value"; 
   }
 
   void guessIndexType(const string& type_name, eos::types::Table& table, const eos::types::Struct s) {
