@@ -69,9 +69,9 @@ cat >/lib/systemd/system/$VALIDATOR_NODE.service <<EOL
 Description=Job that runs $VALIDATOR_NODE daemon
 [Service]
 Type=simple
-Environment=statedir=${HOME}/$PROJECT/$VALIDATOR_NODE
-ExecStartPre=/bin/mkdir -p ${HOME}/$PROJECT/$VALIDATOR_NODE
-ExecStart=/usr/bin/$VALIDATOR_NODE --data-dir ${HOME}/$PROJECT/$VALIDATOR_NODE
+Environment=statedir=$HOME/$PROJECT/$VALIDATOR_NODE
+ExecStartPre=/bin/mkdir -p $HOME/$PROJECT/$VALIDATOR_NODE
+ExecStart=/usr/bin/$VALIDATOR_NODE --data-dir $HOME/$PROJECT/$VALIDATOR_NODE
 
 TimeoutSec=300
 [Install]
@@ -89,43 +89,43 @@ sleep 5; # allow time to initializize application data.
 service $VALIDATOR_NODE stop
 
 # Load the testnet genesis state, which creates some initial block producers with the default key
-cp /usr/local/src/$PROJECT/genesis.json ${HOME}/$PROJECT/$VALIDATOR_NODE
-sed -i 's%# genesis-json =%genesis-json = '${HOME}/$PROJECT/$VALIDATOR_NODE/genesis.json'%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
+cp /usr/local/src/$PROJECT/genesis.json $HOME/$PROJECT/$VALIDATOR_NODE
+sed -i 's%# genesis-json =%genesis-json = '$HOME/$PROJECT/$VALIDATOR_NODE/genesis.json'%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
 
  # Enable production on a stale chain, since a single-node test chain is pretty much always stale
-sed -i 's%enable-stale-production = false%enable-stale-production = true%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%enable-stale-production = false%enable-stale-production = true%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
 
 # Enable all 21 testnet block producers on this node
-sed -i 's%# producer-name =%producer-name = inita\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initb\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initc\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initd\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = inite\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initf\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initg\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = inith\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initi\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initj\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initk\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initl\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initm\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initn\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initp\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initq\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initr\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = inits\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initt\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# producer-name =%producer-name = initu\n# producer-name =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = inita\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initb\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initc\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initd\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = inite\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initf\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initg\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = inith\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initi\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initj\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initk\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initl\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initm\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initn\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initp\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initq\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initr\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = inits\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initt\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# producer-name =%producer-name = initu\n# producer-name =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
 
 # Load the block producer plugin, so you can produce blocks
-sed -i 's%# plugin =%plugin = eos::producer_plugin\n# plugin =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# plugin =%plugin = eos::producer_plugin\n# plugin =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
 
 # Wallet plugin
-sed -i 's%# plugin =%plugin = eos::wallet_api_plugin\n# plugin =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# plugin =%plugin = eos::wallet_api_plugin\n# plugin =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
 
 # As well as API and HTTP plugins
-sed -i 's%# plugin =%plugin = eos::chain_api_plugin\n# plugin =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
-sed -i 's%# plugin =%plugin = eos::http_plugin\n# plugin =%g' ${HOME}/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# plugin =%plugin = eos::chain_api_plugin\n# plugin =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
+sed -i 's%# plugin =%plugin = eos::http_plugin\n# plugin =%g' $HOME/$PROJECT/$VALIDATOR_NODE/config.ini
 
 ##################################################################################################
 # Start the service again, now using the updated config.ini settings. The 21 block producers     #

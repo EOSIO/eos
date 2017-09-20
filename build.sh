@@ -6,7 +6,7 @@
 # Feel free to change this file to fit your needs.
 ##########################################################################
 
-VERSION=1.0.1
+VERSION=1.0.2
 NPROC=$(nproc)
 
 # Define directories.
