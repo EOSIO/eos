@@ -59,7 +59,6 @@ sed -i 's/-j4/-j$NPROC/g' /usr/local/src/$PROJECT/build.sh
 sed -i 's/-j4/-j$NPROC/g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
 sed -i 's/apt-get install/apt-get -y install/g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
 sed -i 's%./b2 install%./b2 install -j $NPROC%g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
-sed -i 's%make\n%make -j $NPROC\n%g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
 
 echo ">> Build EOS.IO"
 bash build.sh ubuntu
