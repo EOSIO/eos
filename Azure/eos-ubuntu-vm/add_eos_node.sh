@@ -38,7 +38,7 @@ echo "WALLET: $WALLET"
 ##################################################################################################
 # Update Ubuntu, configure a 2GiB swap file                                                      #
 ##################################################################################################
-sudo apt-get -y update || exit 1;
+apt-get -y update || exit 1;
 sleep 5;
 fallocate -l 2g /mnt/2GiB.swap
 chmod 600 /mnt/2GiB.swap

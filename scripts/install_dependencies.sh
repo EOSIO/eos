@@ -2,9 +2,9 @@
 
 if [ $ARCH == "ubuntu" ]; then
     # install dev toolkit
-    sudo apt-get update
-    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-    sudo apt-get -y install clang-4.0 lldb-4.0 cmake make \
+    apt-get update
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key| apt-key add -
+    apt-get -y install clang-4.0 lldb-4.0 cmake make \
                          libbz2-dev libssl-dev libgmp3-dev \
                          autotools-dev build-essential \
                          libbz2-dev libicu-dev python-dev \
@@ -29,7 +29,7 @@ if [ $ARCH == "ubuntu" ]; then
     ./autogen.sh
     ./configure
     make -j$NPROC
-    sudo make install
+    make install
     rm -rf cd ${TEMP_DIR}/secp256k1-zkp
 
     # install binaryen
@@ -74,8 +74,8 @@ if [ $ARCH == "darwin" ]; then
     ./autogen.sh
     ./configure
     make
-    sudo make install
-    sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
+    make install
+    rm -rf ${TEMP_DIR}/secp256k1-zkp
 
     # Install binaryen v1.37.14:
     cd ${TEMP_DIR}
@@ -83,10 +83,10 @@ if [ $ARCH == "darwin" ]; then
     cd binaryen
     git checkout tags/1.37.14
     cmake . && make
-    sudo mkdir /usr/local/binaryen
-    sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-    sudo ln -s /usr/local/binaryen/bin/* /usr/local
-    sudo rm -rf ${TEMP_DIR}/binaryen
+    mkdir /usr/local/binaryen
+    mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
+    ln -s /usr/local/binaryen/bin/* /usr/local
+    rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/usr/local/binaryen/bin/
 
     # Build LLVM and clang for WASM:
@@ -99,9 +99,9 @@ if [ $ARCH == "darwin" ]; then
     cd ..
     mkdir build
     cd build
-    sudo cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-    sudo make -j4 install
-    sudo rm -rf ${TEMP_DIR}/wasm-compiler
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+    make -j4 install
+    rm -rf ${TEMP_DIR}/wasm-compiler
     WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
 
 fi
