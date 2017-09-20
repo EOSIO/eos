@@ -23,10 +23,24 @@
       }
     },
     {
-      "name": "KeyValuePair",
+      "name": "KeyValue1",
       "fields": {
         "key": "String",
         "value": "String"
+      }
+    },
+    {
+      "name": "ComplexType",
+      "fields": {
+        "name": "String",
+        "age": "UInt64"
+      }
+    },
+    {
+      "name": "KeyValue2",
+      "fields": {
+        "key": "String",
+        "value": "ComplexType"
       }
     }
   ],
@@ -36,8 +50,8 @@
       "type": "record1"
     },
     {
-      "action": "insertalpha",
-      "type": "KeyValuePair"
+      "action": "insertkv1",
+      "type": "KeyValue1"
     },
     {
       "action": "insert2",
@@ -46,6 +60,10 @@
     {
       "action": "insert3",
       "type": "record3"
+    },
+    {
+      "action": "insertkv2",
+      "type": "KeyValue2"
     }
   ],
   "tables": [
@@ -89,9 +107,20 @@
       ]
     },
     {
-      "table": "record1alpha",
-      "type": "KeyValuePair",
-      "indextype": "i64",
+      "table": "keyvalue1",
+      "type": "KeyValue1",
+      "indextype": "str",
+      "keynames": [
+        "key"
+      ],
+      "keytypes": [
+        "String"
+      ]
+    },
+    {
+      "table": "keyvalue2",
+      "type": "KeyValue2",
+      "indextype": "str",
       "keynames": [
         "key"
       ],
