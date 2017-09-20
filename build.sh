@@ -6,7 +6,8 @@
 # Feel free to change this file to fit your needs.
 ##########################################################################
 
-VERSION=1.0
+VERSION=1.0.1
+NPROC=$(nproc)
 
 # Define directories.
 WORK_DIR=$PWD
@@ -79,4 +80,4 @@ cd ${BUILD_DIR}
 
 # Build EOS
 cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DWASM_LLVM_CONFIG=${WASM_LLVM_CONFIG} -DBINARYEN_BIN=${BINARYEN_BIN} -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
-make -j4
+make -j$NPROC

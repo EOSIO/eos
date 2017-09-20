@@ -19,7 +19,7 @@ if [ $ARCH == "ubuntu" ]; then
     tar xvf boost_1.64.0.tar.bz2
     cd boost_1_64_0/
     ./bootstrap.sh "--prefix=$BOOST_ROOT"
-    ./b2 install
+    ./b2 install -j $NPROC
     rm -rf ${TEMP_DIR}/boost_1_64_0/
 
     # install secp256k1-zkp (Cryptonomex branch)
@@ -28,7 +28,7 @@ if [ $ARCH == "ubuntu" ]; then
     cd secp256k1-zkp
     ./autogen.sh
     ./configure
-    make
+    make -j$NPROC
     sudo make install
     rm -rf cd ${TEMP_DIR}/secp256k1-zkp
 
@@ -37,7 +37,8 @@ if [ $ARCH == "ubuntu" ]; then
     git clone https://github.com/WebAssembly/binaryen
     cd binaryen
     git checkout tags/1.37.14
-    cmake . && make
+    cmake . 
+    make -j$NPROC
     mkdir -p ${HOME}/opt/binaryen/
     mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/
     rm -rf ${TEMP_DIR}/binaryen
@@ -54,7 +55,7 @@ if [ $ARCH == "ubuntu" ]; then
     mkdir build
     cd build
     cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-    make -j4 install
+    make -j$NPROC install
     rm -rf ${TEMP_DIR}/wasm-compiler
     WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
 fi
