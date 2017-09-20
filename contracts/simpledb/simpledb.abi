@@ -1,46 +1,103 @@
 {
-    "types": [],
-    "structs": [{
-        "name": "record1",
-        "fields": {
-          "key1": "UInt64"
-        }
-      },{
-        "name" : "record2",
-        "fields": {
-          "key1": "UInt128",
-          "key2": "UInt128"
-        }
-      },{
-        "name" : "record3",
-        "fields": {
-          "key1": "UInt64",
-          "key2": "UInt64",
-          "key3": "UInt64"
-        }
+  "types": [],
+  "structs": [
+    {
+      "name": "record1",
+      "fields": {
+        "key1": "UInt64"
       }
-    ],
-    "actions": [{
-        "action": "insert1",
-        "type": "record1"
-      },{
-        "action": "insertalpha",
-        "type": "KeyValuePair"
-      },{
-        "action": "insert2",
-        "type": "record2"
-      },{
-        "action": "insert3",
-        "type": "record3"
+    },
+    {
+      "name": "record2",
+      "fields": {
+        "key1": "UInt128",
+        "key2": "UInt128"
       }
-    ],
-    "tables": [
-      {"table":"record1","type":"record1"},
-      {"table":"record2","type":"record2"},
-      {"table":"record3","type":"record3"}
-      {
-        "table" : "record1alpha",
-        "type"  : "KeyValuePair"
+    },
+    {
+      "name": "record3",
+      "fields": {
+        "key1": "UInt64",
+        "key2": "UInt64",
+        "key3": "UInt64"
       }
-    ]
+    },
+    {
+      "name": "KeyValuePair",
+      "fields": {
+        "key": "String",
+        "value": "String"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "action": "insert1",
+      "type": "record1"
+    },
+    {
+      "action": "insertalpha",
+      "type": "KeyValuePair"
+    },
+    {
+      "action": "insert2",
+      "type": "record2"
+    },
+    {
+      "action": "insert3",
+      "type": "record3"
+    }
+  ],
+  "tables": [
+    {
+      "table": "record1",
+      "type": "record1",
+      "indextype": "i64",
+      "keynames": [
+        "key1"
+      ],
+      "keytypes": [
+        "UInt64"
+      ]
+    },
+    {
+      "table": "record2",
+      "type": "record2",
+      "indextype": "i128i128",
+      "keynames": [
+        "key1",
+        "key2"
+      ],
+      "keytypes": [
+        "UInt128",
+        "UInt128"
+      ]
+    },
+    {
+      "table": "record3",
+      "type": "record3",
+      "indextype": "i64i64i64",
+      "keynames": [
+        "key1",
+        "key2",
+        "key3"
+      ],
+      "keytypes": [
+        "UInt64",
+        "UInt64",
+        "UInt64"
+      ]
+    },
+    {
+      "table": "record1alpha",
+      "type": "KeyValuePair",
+      "indextype": "i64",
+      "keynames": [
+        "key"
+      ],
+      "keytypes": [
+        "String"
+      ]
+    }
+  ]
 }

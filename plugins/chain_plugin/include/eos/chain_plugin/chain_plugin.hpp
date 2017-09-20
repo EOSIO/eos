@@ -177,15 +177,10 @@ public:
    }
 
    void copy_row(const chain::keystr_value_object& obj, vector<char>& data)const {
-
-      data.resize(1024*1024);
+      data.resize( obj.primary_key.size() + obj.value.size() + 8 );
       fc::datastream<char*> ds(data.data(), data.size());
-
-      types::KeyValuePair kvp;
-      kvp.key.insert(0, obj.primary_key.data(), obj.primary_key.size());
-      kvp.value.insert(0, obj.value.data(), obj.value.size());
-      fc::raw::pack(ds, kvp);
-
+      fc::raw::pack(ds, obj.primary_key);
+      ds.write(obj.value.data(), obj.value.size());
       data.resize(ds.tellp());
    }
 

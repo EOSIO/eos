@@ -46,7 +46,6 @@ namespace eos { namespace types {
       built_in_types.emplace("Price",         packUnpack<Price>());
      
       //native.hpp
-      built_in_types.emplace("RealString",    packUnpack<RealString>());
       built_in_types.emplace("String",        packUnpack<String>());
       built_in_types.emplace("Time",          packUnpack<Time>());
       built_in_types.emplace("Signature",     packUnpack<Signature>());
@@ -89,7 +88,6 @@ namespace eos { namespace types {
       built_in_types.emplace("Authority",               packUnpack<Authority>());
       built_in_types.emplace("BlockchainConfiguration", packUnpack<BlockchainConfiguration>());
       built_in_types.emplace("TypeDef",                 packUnpack<TypeDef>());
-      built_in_types.emplace("KeyValuePair",            packUnpack<KeyValuePair>());
       built_in_types.emplace("Action",                  packUnpack<Action>());
       built_in_types.emplace("Table",                   packUnpack<Table>());
       built_in_types.emplace("Abi",                     packUnpack<Abi>());
