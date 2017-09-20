@@ -6,8 +6,7 @@
 # Feel free to change this file to fit your needs.
 ##########################################################################
 
-VERSION=1.0.3
-NPROC=$(nproc)
+VERSION=1.0.4
 
 # Define directories.
 WORK_DIR=$PWD
@@ -17,45 +16,7 @@ TEMP_DIR=/tmp
 # Target architectures
 ARCH=$1
 TARGET_ARCHS="ubuntu darwin"
-
-# Check ARCH
-if [[ $# > 1 ]]; then
-  echo ""
-  echo "Error: too many arguments"
-  exit 1
-fi
-
-if [[ $# < 1 ]]; then
-  echo ""
-  echo "Usage: bash build.sh TARGET"
-  echo ""
-  echo "Targets: $TARGET_ARCHS"
-  exit 1
-fi
-
-if [[ $ARCH =~ [[:space:]] || ! $TARGET_ARCHS =~ (^|[[:space:]])$ARCH([[:space:]]|$) ]]; then
-  echo ""
-  echo ">>> WRONG ARCHITECTURE \"$ARCH\""
-  exit 1
-fi
-
-echo ""
-echo ">>> ARCHITECTURE \"$ARCH\""
-
-if [ $ARCH == "ubuntu" ]; then
-    BOOST_ROOT=$HOME/opt/boost_1_64_0
-    BINARYEN_BIN=$HOME/opt/binaryen/bin
-    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-    OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-    WASM_LLVM_CONFIG=$HOME/opt/wasm/bin/llvm-config
-fi
-
-if [ $ARCH == "darwin" ]; then
-    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-    OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-    BINARYEN_BIN=/usr/local/binaryen/bin/
-    WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
-fi
+NPROC=$(nproc)
 
 # Debug flags
 INSTALL_DEPS=1
@@ -65,14 +26,48 @@ COMPILE_CONTRACTS=1
 # Define default arguments.
 CMAKE_BUILD_TYPE=Debug
 
+# Check ARCH
+if [[ $# > 1 ]]; then
+  echo "\nError: too many arguments"
+  exit 1
+fi
+
+if [[ $# < 1 ]]; then
+  echo "\nUsage: bash build.sh TARGET"
+  echo "\nTargets: $TARGET_ARCHS"
+  exit 1
+fi
+
+if [[ $ARCH =~ [[:space:]] || ! $TARGET_ARCHS =~ (^|[[:space:]])$ARCH([[:space:]]|$) ]]; then
+  echo "\n>>> WRONG ARCHITECTURE \"$ARCH\""
+  exit 1
+fi
+
+echo "\n>>> ARCHITECTURE \"$ARCH\""
+
+if [ $ARCH == "ubuntu" ]; then
+    BOOST_ROOT=/opt/boost_1_64_0
+    BINARYEN_BIN=/opt/binaryen/bin
+    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+    OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
+    WASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config
+fi
+
+if [ $ARCH == "darwin" ]; then
+    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+    OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
+    BINARYEN_BIN=/usr/local/binaryen/bin/
+    WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
+fi
+
 # Install dependencies
 if [ $INSTALL_DEPS == "1" ]; then
 
-  echo ">> Install dependencies"
-  HOME=$HOME . $WORK_DIR/scripts/install_dependencies.sh
-
+  echo "\n>>> Install dependencies"
+  . $WORK_DIR/scripts/install_dependencies.sh
 fi
 
+echo "\n>>> Build EOS.IO"
 # Create the build dir
 cd $WORK_DIR
 mkdir -p $BUILD_DIR
