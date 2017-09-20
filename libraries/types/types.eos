@@ -69,10 +69,6 @@ struct Table
    keytype    TypeName[] # the meaning / type of key parameters, how to convert binary key to json
    type       TypeName   # the meaning / type of the binary data stored in this table
 
-struct KeyValuePair
-   key      RealString
-   value    RealString
-
 struct Abi
    types   TypeDef[]
    structs Struct[]

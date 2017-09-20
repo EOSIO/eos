@@ -250,11 +250,8 @@ types::Abi getAbi( const chain_controller& db, const Name& account ) {
 string getTableType( const types::Abi& abi, const Name& tablename ) {
    for( const auto& t : abi.tables ) {
       if( t.table == tablename ){
-         if( t.type == "KeyValuePair" ) 
-            return read_only::KEYstr;
-         else
-            return t.indextype;
-       }
+         return t.indextype;
+      }
    }
    FC_ASSERT( !"Abi does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
 }

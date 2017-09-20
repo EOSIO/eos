@@ -39,7 +39,6 @@ namespace eos { namespace types {
    using FixedString16 = fc::fixed_string<>; 
    using TypeName      = FixedString32;;
    using Bytes         = Vector<char>;
-   using RealString    = fc::string;
 
    template<size_t Size>
    using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
