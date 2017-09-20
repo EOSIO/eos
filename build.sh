@@ -69,7 +69,7 @@ CMAKE_BUILD_TYPE=Debug
 if [ $INSTALL_DEPS == "1" ]; then
 
   echo ">> Install dependencies"
-  . HOME=$HOME $WORK_DIR/scripts/install_dependencies.sh
+  HOME=$HOME . $WORK_DIR/scripts/install_dependencies.sh
 
 fi
 

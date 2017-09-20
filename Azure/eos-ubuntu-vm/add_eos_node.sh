@@ -57,7 +57,7 @@ cd $PROJECT
 time git checkout $BRANCH
 
 echo ">> Build EOS.IO"
-bash HOME=$HOME build.sh ubuntu
+HOME=$HOME bash build.sh ubuntu
 
 echo ">> Copy the application to the /usr/bin folder"
 cp /usr/local/src/$PROJECT/build/programs/$VALIDATOR_NODE/$VALIDATOR_NODE /usr/bin/$VALIDATOR_NODE
