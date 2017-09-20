@@ -59,9 +59,10 @@ sed -i 's/-j4/-j$NPROC/g' /usr/local/src/$PROJECT/build.sh
 sed -i 's/-j4/-j$NPROC/g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
 sed -i 's/apt-get install/apt-get -y install/g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
 sed -i 's%./b2 install%./b2 install -j $NPROC%g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
+sed -i 's%make\n%make -j $NPROC\n%g' /usr/local/src/$PROJECT/scripts/install_dependencies.sh
 
 echo ">> Build EOS.IO"
-. build.sh ubuntu
+bash build.sh ubuntu
 
 echo ">> Copy the application to the /usr/bin folder"
 cp /usr/local/src/$PROJECT/build/programs/$VALIDATOR_NODE/$VALIDATOR_NODE /usr/bin/$VALIDATOR_NODE
