@@ -33,7 +33,7 @@ namespace bfs = boost::filesystem;
 
 struct AbiGenerator {
 
-  //const char*  NOABI_VARNAME = "NOABI";
+  const char*  NOABI_VARNAME = "NOABI";
 
   bool                      enabled;
   bool                      disabled_by_user;
@@ -49,11 +49,11 @@ struct AbiGenerator {
   
   AbiGenerator() : enabled(true), disabled_by_user(false), error_found(false), verbose(false)  {
     remove(destination_file + ".abi.done");
-    //auto no_abi = std::getenv(NOABI_VARNAME);
-    //if(no_abi && boost::lexical_cast<bool>(no_abi) ) {
-    //  onUserDisable();
-    //  cerr << "ABI Generation disabled ("<< NOABI_VARNAME << "=" << no_abi << ")\n";
-    //}
+    auto no_abi = std::getenv(NOABI_VARNAME);
+    if(no_abi && boost::lexical_cast<bool>(no_abi) ) {
+     onUserDisable();
+     cerr << "ABI Generation disabled ("<< NOABI_VARNAME << "=" << no_abi << ")\n";
+    }
   }
 
   ~AbiGenerator() {
