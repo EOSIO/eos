@@ -454,7 +454,7 @@ Install the development toolkit:
 ```bash
 sudo apt-get update
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-sudo apt-get install clang-4.0 lldb-4.0 cmake make \
+sudo apt-get install clang-4.0 lldb-4.0 libclang-4.0-dev cmake make \
                      libbz2-dev libssl-dev libgmp3-dev \
                      autotools-dev build-essential \
                      libbz2-dev libicu-dev python-dev \
