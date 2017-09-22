@@ -35,6 +35,7 @@
 #include <test_api/test_api.hpp>
 
 #include "memory_test/memory_test.wast.hpp"
+#include "extended_memory_test/extended_memory_test.wast.hpp"
 
 FC_REFLECT( dummy_message, (a)(b)(c) );
 FC_REFLECT( u128_msg, (values) );
@@ -428,7 +429,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 
 } FC_LOG_AND_RETHROW() }
 
-#define MEMORY_TEST_RUN(account_name)                                                                      \
+#define MEMORY_TEST_RUN(account_name, test_wast)                                                           \
       Make_Blockchain(chain);                                                                              \
       chain.produce_blocks(1);                                                                             \
       Make_Account(chain, account_name);                                                                   \
@@ -438,7 +439,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       types::setcode handler;                                                                              \
       handler.account = #account_name;                                                                     \
                                                                                                            \
-      auto wasm = assemble_wast( memory_test_wast );                                                       \
+      auto wasm = assemble_wast( test_wast );                                                              \
       handler.code.resize(wasm.size());                                                                    \
       memcpy( handler.code.data(), wasm.data(), wasm.size() );                                             \
                                                                                                            \
@@ -468,26 +469,26 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          chain.produce_blocks(1);                                                                          \
       }
 
-#define MEMORY_TEST_CASE(test_case_name, account_name)                                                     \
+#define MEMORY_TEST_CASE(test_case_name, account_name, test_wast)                                          \
 BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                                                   \
 { try{                                                                                                     \
-   MEMORY_TEST_RUN(account_name);                                                                          \
+   MEMORY_TEST_RUN(account_name, test_wast);                                                               \
 } FC_LOG_AND_RETHROW() }
 
 //Test wasm memory allocation
-MEMORY_TEST_CASE(test_memory, testmemory)
+MEMORY_TEST_CASE(test_memory, testmemory, memory_test_wast)
 
 //Test wasm memory allocation at boundaries
-MEMORY_TEST_CASE(test_memory_bounds, testbounds)
+MEMORY_TEST_CASE(test_memory_bounds, testbounds, memory_test_wast)
 
 //Test intrinsic provided memset and memcpy
-MEMORY_TEST_CASE(test_memset_memcpy, testmemset)
+MEMORY_TEST_CASE(test_memset_memcpy, testmemset, memory_test_wast)
 
 //Test memcpy overlap at start of destination
 BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_start, testing_fixture)
 {
    try {
-      MEMORY_TEST_RUN(testolstart);
+      MEMORY_TEST_RUN(testolstart, memory_test_wast);
       BOOST_FAIL("memcpy should have thrown assert acception");
    }
    catch(fc::assert_exception& ex)
@@ -500,7 +501,7 @@ BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_start, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_end, testing_fixture)
 {
    try {
-      MEMORY_TEST_RUN(testolend);
+      MEMORY_TEST_RUN(testolend, memory_test_wast);
       BOOST_FAIL("memcpy should have thrown assert acception");
    }
    catch(fc::assert_exception& ex)
@@ -508,5 +509,8 @@ BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_end, testing_fixture)
       BOOST_REQUIRE(ex.to_detail_string().find("overlap of memory range is undefined") != std::string::npos);
    }
 }
+
+//Test intrinsic provided memset and memcpy
+MEMORY_TEST_CASE(test_extended_memory, testextmem, extended_memory_test_wast)
 
 BOOST_AUTO_TEST_SUITE_END()
