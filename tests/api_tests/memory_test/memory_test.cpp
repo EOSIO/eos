@@ -18,7 +18,10 @@ extern "C" {
 
     void test_memory()
     {
-       char* ptr1 = (char*)eos::malloc(20);
+       char* ptr1 = (char*)eos::malloc(0);
+       assert(ptr1 == nullptr, "should not have allocated a 0 char buf");
+
+       ptr1 = (char*)eos::malloc(20);
        assert(ptr1 != nullptr, "should have allocated a 20 char buf");
        verify(ptr1, 0, 20);
        char* ptr1_realloc = (char*)eos::realloc(ptr1, 30);
@@ -39,7 +42,7 @@ extern "C" {
        assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched");
        verify(ptr1 + 15, 0, 15); // test specific to implementation (can remove for refactor)
 
-       //same size the buffer (verify corner case
+       //same size the buffer (verify corner case)
        ptr1_realloc = (char*)eos::realloc(ptr1, 15);
        assert(ptr1_realloc != nullptr, "should have returned a reallocated 15 char buf");
        assert(ptr1_realloc == ptr1, "should have reallocated 15 char buf as the same buf");
@@ -67,8 +70,8 @@ extern "C" {
 
        //realloc with invalid ptr
        char* invalid_ptr_realloc = (char*)eos::realloc(nullptr_realloc + 4, 10);
-       assert(invalid_ptr_realloc != nullptr, " and ignored invalid ptr");
-       assert(nullptr_realloc < invalid_ptr_realloc, "should have been created invalid_ptr_realloc after ptr2"); // test specific to implementation (can remove for refactor)
+       assert(invalid_ptr_realloc != nullptr, "should have returned a 10 char buf and ignored invalid ptr");
+       assert(nullptr_realloc < invalid_ptr_realloc, "should have created invalid_ptr_realloc after nullptr_realloc"); // test specific to implementation (can remove for refactor)
 
        // try to re-allocate past max
        ptr1 = ptr1_realloc;
@@ -88,7 +91,6 @@ extern "C" {
        // try to malloc past buffer
        char* ptr1 = (char*)eos::malloc(8189);
        assert(ptr1 == nullptr, "request of more than available should fail");
-
 
        // takes up 5 (1 + ptr size header)
        ptr1 = (char*)eos::malloc(1);
