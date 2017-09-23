@@ -56,25 +56,12 @@ extern "C" {
     unsigned char *c2 = (unsigned char *)s2;
     for (uint32_t i = 0; i < n; ++i) {
       if (c1[i] != c2[i]) {
-        eos::print("Rompio en index ", i);
         return false;
       }
     }
     return true;
   }
 
-  void my_to_hex(void *vdata, uint32_t datalen, char *dst, uint32_t dst_len) {
-    unsigned char *data = (unsigned char *)vdata;
-    const char symbols[] = "0123456789abcdef";
-    
-    uint32_t i = 0;
-    for(i = 0; i < dst_len-1 && i/2 < datalen; ++i) {
-      unsigned char b = !(i % 2) ? data[i/2] >> 4 : data[i/2] & 0x0F;
-      dst[i] = symbols[ b ];
-    }
-
-    dst[i]=0;
-  }
 }
 
 unsigned int test_crypto::test_sha256() {

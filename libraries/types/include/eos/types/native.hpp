@@ -15,6 +15,7 @@
 #include <fc/io/datastream.hpp>
 #include <fc/time.hpp>
 #include <fc/fixed_string.hpp>
+#include <fc/string.hpp>
 
 #include <fc/reflect/reflect.hpp>
 
@@ -60,9 +61,9 @@ namespace eos { namespace types {
    
    static constexpr char char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
-         return (c - 'a') + 1;
+         return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
-         return (c - '1') + 27;
+         return (c - '1') + 1;
       return 0;
    }
 
@@ -111,7 +112,7 @@ namespace eos { namespace types {
       Name( uint64_t v = 0 ):value(v){}
 
       explicit operator String()const {
-         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
+        static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
          String str(13,'.');
 

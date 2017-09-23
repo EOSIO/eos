@@ -10,9 +10,9 @@ namespace  eos {
     */
    static constexpr char char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
-         return (c - 'a') + 1;
+         return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
-         return (c - '1') + 27;
+         return (c - '1') + 1;
       return 0;
    }
 

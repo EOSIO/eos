@@ -37,9 +37,9 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 }
    template <typename Function, typename KeyType, int numberOfKeys>
    int32_t validate(int32_t valueptr, int32_t valuelen, Function func) {
-      
+
       static const uint32_t keylen = numberOfKeys*sizeof(KeyType);
-      
+
       FC_ASSERT( valuelen >= keylen, "insufficient data passed" );
 
       auto& wasm  = wasm_interface::get();
@@ -53,6 +53,21 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 
       return func(wasm.current_apply_context, keys, value, valuelen);
    }
+
+   template <typename Function>
+   int32_t validate_str(int32_t keyptr, int32_t keylen, int32_t valueptr, int32_t valuelen, Function func) {
+
+      auto& wasm  = wasm_interface::get();
+      FC_ASSERT( wasm.current_apply_context, "no apply context found" );
+
+      char* key   = memoryArrayPtr<char>( wasm.current_memory, keyptr, keylen );
+      char* value = memoryArrayPtr<char>( wasm.current_memory, valueptr, valuelen );
+
+      std::string keys(key, keylen);
+
+      return func(wasm.current_apply_context, &keys, value, valuelen);
+   }
+
 
 #define READ_RECORD(READFUNC, INDEX, SCOPE) \
    auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
@@ -104,7 +119,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 
 DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index);
 DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
-
+      
 DEFINE_RECORD_UPDATE_FUNCTIONS(i128i128, key128x128_value_index);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, primary_,   key128x128_value_index, by_scope_primary);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, secondary_, key128x128_value_index, by_scope_secondary);
@@ -113,6 +128,55 @@ DEFINE_RECORD_UPDATE_FUNCTIONS(i64i64i64, key64x64x64_value_index);
 DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, primary_,   key64x64x64_value_index, by_scope_primary);
 DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, secondary_, key64x64x64_value_index, by_scope_secondary);
 DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, tertiary_,  key64x64x64_value_index, by_scope_tertiary);
+
+
+#define UPDATE_RECORD_STR(FUNCTION) \
+  auto lambda = [&](apply_context* ctx, std::string* keys, char *data, uint32_t datalen) -> int32_t { \
+    return ctx->FUNCTION<keystr_value_object>( Name(scope), Name(ctx->code.value), Name(table), keys, data, datalen); \
+  }; \
+  return validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
+
+#define READ_RECORD_STR(FUNCTION) \
+  auto lambda = [&](apply_context* ctx, std::string* keys, char *data, uint32_t datalen) -> int32_t { \
+    auto res = ctx->FUNCTION<keystr_value_index, by_scope_primary>( Name(scope), Name(code), Name(table), keys, data, datalen); \
+    return res; \
+  }; \
+  return validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
+
+DEFINE_INTRINSIC_FUNCTION6(env,store_str,store_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+  UPDATE_RECORD_STR(store_record)
+}
+DEFINE_INTRINSIC_FUNCTION6(env,update_str,update_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+  UPDATE_RECORD_STR(update_record)
+}
+DEFINE_INTRINSIC_FUNCTION4(env,remove_str,remove_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen) {
+  int32_t valueptr=0, valuelen=0;
+  UPDATE_RECORD_STR(remove_record)
+}
+
+DEFINE_INTRINSIC_FUNCTION7(env,load_str,load_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+  READ_RECORD_STR(load_record)
+}
+DEFINE_INTRINSIC_FUNCTION5(env,front_str,front_str,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
+  int32_t keyptr=0, keylen=0;
+  READ_RECORD_STR(front_record)
+}
+DEFINE_INTRINSIC_FUNCTION5(env,back_str,back_str,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
+  int32_t keyptr=0, keylen=0;
+  READ_RECORD_STR(back_record)
+}
+DEFINE_INTRINSIC_FUNCTION7(env,next_str,next_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+  READ_RECORD_STR(next_record)
+}
+DEFINE_INTRINSIC_FUNCTION7(env,previous_str,previous_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+  READ_RECORD_STR(previous_record)
+}
+DEFINE_INTRINSIC_FUNCTION7(env,lower_bound_str,lower_bound_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+  READ_RECORD_STR(lower_bound_record)
+}
+DEFINE_INTRINSIC_FUNCTION7(env,upper_bound_str,upper_bound_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
+  READ_RECORD_STR(upper_bound_record)
+}
 
 DEFINE_INTRINSIC_FUNCTION3(env, assert_sha256,assert_sha256,none,i32,dataptr,i32,datalen,i32,hash) {
    FC_ASSERT( datalen > 0 );
@@ -416,6 +480,15 @@ DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
 
   std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
 }
+
+DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+  
+  char* buff = memoryArrayPtr<char>(mem, data, datalen);
+  std::cerr << fc::to_hex(buff, datalen) << std::endl;
+}
+
 
 DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 }

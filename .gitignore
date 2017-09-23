@@ -71,3 +71,4 @@ build/*
 build-debug/*
 
 tn_data_*
+.vscode
