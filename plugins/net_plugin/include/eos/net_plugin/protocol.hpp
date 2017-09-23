@@ -26,7 +26,6 @@ namespace eos {
    static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
 
    struct time_message {
-              uint8_t precision; //!< precision
               tstamp  org;       //!< origin timestamp
               tstamp  rec;       //!< receive timestamp
               tstamp  xmt;       //!< transmit timestamp
@@ -73,9 +72,7 @@ FC_REFLECT( eos::handshake_message,
             (head_num)(head_id)
             (os)(agent) )
 
-FC_REFLECT( eos::time_message,
-            (precision)(org)(rec)(xmt)(dst) )
-
+FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
 FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
