@@ -101,9 +101,11 @@ namespace eos {
 
     unique_ptr<boost::asio::steady_timer> connector_check;
     unique_ptr<boost::asio::steady_timer> transaction_check;
+    unique_ptr<boost::asio::steady_timer> second_timer;
     boost::asio::steady_timer::duration   connector_period;
     boost::asio::steady_timer::duration   txn_exp_period;
     boost::asio::steady_timer::duration   resp_expected_period;
+    boost::asio::steady_timer::duration   second{std::chrono::seconds{32}};
 
     int16_t                       network_version;
     chain_id_type                 chain_id;
@@ -118,6 +120,21 @@ namespace eos {
     vector<transaction_id_type>   pending_notify;
 
     shared_ptr<tcp::resolver>     resolver;
+
+    /** \name Peer Timestamps
+     *  Time message handling
+     *  @{
+     */
+    const tstamp DUSECS{1000000};
+    const tstamp HUSECS{1024*1024};
+    const int MINSTEP{5}; //!< Minimum change in clock value
+    const int MAXSTEP{20000}; //!< Maximum clock increment
+    const size_t MINLOOPS{5}; //!< Minimum number of clock samples
+    const double PHI{15e-6}; //!< Frequency tolerance (15 ppm)
+    uint8_t                       precision;  //!< precision
+    double                        rootdelay;  //!< root delay
+    double                        rootdisp;   //!< root dispersion
+    /** @} */
 
     void connect( connection_ptr c );
     void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
@@ -137,6 +154,27 @@ namespace eos {
     void broadcast_block_impl( const signed_block &sb);
 
     void handle_message( connection_ptr c, const handshake_message &msg);
+    /** \name Peer Timestamps
+     *  Time message handling
+     *  @{
+     */
+    /** \brief Process time_message
+     *
+     * Calculate offset, delay and dispersion.  Note carefully the
+     * implied processing.  The first-order difference is done
+     * directly in 64-bit arithmetic, then the result is converted
+     * to floating double.  All further processing is in
+     * floating-double arithmetic with rounding done by the hardware.
+     * This is necessary in order to avoid overflow and preserve precision.
+     *
+     * The delay calculation is a special case.  In cases where the
+     * server and client clocks are running at different rates and
+     * with very fast networks, the delay can appear negative.  In
+     * order to avoid violating the Principle of Least Astonishment,
+     * the delay is clamped to not less than the system precision.
+     */
+    void handle_message( connection_ptr c, const time_message &msg);
+    /** @} */
     void handle_message( connection_ptr c, const notice_message &msg);
     void handle_message( connection_ptr c, const request_message &msg);
     void handle_message( connection_ptr c, const sync_request_message &msg);
@@ -150,6 +188,17 @@ namespace eos {
 
     void expire_txns( );
     void connection_monitor( );
+    /** \name Peer Timestamps
+     *  Time message handling
+     *  @{
+     */
+    /** \brief Determine local clock precision
+     */
+    void determine_clock_precision();
+    /** \brief 1 second ticker, for peer heartbeat
+     */
+    void ticker();
+    /** @} */
   };
 
   static net_plugin_impl *my_impl;
@@ -274,11 +323,61 @@ namespace eos {
     string                  peer_addr;
     unique_ptr<boost::asio::steady_timer> response_expected;
 
+    /** \name Peer Timestamps
+     *  Time message handling
+     *  @{
+     */
+    // Members set from network data
+    tstamp                         reftime;         //!< reference time
+    uint8_t                        precision;       //!< Peer's own assessment of its clock precision
+    double                         rootdelay;       //!< Total round-trip delay to the reference clock
+    double                         rootdisp;        //!< Total dispersion to the reference clock
+    tstamp                         org{0};          //!< originate timestamp
+    tstamp                         rec{0};          //!< receive timestamp
+    tstamp                         dst{0};          //!< destination timestamp
+    tstamp                         xmt{0};          //!< transmit timestamp
+
+    // Computed data
+    double                         update_time{0};  //!< update time
+    double                         offset{0};       //!< peer offset
+    double                         delay{0};        //!< peer delay
+    double                         disp{0};         //!< peer dispersion
+    double                         jitter{0};       //!< RMS jitter
+
+    char                           ts[32];          //!< working buffer for making human readable timestamps
+    /** @} */
+
     bool connected ();
     bool current ();
     void reset ();
     void close ();
     void send_handshake ();
+
+    /** \name Peer Timestamps
+     *  Time message handling
+     */
+    /** @{ */
+    /** \brief Convert an std::chrono nanosecond rep to a human readable string
+     */
+    char* convert_tstamp(const tstamp& t);
+    /**  \brief Populate and queue time_message
+     */
+    void send_time();
+    /** \brief Populate and queue time_message immediately using incoming time_message
+     */
+    void send_time(const time_message& msg);
+    /** \brief Read system time and convert to a 64 bit integer.
+     *
+     * There are only two calls on this routine in the program.  One
+     * when a packet arrives from the network and the other when a
+     * packet is placed on the send queue.  Calls the kernel time of
+     * day routine and converts to a (at least) 64 bit integer.
+     */
+    tstamp get_time()
+    {
+      return std::chrono::system_clock::now().time_since_epoch().count();
+    }
+    /** @} */
 
     void enqueue( const net_message &msg );
     void enqueue_sync_block ();
@@ -402,6 +501,42 @@ namespace eos {
       handshake_initializer::populate(hello);
       enqueue (hello);
     }
+
+  char* connection::convert_tstamp(const tstamp& t)
+  {
+    const long NsecPerSec{1000000000};
+    time_t seconds = t / NsecPerSec;
+    strftime(ts, 32, "%F %T", localtime(&seconds));
+    snprintf(ts+19, 32-19, ".%ld", t % NsecPerSec);
+    return ts;
+  }
+
+  void connection::send_time () {
+    dlog("Sending time message");
+    time_message xpkt;
+    xpkt.precision = my_impl->precision;
+    xpkt.org = rec;
+    xpkt.rec = dst;
+    xpkt.xmt = get_time();
+    org = xpkt.xmt;
+    enqueue(xpkt);
+    dlog("Outgoing rec is ${rec} (${ts})", ("rec", rec)("ts", convert_tstamp(rec)));
+    dlog("Outgoing dst is ${dst} (${ts})", ("dst", dst)("ts", convert_tstamp(dst)));
+    dlog("Outgoing org (which is xmt) is ${org} (${ts})", ("org", org)("ts", convert_tstamp(org)));
+  }
+
+  void connection::send_time (const time_message& msg) {
+    dlog("Sending time message");
+    time_message xpkt;
+    xpkt.precision = my_impl->precision;
+    xpkt.org = msg.xmt;
+    xpkt.rec = msg.dst;
+    xpkt.xmt = get_time();
+    enqueue(xpkt);
+    dlog("Outgoing rec is ${rec} (${ts})", ("rec", xpkt.rec)("ts", convert_tstamp(rec)));
+    dlog("Outgoing org is ${org} (${ts})", ("org", xpkt.org)("ts", convert_tstamp(org)));
+    dlog("Outgoing xmt is ${xmt} (${ts})", ("xmt", xpkt.xmt)("ts", convert_tstamp(xmt)));
+  }
 
   void connection::enqueue( const net_message &m ) {
     out_queue.push_back( m );
@@ -817,6 +952,54 @@ namespace eos {
       c->last_handshake = msg;
     }
 
+    void net_plugin_impl::handle_message (connection_ptr c, const time_message &msg) {
+      /* We've already lost however many microseconds it took to dispatch
+       * the message, but it can't be helped.
+       */
+      msg.dst = c->get_time();
+
+      dlog("Processing time message");
+
+      auto log2d = [](uint8_t logbasetwo) {
+        return logbasetwo < 0 ? 1. / (1L << -logbasetwo) : 1L << logbasetwo;
+      };
+
+      // If the transmit timestamp is zero, the peer is horribly broken.
+      if(msg.xmt == 0)
+        return;                 /* invalid timestamp */
+
+      if(msg.xmt == c->xmt)
+        return;                 /* duplicate packet */
+
+      c->xmt = msg.xmt;
+      c->rec = msg.rec;
+      c->dst = msg.dst;
+
+      if(msg.org == 0)
+      {
+        c->send_time(msg);
+        return;  // We don't have enough data to perform the calculation yet.
+      }
+
+      c->precision = msg.precision;
+
+      dlog("Calculation rec is ${rec} (${ts})", ("rec", msg.rec)("ts", c->convert_tstamp(msg.rec)));
+      dlog("Calculation org is ${org} (${ts})", ("org", c->org)("ts", c->convert_tstamp(c->org)));
+      dlog("Calculation xmt is ${xmt} (${ts})", ("xmt", msg.xmt)("ts", c->convert_tstamp(msg.xmt)));
+      dlog("Calculation dst is ${dst} (${ts})", ("dst", c->dst)("ts", c->convert_tstamp(c->dst)));
+      c->offset = (double(c->rec - c->org) + double(msg.xmt - c->dst)) / 2;
+      c->delay = std::max(double(c->rec - c->org) - double(msg.xmt - c->dst),
+                          log2d(precision));
+      c->disp = log2d(msg.precision) + log2d(precision) + PHI *
+                    double(msg.dst - c->org);
+      double NsecPerUsec{1000};
+      dlog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
+      dlog("Delay to client is ${d} (${us}us)", ("d", c->delay)("us", c->delay/NsecPerUsec));
+      dlog("Dispersion is ${d}", ("d", c->disp));
+      c->org = 0;
+      c->rec = 0;
+    }
+
     void net_plugin_impl::handle_message (connection_ptr c, const notice_message &msg) {
       //peer tells us about one or more blocks or txns. We need to forward only those
       //we don't already know about. and for each peer note that it knows
@@ -855,7 +1038,7 @@ namespace eos {
           try {
             send_now.push_back(cc.get_recent_transaction(t));
           } catch (...) {
-            elog( "failed to retieve transaction");
+            elog( "failed to retrieve transaction");
           }
         }
         else {
@@ -1116,6 +1299,21 @@ namespace eos {
         });
     }
 
+    void net_plugin_impl::ticker () {
+      second_timer->expires_from_now (second);
+      second_timer->async_wait ([&](boost::system::error_code ec) {
+          ticker ();
+          if (ec) {
+              wlog ("Network time ticked sooner than 1 seconds: ${m}", ("m", ec.message()));
+          }
+          for (auto &c : connections ) {
+            if (c->socket->is_open()) {
+              c->send_time();
+            }
+          }
+        });
+    }
+
     void net_plugin_impl::start_monitors () {
       connector_check.reset(new boost::asio::steady_timer (app().get_io_service()));
       transaction_check.reset(new boost::asio::steady_timer (app().get_io_service()));
@@ -1261,6 +1459,40 @@ namespace eos {
       }
     }
 
+    void net_plugin_impl::determine_clock_precision () {
+      tstamp last = std::chrono::system_clock::now().time_since_epoch().count();
+      long diff;
+      long val{my_impl->MAXSTEP};
+      long usec{0};
+      size_t i{0};
+      for( ; i < my_impl->MINLOOPS && usec < my_impl->HUSECS; )
+      {
+        tstamp t = std::chrono::system_clock::now().time_since_epoch().count();
+        diff = t - last;
+        last = t;
+        if(diff < 0)
+          diff += my_impl->DUSECS;
+        usec += diff;
+        if(diff > my_impl->MINSTEP)
+        {
+          ++i;
+          if(diff < val)
+            val = diff;
+        }
+      }
+      ilog("Local clock precision is ${precision} nsec after ${i} loop${suffix}", ("precision", val)("i", i)("suffix", i == 1 ? "" : "s"));
+
+      // Find the nearest power of two.
+      val--;
+      val |= val >> 1;
+      val |= val >> 2;
+      val |= val >> 4;
+      val |= val >> 8;
+      val |= val >> 16;
+      val++;
+      my_impl->precision = uint8_t(val);
+    }
+
   void
   handshake_initializer::populate (handshake_message &hello) {
     hello.network_version = my_impl->network_version;
@@ -1372,6 +1604,10 @@ namespace eos {
     my->chain_plug = app().find_plugin<chain_plugin>();
     my->chain_plug->get_chain_id(my->chain_id);
     fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
+
+    my->second_timer.reset(new boost::asio::steady_timer (app().get_io_service()));
+    my->determine_clock_precision();
+    my->ticker();
   }
 
   void net_plugin::plugin_startup() {
