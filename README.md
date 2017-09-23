@@ -421,7 +421,7 @@ You can find up to date information about EOS Docker in the [Docker Readme](http
 
 
 <a name="manualdep"></a>
-### Manual installation of the dependencies
+## Manual installation of the dependencies
 
 If you prefer to manually build dependencies - follow the steps below.
 
@@ -438,7 +438,7 @@ Dependencies:
 * [binaryen](https://github.com/WebAssembly/binaryen.git)
 
 <a name="ubuntu"></a>
-#### Clean install Ubuntu 16.10 
+### Clean install Ubuntu 16.10 
 
 Install the development toolkit:
 
@@ -514,7 +514,7 @@ make -j4 install
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>. 
 
 <a name="macos"></a>
-#### MacOS Sierra 10.12.6 
+### MacOS Sierra 10.12.6 
 
 macOS additional Dependencies:
 
