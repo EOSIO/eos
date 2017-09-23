@@ -53,7 +53,7 @@ RUN cd /tmp && wget https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.
 #RUN cd /tmp && git clone https://github.com/EOSIO/eos.git --recursive \
 #  && mkdir -p /opt/eos/bin/data-dir && cd eos && mkdir build && cd build \
 #  && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
-#  && make -j$(nproc) && make install && mv ../contracts / \
+#  && make -j$(nproc) && make install && mv contracts / \
 #  && ln -s /opt/eos/bin/eos* /usr/local/bin \
 #  && rm -rf /tmp/eos*
 
@@ -63,7 +63,7 @@ RUN mkdir -p /opt/eos/bin/data-dir && mkdir -p /tmp/eos/build/
 
 COPY . /tmp/eos/
 RUN cd /tmp/eos/build && cmake -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos ../ \
-  && make -j$(nproc) && make install && mv ../contracts / \
+  && make -j$(nproc) && make install && mv contracts / \
   && ln -s /opt/eos/bin/eos* /usr/local/bin \
   && rm -rf /tmp/eos*
 
