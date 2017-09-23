@@ -57,13 +57,7 @@ struct schedule_entry {
    std::reference_wrapper<const pending_transaction> transaction;
 
    friend bool operator<( const schedule_entry& l, const schedule_entry& r ) {
-      if (l.cycle < r.cycle) {
-            return true;
-      } else if (l.cycle == r.cycle) {
-            return l.thread < r.thread;
-      } 
-
-      return false;
+      return std::tie(l.cycle, l.thread) < std::tie(r.cycle, r.thread);
    }
 };
 
@@ -72,7 +66,7 @@ static block_schedule from_entries(vector<schedule_entry>& entries) {
    // for the highest cycle index first meaning the naive resize in the loop below
    // is usually the largest and only resize
    auto reverse = [](const schedule_entry& l, const schedule_entry& r) {
-      return !(l < r);
+      return std::tie(r.cycle, r.thread) < std::tie(l.cycle, l.thread);
    };
 
    std::sort(entries.begin(), entries.end(), reverse);
