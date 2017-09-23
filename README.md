@@ -56,6 +56,15 @@ The following instructions overview the process of getting the software, buildin
 
 For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
 
+It is called build.sh with following inputs.
+- architecture [ubuntu|darwin]
+- optional mode [full|build] 
+
+The second optional input can be full or build where full implies that it installs dependencies and builds eos. If you omit this input then build script always installs dependencies and then builds eos.
+
+```bash
+./build.sh <architecture> <optional mode>
+```
 Clone EOS repository recursively as below and run build.sh located in root `eos` folder.
 
 <a name="autoubuntu"></a>
