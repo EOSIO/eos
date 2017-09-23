@@ -73,6 +73,9 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_max);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
       
+      //test chain
+      WASM_TEST_HANDLER(test_chain, test_activeprods);
+
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }

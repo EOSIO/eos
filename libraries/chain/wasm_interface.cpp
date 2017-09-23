@@ -267,6 +267,13 @@ DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
    return *reinterpret_cast<uint64_t *>(&res);
 }
 
+DEFINE_INTRINSIC_FUNCTION2(env,getActiveProducers,getActiveProducers,none,i32,producers,i32,datalen) {
+   auto& wasm    = wasm_interface::get();
+   auto  mem     = wasm.current_memory;
+   types::AccountName* dst = memoryArrayPtr<types::AccountName>( mem, producers, datalen );
+   return wasm_interface::get().current_validate_context->get_active_producers(dst, datalen);
+}
+
 DEFINE_INTRINSIC_FUNCTION0(env,now,now,i32) {
    return wasm_interface::get().current_validate_context->controller.head_block_time().sec_since_epoch();
 }

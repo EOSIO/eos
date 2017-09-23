@@ -420,6 +420,10 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_max"), {}, {} ),
          tx_resource_exhausted, is_tx_resource_exhausted );
 
+      auto& gpo = chain_db.get<global_property_object>();
+      std::vector<AccountName> prods(gpo.active_producers.size());
+      std::copy(gpo.active_producers.begin(), gpo.active_producers.end(), prods.begin());
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_chain", "test_activeprods"), {}, fc::raw::pack(prods) ) == WASM_TEST_PASS, "test_chain::test_activeprods()" );
 
 
 } FC_LOG_AND_RETHROW() }
