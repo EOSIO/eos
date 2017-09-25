@@ -327,100 +327,102 @@ void send_transaction(const std::vector<types::Message>& messages, const std::ve
    std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
 }
 
-void create_set_account_permission_subcommand(CLI::App* accountCmd) {
-   auto permissions = accountCmd->add_subcommand("permission", "set parmaters dealing with account permissions");
-
+struct set_account_permission_subcommand {
    string accountStr;
-   permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
-   
    string permissionStr;
-   permissions->add_option("permission", permissionStr, "The permission name to set/delete an authority for")->required();
-
    string authorityJsonOrFile;
-   permissions->add_option("authority", authorityJsonOrFile, "[delete] NULL, [create/update] JSON string or filename defining the authority")->required();
-
    string parentStr;
-   permissions->add_option("parent", parentStr, "[create] The permission name of this parents permission (Defaults to: \"Active\")");
-   
    bool skip_sign;
-   permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
 
-   permissions->set_callback([&] {
-      Name account = Name(accountStr);
-      Name permission = Name(permissionStr);
-      bool is_delete = boost::iequals(authorityJsonOrFile, "null");
-      
-      if (is_delete) {
-         send_transaction({create_deleteauth(account, permission)}, {account, config::EosContractName}, skip_sign);
-      } else {
-         fc::variant parsedAuthority;
-         if (boost::istarts_with(authorityJsonOrFile, "{")) {
-            parsedAuthority = fc::json::from_string(authorityJsonOrFile);
+   set_account_permission_subcommand(CLI::App* accountCmd) {
+      auto permissions = accountCmd->add_subcommand("permission", "set parmaters dealing with account permissions");
+      permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
+      permissions->add_option("permission", permissionStr, "The permission name to set/delete an authority for")->required();
+      permissions->add_option("authority", authorityJsonOrFile, "[delete] NULL, [create/update] JSON string or filename defining the authority")->required();
+      permissions->add_option("parent", parentStr, "[create] The permission name of this parents permission (Defaults to: \"Active\")");
+      permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+
+      permissions->set_callback([this] {
+         Name account = Name(accountStr);
+         Name permission = Name(permissionStr);
+         bool is_delete = boost::iequals(authorityJsonOrFile, "null");
+         
+         if (is_delete) {
+            send_transaction({create_deleteauth(account, permission)}, {account, config::EosContractName}, skip_sign);
          } else {
-            parsedAuthority = fc::json::from_file(authorityJsonOrFile);
-         }
-
-         auto authority = parsedAuthority.as<types::Authority>();
-
-         Name parent;
-         if (parentStr.size() == 0) {
-            // see if we can auto-determine the proper parent
-            const auto account_result = call(get_account_func, fc::mutable_variant_object("name", accountStr));
-            const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
-            auto permissionPredicate = [&permissionStr](const auto& perm) { 
-               return perm.is_object() && 
-                      perm.get_object().contains("permission") &&
-                      boost::equals(perm.get_object()["permission"].get_string(), permissionStr); 
-            };
-
-            auto itr = boost::find_if(existing_permissions, permissionPredicate);
-            if (itr != existing_permissions.end()) {
-               parent = Name((*itr).get_object()["parent"].get_string());
+            types::Authority authority;
+            if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
+               authority = types::Authority { 1, { {public_key_type(authorityJsonOrFile), 1 } }, {} };
             } else {
-               // if this is a new permission and there is no parent we default to "active"
-               parent = Name("active");
+               fc::variant parsedAuthority;
+               if (boost::istarts_with(authorityJsonOrFile, "{")) {
+                  parsedAuthority = fc::json::from_string(authorityJsonOrFile);
+               } else {
+                  parsedAuthority = fc::json::from_file(authorityJsonOrFile);
+               }
+
+               authority = parsedAuthority.as<types::Authority>();
             }
-         } else {
-            parent = Name(parentStr);
-         }
 
-         send_transaction({create_updateauth(account, permission, parent, authority)}, {Name(account), config::EosContractName}, skip_sign);
-      }      
-   });
-}
+            Name parent;
+            if (parentStr.size() == 0) {
+               // see if we can auto-determine the proper parent
+               const auto account_result = call(get_account_func, fc::mutable_variant_object("name", accountStr));
+               const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
+               auto permissionPredicate = [this](const auto& perm) { 
+                  return perm.is_object() && 
+                        perm.get_object().contains("permission") &&
+                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr); 
+               };
 
-void create_set_action_permission_subcommand(CLI::App* actionRoot) {
-   auto permissions = actionRoot->add_subcommand("permission", "set parmaters dealing with account permissions");
+               auto itr = boost::find_if(existing_permissions, permissionPredicate);
+               if (itr != existing_permissions.end()) {
+                  parent = Name((*itr).get_object()["parent"].get_string());
+               } else {
+                  // if this is a new permission and there is no parent we default to "active"
+                  parent = Name("active");
+               }
+            } else {
+               parent = Name(parentStr);
+            }
 
-   string accountStr;
-   permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
+            send_transaction({create_updateauth(account, permission, parent, authority)}, {Name(account), config::EosContractName}, skip_sign);
+         }      
+      });
+   }
    
+};
+
+struct set_action_permission_subcommand {
+   string accountStr;
    string codeStr;
-   permissions->add_option("code", codeStr, "The account that owns the code for the action")->required();
-
    string typeStr;
-   permissions->add_option("type", typeStr, "the type of the action")->required();
-
    string requirementStr;
-   permissions->add_option("requirement", requirementStr, "[delete] NULL, [set/update] The permission name require for executing the given action")->required();
-
    bool skip_sign;
-   permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
 
-   permissions->set_callback([&] {
-      Name account = Name(accountStr);
-      Name code = Name(codeStr);
-      Name type = Name(typeStr);
-      bool is_delete = boost::iequals(requirementStr, "null");
-      
-      if (is_delete) {
-         send_transaction({create_unlinkauth(account, code, type)}, {account, config::EosContractName}, skip_sign);
-      } else {
-         Name requirement = Name(requirementStr);
-         send_transaction({create_linkauth(account, code, type, requirement)}, {Name(account), config::EosContractName}, skip_sign);
-      }      
-   });
-}
+   set_action_permission_subcommand(CLI::App* actionRoot) {
+      auto permissions = actionRoot->add_subcommand("permission", "set parmaters dealing with account permissions");
+      permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
+      permissions->add_option("code", codeStr, "The account that owns the code for the action")->required();
+      permissions->add_option("type", typeStr, "the type of the action")->required();
+      permissions->add_option("requirement", requirementStr, "[delete] NULL, [set/update] The permission name require for executing the given action")->required();
+      permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+
+      permissions->set_callback([this] {
+         Name account = Name(accountStr);
+         Name code = Name(codeStr);
+         Name type = Name(typeStr);
+         bool is_delete = boost::iequals(requirementStr, "null");
+         
+         if (is_delete) {
+            send_transaction({create_unlinkauth(account, code, type)}, {account, config::EosContractName}, skip_sign);
+         } else {
+            Name requirement = Name(requirementStr);
+            send_transaction({create_linkauth(account, code, type, requirement)}, {Name(account), config::EosContractName}, skip_sign);
+         }      
+      });
+   }
+};
 
 int main( int argc, char** argv ) {
    CLI::App app{"Command Line Interface to Eos Daemon"};
@@ -722,13 +724,13 @@ int main( int argc, char** argv ) {
    auto setAccount = setSubcommand->add_subcommand("account", "set or update blockchain account state")->require_subcommand();
 
    // set account permission
-   create_set_account_permission_subcommand(setAccount);
+   auto setAccountPermission = set_account_permission_subcommand(setAccount);
 
    // set action
    auto setAction = setSubcommand->add_subcommand("action", "set or update blockchain action state")->require_subcommand();
    
    // set action permission
-   create_set_action_permission_subcommand(setAction);
+   auto setActionPermission = set_action_permission_subcommand(setAction);
 
    // Transfer subcommand
    string sender;
