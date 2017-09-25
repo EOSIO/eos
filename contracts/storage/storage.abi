@@ -1,0 +1,69 @@
+{
+    "types": [{
+        "newTypeName": "AccountName",
+        "type": "Name"
+        }
+    ],
+    "structs": [{
+        "name": "Transfer",
+        "base": "",
+        "fields": {
+            "from": "AccountName",
+            "to": "AccountName",
+            "amount": "UInt64"
+        } 
+    },{
+        "name": "Account",
+        "base": "",
+        "fields": {
+            "account": "AccountName",
+            "tokbalance": "UInt64",
+            "quotausage: "UInt64"
+        }
+    },{ 
+        "name": "Link",
+        "base": "",
+        "fields": {
+            "owner"  : "AccountName",
+            "eospath" : "String",
+            "ipfspath" : "String",
+            "size"  : "UInt32",
+            "store" : "UInt8",
+            "accept": "UInt8",
+            "stake: : "UInt64",
+            "producer": "AccountName"
+        }
+    }
+  ],
+    "actions": [{
+         "action": "transfer",
+         "type": "Transfer"
+    },{
+         "action": "setlink",
+         "type": "Link"
+    },{
+         "action": "removelink",
+         "type": "String"
+    },{
+         "action": "acceptstore",
+         "type": "String"
+    },{
+         "action": "rejectstore",
+         "type": "String"
+    }
+  ],
+    "tables": [{
+         "table": "account",
+         "type": "account",
+         "indextype": "i64",
+         "keynames" : ["account"],
+         "keytypes" : ["AccountName"]
+    },{
+         "table": "links",
+         "type" : "Link",
+         "indextype": "str",
+         "keynames" : ["eospath"]
+         "keytypes" : ["String"]
+    }
+  ]
+}
