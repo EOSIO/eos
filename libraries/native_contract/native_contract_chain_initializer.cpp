@@ -104,6 +104,17 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
             a.set_abi(eos_contract_abi());
          }
       });
+      const auto& owner = db.create<permission_object>([&name](permission_object& p) {
+         p.owner = name;
+         p.name = "owner";
+         p.auth.threshold = 1;
+      });
+      db.create<permission_object>([&name, &owner](permission_object& p) {
+         p.owner = name;
+         p.parent = owner.id;
+         p.name = "active";
+         p.auth.threshold = 1;
+      });
       db.create<native::eos::BalanceObject>([&name, liquidBalance]( auto& b) {
          b.ownerName = name;
          b.balance = liquidBalance;
