@@ -1,72 +1,274 @@
 /**
-   @defgroup eosiorpc eosd RPC Interface
-   @brief Describes how to interface with eosd over HTTP RPC
+@defgroup eosiorpc eosd RPC Interface
+@brief Describes how to interface with eosd over HTTP RPC
 
-   `eosd` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
-   will explain how to use some of the APIs to get information about the blockchain and send transactions.
+@section tableofcontent Table Of Contents
+- [Configuration](#configuration)
+- [Chain API](#chainrpc)
+  - [get_info](#v1chaingetinfo)
+  - [get_block](#v1chaingetblock)
+  - [get_account](#v1chaingetaccount)
+  - [get_code](#v1chaingetcode)
+  - [get_table_rows](#v1chaingettablerows)
+  - [abi_json_to_bin](#v1chainabijsontobin)
+  - [abi_bin_to_json](#v1chainabibintojson)
+  - [push_transaction](#v1chainpushtransaction)
+  - [push_transactions](#v1chainpushtransactions)
+  - [get_required_keys](#v1chaingetrequiredkeys)
 
-   @section chainrpc Chain API Configuration 
+@section configuration Configuration
 
-   Before you can query `eosd` you must first enable an API plugin. To do this add the following line to your `config.ini`
+`eosd` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
+will explain how to use some of the APIs to get information about the blockchain and send transactions.
 
-   ```
-   plugin = eos::chain_api_plugin
-   ```
+Before you can query `eosd` you must first enable an API plugin. To do this add the following line to your `config.ini`
 
-   By default an HTTP server will start on `127.0.0.1:8888`; however, you can also change this with the following configureation line:
+```
+plugin = eos::chain_api_plugin
+```
 
-   ```
-   http-server-endpoint = 127.0.0.1:8888
-   ```
+By default an HTTP server will start on `127.0.0.1:8888`; however, you can also change this with the following configuration line in your `config.ini`:
 
-   @subsection v1chaingetinfo get_info
-   
-   The `get_info` RPC command can be found at:
-   
-   ```
-   curl http://127.0.0.1:8888/v1/chain/get_info 
-   ```
+```
+http-server-endpoint = 127.0.0.1:8888
+```
+===
 
-   And it should return something like:
-   ```
-   { 
-      "head_block_num":449,
-      "last_irreversible_block_num": 434,
-      "head_block_id":"000001c1a0f072a5ca76831ac6c6e2988efcf162e953eb40046ec2ceca817a9f",
-      "head_block_time":"2017-07-18T21:02:24",
-      "head_block_producer":"initd",
-      "recent_slots":"0000000000000000000000000000000000000000000000000000000000001111",
-      "participation_rate":"0.06250000000000000"
-   }
-   ```
+@section chainrpc Chain API
 
-   @subsection v1chaingetblock get_block
 
-@subsubsection examplegetlbock  Example get_block Usage
-   ```
-   curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":5}'
-   curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b}'
-   ```
+@subsection v1chaingetinfo get_info
 
-@subsubsection examplegetlbockresult  Example get_block Result
-   ```
-	 {
-		 "previous": "0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b",
-		 "timestamp": "2017-07-18T20:16:36",
-		 "transaction_merkle_root": "0000000000000000000000000000000000000000000000000000000000000000",
-		 "producer": "initf",
-		 "producer_changes": [ ],
-		 "producer_signature": "204cb94b3186c3b4a7f88be4e9db9f8af2ffdb7ef0f27a065c8177a5fcfacf876f684e59c39fb009903c0c59220b147bb07f1144df1c65d26c57b534a76dd29073",
-		 "cycles": [ ],
- 		 "id":"000000050c0175cbf218a70131ddc3c3fab8b6e954edef77e0bfe7c36b599b1d",
- 		 "block_num":5,
- 		 "refBlockPrefix":27728114
-	 }
-   ```
+The `get_info` RPC command can be found at:
 
-   @subsection v1chainpushtransaction push_transaction
+```
+curl http://127.0.0.1:8888/v1/chain/get_info
+```
 
-This method expects a transaction in JSON format and will attempt to apply it to the blockchain, 
+And it should return something like:
+```
+{
+  "head_block_num":449,
+  "last_irreversible_block_num": 434,
+  "head_block_id":"000001c1a0f072a5ca76831ac6c6e2988efcf162e953eb40046ec2ceca817a9f",
+  "head_block_time":"2017-07-18T21:02:24",
+  "head_block_producer":"initd",
+  "recent_slots":"0000000000000000000000000000000000000000000000000000000000001111",
+  "participation_rate":"0.06250000000000000"
+}
+```
+
+
+@subsection v1chaingetblock get_block
+
+Get information related to a block.
+
+@subsubsection examplegetblock  Example get_block Usage
+```
+curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":5}'
+curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b}'
+```
+
+@subsubsection examplegetblockresult  Example get_block Result
+```
+{
+  "previous": "0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b",
+  "timestamp": "2017-07-18T20:16:36",
+  "transaction_merkle_root": "0000000000000000000000000000000000000000000000000000000000000000",
+  "producer": "initf",
+  "producer_changes": [ ],
+  "producer_signature": "204cb94b3186c3b4a7f88be4e9db9f8af2ffdb7ef0f27a065c8177a5fcfacf876f684e59c39fb009903c0c59220b147bb07f1144df1c65d26c57b534a76dd29073",
+  "cycles": [ ],
+  "id":"000000050c0175cbf218a70131ddc3c3fab8b6e954edef77e0bfe7c36b599b1d",
+  "block_num":5,
+  "refBlockPrefix":27728114
+}
+```
+
+
+@subsection v1chaingetaccount get_account
+
+Get information related to an account.
+
+@subsubsection examplegetaccount  Example get_account Usage
+```
+curl  http://localhost:8888/v1/chain/get_account -X POST -d '{"name":"inita"}'
+```
+
+@subsubsection examplegetaccountresult  Example get_account Result
+```
+{
+  "name": "inita",
+  "eos_balance": "999998.9574 EOS",
+  "staked_balance": "0.0000 EOS",
+  "unstaking_balance": "0.0000 EOS",
+  "last_unstaking_time": "2106-02-07T06:28:15",
+  "permissions": [
+    {
+      "name": "active",
+      "parent": "owner",
+      "required_auth": {
+        "threshold": 1,
+        "keys": [
+          {
+            "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+            "weight": 1
+          }
+        ],
+        "accounts": []
+      }
+    },
+    {
+      "name": "owner",
+      "parent": "owner",
+      "required_auth": {
+        "threshold": 1,
+        "keys": [
+          {
+            "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+            "weight": 1
+          }
+        ],
+        "accounts": []
+      }
+    }
+  ]
+}
+```
+
+
+@subsection v1chaingetcode get_code
+
+Fetch smart contract code.
+
+@subsubsection examplegetcode Example get_code Usage
+```
+curl  http://localhost:8888/v1/chain/get_code -X POST -d '{"name":"currency"}'
+```
+
+@subsubsection examplegetcoderesult  Example get_code Result
+```
+{
+  "name":"currency",
+  "code_hash":"a1c8c84b4700c09c8edb83522237439e33cf011a4d7ace51075998bd002e04c9",
+  "wast":"(module\n  (type $0 (func (param i64 i64 i32) (result i32)))\n ...",
+  "abi": {
+   "types": [
+     {
+       "newTypeName": "AccountName",
+       "type": "Name"
+     }
+   ],
+   "structs": [
+     {
+       "name": "transfer",
+       "base": "",
+       "fields": {
+         "from": "AccountName",
+         "to": "AccountName",
+         "amount": "UInt64"
+       }
+     },
+     {
+       "name": "account",
+       "base": "",
+       "fields": {
+         "account": "Name",
+         "balance": "UInt64"
+       }
+     }
+   ],
+   "actions": [
+     {
+       "action": "transfer",
+       "type": "transfer"
+     }
+   ],
+   "tables": [
+     {
+       "table": "account",
+       "indextype": "i64",
+       "keynames": [
+         "account"
+       ],
+       "keytype": [],
+       "type": "account"
+     }
+   ]
+ }
+}
+```
+
+
+@subsection v1chaingettablerows get_table_rows
+
+Fetch smart contract data from an account.
+
+@subsubsection examplegettablerows get_table_rows Usage
+```
+curl  http://localhost:8888/v1/chain/get_table_rows -X POST -d '{"scope":"inita", "code":"currency", "table":"account", "json": true}'
+curl  http://localhost:8888/v1/chain/get_table_rows -X POST -d '{"scope":"inita", "code":"currency", "table":"account", "json": true, "lower_bound":0, "upper_bound":-1, "limit":10}'
+```
+
+@subsubsection examplegettablerowsresult  Example get_table_rows Result
+```
+{
+  "rows": [
+    {
+      "account": "account",
+      "balance": 1000
+    }
+  ],
+  "more": false
+}
+```
+
+
+@subsection v1chaingeabijsontobin abi_json_to_bin
+
+Serialize json to binary hex. The resulting binary hex is usually used for the data field in [push_transaction](#v1chainpushtransaction).
+
+@subsubsection exampleabijsontobin Example abi_json_to_bin Usage
+```
+curl  http://localhost:8888/v1/chain/abi_json_to_bin -X POST -d '{"code":"currency", "action":"transfer", "args":{"from":"initb", "to":"initc", "amount":1000}}'
+```
+
+@subsubsection exampleabijsontobinresult  Example abi_json_to_bin Result
+```
+{
+  "binargs": "000000000041934b000000008041934be803000000000000",
+  "required_scope": [],
+  "required_auth": []
+}
+```
+
+
+@subsection v1chaingeabibintojson abi_bin_to_json
+
+Serialize back binary hex to json.
+
+@subsubsection exampleabibintojson Example abi_bin_to_json Usage
+```
+curl  http://localhost:8888/v1/chain/abi_bin_to_json -X POST -d '{"code":"currency", "action":"transfer", "binargs":"000000000041934b000000008041934be803000000000000"}'
+```
+
+@subsubsection exampleabibintojsonresult  Example abi_bin_to_json Result
+```
+{
+  "args": {
+    "from": "initb",
+    "to": "initc",
+    "amount": 1000
+  },
+  "required_scope": [],
+  "required_auth": []
+}
+```
+
+
+@subsection v1chainpushtransaction push_transaction
+
+This method expects a transaction in JSON format and will attempt to apply it to the blockchain,
 
 <b>Success Response</b>
 <p>
@@ -74,11 +276,11 @@ On success it will return HTTP 200 and the transaction ID.
 </p>
 
 ```
- 
-{ 
-   'transaction_id' : "..." 
+
+{
+  'transaction_id' : "..."
 }
- 
+
 
 ```
 
@@ -87,26 +289,51 @@ Just because the transaction is pushed locally does not mean that the transactio
 
 <b>Error Response</b>
 <p>
-If an error occurs it will return either HTTP 400 (Invalid arguments) or 500 (Internal Server Error) 
+If an error occurs it will return either HTTP 400 (Invalid arguments) or 500 (Internal Server Error)
 </p>
 
 ```
- 
+
 HTTP/1.1 500 Internal Server Error
 Content-Length: 1466
 
 ...error message...
- 
-```
-
-@subsection examplepushtrx Example push_transaction Usage
-This example assumes a transfer operation. The `refBlockNum` and `refBlockPrefix` are provided as a result of `/v1/chain/get_block`
 
 ```
-curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '{"refBlockNum":"5","refBlockPrefix":"27728114","expiration":"2017-07-18T22:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"c9252a0000000000050f14dc29000000d00700000000000008454f530000000000"}],"signatures":[],"authorizations":[]}'
+
+@subsubsection examplepushtrx Example push_transaction Usage
+This example assumes a transfer operation. The `refBlockNum` and `refBlockPrefix` are provided as a result of `/v1/chain/get_block`.
+```
+curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '{"refBlockNum":"100","refBlockPrefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}'
 ```
 
 
+@subsection v1chainpushtransactions push_transactions
 
+This method push multiple transactions at once.
+
+@subsubsection examplepushtrxs Example push_transactions Usage
+```
+curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '[{"refBlockNum":"101","refBlockPrefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, {"refBlockNum":"101","refBlockPrefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["inita","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["inita","initc"],"authorization":[{"account":"inita","permission":"active"}],"data":"000000008040934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}]'
+```
+
+
+@subsection v1chaingetrequiredkeys get_required_keys
+
+Get required keys to sign a transaction from list of your keys.
+
+@subsubsection examplegetrequiredkeys  Example get_required_keys Usage
+```
+curl  http://localhost:8888/v1/chain/get_required_keys -X POST -d '{"transaction": {"refBlockNum":"100","refBlockPrefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, "available_keys":["EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq","EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]}'
+```
+
+@subsubsection examplegetrequiredkeysresult  Example get_required_keys Result
+```
+{
+  "required_keys": [
+    "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+  ]
+}
+```
 
 */
