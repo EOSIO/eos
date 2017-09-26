@@ -53,6 +53,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64i64i64_general);
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
       WASM_TEST_HANDLER(test_db, key_str_general);
+      WASM_TEST_HANDLER(test_db, key_str_table);
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_sha256);
