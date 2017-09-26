@@ -1,0 +1,466 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2017-09-14 16:36+0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ENCODING\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "translation_canary"
+msgstr ""
+
+msgid "transaction_help_text_header"
+msgstr ""
+
+msgid "duplicate_transaction_help_text"
+msgstr ""
+
+msgid "missing_perms_help_text"
+msgstr ""
+
+msgid "missing_sigs_help_text"
+msgstr ""
+
+msgid "missing_scope_help_text"
+msgstr ""
+
+msgid "tx_unknown_account_help_text"
+msgstr ""
+
+msgid "unknown_account_help_text"
+msgstr ""
+
+msgid "missing_abi_help_text"
+msgstr ""
+
+msgid "unknown_wallet_help_text"
+msgstr ""
+
+msgid "bad_wallet_password_help_text"
+msgstr ""
+
+msgid "locked_wallet_help_text"
+msgstr ""
+
+msgid "duplicate_key_import_help_text"
+msgstr ""
+
+msgid "unknown_abi_table_help_text"
+msgstr ""
+
+msgid "err_locate_help_text"
+msgstr ""
+
+msgid "!?expiration"
+msgstr ""
+
+msgid "!?force_unique"
+msgstr ""
+
+msgid "!?host"
+msgstr ""
+
+msgid "!?port"
+msgstr ""
+
+msgid "!?wallet_host"
+msgstr ""
+
+msgid "!?wallet_port"
+msgstr ""
+
+msgid "!?verbose"
+msgstr ""
+
+msgid "!create"
+msgstr ""
+
+msgid "!create_key"
+msgstr ""
+
+msgid "!create_account"
+msgstr ""
+
+msgid "!create_account?creator"
+msgstr ""
+
+msgid "!create_account?name"
+msgstr ""
+
+msgid "!create_account?OwnerKey"
+msgstr ""
+
+msgid "!create_account?ActiveKey"
+msgstr ""
+
+msgid "!create_account?skip_signature"
+msgstr ""
+
+msgid "!create_producer"
+msgstr ""
+
+msgid "!create_producer?producer_name"
+msgstr ""
+
+msgid "!create_producer?producer_OwnerKey"
+msgstr ""
+
+msgid "!create_producer?permission"
+msgstr ""
+
+msgid "!create_producer?skip_signature"
+msgstr ""
+
+msgid "!get"
+msgstr ""
+
+msgid "!get_info"
+msgstr ""
+
+msgid "!get_block"
+msgstr ""
+
+msgid "!get_block?block"
+msgstr ""
+
+msgid "!get_account"
+msgstr ""
+
+msgid "!get_account?name"
+msgstr ""
+
+msgid "!get_code"
+msgstr ""
+
+msgid "!get_code?name"
+msgstr ""
+
+msgid "!get_code?code"
+msgstr ""
+
+msgid "!get_code?abi"
+msgstr ""
+
+msgid "!get_table"
+msgstr ""
+
+msgid "!get_table?scope"
+msgstr ""
+
+msgid "!get_table?contract"
+msgstr ""
+
+msgid "!get_table?table"
+msgstr ""
+
+msgid "!get_table?binary"
+msgstr ""
+
+msgid "!get_table?limit"
+msgstr ""
+
+msgid "!get_table?key"
+msgstr ""
+
+msgid "!get_table?lower"
+msgstr ""
+
+msgid "!get_table?upper"
+msgstr ""
+
+msgid "!get_accounts"
+msgstr ""
+
+msgid "!get_accounts?public_key"
+msgstr ""
+
+msgid "!get_servants"
+msgstr ""
+
+msgid "!get_servants?account"
+msgstr ""
+
+msgid "!get_transaction"
+msgstr ""
+
+msgid "!get_transaction?id"
+msgstr ""
+
+msgid "!get_transactions"
+msgstr ""
+
+msgid "!get_transactions?account_name"
+msgstr ""
+
+msgid "!get_transactions?skip_seq"
+msgstr ""
+
+msgid "!get_transactions?num_seq"
+msgstr ""
+
+msgid "!set"
+msgstr ""
+
+msgid "!set_contract"
+msgstr ""
+
+msgid "!set_contract?account"
+msgstr ""
+
+msgid "!set_contract?wast_file"
+msgstr ""
+
+msgid "!set_contract?abi_file"
+msgstr ""
+
+msgid "!set_contract?skip_sign"
+msgstr ""
+
+msgid "!set_producer"
+msgstr ""
+
+msgid "!set_producer_approve"
+msgstr ""
+
+msgid "!set_producer_unapprove"
+msgstr ""
+
+msgid "!set_producer_unapprove?user_name"
+msgstr ""
+
+msgid "!set_producer_unapprove?producer_name"
+msgstr ""
+
+msgid "!set_producer_unapprove?permission"
+msgstr ""
+
+msgid "!set_producer_unapprove?skip_signature"
+msgstr ""
+
+msgid "!set_proxy"
+msgstr ""
+
+msgid "!set_proxy?user_name"
+msgstr ""
+
+msgid "!set_proxy?proxy_name"
+msgstr ""
+
+msgid "!set_proxy?permission"
+msgstr ""
+
+msgid "!set_proxy?skip_signature"
+msgstr ""
+
+msgid "!transfer"
+msgstr ""
+
+msgid "!transfer?sender"
+msgstr ""
+
+msgid "!transfer?recipient"
+msgstr ""
+
+msgid "!transfer?amount"
+msgstr ""
+
+msgid "!transfer?memo"
+msgstr ""
+
+msgid "!transfer?skip_sign"
+msgstr ""
+
+msgid "!wallet"
+msgstr ""
+
+msgid "!wallet_create"
+msgstr ""
+
+msgid "!wallet_create?name"
+msgstr ""
+
+msgid "!wallet_open"
+msgstr ""
+
+msgid "!wallet_open?name"
+msgstr ""
+
+msgid "!wallet_lock"
+msgstr ""
+
+msgid "!wallet_lock?name"
+msgstr ""
+
+msgid "!wallet_lock_all"
+msgstr ""
+
+msgid "!wallet_unlock"
+msgstr ""
+
+msgid "!wallet_unlock?name"
+msgstr ""
+
+msgid "!wallet_unlock?password"
+msgstr ""
+
+msgid "!wallet_import"
+msgstr ""
+
+msgid "!wallet_import?name"
+msgstr ""
+
+msgid "!wallet_import?key"
+msgstr ""
+
+msgid "!wallet_list"
+msgstr ""
+
+msgid "!wallet_keys"
+msgstr ""
+
+msgid "!benchmark"
+msgstr ""
+
+msgid "!setup"
+msgstr ""
+
+msgid "!setup?accounts"
+msgstr ""
+
+msgid "!benchmark_transfer"
+msgstr ""
+
+msgid "!benchmark_transfer?accounts"
+msgstr ""
+
+msgid "!benchmark_transfer?count"
+msgstr ""
+
+msgid "!benchmark_transfer?loop"
+msgstr ""
+
+msgid "!push"
+msgstr ""
+
+msgid "!push_message"
+msgstr ""
+
+msgid "!push_message?contract"
+msgstr ""
+
+msgid "!push_message?action"
+msgstr ""
+
+msgid "!push_message?data"
+msgstr ""
+
+msgid "!push_message?permission"
+msgstr ""
+
+msgid "!push_message?scope"
+msgstr ""
+
+msgid "!push_message?skip_sign"
+msgstr ""
+
+msgid "!push_transaction"
+msgstr ""
+
+msgid "!push_transaction?transaction"
+msgstr ""
+
+msgid "!push_transactions"
+msgstr ""
+
+msgid "!push_transactions?transactions"
+msgstr ""
+
+msgid "wast_parse_error_help_text"
+msgstr ""
+
+msgid "wast_serialize_error_help_text"
+msgstr ""
+
+# Note: for formatting the public and private labels should have 
+# the same length
+msgid "private_key_label"
+msgstr ""
+
+msgid "public_key_label"
+msgstr ""
+
+msgid "code_hash_label"
+msgstr ""
+
+msgid "saving_wast_to_label"
+msgstr ""
+
+msgid "saving_abi_to_label"
+msgstr ""
+
+msgid "reading_wast_status"
+msgstr ""
+
+msgid "assembling_wast_status"
+msgstr ""
+
+msgid "publishing_contract_status"
+msgstr ""
+
+msgid "producer_approval_result"
+msgstr ""
+
+msgid "set_proxy_result"
+msgstr ""
+
+msgid "wallet_create_result"
+msgstr ""
+
+msgid "wallet_open_result"
+msgstr ""
+
+msgid "wallet_lock_result"
+msgstr ""
+
+msgid "wallet_lock_all_result"
+msgstr ""
+
+msgid "password_prompt"
+msgstr ""
+
+msgid "wallet_unlock_result"
+msgstr ""
+
+msgid "invalid_permission_assert"
+msgstr ""
+
+msgid "invalid_private_key_assert"
+msgstr ""
+
+msgid "benchmark_too_few_accounts_assert"
+msgstr ""
+
+msgid "wallet_import_result"
+msgstr ""
+
+msgid "wallet_list_result"
+msgstr ""
+
+msgid "benchmark_create_accounts_status"
+msgstr ""
+
+msgid "benchmark_fund_accounts_status"
+msgstr ""
+
+msgid "benchmark_generate_transfer_status"
+msgstr ""
+
+msgid "connect_failure_eosd_help_text"
+msgstr ""
+
+msgid "connect_failure_wallet_help_text"
+msgstr ""
+
+msgid "connect_failure_generic_text"
+msgstr ""

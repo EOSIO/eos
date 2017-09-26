@@ -7,7 +7,7 @@ if [ $ARCH == "ubuntu" ]; then
     sudo apt-get install clang-4.0 lldb-4.0 cmake make \
                          libbz2-dev libssl-dev libgmp3-dev \
                          autotools-dev build-essential \
-                         libbz2-dev libicu-dev python-dev \
+                         libbz2-dev python-dev \
                          autoconf libtool git
     OPENSSL_ROOT_DIR=/usr/local/opt/openssl
     OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
@@ -19,7 +19,7 @@ if [ $ARCH == "ubuntu" ]; then
     tar xvf boost_1.64.0.tar.bz2
     cd boost_1_64_0/
     ./bootstrap.sh "--prefix=$BOOST_ROOT"
-    ./b2 install
+    ./b2 boost.locale.icu=off install
     rm -rf ${TEMP_DIR}/boost_1_64_0/
 
     # install secp256k1-zkp (Cryptonomex branch)
