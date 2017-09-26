@@ -231,18 +231,6 @@ namespace eos {
 
   class connection : public std::enable_shared_from_this<connection> {
   public:
-#if 0
-    enum status_t {
-      disconnected_server,
-      disconnected_client,
-      connecting,
-      awaiting_handshake,
-      catchup_via_sync,
-      catchup_via_request,
-      ready
-    };
-#endif
-
     connection( string endpoint,
                 size_t send_buf_size = def_buffer_size,
                 size_t recv_buf_size = def_buffer_size );
