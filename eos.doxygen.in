@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "EOS.IO"
-PROJECT_NUMBER         = DAWN 1.0
+PROJECT_NUMBER         = DAWN ${DOXY_EOS_VERSION}
 PROJECT_BRIEF          =
 PROJECT_LOGO           = eos-logo.png
 OUTPUT_DIRECTORY       =
@@ -112,7 +112,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = contracts/
+INPUT                  = ${DOXY_DOC_INPUT_ROOT_DIR}/
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \
                          *.cc \
@@ -194,7 +194,7 @@ IGNORE_PREFIX          =
 # Configuration options related to the HTML output
 #---------------------------------------------------------------------------
 GENERATE_HTML          = YES
-HTML_OUTPUT            = docs/
+HTML_OUTPUT            = ${DOXY_DOC_DEST_DIR}/
 HTML_FILE_EXTENSION    = .html
 HTML_HEADER            =
 HTML_FOOTER            =
@@ -338,7 +338,7 @@ CLASS_DIAGRAMS         = YES
 MSCGEN_PATH            =
 DIA_PATH               =
 HIDE_UNDOC_RELATIONS   = YES
-HAVE_DOT               = NO
+HAVE_DOT               = ${DOXY_HAVE_DOT}
 DOT_NUM_THREADS        = 0
 DOT_FONTNAME           = Helvetica
 DOT_FONTSIZE           = 10
