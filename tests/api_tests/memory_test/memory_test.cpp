@@ -20,33 +20,60 @@ extern "C" {
        }
     }
 
+    void print(const void* const ptr, const uint32_t size)
+    {
+       const char* char_ptr = (const char*)ptr;
+       eos::print("\n{ ");
+       for (uint32_t i = 0; i < size; ++i)
+       {
+          const char* delim = (i % 8 == 7) ? ", " : " ";
+          eos::print("", static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])), delim);
+       }
+       eos::print("}\n");
+    }
+
+    /*
+     * malloc and realloc always allocate on 8 byte boundaries based off of total allocation, so
+     * if the requested size + the 2 byte header is not divisible by 8, then the allocated space
+     * will be larger than the requested size
+     */
     void test_memory()
     {
        char* ptr1 = (char*)eos::malloc(0);
        assert(ptr1 == nullptr, "should not have allocated a 0 char buf");
 
+       // 20 chars - 20 + 4(header) which is divisible by 8
        ptr1 = (char*)eos::malloc(20);
        assert(ptr1 != nullptr, "should have allocated a 20 char buf");
        verify(ptr1, 0, 20);
+       // existing memory layout -> |24|
+
+       // 36 chars allocated - 30 + 4 plus an extra 6 to be divisible by 8
        char* ptr1_realloc = (char*)eos::realloc(ptr1, 30);
        assert(ptr1_realloc != nullptr, "should have returned a 30 char buf");
        assert(ptr1_realloc == ptr1, "should have enlarged the 20 char buf");
+       // existing memory layout -> |40|
+
+       // 20 chars allocated
        char* ptr2 = (char*)eos::malloc(20);
        assert(ptr2 != nullptr, "should have allocated another 20 char buf");
-       assert(ptr1 + 30 < ptr2, "20 char buf should have been created after ptr1"); // test specific to implementation (can remove for refactor)
-       verify(ptr1, 0, 30);
-       assert(ptr1[30] != 0, "should not have empty bytes following since block allocated"); // test specific to implementation (can remove for refactor)
+       assert(ptr1 + 36 < ptr2, "20 char buf should have been created after ptr1"); // test specific to implementation (can remove for refactor)
+       verify(ptr1, 0, 36);
+       assert(ptr1[36] != 0, "should not have empty bytes following since block allocated"); // test specific to implementation (can remove for refactor)
+       // existing memory layout -> |40|24|
 
        //shrink the buffer
        ptr1[14] = 0x7e;
-       ptr1[29] = 0x7f;
+       // 20 chars allocated (still)
        ptr1_realloc = (char*)eos::realloc(ptr1, 15);
        assert(ptr1_realloc != nullptr, "should have returned a 15 char buf");
        assert(ptr1_realloc == ptr1, "should have shrunk the reallocated 30 char buf");
+       verify(ptr1, 0, 14); // test specific to implementation (can remove for refactor)
        assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched");
-       verify(ptr1 + 15, 0, 15); // test specific to implementation (can remove for refactor)
+       // existing memory layout -> |24(shrunk)|16(freed)|24|
 
        //same size the buffer (verify corner case)
+       // 20 chars allocated (still)
        ptr1_realloc = (char*)eos::realloc(ptr1, 15);
        assert(ptr1_realloc != nullptr, "should have returned a reallocated 15 char buf");
        assert(ptr1_realloc == ptr1, "should have reallocated 15 char buf as the same buf");
@@ -58,14 +85,21 @@ extern "C" {
        assert(ptr1_realloc == ptr1, "should have increased the buf back to orig max"); //test specific to implementation (can remove for refactor)
        assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched for expanded buf");
 
+       //increase buffer beyond (indicated) allocated space
+       // 36 chars allocated (still)
+       ptr1_realloc = (char*)eos::realloc(ptr1, 36);
+       assert(ptr1_realloc != nullptr, "should have returned a 36 char buf");
+       assert(ptr1_realloc == ptr1, "should have increased char buf to actual size"); // test specific to implementation (can remove for refactor)
+
        //increase buffer beyond allocated space
-       ptr1[29] = 0x7f;
-       ptr1_realloc = (char*)eos::realloc(ptr1, 31);
-       assert(ptr1_realloc != nullptr, "should have returned a 31 char buf");
-       assert(ptr1_realloc != ptr1, "should have had to create new 31 char buf from 30 char buf");
+       ptr1[35] = 0x7f;
+       // 44 chars allocated - 37 + 4 plus an extra 7 to be divisible by 8
+       ptr1_realloc = (char*)eos::realloc(ptr1, 37);
+       assert(ptr1_realloc != nullptr, "should have returned a 37 char buf");
+       assert(ptr1_realloc != ptr1, "should have had to create new 37 char buf from 36 char buf");
        assert(ptr2 < ptr1_realloc, "should have been created after ptr2"); // test specific to implementation (can remove for refactor)
-       assert(ptr1_realloc[14] == 0x7e, "orig 30 char buf's content should be copied");
-       assert(ptr1_realloc[29] == 0x7f, "orig 30 char buf's content should be copied");
+       assert(ptr1_realloc[14] == 0x7e, "orig 36 char buf's content should be copied");
+       assert(ptr1_realloc[35] == 0x7f, "orig 36 char buf's content should be copied");
 
        //realloc with nullptr
        char* nullptr_realloc = (char*)eos::realloc(nullptr, 50);
@@ -76,16 +110,6 @@ extern "C" {
        char* invalid_ptr_realloc = (char*)eos::realloc(nullptr_realloc + 4, 10);
        assert(invalid_ptr_realloc != nullptr, "should have returned a 10 char buf and ignored invalid ptr");
        assert(nullptr_realloc < invalid_ptr_realloc, "should have created invalid_ptr_realloc after nullptr_realloc"); // test specific to implementation (can remove for refactor)
-
-       // try to re-allocate past max
-       ptr1 = ptr1_realloc;
-       ptr1_realloc = (char*)eos::realloc(ptr1, 8028);
-       assert(ptr1_realloc == nullptr, "realloc request past end should return a nullptr");
-
-       // re-allocate to max
-       ptr1_realloc = (char*)eos::realloc(invalid_ptr_realloc, 8027);
-       assert(ptr1_realloc != nullptr, "should have returned a buf");
-       assert(ptr1_realloc == invalid_ptr_realloc, "should have extended the orig buf");
     }
 
     void test_memory_bounds()
