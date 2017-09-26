@@ -34,7 +34,8 @@ namespace eos {
 
   using ordered_txn_ids = vector<transaction_id_type>;
   using ordered_blk_ids = vector<block_id_type>;
-   struct notice_message {
+
+  struct notice_message {
       ordered_txn_ids known_trx;
       ordered_blk_ids known_blocks;
    };
