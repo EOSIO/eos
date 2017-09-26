@@ -101,11 +101,11 @@ namespace eos {
 
     unique_ptr<boost::asio::steady_timer> connector_check;
     unique_ptr<boost::asio::steady_timer> transaction_check;
-    unique_ptr<boost::asio::steady_timer> second_timer;
+    unique_ptr<boost::asio::steady_timer> keepalive_timer;
     boost::asio::steady_timer::duration   connector_period;
     boost::asio::steady_timer::duration   txn_exp_period;
     boost::asio::steady_timer::duration   resp_expected_period;
-    boost::asio::steady_timer::duration   second{std::chrono::seconds{32}};
+    boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
 
     int16_t                       network_version;
     chain_id_type                 chain_id;
@@ -171,7 +171,7 @@ namespace eos {
      *  Time message handling
      *  @{
      */
-    /** \brief 1 second ticker, for peer heartbeat
+    /** \brief Peer heartbeat ticker.
      */
     void ticker();
     /** @} */
@@ -312,7 +312,8 @@ namespace eos {
     // Computed data
     double                         offset{0};       //!< peer offset
 
-    char                           ts[32];          //!< working buffer for making human readable timestamps
+    static const size_t            ts_buffer_size{32};
+    char                           ts[ts_buffer_size];          //!< working buffer for making human readable timestamps
     /** @} */
 
     bool connected ();
@@ -474,8 +475,8 @@ namespace eos {
   {
     const long NsecPerSec{1000000000};
     time_t seconds = t / NsecPerSec;
-    strftime(ts, 32, "%F %T", localtime(&seconds));
-    snprintf(ts+19, 32-19, ".%ld", t % NsecPerSec);
+    strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
+    snprintf(ts+19, ts_buffer_size-19, ".%ld", t % NsecPerSec);
     return ts;
   }
 
@@ -1240,11 +1241,11 @@ namespace eos {
     }
 
     void net_plugin_impl::ticker () {
-      second_timer->expires_from_now (second);
-      second_timer->async_wait ([&](boost::system::error_code ec) {
+      keepalive_timer->expires_from_now (keepalive_interval);
+      keepalive_timer->async_wait ([&](boost::system::error_code ec) {
           ticker ();
           if (ec) {
-              wlog ("Network time ticked sooner than 1 seconds: ${m}", ("m", ec.message()));
+              wlog ("Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()));
           }
           for (auto &c : connections ) {
             if (c->socket->is_open()) {
@@ -1511,7 +1512,7 @@ namespace eos {
     my->chain_plug->get_chain_id(my->chain_id);
     fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
 
-    my->second_timer.reset(new boost::asio::steady_timer (app().get_io_service()));
+    my->keepalive_timer.reset(new boost::asio::steady_timer (app().get_io_service()));
     my->ticker();
   }
 
