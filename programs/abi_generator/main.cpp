@@ -268,16 +268,16 @@ struct AbiGenerator {
 
     if( table.indextype == "i64i64i64" && isi64i64i64(fields) ) {
       table.keynames  = vector<eos::types::FieldName>{fields[0].name, fields[1].name, fields[2].name};
-      table.keytype   = vector<eos::types::TypeName>{fields[0].type, fields[1].type, fields[2].type};
+      table.keytypes  = vector<eos::types::TypeName>{fields[0].type, fields[1].type, fields[2].type};
     } else if( table.indextype == "i128i128" && isi128i128(fields) ) {
       table.keynames  = vector<eos::types::FieldName>{fields[0].name, fields[1].name};
-      table.keytype   = vector<eos::types::TypeName>{fields[0].type, fields[1].type};
+      table.keytypes  = vector<eos::types::TypeName>{fields[0].type, fields[1].type};
     } else if( table.indextype == "i64" && isi64(fields) ) {
       table.keynames  = vector<eos::types::FieldName>{fields[0].name};
-      table.keytype   = vector<eos::types::TypeName>{fields[0].type};
+      table.keytypes  = vector<eos::types::TypeName>{fields[0].type};
     } else if( table.indextype == "str" && isstr(fields) ) {
       table.keynames  = vector<eos::types::FieldName>{fields[0].name};
-      table.keytype   = vector<eos::types::TypeName>{fields[0].type};
+      table.keytypes  = vector<eos::types::TypeName>{fields[0].type};
     } else {
       FC_ASSERT(false, "Unable to guess key names");
     }
