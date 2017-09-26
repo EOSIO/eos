@@ -693,11 +693,14 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
             
           char* memstart = &memoryRef<char>( current_memory, 0 );
          // state.init_memory.resize(1<<16); /// TODO: actually get memory size
-          for( uint32_t i = 0; i < 10000; ++i )
-              if( memstart[i] ) {
-                   state.mem_end = i+1;
-                   //std::cerr << (char)memstart[i];
-              }
+          const auto allocated_memory = Runtime::getDefaultMemorySize(state.instance);
+          for( uint64_t i = 0; i < allocated_memory; ++i )
+          {
+             if( memstart[i] )
+             {
+                state.mem_end = i+1;
+             }
+          }
           //ilog( "INIT MEMORY: ${size}", ("size", state.mem_end) );
 
           state.init_memory.resize(state.mem_end);
