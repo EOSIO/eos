@@ -122,22 +122,21 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.s)
 
-  add_custom_command(
-    OUTPUT ${DESTINATION_FOLDER}/${target}.abi.done
-    OUTPUT ${DESTINATION_FOLDER}/${target}.abi
-    DEPENDS ${target}.s abi_generator
-    COMMAND abi_generator -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32
-              -extra-arg=-I${INCLUDE_FOLDERS} -extra-arg=-fparse-all-comments
-              -destination-file=${DESTINATION_FOLDER}/${target} -context=${target} ${SOURCE_FILES} --             
-    COMMENT "Generating ABI ${target}.abi"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    VERBATIM
-  )
-  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${DESTINATION_FOLDER}/${target}.abi)
+  # add_custom_command(
+  #   OUTPUT ${DESTINATION_FOLDER}/${target}.abi.done
+  #   OUTPUT ${DESTINATION_FOLDER}/${target}.abi
+  #   DEPENDS ${target}.s abi_generator
+  #   COMMAND abi_generator -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32
+  #             -extra-arg=-I${INCLUDE_FOLDERS} -extra-arg=-fparse-all-comments
+  #             -destination-file=${DESTINATION_FOLDER}/${target}.abi -verbose=1 -context=${target} ${SOURCE_FILES} --             
+  #   COMMENT "Generating ABI ${target}.abi"
+  #   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  #   VERBATIM
+  # )
+  # set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${DESTINATION_FOLDER}/${target}.abi)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
-    DEPENDS ${DESTINATION_FOLDER}/${target}.abi.done
-    DEPENDS ${DESTINATION_FOLDER}/${target}.abi
+    DEPENDS ${target}.s
     COMMAND ${BINARYEN_BIN}/s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 1024 ${target}.s
 
     COMMENT "Generating WAST ${target}.wast"

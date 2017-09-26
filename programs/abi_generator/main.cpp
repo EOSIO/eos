@@ -33,56 +33,25 @@ namespace bfs = boost::filesystem;
 
 struct AbiGenerator {
 
-  const char*  NOABI_VARNAME = "NOABI";
-
   bool                      enabled;
-  bool                      disabled_by_user;
   bool                      error_found;
   bool                      verbose;
   eos::types::Abi           abi;
   clang::ASTContext*        context;
   CompilerInstance*         compiler_instance;
   map<string, uint64_t>     type_size;
-  map<string, string>       full_type_name;
+  map<string, string>       full_types;
   string                    destination_file;
   string                    abi_context;
   
-  AbiGenerator() : enabled(true), disabled_by_user(false), error_found(false), verbose(false)  {
-    remove(destination_file + ".abi.done");
-    auto no_abi = std::getenv(NOABI_VARNAME);
-    if(no_abi && boost::lexical_cast<bool>(no_abi) ) {
-     onUserDisable();
-     cerr << "ABI Generation disabled ("<< NOABI_VARNAME << "=" << no_abi << ")\n";
-    }
-  }
+  AbiGenerator() : enabled(true), error_found(false) {}
 
   ~AbiGenerator() {
-    
-    if(verbose) {
-      cerr << "ABI Generation finished disabled_by_user:" << 
-      disabled_by_user << ",error_found:" << error_found << "\n";
-    }
-    
-    if(disabled_by_user) {
-      touch(destination_file + ".abi.done");
-    } else if(!error_found) {
-      fc::json::save_to_file<eos::types::Abi>(abi, destination_file + ".abi");
-      touch(destination_file + ".abi.done");
-    } else {
-      //should we remove the .abi file?
-      remove(destination_file + ".abi");
+    if(!error_found) {
+      fc::json::save_to_file<eos::types::Abi>(abi, destination_file);
     }
   }
   
-  void touch(const string& fileName) {
-    bfs::ofstream(fileName.c_str());  
-  }
-
-  void remove(const string& fileName) {
-    if(bfs::exists(fileName.c_str()))
-      bfs::remove(fileName.c_str());  
-  }
-
   static AbiGenerator& get() {
     static AbiGenerator generator;
     return generator;
@@ -92,10 +61,9 @@ struct AbiGenerator {
     return enabled;
   }
 
-  void onUserDisable(){
-    disableGeneration();
-    disabled_by_user = true;
-  }
+  // void onUserDisable(){
+  //   disableGeneration();
+  // }
 
   void setContext(clang::ASTContext& context) {
     this->context = &context;
@@ -118,9 +86,6 @@ struct AbiGenerator {
   string removeNamespace(const string& full_type_name) {
     string type_name = full_type_name;
     auto pos = type_name.find_last_of("::");
-    if(pos != string::npos)
-      type_name = type_name.substr(pos+1);
-    pos = type_name.find_last_of(" ");
     if(pos != string::npos)
       type_name = type_name.substr(pos+1);
     return type_name;
@@ -150,14 +115,12 @@ struct AbiGenerator {
     return built_in_type;
   }
 
-  string getNameFromRecordDecl(const CXXRecordDecl* record_decl) {
+  string getCanonicalTypeName(const Type* type) {
     clang::PrintingPolicy policy = compiler_instance->getLangOpts();
-    return record_decl->getTypeForDecl()->getCanonicalTypeInternal().getAsString(policy);
+    return type->getCanonicalTypeInternal().getAsString(policy);
   }
   
-  void handleTranslationUnit(ASTContext& context) {
-    //mmm ...
-  }
+  void handleTranslationUnit(ASTContext& context) {}
 
   void handleTagDeclDefinition(TagDecl* tag_decl) {
     try {
@@ -175,9 +138,8 @@ struct AbiGenerator {
     if(!recordDecl) return;
 
     if(verbose) {
-      cerr << "handleTagDeclDefinitionEx:" << tag_decl->getKindName().str() << " " << getNameFromRecordDecl(recordDecl) << "\n";
+      cerr << "handleTagDeclDefinitionEx:" << tag_decl->getKindName().str() << " " << getCanonicalTypeName(recordDecl->getTypeForDecl()) << "\n";
     }
-
 
     ASTContext& ctx = recordDecl->getASTContext();
     const RawComment* raw_comment = ctx.getRawCommentForDeclNoCache(tag_decl);
@@ -205,15 +167,7 @@ struct AbiGenerator {
         if(!string_params.empty())
           boost::split(params, string_params, boost::is_any_of(" "));
 
-        auto full_type_name = getNameFromRecordDecl(recordDecl);
-        FC_ASSERT(tag_decl->isStruct() || tag_decl->isClass(), "Only struct and class are supported. ${type} ${full_type_name}",("type",type)("full_type_name",full_type_name));
-
-        if(verbose) {
-          cerr << "About to add " << full_type_name << "\n";
-        }
-
-        addStruct(recordDecl, full_type_name);
-        auto type_name = removeNamespace(full_type_name);
+        auto type_name = addStruct(recordDecl);
 
         eos::types::Struct s;
         FC_ASSERT(findStruct(type_name, s), "Unable to find type ${type}", ("type",type_name));
@@ -232,10 +186,13 @@ struct AbiGenerator {
           
           if(params.size() >= 1)
             table.indextype = params[0];
-          else
-            guessIndexType(type_name, table, s);
+          else { try {
+            guessIndexType(table, s);
+          } FC_CAPTURE_AND_RETHROW( (type_name) ) }
 
-          guessKeyNames(type_name, table, s);
+          try {
+            guessKeyNames(table, s);
+          } FC_CAPTURE_AND_RETHROW( (type_name) )
 
           abi.tables.push_back(table);
         }
@@ -286,7 +243,7 @@ struct AbiGenerator {
     return fields.size() == 2 && isString(fields[0].type) && fields[0].name == "key" && fields[1].name == "value"; 
   }
 
-  void guessIndexType(const string& type_name, eos::types::Table& table, const eos::types::Struct s) {
+  void guessIndexType(eos::types::Table& table, const eos::types::Struct s) {
 
     vector<eos::types::Field> fields;
     getAllFields(s, fields);
@@ -300,11 +257,11 @@ struct AbiGenerator {
     } else if( isstr(fields) ) {
       table.indextype = "str";
     } else {
-      FC_ASSERT(false, "Unable to guess index type for ${type}.", ("type",type_name));
+      FC_ASSERT(false, "Unable to guess index type");
     }
   }
 
-  void guessKeyNames(const string& type_name, eos::types::Table& table, const eos::types::Struct s) {
+  void guessKeyNames(eos::types::Table& table, const eos::types::Struct s) {
 
     vector<eos::types::Field> fields;
     getAllFields(s, fields);
@@ -322,7 +279,7 @@ struct AbiGenerator {
       table.keynames  = vector<eos::types::FieldName>{fields[0].name};
       table.keytype   = vector<eos::types::TypeName>{fields[0].type};
     } else {
-      FC_ASSERT(false, "Unable to guess key names for ${type}.", ("type",type_name));
+      FC_ASSERT(false, "Unable to guess key names");
     }
   }
 
@@ -342,39 +299,46 @@ struct AbiGenerator {
     return found && s.base.size() == 0 && s.fields.size() == 1;
   }
 
-  void addStruct(const clang::CXXRecordDecl* recordDecl, const string& full_name) {
+  string addStruct(const clang::CXXRecordDecl* recordDecl, string full_type_name=string()) {
     
     //TODO: handle this better
     if(!recordDecl) {
-      FC_ASSERT(false, "Null CXXRecordDecl for ${type}.", ("type",full_name));
+      FC_ASSERT(false, "Null CXXRecordDecl");
     }
 
-    string name = removeNamespace(full_name);
+    const auto* type = recordDecl->getTypeForDecl();
 
-    // FC_ASSERT(name.size() <= sizeof(eos::types::TypeName),
-    //   "Type name > ${maxsize}, ${name}",
-    //   ("type",full_name)("name",name)("maxsize",sizeof(eos::types::TypeName)));
+    if( full_type_name.empty() )
+      full_type_name = getCanonicalTypeName(type);
+    
+    FC_ASSERT(type->isStructureType() || type->isClassType(), "Only struct and class are supported. ${full_type_name}",("full_type_name",full_type_name));
 
-    // auto itr = full_type_name.find(name);
-    // if(itr != full_type_name.end()) {
-    //   FC_ASSERT(itr->second == full_name, "Unable to add type '${full_name}' because '${conflict}' is already in.", ("full_name",full_name)("conflict",itr->second));
-    // }
+    auto name = removeNamespace(full_type_name);
+
+    FC_ASSERT(name.size() <= sizeof(eos::types::TypeName),
+      "Type name > ${maxsize}, ${name}",
+      ("type",full_type_name)("name",name)("maxsize",sizeof(eos::types::TypeName)));
 
     eos::types::Struct s;
-    if( findStruct(name, s) ) return;
-    
+    if( findStruct(name, s) ) {
+      auto itr = full_types.find(name);
+      if(itr != full_types.end()) {
+        FC_ASSERT(itr->second == full_type_name, "Unable to add type '${full_type_name}' because '${conflict}' is already in.", ("full_type_name",full_type_name)("conflict",itr->second));
+      }
+      return name;
+    } 
+
     auto bases = recordDecl->bases();
     auto total_bases = distance(bases.begin(), bases.end());
     if( total_bases > 1 ) {
-      FC_ASSERT(false, "Multiple inheritance not supported - ${type}", ("type",full_name));
+      FC_ASSERT(false, "Multiple inheritance not supported - ${type}", ("type",full_type_name));
     }
 
     string base_name;
     if( total_bases == 1 ) {
       auto const* base_record_type = bases.begin()->getType()->getAs<clang::RecordType>();
       auto const* base_record_type_decl = clang::cast_or_null<clang::CXXRecordDecl>(base_record_type->getDecl()->getDefinition());
-      base_name = getNameFromRecordDecl(base_record_type_decl);
-      addStruct(base_record_type_decl, base_name);
+      base_name = addStruct(base_record_type_decl);
     }
 
     eos::types::Struct abi_struct;
@@ -383,8 +347,6 @@ struct AbiGenerator {
       eos::types::Field struct_field;
       clang::QualType qt = field->getType().getUnqualifiedType();
 
-      //cout << "full name type " << qt.getAsString() << " = " << context->getTypeSize(qt) << "\n";
-
       auto field_type = removeNamespace(qt.getAsString());
       auto const* field_record_type = qt->getAs<clang::RecordType>();
       
@@ -392,7 +354,6 @@ struct AbiGenerator {
         auto const* field_record = clang::cast_or_null<clang::CXXRecordDecl>(field_record_type->getDecl()->getDefinition());
         addStruct(field_record, field_type);
         if( isOneFieldNoBase(field_type) ) {
-          //cerr << "isOneFieldNoBase == TRUE : [" << field_type << "]\n";
           field_type = abi.structs.back().fields[0].type;
           abi.structs.pop_back();
         }
@@ -401,11 +362,11 @@ struct AbiGenerator {
       auto struct_field_name = field->getNameAsString();
       auto struct_field_type = translateType(field_type);
 
-      // FC_ASSERT(struct_field_name.size() <= sizeof(decltype(struct_field.name)) , 
-      //   "Field name > ${maxsize}, ${type}::${name}", ("type",full_name)("name",struct_field_name)("maxsize", sizeof(decltype(struct_field.name))));
+      FC_ASSERT(struct_field_name.size() <= sizeof(decltype(struct_field.name)) , 
+        "Field name > ${maxsize}, ${type}::${name}", ("type",full_type_name)("name",struct_field_name)("maxsize", sizeof(decltype(struct_field.name))));
       
-      // FC_ASSERT(struct_field_type.size() <= sizeof(decltype(struct_field.type)),
-      //   "Type name > ${maxsize}, ${type}::${name}", ("type",full_name)("name",struct_field_type)("maxsize",sizeof(decltype(struct_field.type))));
+      FC_ASSERT(struct_field_type.size() <= sizeof(decltype(struct_field.type)),
+        "Type name > ${maxsize}, ${type}::${name}", ("type",full_type_name)("name",struct_field_type)("maxsize",sizeof(decltype(struct_field.type))));
 
       struct_field.name = struct_field_name;
       struct_field.type = struct_field_type;
@@ -423,10 +384,11 @@ struct AbiGenerator {
     abi.structs.push_back(abi_struct);
 
     if(verbose) {    
-      cerr << "Adding type " << name << " (" << full_name << ")\n";
+      cerr << "Adding type " << name << " (" << full_type_name << ")\n";
     }
 
-    full_type_name[name] = full_name;
+    full_types[name] = full_type_name;
+    return name;
   }
 
 };
@@ -471,17 +433,17 @@ protected:
   }
 };
 
-class NoAbiPragmaHandler : public PragmaHandler {
-  AbiGenerator& generator;
-public:
-  NoAbiPragmaHandler() : PragmaHandler("no_abi"), generator(AbiGenerator::get()) { }
-  void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
-                    Token &PragmaTok) {
+// class NoAbiPragmaHandler : public PragmaHandler {
+//   AbiGenerator& generator;
+// public:
+//   NoAbiPragmaHandler() : PragmaHandler("no_abi"), generator(AbiGenerator::get()) { }
+//   void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
+//                     Token &PragmaTok) {
 
-    generator.onUserDisable();
-    cerr << "ABI Generation disabled (#pragma no_abi)\n";
-  }
-};
+//     generator.onUserDisable();
+//     cerr << "ABI Generation disabled (#pragma no_abi)\n";
+//   }
+//};
 
 static cl::OptionCategory AbiGeneratorCategory("ABI generator options");
 
