@@ -1,6 +1,7 @@
 #pragma once
 #include <eos/chain/block.hpp>
 #include <eos/chain/types.hpp>
+#include <chrono>
 
 namespace eos {
    using namespace chain;
@@ -17,6 +18,18 @@ namespace eos {
       block_id_type   head_id;
       string          os;
       string          agent;
+   };
+
+   typedef std::chrono::system_clock::duration::rep tstamp;
+   typedef int32_t                                  tdist;
+
+   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
+
+   struct time_message {
+              tstamp  org;       //!< origin timestamp
+              tstamp  rec;       //!< receive timestamp
+              tstamp  xmt;       //!< transmit timestamp
+      mutable tstamp  dst;       //!< destination timestamp
    };
 
    struct notice_message {
@@ -41,6 +54,7 @@ namespace eos {
    };
 
    using net_message = static_variant<handshake_message,
+                                      time_message,
                                       notice_message,
                                       request_message,
                                       sync_request_message,
@@ -58,6 +72,7 @@ FC_REFLECT( eos::handshake_message,
             (head_num)(head_id)
             (os)(agent) )
 
+FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
 FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
