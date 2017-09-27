@@ -19,6 +19,22 @@ namespace eos { namespace chain {
    using namespace Runtime;
    typedef boost::multiprecision::cpp_bin_float_50 DOUBLE;
 
+   class wasm_memory
+   {
+   public:
+      wasm_memory(wasm_interface& interface);
+      ~wasm_memory();
+      U32 sbrk(I32 num_bytes);
+   private:
+      static U32 limit_32bit_address(Uptr address);
+
+      static const U32 _max_memory = 1024 * 1024;
+      wasm_interface& _wasm_interface;
+      Uptr _num_pages;
+      const U32 _min_bytes;
+      U32 _num_bytes;
+   };
+
    wasm_interface::wasm_interface() {
    }
 
@@ -28,13 +44,18 @@ namespace eos { namespace chain {
    const int CHECKTIME_LIMIT = 18000;
 #endif
 
-DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
-   auto dur = wasm_interface::get().current_execution_time();
-   if (dur > CHECKTIME_LIMIT) {
-      wlog("checktime called ${d}", ("d", dur));
-      throw checktime_exceeded();
+   void checktime(int64_t duration)
+   {
+      if (duration > CHECKTIME_LIMIT) {
+         wlog("checktime called ${d}", ("d", duration));
+         throw checktime_exceeded();
+      }
    }
+
+DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
+   checktime(wasm_interface::get().current_execution_time());
 }
+
    template <typename Function, typename KeyType, int numberOfKeys>
    int32_t validate(int32_t valueptr, int32_t valuelen, Function func) {
 
@@ -321,6 +342,16 @@ DEFINE_INTRINSIC_FUNCTION3(env,memset,memset,i32,i32,rel_ptr,i32,value,i32,len) 
    return rel_ptr;
 }
 
+DEFINE_INTRINSIC_FUNCTION1(env,sbrk,sbrk,i32,i32,num_bytes) {
+   auto& wasm          = wasm_interface::get();
+
+   FC_ASSERT( num_bytes >= 0, "sbrk can only allocate memory, not reduce" );
+   FC_ASSERT( wasm.current_memory_management != nullptr, "sbrk can only be called during the scope of wasm_interface::vm_call" );
+   U32 previous_bytes_allocated = wasm.current_memory_management->sbrk(num_bytes);
+   checktime(wasm.current_execution_time());
+   return previous_bytes_allocated;
+}
+
 
 /**
  * Transaction C API implementation
@@ -552,6 +583,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 
    void  wasm_interface::vm_call( const char* name ) {
    try {
+      std::unique_ptr<wasm_memory> wasm_memory_mgmt(new wasm_memory(*this));
       try {
          /*
          name += "_" + std::string( current_validate_context->msg.code ) + "_";
@@ -579,6 +611,8 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
          checktimeStart = fc::time_point::now();
 
          Runtime::invokeFunction(call,args);
+         wasm_memory_mgmt.reset();
+         checktime(current_execution_time());
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
           edump((e.callStack));
@@ -730,6 +764,56 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       current_module = state.instance;
       current_memory = getDefaultMemory( current_module );
       current_state  = &state;
+   }
+
+   wasm_memory::wasm_memory(wasm_interface& interface)
+   : _wasm_interface(interface)
+   , _num_pages(Runtime::getMemoryNumPages(interface.current_memory))
+   , _min_bytes(limit_32bit_address(_num_pages << numBytesPerPageLog2))
+   {
+      _wasm_interface.current_memory_management = this;
+      _num_bytes = _min_bytes;
+   }
+
+   wasm_memory::~wasm_memory()
+   {
+      if (_num_bytes > _min_bytes)
+         sbrk((I32)_min_bytes - (I32)_num_bytes);
+
+      _wasm_interface.current_memory_management = nullptr;
+   }
+
+   U32 wasm_memory::sbrk(I32 num_bytes)
+   {
+      const U32 previous_num_bytes = _num_bytes;
+      if(Runtime::getMemoryNumPages(_wasm_interface.current_memory) != _num_pages)
+         throw eos::chain::page_memory_error();
+
+      // Round the absolute value of num_bytes to an alignment boundary, and ensure it won't allocate too much or too little memory.
+      num_bytes = (num_bytes + 7) & ~7;
+      if(num_bytes > 0 && previous_num_bytes > _max_memory - num_bytes)
+         throw eos::chain::page_memory_error();
+      else if(num_bytes < 0 && previous_num_bytes < _min_bytes - num_bytes)
+         throw eos::chain::page_memory_error();
+
+      // Update the number of bytes allocated, and compute the number of pages needed for it.
+      _num_bytes += num_bytes;
+      const Uptr num_desired_pages = (_num_bytes + IR::numBytesPerPage - 1) >> IR::numBytesPerPageLog2;
+
+      // Grow or shrink the memory object to the desired number of pages.
+      if(num_desired_pages > _num_pages)
+         Runtime::growMemory(_wasm_interface.current_memory, num_desired_pages - _num_pages);
+      else if(num_desired_pages < _num_pages)
+         Runtime::shrinkMemory(_wasm_interface.current_memory, _num_pages - num_desired_pages);
+
+      _num_pages = num_desired_pages;
+
+      return previous_num_bytes;
+   }
+
+   U32 wasm_memory::limit_32bit_address(Uptr address)
+   {
+      return (U32)(address > UINT32_MAX ? UINT32_MAX : address);
    }
 
 } }
