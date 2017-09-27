@@ -22,7 +22,9 @@ namespace eos { namespace chain {
    class wasm_memory
    {
    public:
-      wasm_memory(wasm_interface& interface);
+      explicit wasm_memory(wasm_interface& interface);
+      wasm_memory(const wasm_memory&) = delete;
+      wasm_memory(wasm_memory&&) = delete;
       ~wasm_memory();
       U32 sbrk(I32 num_bytes);
    private:
@@ -583,7 +585,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 
    void  wasm_interface::vm_call( const char* name ) {
    try {
-      std::unique_ptr<wasm_memory> wasm_memory_mgmt(new wasm_memory(*this));
+      std::unique_ptr<wasm_memory> wasm_memory_mgmt;
       try {
          /*
          name += "_" + std::string( current_validate_context->msg.code ) + "_";
@@ -609,6 +611,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
          memcpy( memstart, state.init_memory.data(), state.mem_end);
 
          checktimeStart = fc::time_point::now();
+         wasm_memory_mgmt.reset(new wasm_memory(*this));
 
          Runtime::invokeFunction(call,args);
          wasm_memory_mgmt.reset();

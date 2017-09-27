@@ -7,7 +7,7 @@
 
 namespace eos { namespace chain {
 
-class  chain_controller;
+class chain_controller;
 class wasm_memory;
 
 /**

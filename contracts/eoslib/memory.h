@@ -18,23 +18,22 @@ extern "C" {
    */
 
  /**
-   * Allocate or remove a page of memory to accommodate the
+   * Allocate page(s) of memory to accommodate the
    * requested number of bytes.
-   * @brief Allocate or remove a page of memory
-   * @param num_bytes  Number of bytes to add or remove.
+   * @brief Allocate page memory
+   * @param num_bytes  Number of bytes to add.
    *
    * @return void pointer to the previous end of allocated bytes
    *
    * Example:
    * @code
    * // allocate a whole new page, the returned offset is the pointer to the
-   * // newly allocated page (if passing in negative num_bytes, then offset
-   * // will be the end of the page that was removed
+   * // newly allocated page
    * char* new_page = static_cast<char*>(sbrk(65536));
    * memset(new_page, 0, 65536);
    * @endcode
    */
-  void* sbrk( int32_t num_bytes );
+  void* sbrk( uint32_t num_bytes );
 
  /**
   * Copy a block of memory from source to destination.
