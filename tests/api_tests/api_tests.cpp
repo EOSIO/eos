@@ -489,7 +489,7 @@ BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_start, testing_fixture)
 {
    try {
       MEMORY_TEST_RUN(testolstart, memory_test_wast);
-      BOOST_FAIL("memcpy should have thrown assert acception");
+      BOOST_FAIL("memcpy should have thrown assert exception");
    }
    catch(fc::assert_exception& ex)
    {
@@ -502,7 +502,7 @@ BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_end, testing_fixture)
 {
    try {
       MEMORY_TEST_RUN(testolend, memory_test_wast);
-      BOOST_FAIL("memcpy should have thrown assert acception");
+      BOOST_FAIL("memcpy should have thrown assert exception");
    }
    catch(fc::assert_exception& ex)
    {
@@ -510,7 +510,36 @@ BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_end, testing_fixture)
    }
 }
 
-//Test intrinsic provided memset and memcpy
+//Test logic for memory.hpp adding extra pages of memory
 MEMORY_TEST_CASE(test_extended_memory, testextmem, extended_memory_test_wast)
+
+//Test logic for extra pages of memory
+MEMORY_TEST_CASE(test_page_memory, testpagemem, extended_memory_test_wast)
+
+//Test logic for exceeding extra pages of memory
+BOOST_FIXTURE_TEST_CASE(test_page_memory_exceeded, testing_fixture)
+{
+   try {
+      MEMORY_TEST_RUN(testmemexc, extended_memory_test_wast);
+      BOOST_FAIL("sbrk should have thrown exception");
+   }
+   catch (eos::chain::page_memory_error& )
+   {
+      // expected behavior
+   }
+}
+
+//Test logic for preventing reducing page memory
+BOOST_FIXTURE_TEST_CASE(test_page_memory_negative_bytes, testing_fixture)
+{
+   try {
+      MEMORY_TEST_RUN(testnegbytes, extended_memory_test_wast);
+      BOOST_FAIL("sbrk should have thrown exception");
+   }
+   catch (fc::assert_exception& ex)
+   {
+      BOOST_REQUIRE(ex.to_detail_string().find("not reduce") != std::string::npos);
+   }
+}
 
 BOOST_AUTO_TEST_SUITE_END()
