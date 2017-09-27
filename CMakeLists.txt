@@ -33,6 +33,7 @@ endif()
 list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules" )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+set(BUILD_DOXYGEN TRUE CACHE BOOL "Build doxygen documentation on every make")
 set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 
 #set (ENABLE_INSTALLER 1)
@@ -229,6 +230,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_D
 
 include(FindDoxygen)
 
+
+
 if(NOT DOXYGEN_FOUND)
   message(STATUS "Doxygen not found.  Contract documentation will not be generated.")
 else()
@@ -244,14 +247,16 @@ else()
     set(DOXY_HAVE_DOT "NO" CACHE STRING "Doxygen to use dot for diagrams.")
   endif(DOXYGEN_DOT_FOUND)
   configure_file("eos.doxygen.in" "${CMAKE_BINARY_DIR}/eos.doxygen")
-  # !! Core developers who don't want to see the doxygen output on every build
-  # !! should remove the 'ALL' option from both commands below.
-  # Doxygen has issues making destination directories more than one level deep, so do it for it.
-  add_custom_target(make_doc_dir ALL COMMAND ${CMAKE_COMMAND} -E make_directory "${DOXY_DOC_DEST_DIR}")
-  add_custom_target(contract_documentation ALL
-      COMMAND "${DOXYGEN_EXECUTABLE}" "${CMAKE_BINARY_DIR}/eos.doxygen"
-      DEPENDS make_doc_dir
-      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-      COMMENT "Building doxygen documentation into ${DOXY_DOC_DEST_DIR}..."
-      VERBATIM)
+  if(BUILD_DOXYGEN) 
+     # !! Core developers who don't want to see the doxygen output on every build
+     # !! should remove the 'ALL' option from both commands below.
+     # Doxygen has issues making destination directories more than one level deep, so do it for it.
+     add_custom_target(make_doc_dir ALL COMMAND ${CMAKE_COMMAND} -E make_directory "${DOXY_DOC_DEST_DIR}")
+     add_custom_target(contract_documentation ALL
+         COMMAND "${DOXYGEN_EXECUTABLE}" "${CMAKE_BINARY_DIR}/eos.doxygen"
+         DEPENDS make_doc_dir
+         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+         COMMENT "Building doxygen documentation into ${DOXY_DOC_DEST_DIR}..."
+         VERBATIM)
+  endif(BUILD_DOXYGEN)
 endif()
