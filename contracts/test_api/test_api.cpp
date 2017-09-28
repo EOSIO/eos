@@ -52,6 +52,8 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64_front_back);
       WASM_TEST_HANDLER(test_db, key_i64i64i64_general);
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
+      WASM_TEST_HANDLER(test_db, key_str_general);
+      WASM_TEST_HANDLER(test_db, key_str_table);
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_sha256);
@@ -72,6 +74,9 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_max);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
       
+      //test chain
+      WASM_TEST_HANDLER(test_chain, test_activeprods);
+
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }

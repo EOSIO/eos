@@ -132,8 +132,8 @@ public:
       require_scope( scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = back_record_tuple<typename IndexType::value_type>::get(scope, code, table);
-      auto itr = idx.upper_bound(tuple);
+      auto tuple = boost::make_tuple( AccountName(scope), AccountName(code), AccountName(uint64_t(table)+1) );
+      auto itr = idx.lower_bound(tuple);
 
       if( std::distance(idx.begin(), itr) == 0 ) return -1;
 
@@ -277,6 +277,8 @@ public:
 
    bool all_authorizations_used() const;
    vector<types::AccountPermission> unused_authorizations() const;
+
+   void get_active_producers(types::AccountName* producers, uint32_t len);
 
    const chain_controller&      controller;
    const chainbase::database&   db;  ///< database where state is stored

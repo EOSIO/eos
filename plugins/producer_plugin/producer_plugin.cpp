@@ -109,6 +109,29 @@ void producer_plugin::set_program_options(
          ;
    command_line_options.add(producer_options);
    config_file_options.add(producer_options);
+
+   command_line_options.add_options()
+         ("scheduler", boost::program_options::value<string>()->default_value("single-thread")->notifier([this](const string& v){
+             if (v == "single-thread") {
+                my->_production_scheduler = eos::chain::block_schedule::in_single_thread;
+             } else if (v == "cycling-conflicts") {
+                ilog("Using scheduler by_cycling_conflicts");
+                my->_production_scheduler = eos::chain::block_schedule::by_cycling_conflicts;
+             } else if (v == "threading-conflicts") {
+                ilog("Using scheduler by_theading_conflicts");
+                my->_production_scheduler = eos::chain::block_schedule::by_threading_conflicts;
+             } else {
+                FC_ASSERT(false, "Invalid scheduler specified ${s}", ("s", v));
+             }
+          }),
+          "Specify scheduler producer should use. One of the following:\n"
+          "  single-thread\n"
+          "    \tA reference scheduler that puts all transactions in a single thread (FIFO).\n"
+          "  cycling-conflicts\n"
+          "    \tA greedy scheduler that attempts to cycle through threads to resolve scope contention before falling back on cycles.\n"
+          "  threading-conflicts\n"
+          "    \tA greedy scheduler that attempts to make short threads to resolve scope contention before falling back on cycles.")
+         ;
 }
 
 template<typename T>

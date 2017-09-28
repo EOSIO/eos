@@ -95,6 +95,8 @@ struct test_db {
 
    static unsigned int key_i128i128_general();
    static unsigned int key_i64i64i64_general();
+   static unsigned int key_str_general();
+   static unsigned int key_str_table();
 };
 
 struct test_crypto {
@@ -117,4 +119,8 @@ struct test_transaction {
   static unsigned int send_transaction_empty();
   static unsigned int send_transaction_max();
   static unsigned int send_transaction_large();
+};
+
+struct test_chain {
+  static unsigned int test_activeprods();
 };

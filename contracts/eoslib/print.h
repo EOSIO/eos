@@ -76,5 +76,9 @@ extern "C" {
     * @endcode
     */
    void printn( uint64_t name );
+
+   /**
+    */
+   void printhex( void* data, uint32_t datalen );
    /// @}
 }

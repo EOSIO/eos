@@ -74,8 +74,10 @@ Options:
 #include <eos/chain/config.hpp>
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/utilities/key_conversion.hpp>
+#include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/range/algorithm/copy.hpp>
 
@@ -141,6 +143,14 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
    auto itr = std::unique( names.begin(), names.end() );
    names.erase( itr, names.end() );
    return names;
+}
+
+inline std::vector<Name> sort_names( const std::vector<Name>& names ) {
+   auto results = std::vector<Name>(names);
+   std::sort( results.begin(), results.end() );
+   auto itr = std::unique( results.begin(), results.end() );
+   results.erase( itr, results.end() );
+   return results;
 }
 
 vector<uint8_t> assemble_wast( const std::string& wast ) {
@@ -271,6 +281,148 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
                                                              active_auth, recovery_auth, deposit});
       std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
+
+types::Message create_updateauth(const Name& account, const Name& permission, const Name& parent, const Authority& auth) {
+   return Message { config::EosContractName,
+                           vector<types::AccountPermission>{{account,"active"}},
+                           "updateauth", 
+                           types::updateauth{account, permission, parent, auth}};
+}
+
+types::Message create_deleteauth(const Name& account, const Name& permission) {
+   return Message { config::EosContractName,
+                           vector<types::AccountPermission>{{account,"active"}},
+                           "deleteauth", 
+                           types::deleteauth{account, permission}};
+}
+
+types::Message create_linkauth(const Name& account, const Name& code, const Name& type, const Name& requirement) {
+   return Message { config::EosContractName,
+                           vector<types::AccountPermission>{{account,"active"}},
+                           "linkauth", 
+                           types::linkauth{account, code, type, requirement}};
+}
+
+types::Message create_unlinkauth(const Name& account, const Name& code, const Name& type) {
+   return Message { config::EosContractName,
+                           vector<types::AccountPermission>{{account,"active"}},
+                           "unlinkauth", 
+                           types::unlinkauth{account, code, type}};
+}
+
+void send_transaction(const std::vector<types::Message>& messages, const std::vector<Name>& scopes, bool skip_sign = false) {
+   SignedTransaction trx;
+   trx.scope = sort_names(scopes);
+   for (const auto& m: messages) {
+      transaction_emplace_message(trx, m);
+   }
+
+   auto info = get_info();
+   trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
+   transaction_set_reference_block(trx, info.head_block_id);
+   if (!skip_sign) {
+      sign_transaction(trx);
+   }
+
+   std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
+}
+
+struct set_account_permission_subcommand {
+   string accountStr;
+   string permissionStr;
+   string authorityJsonOrFile;
+   string parentStr;
+   bool skip_sign;
+
+   set_account_permission_subcommand(CLI::App* accountCmd) {
+      auto permissions = accountCmd->add_subcommand("permission", "set parmaters dealing with account permissions");
+      permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
+      permissions->add_option("permission", permissionStr, "The permission name to set/delete an authority for")->required();
+      permissions->add_option("authority", authorityJsonOrFile, "[delete] NULL, [create/update] JSON string or filename defining the authority")->required();
+      permissions->add_option("parent", parentStr, "[create] The permission name of this parents permission (Defaults to: \"Active\")");
+      permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+
+      permissions->set_callback([this] {
+         Name account = Name(accountStr);
+         Name permission = Name(permissionStr);
+         bool is_delete = boost::iequals(authorityJsonOrFile, "null");
+         
+         if (is_delete) {
+            send_transaction({create_deleteauth(account, permission)}, {account, config::EosContractName}, skip_sign);
+         } else {
+            types::Authority authority;
+            if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
+               authority = types::Authority { 1, { {public_key_type(authorityJsonOrFile), 1 } }, {} };
+            } else {
+               fc::variant parsedAuthority;
+               if (boost::istarts_with(authorityJsonOrFile, "{")) {
+                  parsedAuthority = fc::json::from_string(authorityJsonOrFile);
+               } else {
+                  parsedAuthority = fc::json::from_file(authorityJsonOrFile);
+               }
+
+               authority = parsedAuthority.as<types::Authority>();
+            }
+
+            Name parent;
+            if (parentStr.size() == 0) {
+               // see if we can auto-determine the proper parent
+               const auto account_result = call(get_account_func, fc::mutable_variant_object("name", accountStr));
+               const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
+               auto permissionPredicate = [this](const auto& perm) { 
+                  return perm.is_object() && 
+                        perm.get_object().contains("permission") &&
+                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr); 
+               };
+
+               auto itr = boost::find_if(existing_permissions, permissionPredicate);
+               if (itr != existing_permissions.end()) {
+                  parent = Name((*itr).get_object()["parent"].get_string());
+               } else {
+                  // if this is a new permission and there is no parent we default to "active"
+                  parent = Name("active");
+               }
+            } else {
+               parent = Name(parentStr);
+            }
+
+            send_transaction({create_updateauth(account, permission, parent, authority)}, {Name(account), config::EosContractName}, skip_sign);
+         }      
+      });
+   }
+   
+};
+
+struct set_action_permission_subcommand {
+   string accountStr;
+   string codeStr;
+   string typeStr;
+   string requirementStr;
+   bool skip_sign;
+
+   set_action_permission_subcommand(CLI::App* actionRoot) {
+      auto permissions = actionRoot->add_subcommand("permission", "set parmaters dealing with account permissions");
+      permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
+      permissions->add_option("code", codeStr, "The account that owns the code for the action")->required();
+      permissions->add_option("type", typeStr, "the type of the action")->required();
+      permissions->add_option("requirement", requirementStr, "[delete] NULL, [set/update] The permission name require for executing the given action")->required();
+      permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+
+      permissions->set_callback([this] {
+         Name account = Name(accountStr);
+         Name code = Name(codeStr);
+         Name type = Name(typeStr);
+         bool is_delete = boost::iequals(requirementStr, "null");
+         
+         if (is_delete) {
+            send_transaction({create_unlinkauth(account, code, type)}, {account, config::EosContractName}, skip_sign);
+         } else {
+            Name requirement = Name(requirementStr);
+            send_transaction({create_linkauth(account, code, type, requirement)}, {Name(account), config::EosContractName}, skip_sign);
+         }      
+      });
+   }
+};
 
 int main( int argc, char** argv ) {
    CLI::App app{"Command Line Interface to Eos Daemon"};
@@ -426,6 +578,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
+
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", "Retrieve accounts which are servants of a given account ", false);
@@ -566,6 +719,18 @@ int main( int argc, char** argv ) {
       push_transaction(trx, !skip_sign);
       std::cout << "Set proxy for " << name << " to " << proxy << std::endl;
    });
+
+   // set account
+   auto setAccount = setSubcommand->add_subcommand("account", "set or update blockchain account state")->require_subcommand();
+
+   // set account permission
+   auto setAccountPermission = set_account_permission_subcommand(setAccount);
+
+   // set action
+   auto setAction = setSubcommand->add_subcommand("action", "set or update blockchain action state")->require_subcommand();
+   
+   // set action permission
+   auto setActionPermission = set_action_permission_subcommand(setAction);
 
    // Transfer subcommand
    string sender;

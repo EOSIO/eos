@@ -10,6 +10,10 @@ INCLUDE( SetupTargetMacros )
 set( BLOCKCHAIN_NAME "Eos" )
 set( CMAKE_CXX_STANDARD 14 )
 
+set(VERSION_MAJOR 1)
+set(VERSION_MINOR 1)
+set(VERSION_PATCH 0)
+
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
 set( GUI_CLIENT_EXECUTABLE_NAME eos )
 set( CUSTOM_URL_SCHEME "gcs" )
@@ -29,6 +33,7 @@ endif()
 list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules" )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+set(BUILD_DOXYGEN TRUE CACHE BOOL "Build doxygen documentation on every make")
 set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 
 #set (ENABLE_INSTALLER 1)
@@ -179,11 +184,6 @@ add_subdirectory( tools )
 
 if (ENABLE_INSTALLER)
 
-set(VERSION_MAJOR 0)
-set(VERSION_MINOR 1)
-set(VERSION_PATCH 0)
-
-
 include(InstallRequiredSystemLibraries)
 
 set(CPACK_OUTPUT_FILE_PREFIX ${CMAKE_BINARY_DIR}/packages)
@@ -227,3 +227,36 @@ endif(LINUX)
 endif(ENABLE_INSTALLER)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
+
+include(FindDoxygen)
+
+
+
+if(NOT DOXYGEN_FOUND)
+  message(STATUS "Doxygen not found.  Contract documentation will not be generated.")
+else()
+  message(STATUS "Doxygen found.  Contract documentation will be generated.")
+  set(DOXY_EOS_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" CACHE INTERNAL "Version string used in PROJECT_NUMBER.")
+  # CMake strips trailing path separators off of variables it knows are paths,
+  # so the trailing '/' Doxygen expects is embedded in the doxyfile.
+  set(DOXY_DOC_DEST_DIR "${CMAKE_BINARY_DIR}/docs/html" CACHE PATH "Path to the doxygen output")
+  set(DOXY_DOC_INPUT_ROOT_DIR "contracts" CACHE PATH "Path to the doxygen input")
+  if(DOXYGEN_DOT_FOUND)
+    set(DOXY_HAVE_DOT "YES" CACHE STRING "Doxygen to use dot for diagrams.")
+  else(DOXYGEN_DOT_FOUND)
+    set(DOXY_HAVE_DOT "NO" CACHE STRING "Doxygen to use dot for diagrams.")
+  endif(DOXYGEN_DOT_FOUND)
+  configure_file("eos.doxygen.in" "${CMAKE_BINARY_DIR}/eos.doxygen")
+  if(BUILD_DOXYGEN) 
+     # !! Core developers who don't want to see the doxygen output on every build
+     # !! should remove the 'ALL' option from both commands below.
+     # Doxygen has issues making destination directories more than one level deep, so do it for it.
+     add_custom_target(make_doc_dir ALL COMMAND ${CMAKE_COMMAND} -E make_directory "${DOXY_DOC_DEST_DIR}")
+     add_custom_target(contract_documentation ALL
+         COMMAND "${DOXYGEN_EXECUTABLE}" "${CMAKE_BINARY_DIR}/eos.doxygen"
+         DEPENDS make_doc_dir
+         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+         COMMENT "Building doxygen documentation into ${DOXY_DOC_DEST_DIR}..."
+         VERBATIM)
+  endif(BUILD_DOXYGEN)
+endif()

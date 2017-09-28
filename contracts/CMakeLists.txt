@@ -4,6 +4,7 @@ add_subdirectory(infinite)
 add_subdirectory(proxy)
 add_subdirectory(test_api)
 add_subdirectory(simpledb)
+add_subdirectory(storage)
 #add_subdirectory(social)
 
 install( DIRECTORY eoslib DESTINATION include/ )

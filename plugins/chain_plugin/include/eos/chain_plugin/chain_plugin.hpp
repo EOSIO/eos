@@ -34,14 +34,15 @@ struct permission {
 class read_only {
    const chain_controller& db;
 
-   const string KEYi64 = "i64";
-   const string KEYi128i128 = "i128i128";
-   const string KEYi64i64i64 = "i64i64i64";
-   const string PRIMARY = "primary";
-   const string SECONDARY = "secondary";
-   const string TERTIARY = "tertiary";
-   
 public:
+   static const string KEYi64;
+   static const string KEYstr;
+   static const string KEYi128i128;
+   static const string KEYi64i64i64;
+   static const string PRIMARY;
+   static const string SECONDARY;
+   static const string TERTIARY;
+   
    read_only(const chain_controller& db)
       : db(db) {}
 
@@ -173,6 +174,14 @@ public:
       data.resize( sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
+   }
+
+   void copy_row(const chain::keystr_value_object& obj, vector<char>& data)const {
+      data.resize( obj.primary_key.size() + obj.value.size() + 8 );
+      fc::datastream<char*> ds(data.data(), data.size());
+      fc::raw::pack(ds, obj.primary_key);
+      ds.write(obj.value.data(), obj.value.size());
+      data.resize(ds.tellp());
    }
 
    void copy_row(const chain::key128x128_value_object& obj, vector<char>& data)const {
