@@ -1,24 +1,24 @@
 {
-  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "dnsLabelPrefix": {
-      "value": "GEN-UNIQUE-11"
-    },
-    "vmSize": {
-      "value": "Standard_DV2"
-    },
-    "adminUsername": {
-      "value": "azureuser"
-    },
-    "adminPassword": {
-      "value": "GEN-PASSWORD"
-    },
-    "accountNamesCommaDelimited": {
-      "value": "listOfNames"
-    },
-    "gitBranch": {
-      "value": "master"
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adminUsername": {
+            "type": "string"
+        },
+        "adminPassword": {
+            "type": "securestring"
+        },
+        "virtualMachineSize": {
+            "type": "string"
+        },
+        "publicIpAddressName": {
+            "type": "string"
+        },
+        "accountNamesCommaDelimited": {
+            "value": "string"
+        },
+          "gitBranch": {
+            "value": "string"
+        }
     }
-  }
 }
