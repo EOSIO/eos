@@ -426,6 +426,30 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       std::copy(gpo.active_producers.begin(), gpo.active_producers.end(), prods.begin());
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_chain", "test_activeprods"), {}, fc::raw::pack(prods) ) == WASM_TEST_PASS, "test_chain::test_activeprods()" );
 
+      // Test string
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "construct_with_size"), {}, {} ) == WASM_TEST_PASS, "test_string::construct_with_size()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "construct_with_data"), {}, {} ) == WASM_TEST_PASS, "test_string::construct_with_data()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "construct_with_data_copied"), {}, {} ) == WASM_TEST_PASS, "test_string::construct_with_data_copied()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "construct_with_data_partially"), {}, {} ) == WASM_TEST_PASS, "test_string::construct_with_data_partially()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "copy_constructor"), {}, {} ) == WASM_TEST_PASS, "test_string::copy_constructor()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "assignment_operator"), {}, {} ) == WASM_TEST_PASS, "test_string::assignment_operator()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "index_operator"), {}, {} ) == WASM_TEST_PASS, "test_string::index_operator()" );
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "index_out_of_bound"), {}, {} ), fc::assert_exception, is_assert_exception );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "substring"), {}, {} ) == WASM_TEST_PASS, "test_string::substring()" );
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "substring_out_of_bound"), {}, {} ), fc::assert_exception, is_assert_exception );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "concatenation_null_terminated"), {}, {} ) == WASM_TEST_PASS, "test_string::concatenation_null_terminated()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "concatenation_non_null_terminated"), {}, {} ) == WASM_TEST_PASS, "test_string::concatenation_non_null_terminated()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "assign"), {}, {} ) == WASM_TEST_PASS, "test_string::assign()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "comparison_operator"), {}, {} ) == WASM_TEST_PASS, "test_string::comparison_operator()" );
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_null_terminated"), {}, {}) );
+      BOOST_CHECK_EQUAL( capture.size() , 1);
+      BOOST_CHECK_EQUAL( capture[0], "Hello World!");
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_non_null_terminated"), {}, {}) );
+      BOOST_CHECK_EQUAL( capture.size() , 1);
+      BOOST_CHECK_EQUAL( capture[0], "Hello World!");
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_unicode"), {}, {}) );
+      BOOST_CHECK_EQUAL( capture.size() , 1);
+      BOOST_CHECK_EQUAL( capture[0], "你好，世界！");
 
 } FC_LOG_AND_RETHROW() }
 
