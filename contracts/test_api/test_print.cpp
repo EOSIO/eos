@@ -37,8 +37,8 @@ unsigned int test_print::test_printn() {
   printn(N(AAAAAA));
   printn(N(abcdefghijk));
   printn(N(abcdefghijkl));
-  printn(N(abcdefghijklm));
-  printn(N(abcdefghijklmn));
-  printn(N(abcdefghijklmno));
+  printn(N(abcdefghijkl1));
+  printn(N(abcdefghijkl12));
+  printn(N(abcdefghijkl123));
   return WASM_TEST_PASS;
 }

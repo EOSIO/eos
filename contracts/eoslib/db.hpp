@@ -7,8 +7,105 @@
 /**
  *  @ingroup databaseCpp
  *  Cpp implementation of database API. It is based on pimpl idiom.
- *  @see Table class and table_impl class
+ *  @see Table class and table_impl and table_impl_str class
  */
+
+template<typename T>
+struct table_impl_obj {};
+
+template<>
+struct table_impl_obj<char*> {
+    
+    static int32_t store( AccountName scope, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return store_str( scope, table, key, keylen, data, datalen );
+    }
+
+    static int32_t update( AccountName scope, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return update_str( scope, table, key, keylen, data, datalen );
+    }
+
+    static int32_t front( AccountName scope, AccountName code, TableName table, char* data, uint32_t len ) {
+        return front_str( scope, code, table, data, len );
+    }
+
+    static int32_t back( AccountName scope, AccountName code, TableName table, char* data, uint32_t len ) {
+        return back_str( scope, code, table, data, len );
+    }
+
+    static int32_t load( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return load_str( scope, code, table, key, keylen, data, datalen );
+    }
+
+    static int32_t next( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return next_str( scope, code, table, key, keylen, data, datalen );
+    }
+
+    static int32_t previous( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return previous_str( scope, code, table, key, keylen, data, datalen );
+    }
+
+    static int32_t lower_bound( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return lower_bound_str( scope, code, table, key, keylen, data, datalen );
+    }
+
+    static int32_t upper_bound( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return upper_bound_str( scope, code, table, key, keylen, data, datalen );
+    }
+
+    static int32_t remove( AccountName scope, TableName table, char* key, uint32_t keylen ) {
+        return remove_str( scope, table, key, keylen );
+    }
+};
+
+
+template<AccountName scope, AccountName code, TableName table, typename PrimaryType>
+struct VarTable {
+    private:
+    typedef table_impl_obj<PrimaryType> impl;
+
+    public:
+    typedef PrimaryType Primary;
+
+    int32_t store( Primary key, uint32_t keylen, char* record, uint32_t len ) {
+        return impl::store( scope, table, key, keylen, record, len );
+    }
+
+    int32_t update( Primary key, uint32_t keylen, char* record, uint32_t len ) {
+        return impl::update( scope, table, key, keylen, record, len );
+    }
+   
+    int32_t front( char* record, uint32_t len ) {
+        return impl::front( scope, code, table, record, len ); 
+    }
+
+    int32_t back( char* record, uint32_t len ) {
+        return impl::back( scope, code, table, record, len );
+    }
+
+    int32_t load( Primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::load( scope, code, table, key, keylen, record, len );
+    } 
+
+    int32_t next( Primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::next( scope, code, table, key, keylen, record, len );
+    }
+    
+    int32_t previous( Primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::previous( scope, code, table, key, keylen, record, len );
+    }
+
+    int32_t lower_bound( Primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::lower_bound( scope, code, table, key, keylen, record, len );
+    }
+
+    int32_t upper_bound( Primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::upper_bound( scope, code, table, key, keylen, record, len );
+    }
+
+    int32_t remove( Primary key, uint32_t keylen ) {
+       return impl::remove( scope, table, key, keylen );
+    }
+};
 
 template<int Primary, int Secondary>
 struct table_impl{};

@@ -56,6 +56,15 @@ The following instructions overview the process of getting the software, buildin
 
 For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
 
+It is called build.sh with following inputs.
+- architecture [ubuntu|darwin]
+- optional mode [full|build] 
+
+The second optional input can be full or build where full implies that it installs dependencies and builds eos. If you omit this input then build script always installs dependencies and then builds eos.
+
+```bash
+./build.sh <architecture> <optional mode>
+```
 Clone EOS repository recursively as below and run build.sh located in root `eos` folder.
 
 <a name="autoubuntu"></a>
@@ -139,7 +148,7 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet 
 
-After successfully building the project, the `eosd` binary should be present in the `programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
+After successfully building the project, the `eosd` binary should be present in the `build/programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
 
 Edit the `config.ini` file, adding the following settings to the defaults already in place:
 
@@ -421,7 +430,7 @@ You can find up to date information about EOS Docker in the [Docker Readme](http
 
 
 <a name="manualdep"></a>
-### Manual installation of the dependencies
+## Manual installation of the dependencies
 
 If you prefer to manually build dependencies - follow the steps below.
 
@@ -438,7 +447,7 @@ Dependencies:
 * [binaryen](https://github.com/WebAssembly/binaryen.git)
 
 <a name="ubuntu"></a>
-#### Clean install Ubuntu 16.10 
+### Clean install Ubuntu 16.10 
 
 Install the development toolkit:
 
@@ -514,7 +523,7 @@ make -j4 install
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>. 
 
 <a name="macos"></a>
-#### MacOS Sierra 10.12.6 
+### MacOS Sierra 10.12.6 
 
 macOS additional Dependencies:
 

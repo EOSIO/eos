@@ -42,7 +42,7 @@ namespace eos { namespace chain {
       AccountName           scope; 
       AccountName           code;
       AccountName           table;
-      AccountName           primary_key;
+      uint64_t              primary_key;
       shared_string         value;
    };
 
@@ -55,9 +55,59 @@ namespace eos { namespace chain {
                member<key_value_object, AccountName, &key_value_object::scope>,
                member<key_value_object, AccountName, &key_value_object::code>,
                member<key_value_object, AccountName, &key_value_object::table>,
-               member<key_value_object, AccountName, &key_value_object::primary_key>
+               member<key_value_object, uint64_t, &key_value_object::primary_key>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<AccountName> >
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t> >
+         >
+      >
+   >;
+
+   struct shared_string_less {
+      bool operator()( const char* a, const char* b )const {
+         return less(a, b);
+      }
+
+      bool operator()( const std::string& a, const char* b )const {
+         return less(a.c_str(), b);
+      }
+
+      bool operator()( const char* a, const std::string& b )const {
+         return less(a, b.c_str());
+      }
+
+      inline bool less( const char* a, const char* b )const{
+         return std::strcmp( a, b ) < 0;
+      }
+   };
+
+   struct keystr_value_object : public chainbase::object<keystr_value_object_type, keystr_value_object> {
+      OBJECT_CTOR(keystr_value_object, (primary_key)(value))
+      
+      typedef std::string key_type;
+      static const int number_of_keys = 1;
+
+      const char* data() const { return primary_key.data(); }
+
+      id_type               id;
+      AccountName           scope; 
+      AccountName           code;
+      AccountName           table;
+      shared_string         primary_key;
+      shared_string         value;
+   };
+
+   using keystr_value_index = chainbase::shared_multi_index_container<
+      keystr_value_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<keystr_value_object, keystr_value_object::id_type, &keystr_value_object::id>>,
+         ordered_unique<tag<by_scope_primary>, 
+            composite_key< keystr_value_object,
+               member<keystr_value_object, AccountName, &keystr_value_object::scope>,
+               member<keystr_value_object, AccountName, &keystr_value_object::code>,
+               member<keystr_value_object, AccountName, &keystr_value_object::table>,
+               const_mem_fun<keystr_value_object, const char*, &keystr_value_object::data>
+            >,
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,shared_string_less>
          >
       >
    >;
@@ -163,6 +213,7 @@ namespace eos { namespace chain {
 } } // eos::chain
 
 CHAINBASE_SET_INDEX_TYPE(eos::chain::key_value_object, eos::chain::key_value_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::keystr_value_object, eos::chain::keystr_value_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::key128x128_value_object, eos::chain::key128x128_value_index)
 CHAINBASE_SET_INDEX_TYPE(eos::chain::key64x64x64_value_object, eos::chain::key64x64x64_value_index)
 

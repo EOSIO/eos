@@ -13,6 +13,11 @@
 
 namespace eos { namespace chain {
 
+void apply_context::get_active_producers(types::AccountName* producers, uint32_t datalen) {
+   const auto& gpo = controller.get_global_properties();
+   memcpy(producers, gpo.active_producers.data(), std::min(sizeof(AccountName)*gpo.active_producers.size(),(size_t)datalen)); 
+}
+
 void apply_context::require_authorization(const types::AccountName& account) {
    auto itr = boost::find_if(msg.authorization, [&account](const auto& auth) { return auth.account == account; });
    EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
