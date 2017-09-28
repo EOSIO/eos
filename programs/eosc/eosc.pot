@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Dawn 1.0\n"
 "Report-Msgid-Bugs-To: https://github.com/EOSIO/eos/issues"
-"POT-Creation-Date: 2017-09-27 18:41-0400\n"
+"POT-Creation-Date: 2017-09-28 11:40-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: \n"
@@ -13,11 +13,9 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: programs/eosc/help_text.cpp:28
 msgid "An error occurred while submitting the transaction for this command!"
 msgstr ""
 
-#: programs/eosc/help_text.cpp:30
 msgid ""
 "The transaction is a duplicate of one already pushed to the producers.  If this\n"
 "is an intentionally repeated transaction there are a few ways to resolve the\n"
@@ -29,7 +27,6 @@ msgid ""
 "    Please note, this will consume more bandwidth than the base transaction "
 msgstr ""
 
-#: programs/eosc/help_text.cpp:39
 msgid ""
 "The transaction requires permissions that were not granted by the transaction.\n"
 "Missing permission from:\n"
@@ -39,7 +36,6 @@ msgid ""
 "Note: you will need an unlocked wallet that can authorized these permissions."
 msgstr ""
 
-#: programs/eosc/help_text.cpp:46
 msgid ""
 "The transaction requires permissions that could not be authorized by the wallet.\n"
 "Missing authrizations:\n"
@@ -48,7 +44,6 @@ msgid ""
 "Please make sure the proper keys are imported into an unlocked wallet and try again!"
 msgstr ""
 
-#: programs/eosc/help_text.cpp:52
 msgid ""
 "The transaction requires scopes that were not listed by the transaction.\n"
 "Missing scope(s):\n"
@@ -57,11 +52,9 @@ msgid ""
 "Please use the `-S,--scope` option to add the missing accounts!"
 msgstr ""
 
-#: programs/eosc/help_text.cpp:59
 msgid "The transaction references an account which does not exist."
 msgstr ""
 
-#: programs/eosc/help_text.cpp:61
 msgid ""
 "Unknown accounts:\n"
 "  - ${1}\n"
@@ -69,7 +62,6 @@ msgid ""
 "Please check the account names and try again!"
 msgstr ""
 
-#: programs/eosc/help_text.cpp:66
 msgid ""
 "The ABI for action \"${2}\" on code account \"${1}\" is unknown.\n"
 "The payload cannot be automatically serialized.\n"
@@ -77,23 +69,18 @@ msgid ""
 "You can push an arbitrary transaction using the 'push transaction' subcommand"
 msgstr ""
 
-#: programs/eosc/help_text.cpp:71
 msgid "Unable to find a wallet named \"${1}\", are you sure you typed the name correctly?"
 msgstr ""
 
-#: programs/eosc/help_text.cpp:73
 msgid "Invalid password for wallet named \"${1}\""
 msgstr ""
 
-#: programs/eosc/help_text.cpp:75
 msgid "The wallet named \"${1}\" is locked.  Please unlock it and try again."
 msgstr ""
 
-#: programs/eosc/help_text.cpp:77
 msgid "This key is already imported into the wallet named \"${1}\"."
 msgstr ""
 
-#: programs/eosc/help_text.cpp:79
 msgid ""
 "The ABI for the code on account \"${1}\" does not specify table \"${2}\".\n"
 "\n"
@@ -101,542 +88,419 @@ msgid ""
 "  eosc get code ${1}"
 msgstr ""
 
-#: programs/eosc/help_text.cpp:84
 msgid "Error locating help text: ${code} ${what}"
 msgstr ""
 
-#: programs/eosc/main.cpp:176
 msgid "Error parsing WebAssembly text file:"
 msgstr ""
 
-#: programs/eosc/main.cpp:195
 msgid "Error serializing WebAssembly binary file:"
 msgstr ""
 
-#: programs/eosc/main.cpp:214
 msgid "set the time in milliseconds before a transaction expires, defaults to 0.1ms"
 msgstr ""
 
-#: programs/eosc/main.cpp:215
 msgid "force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"
 msgstr ""
 
-#: programs/eosc/main.cpp:351 programs/eosc/main.cpp:417
 msgid "set parmaters dealing with account permissions"
 msgstr ""
 
-#: programs/eosc/main.cpp:352 programs/eosc/main.cpp:418
 msgid "The account to set/delete a permission authority for"
 msgstr ""
 
-#: programs/eosc/main.cpp:353
 msgid "The permission name to set/delete an authority for"
 msgstr ""
 
-#: programs/eosc/main.cpp:354
 msgid "[delete] NULL, [create/update] JSON string or filename defining the authority"
 msgstr ""
 
-#: programs/eosc/main.cpp:355
-msgid "[create] The permission name of this parents permission (Defaults to: \")Active\")"
+msgid "[create] The permission name of this parents permission (Defaults to: \"Active\")"
 msgstr ""
 
-#: programs/eosc/main.cpp:356 programs/eosc/main.cpp:422
-#: programs/eosc/main.cpp:675
 msgid "Specify if unlocked wallet keys should be used to sign transaction"
 msgstr ""
 
-#: programs/eosc/main.cpp:419
 msgid "The account that owns the code for the action"
 msgstr ""
 
-#: programs/eosc/main.cpp:420
 msgid "the type of the action"
 msgstr ""
 
-#: programs/eosc/main.cpp:421
 msgid "[delete] NULL, [set/update] The permission name require for executing the given action"
 msgstr ""
 
-#: programs/eosc/main.cpp:460
 msgid "the host where eosd is running"
 msgstr ""
 
-#: programs/eosc/main.cpp:461
 msgid "the port where eosd is running"
 msgstr ""
 
-#: programs/eosc/main.cpp:462
 msgid "the host where eos-walletd is running"
 msgstr ""
 
-#: programs/eosc/main.cpp:463
 msgid "the port where eos-walletd is running"
 msgstr ""
 
-#: programs/eosc/main.cpp:466
 msgid "output verbose messages on error"
 msgstr ""
 
-#: programs/eosc/main.cpp:469
 msgid "Create various items, on and off the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:473
 msgid "Create a new keypair and print the public and private keys"
 msgstr ""
 
-#: programs/eosc/main.cpp:485
+msgid "Private key: ${key}"
+msgstr ""
+
+msgid "Public key: ${key}"
+msgstr ""
+
 msgid "Create a new account on the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:486
 msgid "The name of the account creating the new account"
 msgstr ""
 
-#: programs/eosc/main.cpp:487
 msgid "The name of the new account"
 msgstr ""
 
-#: programs/eosc/main.cpp:488
 msgid "The owner public key for the account"
 msgstr ""
 
-#: programs/eosc/main.cpp:489
 msgid "The active public key for the account"
 msgstr ""
 
-#: programs/eosc/main.cpp:490 programs/eosc/main.cpp:502
-#: programs/eosc/main.cpp:708 programs/eosc/main.cpp:734
-#: programs/eosc/main.cpp:775 programs/eosc/main.cpp:1034
 msgid "Specify that unlocked wallet keys should not be used to sign transaction"
 msgstr ""
 
-#: programs/eosc/main.cpp:497
 msgid "Create a new producer on the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:498
 msgid "The name of the new producer"
 msgstr ""
 
-#: programs/eosc/main.cpp:499
 msgid "The public key for the producer"
 msgstr ""
 
-#: programs/eosc/main.cpp:501 programs/eosc/main.cpp:707
-#: programs/eosc/main.cpp:733
 msgid "An account and permission level to authorize, as in 'account@permission' (default user@active)"
 msgstr ""
 
-#: programs/eosc/main.cpp:518
 msgid "Retrieve various items and information from the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:522
 msgid "Get current blockchain information"
 msgstr ""
 
-#: programs/eosc/main.cpp:528
 msgid "Retrieve a full block from the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:529
 msgid "The number or ID of the block to retrieve"
 msgstr ""
 
-#: programs/eosc/main.cpp:537
 msgid "Retrieve an account from the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:538
 msgid "The name of the account to retrieve"
 msgstr ""
 
-#: programs/eosc/main.cpp:548
 msgid "Retrieve the code and ABI for an account"
 msgstr ""
 
-#: programs/eosc/main.cpp:549
 msgid "The name of the account whose code should be retrieved"
 msgstr ""
 
-#: programs/eosc/main.cpp:550
 msgid "The name of the file to save the contract .wast to"
 msgstr ""
 
-#: programs/eosc/main.cpp:551
 msgid "The name of the file to save the contract .abi to"
 msgstr ""
 
-#: programs/eosc/main.cpp:555
-msgid "code hash: "
+msgid "code hash: ${code_hash}"
 msgstr ""
 
-#: programs/eosc/main.cpp:558
-msgid "saving wast to "
+msgid "saving wast to ${codeFilename}"
 msgstr ""
 
-#: programs/eosc/main.cpp:564
-msgid "saving abi to "
+msgid "saving abi to ${abiFilename}"
 msgstr ""
 
-#: programs/eosc/main.cpp:579
 msgid "Retrieve the contents of a database table"
 msgstr ""
 
-#: programs/eosc/main.cpp:580
 msgid "The account scope where the table is found"
 msgstr ""
 
-#: programs/eosc/main.cpp:581
 msgid "The contract within scope who owns the table"
 msgstr ""
 
-#: programs/eosc/main.cpp:582
 msgid "The name of the table as specified by the contract abi"
 msgstr ""
 
-#: programs/eosc/main.cpp:583
 msgid "Return the value as BINARY rather than using abi to interpret as JSON"
 msgstr ""
 
-#: programs/eosc/main.cpp:584
 msgid "The maximum number of rows to return"
 msgstr ""
 
-#: programs/eosc/main.cpp:585
 msgid "The name of the key to index by as defined by the abi, defaults to primary key"
 msgstr ""
 
-#: programs/eosc/main.cpp:586
 msgid "JSON representation of lower bound value of key, defaults to first"
 msgstr ""
 
-#: programs/eosc/main.cpp:587
 msgid "JSON representation of upper bound value value of key, defaults to last"
 msgstr ""
 
-#: programs/eosc/main.cpp:604
 msgid "Retrieve accounts associated with a public key"
 msgstr ""
 
-#: programs/eosc/main.cpp:605
 msgid "The public key to retrieve accounts for"
 msgstr ""
 
-#: programs/eosc/main.cpp:614
 msgid "Retrieve accounts which are servants of a given account "
 msgstr ""
 
-#: programs/eosc/main.cpp:615
 msgid "The name of the controlling account"
 msgstr ""
 
-#: programs/eosc/main.cpp:623
 msgid "Retrieve a transaction from the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:624
 msgid "ID of the transaction to retrieve"
 msgstr ""
 
-#: programs/eosc/main.cpp:634
 msgid "Retrieve all transactions with specific account name referenced in their scope"
 msgstr ""
 
-#: programs/eosc/main.cpp:635
 msgid "Name of account to query on"
 msgstr ""
 
-#: programs/eosc/main.cpp:636
 msgid "Number of most recent transactions to skip (0 would start at most recent transaction)"
 msgstr ""
 
-#: programs/eosc/main.cpp:637
 msgid "Number of transactions to return"
 msgstr ""
 
-#: programs/eosc/main.cpp:662
 msgid "Set or update blockchain state"
 msgstr ""
 
-#: programs/eosc/main.cpp:669
 msgid "Create or update the contract on an account"
 msgstr ""
 
-#: programs/eosc/main.cpp:670
 msgid "The account to publish a contract for"
 msgstr ""
 
-#: programs/eosc/main.cpp:671
 msgid "The file containing the contract WAST"
 msgstr ""
 
-#: programs/eosc/main.cpp:673
 msgid "The ABI for the contract"
 msgstr ""
 
-#: programs/eosc/main.cpp:678
 msgid "Reading WAST..."
 msgstr ""
 
-#: programs/eosc/main.cpp:680
 msgid "Assembling WASM..."
 msgstr ""
 
-#: programs/eosc/main.cpp:694
 msgid "Publishing contract..."
 msgstr ""
 
-#: programs/eosc/main.cpp:700
 msgid "Approve/unapprove producer"
 msgstr ""
 
-#: programs/eosc/main.cpp:702
 msgid "Approve producer"
 msgstr ""
 
-#: programs/eosc/main.cpp:703
 msgid "Unapprove producer"
 msgstr ""
 
-#: programs/eosc/main.cpp:704
 msgid "The name of the account approving"
 msgstr ""
 
-#: programs/eosc/main.cpp:705
 msgid "The name of the producer to approve"
 msgstr ""
 
-#: programs/eosc/main.cpp:723
 msgid "Set producer approval from ${name} for ${producer} to ${approve}"
 msgstr ""
 
-#: programs/eosc/main.cpp:729
 msgid "Set proxy account for voting"
 msgstr ""
 
-#: programs/eosc/main.cpp:730
 msgid "The name of the account to proxy from"
 msgstr ""
 
-#: programs/eosc/main.cpp:731
 msgid "The name of the account to proxy (unproxy if not provided)"
 msgstr ""
 
-#: programs/eosc/main.cpp:750
 msgid "Set proxy for ${name} to ${proxy}"
 msgstr ""
 
-#: programs/eosc/main.cpp:754
 msgid "set or update blockchain account state"
 msgstr ""
 
-#: programs/eosc/main.cpp:760
 msgid "set or update blockchain action state"
 msgstr ""
 
-#: programs/eosc/main.cpp:770
 msgid "Transfer EOS from account to account"
 msgstr ""
 
-#: programs/eosc/main.cpp:771
 msgid "The account sending EOS"
 msgstr ""
 
-#: programs/eosc/main.cpp:772
 msgid "The account receiving EOS"
 msgstr ""
 
-#: programs/eosc/main.cpp:773
 msgid "The amount of EOS to send"
 msgstr ""
 
-#: programs/eosc/main.cpp:774
 msgid "The memo for the transfer"
 msgstr ""
 
-#: programs/eosc/main.cpp:808
 msgid "Interact with local wallet"
 msgstr ""
 
-#: programs/eosc/main.cpp:812
 msgid "Create a new wallet locally"
 msgstr ""
 
-#: programs/eosc/main.cpp:813
 msgid "The name of the new wallet"
 msgstr ""
 
-#: programs/eosc/main.cpp:823
+msgid "Creating wallet: ${wallet_name}"
+msgstr ""
+
+msgid "Save password to use in the future to unlock this wallet."
+msgstr ""
+
+msgid "Without password imported keys will not be retrievable."
+msgstr ""
+
 msgid "Open an existing wallet"
 msgstr ""
 
-#: programs/eosc/main.cpp:824
 msgid "The name of the wallet to open"
 msgstr ""
 
-#: programs/eosc/main.cpp:828
 msgid "Opened: ${wallet_name}"
 msgstr ""
 
-#: programs/eosc/main.cpp:832
 msgid "Lock wallet"
 msgstr ""
 
-#: programs/eosc/main.cpp:833
 msgid "The name of the wallet to lock"
 msgstr ""
 
-#: programs/eosc/main.cpp:836
 msgid "Locked: ${wallet_name}"
 msgstr ""
 
-#: programs/eosc/main.cpp:842
 msgid "Lock all unlocked wallets"
 msgstr ""
 
-#: programs/eosc/main.cpp:846
 msgid "Locked All Wallets"
 msgstr ""
 
-#: programs/eosc/main.cpp:851
 msgid "Unlock wallet"
 msgstr ""
 
-#: programs/eosc/main.cpp:852
 msgid "The name of the wallet to unlock"
 msgstr ""
 
-#: programs/eosc/main.cpp:853
 msgid "The password returned by wallet create"
 msgstr ""
 
-#: programs/eosc/main.cpp:856
 msgid "password: "
 msgstr ""
 
-#: programs/eosc/main.cpp:865
 msgid "Unlocked: ${wallet_name}"
 msgstr ""
 
-#: programs/eosc/main.cpp:871
 msgid "Import private key into wallet"
 msgstr ""
 
-#: programs/eosc/main.cpp:872
 msgid "The name of the wallet to import key into"
 msgstr ""
 
-#: programs/eosc/main.cpp:873
 msgid "Private key in WIF format to import"
 msgstr ""
 
-#: programs/eosc/main.cpp:881
 msgid "imported private key for: ${pubkey}"
 msgstr ""
 
-#: programs/eosc/main.cpp:886
 msgid "List opened wallets, * = unlocked"
 msgstr ""
 
-#: programs/eosc/main.cpp:888
 msgid "Wallets:"
 msgstr ""
 
-#: programs/eosc/main.cpp:894
 msgid "List of private keys from all unlocked wallets in wif format."
 msgstr ""
 
-#: programs/eosc/main.cpp:901
 msgid "Configure and execute benchmarks"
 msgstr ""
 
-#: programs/eosc/main.cpp:903
 msgid "Configures initial condition for benchmark"
 msgstr ""
 
-#: programs/eosc/main.cpp:905 programs/eosc/main.cpp:942
 msgid "the number of accounts in transfer among"
 msgstr ""
 
-#: programs/eosc/main.cpp:907
 msgid "Creating ${number_of_accounts} accounts with initial balances"
 msgstr ""
 
-#: programs/eosc/main.cpp:939
 msgid "executes random transfers among accounts"
 msgstr ""
 
-#: programs/eosc/main.cpp:943
 msgid "the number of transfers to execute"
 msgstr ""
 
-#: programs/eosc/main.cpp:944
 msgid "whether or not to loop for ever"
 msgstr ""
 
-#: programs/eosc/main.cpp:948
 msgid "Funding ${number_of_accounts} accounts from init"
 msgstr ""
 
-#: programs/eosc/main.cpp:979
 msgid "Generating random ${number_of_transfers} transfers among ${number_of_accounts}"
 msgstr ""
 
-#: programs/eosc/main.cpp:1016
 msgid "Push arbitrary transactions to the blockchain"
 msgstr ""
 
-#: programs/eosc/main.cpp:1024
 msgid "Push a transaction with a single message"
 msgstr ""
 
-#: programs/eosc/main.cpp:1027
 msgid "The account providing the contract to execute"
 msgstr ""
 
-#: programs/eosc/main.cpp:1028
 msgid "The action to execute on the contract"
 msgstr ""
 
-#: programs/eosc/main.cpp:1030
 msgid "The arguments to the contract"
 msgstr ""
 
-#: programs/eosc/main.cpp:1032
 msgid "An account and permission level to authorize, as in 'account@permission'"
 msgstr ""
 
-#: programs/eosc/main.cpp:1033
 msgid "An comma separated list of accounts in scope for this operation"
 msgstr ""
 
-#: programs/eosc/main.cpp:1064
 msgid "Push an arbitrary JSON transaction"
 msgstr ""
 
-#: programs/eosc/main.cpp:1065
 msgid "The JSON of the transaction to push"
 msgstr ""
 
-#: programs/eosc/main.cpp:1073
 msgid "Push an array of arbitrary JSON transactions"
 msgstr ""
 
-#: programs/eosc/main.cpp:1074
 msgid "The JSON array of the transactions to push"
 msgstr ""
 
-#: programs/eosc/main.cpp:1090
 msgid "Failed to connect to eosd at ${ip}:${port}; is eosd running?"
 msgstr ""
 
-#: programs/eosc/main.cpp:1092
 msgid "Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?"
 msgstr ""
 
-#: programs/eosc/main.cpp:1094
 msgid "Failed to connect"
 msgstr ""

@@ -467,8 +467,8 @@ int main( int argc, char** argv ) {
    // create key
    create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback([] {
       auto privateKey = fc::ecc::private_key::generate();
-      std::cout << "Private key: " << key_to_wif(privateKey.get_secret()) << "\n";
-      std::cout << "Public key:  " << string(public_key_type(privateKey.get_public_key())) << std::endl;
+      std::cout << localized("Private key: ${key}", ("key",  key_to_wif(privateKey.get_secret()))) << std::endl;
+      std::cout << localized("Public key: ${key}", ("key", string(public_key_type(privateKey.get_public_key())))) << std::endl;
    });
 
    // create account
@@ -547,16 +547,16 @@ int main( int argc, char** argv ) {
    getCode->set_callback([&] {
       auto result = call(get_code_func, fc::mutable_variant_object("name", accountName));
 
-      std::cout << localized("code hash: ") << result["code_hash"].as_string() <<"\n";
+      std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
 
       if( codeFilename.size() ){
-         std::cout << localized("saving wast to ") << codeFilename <<"\n";
+         std::cout << localized("saving wast to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
          auto code = result["wast"].as_string();
          std::ofstream out( codeFilename.c_str() );
          out << code;
       }
       if( abiFilename.size() ) {
-         std::cout << localized("saving abi to ") << abiFilename <<"\n";
+         std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
          auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
