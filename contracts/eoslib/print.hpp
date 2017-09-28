@@ -20,6 +20,10 @@ namespace eos {
       prints(ptr);
    }
 
+   inline void print( const String& str ) {
+      prints((const char*)str.str);
+   }
+
    /**
     * Prints 64 bit unsigned integer as a 64 bit unsigned integer
     * @brief Prints integer 64 bit unsigned integer

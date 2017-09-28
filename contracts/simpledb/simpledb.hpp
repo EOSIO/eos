@@ -19,3 +19,18 @@ struct PACKED(record3) {
    uint64_t key2;
    uint64_t key3;
 };
+
+struct KeyValue1 {
+   String key;
+   String value;
+};
+
+struct ComplexType {
+   String name;
+   UInt64 age;
+};
+
+struct KeyValue2 {
+   String key;
+   ComplexType value;
+};
