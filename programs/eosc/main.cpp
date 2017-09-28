@@ -92,14 +92,30 @@ Options:
 
 #include "CLI11.hpp"
 #include "help_text.hpp"
-
-#define format_output(format, ...) fc::format_string(format, fc::mutable_variant_object() __VA_ARGS__ )
+#include "localize.hpp"
+#include <config.hpp>
 
 using namespace std;
 using namespace eos;
 using namespace eos::chain;
 using namespace eos::utilities;
 using namespace eos::client::help;
+using namespace eos::client::localize;
+using namespace eos::client::config;
+using namespace boost::filesystem;
+
+FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
+FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
+#define EOSC_ASSERT( TEST, ... ) \
+  FC_EXPAND_MACRO( \
+    FC_MULTILINE_MACRO_BEGIN \
+      if( UNLIKELY(!(TEST)) ) \
+      {                                                   \
+        std::cerr << localized( __VA_ARGS__ ) << std::endl;  \
+        FC_THROW_EXCEPTION( explained_exception, #TEST ); \
+      }                                                   \
+    FC_MULTILINE_MACRO_END \
+  )
 
 string program = "eosc";
 string host = "localhost";
@@ -160,14 +176,14 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
    if(parseErrors.size())
    {
       // Print any parse errors;
-      std::cerr << "Error parsing WebAssembly text file:" << std::endl;
+      std::cerr << localized("Error parsing WebAssembly text file:") << std::endl;
       for(auto& error : parseErrors)
       {
          std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
          std::cerr << error.locus.sourceLine << std::endl;
          std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
       }
-      FC_ASSERT( !"error parsing wast" );
+      FC_THROW_EXCEPTION( explained_exception, "wast parse error" );
    }
 
    try
@@ -179,9 +195,9 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
    }
    catch(Serialization::FatalSerializationException exception)
    {
-      std::cerr << "Error serializing WebAssembly binary file:" << std::endl;
+      std::cerr << localized("Error serializing WebAssembly binary file:") << std::endl;
       std::cerr << exception.message << std::endl;
-      throw;
+      FC_THROW_EXCEPTION( explained_exception, "wasm serialize error");
    }
 }
 
@@ -198,8 +214,8 @@ void add_standard_transaction_options(CLI::App* cmd) {
       return true;
    };
 
-   cmd->add_option("-x,--expiration", parse_exipration, "set the time in milliseconds before a transaction expires, defaults to 0.1ms");
-   cmd->add_flag("-f,--force-unique", tx_force_unique, "force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times");
+   cmd->add_option("-x,--expiration", parse_exipration, localized("set the time in milliseconds before a transaction expires, defaults to 0.1ms"));
+   cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
 }
 
 std::string generate_nonce_string() {
@@ -214,7 +230,7 @@ vector<types::AccountPermission> get_account_permissions(const vector<string>& p
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
       split(pieces, p, boost::algorithm::is_any_of("@"));
-      FC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
       return types::AccountPermission(pieces[0], pieces[1]);
    });
    vector<types::AccountPermission> accountPermissions;
@@ -335,12 +351,12 @@ struct set_account_permission_subcommand {
    bool skip_sign;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
-      auto permissions = accountCmd->add_subcommand("permission", "set parmaters dealing with account permissions");
-      permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
-      permissions->add_option("permission", permissionStr, "The permission name to set/delete an authority for")->required();
-      permissions->add_option("authority", authorityJsonOrFile, "[delete] NULL, [create/update] JSON string or filename defining the authority")->required();
-      permissions->add_option("parent", parentStr, "[create] The permission name of this parents permission (Defaults to: \"Active\")");
-      permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+      auto permissions = accountCmd->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
+      permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
+      permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
+      permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] JSON string or filename defining the authority"))->required();
+      permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
+      permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
 
       permissions->set_callback([this] {
          Name account = Name(accountStr);
@@ -401,12 +417,12 @@ struct set_action_permission_subcommand {
    bool skip_sign;
 
    set_action_permission_subcommand(CLI::App* actionRoot) {
-      auto permissions = actionRoot->add_subcommand("permission", "set parmaters dealing with account permissions");
-      permissions->add_option("account", accountStr, "The account to set/delete a permission authority for")->required();
-      permissions->add_option("code", codeStr, "The account that owns the code for the action")->required();
-      permissions->add_option("type", typeStr, "the type of the action")->required();
-      permissions->add_option("requirement", requirementStr, "[delete] NULL, [set/update] The permission name require for executing the given action")->required();
-      permissions->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+      auto permissions = actionRoot->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
+      permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
+      permissions->add_option("code", codeStr, localized("The account that owns the code for the action"))->required();
+      permissions->add_option("type", typeStr, localized("the type of the action"))->required();
+      permissions->add_option("requirement", requirementStr, localized("[delete] NULL, [set/update] The permission name require for executing the given action"))->required();
+      permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
 
       permissions->set_callback([this] {
          Name account = Name(accountStr);
@@ -425,22 +441,31 @@ struct set_action_permission_subcommand {
 };
 
 int main( int argc, char** argv ) {
+   path binPath = argv[0];
+   if (binPath.is_relative()) {
+      binPath = relative(binPath, current_path()); 
+   }
+
+   setlocale(LC_ALL, "");
+   bindtextdomain(locale_domain, locale_path);
+   textdomain(locale_domain);
+
    CLI::App app{"Command Line Interface to Eos Daemon"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, "the host where eosd is running", true );
-   app.add_option( "-p,--port", port, "the port where eosd is running", true );
-   app.add_option( "--wallet-host", wallet_host, "the host where eos-walletd is running", true );
-   app.add_option( "--wallet-port", wallet_port, "the port where eos-walletd is running", true );
+   app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
+   app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
+   app.add_option( "--wallet-host", wallet_host, localized("the host where eos-walletd is running"), true );
+   app.add_option( "--wallet-port", wallet_port, localized("the port where eos-walletd is running"), true );
 
    bool verbose_errors = false;
-   app.add_flag( "-v,--verbose", verbose_errors, "output verbose messages on error");
+   app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose messages on error"));
 
    // Create subcommand
-   auto create = app.add_subcommand("create", "Create various items, on and off the blockchain", false);
+   auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"), false);
    create->require_subcommand();
 
    // create key
-   create->add_subcommand("key", "Create a new keypair and print the public and private keys")->set_callback([] {
+   create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback([] {
       auto privateKey = fc::ecc::private_key::generate();
       std::cout << "Private key: " << key_to_wif(privateKey.get_secret()) << "\n";
       std::cout << "Public key:  " << string(public_key_type(privateKey.get_public_key())) << std::endl;
@@ -452,24 +477,24 @@ int main( int argc, char** argv ) {
    string ownerKey;
    string activeKey;
    bool skip_sign = false;
-   auto createAccount = create->add_subcommand("account", "Create a new account on the blockchain", false);
-   createAccount->add_option("creator", creator, "The name of the account creating the new account")->required();
-   createAccount->add_option("name", name, "The name of the new account")->required();
-   createAccount->add_option("OwnerKey", ownerKey, "The owner public key for the account")->required();
-   createAccount->add_option("ActiveKey", activeKey, "The active public key for the account")->required();
-   createAccount->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
+   createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
+   createAccount->add_option("name", name, localized("The name of the new account"))->required();
+   createAccount->add_option("OwnerKey", ownerKey, localized("The owner public key for the account"))->required();
+   createAccount->add_option("ActiveKey", activeKey, localized("The active public key for the account"))->required();
+   createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    createAccount->set_callback([&] {
       create_account(creator, name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign);
    });
 
    // create producer
    vector<string> permissions;
-   auto createProducer = create->add_subcommand("producer", "Create a new producer on the blockchain", false);
-   createProducer->add_option("name", name, "The name of the new producer")->required();
-   createProducer->add_option("OwnerKey", ownerKey, "The public key for the producer")->required();
+   auto createProducer = create->add_subcommand("producer", localized("Create a new producer on the blockchain"), false);
+   createProducer->add_option("name", name, localized("The name of the new producer"))->required();
+   createProducer->add_option("OwnerKey", ownerKey, localized("The public key for the producer"))->required();
    createProducer->add_option("-p,--permission", permissions,
-                              "An account and permission level to authorize, as in 'account@permission' (default user@active)");
-   createProducer->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                              localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
+   createProducer->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    createProducer->set_callback([&name, &ownerKey, &permissions, &skip_sign] {
       if (permissions.empty()) {
          permissions.push_back(name + "@active");
@@ -485,18 +510,18 @@ int main( int argc, char** argv ) {
    });
 
    // Get subcommand
-   auto get = app.add_subcommand("get", "Retrieve various items and information from the blockchain", false);
+   auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
    get->require_subcommand();
 
    // get info
-   get->add_subcommand("info", "Get current blockchain information")->set_callback([] {
+   get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] {
       std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
    });
 
    // get block
    string blockArg;
-   auto getBlock = get->add_subcommand("block", "Retrieve a full block from the blockchain", false);
-   getBlock->add_option("block", blockArg, "The number or ID of the block to retrieve")->required();
+   auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
+   getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->set_callback([&blockArg] {
       auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
       std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
@@ -504,8 +529,8 @@ int main( int argc, char** argv ) {
 
    // get account
    string accountName;
-   auto getAccount = get->add_subcommand("account", "Retrieve an account from the blockchain", false);
-   getAccount->add_option("name", accountName, "The name of the account to retrieve")->required();
+   auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
+   getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->set_callback([&] {
       std::cout << fc::json::to_pretty_string(call(get_account_func,
                                                    fc::mutable_variant_object("name", accountName)))
@@ -515,23 +540,23 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
-   auto getCode = get->add_subcommand("code", "Retrieve the code and ABI for an account", false);
-   getCode->add_option("name", accountName, "The name of the account whose code should be retrieved")->required();
-   getCode->add_option("-c,--code",codeFilename, "The name of the file to save the contract .wast to" );
-   getCode->add_option("-a,--abi",abiFilename, "The name of the file to save the contract .abi to" );
+   auto getCode = get->add_subcommand("code", localized("Retrieve the code and ABI for an account"), false);
+   getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
+   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
+   getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->set_callback([&] {
       auto result = call(get_code_func, fc::mutable_variant_object("name", accountName));
 
-      std::cout << "code hash: " << result["code_hash"].as_string() <<"\n";
+      std::cout << localized("code hash: ") << result["code_hash"].as_string() <<"\n";
 
       if( codeFilename.size() ){
-         std::cout << "saving wast to " << codeFilename <<"\n";
+         std::cout << localized("saving wast to ") << codeFilename <<"\n";
          auto code = result["wast"].as_string();
          std::ofstream out( codeFilename.c_str() );
          out << code;
       }
       if( abiFilename.size() ) {
-         std::cout << "saving abi to " << abiFilename <<"\n";
+         std::cout << localized("saving abi to ") << abiFilename <<"\n";
          auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
@@ -546,15 +571,15 @@ int main( int argc, char** argv ) {
    string upper;
    bool binary = false;
    uint32_t limit = 10;
-   auto getTable = get->add_subcommand( "table", "Retrieve the contents of a database table", false);
-   getTable->add_option( "scope", scope, "The account scope where the table is found" )->required();
-   getTable->add_option( "contract", code, "The contract within scope who owns the table" )->required();
-   getTable->add_option( "table", table, "The name of the table as specified by the contract abi" )->required();
-   getTable->add_option( "-b,--binary", binary, "Return the value as BINARY rather than using abi to interpret as JSON" );
-   getTable->add_option( "-l,--limit", limit, "The maximum number of rows to return" );
-   getTable->add_option( "-k,--key", limit, "The name of the key to index by as defined by the abi, defaults to primary key" );
-   getTable->add_option( "-L,--lower", lower, "JSON representation of lower bound value of key, defaults to first" );
-   getTable->add_option( "-U,--upper", upper, "JSON representation of upper bound value value of key, defaults to last" );
+   auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
+   getTable->add_option( "scope", scope, localized("The account scope where the table is found") )->required();
+   getTable->add_option( "contract", code, localized("The contract within scope who owns the table") )->required();
+   getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
+   getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
+   getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
+   getTable->add_option( "-k,--key", limit, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
+   getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
+   getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
@@ -571,8 +596,8 @@ int main( int argc, char** argv ) {
 
    // get accounts
    string publicKey;
-   auto getAccounts = get->add_subcommand("accounts", "Retrieve accounts associated with a public key", false);
-   getAccounts->add_option("public_key", publicKey, "The public key to retrieve accounts for")->required();
+   auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
+   getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
    getAccounts->set_callback([&] {
       auto arg = fc::mutable_variant_object( "public_key", publicKey);
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
@@ -581,8 +606,8 @@ int main( int argc, char** argv ) {
 
    // get servants
    string controllingAccount;
-   auto getServants = get->add_subcommand("servants", "Retrieve accounts which are servants of a given account ", false);
-   getServants->add_option("account", controllingAccount, "The name of the controlling account")->required();
+   auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);
+   getServants->add_option("account", controllingAccount, localized("The name of the controlling account"))->required();
    getServants->set_callback([&] {
       auto arg = fc::mutable_variant_object( "controlling_account", controllingAccount);
       std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
@@ -590,8 +615,8 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transactionId;
-   auto getTransaction = get->add_subcommand("transaction", "Retrieve a transaction from the blockchain", false);
-   getTransaction->add_option("id", transactionId, "ID of the transaction to retrieve")->required();
+   auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
+   getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
    getTransaction->set_callback([&] {
       auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
@@ -601,10 +626,10 @@ int main( int argc, char** argv ) {
    string account_name;
    string skip_seq;
    string num_seq;
-   auto getTransactions = get->add_subcommand("transactions", "Retrieve all transactions with specific account name referenced in their scope", false);
-   getTransactions->add_option("account_name", account_name, "Name of account to query on")->required();
-   getTransactions->add_option("skip_seq", skip_seq, "Number of most recent transactions to skip (0 would start at most recent transaction)");
-   getTransactions->add_option("num_seq", num_seq, "Number of transactions to return");
+   auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
+   getTransactions->add_option("account_name", account_name, localized("Name of account to query on"))->required();
+   getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
+   getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
    getTransactions->set_callback([&] {
       auto arg = (skip_seq.empty())
                   ? fc::mutable_variant_object( "account_name", account_name)
@@ -629,25 +654,25 @@ int main( int argc, char** argv ) {
    });
 
    // set subcommand
-   auto setSubcommand = app.add_subcommand("set", "Set or update blockchain state");
+   auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));
    setSubcommand->require_subcommand();
 
    // set contract subcommand
    string account;
    string wastPath;
    string abiPath;
-   auto contractSubcommand = setSubcommand->add_subcommand("contract", "Create or update the contract on an account");
-   contractSubcommand->add_option("account", account, "The account to publish a contract for")->required();
-   contractSubcommand->add_option("wast-file", wastPath, "The file containing the contract WAST")->required()
+   auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
+   contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))->required();
+   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST"))->required()
          ->check(CLI::ExistingFile);
-   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, "The ABI for the contract")
+   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
               ->check(CLI::ExistingFile);
-   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, "Specify if unlocked wallet keys should be used to sign transaction");
+   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    contractSubcommand->set_callback([&] {
       std::string wast;
-      std::cout << "Reading WAST..." << std::endl;
+      std::cout << localized("Reading WAST...") << std::endl;
       fc::read_file_contents(wastPath, wast);
-      std::cout << "Assembling WASM..." << std::endl;
+      std::cout << localized("Assembling WASM...") << std::endl;
       auto wasm = assemble_wast(wast);
 
       types::setcode handler;
@@ -661,21 +686,21 @@ int main( int argc, char** argv ) {
       transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{account,"active"}},
                                            "setcode", handler);
 
-      std::cout << "Publishing contract..." << std::endl;
+      std::cout << localized("Publishing contract...") << std::endl;
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
    });
 
    // set producer approve/unapprove subcommand
    string producer;
-   auto producerSubcommand = setSubcommand->add_subcommand("producer", "Approve/unapprove producer");
+   auto producerSubcommand = setSubcommand->add_subcommand("producer", localized("Approve/unapprove producer"));
    producerSubcommand->require_subcommand();
-   auto approveCommand = producerSubcommand->add_subcommand("approve", "Approve producer");
-   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", "Unapprove producer");
-   producerSubcommand->add_option("user-name", name, "The name of the account approving")->required();
-   producerSubcommand->add_option("producer-name", producer, "The name of the producer to approve")->required();
+   auto approveCommand = producerSubcommand->add_subcommand("approve", localized("Approve producer"));
+   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", localized("Unapprove producer"));
+   producerSubcommand->add_option("user-name", name, localized("The name of the account approving"))->required();
+   producerSubcommand->add_option("producer-name", producer, localized("The name of the producer to approve"))->required();
    producerSubcommand->add_option("-p,--permission", permissions,
-                              "An account and permission level to authorize, as in 'account@permission' (default user@active)");
-   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                              localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
+   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    producerSubcommand->set_callback([&] {
       // don't need to check unapproveCommand because one of approve or unapprove is required
       bool approve = producerSubcommand->got_subcommand(approveCommand);
@@ -690,18 +715,18 @@ int main( int argc, char** argv ) {
                                   "okproducer", types::okproducer{name, producer, approve});
 
       push_transaction(trx, !skip_sign);
-      std::cout << "Set producer approval from " << name << " for " << producer << " to "
-                << (approve ? "" : "un") << "approve." << std::endl;
+      std::cout << localized("Set producer approval from ${name} for ${producer} to ${approve}",
+         ("name", name)("producer", producer)("value", approve ? "approve" : "unapprove")) << std::endl;
    });
 
    // set proxy subcommand
    string proxy;
-   auto proxySubcommand = setSubcommand->add_subcommand("proxy", "Set proxy account for voting");
-   proxySubcommand->add_option("user-name", name, "The name of the account to proxy from")->required();
-   proxySubcommand->add_option("proxy-name", proxy, "The name of the account to proxy (unproxy if not provided)");
+   auto proxySubcommand = setSubcommand->add_subcommand("proxy", localized("Set proxy account for voting"));
+   proxySubcommand->add_option("user-name", name, localized("The name of the account to proxy from"))->required();
+   proxySubcommand->add_option("proxy-name", proxy, localized("The name of the account to proxy (unproxy if not provided)"));
    proxySubcommand->add_option("-p,--permission", permissions,
-                                  "An account and permission level to authorize, as in 'account@permission' (default user@active)");
-   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                                  localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
+   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    proxySubcommand->set_callback([&] {
       if (permissions.empty()) {
          permissions.push_back(name + "@active");
@@ -717,17 +742,17 @@ int main( int argc, char** argv ) {
                                   "setproxy", types::setproxy{name, proxy});
 
       push_transaction(trx, !skip_sign);
-      std::cout << "Set proxy for " << name << " to " << proxy << std::endl;
+      std::cout << localized("Set proxy for ${name} to ${proxy}", ("name", name)("proxy", proxy)) << std::endl;
    });
 
    // set account
-   auto setAccount = setSubcommand->add_subcommand("account", "set or update blockchain account state")->require_subcommand();
+   auto setAccount = setSubcommand->add_subcommand("account", localized("set or update blockchain account state"))->require_subcommand();
 
    // set account permission
    auto setAccountPermission = set_account_permission_subcommand(setAccount);
 
    // set action
-   auto setAction = setSubcommand->add_subcommand("action", "set or update blockchain action state")->require_subcommand();
+   auto setAction = setSubcommand->add_subcommand("action", localized("set or update blockchain action state"))->require_subcommand();
    
    // set action permission
    auto setActionPermission = set_action_permission_subcommand(setAction);
@@ -737,12 +762,12 @@ int main( int argc, char** argv ) {
    string recipient;
    uint64_t amount;
    string memo;
-   auto transfer = app.add_subcommand("transfer", "Transfer EOS from account to account", false);
-   transfer->add_option("sender", sender, "The account sending EOS")->required();
-   transfer->add_option("recipient", recipient, "The account receiving EOS")->required();
-   transfer->add_option("amount", amount, "The amount of EOS to send")->required();
-   transfer->add_option("memo", memo, "The memo for the transfer");
-   transfer->add_flag("-s,--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+   auto transfer = app.add_subcommand("transfer", localized("Transfer EOS from account to account"), false);
+   transfer->add_option("sender", sender, localized("The account sending EOS"))->required();
+   transfer->add_option("recipient", recipient, localized("The account receiving EOS"))->required();
+   transfer->add_option("amount", amount, localized("The amount of EOS to send"))->required();
+   transfer->add_option("memo", memo, localized("The memo for the transfer"));
+   transfer->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(transfer);
    transfer->set_callback([&] {
       SignedTransaction trx;
@@ -775,55 +800,55 @@ int main( int argc, char** argv ) {
 
 
    // Wallet subcommand
-   auto wallet = app.add_subcommand( "wallet", "Interact with local wallet", false );
+   auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"), false );
    wallet->require_subcommand();
    // create wallet
    string wallet_name = "default";
-   auto createWallet = wallet->add_subcommand("create", "Create a new wallet locally", false);
-   createWallet->add_option("-n,--name", wallet_name, "The name of the new wallet", true);
+   auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
+   createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
    createWallet->set_callback([&wallet_name] {
       const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
-      std::cout << "Creating wallet: " << wallet_name << std::endl;
-      std::cout << "Save password to use in the future to unlock this wallet." << std::endl;
-      std::cout << "Without password imported keys will not be retrievable." << std::endl;
+      std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
+      std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
+      std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // open wallet
-   auto openWallet = wallet->add_subcommand("open", "Open an existing wallet", false);
-   openWallet->add_option("-n,--name", wallet_name, "The name of the wallet to open");
+   auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
+   openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
-      std::cout << "Opened: '"<<wallet_name<<"'\n";
+      std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
 
    // lock wallet
-   auto lockWallet = wallet->add_subcommand("lock", "Lock wallet", false);
-   lockWallet->add_option("-n,--name", wallet_name, "The name of the wallet to lock");
+   auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
+   lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
-      std::cout << "Locked: '"<<wallet_name<<"'\n";
+      std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
 
    });
 
    // lock all wallets
-   auto locakAllWallets = wallet->add_subcommand("lock_all", "Lock all unlocked wallets", false);
+   auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
    locakAllWallets->set_callback([] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
-      std::cout << "Locked All Wallets\n";
+      std::cout << localized("Locked All Wallets") << std::endl;
    });
 
    // unlock wallet
    string wallet_pw;
-   auto unlockWallet = wallet->add_subcommand("unlock", "Unlock wallet", false);
-   unlockWallet->add_option("-n,--name", wallet_name, "The name of the wallet to unlock");
-   unlockWallet->add_option("--password", wallet_pw, "The password returned by wallet create");
+   auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
+   unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
+   unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
       if( wallet_pw.size() == 0 ) {
-         std::cout << "password: ";
+         std::cout << localized("password: ");
          fc::set_console_echo(false);
          std::getline( std::cin, wallet_pw, '\n' );
          fc::set_console_echo(true);
@@ -832,50 +857,50 @@ int main( int argc, char** argv ) {
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       /*const auto& v = */call(wallet_host, wallet_port, wallet_unlock, vs);
-      std::cout << "Unlocked: '"<<wallet_name<<"'\n";
+      std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // import keys into wallet
    string wallet_key;
-   auto importWallet = wallet->add_subcommand("import", "Import private key into wallet", false);
-   importWallet->add_option("-n,--name", wallet_name, "The name of the wallet to import key into");
-   importWallet->add_option("key", wallet_key, "Private key in WIF format to import")->required();
+   auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
+   importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
+   importWallet->add_option("key", wallet_key, localized("Private key in WIF format to import"))->required();
    importWallet->set_callback([&wallet_name, &wallet_key] {
       auto key = utilities::wif_to_key(wallet_key);
-      FC_ASSERT( key, "invalid private key: ${k}", ("k",wallet_key) );
+      EOSC_ASSERT( key, "invalid private key: ${k}", ("k",wallet_key) );
       public_key_type pubkey = key->get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
-      std::cout << "imported private key for: " << std::string(pubkey) <<"\n";
+      std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // list wallets
-   auto listWallet = wallet->add_subcommand("list", "List opened wallets, * = unlocked", false);
+   auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {
-      std::cout << "Wallets: \n";
+      std::cout << localized("Wallets:") << std::endl;
       const auto& v = call(wallet_host, wallet_port, wallet_list);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // list keys
-   auto listKeys = wallet->add_subcommand("keys", "List of private keys from all unlocked wallets in wif format.", false);
+   auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
    listKeys->set_callback([] {
       const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // Benchmark subcommand
-   auto benchmark = app.add_subcommand( "benchmark", "Configure and execute benchmarks", false );
+   auto benchmark = app.add_subcommand( "benchmark", localized("Configure and execute benchmarks"), false );
    benchmark->require_subcommand();
-   auto benchmark_setup = benchmark->add_subcommand( "setup", "Configures initial condition for benchmark" );
+   auto benchmark_setup = benchmark->add_subcommand( "setup", localized("Configures initial condition for benchmark") );
    uint64_t number_of_accounts = 2;
-   benchmark_setup->add_option("accounts", number_of_accounts, "the number of accounts in transfer among")->required();
+   benchmark_setup->add_option("accounts", number_of_accounts, localized("the number of accounts in transfer among"))->required();
    benchmark_setup->set_callback([&]{
-      std::cerr << "Creating " << number_of_accounts <<" accounts with initial balances\n";
-      FC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
+      std::cerr << localized("Creating ${number_of_accounts} accounts with initial balances", ("number_of_accounts",number_of_accounts)) << std::endl;
+      EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
 
       auto info = get_info();
 
@@ -906,16 +931,16 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(result) << std::endl;
    });
 
-   auto benchmark_transfer = benchmark->add_subcommand( "transfer", "executes random transfers among accounts" );
+   auto benchmark_transfer = benchmark->add_subcommand( "transfer", localized("executes random transfers among accounts") );
    uint64_t number_of_transfers = 0;
    bool loop = false;
-   benchmark_transfer->add_option("accounts", number_of_accounts, "the number of accounts in transfer among")->required();
-   benchmark_transfer->add_option("count", number_of_transfers, "the number of transfers to execute")->required();
-   benchmark_transfer->add_option("loop", loop, "whether or not to loop for ever");
+   benchmark_transfer->add_option("accounts", number_of_accounts, localized("the number of accounts in transfer among"))->required();
+   benchmark_transfer->add_option("count", number_of_transfers, localized("the number of transfers to execute"))->required();
+   benchmark_transfer->add_option("loop", loop, localized("whether or not to loop for ever"));
    benchmark_transfer->set_callback([&]{
-      FC_ASSERT( number_of_accounts > 1 );
+      EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
 
-      std::cerr << "funding "<< number_of_accounts << " accounts from init\n";
+      std::cerr << localized("Funding ${number_of_accounts} accounts from init", ("number_of_accounts",number_of_accounts)) << std::endl;
       auto info = get_info();
       vector<SignedTransaction> batch;
       batch.reserve(100);
@@ -946,7 +971,7 @@ int main( int argc, char** argv ) {
       }
 
 
-      std::cerr << "generating random "<< number_of_transfers << " transfers among " << number_of_accounts << " benchmark accounts\n";
+      std::cerr << localized("Generating random ${number_of_transfers} transfers among ${number_of_accounts}",("number_of_transfers",number_of_transfers)("number_of_accounts",number_of_accounts)) << std::endl;
       while( true ) {
          auto info = get_info();
          uint64_t amount = 1;
@@ -983,7 +1008,7 @@ int main( int argc, char** argv ) {
    
 
    // Push subcommand
-   auto push = app.add_subcommand("push", "Push arbitrary transactions to the blockchain", false);
+   auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
    push->require_subcommand();
 
    // push message
@@ -991,17 +1016,17 @@ int main( int argc, char** argv ) {
    string action;
    string data;
    vector<string> scopes;
-   auto messageSubcommand = push->add_subcommand("message", "Push a transaction with a single message");
+   auto messageSubcommand = push->add_subcommand("message", localized("Push a transaction with a single message"));
    messageSubcommand->fallthrough(false);
    messageSubcommand->add_option("contract", contract,
-                                 "The account providing the contract to execute", true)->required();
-   messageSubcommand->add_option("action", action, "The action to execute on the contract", true)
+                                 localized("The account providing the contract to execute"), true)->required();
+   messageSubcommand->add_option("action", action, localized("The action to execute on the contract"), true)
          ->required();
-   messageSubcommand->add_option("data", data, "The arguments to the contract")->required();
+   messageSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
    messageSubcommand->add_option("-p,--permission", permissions,
-                                 "An account and permission level to authorize, as in 'account@permission'");
-   messageSubcommand->add_option("-S,--scope", scopes, "An comma separated list of accounts in scope for this operation", true);
-   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, "Specify that unlocked wallet keys should not be used to sign transaction");
+                                 localized("An account and permission level to authorize, as in 'account@permission'"));
+   messageSubcommand->add_option("-S,--scope", scopes, localized("An comma separated list of accounts in scope for this operation"), true);
+   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    messageSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
@@ -1031,8 +1056,8 @@ int main( int argc, char** argv ) {
 
    // push transaction
    string trxJson;
-   auto trxSubcommand = push->add_subcommand("transaction", "Push an arbitrary JSON transaction");
-   trxSubcommand->add_option("transaction", trxJson, "The JSON of the transaction to push")->required();
+   auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
+   trxSubcommand->add_option("transaction", trxJson, localized("The JSON of the transaction to push"))->required();
    trxSubcommand->set_callback([&] {
       auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -1040,8 +1065,8 @@ int main( int argc, char** argv ) {
 
 
    string trxsJson;
-   auto trxsSubcommand = push->add_subcommand("transactions", "Push an array of arbitrary JSON transactions");
-   trxsSubcommand->add_option("transactions", trxsJson, "The JSON array of the transactions to push")->required();
+   auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
+   trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
    trxsSubcommand->set_callback([&] {
       auto trxs_result = call(push_txn_func, fc::json::from_string(trxsJson));
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
@@ -1051,15 +1076,17 @@ int main( int argc, char** argv ) {
        app.parse(argc, argv);
    } catch (const CLI::ParseError &e) {
        return app.exit(e);
+   } catch (const explained_exception& e) {
+      return 1;
    } catch (const fc::exception& e) {
       auto errorString = e.to_detail_string();
       if (errorString.find("Connection refused") != string::npos) {
          if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << format_output("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port)) << std::endl;
+            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << format_output("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
+            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
-            std::cerr << format_output("Failed to connect") << std::endl;
+            std::cerr << localized("Failed to connect") << std::endl;
          }
 
          if (verbose_errors) {
