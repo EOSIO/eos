@@ -54,6 +54,7 @@
         "subnetName": "eosSubnet",
         "networkInterfaceName": "eosNetworkInterface",
         "addressPrefix": "10.0.0.0/16",
+        "subnetPrefix": "10.0.0.0/24",
         "networkSecurityGroupName": "eosNetworkSecurityGroup",
         "vnetId": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
         "subnetRef": "[concat(variables('vnetId'), '/subnets/', variables('subnetName'))]",
@@ -114,9 +115,9 @@
                 },
                 "subnets": [
                     {
-                        "name": "[parameters('subnetName')]",
+                        "name": "[variables('subnetName')]",
                         "properties": {
-                            "addressPrefix": "[parameters('subnetPrefix')]"
+                            "addressPrefix": "[variables('subnetPrefix')]"
                         }
                     }
                 ]
