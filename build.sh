@@ -6,7 +6,7 @@
 # Feel free to change this file to fit your needs.
 ##########################################################################
 
-VERSION=1.0.4
+VERSION=1.1
 
 # Define directories.
 WORK_DIR=$PWD
