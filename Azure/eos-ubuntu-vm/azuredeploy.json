@@ -205,7 +205,7 @@
                 "fileUris": [
                   "https://raw.githubusercontent.com/ryanRfox/eos/master/Azure/eos-ubuntu-vm/add_eos_node.sh"
                 ],
-                "commandToExecute": "[concat('sh add_eos_node.sh ', parameters('adminUsername'), ' ', reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddressName'))).dnsSettings.fqdn, ' ', parameters('accountNamesCommaDelimited'), ' ', parameters('gitBranch'))]"
+                "commandToExecute": "[concat('sh add_eos_node.sh ', parameters('adminUsername'))]"
               }
             }
           }
