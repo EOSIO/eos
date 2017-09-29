@@ -3,6 +3,9 @@
 #include <eoslib/memory.hpp>
 
 extern "C" {
+
+    const uint32_t _64K = 65536;
+
     void init()
     {
     }
@@ -103,6 +106,71 @@ extern "C" {
        assert(ptr10 == nullptr, "should not have allocated a 10 char buf");
     }
 
+    void test_page_memory()
+    {
+       auto prev = sbrk(0);
+
+       assert(reinterpret_cast<uint32_t>(prev) == _64K, "Should initially have 1 64K page allocated");
+
+       prev = sbrk(1);
+
+       assert(reinterpret_cast<uint32_t>(prev) == _64K, "Should still point to the end of 1st 64K page");
+
+       prev = sbrk(2);
+
+       assert(reinterpret_cast<uint32_t>(prev) == _64K + 8, "Should point to 8 past the end of 1st 64K page");
+
+       prev = sbrk(_64K - 17);
+
+       assert(reinterpret_cast<uint32_t>(prev) == _64K + 16, "Should point to 16 past the end of 1st 64K page");
+
+       prev = sbrk(1);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 2*_64K, "Should point to the end of 2nd 64K page");
+
+       prev = sbrk(_64K);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 2*_64K + 8, "Should point to 8 past the end of the 2nd 64K page");
+
+       prev = sbrk(_64K - 15);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 3*_64K + 8, "Should point to 8 past the end of the 3rd 64K page");
+
+       prev = sbrk(2*_64K - 1);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 4*_64K, "Should point to the end of 4th 64K page");
+
+       prev = sbrk(2*_64K);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 6*_64K, "Should point to the end of 6th 64K page");
+
+       prev = sbrk(2*_64K + 1);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 8*_64K, "Should point to the end of 8th 64K page");
+
+       prev = sbrk(6*_64K - 15);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 10*_64K + 8, "Should point to 8 past the end of 13th 64K page");
+
+       prev = sbrk(0);
+
+       assert(reinterpret_cast<uint32_t>(prev) == 16*_64K, "Should point to the end of 16th 64K page");
+    }
+
+    void test_page_memory_exceeded()
+    {
+       auto prev = sbrk(15*_64K);
+       assert(reinterpret_cast<uint32_t>(prev) == _64K, "Should have allocated up to the 1M of memory limit");
+       sbrk(1);
+       assert(0, "Should have thrown exception for trying to allocate more than 1M of memory");
+    }
+
+    void test_page_memory_negative_bytes()
+    {
+       sbrk(-1);
+       assert(0, "Should have thrown exception for trying to remove memory");
+    }
+
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action )
     {
@@ -111,6 +179,27 @@ extern "C" {
           if( action == N(transfer) )
           {
              test_extended_memory();
+          }
+       }
+       else if( code == N(testpagemem) )
+       {
+          if( action == N(transfer) )
+          {
+             test_page_memory();
+          }
+       }
+       else if( code == N(testmemexc) )
+       {
+          if( action == N(transfer) )
+          {
+             test_page_memory_exceeded();
+          }
+       }
+       else if( code == N(testnegbytes) )
+       {
+          if( action == N(transfer) )
+          {
+             test_page_memory_negative_bytes();
           }
        }
     }

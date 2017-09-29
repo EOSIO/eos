@@ -7,7 +7,9 @@
 
 namespace eos { namespace chain {
 
-class  chain_controller;
+class chain_controller;
+class wasm_memory;
+
 /**
  * @class wasm_interface
  *
@@ -43,6 +45,8 @@ class wasm_interface {
       Runtime::MemoryInstance*   current_memory  = nullptr;
       Runtime::ModuleInstance*   current_module  = nullptr;
       ModuleState*               current_state   = nullptr;
+      wasm_memory*               current_memory_management = nullptr;
+
 
    private:
       void load( const AccountName& name, const chainbase::database& db );
