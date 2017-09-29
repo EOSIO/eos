@@ -219,7 +219,6 @@ public:
    
       vector<char> data;
    
-      auto start = fc::time_point::now();
       auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
    
       int count = 0;
