@@ -1,6 +1,7 @@
 #!/bin/bash -e
 
 EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
+ABIGEN=${EOSIO_INSTALL_DIR}/bin/abi_generator
 
 function copy_skeleton {
     cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname
@@ -42,10 +43,29 @@ function build_contract {
     rm -rf $workdir
 }
 
+function generate_abi {
+
+    if [[ ! -e "$1" ]]; then
+        echo "Invalid path to contract source code"
+        exit 1
+    fi
+
+    if [[ "" == "$context" ]]; then
+        context=$(basename $(realpath $1))
+    fi
+
+    ${ABIGEN} -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32 \
+        -extra-arg=-I${EOSIO_INSTALL_DIR}/include  -extra-arg=-I$1 \
+        -extra-arg=-fparse-all-comments -destination-file=${outname} -verbose=0 \
+        -context=${context} $1/*.cpp --
+}
+
 function print_help {
     echo "Usage: $0 -o output.wast contract.cpp [other.cpp ...]"
     echo "       OR"
     echo "       $0 -n mycontract"
+    echo "       OR"
+    echo "       $0 -g contract.abi /path/to/contract/folder"
     echo
     echo "Options:"
     echo "   -n | --newcontract [name]"
@@ -53,6 +73,9 @@ function print_help {
     echo "   OR"
     echo "   -o | --outname [output.wast] [input.cpp ...]"
     echo "      Generate the wast output file based on input cpp files"
+    echo "   OR"
+    echo "   -g | --genabi contract.abi [ -c|--context context ] /path/to/contract/folder"
+    echo "      Generate the ABI specification file [EXPERIMENTAL]"
 }
 
 command=""
@@ -62,34 +85,45 @@ do
 key="$1"
 
 case $key in
+    -h|--help)
+        print_help
+        break;
+        ;;
     -n|--newcontract)
         newname="$2"
         command="newcontract"
         shift 2
+        break
         ;;
-    -h|--help)
-        print_help
-        ;;
-     -o|--outname)
+    -o|--outname)
         outname="$2"
-  command="outname"
+        command="outname"
         shift 2
         break
+        ;;
+    -g|--genabi)
+        outname="$2"
+        command="genabi"
+        shift 2
+        ;;
+    -c|--context)
+        context="$2"
+        shift 2
         ;;
     *)
         echo "Unrecognized option: $1"
         exit 1
-       ;;
+        ;;
 esac
 done
 
 if [[ "outname" == "$command" ]]; then
     build_contract $@
+elif [[ "newcontract" == "$command" ]]; then
+    copy_skeleton
+elif [[ "genabi" == "$command" ]]; then
+    generate_abi $@
 else
-    if [[ "newcontract" == "$command" ]]; then
-  copy_skeleton
-    else
-        print_help
-        exit 1
-    fi
+    print_help
+    exit 1
 fi
