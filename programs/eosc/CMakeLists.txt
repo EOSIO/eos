@@ -9,8 +9,16 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
+find_package(Intl)
+
+set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
+set(LOCALEDOMAIN eosc)
+configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
+
+target_include_directories(eosc PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
+
 target_link_libraries( eosc
-                       PRIVATE appbase chain_api_plugin producer_plugin chain_plugin net_plugin http_plugin eos_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                       PRIVATE appbase chain_api_plugin producer_plugin chain_plugin net_plugin http_plugin eos_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
 
 install( TARGETS
    eosc

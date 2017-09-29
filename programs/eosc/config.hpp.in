@@ -1,0 +1,8 @@
+/** @file 
+ *    @copyright defined in eos/LICENSE.txt 
+ **/
+
+namespace eos { namespace client { namespace config {
+   constexpr char locale_path[] = "${LOCALEDIR}";
+   constexpr char locale_domain[] = "${LOCALEDOMAIN}";
+}}};
