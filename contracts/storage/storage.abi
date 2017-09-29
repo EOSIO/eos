@@ -10,15 +10,15 @@
         "fields": {
             "from": "AccountName",
             "to": "AccountName",
-            "amount": "UInt64"
+            "quantity": "UInt64"
         } 
     },{
         "name": "Account",
         "base": "",
         "fields": {
             "account": "AccountName",
-            "tokbalance": "UInt64",
-            "quotausage: "UInt64"
+            "balance": "UInt64",
+            "quotaused: "UInt64"
         }
     },{ 
         "name": "Link",
