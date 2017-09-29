@@ -2,6 +2,8 @@
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
+using namespace boost;
+
 namespace eos { namespace types {
 
    using boost::algorithm::ends_with;
@@ -99,8 +101,7 @@ namespace eos { namespace types {
       actions.clear();
       tables.clear();
 
-      for( const auto& td : abi.types )
-      {
+      for( const auto& td : abi.types ) {
          FC_ASSERT( isType(td.type), "invalid type", ("type",td.type));
          typedefs[td.newTypeName] = td.type;
       }
@@ -149,11 +150,28 @@ namespace eos { namespace types {
 
    void AbiSerializer::validate()const {
       for( const auto& t : typedefs ) { try {
+         vector<TypeName> types_seen{t.first, t.second};
+         auto itr = typedefs.find(t.second);
+         while( itr != typedefs.end() ) {
+            FC_ASSERT( find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), "Circular reference in type ${type}", ("type",t.first) );
+            types_seen.emplace_back(itr->second);
+            itr = typedefs.find(itr->second);
+         }
+      } FC_CAPTURE_AND_RETHROW( (t) ) }
+      for( const auto& t : typedefs ) { try {
          FC_ASSERT( isType( t.second ), "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
-         if( s.second.base != TypeName() )
-            FC_ASSERT( isType( s.second.base ) );
+         if( s.second.base != TypeName() ) {
+            Struct current = s.second;
+            vector<TypeName> types_seen{current.name};
+            while( current.base != TypeName() ) {
+               const auto& base = getStruct(current.base); //<-- force struct to inherit from another struct
+               FC_ASSERT( find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), "Circular reference in struct ${type}", ("type",s.second.name) );
+               types_seen.emplace_back(base.name);
+               current = base;
+            }
+         }
          for( const auto& field : s.second.fields ) { try {
             FC_ASSERT( isType( field.type ) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }

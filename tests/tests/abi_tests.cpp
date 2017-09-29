@@ -396,6 +396,57 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
+{ try {
+  
+   const char* typedef_cycle_abi = R"=====(
+   {
+       "types": [{
+          "newTypeName": "A",
+          "type": "Name"
+        },{
+          "newTypeName": "Name",
+          "type": "A"
+        }],
+       "structs": [],
+       "actions": [],
+       "tables": []
+   }
+   )=====";
+
+   const char* struct_cycle_abi = R"=====(
+   {
+       "types": [],
+       "structs": [{
+         "name": "A",
+         "base": "B",
+         "fields": {}
+       },{
+         "name": "B",
+         "base": "C",
+         "fields": {}
+       },{
+         "name": "C",
+         "base": "A",
+         "fields": {}
+       }],
+       "actions": [],
+       "tables": []
+   }
+   )=====";
+
+   auto abi = fc::json::from_string(typedef_cycle_abi).as<Abi>();
+   AbiSerializer abis(abi);
+   
+   auto is_assert_exception = [](fc::assert_exception const & e) -> bool { std::cout << e.to_string() << std::endl; return true; };
+   BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
+
+   abi = fc::json::from_string(struct_cycle_abi).as<Abi>();
+   abis.setAbi(abi);
+   BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 { try {
 

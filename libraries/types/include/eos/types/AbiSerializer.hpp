@@ -7,6 +7,7 @@ using std::map;
 using std::string;
 using std::function;
 using std::pair;
+using std::vector;
 
 /**
  *  Describes the binary representation message and table contents so that it can
@@ -28,6 +29,7 @@ struct AbiSerializer {
    map<TypeName, pair<unpack_function, pack_function>> built_in_types;
    void configureBuiltInTypes();
 
+   bool hasCycle( const vector<pair<string,string>>& sedges )const;
    void validate()const;
 
    TypeName resolveType( const TypeName& t )const;
