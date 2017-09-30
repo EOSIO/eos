@@ -112,27 +112,131 @@ extern "C" {
        assert(nullptr_realloc < invalid_ptr_realloc, "should have created invalid_ptr_realloc after nullptr_realloc"); // test specific to implementation (can remove for refactor)
     }
 
-    void test_memory_bounds()
+    // this test verifies that malloc can allocate 15 64K pages and treat them as one big heap space (if sbrk is not called in the mean time)
+    void test_memory_hunk()
     {
-       // full buffer is 8188 (8192 - ptr size header)
+       // try to allocate the largest buffer we can, which is 15 contiguous 64K pages (with the 4 char space for the ptr header)
+       char* ptr1 = (char*)eos::malloc(15 * 64 * 1024 - 4);
+       assert(ptr1 != nullptr, "should have allocated a ~983K char buf");
+    }
 
-       // try to malloc past buffer
-       char* ptr1 = (char*)eos::malloc(8189);
-       assert(ptr1 == nullptr, "request of more than available should fail");
+    void test_memory_hunks()
+    {
+       // leave 784 bytes of initial buffer to allocate later (rounds up to nearest 8 byte boundary,
+       // 16 bytes bigger than remainder left below in 15 64K page heap))
+       char* ptr1 = (char*)eos::malloc(7404);
+       assert(ptr1 != nullptr, "should have allocated a 7404 char buf");
 
-       // takes up 5 (1 + ptr size header)
-       ptr1 = (char*)eos::malloc(1);
-       assert(ptr1 != nullptr, "should have allocated 1 char buf");
+       char* last_ptr = nullptr;
+       // 96 * (10 * 1024 - 15) => 15 ~64K pages with 768 byte buffer left to allocate
+       for (int i = 0; i < 96; ++i)
+       {
+          char* ptr2 =  (char*)eos::malloc(10 * 1024 - 15);
+          assert(ptr2 != nullptr, "should have allocated a ~10K char buf");
+          if (last_ptr != nullptr)
+          {
+             // - 15 rounds to -8
+             assert(last_ptr + 10 * 1024 - 8 == ptr2, "should allocate the very next ptr"); // test specific to implementation (can remove for refactor)
+          }
 
-       // takes up 5 (1 + ptr size header)
-       char* ptr2 = (char*)eos::malloc(1);
-       assert(ptr2 != nullptr, "should have allocated 2nd 1 char buf");
+          last_ptr = ptr2;
+       }
 
-       // realloc to buffer (tests verifying realloc boundary logic and malloc logic
-       char* ptr1_realloc = (char*)eos::realloc(ptr1, 8178);
-       assert(ptr1_realloc != nullptr, "realloc request to end, should have allocated a buf");
-       assert(ptr1_realloc != ptr1, "should have reallocate the large buf");
-       verify(ptr1_realloc, 0, 8178);
+       // try to allocate a buffer slightly larger than the remaining buffer| 765 + 4 rounds to 776
+       char* ptr3 =  (char*)eos::malloc(765);
+       assert(ptr3 != nullptr, "should have allocated a 772 char buf");
+       assert(ptr1 + 7408 == ptr3, "should allocate the very next ptr after ptr1 in initial heap"); // test specific to implementation (can remove for refactor)
+
+       // use all but 8 chars
+       char* ptr4 = (char*)eos::malloc(764);
+       assert(ptr4 != nullptr, "should have allocated a 764 char buf");
+       assert(last_ptr + 10 * 1024 - 8 == ptr4, "should allocate the very next ptr after last_ptr at end of contiguous heap"); // test specific to implementation (can remove for refactor)
+
+       // use up remaining 8 chars
+       char* ptr5 = (char*)eos::malloc(4);
+       assert(ptr5 != nullptr, "should have allocated a 4 char buf");
+       assert(ptr3 + 776 == ptr5, "should allocate the very next ptr after ptr3 in initial heap"); // test specific to implementation (can remove for refactor)
+
+       // nothing left to allocate
+       char* ptr6 = (char*)eos::malloc(4);
+       assert(ptr6 == nullptr, "should not have allocated a char buf");
+    }
+
+    void test_memory_hunks_disjoint()
+    {
+       // leave 8 bytes of initial buffer to allocate later
+       char* ptr1 = (char*)eos::malloc(8 * 1024 - 12);
+       assert(ptr1 != nullptr, "should have allocated a 8184 char buf");
+
+       // can only make 14 extra (64K) heaps for malloc, since calls to sbrk will eat up part
+       char* loop_ptr1[14];
+       // 14 * (64 * 1024 - 28) => 14 ~64K pages with each page having 24 bytes left to allocate
+       for (int i = 0; i < 14; ++i)
+       {
+          // allocates a new heap for each request, since sbrk call doesn't allow contiguous heaps to grow
+          loop_ptr1[i] = (char*)eos::malloc(64 * 1024 - 28);
+          assert(loop_ptr1[i] != nullptr, "should have allocated a 64K char buf");
+
+          assert(sbrk(4) != nullptr, "should be able to allocate 8 bytes");
+       }
+
+       // the 15th extra heap is reduced in size because of the 14 * 8 bytes allocated by sbrk calls
+       // will leave 8 bytes to allocate later (verifying that we circle back in the list
+       char* ptr2 = (char*)eos::malloc(65412);
+       assert(ptr2 != nullptr, "should have allocated a 65412 char buf");
+
+       char* loop_ptr2[14];
+       for (int i = 0; i < 14; ++i)
+       {
+          // 12 char buffer to leave 8 bytes for another pass
+          loop_ptr2[i] = (char*)eos::malloc(12);
+          assert(loop_ptr2[i] != nullptr, "should have allocated a 12 char buf");
+          assert(loop_ptr1[i] + 64 * 1024 - 24 == loop_ptr2[i], "loop_ptr2[i] should be very next pointer after loop_ptr1[i]");
+       }
+
+       // this shows that searching for free ptrs starts at the last loop to find free memory, not at the begining
+       char* ptr3 = (char*)eos::malloc(4);
+       assert(ptr3 != nullptr, "should have allocated a 4 char buf");
+       assert(loop_ptr2[13] + 16 == ptr3, "should allocate the very next ptr after loop_ptr2[13]"); // test specific to implementation (can remove for refactor)
+
+       char* ptr4 = (char*)eos::malloc(4);
+       assert(ptr4 != nullptr, "should have allocated a 4 char buf");
+       assert(ptr2 + 65416 == ptr4, "should allocate the very next ptr after ptr2 in last heap"); // test specific to implementation (can remove for refactor)
+
+       char* ptr5 = (char*)eos::malloc(4);
+       assert(ptr5 != nullptr, "should have allocated a 4 char buf");
+       assert(ptr1 + 8184 == ptr5, "should allocate the very next ptr after ptr1 in last heap"); // test specific to implementation (can remove for refactor)
+
+       // will eat up remaining memory (14th heap already used up)
+       char* loop_ptr3[13];
+       for (int i = 0; i < 13; ++i)
+       {
+          // 4 char buffer to use up buffer
+          loop_ptr3[i] = (char*)eos::malloc(4);
+          assert(loop_ptr3[i] != nullptr, "should have allocated a 4 char buf");
+          assert(loop_ptr2[i] + 16 == loop_ptr3[i], "loop_ptr3[i] should be very next pointer after loop_ptr2[i]");
+       }
+
+       char* ptr6 = (char*)eos::malloc(4);
+       assert(ptr6 == nullptr, "should not have allocated a char buf");
+
+       eos::free(loop_ptr1[3]);
+       eos::free(loop_ptr2[3]);
+       eos::free(loop_ptr3[3]);
+
+       char* slot3_ptr[64];
+       for (int i = 0; i < 64; ++i)
+       {
+          slot3_ptr[i] = (char*)eos::malloc(1020);
+          assert(slot3_ptr[i] != nullptr, "should have allocated a 1020 char buf");
+          if (i == 0)
+             assert(loop_ptr1[3] == slot3_ptr[0], "loop_ptr1[3] should be very next pointer after slot3_ptr[0]");
+          else
+             assert(slot3_ptr[i - 1] + 1024 == slot3_ptr[i], "slot3_ptr[i] should be very next pointer after slot3_ptr[i-1]");
+       }
+
+       char* ptr7 = (char*)eos::malloc(4);
+       assert(ptr7 == nullptr, "should not have allocated a char buf");
     }
 
     void test_memset_memcpy()
@@ -220,11 +324,25 @@ extern "C" {
              test_memory();
           }
        }
-       else if( code == N(testbounds) )
+       else if( code == N(testmemhunk) )
        {
           if( action == N(transfer) )
           {
-             test_memory_bounds();
+             test_memory_hunk();
+          }
+       }
+       else if( code == N(testmemhunks) )
+       {
+          if( action == N(transfer) )
+          {
+             test_memory_hunks();
+          }
+       }
+       else if( code == N(testdisjoint) )
+       {
+          if( action == N(transfer) )
+          {
+             test_memory_hunks_disjoint();
           }
        }
        else if( code == N(testmemset) )

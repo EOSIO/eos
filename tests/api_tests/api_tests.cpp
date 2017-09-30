@@ -509,8 +509,14 @@ MEMORY_TEST_CASE(test_memory, testmemory, memory_test_wast)
 //Test memcmp
 MEMORY_TEST_CASE(test_memcmp, testmemcmp, memory_test_wast)
 
-//Test wasm memory allocation at boundaries
-MEMORY_TEST_CASE(test_memory_bounds, testbounds, memory_test_wast)
+//Test wasm memory allocation of one large hunk
+MEMORY_TEST_CASE(test_memory_hunk, testmemhunk, memory_test_wast)
+
+//Test wasm memory allocation of many medium hunks in contiguous 2nd heap
+MEMORY_TEST_CASE(test_memory_hunks, testmemhunks, memory_test_wast)
+
+//Test wasm memory allocation of many medium hunks with disjoint heaps
+MEMORY_TEST_CASE(test_memory_hunks_disjoint, testdisjoint, memory_test_wast)
 
 //Test intrinsic provided memset and memcpy
 MEMORY_TEST_CASE(test_memset_memcpy, testmemset, memory_test_wast)
