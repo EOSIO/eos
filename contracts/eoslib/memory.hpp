@@ -27,56 +27,103 @@ namespace eos {
    friend void free(void* ptr);
    public:
       memory_manager()
-      : _current_heap(0)
+      // NOTE: it appears that WASM has an issue with initialization lists if the object is globally allocated,
+      //       and seems to just initialize members to 0
+      : _heaps_actual_size(0)
+      , _active_heap(0)
+      , _active_free_heap(0)
       {
       }
 
    private:
+      class memory;
+
+      memory* next_active_heap()
+      {
+         memory* const current_memory = _available_heaps + _active_heap;
+
+         // make sure we will not exceed the 1M limit (needs to match wasm_interface.cpp _max_memory)
+         auto remaining = 1024 * 1024 - reinterpret_cast<int32_t>(sbrk(0));
+         if (remaining <= 0)
+         {
+            // ensure that any remaining unallocated memory gets cleaned up
+            current_memory->cleanup_remaining();
+            ++_active_heap;
+            _heaps_actual_size = _active_heap;
+            return nullptr;
+         }
+
+         const uint32_t new_heap_size = remaining > NEW_HEAP_SIZE ? NEW_HEAP_SIZE : remaining;
+         char* new_memory_start = static_cast<char*>(sbrk(new_heap_size));
+         // if we can expand the current memory, keep working with it
+         if (current_memory->expand_memory(new_memory_start, new_heap_size))
+            return current_memory;
+
+         // ensure that any remaining unallocated memory gets cleaned up
+         current_memory->cleanup_remaining();
+
+         ++_active_heap;
+         memory* const next = _available_heaps + _active_heap;
+         next->init(new_memory_start, new_heap_size);
+
+         return next;
+      }
+
       void* malloc(uint32_t size)
       {
          if (size == 0)
             return nullptr;
 
-         eos::print("malloc ", size, "\n");
+         // see Note on ctor
+         if (_heaps_actual_size == 0)
+            _heaps_actual_size = HEAPS_SIZE;
+
          adjust_to_mem_block(size);
 
          // first pass of loop never has to initialize the slot in _available_heap
          uint32_t needs_init = 0;
          char* buffer = nullptr;
-         uint32_t current_heap = _current_heap;
-         for (;current_heap < HEAPS_SIZE; ++current_heap)
+         memory* current = nullptr;
+         // need to make sure
+         if (_active_heap < _heaps_actual_size)
          {
-            memory& current = _available_heaps[current_heap];
-            if(!current.is_init())
+            memory* const start_heap = &_available_heaps[_active_heap];
+            // only heap 0 won't be initialized already
+            if(_active_heap == 0 && !start_heap->is_init())
             {
-               char* new_heap = nullptr;
-               if (current_heap == 0)
-               {
-                  current.init(_initial_heap, INITIAL_HEAP_SIZE);
-               }
-               else
-               {
-                  // REMOVE logic, just using to test out multiple heap logic till memory can be allocated
-                  char* const new_heap = &_initial_heap[INITIAL_HEAP_SIZE + NEW_HEAP_SIZE * (current_heap - 1)];
-                  current.init(new_heap, NEW_HEAP_SIZE);
-               }
+               start_heap->init(_initial_heap, INITIAL_HEAP_SIZE);
             }
-            buffer = current.malloc(size);
+
+            current = start_heap;
+         }
+
+         while (current != nullptr)
+         {
+            buffer = current->malloc(size);
+            // done if we have a buffer
             if (buffer != nullptr)
                break;
+
+            current = next_active_heap();
          }
 
-         // only update the _current_heap if memory was allocated
-         if (buffer != nullptr)
+         if (buffer == nullptr)
          {
-            // make sure skipped heap memory is handled
-            for (;_current_heap < current_heap; ++_current_heap)
+            const uint32_t end_free_heap = _active_free_heap;
+
+            do
             {
-               _available_heaps[_current_heap].cleanup_remaining();
-            }
+               buffer = _available_heaps[_active_free_heap].malloc_from_freed(size);
+
+               if (buffer != nullptr)
+                  break;
+
+               if (++_active_free_heap == _heaps_actual_size)
+                  _active_free_heap = 0;
+
+            } while (_active_free_heap != end_free_heap);
          }
 
-         eos::print("malloc done\n");
          return buffer;
       }
 
@@ -88,27 +135,22 @@ namespace eos {
             return nullptr;
          }
 
-         eos::print("realloc ", size, "\n");
          const uint32_t REMOVE = size;
          adjust_to_mem_block(size);
-         eos::print("allocating ", size, "(", REMOVE, ")\n");
 
          char* realloc_ptr = nullptr;
          uint32_t orig_ptr_size = 0;
          if (ptr != nullptr)
          {
             char* const char_ptr = static_cast<char*>(ptr);
-            for (memory* realloc_heap = _available_heaps; realloc_heap < _available_heaps + HEAPS_SIZE && realloc_heap->is_init(); ++realloc_heap)
+            for (memory* realloc_heap = _available_heaps; realloc_heap < _available_heaps + _heaps_actual_size && realloc_heap->is_init(); ++realloc_heap)
             {
                if (realloc_heap->is_in_heap(char_ptr))
                {
                   realloc_ptr = realloc_heap->realloc_in_place(char_ptr, size, &orig_ptr_size);
 
                   if (realloc_ptr != nullptr)
-                  {
-                     eos::print("realloc (in_place) done\n");
                      return realloc_ptr;
-                  }
                   else
                      break;
                }
@@ -116,6 +158,8 @@ namespace eos {
          }
 
          char* new_alloc = static_cast<char*>(malloc(size));
+         if (new_alloc == nullptr)
+            return nullptr;
 
          const uint32_t copy_size = (size < orig_ptr_size) ? size : orig_ptr_size;
          if (copy_size > 0)
@@ -124,7 +168,6 @@ namespace eos {
             free (ptr);
          }
 
-         eos::print("realloc (copy) done\n");
          return new_alloc;
       }
 
@@ -134,7 +177,7 @@ namespace eos {
             return;
 
          char* const char_ptr = static_cast<char*>(ptr);
-         for (memory* free_heap = _available_heaps; free_heap < _available_heaps + HEAPS_SIZE && free_heap->is_init(); ++free_heap)
+         for (memory* free_heap = _available_heaps; free_heap < _available_heaps + _heaps_actual_size && free_heap->is_init(); ++free_heap)
          {
             if (free_heap->is_in_heap(char_ptr))
             {
@@ -147,11 +190,9 @@ namespace eos {
       void adjust_to_mem_block(uint32_t& size)
       {
          const uint32_t remainder = (size + SIZE_MARKER) & REM_MEM_BLOCK_MASK;
-         eos::print("adjust_to_mem_block ", size, " + ", SIZE_MARKER, " remainder=", remainder, "\n");
          if (remainder > 0)
          {
             size += MEM_BLOCK - remainder;
-            eos::print("adjust_to_mem_block ", size, "\n");
          }
       }
 
@@ -169,7 +210,6 @@ namespace eos {
          {
             _heap_size = size;
             _heap = mem_heap;
-            _offset = 0;
             memset(_heap, 0, _heap_size);
          }
 
@@ -202,6 +242,31 @@ namespace eos {
             _offset += size + SIZE_MARKER;
             new_buff.mark_alloc();
             return new_buff.ptr();
+         }
+
+         char* malloc_from_freed(uint32_t size)
+         {
+            assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
+
+            char* current = _heap + SIZE_MARKER;
+            while (current != nullptr)
+            {
+               buffer_ptr current_buffer(current, _heap + _heap_size);
+               if (!current_buffer.is_alloc())
+               {
+                  // done if we have enough contiguous memory
+                  if (current_buffer.merge_contiguous(size))
+                  {
+                     current_buffer.mark_alloc();
+                     return current;
+                  }
+               }
+
+               current = current_buffer.next_ptr();
+            }
+
+            // failed to find any free memory
+            return nullptr;
          }
 
          char* realloc_in_place(char* const ptr, uint32_t size, uint32_t* orig_ptr_size)
@@ -249,6 +314,7 @@ namespace eos {
                // could not resize in place
                return nullptr;
 
+            orig_buffer.mark_alloc();
             return ptr;
          }
 
@@ -270,6 +336,16 @@ namespace eos {
             new_buff.mark_free();
          }
 
+         bool expand_memory(char* exp_mem, uint32_t size)
+         {
+            if (_heap + _heap_size != exp_mem)
+               return false;
+
+            _heap_size += size;
+
+            return true;
+         }
+
       private:
          class buffer_ptr
          {
@@ -288,9 +364,18 @@ namespace eos {
                size(buff_size);
             }
 
-            uint32_t size()
+            uint32_t size() const
             {
                return _size;
+            }
+
+            char* next_ptr() const
+            {
+               char* const next = end() + SIZE_MARKER;
+               if (next >= _heap_end)
+                  return nullptr;
+
+               return next;
             }
 
             void size(uint32_t val)
@@ -301,12 +386,12 @@ namespace eos {
                _size = val;
             }
 
-            char* end()
+            char* end() const
             {
                return _ptr + _size;
             }
 
-            char* ptr()
+            char* ptr() const
             {
                return _ptr;
             }
@@ -318,44 +403,43 @@ namespace eos {
 
             void mark_free()
             {
-               eos::print("mark_free ptr=", (uint64_t)_ptr, "\n");
                *reinterpret_cast<uint32_t*>(_ptr - SIZE_MARKER) &= ~ALLOC_MEMORY_MASK;
             }
 
             bool is_alloc() const
             {
-               return *reinterpret_cast<const uint32_t*>(_ptr - SIZE_MARKER) | ALLOC_MEMORY_MASK;
+               return *reinterpret_cast<const uint32_t*>(_ptr - SIZE_MARKER) & ALLOC_MEMORY_MASK;
             }
 
-            char* merge_contiguous_if_available(uint32_t needed_size)
+            bool merge_contiguous_if_available(uint32_t needed_size)
             {
                return merge_contiguous(needed_size, true);
             }
 
-            char* merge_contiguous(uint32_t needed_size)
+            bool merge_contiguous(uint32_t needed_size)
             {
                return merge_contiguous(needed_size, false);
             }
          private:
-            char* merge_contiguous(uint32_t needed_size, bool all_or_nothing)
+            bool merge_contiguous(uint32_t needed_size, bool all_or_nothing)
             {
                // do not bother if there isn't contiguious space to allocate
                if (all_or_nothing && _heap_end - _ptr < needed_size)
-                  return nullptr;
+                  return false;
 
                uint32_t possible_size = _size;
                while (possible_size < needed_size  && (_ptr + possible_size < _heap_end))
                {
                   const uint32_t next_mem_flag_size = *reinterpret_cast<const uint32_t*>(_ptr + possible_size);
                   // if ALLOCed then done with contiguous free memory
-                  if (next_mem_flag_size | ALLOC_MEMORY_MASK)
+                  if (next_mem_flag_size & ALLOC_MEMORY_MASK)
                      break;
 
                   possible_size += (next_mem_flag_size & ~ALLOC_MEMORY_MASK) + SIZE_MARKER;
                }
 
                if (all_or_nothing && possible_size < needed_size)
-                  return nullptr;
+                  return false;
 
                // combine
                const uint32_t new_size = possible_size < needed_size ? possible_size : needed_size;
@@ -368,7 +452,7 @@ namespace eos {
                   freed_remainder.mark_free();
                }
 
-               return new_size == needed_size ? _ptr : nullptr;
+               return new_size == needed_size;
             }
 
             char* _ptr;
@@ -386,12 +470,14 @@ namespace eos {
       static const uint32_t MEM_BLOCK = 8;
       static const uint32_t REM_MEM_BLOCK_MASK = MEM_BLOCK - 1;
       static const uint32_t INITIAL_HEAP_SIZE = 8192;//32768;
-      static const uint32_t NEW_HEAP_SIZE = 1024; // should be 65536
-      static const uint32_t HEAPS_SIZE = 4; // _initial_heap plus 3 pages (64K each)
-      // should be just INITIAL_HEAP_SIZE, adding extra space for testing multiple buffers
-      char _initial_heap[INITIAL_HEAP_SIZE + NEW_HEAP_SIZE * (HEAPS_SIZE - 1)];
+      static const uint32_t NEW_HEAP_SIZE = 65536;
+      // if sbrk is not called outside of this file, then this is the max times we can call it
+      static const uint32_t HEAPS_SIZE = 16;
+      char _initial_heap[INITIAL_HEAP_SIZE];
       memory _available_heaps[HEAPS_SIZE];
-      uint32_t _current_heap;
+      uint32_t _heaps_actual_size;
+      uint32_t _active_heap;
+      uint32_t _active_free_heap;
       static const uint32_t ALLOC_MEMORY_MASK = 1 << 31;
    } memory_heap;
 
