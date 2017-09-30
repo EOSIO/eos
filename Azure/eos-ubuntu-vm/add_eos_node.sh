@@ -53,7 +53,7 @@ cd $PROJECT
 time git checkout $BRANCH
 
 echo "\n>> Begin EOS.IO installation"
-bash build.sh ubuntu
+bash build.sh ubuntu full
 
 echo "\n>> Copy the EOS.IO applications to the /usr/bin folder"
 cp /usr/local/src/$PROJECT/build/programs/$VALIDATOR_NODE/$VALIDATOR_NODE /usr/bin/$VALIDATOR_NODE

@@ -205,11 +205,11 @@
                 "fileUris": [
                   "https://raw.githubusercontent.com/ryanRfox/eos/master/Azure/eos-ubuntu-vm/add_eos_node.sh"
                 ],
-                "commandToExecute": "[concat('sh add_eos_node.sh ', parameters('adminUsername'))]"
+                "commandToExecute": "[concat('sh add_eos_node.sh ', parameters('adminUsername'), ' ', parameters('publicIpAddressName'), '.', resourceGroup().location, '.cloudapp.azure.com ', parameters('accountNamesCommaDelimited'), ' ', parameters('gitBranch'))]"
               }
             }
-          }
-        ],
+        }
+    ],
     "outputs": {
         "adminUsername": {
             "type": "string",
