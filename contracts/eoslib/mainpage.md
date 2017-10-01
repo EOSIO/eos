@@ -1,7 +1,7 @@
 Welcome to the EOS.IO Documentation
 -----------------------------------
 
-@note This documentation is in progress and subject to change due present rapid development. Please report inaccuracies identified to the [EOS.IO Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
+@note This documentation is in progress and subject to change due to rapid development. Please report inaccuracies identified to the [EOS.IO Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
 
 ## EOS.IO
  - [EOS.IO Official Website](https://www.eos.io/)
