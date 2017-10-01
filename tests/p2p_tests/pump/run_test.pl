@@ -42,11 +42,11 @@ if (!GetOptions("nodes=i" => \$nodes,
     print "where:\n";
     print "--nodes=n (default = 1) sets the number of eosd instances to launch\n";
     print "--pnodes=n (default = 1) sets the number nodes that will also be producers\n";
-    print "--topo=s (default = ring) sets the network topology to eithar a ring shape or a star shape\n";
+    print "--topo=s (default = ring) sets the network topology to either a ring shape or a star shape\n";
     print "--first-pause=n (default = 0) sets the seconds delay after starting the first instance\n";
     print "--launch-pause=n (default = 0) sets the seconds delay after starting subsequent nodes\n";
     print "--duration=n (default = 60) sets the seconds delay after starting the last node before shutting down the test\n";
-    print "--time-stamp=s (defsult \"\") sets the timestsmp in UTC for the genesis block. use \"now\" to mean the current time.\n";
+    print "--time-stamp=s (default \"\") sets the timestamp in UTC for the genesis block. use \"now\" to mean the current time.\n";
     print "\nproducer count currently fixed at $prods\n";
     exit
 }

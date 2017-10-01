@@ -100,7 +100,7 @@ extern "C" {
        char* ptr2 = (char*)eos::malloc(1);
        assert(ptr2 != nullptr, "should have allocated 2nd 1 char buf");
 
-       // realloc to buffer (tests verifying relloc boundary logic and malloc logic
+       // realloc to buffer (tests verifying realloc boundary logic and malloc logic
        char* ptr1_realloc = (char*)eos::realloc(ptr1, 8178);
        assert(ptr1_realloc != nullptr, "realloc request to end, should have allocated a buf");
        assert(ptr1_realloc != ptr1, "should have reallocate the large buf");

@@ -634,7 +634,7 @@ namespace eos {
         } catch (const fc::exception &ex) {
           elog ("accept_block threw a non-assert exception ${x}", ("x",ex.what()));
         } catch (...) {
-          elog ("unkown error acceping cached block");
+          elog ("unknown error accepting cached block");
         }
       }
 
@@ -883,7 +883,7 @@ namespace eos {
 
       uint32_t head = cc.head_block_num ();
       if ( msg.last_irreversible_block_num  >  head || sync_master->syncing() ) {
-        dlog("calling start_sync, myhead = ${h} their last_irreversable = ${mhn}",
+        dlog("calling start_sync, myhead = ${h} their last_irreversible = ${mhn}",
              ("h",head)("mhn",peer_lib));
         sync_master->start_sync (c, peer_lib);
       }

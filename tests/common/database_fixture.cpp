@@ -195,7 +195,7 @@ void testing_network::connect_blockchain(testing_blockchain& new_database) {
       return;
 
    // If the network isn't empty, sync the new database with one of the old ones. The old ones are already in sync with
-   // eachother, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
+   // each other, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
    // of them gets synced, it will propagate blocks to the others as well.
    if (!blockchains.empty()) {
         blockchains.begin()->first->sync_with(new_database);

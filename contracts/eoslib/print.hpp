@@ -90,7 +90,7 @@ namespace eos {
     *  @ingroup consoleapi
     *  @brief C++ wrapper for Console C API
     *
-    *  This API uses C++ varidic templates and type detection to
+    *  This API uses C++ variadic templates and type detection to
     *  make it easy to print any native type. You can even overload
     *  the `print()` method for your own custom types.
     *
@@ -148,7 +148,7 @@ namespace eos {
     *  uint128_t unsigned_128_bit_int (87654323456);
     *  uint64_t string_as_unsigned_64_bit = N(abcde);
     *  std::out << s << " " << unsigned_64_bit_int << " "  << unsigned_128_bit_int << " " << string_as_unsigned_64_bit);
-    *  // Ouput: Hello World! 1000000000000000000 87654323456 abcde
+    *  // Output: Hello World! 1000000000000000000 87654323456 abcde
     *  @endcode
     */
    template<typename T>
