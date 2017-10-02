@@ -450,7 +450,6 @@ launcher_def::make_star () {
     links = (size_t)sqrt(total_nodes);
   }
   size_t gap = total_nodes > 6 ? 4 : total_nodes - links;
-
   // use to prevent duplicates since all connections are bidirectional
   std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
@@ -461,13 +460,21 @@ launcher_def::make_star () {
       size_t ndx = (i + l * gap) % total_nodes;
       if (i == ndx) {
         ++ndx;
+        if (ndx == total_nodes) {
+          ndx = 0;
+        }
       }
       auto &peer = aliases[ndx];
       for (bool found = true; found; ) {
         found = false;
         for (auto &p : current.peers) {
           if (p == peer) {
-            peer = aliases[++ndx];
+            ++ndx;
+            if (ndx == total_nodes) {
+              ndx = 0;
+            }
+            peer = aliases[ndx];
+
             found = true;
             break;
           }
