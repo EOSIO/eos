@@ -481,7 +481,7 @@ namespace eos {
     const long NsecPerSec{1000000000};
     time_t seconds = t / NsecPerSec;
     strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
-    snprintf(ts+19, ts_buffer_size-19, ".%ld", t % NsecPerSec);
+    snprintf(ts+19, ts_buffer_size-19, ".%lld", t % NsecPerSec);
     return ts;
   }
 
@@ -727,7 +727,7 @@ namespace eos {
           break;
       }
 
-      if(  chain_plug->chain().head_block_num() == sync_head ) {
+      if( chain_plug->chain().head_block_num() == sync_head ) {
 
         handshake_message hello;
         handshake_initializer::populate(hello);
@@ -968,6 +968,7 @@ namespace eos {
 
       c->offset = (double(c->rec - c->org) + double(msg.xmt - c->dst)) / 2;
       double NsecPerUsec{1000};
+      //
       dlog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
       c->org = 0;
       c->rec = 0;
@@ -1012,53 +1013,34 @@ namespace eos {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
-        // collect a list of transactions that were found.
-        // collect a second list of transaction ids that were not found but are otherwise known by some peers
-        // finally, what remains are future(?) transactions
-
-      vector< SignedTransaction > send_now;
-      map <connection_ptr, vector < transaction_id_type > > forward_to;
-      auto conn_ndx = connections.begin();
-      for( auto t: msg.req_trx) {
-        auto txn = local_txns.get<by_id>().find(t);
-        if( txn != local_txns.end()) {
-          chain_controller &cc = chain_plug->chain();
+      chain_controller &cc = chain_plug->chain();
+      if( !msg.req_blocks.empty() ) {
+        for( auto blkid: msg.req_blocks) {
           try {
-            send_now.push_back(cc.get_recent_transaction(t));
+            optional<signed_block> b = cc.fetch_block_by_id(blkid);
+            if (b) {
+              c->enqueue (*b);
+            }
+          } catch (const assert_exception &ex) {
+            elog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
+            // keep going, client can ask another peer
           } catch (...) {
-            elog( "failed to retrieve transaction");
-          }
-        }
-        else {
-          int cycle_count = 2;
-          auto loop_start = conn_ndx++;
-          while( conn_ndx != loop_start) {
-            if( conn_ndx == connections.end()) {
-              if( --cycle_count == 0) {
-                elog("loop cycled twice, something is wrong");
-                break;
-              }
-              conn_ndx = connections.begin();
-              continue;
-            }
-            if( conn_ndx->get() == c.get()) {
-              ++conn_ndx;
-              continue;
-            }
-            auto txn = conn_ndx->get()->trx_state.get<by_id>().find(t);
-            if( txn != conn_ndx->get()->trx_state.end()) {
-
-              //forward_to[conn_ndx]->push_back(t);
-              break;
-            }
-            ++conn_ndx;
+            elog( "failed to retrieve block for id");
           }
         }
       }
 
-      if( !send_now.empty()) {
-        for( auto &t : send_now) {
-          c->enqueue( t);
+      if( !msg.req_trx.empty() ) {
+        elog("msg has ${cnt} entries",("cnt",msg.req_trx.size()));
+        for( auto t: msg.req_trx) {
+          try {
+            c->enqueue (cc.get_recent_transaction(t));
+          } catch (const assert_exception &ex) {
+            elog( "caught assert on get_recent_transaction, ${ex} txnid = ${t}",("ex",ex.what())("t",t));
+            // keep going, client can ask another peer
+          } catch (...) {
+            elog( "failed to retrieve transaction");
+          }
         }
       }
     }
@@ -1100,6 +1082,7 @@ namespace eos {
           eos::chain::cycle sbcycle;
           for( auto &cyc_thr_id : cyc ) {
             eos::chain::thread cyc_thr;
+            /*
             for( auto &gt : cyc_thr_id.gen_trx ) {
               try {
                 auto gen = cc.get_generated_transaction( gt );
@@ -1114,6 +1097,7 @@ namespace eos {
                 break;
               }
             }
+            */
             for( auto &ut : cyc_thr_id.user_trx ) {
               try {
                 cyc_thr.user_input.push_back( ProcessedTransaction( cc.get_recent_transaction( ut ) ) );
@@ -1146,11 +1130,12 @@ namespace eos {
           if( !fetch_error )
             chain_plug->accept_block(sb, false);
         } catch( const unlinkable_block_exception &ex) {
-          elog( "   caught unlinkable block exception #${n}",("n",sb.block_num()));
+          elog( "caught unlinkable block exception #${n}",("n",sb.block_num()));
           close( c);
         } catch( const assert_exception &ex) {
             // received a block due to out of sequence
-          elog( "  caught assertion #${n}",("n",sb.block_num()));
+          elog( "caught assertion on block #${n} ${ex}",
+                ("n",sb.block_num())("ex",ex.what()));
         } catch( ... ) {
           elog( "unable to accept block, reason unknown" );
         }
@@ -1468,9 +1453,11 @@ namespace eos {
           if( !cyc.empty() ) {
             thread_ids thd_ids;
             for( const auto& thr : cyc) {
+              /*
               for( auto gi : thr.generated_input ) {
                 thd_ids.gen_trx.push_back( gi.id );
               }
+              */
               for( auto ui : thr.user_input) {
                 auto &txn = cc.get_recent_transaction( ui.id( ) );
                 auto &id_iter = local_txns.get<by_id>();
