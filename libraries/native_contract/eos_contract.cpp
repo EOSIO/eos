@@ -25,8 +25,10 @@ namespace chain = ::eos::chain;
 using namespace ::eos::types;
 
 void validate_authority_precondition( const apply_context& context, const Authority& auth ) {
-   for(const auto& a : auth.accounts)
-      context.db.get<account_object,by_name>(a.permission.account);
+   for(const auto& a : auth.accounts) {
+      context.db.get<account_object, by_name>(a.permission.account);
+      context.db.find<permission_object, by_owner>(boost::make_tuple(a.permission.account, a.permission.permission));
+   }
 }
 
 /**
@@ -150,8 +152,6 @@ void apply_eos_lock(apply_context& context) {
 
    context.require_recipient(lock.to);
    context.require_recipient(lock.from);
-
-   context.require_authorization(lock.from);
 
    const auto& locker = context.db.get<BalanceObject, byOwnerName>(lock.from);
 
@@ -377,28 +377,30 @@ void apply_eos_updateauth(apply_context& context) {
    context.require_authorization(update.account);
 
    db.get<account_object, by_name>(update.account);
-   for (auto accountPermission : update.authority.accounts) {
-      db.get<account_object, by_name>(accountPermission.permission.account);
-      db.get<permission_object, by_owner>(boost::make_tuple(accountPermission.permission.account,
-                                                            accountPermission.permission.permission));
-   }
+   validate_authority_precondition(context, update.authority);
 
    auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
-   auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
+   
+   permission_object::id_type parent_id = 0;
+   if(update.permission != "owner") {
+      auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
+      parent_id = parent.id;
+   }
+
    if (permission) {
-      EOS_ASSERT(parent.id == permission->parent, message_precondition_exception,
+      EOS_ASSERT(parent_id == permission->parent, message_precondition_exception,
                  "Changing parent authority is not currently supported");
       if (context.controller.is_applying_block())
-         db.modify(*permission, [&update, parent = parent.id](permission_object& po) {
+         db.modify(*permission, [&update, &parent_id](permission_object& po) {
             po.auth = update.authority;
-            po.parent = parent;
+            po.parent = parent_id;
          });
    } else if (context.controller.is_applying_block()) {
-      db.create<permission_object>([&update, parent = parent.id](permission_object& po) {
+      db.create<permission_object>([&update, &parent_id](permission_object& po) {
          po.name = update.permission;
          po.owner = update.account;
          po.auth = update.authority;
-         po.parent = parent;
+         po.parent = parent_id;
       });
    }
 }

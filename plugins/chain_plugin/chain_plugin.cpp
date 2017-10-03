@@ -366,8 +366,14 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       /// TODO: lookup perm->parent name 
       Name parent;
 
-      const auto* p = d.find<permission_object,by_id>( perm->parent );
-      if( p ) parent = p->name;
+      // Don't lookup parent if null
+      if( perm->parent._id ) {
+         const auto* p = d.find<permission_object,by_id>( perm->parent );
+         if( p ) {
+            FC_ASSERT(perm->owner == p->owner, "Invalid parent");
+            parent = p->name; 
+         } 
+      }
 
       result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );
       ++perm;

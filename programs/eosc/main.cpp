@@ -298,16 +298,16 @@ void create_account(Name creator, Name newaccount, public_key_type owner, public
       std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
 
-types::Message create_updateauth(const Name& account, const Name& permission, const Name& parent, const Authority& auth) {
+types::Message create_updateauth(const Name& account, const Name& permission, const Name& parent, const Authority& auth, const Name& permissionAuth) {
    return Message { config::EosContractName,
-                           vector<types::AccountPermission>{{account,"active"}},
+                           vector<types::AccountPermission>{{account,permissionAuth}},
                            "updateauth", 
                            types::updateauth{account, permission, parent, auth}};
 }
 
-types::Message create_deleteauth(const Name& account, const Name& permission) {
+types::Message create_deleteauth(const Name& account, const Name& permission, const Name& permissionAuth) {
    return Message { config::EosContractName,
-                           vector<types::AccountPermission>{{account,"active"}},
+                           vector<types::AccountPermission>{{account,permissionAuth}},
                            "deleteauth", 
                            types::deleteauth{account, permission}};
 }
@@ -348,10 +348,12 @@ struct set_account_permission_subcommand {
    string permissionStr;
    string authorityJsonOrFile;
    string parentStr;
+   string permissionAuth = "active";
    bool skip_sign;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
+      permissions->add_option("-p,--permission", permissionAuth,localized("Permission level to authorize, (Defaults to: 'active'"));
       permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
       permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
       permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] JSON string or filename defining the authority"))->required();
@@ -364,7 +366,7 @@ struct set_account_permission_subcommand {
          bool is_delete = boost::iequals(authorityJsonOrFile, "null");
          
          if (is_delete) {
-            send_transaction({create_deleteauth(account, permission)}, {account, config::EosContractName}, skip_sign);
+            send_transaction({create_deleteauth(account, permission, Name(permissionAuth))}, {account, config::EosContractName}, skip_sign);
          } else {
             types::Authority authority;
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
@@ -402,7 +404,7 @@ struct set_account_permission_subcommand {
                parent = Name(parentStr);
             }
 
-            send_transaction({create_updateauth(account, permission, parent, authority)}, {Name(account), config::EosContractName}, skip_sign);
+            send_transaction({create_updateauth(account, permission, parent, authority, Name(permissionAuth))}, {Name(account), config::EosContractName}, skip_sign);
          }      
       });
    }
