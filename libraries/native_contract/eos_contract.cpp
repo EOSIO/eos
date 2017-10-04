@@ -391,11 +391,15 @@ void apply_eos_updateauth(apply_context& context) {
       EOS_ASSERT(parent_id == permission->parent, message_precondition_exception,
                  "Changing parent authority is not currently supported");
       if (context.controller.is_applying_block())
+      // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
+      // permission satisfies the permission we want to modify?
          db.modify(*permission, [&update, &parent_id](permission_object& po) {
             po.auth = update.authority;
             po.parent = parent_id;
          });
    } else if (context.controller.is_applying_block()) {
+      // TODO/QUESTION: If we are creating a new permission, should we check if the message declared
+      // permission satisfies the parent permission?
       db.create<permission_object>([&update, &parent_id](permission_object& po) {
          po.name = update.permission;
          po.owner = update.account;
@@ -413,6 +417,16 @@ void apply_eos_deleteauth(apply_context& context) {
    auto& db = context.mutable_db;
    context.require_authorization(remove.account);
    const auto& permission = db.get<permission_object, by_owner>(boost::make_tuple(remove.account, remove.permission));
+
+   // TODO/QUESTION: If we are deleting a permission, should we check if the message declared
+   // permission satisfies the permission we want to delete?
+
+   // const auto& declaredAuthority = context.msg.authorization[0];
+   // const auto& declaredPermission = db.get<permission_object, by_owner>(boost::make_tuple(declaredAuthority.account, declaredAuthority.permission));
+   // const auto& index = _db.get_index<permission_index>().indices();
+   // EOS_ASSERT(declaredPermission.satisfies(permission, index), unsatisfied_permission,
+   //   "Unable to delete '${todelete}' with declared authority '${declared}'",
+   //   ("declared", declaredAuthority)("todelete", permission.name));
 
    { // Check for children
       const auto& index = db.get_index<permission_index, by_parent>();
