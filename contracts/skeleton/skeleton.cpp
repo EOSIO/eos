@@ -1,4 +1,4 @@
-#include <skeleton.hpp>
+#include "skeleton.hpp"
 
 /**
  *  The init() and apply() methods must have C calling convention so that the blockchain can lookup and
