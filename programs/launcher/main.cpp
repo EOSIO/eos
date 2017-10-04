@@ -125,7 +125,8 @@ struct eosd_def {
       producers(),
       onhost_set(false),
       onhost(true),
-      localaddrs()
+      localaddrs(),
+      dot_alias_str()
   {}
 
   bool on_host () {
@@ -141,6 +142,26 @@ struct eosd_def {
       p2p_endpoint_str = public_name + ":" + boost::lexical_cast<string, uint16_t>(p2p_port);
     }
     return p2p_endpoint_str;
+  }
+
+ const string &dot_alias (const string &name) {
+    if (dot_alias_str.empty()) {
+      dot_alias_str = name + "\nprod=";
+      if (producers.empty()) {
+        dot_alias_str += "<none>";
+      }
+      else {
+        bool docomma=false;
+        for (auto &prod: producers) {
+          if (docomma)
+            dot_alias_str += ",";
+          else
+            docomma = true;
+          dot_alias_str += prod;
+        }
+      }
+    }
+    return dot_alias_str;
   }
 
   string genesis;
@@ -163,6 +184,7 @@ private:
   bool onhost_set;
   bool onhost;
   vector<fc::ip::address> localaddrs;
+  string dot_alias_str;
 };
 
 struct remote_deploy {
@@ -221,6 +243,7 @@ struct launcher_def {
   void make_star ();
   void make_mesh ();
   void make_custom ();
+  void write_dot_file ();
   void format_ssh (const string &cmd, const string &hostname, string &ssh_cmd_line);
   bool do_ssh (const string &cmd, const string &hostname);
   void prep_remote_config_dir (eosd_def &node);
@@ -286,6 +309,9 @@ launcher_def::generate () {
   for (auto &node : network.nodes) {
       write_config_file(node.second);
   }
+
+  write_dot_file ();
+
   if (!output.empty()) {
     bf::path savefile = output;
     bf::ofstream sf (savefile);
@@ -295,6 +321,21 @@ launcher_def::generate () {
     return false;
   }
   return true;
+}
+
+void
+launcher_def::write_dot_file () {
+  bf::ofstream df ("testnet.dot");
+  df << "digraph G\n{\n";
+  for (auto &node : network.nodes) {
+    for (const auto &p : node.second.peers) {
+      string pname=network.nodes.find(p)->second.dot_alias(p);
+      df << "\"" << node.second.dot_alias (node.first)
+         << "\"->\"" << pname
+         << "\" [dir=\"both\"]" << std::endl;
+    }
+  }
+  df << "}\n";
 }
 
 void
