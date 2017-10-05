@@ -29,6 +29,7 @@ namespace fc { class variant; }
 namespace eos {
 
 using chain::AccountName;
+using chain::FuncName;
 using chain::block_id_type;
 using chain::PermissionName;
 using chain::ProcessedTransaction;
@@ -43,6 +44,7 @@ public:
    void applied_irreversible_block(const signed_block&);
    void process_irreversible_block(const signed_block&);
 
+   void init();
    void wipe_database();
 
    bool wipe_database_on_startup{false};
@@ -57,46 +59,26 @@ public:
    void consum_blocks();
 
    bool is_scope_relevant(const eos::types::Vector<AccountName>& scope);
-   static void add(chainbase::database& db, const vector<types::KeyPermissionWeight>& keys, const AccountName& account_name, const PermissionName& permission);
+   void update_account(const chain::Message& msg);
 
-//   template<typename MultiIndex, typename LookupType>
-//   static void remove(chainbase::database& db, const AccountName& account_name, const PermissionName& permission)
-//   {
-//      const auto& idx = db.get_index<MultiIndex, LookupType>();
-//      auto& mutatable_idx = db.get_mutable_index<MultiIndex>();
-//      auto range = idx.equal_range( boost::make_tuple( account_name, permission ) );
-//
-//      for (auto acct_perm = range.first; acct_perm != range.second; ++acct_perm)
-//      {
-//         mutatable_idx.remove(*acct_perm);
-//      }
-//   }
-
-   static void add(chainbase::database& db, const vector<types::AccountPermissionWeight>& controlling_accounts, const AccountName& account_name, const PermissionName& permission);
-   static const AccountName NEW_ACCOUNT;
-   static const AccountName UPDATE_AUTH;
-   static const AccountName DELETE_AUTH;
-   static const PermissionName OWNER;
-   static const PermissionName ACTIVE;
-   static const PermissionName RECOVERY;
+   static const FuncName newaccount;
+   static const FuncName transfer;
 
    static const std::string db_name;
    static const std::string blocks_col;
    static const std::string trans_col;
    static const std::string msgs_col;
+   static const std::string accounts_col;
 };
 
-const AccountName db_plugin_impl::NEW_ACCOUNT = "newaccount";
-const AccountName db_plugin_impl::UPDATE_AUTH = "updateauth";
-const AccountName db_plugin_impl::DELETE_AUTH = "deleteauth";
-const PermissionName db_plugin_impl::OWNER = "owner";
-const PermissionName db_plugin_impl::ACTIVE = "active";
-const PermissionName db_plugin_impl::RECOVERY = "recovery";
+const FuncName db_plugin_impl::newaccount = "newaccount";
+const FuncName db_plugin_impl::transfer = "transfer";
 
 const std::string db_plugin_impl::db_name = "EOS";
 const std::string db_plugin_impl::blocks_col = "Blocks";
 const std::string db_plugin_impl::trans_col = "Transactions";
 const std::string db_plugin_impl::msgs_col = "Messages";
+const std::string db_plugin_impl::accounts_col = "Accounts";
 
 
 void db_plugin_impl::applied_irreversible_block(const signed_block& block) {
@@ -128,7 +110,7 @@ void db_plugin_impl::consum_blocks() {
 
 //
 // Blocks
-//    block_num         int
+//    block_num         int32
 //    block_id          sha256
 //    prev_block_id     sha256
 //    timestamp         sec_since_epoch
@@ -162,10 +144,12 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
       elog("Failed to insert block ${bid}", ("bid", block_id));
    }
 
+   int32_t trx_num = -1;
    const bool check_relevance = !filter_on.empty();
    for (const auto& cycle : block.cycles) {
       for (const auto& thread : cycle) {
          for (const auto& trx : thread.user_input) {
+            ++trx_num;
             if (check_relevance && !is_scope_relevant(trx.scope))
                continue;
 
@@ -173,6 +157,7 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
             const auto trans_id_str = trx.id().str();
             auto trx_doc = doc
                   << "transaction_id" << trans_id_str
+                  << "sequence_num" << b_int32{trx_num}
                   << "block_id" << block_id_str
                   << "ref_block_num" << b_int32{static_cast<int32_t >(trx.refBlockNum)}
                   << "ref_block_prefix" << trx.refBlockPrefix.str()
@@ -212,9 +197,26 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
                         << "permission" << auth.permission.toString()
                         << stream::close_document;
                }
-               auto msg_complete = msg_doc << stream::close_array << stream::finalize;
+               std::string data_str;
+               if (msg.type == newaccount) {
+                  data_str = fc::json::to_string(msg.as<eos::types::newaccount>());
+               } else {
+                  data_str = fc::json::to_string(msg.data);
+               }
+               auto msg_complete = msg_doc
+                     << stream::close_array
+                     << "type" << msg.type.toString()
+                     // TODO: unpack from binary
+                     << "data" << data_str
+                     << stream::finalize;
                mongocxx::model::insert_one insert_msg{msg_complete.view()};
                bulk_msgs.append(insert_msg);
+
+               // eos account update
+               if (msg.code == config::EosContractName) {
+                  update_account(msg);
+               }
+
                ++i;
             }
 
@@ -230,40 +232,6 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
             transactions_in_block = true;
             bulk_trans.append(insert_op);
 
-
-            for (const chain::Message& msg : trx.messages)
-            {
-               if (msg.code == config::EosContractName)
-               {
-                  if (msg.type == NEW_ACCOUNT)
-                  {
-                     const auto create = msg.as<types::newaccount>();
-//                     add(db, create.owner.keys, create.name, OWNER);
-//                     add(db, create.active.keys, create.name, ACTIVE);
-//                     add(db, create.recovery.keys, create.name, RECOVERY);
-//
-//                     add(db, create.owner.accounts, create.name, OWNER);
-//                     add(db, create.active.accounts, create.name, ACTIVE);
-//                     add(db, create.recovery.accounts, create.name, RECOVERY);
-                  }
-                  else if (msg.type == UPDATE_AUTH)
-                  {
-                     const auto update = msg.as<types::updateauth>();
-//                     remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
-//                     add(db, update.authority.keys, update.account, update.permission);
-//
-//                     remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
-//                     add(db, update.authority.accounts, update.account, update.permission);
-                  }
-                  else if (msg.type == DELETE_AUTH)
-                  {
-                     const auto del = msg.as<types::deleteauth>();
-//                     remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
-//
-//                     remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
-                  }
-               }
-            }
          }
       }
    }
@@ -278,27 +246,58 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
 
 }
 
-void db_plugin_impl::add(chainbase::database& db, const vector<types::KeyPermissionWeight>& keys, const AccountName& account_name, const PermissionName& permission)
-{
-   for (auto pub_key_weight : keys )
-   {
-//      db.create<public_key_history_object>([&](public_key_history_object& obj) {
-//         obj.public_key = pub_key_weight.key;
-//         obj.account_name = account_name;
-//         obj.permission = permission;
-//      });
-   }
-}
+void db_plugin_impl::update_account(const chain::Message& msg) {
+   using bsoncxx::builder::stream::document;
+   using bsoncxx::builder::stream::open_document;
+   using bsoncxx::builder::stream::close_document;
+   using bsoncxx::builder::stream::finalize;
 
-void db_plugin_impl::add(chainbase::database& db, const vector<types::AccountPermissionWeight>& controlling_accounts, const AccountName& account_name, const PermissionName& permission)
-{
-   for (auto controlling_account : controlling_accounts )
-   {
-//      db.create<account_control_history_object>([&](account_control_history_object& obj) {
-//         obj.controlled_account = account_name;
-//         obj.controlled_permission = permission;
-//         obj.controlling_account = controlling_account.permission.account;
-//      });
+   if (msg.code != config::EosContractName)
+      return;
+
+   if (msg.type == transfer) {
+      auto transfer = msg.as<types::transfer>();
+      auto from_name = transfer.from.toString();
+      auto to_name = transfer.to.toString();
+      auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
+      document find_from{};
+      find_from << "name" << from_name;
+      auto from_account = accounts.find_one(find_from.view());
+      if (!from_account) {
+         elog("Unable to find account ${n}", ("n", transfer.from));
+         return;
+      }
+      document find_to{};
+      find_to << "name" << to_name;
+      auto to_account = accounts.find_one(find_to.view());
+      if (!to_account) {
+         elog("Unable to find account ${n}", ("n", transfer.to));
+         return;
+      }
+      auto from_view = from_account->view();
+      Asset from_balance = Asset::fromString(from_view["eos_balance"].get_utf8().value.to_string());
+      auto to_view = to_account->view();
+      Asset to_balance = Asset::fromString(to_view["eos_balance"].get_utf8().value.to_string());
+      from_balance -= eos::types::ShareType(transfer.amount);
+      to_balance += eos::types::ShareType(transfer.amount);
+
+      document update_from{};
+      update_from << "$set" << open_document << "eos_balance" << from_balance.toString() << close_document;
+      document update_to{};
+      update_to << "$set" << open_document << "eos_balance" << to_balance.toString() << close_document;
+
+      accounts.update_one(find_from.view(), update_from.view());
+      accounts.update_one(find_to.view(), update_to.view());
+
+   } else if (msg.type == newaccount) {
+      auto newaccount = msg.as<types::newaccount>();
+      auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
+      bsoncxx::builder::stream::document doc{};
+      doc << "name" << newaccount.name.toString()
+          << "eos_balance" << newaccount.deposit.toString();
+      if (!accounts.insert_one(doc.view())) {
+         elog("Failed to insert account ${n}", ("n", newaccount.name));
+      }
    }
 }
 
@@ -329,6 +328,19 @@ db_plugin_impl::~db_plugin_impl() {
 void db_plugin_impl::wipe_database() {
    ilog("db wipe_database");
    mongo_conn[db_name].drop();
+}
+
+void db_plugin_impl::init() {
+   // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
+   auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
+   bsoncxx::builder::stream::document doc{};
+   if (accounts.count(doc.view()) == 0) {
+      doc << "name" << config::EosContractName.toString()
+          << "eos_balance" << Asset(config::InitialTokenSupply).toString();
+      if (!accounts.insert_one(doc.view())) {
+         elog("Failed to insert account ${n}", ("n", config::EosContractName.toString()));
+      }
+   }
 }
 
 //////////
@@ -385,19 +397,13 @@ void db_plugin::plugin_initialize(const variables_map& options)
    if (my->wipe_database_on_startup) {
       my->wipe_database();
    }
+   my->init();
 }
 
 void db_plugin::plugin_startup()
 {
    ilog("starting db plugin");
-   // TODO: during chain startup we want to pushback on apply so that chainbase has to wait for db.
    // TODO: assert that last irreversible in db is one less than received (on startup only?, every so often?)
-//   my->chain_plug = app().find_plugin<chain_plugin>();
-//   auto& db = my->chain_plug->chain().get_mutable_database();
-//   db.add_index<account_control_history_multi_index>();
-//   db.add_index<account_transaction_history_multi_index>();
-//   db.add_index<public_key_history_multi_index>();
-//   db.add_index<transaction_history_multi_index>();
 
    my->consum_thread = boost::thread([this]{ my->consum_blocks(); });
 
