@@ -1,6 +1,5 @@
 #!/bin/bash
 
-cd ../../..
 pnodes=10
 npnodes=0
 topo=star
@@ -34,7 +33,6 @@ lines=`wc -l < summary`
 if [ $lines -eq $total_nodes -a $prodsfound -eq 1 ]; then
     echo all synced
     programs/launcher/launcher -k 15
-    cd -
     exit
 fi
 echo $lines reports out of $total_nodes and prods = $prodsfound
@@ -61,9 +59,7 @@ lines=`wc -l < summary`
 if [ $lines -eq $total_nodes -a $prodsfound -eq 1 ]; then
     echo all synced
     programs/launcher/launcher -k 15
-    cd -
     exit
 fi
 echo ERROR: $lines reports out of $total_nodes and prods = $prodsfound
-cd -
 exit 1
