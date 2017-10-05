@@ -1227,15 +1227,25 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
          for (int i = 0; i < 0x10000; i++)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
+         signed_block block{};
+         block.cycles.emplace_back();
+         block.cycles[0].emplace_back();
+
          auto messages = starter.prepare_database(*this, _db);
-         std::for_each(messages.begin(), messages.end(), [&](const Message& m) { 
+         std::for_each(messages.begin(), messages.end(), [&](const Message& m) {
             MessageOutput output;
             ProcessedTransaction trx; /// dummy tranaction required for scope validation
             std::sort(trx.scope.begin(), trx.scope.end() );
             with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, [&](){
                process_message(trx,m.code,m,output); 
             });
+
+            trx.messages.push_back(m);
+            block.cycles[0][0].user_input.push_back(std::move(trx));
          });
+
+         // TODO: Should we write this genesis block instead of faking it on startup?
+         applied_irreversible_block(block);
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
