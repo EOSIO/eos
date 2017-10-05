@@ -289,7 +289,7 @@ namespace eos {
     vector<char>            blk_buffer;
     size_t                  message_size;
 
-    fc::sha256              remote_node_id;
+    fc::sha256              node_id;
     handshake_message       last_handshake;
     deque<net_message>      out_queue;
     bool                    connecting;
@@ -394,7 +394,7 @@ namespace eos {
         pending_message_size(0),
         pending_message_buffer(recv_buf_size),
         send_buffer(send_buf_size),
-        remote_node_id(),
+        node_id(),
         last_handshake(),
         out_queue(),
         connecting (false),
@@ -418,7 +418,7 @@ namespace eos {
         pending_message_size(0),
         pending_message_buffer(recv_buf_size),
         send_buffer(send_buf_size),
-        remote_node_id(),
+        node_id(),
         last_handshake(),
         out_queue(),
         connecting (false),
@@ -439,7 +439,7 @@ namespace eos {
     }
 
   void connection::initialize () {
-      auto *rnd = remote_node_id.data();
+      auto *rnd = node_id.data();
       rnd[0] = 0;
       response_expected.reset(new boost::asio::steady_timer (app().get_io_service()));
     }
@@ -592,7 +592,7 @@ namespace eos {
 
   void connection::fetch_timeout( boost::system::error_code ec ) {
     if( !ec ) {
-      dlog ("fetch timeout occurred");
+      //      dlog ("fetch timeout occurred");
       if( !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
         enqueue( ( request_message ) {vector<transaction_id_type>( ), vector<block_id_type>( )} );
         my_impl->sync_master->reassign_fetch( shared_from_this( ) );
@@ -600,7 +600,7 @@ namespace eos {
     }
     else if( ec == boost::asio::error::operation_aborted ) {
       if( !connected( ) ) {
-        dlog ("fetch timeout was cancelled due to dead connection");
+        //        dlog ("fetch timeout was cancelled due to dead connection");
         my_impl->sync_master->reassign_fetch( shared_from_this( ) );
       }
     }
@@ -912,9 +912,9 @@ namespace eos {
         }
       }
 
-      if(  c->remote_node_id != msg.node_id) {
+      if(  c->node_id != msg.node_id) {
         //        c->reset();
-        c->remote_node_id = msg.node_id;
+        c->node_id = msg.node_id;
       }
 
       c->syncing = false;
@@ -923,16 +923,12 @@ namespace eos {
       block_id_type head_id = cc.head_block_id();
 
       if(  msg.last_irreversible_block_num  >  head || sync_master->syncing() ) {
-        dlog("calling start_sync, myhead = ${h} their last_irreversable = ${mhn}",
-            ( "h",head)("mhn",peer_lib));
         sync_master->start_sync( c, peer_lib);
       }
       else if( msg.head_id != head_id && head_id != block_id_type( )) {
-        dlog("peer doesn't need to sync but does need to fetch blocks/trans");
         if( msg.head_num >= lib_num ) {
           notice_message msg;
           msg.known_blocks = cc.get_block_ids_on_fork(cc.head_block_id());
-          dlog("known_blks size is ${s}",("s",msg.known_blocks.size()));
 #warning("TODO: get a list of known, unblocked transactions");
           //   msg.known_trx = cc.get_pending_transaction_ids();
           c->enqueue( msg);
@@ -967,9 +963,9 @@ namespace eos {
       }
 
       c->offset = (double(c->rec - c->org) + double(msg.xmt - c->dst)) / 2;
-      double NsecPerUsec{1000};
+      //  double NsecPerUsec{1000};
       //
-      dlog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
+      //  dlog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
       c->org = 0;
       c->rec = 0;
     }
@@ -1177,7 +1173,8 @@ namespace eos {
 
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
+  void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
+    //    dlog ("got block #${num}, from ${id}",("num",msg.block_num())("id",c->node_id));
       chain_controller &cc = chain_plug->chain();
       try {
         if( cc.is_known_block(msg.id())) {
@@ -1207,7 +1204,8 @@ namespace eos {
         }
       }
       bool accepted = false;
-      if( !syncing || num == cc.head_block_num()+1) {
+      //      dlog ("last irrevesible block = ${lib}", ("lib", cc.last_irreversible_block_num()));
+      if( !syncing || num == cc.head_block_num()+1  || num > cc.last_irreversible_block_num()) {
         try {
           chain_plug->accept_block(msg, syncing);
           accepted = true;
@@ -1235,8 +1233,10 @@ namespace eos {
         }
       }
       else {
-#warning( "TODO: only send if not requested, and if the size is less than the just send it size otherwise send a notice");
+        //        dlog ("forwarding the signed block");
+        if (fc::raw::pack_size(msg) < just_send_it_max)
         send_all( msg, [c](connection_ptr conn) -> bool {
+            //            dlog( "sending to ${c}",("c", conn->peer_addr));
             return( c != conn);
           });
        }
@@ -1550,6 +1550,7 @@ namespace eos {
      ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
      ( "public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
      ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
+      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
       ;
   }
 
@@ -1605,9 +1606,14 @@ namespace eos {
     if( options.count("agent-name")) {
       my->user_agent_name = options.at( "agent-name").as< string >( );
     }
+    if( options.count( "send-whole-blocks")) {
+      my->send_whole_blocks = options.at( "send-whole-blocks" ).as<bool>();
+    }
+
     my->chain_plug = app().find_plugin<chain_plugin>();
     my->chain_plug->get_chain_id(my->chain_id);
     fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
+    ilog ("my node_id is $id",("id",my->node_id));
 
     my->keepalive_timer.reset(new boost::asio::steady_timer (app().get_io_service()));
     my->ticker();
@@ -1653,6 +1659,7 @@ namespace eos {
     } FC_CAPTURE_AND_RETHROW() }
 
     void net_plugin::broadcast_block( const chain::signed_block &sb) {
+      //      dlog( "broadcasting block #${num}",("num",sb.block_num()) );
       my->broadcast_block_impl( sb);
     }
 }

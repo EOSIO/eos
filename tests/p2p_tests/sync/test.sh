@@ -1,23 +1,27 @@
 #!/bin/bash
 
-cd ../..
-count=5
+cd ../../..
+pnodes=10
+npnodes=0
 topo=star
 if [ -n "$1" ]; then
-    count=$1
+    pnodes=$1
     if [ -n "$2" ]; then
         topo=$2
+        if [ -n "$3" ]; then
+            npnodes=$3
+        fi
     fi
 fi
 
-total_nodes=`expr $count + 2`
+total_nodes=`expr $pnodes + $npnodes`
 
 rm -rf tn_data_*
-programs/launcher/launcher -p $count -n $total_nodes -s $topo
+programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo
 sleep 7
 echo "start" > test.out
 port=8888
-endport=`expr $port + $count`
+endport=`expr $port + $total_nodes`
 echo endport = $endport
 while [ $port  -ne $endport ]; do
     programs/eosc/eosc --port $port get block 1 >> test.out 2>&1;
@@ -25,24 +29,24 @@ while [ $port  -ne $endport ]; do
 done
 
 grep 'producer"' test.out | tee summary | sort -u -k2 | tee unique
-prods=`wc -l < unique`
+prodsfound=`wc -l < unique`
 lines=`wc -l < summary`
-if [ $lines -eq $count -a $prods -eq 1 ]; then
+if [ $lines -eq $total_nodes -a $prodsfound -eq 1 ]; then
     echo all synced
     programs/launcher/launcher -k 15
     cd -
     exit
 fi
-echo lines = $lines and prods = $prods
+echo $lines reports out of $total_nodes and prods = $prodsfound
 sleep 18
 programs/eosc/eosc --port 8888 get block 5
-sleep 18
+sleep 15
 programs/eosc/eosc --port 8888 get block 10
-sleep 16
+sleep 15
 programs/eosc/eosc --port 8888 get block 15
-sleep 16
+sleep 15
 programs/eosc/eosc --port 8888 get block 20
-sleep 16
+sleep 15
 echo "pass 2" > test.out
 port=8888
 while [ $port  -ne $endport ]; do
@@ -50,7 +54,16 @@ while [ $port  -ne $endport ]; do
     port=`expr $port + 1`
 done
 
-grep 'producer"' test.out
 
-programs/launcher/launcher -k 9
+grep 'producer"' test.out | tee summary | sort -u -k2 | tee unique
+prodsfound=`wc -l < unique`
+lines=`wc -l < summary`
+if [ $lines -eq $total_nodes -a $prodsfound -eq 1 ]; then
+    echo all synced
+    programs/launcher/launcher -k 15
+    cd -
+    exit
+fi
+echo ERROR: $lines reports out of $total_nodes and prods = $prodsfound
 cd -
+exit 1
