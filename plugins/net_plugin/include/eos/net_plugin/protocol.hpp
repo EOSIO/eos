@@ -137,14 +137,14 @@ State:
         send of another request.
 
      Once you have caught up to all peers, notify all peers of your head block so they know that you
-     know the LIB and will start sending you real time tranasctions
+     know the LIB and will start sending you real time transactions
 
 parallel fetches, request in groups
 
 
 only relay transactions to peers if we don't already know about it.
 
-send a notification rather than a transaaction if the txn is > 3mtu size.
+send a notification rather than a transaction if the txn is > 3mtu size.
 
 
 

@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
  *
  *  This simple single threaded algorithm sorts 3M transactions each of which
  *  requires scope of 2 accounts chosen with a normal probability distribution
- *  amoung a set of 2 million accounts.
+ *  among a set of 2 million accounts.
  *
  *  This algorithm executes in less than 0.5 seconds on a 4Ghz Core i7 and could
  *  potentially take just .05 seconds with 10+ CPU cores. Future improvements might
@@ -164,7 +164,7 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
    idump((original));
    idump((_process));
    */
-   FC_ASSERT( original == _process, "Transaction seralization not reversible" );
+   FC_ASSERT( original == _process, "Transaction serialization not reversible" );
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
       throw;
@@ -266,7 +266,7 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       }
 } FC_LOG_AND_RETHROW() }
 
-// Simple sanity test of test network: if databases aren't connected to the network, they don't sync to eachother
+// Simple sanity test of test network: if databases aren't connected to the network, they don't sync to each other
 BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
 { try {
       Make_Blockchains((chain1)(chain2));
@@ -281,7 +281,7 @@ BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
       BOOST_CHECK_EQUAL(chain2.head_block_num(), 5);
 } FC_LOG_AND_RETHROW() }
 
-// Test that two databases on the same network do sync to eachother
+// Test that two databases on the same network do sync to each other
 BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
 { try {
       Make_Blockchains((chain1)(chain2))

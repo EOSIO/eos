@@ -151,7 +151,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
       trx.expiration = chain.head_block_time() + 100; \
       transaction_set_reference_block(trx, chain.head_block_id()); \
       chain.push_transaction(trx); \
-      BOOST_TEST_CHECKPOINT("Transfered " << Amount << " from " << #sender << " to " << #recipient); \
+      BOOST_TEST_CHECKPOINT("Transferred " << Amount << " from " << #sender << " to " << #recipient); \
    }
 #define XFER4(chain, sender, recipient, amount) XFER5(chain, sender, recipient, amount, "")
 

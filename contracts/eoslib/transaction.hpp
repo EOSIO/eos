@@ -7,7 +7,7 @@ namespace eos {
    /**
     * @defgroup transactioncppapi Transaction C++ API
     * @ingroup transactionapi
-    * @brief Type-safe C++ wrapers for Transaction C API
+    * @brief Type-safe C++ wrappers for Transaction C API
     *
     * @note There are some methods from the @ref transactioncapi that can be used directly from C++
     *
@@ -35,7 +35,7 @@ namespace eos {
       {
       }
 
-      // no copy construtor due to opaque handle
+      // no copy constructor due to opaque handle
       Message( const Message& ) = delete;
 
       Message( Message&& msg ) {
@@ -83,7 +83,7 @@ namespace eos {
          : handle(transactionCreate())
       {}
 
-      // no copy construtor due to opaque handle
+      // no copy constructor due to opaque handle
       Transaction( const Transaction& ) = delete;
 
       Transaction( Transaction&& trx ) {

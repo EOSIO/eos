@@ -4,7 +4,7 @@
  *
  *  This exchange contract assumes the existence of two currency contracts
  *  located at @currencya and @currencyb.  These currency contracts have
- *  provided an API header defined in currench.hpp which the exchange 
+ *  provided an API header defined in currency.hpp which the exchange
  *  contract will use to process messages related to deposits and withdraws.
  *
  *  The exchange contract knows that the currency contracts requireNotice()
@@ -68,7 +68,7 @@ void apply_currency_transfer( const currency::Transfer& transfer ) {
           account.currency_balance += transfer.quantity; 
       });
    } else if( transfer.from == N(exchange) ) {
-      requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
+      requireAuth( transfer.to ); /// require the receiver of funds (account owner) to authorize this transfer
 
       modifyAccount( transfer.to, [&]( Account& account ){ 
           account.currency_balance -= transfer.quantity; 
@@ -88,7 +88,7 @@ void apply_eos_transfer( const eos::Transfer& transfer ) {
           account.eos_balance += transfer.quantity; 
       });
    } else if( transfer.from == N(exchange) ) {
-      requireAuth( transfer.to ); /// require the reciever of funds (account owner) to authorize this transfer
+      requireAuth( transfer.to ); /// require the receiver of funds (account owner) to authorize this transfer
 
       modifyAccount( transfer.to, [&]( Account& account ){ 
           account.eos_balance -= transfer.quantity; 

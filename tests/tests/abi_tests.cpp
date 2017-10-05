@@ -19,7 +19,7 @@ using namespace eos::types;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
-fc::variant verfiy_round_trip_conversion(const AbiSerializer& abis, const TypeName& type, const fc::variant& var)
+fc::variant verify_round_trip_conversion( const AbiSerializer& abis, const TypeName& type, const fc::variant& var )
 {
    auto bytes = abis.variantToBinary(type, var);
 
@@ -469,7 +469,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
    BOOST_CHECK_EQUAL(18446744073709551515u, transfer.amount);
    BOOST_CHECK_EQUAL("really important transfer", transfer.memo);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "transfer", var);
+   auto var2 = verify_round_trip_conversion( abis, "transfer", var );
    auto transfer2 = var2.as<eos::types::transfer>();
    BOOST_CHECK_EQUAL(transfer.from, transfer2.from);
    BOOST_CHECK_EQUAL(transfer.to, transfer2.to);
@@ -499,7 +499,7 @@ BOOST_FIXTURE_TEST_CASE(lock, testing_fixture)
    BOOST_CHECK_EQUAL("to.acct", lock.to);
    BOOST_CHECK_EQUAL(-9223372036854775807, lock.amount);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "lock", var);
+   auto var2 = verify_round_trip_conversion( abis, "lock", var );
    auto lock2 = var2.as<eos::types::lock>();
    BOOST_CHECK_EQUAL(lock.from, lock2.from);
    BOOST_CHECK_EQUAL(lock.to, lock2.to);
@@ -526,7 +526,7 @@ BOOST_FIXTURE_TEST_CASE(unlock, testing_fixture)
    BOOST_CHECK_EQUAL("an.acct", unlock.account);
    BOOST_CHECK_EQUAL(-9223372036854775807, unlock.amount);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "unlock", var);
+   auto var2 = verify_round_trip_conversion( abis, "unlock", var );
    auto unlock2 = var2.as<eos::types::unlock>();
    BOOST_CHECK_EQUAL(unlock.account, unlock2.account);
    BOOST_CHECK_EQUAL(unlock.amount, unlock2.amount);
@@ -552,7 +552,7 @@ BOOST_FIXTURE_TEST_CASE(claim, testing_fixture)
    BOOST_CHECK_EQUAL("an.acct", claim.account);
    BOOST_CHECK_EQUAL(-9223372036854775807, claim.amount);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "claim", var);
+   auto var2 = verify_round_trip_conversion( abis, "claim", var );
    auto claim2 = var2.as<eos::types::claim>();
    BOOST_CHECK_EQUAL(claim.account, claim2.account);
    BOOST_CHECK_EQUAL(claim.amount, claim2.amount);
@@ -580,7 +580,7 @@ BOOST_FIXTURE_TEST_CASE(okproducer, testing_fixture)
    BOOST_CHECK_EQUAL("an.acct2", okproducer.producer);
    BOOST_CHECK_EQUAL(-128, okproducer.approve);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "okproducer", var);
+   auto var2 = verify_round_trip_conversion( abis, "okproducer", var );
    auto okproducer2 = var2.as<eos::types::okproducer>();
    BOOST_CHECK_EQUAL(okproducer.voter, okproducer2.voter);
    BOOST_CHECK_EQUAL(okproducer.producer, okproducer2.producer);
@@ -632,7 +632,7 @@ BOOST_FIXTURE_TEST_CASE(setproducer, testing_fixture)
    BOOST_CHECK_EQUAL(4294966943u, setproducer.configuration.maxInlineMsgSize);
    BOOST_CHECK_EQUAL(4294966911u, setproducer.configuration.maxGenTrxSize);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "setproducer", var);
+   auto var2 = verify_round_trip_conversion( abis, "setproducer", var );
    auto setproducer2 = var2.as<eos::types::setproducer>();
    BOOST_CHECK_EQUAL(setproducer.configuration.maxBlockSize, setproducer2.configuration.maxBlockSize);
    BOOST_CHECK_EQUAL(setproducer.configuration.targetBlockSize, setproducer2.configuration.targetBlockSize);
@@ -668,7 +668,7 @@ BOOST_FIXTURE_TEST_CASE(setproxy, testing_fixture)
    BOOST_CHECK_EQUAL("stake.hldr", setproxy.stakeholder);
    BOOST_CHECK_EQUAL("stkhdr.prxy", setproxy.proxy);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "setproxy", var);
+   auto var2 = verify_round_trip_conversion( abis, "setproxy", var );
    auto setproxy2 = var2.as<eos::types::setproxy>();
    BOOST_CHECK_EQUAL(setproxy.stakeholder, setproxy2.stakeholder);
    BOOST_CHECK_EQUAL(setproxy.proxy, setproxy2.proxy);
@@ -698,7 +698,7 @@ BOOST_FIXTURE_TEST_CASE(linkauth, testing_fixture)
    BOOST_CHECK_EQUAL("lnkauth.type", linkauth.type);
    BOOST_CHECK_EQUAL("lnkauth.rqm", linkauth.requirement);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "linkauth", var);
+   auto var2 = verify_round_trip_conversion( abis, "linkauth", var );
    auto linkauth2 = var2.as<eos::types::linkauth>();
    BOOST_CHECK_EQUAL(linkauth.account, linkauth2.account);
    BOOST_CHECK_EQUAL(linkauth.code, linkauth2.code);
@@ -728,7 +728,7 @@ BOOST_FIXTURE_TEST_CASE(unlinkauth, testing_fixture)
    BOOST_CHECK_EQUAL("lnkauth.code", unlinkauth.code);
    BOOST_CHECK_EQUAL("lnkauth.type", unlinkauth.type);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "unlinkauth", var);
+   auto var2 = verify_round_trip_conversion( abis, "unlinkauth", var );
    auto unlinkauth2 = var2.as<eos::types::unlinkauth>();
    BOOST_CHECK_EQUAL(unlinkauth.account, unlinkauth2.account);
    BOOST_CHECK_EQUAL(unlinkauth.code, unlinkauth2.code);
@@ -779,7 +779,7 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
    BOOST_CHECK_EQUAL("prm.prm2", updateauth.authority.accounts[1].permission.permission);
    BOOST_CHECK_EQUAL(53405u, updateauth.authority.accounts[1].weight);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "updateauth", var);
+   auto var2 = verify_round_trip_conversion( abis, "updateauth", var );
    auto updateauth2 = var2.as<eos::types::updateauth>();
    BOOST_CHECK_EQUAL(updateauth.account, updateauth2.account);
    BOOST_CHECK_EQUAL(updateauth.permission, updateauth2.permission);
@@ -822,7 +822,7 @@ BOOST_FIXTURE_TEST_CASE(deleteauth, testing_fixture)
    BOOST_CHECK_EQUAL("delauth.acct", deleteauth.account);
    BOOST_CHECK_EQUAL("delauth.prm", deleteauth.permission);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "deleteauth", var);
+   auto var2 = verify_round_trip_conversion( abis, "deleteauth", var );
    auto deleteauth2 = var2.as<eos::types::deleteauth>();
    BOOST_CHECK_EQUAL(deleteauth.account, deleteauth2.account);
    BOOST_CHECK_EQUAL(deleteauth.permission, deleteauth2.permission);
@@ -921,7 +921,7 @@ BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
    BOOST_CHECK_EQUAL(-900000000000, newaccount.deposit.amount);
    BOOST_CHECK_EQUAL(EOS_SYMBOL, newaccount.deposit.symbol);
 
-   auto var2 = verfiy_round_trip_conversion(abis, "newaccount", var);
+   auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
    auto newaccount2 = var2.as<eos::types::newaccount>();
    BOOST_CHECK_EQUAL(newaccount.creator, newaccount2.creator);
    BOOST_CHECK_EQUAL(newaccount.name, newaccount2.name);
