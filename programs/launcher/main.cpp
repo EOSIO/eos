@@ -44,11 +44,9 @@ struct localIdentity {
       cerr << "unable to retrieve host name: " << ec.message() << endl;
     }
     else {
-      cerr << "adding hostname " << hn << endl;
       names.push_back (hn);
       if (hn.find ('.') != string::npos) {
         names.push_back (hn.substr (0,hn.find('.')));
-        cerr << "adding hostname " << hn.substr (0,hn.find('.')) << endl;
       }
     }
 
@@ -64,7 +62,6 @@ struct localIdentity {
           if (in_addr != 0) {
             fc::ip::address ifa(in_addr);
             addrs.push_back (ifa);
-            cout << "found interface " << (string)ifa << endl;
           }
         }
       }
@@ -146,7 +143,7 @@ struct eosd_def {
 
  const string &dot_alias (const string &name) {
     if (dot_alias_str.empty()) {
-      dot_alias_str = name + "\nprod=";
+      dot_alias_str = name + "\\nprod=";
       if (producers.empty()) {
         dot_alias_str += "<none>";
       }
@@ -326,13 +323,13 @@ launcher_def::generate () {
 void
 launcher_def::write_dot_file () {
   bf::ofstream df ("testnet.dot");
-  df << "digraph G\n{\n";
+  df << "digraph G\n{\nlayout=\"circo\";";
   for (auto &node : network.nodes) {
     for (const auto &p : node.second.peers) {
       string pname=network.nodes.find(p)->second.dot_alias(p);
       df << "\"" << node.second.dot_alias (node.first)
          << "\"->\"" << pname
-         << "\" [dir=\"both\"]" << std::endl;
+         << "\" [dir=\"forward\"];" << std::endl;
     }
   }
   df << "}\n";
@@ -490,7 +487,10 @@ launcher_def::make_star () {
   if (total_nodes > 12) {
     links = (size_t)sqrt(total_nodes);
   }
-  size_t gap = total_nodes > 6 ? 4 : total_nodes - links;
+  size_t gap = total_nodes > 6 ? 3 : (total_nodes - links)/2 +1;
+  while (total_nodes % gap == 0) {
+    ++gap;
+  }
   // use to prevent duplicates since all connections are bidirectional
   std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
@@ -514,6 +514,8 @@ launcher_def::make_star () {
             if (ndx == total_nodes) {
               ndx = 0;
             }
+
+
             peer = aliases[ndx];
 
             found = true;
@@ -659,7 +661,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
     info.kill_cmd = "";
 
     if(!c.running()) {
-      cout << "child not running after spawn " << eosdcmd << endl;
+      cerr << "child not running after spawn " << eosdcmd << endl;
       for (int i = 0; i > 0; i++) {
         if (c.running () ) break;
       }
