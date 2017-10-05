@@ -970,9 +970,10 @@ namespace eos {
       c->rec = 0;
     }
 
-    void net_plugin_impl::handle_message (connection_ptr c, const notice_message &msg) {
-      //peer tells us about one or more blocks or txns. We need to forward only those
-      //we don't already know about. and for each peer note that it knows
+    void net_plugin_impl::handle_message( connection_ptr c, const notice_message &msg) {
+      // peer tells us about one or more blocks or txns. When done syncing, forward on
+      // notices of previously unknown blocks or txns,
+      //
       notice_message fwd;
       request_message req;
 
@@ -1338,9 +1339,9 @@ namespace eos {
         });
     }
 
-    void net_plugin_impl::start_monitors () {
-      connector_check.reset(new boost::asio::steady_timer (app().get_io_service()));
-      transaction_check.reset(new boost::asio::steady_timer (app().get_io_service()));
+    void net_plugin_impl::start_monitors( ) {
+      connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
+      transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
     }
