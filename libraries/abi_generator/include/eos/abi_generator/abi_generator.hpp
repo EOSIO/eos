@@ -1,10 +1,13 @@
+#pragma once
+
+#include <set>
+#include <regex>
+#include <algorithm>
+
 #include "clang/Driver/Options.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/ASTConsumer.h"
-#include <set>
-#include <regex>
-#include <algorithm>
 
 #include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/AST/AST.h"
@@ -17,19 +20,17 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "llvm/Support/raw_ostream.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
 
 #include <eos/types/AbiSerializer.hpp>
-#include <fc/io/json.hpp>
 #include <eos/types/types.hpp>
+#include <fc/io/json.hpp>
 
 using namespace clang;
 using namespace std;
 using namespace clang::tooling;
 namespace cl = llvm::cl;
 
-namespace bfs = boost::filesystem;
+namespace eos { namespace abi_generator {
 
 struct AbiGenerator {
 
@@ -41,29 +42,43 @@ struct AbiGenerator {
   CompilerInstance*         compiler_instance;
   map<string, uint64_t>     type_size;
   map<string, string>       full_types;
-  string                    destination_file;
   string                    abi_context;
-  
-  AbiGenerator() : enabled(true), error_found(false) {}
 
-  ~AbiGenerator() {
-    if(!error_found) {
-      fc::json::save_to_file<eos::types::Abi>(abi, destination_file);
-    }
+  static AbiGenerator& get() {
+     static AbiGenerator abigen;
+     return abigen;
+  } 
+
+  void Initialize(clang::ASTContext& context) {
+    //ilog("AbiGenerator::Initialize");
+    this->context = &context;
+    clear();
   }
   
-  static AbiGenerator& get() {
-    static AbiGenerator generator;
-    return generator;
+  void clear() {
+    abi.types.clear();
+    abi.structs.clear();
+    abi.actions.clear();
+    abi.tables.clear();
+    type_size.clear();
+    full_types.clear();
+    enabled=true;
+    error_found=false;
   }
+
+  ~AbiGenerator() {}
 
   bool isEnabled() {
     return enabled;
   }
 
-  // void onUserDisable(){
-  //   disableGeneration();
-  // }
+  void setVerbose(bool verbose) {
+    this->verbose = verbose;
+  }
+
+  void setAbiContext(const string& abi_context) {
+    this->abi_context = abi_context;
+  }
 
   void setContext(clang::ASTContext& context) {
     this->context = &context;
@@ -120,9 +135,12 @@ struct AbiGenerator {
     return type->getCanonicalTypeInternal().getAsString(policy);
   }
   
-  void handleTranslationUnit(ASTContext& context) {}
+  void handleTranslationUnit(ASTContext& context) {
+    //ilog("AbiGenerator::handleTranslationUnit");
+  }
 
   void handleTagDeclDefinition(TagDecl* tag_decl) {
+    //ilog("AbiGenerator::handleTagDeclDefinition");
     try {
       handleTagDeclDefinitionEx(tag_decl);
     } catch(fc::exception& e) {
@@ -174,11 +192,19 @@ struct AbiGenerator {
 
         if(type == "action") {
           if(params.size()==0) {
-            abi.actions.push_back( eos::types::Action{boost::algorithm::to_lower_copy(type_name), type_name} );
-          } else {
-            for(const auto& action : params)
-              abi.actions.push_back({action, type_name});
+            params.push_back( boost::algorithm::to_lower_copy(type_name) );
           }
+
+          for(const auto& action : params) {
+            eos::types::Action ac; 
+            if( findAction(action, ac) ) {
+              FC_ASSERT(ac.type == type_name, "Same action name with different type ${action}",("action",action));
+              continue;
+            } 
+
+            abi.actions.push_back({action, type_name});
+          }
+
         } else if (type == "table") {
           eos::types::Table table;
           table.table = boost::algorithm::to_lower_copy(type_name);
@@ -281,6 +307,16 @@ struct AbiGenerator {
     } else {
       FC_ASSERT(false, "Unable to guess key names");
     }
+  }
+
+  bool findAction(const string& name, eos::types::Action& action) {
+    for( const auto& ac : abi.actions ) {
+      if(ac.action == name) {
+        action = ac;
+        return true;
+      }
+    }
+    return false;
   }
 
   bool findStruct(const string& name, eos::types::Struct& s) {
@@ -393,86 +429,43 @@ struct AbiGenerator {
 
 };
 
-class RecordConsumer : public ASTConsumer {
-  set<string>        parsed_templates;
-  AbiGenerator&      generator;
-public:
-  
-  void Initialize(clang::ASTContext& context) override {
-    AbiGenerator::get().setContext(context);
+struct AbiGeneratorASTConsumer : public ASTConsumer {
+
+  AbiGenerator& abigen;
+
+  AbiGeneratorASTConsumer(CompilerInstance& compiler_instance, bool verbose, string abi_context) : abigen(AbiGenerator::get()) {
+    abigen.setCompilerInstance(compiler_instance);
+    abigen.setVerbose(verbose);
+    abigen.setAbiContext(abi_context);
   }
 
-  RecordConsumer(CompilerInstance& compiler_instance, set<string> parsed_templates) : 
-      parsed_templates(parsed_templates), generator(AbiGenerator::get()) {
-    generator.setCompilerInstance(compiler_instance);
+  void Initialize(clang::ASTContext& context) override {
+    abigen.Initialize(context);
   }
 
   void HandleTranslationUnit(ASTContext& context) override {
-    generator.handleTranslationUnit(context);
+    abigen.handleTranslationUnit(context);
   }
 
-  void HandleTagDeclDefinition(TagDecl* tag_decl) override { 
-    generator.handleTagDeclDefinition(tag_decl);
+  void HandleTagDeclDefinition(TagDecl* tag_decl) override {
+    abigen.handleTagDeclDefinition(tag_decl);
   }
 
 };
 
-class GenerateAbiAction : public PluginASTAction {
+class GenerateAbiAction : public ASTFrontendAction {
   set<string>   parsed_templates;
+  bool          verbose;
+  string        abi_context;
 public:
-  GenerateAbiAction() {}
+  GenerateAbiAction(bool verbose, string abi_context) : verbose(verbose), abi_context(abi_context) {}
 
 protected:
-  unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &compiler_instance,
+  unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance& compiler_instance,
                                                  llvm::StringRef) override {
-    return llvm::make_unique<RecordConsumer>(compiler_instance, parsed_templates);
+    return llvm::make_unique<AbiGeneratorASTConsumer>(compiler_instance, verbose, abi_context);
   }
 
-  bool ParseArgs(const CompilerInstance &CI, const vector<string>& args) override {
-    return true;
-  }
 };
 
-// class NoAbiPragmaHandler : public PragmaHandler {
-//   AbiGenerator& generator;
-// public:
-//   NoAbiPragmaHandler() : PragmaHandler("no_abi"), generator(AbiGenerator::get()) { }
-//   void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
-//                     Token &PragmaTok) {
-
-//     generator.onUserDisable();
-//     cerr << "ABI Generation disabled (#pragma no_abi)\n";
-//   }
-//};
-
-static cl::OptionCategory AbiGeneratorCategory("ABI generator options");
-
-static cl::opt<std::string> ABIContext(
-    "context",
-    cl::desc("ABI context"),
-    cl::cat(AbiGeneratorCategory));
-
-static cl::opt<std::string> ABIDestination(
-    "destination-file",
-    cl::desc("destination json file"),
-    cl::cat(AbiGeneratorCategory));
-
-static cl::opt<bool> ABIVerbose(
-    "verbose",
-    cl::desc("show debug info"),
-    cl::cat(AbiGeneratorCategory));
-
-int main(int argc, const char **argv) {
-
-    CommonOptionsParser op(argc, argv, AbiGeneratorCategory);
-    ClangTool Tool(op.getCompilations(), op.getSourcePathList());
-
-    auto& generator = AbiGenerator::get();
-    generator.abi_context = ABIContext;
-    generator.destination_file = ABIDestination;
-    generator.verbose = ABIVerbose;
-
-    int result = Tool.run(newFrontendActionFactory<GenerateAbiAction>().get());
-
-    return result;
-}
+} } //ns eos::abi_generator
