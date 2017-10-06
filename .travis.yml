@@ -30,3 +30,4 @@ script:
   - tests/chain_test
   - tests/slow_test
   - tests/api_test
+  - tests/p2p_tests/sync/test.sh

@@ -27,3 +27,4 @@ if(WASM_TOOLCHAIN)
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.sh COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)

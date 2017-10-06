@@ -44,11 +44,9 @@ struct localIdentity {
       cerr << "unable to retrieve host name: " << ec.message() << endl;
     }
     else {
-      cerr << "adding hostname " << hn << endl;
       names.push_back (hn);
       if (hn.find ('.') != string::npos) {
         names.push_back (hn.substr (0,hn.find('.')));
-        cerr << "adding hostname " << hn.substr (0,hn.find('.')) << endl;
       }
     }
 
@@ -64,7 +62,6 @@ struct localIdentity {
           if (in_addr != 0) {
             fc::ip::address ifa(in_addr);
             addrs.push_back (ifa);
-            cout << "found interface " << (string)ifa << endl;
           }
         }
       }
@@ -125,7 +122,8 @@ struct eosd_def {
       producers(),
       onhost_set(false),
       onhost(true),
-      localaddrs()
+      localaddrs(),
+      dot_alias_str()
   {}
 
   bool on_host () {
@@ -141,6 +139,26 @@ struct eosd_def {
       p2p_endpoint_str = public_name + ":" + boost::lexical_cast<string, uint16_t>(p2p_port);
     }
     return p2p_endpoint_str;
+  }
+
+ const string &dot_alias (const string &name) {
+    if (dot_alias_str.empty()) {
+      dot_alias_str = name + "\\nprod=";
+      if (producers.empty()) {
+        dot_alias_str += "<none>";
+      }
+      else {
+        bool docomma=false;
+        for (auto &prod: producers) {
+          if (docomma)
+            dot_alias_str += ",";
+          else
+            docomma = true;
+          dot_alias_str += prod;
+        }
+      }
+    }
+    return dot_alias_str;
   }
 
   string genesis;
@@ -163,6 +181,7 @@ private:
   bool onhost_set;
   bool onhost;
   vector<fc::ip::address> localaddrs;
+  string dot_alias_str;
 };
 
 struct remote_deploy {
@@ -221,6 +240,7 @@ struct launcher_def {
   void make_star ();
   void make_mesh ();
   void make_custom ();
+  void write_dot_file ();
   void format_ssh (const string &cmd, const string &hostname, string &ssh_cmd_line);
   bool do_ssh (const string &cmd, const string &hostname);
   void prep_remote_config_dir (eosd_def &node);
@@ -286,6 +306,9 @@ launcher_def::generate () {
   for (auto &node : network.nodes) {
       write_config_file(node.second);
   }
+
+  write_dot_file ();
+
   if (!output.empty()) {
     bf::path savefile = output;
     bf::ofstream sf (savefile);
@@ -295,6 +318,21 @@ launcher_def::generate () {
     return false;
   }
   return true;
+}
+
+void
+launcher_def::write_dot_file () {
+  bf::ofstream df ("testnet.dot");
+  df << "digraph G\n{\nlayout=\"circo\";";
+  for (auto &node : network.nodes) {
+    for (const auto &p : node.second.peers) {
+      string pname=network.nodes.find(p)->second.dot_alias(p);
+      df << "\"" << node.second.dot_alias (node.first)
+         << "\"->\"" << pname
+         << "\" [dir=\"forward\"];" << std::endl;
+    }
+  }
+  df << "}\n";
 }
 
 void
@@ -449,8 +487,10 @@ launcher_def::make_star () {
   if (total_nodes > 12) {
     links = (size_t)sqrt(total_nodes);
   }
-  size_t gap = total_nodes > 6 ? 4 : total_nodes - links;
-
+  size_t gap = total_nodes > 6 ? 3 : (total_nodes - links)/2 +1;
+  while (total_nodes % gap == 0) {
+    ++gap;
+  }
   // use to prevent duplicates since all connections are bidirectional
   std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
@@ -461,13 +501,23 @@ launcher_def::make_star () {
       size_t ndx = (i + l * gap) % total_nodes;
       if (i == ndx) {
         ++ndx;
+        if (ndx == total_nodes) {
+          ndx = 0;
+        }
       }
       auto &peer = aliases[ndx];
       for (bool found = true; found; ) {
         found = false;
         for (auto &p : current.peers) {
           if (p == peer) {
-            peer = aliases[++ndx];
+            ++ndx;
+            if (ndx == total_nodes) {
+              ndx = 0;
+            }
+
+
+            peer = aliases[ndx];
+
             found = true;
             break;
           }
@@ -611,7 +661,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
     info.kill_cmd = "";
 
     if(!c.running()) {
-      cout << "child not running after spawn " << eosdcmd << endl;
+      cerr << "child not running after spawn " << eosdcmd << endl;
       for (int i = 0; i > 0; i++) {
         if (c.running () ) break;
       }
