@@ -60,7 +60,7 @@ if [ $ARCH == "ubuntu" ]; then
 fi
 
 if [ $ARCH == "darwin" ]; then
-    DEPS="git automake libtool boost openssl llvm@4 gmp wget cmake"
+    DEPS="git automake libtool boost openssl llvm@4 gmp wget cmake gettext"
     brew update
     brew install --force $DEPS
     brew unlink $DEPS && brew link --force $DEPS
