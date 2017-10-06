@@ -48,7 +48,21 @@ public:
    fc::optional<block_log>          block_logger;
    fc::optional<chain_controller>   chain;
    chain_id_type                    chain_id;
+   uint32_t                         rcvd_block_trans_execution_time;
+   uint32_t                         trans_execution_time;
+   uint32_t                         create_block_trans_execution_time;
 };
+
+#ifdef NDEBUG
+const uint32_t chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME = 12;
+const uint32_t chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME = 3;
+const uint32_t chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME = 3;
+#else
+const uint32_t chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME = 72;
+const uint32_t chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME = 18;
+const uint32_t chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME = 18;
+#endif
+
 
 
 chain_plugin::chain_plugin()
@@ -61,10 +75,16 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 {
    cfg.add_options()
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
-     ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME),
+          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
+         ("trans-execution-time", bpo::value<uint32_t>()->default_value(DEFAULT_TRANSACTION_EXECUTION_TIME),
+          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
+         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME),
+          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -139,6 +159,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->loaded_checkpoints[item.first] = item.second;
       }
    }
+
+   my->rcvd_block_trans_execution_time = options.at("rcvd-block-trans-execution-time").as<uint32_t>() * 1000;
+   my->trans_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
+   my->create_block_trans_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
 }
 
 void chain_plugin::plugin_startup() 
@@ -160,7 +184,10 @@ void chain_plugin::plugin_startup()
    my->block_logger = block_log(my->block_log_dir);
    my->chain_id = genesis.compute_chain_id();
    my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
-                                initializer, native_contract::make_administrator());
+                                initializer, native_contract::make_administrator(),
+                                my->trans_execution_time,
+                                my->rcvd_block_trans_execution_time,
+                                my->create_block_trans_execution_time);
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
@@ -298,7 +325,7 @@ read_only::get_block_results read_only::get_block(const read_only::get_block_par
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
-   db.push_block(params);
+   db.push_block(params, chain_controller::validation_steps::skip_nothing);
    return read_write::push_block_results();
 }
 

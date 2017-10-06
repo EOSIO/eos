@@ -295,6 +295,10 @@ public:
 
   void get_chain_id (chain::chain_id_type &cid) const;
 
+  static const uint32_t            DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME;
+  static const uint32_t            DEFAULT_TRANSACTION_EXECUTION_TIME;
+  static const uint32_t            DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME;
+
 private:
    unique_ptr<class chain_plugin_impl> my;
 };
