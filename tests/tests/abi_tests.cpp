@@ -14,12 +14,14 @@
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/types/abi_serializer.hpp>
+#include <eos/abi_generator/abi_generator.hpp>
 
 #include "../common/database_fixture.hpp"
 
 using namespace eosio;
 using namespace chain;
-using namespace eosio::types;
+using namespace eos::types;
+using namespace eos::abi_generator;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
@@ -213,6 +215,70 @@ BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
 
 } FC_LOG_AND_RETHROW() }
 
+
+BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
+{ try {
+
+  auto is_assert_exception =[](const fc::assert_exception& e) -> bool { return true; };
+
+  auto generate_abi = [](const char* source, const char* context, const char* abi) -> bool {
+    runToolOnCodeWithArgs(new GenerateAbiAction(false, context), source, {"-fparse-all-comments"} );
+    FC_ASSERT(AbiGenerator::get().error_found == false);
+    
+    auto a1 = fc::json::from_string(abi);
+    auto a2 = AbiGenerator::get().abi;
+
+    return fc::to_hex(fc::raw::pack(a1)) == fc::to_hex(fc::raw::pack(a2));
+  };
+
+   const char* unknown_type = R"=====(
+   //@abi ctx action
+   struct Transfer {
+      unsigned long long param1;
+      char*              param2;
+   };
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, "ctx", ""), fc::assert_exception, is_assert_exception );
+   
+   const char* all_types = R"=====(
+   //@abi ctx action
+   struct Transfer {
+      long long            param1;
+      unsigned long long   param2;
+      unsigned long        param3;
+      long                 param4;
+      unsigned __int128    param5;
+      unsigned char        param7;
+   };
+   )=====";
+
+   const char* all_types_abi = R"=====(
+   {
+       "types": [],
+       "structs": [{
+          name : "Transfer",
+          base : "",
+          fields : {
+            "Int64"   : "param1",
+            "UInt64"  : "param2",
+            "UInt32"  : "param3",
+            "Int32"   : "param4",
+            "UInt128" : "param5",
+            "Int128"  : "param6",
+            "UInt8"   : "param7"
+          }
+       }],
+       "actions": [{
+          "name" : "transfer",
+          "type" : "Transfer 
+       }],
+       "tables": []
+   }
+   )=====";
+  //BOOST_CHECK_EQUAL( generate_abi(all_types, "ctx", all_types_abi), true );
+
+} FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
 { try {

@@ -1,24 +1,18 @@
-set(SOURCES main.cpp)
-
 # Find an installed build of LLVM
 find_package(LLVM 4.0 REQUIRED CONFIG)
-
-# Include the LLVM headers
-include_directories(${LLVM_INCLUDE_DIRS})
-
-add_executable(abi_generator ${SOURCES})
-
 set( CMAKE_CXX_STANDARD 14 )
 
-if( UNIX AND NOT APPLE )
-  set(rt_library rt )
-endif()
+file(GLOB HEADERS "include/eos/abi_generator/*.hpp")
 
-find_package( Gperftools QUIET )
-if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling steemd with TCMalloc")
-    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
-endif()
+set(SOURCES ${HEADERS})
+
+add_library( abi_generator
+             ${SOURCES}
+             ${HEADERS} )
+
+target_include_directories( abi_generator
+                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                                   "${LLVM_INCLUDE_DIRS}" )
 
 target_link_libraries(abi_generator fc eos_types
   clangRewrite
@@ -64,9 +58,17 @@ target_link_libraries(abi_generator
   LLVMDemangle
 )
 
+if (USE_PCH)
+  set_target_properties(abi_generator PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
+  cotire(eos_utilities)
+endif(USE_PCH)
+
 install( TARGETS
    abi_generator
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
+
+install( FILES ${HEADERS} DESTINATION "include/eos/abi_generator" )
+
