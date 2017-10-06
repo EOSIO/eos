@@ -956,7 +956,13 @@ void chain_controller::apply_message(apply_context& context)
     const auto& recipient = _db.get<account_object,by_name>(context.code);
     if (recipient.code.size()) {
        //idump((context.code)(context.msg.type));
-       wasm_interface::get().apply(context);
+       const uint32_t execution_time =
+          _skip_flags | received_block
+             ? _rcvd_block_trans_execution_time
+             : _skip_flags | created_block
+               ? _create_block_trans_execution_time
+               : _trans_execution_time;
+       wasm_interface::get().apply(context, execution_time);
     }
 
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
@@ -1158,7 +1164,7 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
             MessageOutput output;
             ProcessedTransaction trx; /// dummy tranaction required for scope validation
             std::sort(trx.scope.begin(), trx.scope.end() );
-            with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check, [&](){
+            with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, [&](){
                process_message(trx,m.code,m,output); 
             });
          });
@@ -1167,8 +1173,11 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 } FC_CAPTURE_AND_RETHROW() }
 
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                                   chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin)
-   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)) {
+                                   chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
+                                   uint32_t trans_execution_time, uint32_t rcvd_block_trans_execution_time,
+                                   uint32_t create_block_trans_execution_time)
+   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _trans_execution_time(trans_execution_time),
+     _rcvd_block_trans_execution_time(rcvd_block_trans_execution_time), _create_block_trans_execution_time(create_block_trans_execution_time) {
 
    initialize_indexes();
    starter.register_types(*this, _db);
@@ -1213,7 +1222,8 @@ void chain_controller::replay() {
                           skip_transaction_dupe_check |
                           skip_tapos_check |
                           skip_producer_schedule_check |
-                          skip_authority_check);
+                          skip_authority_check |
+                          received_block);
    }
    auto end = fc::time_point::now();
    ilog("Done replaying ${n} blocks, elapsed time: ${t} sec",

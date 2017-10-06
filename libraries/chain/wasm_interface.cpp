@@ -46,16 +46,16 @@ namespace eos { namespace chain {
    const int CHECKTIME_LIMIT = 18000;
 #endif
 
-   void checktime(int64_t duration)
+   void checktime(int64_t duration, uint32_t checktime_limit)
    {
-      if (duration > CHECKTIME_LIMIT) {
+      if (duration > checktime_limit) {
          wlog("checktime called ${d}", ("d", duration));
          throw checktime_exceeded();
       }
    }
 
 DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
-   checktime(wasm_interface::get().current_execution_time());
+   checktime(wasm_interface::get().current_execution_time(), wasm_interface::get().checktime_limit);
 }
 
    template <typename Function, typename KeyType, int numberOfKeys>
@@ -350,7 +350,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,sbrk,sbrk,i32,i32,num_bytes) {
    FC_ASSERT( num_bytes >= 0, "sbrk can only allocate memory, not reduce" );
    FC_ASSERT( wasm.current_memory_management != nullptr, "sbrk can only be called during the scope of wasm_interface::vm_call" );
    U32 previous_bytes_allocated = wasm.current_memory_management->sbrk(num_bytes);
-   checktime(wasm.current_execution_time());
+   checktime(wasm.current_execution_time(), wasm_interface::get().checktime_limit);
    return previous_bytes_allocated;
 }
 
@@ -615,7 +615,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 
          Runtime::invokeFunction(call,args);
          wasm_memory_mgmt.reset();
-         checktime(current_execution_time());
+         checktime(current_execution_time(), checktime_limit);
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
           edump((e.callStack));
@@ -673,11 +673,12 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    } FC_CAPTURE_AND_RETHROW() }
 
 
-   void wasm_interface::apply( apply_context& c ) {
+   void wasm_interface::apply( apply_context& c, uint32_t execution_time ) {
     try {
       current_validate_context       = &c;
       current_precondition_context   = &c;
       current_apply_context          = &c;
+      checktime_limit                = execution_time;
 
       load( c.code, c.db );
       vm_apply();
@@ -689,6 +690,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       current_validate_context       = &c;
       current_precondition_context   = &c;
       current_apply_context          = &c;
+      checktime_limit                = CHECKTIME_LIMIT;
 
       load( c.code, c.db );
       vm_onInit();
