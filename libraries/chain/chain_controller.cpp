@@ -558,7 +558,7 @@ void check_output(const T& expected, const T& actual, const path_cons_list& path
 template<typename T>
 void check_output(const vector<T>& expected, const vector<T>& actual, const path_cons_list& path) {
    check_output(expected.size(), actual.size(), path(".size()"));
-   for(int idx=0; idx < expected.size(); idx++) {
+   for(size_t idx=0; idx < expected.size(); idx++) {
       const auto &expected_element = expected.at(idx);
       const auto &actual_element = actual.at(idx);
       check_output(expected_element, actual_element, path(idx));
@@ -666,16 +666,16 @@ void chain_controller::_apply_block(const signed_block& next_block)
     * when building a block.
     */
    auto root_path = path_cons_list("next_block.cycles");
-   for (int c_idx = 0; c_idx < next_block.cycles.size(); c_idx++) {
+   for (size_t c_idx = 0; c_idx < next_block.cycles.size(); c_idx++) {
       const auto& cycle = next_block.cycles.at(c_idx);
       auto c_path = path_cons_list(c_idx, root_path);
 
-      for (int t_idx = 0; t_idx < cycle.size(); t_idx++) {
+      for (size_t t_idx = 0; t_idx < cycle.size(); t_idx++) {
          const auto& thread = cycle.at(t_idx);
          auto t_path = path_cons_list(t_idx, c_path);
 
          auto gen_path = path_cons_list(".generated_input", t_path);
-         for(int p_idx = 0; p_idx < thread.generated_input.size(); p_idx++ ) {
+         for(size_t p_idx = 0; p_idx < thread.generated_input.size(); p_idx++ ) {
             const auto& ptrx = thread.generated_input.at(p_idx);
             const auto& trx = get_generated_transaction(ptrx.id);
             auto processed = apply_transaction(trx);
@@ -683,7 +683,7 @@ void chain_controller::_apply_block(const signed_block& next_block)
          }
 
          auto user_path = path_cons_list(".user_input", t_path);
-         for(int p_idx = 0; p_idx < thread.user_input.size(); p_idx++ ) {
+         for(size_t p_idx = 0; p_idx < thread.user_input.size(); p_idx++ ) {
             const auto& ptrx = thread.user_input.at(p_idx);
             const signed_transaction& trx = ptrx;
             auto processed = apply_transaction(trx);
@@ -994,7 +994,7 @@ void chain_controller::process_message(const transaction& trx, account_name code
 
    // propagate used_authorizations up the context chain
    if (parent_context != nullptr)
-      for (int i = 0; i < apply_ctx.used_authorizations.size(); ++i)
+      for (size_t i = 0; i < apply_ctx.used_authorizations.size(); ++i)
          if (apply_ctx.used_authorizations[i])
             parent_context->used_authorizations[i] = true;
 
@@ -1400,7 +1400,10 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
          dgp.recent_slots_filled += 1;
          dgp.recent_slots_filled <<= missed_blocks;
       } else
-         dgp.recent_slots_filled = 0;
+         if(config::percent100 * get_global_properties().active_producers.size() / config::blocks_per_round > config::required_producer_participation)
+            dgp.recent_slots_filled = uint64_t(-1);
+         else
+            dgp.recent_slots_filled = 0;
    });
 
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );

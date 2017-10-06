@@ -36,6 +36,7 @@ else
         fi
     fi
 fi
+
 total_nodes=`expr $pnodes + $npnodes`
 
 rm -rf tn_data_*

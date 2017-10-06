@@ -39,6 +39,8 @@ const static int default_per_auth_account = 1800;
 const static int default_per_code_account_time_frame_seconds = 18;
 const static int default_per_code_account = 18000;
 
+const static uint32 required_producer_participation = 33 * config::percent1;
+
 const static uint32 default_max_block_size = 5 * 1024 * 1024;
 const static uint32 default_target_block_size = 128 * 1024;
 const static uint64 default_max_storage_size = 10 * 1024;
