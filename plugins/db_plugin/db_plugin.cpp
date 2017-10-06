@@ -18,6 +18,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
+#include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
 #include <bsoncxx/json.hpp>
 
@@ -63,6 +64,8 @@ public:
 
    static const FuncName newaccount;
    static const FuncName transfer;
+   static const FuncName lock;
+   static const FuncName unlock;
 
    static const std::string db_name;
    static const std::string blocks_col;
@@ -73,6 +76,8 @@ public:
 
 const FuncName db_plugin_impl::newaccount = "newaccount";
 const FuncName db_plugin_impl::transfer = "transfer";
+const FuncName db_plugin_impl::lock = "lock";
+const FuncName db_plugin_impl::unlock = "unlock";
 
 const std::string db_plugin_impl::db_name = "EOS";
 const std::string db_plugin_impl::blocks_col = "Blocks";
@@ -198,8 +203,10 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
                         << stream::close_document;
                }
                std::string data_str;
-               if (msg.type == newaccount) {
-                  data_str = fc::json::to_string(msg.as<eos::types::newaccount>());
+               if (msg.type == newaccount) { // TODO: temp until types handled
+                  data_str = fc::json::to_pretty_string(msg.as<eos::types::newaccount>());
+               } else if (msg.type == transfer) {
+                  data_str = fc::json::to_pretty_string(msg.as<eos::types::transfer>());
                } else {
                   data_str = fc::json::to_string(msg.data);
                }
@@ -214,7 +221,11 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
 
                // eos account update
                if (msg.code == config::EosContractName) {
-                  update_account(msg);
+                  try {
+                     update_account(msg);
+                  } catch(fc::exception& e) {
+                     elog("Unable to update account ${e}", ("e", e.what()));
+                  }
                }
 
                ++i;
@@ -246,11 +257,28 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
 
 }
 
+namespace {
+
+  auto find_account(mongocxx::collection& accounts, const AccountName& name) {
+     using bsoncxx::builder::stream::document;
+     document find_acc{};
+     find_acc << "name" << name.toString();
+     auto account = accounts.find_one(find_acc.view());
+     if (!account) {
+        FC_THROW("Unable to find account ${n}", ("n", name));
+     }
+     return *account;
+  }
+
+}
+
 void db_plugin_impl::update_account(const chain::Message& msg) {
+   using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::stream::document;
    using bsoncxx::builder::stream::open_document;
    using bsoncxx::builder::stream::close_document;
    using bsoncxx::builder::stream::finalize;
+   using namespace bsoncxx::types;
 
    if (msg.code != config::EosContractName)
       return;
@@ -260,24 +288,11 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       auto from_name = transfer.from.toString();
       auto to_name = transfer.to.toString();
       auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
-      document find_from{};
-      find_from << "name" << from_name;
-      auto from_account = accounts.find_one(find_from.view());
-      if (!from_account) {
-         elog("Unable to find account ${n}", ("n", transfer.from));
-         return;
-      }
-      document find_to{};
-      find_to << "name" << to_name;
-      auto to_account = accounts.find_one(find_to.view());
-      if (!to_account) {
-         elog("Unable to find account ${n}", ("n", transfer.to));
-         return;
-      }
-      auto from_view = from_account->view();
-      Asset from_balance = Asset::fromString(from_view["eos_balance"].get_utf8().value.to_string());
-      auto to_view = to_account->view();
-      Asset to_balance = Asset::fromString(to_view["eos_balance"].get_utf8().value.to_string());
+      auto from_account = find_account(accounts, transfer.from);
+      auto to_account = find_account(accounts, transfer.to);
+
+      Asset from_balance = Asset::fromString(from_account.view()["eos_balance"].get_utf8().value.to_string());
+      Asset to_balance = Asset::fromString(to_account.view()["eos_balance"].get_utf8().value.to_string());
       from_balance -= eos::types::ShareType(transfer.amount);
       to_balance += eos::types::ShareType(transfer.amount);
 
@@ -286,18 +301,45 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       document update_to{};
       update_to << "$set" << open_document << "eos_balance" << to_balance.toString() << close_document;
 
-      accounts.update_one(find_from.view(), update_from.view());
-      accounts.update_one(find_to.view(), update_to.view());
+      accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
+      accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
    } else if (msg.type == newaccount) {
       auto newaccount = msg.as<types::newaccount>();
       auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
+
+      // find creator to update its balance
+      auto from_name = newaccount.creator.toString();
+      document find_from{};
+      find_from << "name" << from_name;
+      auto from_account = accounts.find_one(find_from.view());
+      if (!from_account) {
+         elog("Unable to find account ${n}", ("n", from_name));
+         return;
+      }
+      // decrease creator by deposit amount
+      auto from_view = from_account->view();
+      Asset from_balance = Asset::fromString(from_view["eos_balance"].get_utf8().value.to_string());
+      from_balance -= newaccount.deposit;
+      document update_from{};
+      update_from << "$set" << open_document << "eos_balance" << from_balance.toString() << close_document;
+      accounts.update_one(find_from.view(), update_from.view());
+
+      // create new account with staked deposit amount
       bsoncxx::builder::stream::document doc{};
       doc << "name" << newaccount.name.toString()
-          << "eos_balance" << newaccount.deposit.toString();
+          << "eos_balance" << Asset().toString()
+          << "staked_balance" << newaccount.deposit.toString()
+          << "unstaked_balance" << Asset().toString();
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", newaccount.name));
       }
+
+   } else if (msg.type == lock) {
+
+   } else if (msg.type == unlock) {
+
+
    }
 }
 
@@ -332,11 +374,14 @@ void db_plugin_impl::wipe_database() {
 
 void db_plugin_impl::init() {
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
+   // See native_contract_chain_initializer::prepare_database()
    auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
    bsoncxx::builder::stream::document doc{};
    if (accounts.count(doc.view()) == 0) {
       doc << "name" << config::EosContractName.toString()
-          << "eos_balance" << Asset(config::InitialTokenSupply).toString();
+          << "eos_balance" << Asset(config::InitialTokenSupply).toString()
+          << "staked_balance" << Asset().toString()
+          << "unstaked_balance" << Asset().toString();
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", config::EosContractName.toString()));
       }
