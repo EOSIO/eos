@@ -197,8 +197,10 @@ void chain_plugin::plugin_startup()
    auto& db = app().get_plugin<database_plugin>().db();
    eos::chain::applied_irreverisable_block_func applied_func;
    if (db_plugin* plugin = app().find_plugin<db_plugin>()) {
-      ilog("Blockchain configured with external database.");
-      applied_func = [plugin](const chain::signed_block& b) { plugin->applied_irreversible_block(b); };
+      if (plugin->get_state() != registered) {
+         ilog("Blockchain configured with external database.");
+         applied_func = [plugin](const chain::signed_block& b) { plugin->applied_irreversible_block(b); };
+      }
    }
 
    FC_ASSERT( fc::exists( my->genesis_file ), 

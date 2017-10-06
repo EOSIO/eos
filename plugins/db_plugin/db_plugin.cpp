@@ -4,6 +4,7 @@
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/transaction.hpp>
 #include <eos/chain/types.hpp>
+#include <eos/native_contract/native_contract_chain_initializer.hpp>
 
 #include <fc/crypto/sha256.hpp>
 #include <fc/io/json.hpp>
@@ -48,10 +49,14 @@ public:
    void init();
    void wipe_database();
 
+   std::set<AccountName> filter_on;
+   types::Abi eos_abi; // cached for common use
+
+   bool configured{false};
    bool wipe_database_on_startup{false};
    mongocxx::instance mongo_inst;
    mongocxx::client mongo_conn;
-   std::set<AccountName> filter_on;
+
    std::unique_ptr<boost::lockfree::spsc_queue<signed_block>> queue;
    boost::thread consum_thread;
    boost::atomic<bool> startup{true};
@@ -66,6 +71,7 @@ public:
    static const FuncName transfer;
    static const FuncName lock;
    static const FuncName unlock;
+   static const FuncName claim;
 
    static const std::string db_name;
    static const std::string blocks_col;
@@ -78,6 +84,7 @@ const FuncName db_plugin_impl::newaccount = "newaccount";
 const FuncName db_plugin_impl::transfer = "transfer";
 const FuncName db_plugin_impl::lock = "lock";
 const FuncName db_plugin_impl::unlock = "unlock";
+const FuncName db_plugin_impl::claim = "claim";
 
 const std::string db_plugin_impl::db_name = "EOS";
 const std::string db_plugin_impl::blocks_col = "Blocks";
@@ -192,30 +199,41 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block)
                trx_doc = trx_doc << msg_oid; // add to transaction.messages array
                stream::document msg_builder{};
                auto msg_doc = msg_builder
-                  << "_id" << b_oid{msg_oid}
-                  << "message_id" << b_int32{i}
-                  << "transaction_id" << trans_id_str
-                  << "authorization" << stream::open_array;
+                     << "_id" << b_oid{msg_oid}
+                     << "message_id" << b_int32{i}
+                     << "transaction_id" << trans_id_str
+                     << "authorization" << stream::open_array;
                for (const auto& auth : msg.authorization) {
                   msg_doc = msg_doc << stream::open_document
-                        << "account" << auth.account.toString()
-                        << "permission" << auth.permission.toString()
-                        << stream::close_document;
+                                    << "account" << auth.account.toString()
+                                    << "permission" << auth.permission.toString()
+                                    << stream::close_document;
                }
-               std::string data_str;
-               if (msg.type == newaccount) { // TODO: temp until types handled
-                  data_str = fc::json::to_pretty_string(msg.as<eos::types::newaccount>());
-               } else if (msg.type == transfer) {
-                  data_str = fc::json::to_pretty_string(msg.as<eos::types::transfer>());
-               } else {
-                  data_str = fc::json::to_string(msg.data);
-               }
-               auto msg_complete = msg_doc
+               auto msg_next_doc = msg_doc
                      << stream::close_array
-                     << "type" << msg.type.toString()
-                     // TODO: unpack from binary
-                     << "data" << data_str
-                     << stream::finalize;
+                     << "type" << msg.type.toString();
+               bool data_added = false;
+               if (msg.code == config::EosContractName) {
+                  types::AbiSerializer abis;
+                  abis.setAbi(eos_abi);
+                  try {
+                     auto v = abis.binaryToVariant(abis.getActionType(msg.type), msg.data);
+                     auto json = fc::json::to_string(v);
+                     try {
+                        const auto& value = bsoncxx::from_json(json);
+                        msg_next_doc = msg_next_doc << "data" << value;
+                        data_added = true;
+                     } catch(std::exception& e) {
+                        elog("Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
+                        elog("  EOS JSON: ${j}", ("j", json));
+                     }
+                  } catch(fc::exception& e) {
+                     elog("Unable to convert Message.data to ABI type: ${t}, what: ${e}", ("t", msg.type)("e", e.what()));
+                  }
+               }
+               if (!data_added)
+                  msg_next_doc = msg_next_doc << "hex_data" << fc::variant(msg.data).as_string();
+               auto msg_complete = msg_next_doc << stream::finalize;
                mongocxx::model::insert_one insert_msg{msg_complete.view()};
                bulk_msgs.append(insert_msg);
 
@@ -336,10 +354,61 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       }
 
    } else if (msg.type == lock) {
+      auto lock = msg.as<types::lock>();
+      auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
+      auto from_account = find_account(accounts, lock.from);
+      auto to_account = find_account(accounts, lock.to);
+
+      Asset from_balance = Asset::fromString(from_account.view()["eos_balance"].get_utf8().value.to_string());
+      Asset to_balance = Asset::fromString(to_account.view()["stacked_balance"].get_utf8().value.to_string());
+      from_balance -= lock.amount;
+      to_balance += lock.amount;
+
+      document update_from{};
+      update_from << "$set" << open_document << "eos_balance" << from_balance.toString() << close_document;
+      document update_to{};
+      update_to << "$set" << open_document << "stacked_balance" << to_balance.toString() << close_document;
+
+      accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
+      accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
    } else if (msg.type == unlock) {
+      auto unlock = msg.as<types::unlock>();
+      auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
+      auto from_account = find_account(accounts, unlock.account);
 
+      Asset unstack_balance = Asset::fromString(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
+      Asset stack_balance = Asset::fromString(from_account.view()["stacked_balance"].get_utf8().value.to_string());
+      auto deltaStake = unstack_balance - unlock.amount;
+      stack_balance += deltaStake;
+      unstack_balance = unlock.amount;
+      // TODO: proxies and last_unstaking_time
 
+      document update_from{};
+      update_from << "$set" << open_document
+                  << "staked_balance" << stack_balance.toString()
+                  << "unstacking_balance" << unstack_balance.toString()
+                  << close_document;
+
+      accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
+
+   } else if (msg.type == claim) {
+      auto claim = msg.as<types::claim>();
+      auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
+      auto from_account = find_account(accounts, claim.account);
+
+      Asset balance = Asset::fromString(from_account.view()["eos_balance"].get_utf8().value.to_string());
+      Asset unstack_balance = Asset::fromString(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
+      unstack_balance -= claim.amount;
+      balance += claim.amount;
+
+      document update_from{};
+      update_from << "$set" << open_document
+                  << "eos_balance" << balance.toString()
+                  << "unstacking_balance" << unstack_balance.toString()
+                  << close_document;
+
+      accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
    }
 }
 
@@ -375,13 +444,17 @@ void db_plugin_impl::wipe_database() {
 void db_plugin_impl::init() {
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
+
+   eos_abi = native_contract::native_contract_chain_initializer::eos_contract_abi();
+
    auto accounts = mongo_conn[db_name][accounts_col]; // Accounts
    bsoncxx::builder::stream::document doc{};
    if (accounts.count(doc.view()) == 0) {
       doc << "name" << config::EosContractName.toString()
           << "eos_balance" << Asset(config::InitialTokenSupply).toString()
           << "staked_balance" << Asset().toString()
-          << "unstaked_balance" << Asset().toString();
+          << "unstaked_balance" << Asset().toString()
+          << "abi" << fc::json::to_string(eos_abi);
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", config::EosContractName.toString()));
       }
