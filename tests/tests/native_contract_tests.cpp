@@ -6,6 +6,7 @@
 #include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/authority_checker.hpp>
+#include <eos/chain_plugin/chain_plugin.hpp>
 
 #include <eos/native_contract/producer_objects.hpp>
 
@@ -595,7 +596,7 @@ BOOST_FIXTURE_TEST_CASE(auth_links, testing_fixture) { try {
    chain.review_transaction([&chain](SignedTransaction& trx, auto) { chain.sign_transaction(trx); return true; });
    chain.produce_blocks();
    // And now the backed up transaction should succeed, because scud is sufficient authority for all except "transfer"
-   chain.chain_controller::push_transaction(backup);
+   chain.chain_controller::push_transaction(backup, chain_controller::pushed_transaction);
 
    // But transfers with scud authority should still not work, because there's an overriding link to spending
    Transfer_Asset(chain, alice, bob, Asset(10));
