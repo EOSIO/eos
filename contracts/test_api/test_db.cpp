@@ -4,9 +4,23 @@
 #include <eoslib/db.hpp>
 #include "test_api.hpp"
 
+// TestModel3xi64 records[] = {
+//   {1, 1,  0, N()}, // 0    <---------------------------
+//   {1, 1,  1, N()}, // 1                               |
+//   {1, 2,  2, N()}, // 2    <---------------           |
+//   {2, 1,  3, N()}, // 3                   |           |
+//   {2, 2,  2, N()}, // 4    same {secondary,tertiary}  |
+//   {2, 2,  5, N()}, // 5                               |
+//   {3, 1,  6, N()}, // 6                               |
+//   {4, 0,  7, N()}, // 7                               |
+//   {4, 5,  8, N()}, // 8                               |
+//   {5, 1,  9, N()}, // 9                               |
+//   {5, 2,  0, N()}, //10    same {tertiary}-------------
+// };
+
 int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};
-int secondary[11]    = {7,0,1,3,6,9,2,4,5,10,8};
-int tertiary[11]     = {0,1,2,3,4,5,6,7,8,9,10};
+int secondary[11]    = {7,0,1,3,6,9,10,2,4,5,8};
+int tertiary[11]     = {0,10,1,2,4,3,5,6,7,8,9};
 
 int primary_lb[11]   = {0,0,0,3,3,3,6,7,7,9,9};
 int secondary_lb[11] = {0,0,2,0,2,2,0,7,8,0,2};
@@ -715,17 +729,17 @@ unsigned int test_db::key_i64i64i64_general() {
   uint32_t res = 0;
 
   TestModel3xi64 records[] = {
-    {1, 1,  0, N()}, // 0
-    {1, 1,  1, N()}, // 1
-    {1, 2,  2, N()}, // 2
-    {2, 1,  3, N()}, // 3
-    {2, 2,  4, N()}, // 4
-    {2, 2,  5, N()}, // 5
-    {3, 1,  6, N()}, // 6
-    {4, 0,  7, N()}, // 7
-    {4, 5,  8, N()}, // 8
-    {5, 1,  9, N()}, // 9
-    {5, 2, 10, N()}, //10
+    {1, 1,  0, N()}, // 0    <---------------------------
+    {1, 1,  1, N()}, // 1                               |
+    {1, 2,  2, N()}, // 2    <---------------           |
+    {2, 1,  3, N()}, // 3                   |           |
+    {2, 2,  2, N()}, // 4    same {secondary,tertiary}  |
+    {2, 2,  5, N()}, // 5                               |
+    {3, 1,  6, N()}, // 6                               |
+    {4, 0,  7, N()}, // 7                               |
+    {4, 5,  8, N()}, // 8                               |
+    {5, 1,  9, N()}, // 9                               |
+    {5, 2,  0, N()}, //10    same {tertiary}-------------
   };
 
   store_set_in_table(records, sizeof(records)/sizeof(records[0]), N(table0));
@@ -742,11 +756,11 @@ unsigned int test_db::key_i64i64i64_general() {
   #define UPPER(I, O, T, V) CALL(upper_bound, O, I, T, V)
   #define LOWER(I, O, T, V) CALL(lower_bound, O, I, T, V)
 
-  #define LOGME 0
+  #define LOGME 1
   #define BS(X) ((X) ? "true" : "false")
   #define TABLE1_ASSERT(I, V, msg) \
     if(LOGME) {\
-      eos::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, " ("); \
+      eos::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, "inx:", uint64_t(I), " ("); \
       eos::print(BS(res == sizeof(V)), " ", BS(records[I].a == V.a), " ", BS(records[I].b == V.b), " ", BS(records[I].c == V.c), " => ", N(table1), ")\n"); \
     } \
     WASM_ASSERT( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
@@ -784,7 +798,7 @@ unsigned int test_db::key_i64i64i64_general() {
   
   V={11,0}; LOAD_OK(secondary, i64i64i64, N(table1), 7, "i64x3 LOAD secondary 0");
   V={11,1}; LOAD_OK(secondary, i64i64i64, N(table1), 0, "i64x3 LOAD secondary 1");
-  V={11,2}; LOAD_OK(secondary, i64i64i64, N(table1), 2, "i64x3 LOAD secondary 2");
+  V={11,2}; LOAD_OK(secondary, i64i64i64, N(table1),10, "i64x3 LOAD secondary 2");
   V={11,3}; LOAD_ER(secondary, i64i64i64, N(table1), "i64x3 LOAD secondary fail 3");
   V={11,4}; LOAD_ER(secondary, i64i64i64, N(table1), "i64x3 LOAD secondary fail 4");
   V={11,5}; LOAD_OK(secondary, i64i64i64, N(table1), 8, "i64x3 LOAD secondary 5");
@@ -794,13 +808,13 @@ unsigned int test_db::key_i64i64i64_general() {
   V={11,12,1}; LOAD_OK(tertiary, i64i64i64, N(table1),  1, "i64x3 LOAD tertiary 1");
   V={11,12,2}; LOAD_OK(tertiary, i64i64i64, N(table1),  2, "i64x3 LOAD tertiary 2");
   V={11,12,3}; LOAD_OK(tertiary, i64i64i64, N(table1),  3, "i64x3 LOAD tertiary 3");
-  V={11,12,4}; LOAD_OK(tertiary, i64i64i64, N(table1),  4, "i64x3 LOAD tertiary 4");
+  V={11,12,4}; LOAD_ER(tertiary, i64i64i64, N(table1), "i64x3 LOAD tertiary 4");
   V={11,12,5}; LOAD_OK(tertiary, i64i64i64, N(table1),  5, "i64x3 LOAD tertiary 5");
   V={11,12,6}; LOAD_OK(tertiary, i64i64i64, N(table1),  6, "i64x3 LOAD tertiary 6");
   V={11,12,7}; LOAD_OK(tertiary, i64i64i64, N(table1),  7, "i64x3 LOAD tertiary 7");
   V={11,12,8}; LOAD_OK(tertiary, i64i64i64, N(table1),  8, "i64x3 LOAD tertiary 8");
   V={11,12,9}; LOAD_OK(tertiary, i64i64i64, N(table1),  9, "i64x3 LOAD tertiary 9");
-  V={11,12,10}; LOAD_OK(tertiary, i64i64i64, N(table1), 10, "i64x3 LOAD tertiary 10");
+  V={11,12,10}; LOAD_ER(tertiary, i64i64i64, N(table1), "i64x3 LOAD tertiary 10");
   V={11,12,11}; LOAD_ER(tertiary, i64i64i64, N(table1), "i64x3 LOAD tertiary fail 11");
 
   #define NEXT_ALL(I, O, T) \
@@ -809,6 +823,7 @@ unsigned int test_db::key_i64i64i64_general() {
     auto j = 0; \
     do { \
       eos::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
+      eos::print("NEXT voy a busc con =>", " a:", tmp.a, " b:", tmp.b, " c:", tmp.c, "I[j]:", uint64_t(I[j]), "\n"); \
       res = NEXT(I, i64i64i64, N(table1), tmp);\
       if(j+1<n){ TABLE1_ASSERT(I[j+1], tmp, "i64x3 NEXT " #I " ok "); } \
       else { WASM_ASSERT(res == -1, "i64x3 NEXT " #I " fail "); }\
@@ -826,6 +841,10 @@ unsigned int test_db::key_i64i64i64_general() {
       else { WASM_ASSERT(res == -1, "i64x3 PREV " #I " fail "); }\
     } while(--j>0); \
   }
+
+  NEXT_ALL(primary,   i64i64i64, N(table1));
+  NEXT_ALL(secondary, i64i64i64, N(table1));
+  NEXT_ALL(tertiary,  i64i64i64, N(table1));
 
   PREV_ALL(primary,   i64i64i64, N(table1));
   PREV_ALL(secondary, i64i64i64, N(table1));
