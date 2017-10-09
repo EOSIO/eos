@@ -9,7 +9,7 @@ namespace fc { class variant; }
 
 namespace eos {
 
-   typedef std::shared_ptr<class db_plugin_impl> db_plugin_impl_ptr;
+using db_plugin_impl_ptr = std::shared_ptr<class db_plugin_impl>;
 
 class db_plugin : public plugin<db_plugin> {
 public:
