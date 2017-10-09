@@ -458,6 +458,23 @@ void db_plugin_impl::init() {
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", config::EosContractName.toString()));
       }
+
+      // Accounts indexes
+      accounts.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
+
+      // Transactions indexes
+      auto trans = mongo_conn[db_name][trans_col]; // Transactions
+      trans.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
+
+      // Messages indexes
+      auto msgs = mongo_conn[db_name][msgs_col]; // Messages
+      msgs.create_index(bsoncxx::from_json(R"xxx({ "message_id" : 1 })xxx"));
+      msgs.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
+
+      // Blocks indexes
+      auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
+      blocks.create_index(bsoncxx::from_json(R"xxx({ "block_num" : 1 })xxx"));
+      blocks.create_index(bsoncxx::from_json(R"xxx({ "block_id" : 1 })xxx"));
    }
 }
 
