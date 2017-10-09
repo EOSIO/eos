@@ -4,31 +4,17 @@
 #include <eoslib/db.hpp>
 #include "test_api.hpp"
 
-// TestModel3xi64 records[] = {
-//   {1, 1,  0, N()}, // 0    <---------------------------
-//   {1, 1,  1, N()}, // 1                               |
-//   {1, 2,  2, N()}, // 2    <---------------           |
-//   {2, 1,  3, N()}, // 3                   |           |
-//   {2, 2,  2, N()}, // 4    same {secondary,tertiary}  |
-//   {2, 2,  5, N()}, // 5                               |
-//   {3, 1,  6, N()}, // 6                               |
-//   {4, 0,  7, N()}, // 7                               |
-//   {4, 5,  8, N()}, // 8                               |
-//   {5, 1,  9, N()}, // 9                               |
-//   {5, 2,  0, N()}, //10    same {tertiary}-------------
-// };
-
 int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};
 int secondary[11]    = {7,0,1,3,6,9,10,2,4,5,8};
 int tertiary[11]     = {0,10,1,2,4,3,5,6,7,8,9};
 
 int primary_lb[11]   = {0,0,0,3,3,3,6,7,7,9,9};
-int secondary_lb[11] = {0,0,2,0,2,2,0,7,8,0,2};
-int tertiary_lb[11]  = {0,1,2,3,4,5,6,7,8,9,10};
+int secondary_lb[11] = {0,0,10,0,10,10,0,7,8,0,10};
+int tertiary_lb[11]  = {0,1,2,3,2,5,6,7,8,9,0};
 
 int primary_ub[11]   = {3,3,3,6,6,6,7,9,9,-1,-1};
-int secondary_ub[11] = {2,2,8,2,8,8,2,0,-1,2,8};
-int tertiary_ub[11]  = {1,2,3,4,5,6,7,8,9,10,-1};
+int secondary_ub[11] = {10,10,8,10,8,8,10,0,-1,10,8};
+int tertiary_ub[11]  = {1,2,3,5,3,6,7,8,9,-1,1};
 
 #pragma pack(push, 1)
 struct TestModel {
@@ -756,7 +742,7 @@ unsigned int test_db::key_i64i64i64_general() {
   #define UPPER(I, O, T, V) CALL(upper_bound, O, I, T, V)
   #define LOWER(I, O, T, V) CALL(lower_bound, O, I, T, V)
 
-  #define LOGME 1
+  #define LOGME 0
   #define BS(X) ((X) ? "true" : "false")
   #define TABLE1_ASSERT(I, V, msg) \
     if(LOGME) {\
@@ -823,7 +809,6 @@ unsigned int test_db::key_i64i64i64_general() {
     auto j = 0; \
     do { \
       eos::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
-      eos::print("NEXT voy a busc con =>", " a:", tmp.a, " b:", tmp.b, " c:", tmp.c, "I[j]:", uint64_t(I[j]), "\n"); \
       res = NEXT(I, i64i64i64, N(table1), tmp);\
       if(j+1<n){ TABLE1_ASSERT(I[j+1], tmp, "i64x3 NEXT " #I " ok "); } \
       else { WASM_ASSERT(res == -1, "i64x3 NEXT " #I " fail "); }\

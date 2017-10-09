@@ -195,7 +195,7 @@ void send_set_code_message(testing_blockchain& chain, types::setcode& handler, A
 
 BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 { try {
-      //auto wasm = assemble_wast( readFile2("/home/matu/Documents/Dev/eos/contracts/test_api/test_api.wast").c_str() );
+      //auto wasm = assemble_wast( readFile2("/home/matu/Documents/Dev/eos/build/contracts/test_api/test_api.wast").c_str() );
       auto wasm = assemble_wast( test_api_wast );
 
       Make_Blockchain(chain);
