@@ -38,7 +38,7 @@ if [[ $ARCH =~ [[:space:]] || ! $TARGET_ARCHS =~ (^|[[:space:]])$ARCH([[:space:]
   exit 1
 fi
 
-if [ -z $"2" ]; then
+if [ -z "$2" ]; then
   INSTALL_DEPS=1
 else
   if [ "$2" == "full" ]; then
