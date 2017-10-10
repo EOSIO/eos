@@ -11,6 +11,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
+#ifdef MONGODB
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
@@ -18,6 +19,7 @@
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
+#endif
 
 namespace fc { class variant; }
 
@@ -31,6 +33,14 @@ using chain::ProcessedTransaction;
 using chain::signed_block;
 using chain::transaction_id_type;
 
+#ifndef MONGODB
+class db_plugin_impl {
+public:
+   db_plugin_impl() {}
+};
+#endif
+
+#ifdef MONGODB
 class db_plugin_impl {
 public:
    db_plugin_impl();
@@ -523,6 +533,7 @@ void db_plugin_impl::init() {
    }
 }
 
+#endif /* MONGODB */
 ////////////
 // db_plugin
 ////////////
@@ -538,6 +549,7 @@ db_plugin::~db_plugin()
 
 void db_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
+#ifdef MONGODB
    cfg.add_options()
          ("filter-on-accounts,f", bpo::value<std::vector<std::string>>()->composing(),
           "Track only transactions whose scopes involve the listed accounts. Default is to track all transactions.")
@@ -546,23 +558,29 @@ void db_plugin::set_program_options(options_description& cli, options_descriptio
          ("mongodb-uri,m", bpo::value<std::string>()->default_value("mongodb://localhost:27017"),
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/")
          ;
+#endif
 }
 
 void db_plugin::wipe_database() {
+#ifdef MONGODB
    if (!my->startup) {
       elog("ERROR: db_plugin::wipe_database() called before configuration or after startup. Ignoring.");
    } else {
       my->wipe_database_on_startup = true;
    }
+#endif
 }
 
 void db_plugin::applied_irreversible_block(const signed_block& block) {
+#ifdef MONGODB
    my->applied_irreversible_block(block);
+#endif
 }
 
 
 void db_plugin::plugin_initialize(const variables_map& options)
 {
+#ifdef MONGODB
    ilog("initializing db plugin");
    if(options.count("filter-on-accounts")) {
       auto foa = options.at("filter-on-accounts").as<std::vector<std::string>>();
@@ -582,17 +600,19 @@ void db_plugin::plugin_initialize(const variables_map& options)
       my->wipe_database();
    }
    my->init();
+#endif
 }
 
 void db_plugin::plugin_startup()
 {
+#ifdef MONGODB
    ilog("starting db plugin");
-   // TODO: assert that last irreversible in db is one less than received (on startup only?, every so often?)
 
    my->consum_thread = boost::thread([this]{ my->consum_blocks(); });
 
    // chain_controller is created and has resynced or replayed if needed
    my->startup = false;
+#endif
 }
 
 void db_plugin::plugin_shutdown()

@@ -3,36 +3,38 @@ add_library( db_plugin
              db_plugin.cpp
              ${HEADERS} )
 
-find_package(libmongoc-1.0 1.8 REQUIRED)
+find_package(libmongoc-1.0 1.8)
 
-message ("--   mongoc found version \"${MONGOC_VERSION}\"")
-message ("--   mongoc include path \"${MONGOC_INCLUDE_DIRS}\"")
-message ("--   mongoc libraries \"${MONGOC_LIBRARIES}\"")
+if (libmongoc-1.0_FOUND)
 
-find_package(PkgConfig QUIET)
+    message("--   mongoc found version \"${MONGOC_VERSION}\"")
+    message("--   mongoc include path \"${MONGOC_INCLUDE_DIRS}\"")
+    message("--   mongoc libraries \"${MONGOC_LIBRARIES}\"")
 
-# NOTE: For this to work, the PKG_CONFIG_PATH variable (man pkg-config) must be set to point to the
-# 'lib/pkgconfig' subdirectory of the directory used as the argument to CMAKE_INSTALL_PREFIX when
-# building libmongocxx and libbsoncxx.
-pkg_search_module(BSONCXX REQUIRED libbsoncxx)
-pkg_search_module(MONGOCXX REQUIRED libmongocxx)
+    find_package(PkgConfig QUIET)
 
-link_directories(
-  ${MONGOCXX_LIBRARY_DIRS}
-  ${BSONCXX_LIBRARY_DIRS}
-)
+    # NOTE: For this to work, the PKG_CONFIG_PATH variable (man pkg-config) must be set to point to the
+    # 'lib/pkgconfig' subdirectory of the directory used as the argument to CMAKE_INSTALL_PREFIX when
+    # building libmongocxx and libbsoncxx.
+    pkg_search_module(BSONCXX REQUIRED libbsoncxx)
+    pkg_search_module(MONGOCXX REQUIRED libmongocxx)
 
-target_include_directories( db_plugin
+    link_directories(
+            ${MONGOCXX_LIBRARY_DIRS}
+            ${BSONCXX_LIBRARY_DIRS}
+    )
+    add_definitions(-DMONGODB)
+endif()
+
+target_include_directories(db_plugin
         PRIVATE ${MONGOCXX_INCLUDE_DIRS}
         PRIVATE ${BSONCXX_INCLUDE_DIRS}
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-target_link_libraries( db_plugin
+        )
+target_link_libraries(db_plugin
         PUBLIC chain_plugin eos_chain appbase
         PRIVATE ${MONGOCXX_LIBRARIES} ${BSONCXX_LIBRARIES}
-)
-
-
+        )
 
 install( TARGETS
    db_plugin
