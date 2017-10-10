@@ -9,7 +9,10 @@
 #include <fc/variant.hpp>
 
 #include <boost/thread/thread.hpp>
-#include <boost/lockfree/spsc_queue.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/condition_variable.hpp>
+
+#include <queue>
 
 #ifdef MONGODB
 #include <bsoncxx/builder/basic/kvp.hpp>
@@ -64,10 +67,12 @@ public:
 
    size_t queue_size = 0;
    size_t processed = 0;
-   std::unique_ptr<boost::lockfree::spsc_queue<signed_block>> queue;
+   std::queue<signed_block> queue;
+   boost::mutex mtx;
+   boost::condition_variable condtion;
    boost::thread consum_thread;
-   boost::atomic<bool> startup{true};
    boost::atomic<bool> done{false};
+   boost::atomic<bool> startup{true};
 
    void consum_blocks();
 
@@ -109,28 +114,35 @@ void db_plugin_impl::applied_irreversible_block(const signed_block& block) {
       // on startup we don't want to queue, instead push back on caller
       process_irreversible_block(block);
    } else {
-      if (!queue->push(block)) {
-         // TODO what to do if full
-         elog("queue is full!!!!!");
-         FC_ASSERT(false, "queue is full");
-      }
+      boost::mutex::scoped_lock lock(mtx);
+      queue.push(block);
+      lock.unlock();
+      condtion.notify_one();
    }
 }
 
 void db_plugin_impl::consum_blocks() {
    signed_block block;
-   while (!done) {
-      while (queue->pop(block)) {
-         auto available = queue->read_available();
+   size_t size = 0;
+   while (true) {
+      boost::mutex::scoped_lock lock(mtx);
+      while (queue.empty() && !done) {
+         condtion.wait(lock);
+      }
+      size = queue.size();
+      if (size > 0) {
+         block = queue.front();
+         queue.pop();
+         lock.unlock();
          // warn if queue size greater than 75%
-         if (available > (queue_size * 0.75)) {
-            wlog("queue size: ${q}", ("q", available + 1));
+         if (size > (queue_size * 0.75)) {
+            wlog("queue size: ${q}", ("q", size + 1));
          }
          process_irreversible_block(block);
+         continue;
+      } else if (done) {
+         break;
       }
-   }
-   while (queue->pop(block)) {
-      process_irreversible_block(block);
    }
    ilog("db_plugin consum thread shutdown gracefully");
 }
@@ -485,6 +497,8 @@ db_plugin_impl::db_plugin_impl()
 db_plugin_impl::~db_plugin_impl() {
    try {
       done = true;
+      condtion.notify_one();
+
       consum_thread.join();
    } catch (std::exception& e) {
       elog("Exception on db_plugin shutdown of consum thread: ${e}", ("e", e.what()));
@@ -589,7 +603,6 @@ void db_plugin::plugin_initialize(const variables_map& options)
    } else if (options.count("queue-size")) {
       auto size = options.at("queue-size").as<uint>();
       my->queue_size = size;
-      my->queue = std::make_unique<boost::lockfree::spsc_queue<signed_block>>(size);
    }
 
    std::string uri = options.at("mongodb-uri").as<std::string>();

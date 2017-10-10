@@ -1,16 +1,22 @@
 #pragma once
 
 #include <eos/chain_plugin/chain_plugin.hpp>
-#include <eos/chain/block.hpp>
 #include <appbase/application.hpp>
 #include <memory>
-
-namespace fc { class variant; }
 
 namespace eos {
 
 using db_plugin_impl_ptr = std::shared_ptr<class db_plugin_impl>;
 
+/**
+ * Provides persistence to MongoDB for:
+ *   Blocks
+ *   Transactions
+ *   Messages
+ *   Accounts
+ *
+ *   See data dictionary (DB Schema Definition - EOS API) for description of MongoDB schema.
+ */
 class db_plugin : public plugin<db_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin))
