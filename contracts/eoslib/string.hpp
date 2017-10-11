@@ -9,10 +9,10 @@ namespace eos {
   class string {
 
   private:
-    uint32_t size;
-    char* data;
-    bool own_memory;
-    uint32_t* refcount;
+    uint32_t size; // size of the string
+    char* data; // underlying data
+    bool own_memory; // true if the object is responsible to clean the memory
+    uint32_t* refcount; // shared reference count to the underlying data
 
     // Release data if no more string reference to it
     void release_data_if_needed() {
@@ -113,6 +113,13 @@ namespace eos {
       return *this;
     }
 
+    /**
+     * Create substring from current string
+     * @param  offset      offset from the current string's data
+     * @param  substr_size size of the substring
+     * @param  copy        true to have the data copied and owned by the object
+     * @return             substring of the current string
+     */
     string substr(uint32_t offset, uint32_t substr_size, bool copy) {
       assert((offset < size) && (offset + substr_size < size), "out of bound");
       return string(data + offset, substr_size, copy);
@@ -184,7 +191,7 @@ namespace eos {
         }
       } else if (size > str.size) {
         result = memcmp(data, str.data, str.size);
-        if (result == 0){
+        if (result == 0) {
           // String is equal up to size of the shorter string, return the difference in byte of the next character
           result = (unsigned char)data[str.size];
         }
