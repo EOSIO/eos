@@ -61,6 +61,8 @@ public:
 
    bool configured{false};
    bool wipe_database_on_startup{false};
+
+   std::string db_name;
    mongocxx::instance mongo_inst;
    mongocxx::client mongo_conn;
    mongocxx::collection accounts;
@@ -86,7 +88,6 @@ public:
    static const FuncName claim;
    static const FuncName setcode;
 
-   static const std::string db_name;
    static const std::string blocks_col;
    static const std::string trans_col;
    static const std::string msgs_col;
@@ -102,7 +103,6 @@ const FuncName db_plugin_impl::unlock = "unlock";
 const FuncName db_plugin_impl::claim = "claim";
 const FuncName db_plugin_impl::setcode = "setcode";
 
-const std::string db_plugin_impl::db_name = "EOS";
 const std::string db_plugin_impl::blocks_col = "Blocks";
 const std::string db_plugin_impl::trans_col = "Transactions";
 const std::string db_plugin_impl::msgs_col = "Messages";
@@ -137,6 +137,8 @@ void db_plugin_impl::consum_blocks() {
          // warn if queue size greater than 75%
          if (size > (queue_size * 0.75)) {
             wlog("queue size: ${q}", ("q", size + 1));
+         } else if (done) {
+            ilog("draining queue, size: ${q}", ("q", size + 1));
          }
          process_irreversible_block(block);
          continue;
@@ -290,7 +292,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
 
             mongocxx::bulk_write bulk_msgs{bulk_opts};
             int32_t i = 0;
-            for (const chain::Message& msg : trx.messages) {
+            for (const auto& msg : trx.messages) {
                auto msg_oid = bsoncxx::oid{};
                trx_doc = trx_doc << msg_oid; // add to transaction.messages array
 
@@ -507,7 +509,16 @@ db_plugin_impl::~db_plugin_impl() {
 
 void db_plugin_impl::wipe_database() {
    ilog("db wipe_database");
-   mongo_conn[db_name].drop();
+
+   accounts = mongo_conn[db_name][accounts_col]; // Accounts
+   auto trans = mongo_conn[db_name][trans_col]; // Transactions
+   auto msgs = mongo_conn[db_name][msgs_col]; // Messages
+   auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
+
+   accounts.drop();
+   trans.drop();
+   msgs.drop();
+   blocks.drop();
 }
 
 void db_plugin_impl::init() {
@@ -569,7 +580,7 @@ void db_plugin::set_program_options(options_description& cli, options_descriptio
           "Track only transactions whose scopes involve the listed accounts. Default is to track all transactions.")
          ("queue-size,q", bpo::value<uint>()->default_value(256),
          "The queue size between EOSd and MongoDB process thread.")
-         ("mongodb-uri,m", bpo::value<std::string>()->default_value("mongodb://localhost:27017"),
+         ("mongodb-uri,m", bpo::value<std::string>()->default_value("mongodb://localhost:27017/EOS"),
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/")
          ;
 #endif
@@ -605,9 +616,13 @@ void db_plugin::plugin_initialize(const variables_map& options)
       my->queue_size = size;
    }
 
-   std::string uri = options.at("mongodb-uri").as<std::string>();
-   ilog("connecting to ${u}", ("u", uri));
-   my->mongo_conn = mongocxx::client{mongocxx::uri{uri}};
+   std::string uri_str = options.at("mongodb-uri").as<std::string>();
+   ilog("connecting to ${u}", ("u", uri_str));
+   mongocxx::uri uri = mongocxx::uri{uri_str};
+   my->db_name = uri.database();
+   if (my->db_name.empty())
+      my->db_name = "EOS";
+   my->mongo_conn = mongocxx::client{uri};
 
    if (my->wipe_database_on_startup) {
       my->wipe_database();
