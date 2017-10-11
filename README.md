@@ -332,7 +332,7 @@ Next verify the currency contract has the proper initial balance:
 
 Anyone can send any message to any contract at any time, but the contracts may reject messages which are not given necessary permission. Messages are not
 sent "from" anyone, they are sent "with permission of" one or more accounts and permission levels. The following commands shows a "transfer" message being
-sent to the "currency" contact.  
+sent to the "currency" contract.  
 
 The content of the message is `'{"from":"currency","to":"inita","amount":50}'`. In this case we are asking the currency contract to transfer funds from itself to
 someone else.  This requires the permission of the currency contract.
@@ -342,7 +342,7 @@ someone else.  This requires the permission of the currency contract.
 ./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
 ```
 
-Below is a generalization that shows the `currency` account is only referenced once, to specify which contact to deliver the `transfer` message to.
+Below is a generalization that shows the `currency` account is only referenced once, to specify which contract to deliver the `transfer` message to.
 
 ```bash
 ./eosc push message currency transfer '{"from":"${usera}","to":"${userb}","amount":50}' --scope ${usera},${userb} --permission ${usera}@active
