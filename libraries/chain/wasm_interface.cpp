@@ -334,6 +334,17 @@ DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
    return dstp;
 }
 
+DEFINE_INTRINSIC_FUNCTION3(env,memcmp,memcmp,i32,i32,dstp,i32,srcp,i32,len) {
+   auto& wasm          = wasm_interface::get();
+   auto  mem           = wasm.current_memory;
+   char* dst           = memoryArrayPtr<char>( mem, dstp, len);
+   const char* src     = memoryArrayPtr<const char>( mem, srcp, len );
+   FC_ASSERT( len > 0 );
+
+   return memcmp( dst, src, uint32_t(len) );
+}
+
+
 DEFINE_INTRINSIC_FUNCTION3(env,memset,memset,i32,i32,rel_ptr,i32,value,i32,len) {
    auto& wasm          = wasm_interface::get();
    auto  mem           = wasm.current_memory;

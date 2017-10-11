@@ -164,6 +164,24 @@ extern "C" {
        memcpy(buf3, &buf3[49], 50);
     }
 
+    void test_memcmp()
+    {
+       char buf1[] = "abcde";
+       char buf2[] = "abcde";
+       int32_t res1 = memcmp(buf1, buf2, 6);
+       assert(res1 == 0, "first data should be equal to second data");
+
+       char buf3[] = "abcde";
+       char buf4[] = "fghij";
+       int32_t res2 = memcmp(buf3, buf4, 6);
+       assert(res2 < 0, "first data should be smaller than second data");
+
+       char buf5[] = "fghij";
+       char buf6[] = "abcde";
+       int32_t res3 = memcmp(buf5, buf6, 6);
+       assert(res3 > 0, "first data should be larger than second data");
+    }
+
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action )
     {
@@ -200,6 +218,13 @@ extern "C" {
           if( action == N(transfer) )
           {
              test_memcpy_overlap_end();
+          }
+       }
+       else if( code == N(testmemcmp) )
+       {
+          if( action == N(transfer) )
+          {
+             test_memcmp();
           }
        }
     }

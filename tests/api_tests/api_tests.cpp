@@ -502,6 +502,9 @@ BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                        
 //Test wasm memory allocation
 MEMORY_TEST_CASE(test_memory, testmemory, memory_test_wast)
 
+//Test memcmp
+MEMORY_TEST_CASE(test_memcmp, testmemcmp, memory_test_wast)
+
 //Test wasm memory allocation at boundaries
 MEMORY_TEST_CASE(test_memory_bounds, testbounds, memory_test_wast)
 
