@@ -167,30 +167,29 @@ namespace eos {
     }
 
     // Compare two strings
-    // 1 if the first string is greater than the second string
-    // 0 if both strings are equal
-    // -1 if the first string is smaller than the second string
+    // Return an integral value indicating the relationship between strings
+    //   >0 if the first string is greater than the second string
+    //   0 if both strings are equal
+    //   <0 if the first string is smaller than the second string
+    // The return value also represents the difference between the first character that doesn't match of the two strings
     int32_t compare(const string& str) const {
-      const char* str1_iterator = data;
-      const char* str2_iterator = str.data;
-
-      const char* str1_end = data + size;
-      const char* str2_end = str.data + str.size;
-
-      while (str1_iterator != str1_end || str2_iterator != str2_end) {
-        if (str1_iterator == str1_end) {
-          return -1;
-        } else if (str2_iterator == str2_end) {
-          return 1;
-        } else if (*str1_iterator > *str2_iterator) {
-          return 1;
-        } else if (*str1_iterator < *str2_iterator) {
-          return -1;
+      int32_t result;
+      if (size == str.size) {
+        result = memcmp(data, str.data, size);
+      } else if (size < str.size) {
+        result = memcmp(data, str.data, size);
+        if (result == 0) {
+          // String is equal up to size of the shorter string, return the difference in byte of the next character
+          result = 0 - (unsigned char)str.data[size];
         }
-        ++str1_iterator;
-        ++str2_iterator;
+      } else if (size > str.size) {
+        result = memcmp(data, str.data, str.size);
+        if (result == 0){
+          // String is equal up to size of the shorter string, return the difference in byte of the next character
+          result = (unsigned char)data[str.size];
+        }
       }
-      return 0;
+      return result;
     }
 
     friend bool operator < (const string& lhs, const string& rhs) {

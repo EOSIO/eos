@@ -232,10 +232,31 @@ unsigned int test_string::comparison_operator() {
   uint32_t size4 = sizeof(data4)/sizeof(char);
   eos::string str4(data4, size4, false);
 
+  char data5[] = "你好";
+  uint32_t size5 = sizeof(data5)/sizeof(char);
+  eos::string str5(data5, size5, false);
+
+  char data6[] = "你好嗎？";
+  uint32_t size6 = sizeof(data6)/sizeof(char);
+  eos::string str6(data6, size6, false);
+
+  char data7[] = {'a', 'b', 'c', 'd', 'e'};
+  uint32_t size7 = sizeof(data7)/sizeof(char);
+  eos::string str7(data7, size7, false);
+
+  char data8[] = {'a', 'b', 'c'};
+  uint32_t size8 = sizeof(data8)/sizeof(char);
+  eos::string str8(data8, size8, false);
+
   WASM_ASSERT( str1 == str2,  "str1 == str2" );
   WASM_ASSERT( str1 != str3,  "str1 != str3" );
   WASM_ASSERT( str1 < str3,  "str1 < str3" );
   WASM_ASSERT( str2 > str4,  "str2 > str4" );
+  WASM_ASSERT( str1.compare(str2) == 0,  "str1.compare(str2) == 0" );
+  WASM_ASSERT( str1.compare(str3) < 0,  "str1.compare(str3) < 0" );
+  WASM_ASSERT( str1.compare(str4) > 0,  "str1.compare(str4) > 0" );
+  WASM_ASSERT( str5.compare(str6) < 0,  "st5.compare(str6) < 0" );
+  WASM_ASSERT( str7.compare(str8) > 0,  "str7.compare(str8) > 0" );
 
   return WASM_TEST_PASS;
 }
