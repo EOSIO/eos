@@ -1,6 +1,8 @@
 file(GLOB HEADERS "include/eos/connection_plugin/*.hpp")
 add_library( connection_plugin
              connection_plugin.cpp
+             connection_initiator.cpp
+             connection.cpp
              ${HEADERS} )
 
 target_link_libraries( connection_plugin network_plugin appbase fc )
