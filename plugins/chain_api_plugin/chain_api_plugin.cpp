@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain_api_plugin/chain_api_plugin.hpp>
 #include <eos/chain/exceptions.hpp>
 

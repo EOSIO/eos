@@ -1,5 +1,6 @@
 /**
  *  @file
+ *  @copyright defined in eos/LICENSE.txt
  *  @defgroup eosclienttool EOS Command Line Client Reference
  *  @brief Tool for sending transactions and querying state from @ref eosd
  *  @ingroup eosclienttool
