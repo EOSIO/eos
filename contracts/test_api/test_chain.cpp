@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eoslib/message.h>
 #include <eoslib/chain.h>
 

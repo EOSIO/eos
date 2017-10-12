@@ -1,6 +1,7 @@
 /**
  *  @file exchange.cpp
- *  @brief defines an example exchange contract 
+ *  @copyright defined in eos/LICENSE.txt
+ *  @brief defines an example exchange contract
  *
  *  This exchange contract assumes the existence of two currency contracts
  *  located at @currencya and @currencyb.  These currency contracts have

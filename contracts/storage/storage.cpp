@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include "storage.hpp"
 
 namespace TOKEN_NAME {

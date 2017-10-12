@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <proxy/proxy.hpp>
 #include <currency/currency.hpp>
 
