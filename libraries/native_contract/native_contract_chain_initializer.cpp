@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/objects.hpp>
 #include <eos/native_contract/eos_contract.hpp>

@@ -1,6 +1,10 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain/key_value_object.hpp>
 
-namespace eos { namespace chain { 
+namespace eos { namespace chain {
 
 /// find_tuple helper
 template <typename T>

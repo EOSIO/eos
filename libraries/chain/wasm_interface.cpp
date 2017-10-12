@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <boost/function.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eos/chain/wasm_interface.hpp>
