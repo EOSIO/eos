@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/types/TypeParser.hpp>
 
 #include <boost/test/unit_test.hpp>

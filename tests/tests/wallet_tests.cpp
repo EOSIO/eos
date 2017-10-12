@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/utilities/key_conversion.hpp>
 #include <eos/utilities/rand.hpp>
 #include <eos/wallet_plugin/wallet.hpp>

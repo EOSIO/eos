@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <boost/test/unit_test.hpp>
 
 #include <eos/chain/chain_controller.hpp>
