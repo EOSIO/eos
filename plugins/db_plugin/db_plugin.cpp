@@ -206,6 +206,11 @@ namespace {
      }
   }
 
+   void verify_no_blocks(mongocxx::collection& blocks) {
+      if (blocks.count(bsoncxx::from_json("{}")) > 0) {
+         FC_THROW("Existing blocks found in database");
+      }
+   }
 }
 
 void db_plugin_impl::process_irreversible_block(const signed_block& block) {
@@ -240,9 +245,15 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
    const auto block_id_str = block_id.str();
    const auto prev_block_id_str = block.previous.str();
 
-   // verify on restart we have previous block
-   if (processed == 0 && !startup)
-      verify_last_block(blocks, prev_block_id_str);
+   if (processed == 0) {
+      if (startup) {
+         // verify on restart we have previous block
+         verify_no_blocks(blocks);
+      } else {
+         // verify on start we have no previous block
+         verify_last_block(blocks, prev_block_id_str);
+      }
+   }
 
    block_doc << "block_num" << b_int32{static_cast<int32_t>(block.block_num())}
        << "block_id" << block_id_str
@@ -564,7 +575,7 @@ void db_plugin_impl::init() {
 ////////////
 
 db_plugin::db_plugin()
-:my(new db_plugin_impl)
+:my(nullptr)
 {
 }
 
@@ -580,25 +591,30 @@ void db_plugin::set_program_options(options_description& cli, options_descriptio
           "Track only transactions whose scopes involve the listed accounts. Default is to track all transactions.")
          ("queue-size,q", bpo::value<uint>()->default_value(256),
          "The queue size between EOSd and MongoDB process thread.")
-         ("mongodb-uri,m", bpo::value<std::string>()->default_value("mongodb://localhost:27017/EOS"),
-         "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/")
+         ("mongodb-uri,m", bpo::value<std::string>(),
+         "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
+               " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.")
          ;
 #endif
 }
 
 void db_plugin::wipe_database() {
 #ifdef MONGODB
-   if (!my->startup) {
-      elog("ERROR: db_plugin::wipe_database() called before configuration or after startup. Ignoring.");
-   } else {
-      my->wipe_database_on_startup = true;
+   if (my) {
+      if (!my->startup) {
+         elog("ERROR: db_plugin::wipe_database() called before configuration or after startup. Ignoring.");
+      } else {
+         my->wipe_database_on_startup = true;
+      }
    }
 #endif
 }
 
 void db_plugin::applied_irreversible_block(const signed_block& block) {
 #ifdef MONGODB
-   my->applied_irreversible_block(block);
+   if (my) {
+      my->applied_irreversible_block(block);
+   }
 #endif
 }
 
@@ -606,40 +622,48 @@ void db_plugin::applied_irreversible_block(const signed_block& block) {
 void db_plugin::plugin_initialize(const variables_map& options)
 {
 #ifdef MONGODB
-   ilog("initializing db plugin");
-   if(options.count("filter-on-accounts")) {
-      auto foa = options.at("filter-on-accounts").as<std::vector<std::string>>();
-      for(auto filter_account : foa)
-         my->filter_on.emplace(filter_account);
-   } else if (options.count("queue-size")) {
-      auto size = options.at("queue-size").as<uint>();
-      my->queue_size = size;
-   }
+   if (options.count("mongodb-uri")) {
+      my.reset(new db_plugin_impl);
+      ilog("initializing db plugin");
+      if (options.count("filter-on-accounts")) {
+         auto foa = options.at("filter-on-accounts").as<std::vector<std::string>>();
+         for (auto filter_account : foa)
+            my->filter_on.emplace(filter_account);
+      } else if (options.count("queue-size")) {
+         auto size = options.at("queue-size").as<uint>();
+         my->queue_size = size;
+      }
 
-   std::string uri_str = options.at("mongodb-uri").as<std::string>();
-   ilog("connecting to ${u}", ("u", uri_str));
-   mongocxx::uri uri = mongocxx::uri{uri_str};
-   my->db_name = uri.database();
-   if (my->db_name.empty())
-      my->db_name = "EOS";
-   my->mongo_conn = mongocxx::client{uri};
+      std::string uri_str = options.at("mongodb-uri").as<std::string>();
+      ilog("connecting to ${u}", ("u", uri_str));
+      mongocxx::uri uri = mongocxx::uri{uri_str};
+      my->db_name = uri.database();
+      if (my->db_name.empty())
+         my->db_name = "EOS";
+      my->mongo_conn = mongocxx::client{uri};
 
-   if (my->wipe_database_on_startup) {
-      my->wipe_database();
+      if (my->wipe_database_on_startup) {
+         my->wipe_database();
+      }
+      my->init();
+   } else {
+      ilog("eos::db_plugin configured, but no --mongodb-uri specified.");
+      ilog("db_plugin disabled.");
    }
-   my->init();
 #endif
 }
 
 void db_plugin::plugin_startup()
 {
 #ifdef MONGODB
-   ilog("starting db plugin");
+   if (my) {
+      ilog("starting db plugin");
 
-   my->consum_thread = boost::thread([this]{ my->consum_blocks(); });
+      my->consum_thread = boost::thread([this] { my->consum_blocks(); });
 
-   // chain_controller is created and has resynced or replayed if needed
-   my->startup = false;
+      // chain_controller is created and has resynced or replayed if needed
+      my->startup = false;
+   }
 #endif
 }
 
