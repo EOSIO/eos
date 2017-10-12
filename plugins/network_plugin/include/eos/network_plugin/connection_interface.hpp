@@ -3,7 +3,7 @@
 #include <boost/signals2.hpp>
 
 class connection_interface {
-
+public:
    //Query if the connection is disconnected as well as a coresponding signals when the connection
    // becomes disconnected.
    //Once a connection becomes disconnected references to the particular connection must be reliniqushed
