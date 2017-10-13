@@ -167,15 +167,15 @@ namespace {
                 const chain::Message& msg)
   {
      using bsoncxx::builder::basic::kvp;
-     types::AbiSerializer abis;
-     if (msg.code == config::EosContractName) {
-        abis.setAbi(db_plugin_impl::eos_abi);
-     } else {
-        auto from_account = find_account(accounts, msg.code);
-        auto abi = fc::json::from_string(from_account.view()["abi"].get_utf8().value.to_string()).as<types::Abi>();
-        abis.setAbi(abi);
-     }
      try {
+        types::AbiSerializer abis;
+        if (msg.code == config::EosContractName) {
+           abis.setAbi(db_plugin_impl::eos_abi);
+        } else {
+           auto from_account = find_account(accounts, msg.code);
+           auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<types::Abi>();
+           abis.setAbi(abi);
+        }
         auto v = abis.binaryToVariant(abis.getActionType(msg.type), msg.data);
         auto json = fc::json::to_string(v);
         try {
@@ -485,7 +485,7 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
 
       document update_from{};
       update_from << "$set" << open_document
-                  << "abi" << fc::json::to_string(setcode.abi)
+                  << "abi" << bsoncxx::from_json(fc::json::to_string(setcode.abi))
                   << close_document;
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
@@ -545,7 +545,7 @@ void db_plugin_impl::init() {
           << "eos_balance" << Asset(config::InitialTokenSupply).toString()
           << "staked_balance" << Asset().toString()
           << "unstaked_balance" << Asset().toString()
-          << "abi" << fc::json::to_string(eos_abi);
+          << "abi" << bsoncxx::from_json(fc::json::to_string(eos_abi));
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", config::EosContractName.toString()));
       }
