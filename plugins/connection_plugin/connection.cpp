@@ -20,7 +20,9 @@ connection::~connection() {
 }
 
 void connection::read() {
-   socket.async_read_some(boost::asio::buffer(rxbuffer), strand.wrap(boost::bind(&connection::read_ready, this, _1, _2)));
+   socket.async_read_some(boost::asio::buffer(rxbuffer), strand.wrap([this](auto ec, auto r) {
+      read_ready(ec, r);
+   }));
 }
 
 void connection::read_ready(boost::system::error_code ec, size_t red) {
@@ -38,7 +40,9 @@ void connection::read_ready(boost::system::error_code ec, size_t red) {
 
    boost::asio::async_write(socket,
                             boost::asio::buffer(queuedOutgoing.front().data(), queuedOutgoing.front().size()),
-                            strand.wrap(boost::bind(&connection::send_complete, this, _1, _2, queuedOutgoing.begin())));
+                            strand.wrap([this, it=queuedOutgoing.begin()](auto ec, auto s) {
+                               send_complete(ec, s, it);
+                            }));
 
    read();
 }
@@ -56,10 +60,10 @@ void connection::send_complete(boost::system::error_code ec, size_t sent, std::l
 
 bool connection::disconnected() {
    return socket.is_open();
- }
+}
 
- boost::signals2::connection connection::connect_on_disconnected(const boost::signals2::signal<void()>::slot_type& slot) {
+boost::signals2::connection connection::connect_on_disconnected(const boost::signals2::signal<void()>::slot_type& slot) {
    return on_disconnected.connect(slot);
- }
+}
 
 }

@@ -30,7 +30,9 @@ void connection_initiator::go() {
 }
 
 void connection_initiator::accept_connection(active_acceptor& aa) {
-   aa.acceptor.async_accept(aa.socket_to_accept, strand.wrap(boost::bind(&connection_initiator::handle_incoming_connection, this, _1, boost::ref(aa))));
+   aa.acceptor.async_accept(aa.socket_to_accept, strand.wrap([this,&aa](auto ec) {
+      handle_incoming_connection(ec, aa);
+   }));
 }
 
  void connection_initiator::handle_incoming_connection(const boost::system::error_code& ec, active_acceptor& aa) {
@@ -38,31 +40,41 @@ void connection_initiator::accept_connection(active_acceptor& aa) {
   
    //XX verify on some sort of acceptable incoming IP range
    active_connections.emplace_front(std::make_shared<connection>((std::move(aa.socket_to_accept))));
-   active_connections.front().connection_failure_connection = active_connections.front().connection->connect_on_disconnected(strand.wrap([this,it=active_connections.begin()]() {
-      it->connection_failure_connection.disconnect();
-      active_connections.erase(it);
+   std::list<active_connection>::iterator new_conn_it = active_connections.begin();
+
+   new_conn_it->connection_failure_connection = new_conn_it->connection->connect_on_disconnected(strand.wrap([this,new_conn_it]() {
+      new_conn_it->connection_failure_connection.disconnect();
+      active_connections.erase(new_conn_it);
     }));
   
    accept_connection(aa);
 }
 void connection_initiator::retry_connection(outgoing_attempt& outgoing) {
    outgoing.outgoing_socket = boost::asio::ip::tcp::socket(outgoing.reconnect_timer.get_io_service());
-   outgoing.outgoing_socket.async_connect(outgoing.remote_endpoint, strand.wrap(boost::bind(&connection_initiator::outgoing_connection_complete, this, _1, boost::ref(outgoing))));
+   outgoing.outgoing_socket.async_connect(outgoing.remote_endpoint, strand.wrap([this,&outgoing](auto ec) {
+      outgoing_connection_complete(ec, outgoing);
+   }));
 }
 
 void connection_initiator::outgoing_connection_complete(const boost::system::error_code& ec, outgoing_attempt& outgoing) {
    if(ec) {
       ilog("connection failed");
       outgoing.reconnect_timer.expires_from_now(std::chrono::seconds(3));
-      outgoing.reconnect_timer.async_wait(boost::bind(&connection_initiator::retry_connection, this, boost::ref(outgoing)));
+      outgoing.reconnect_timer.async_wait([this,&outgoing](auto ec){
+         if(ec)
+            throw std::runtime_error("Unexpected timer wait failure");
+         retry_connection(outgoing);
+      });
    }
    else {
       ilog("Connection good!");
       outgoing.reconnect_timer.cancel();
       active_connections.emplace_front(std::make_shared<connection>(std::move(outgoing.outgoing_socket)));
-      active_connections.front().connection_failure_connection = active_connections.front().connection->connect_on_disconnected(strand.wrap([this,it=active_connections.begin(),&outgoing]() {
-         it->connection_failure_connection.disconnect();
-         active_connections.erase(it);
+      std::list<active_connection>::iterator new_conn_it = active_connections.begin();
+
+      new_conn_it->connection_failure_connection = new_conn_it->connection->connect_on_disconnected(strand.wrap([this,new_conn_it,&outgoing]() {
+         new_conn_it->connection_failure_connection.disconnect();
+         active_connections.erase(new_conn_it);
          retry_connection(outgoing);
        }));
      }
