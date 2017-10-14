@@ -271,12 +271,15 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
       }
    }
 
+   auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+
    block_doc << "block_num" << b_int32{static_cast<int32_t>(block.block_num())}
        << "block_id" << block_id_str
        << "prev_block_id" << prev_block_id_str
        << "timestamp" << b_date{std::chrono::milliseconds{std::chrono::seconds{block.timestamp.sec_since_epoch()}}}
        << "transaction_merkle_root" << block.transaction_merkle_root.str()
-       << "producer_account_id" << block.producer.toString();
+       << "producer_account_id" << block.producer.toString()
+       << "createdAt" << b_date{now};
    if (!blocks.insert_one(block_doc.view())) {
       elog("Failed to insert block ${bid}", ("bid", block_id));
    }
@@ -338,6 +341,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
                msg_doc.append(kvp("handler_account_name", msg.code.toString()));
                msg_doc.append(kvp("type", msg.type.toString()));
                add_data(msg_doc, accounts, msg);
+               msg_doc.append(kvp("createdAt", b_date{now}));
                mongocxx::model::insert_one insert_msg{msg_doc.view()};
                bulk_msgs.append(insert_msg);
 
@@ -360,7 +364,9 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
                }
             }
 
-            auto complete_doc = trx_doc << stream::close_array << stream::finalize;
+            auto complete_doc = trx_doc << stream::close_array
+                 << "createdAt" << b_date{now}
+                 << stream::finalize;
             mongocxx::model::insert_one insert_op{complete_doc.view()};
             transactions_in_block = true;
             bulk_trans.append(insert_op);
@@ -392,6 +398,7 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       return;
 
    if (msg.type == transfer) {
+      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
       auto transfer = msg.as<types::transfer>();
       auto from_name = transfer.from.toString();
       auto to_name = transfer.to.toString();
@@ -404,14 +411,19 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       to_balance += eos::types::ShareType(transfer.amount);
 
       document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.toString() << close_document;
+      update_from << "$set" << open_document << "eos_balance" << from_balance.toString()
+                  << "updatedAt" << b_date{now}
+                  << close_document;
       document update_to{};
-      update_to << "$set" << open_document << "eos_balance" << to_balance.toString() << close_document;
+      update_to << "$set" << open_document << "eos_balance" << to_balance.toString()
+                << "updatedAt" << b_date{now}
+                << close_document;
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
    } else if (msg.type == newaccount) {
+      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
       auto newaccount = msg.as<types::newaccount>();
 
       // find creator to update its balance
@@ -436,12 +448,15 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       doc << "name" << newaccount.name.toString()
           << "eos_balance" << Asset().toString()
           << "staked_balance" << newaccount.deposit.toString()
-          << "unstaked_balance" << Asset().toString();
+          << "unstaking_balance" << Asset().toString()
+          << "createdAt" << b_date{now}
+          << "updatedAt" << b_date{now};
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", newaccount.name));
       }
 
    } else if (msg.type == lock) {
+      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
       auto lock = msg.as<types::lock>();
       auto from_account = find_account(accounts, lock.from);
       auto to_account = find_account(accounts, lock.to);
@@ -452,14 +467,19 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       to_balance += lock.amount;
 
       document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.toString() << close_document;
+      update_from << "$set" << open_document << "eos_balance" << from_balance.toString()
+                  << "updatedAt" << b_date{now}
+                  << close_document;
       document update_to{};
-      update_to << "$set" << open_document << "stacked_balance" << to_balance.toString() << close_document;
+      update_to << "$set" << open_document << "stacked_balance" << to_balance.toString()
+                << "updatedAt" << b_date{now}
+                << close_document;
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
    } else if (msg.type == unlock) {
+      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
       auto unlock = msg.as<types::unlock>();
       auto from_account = find_account(accounts, unlock.account);
 
@@ -474,11 +494,13 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       update_from << "$set" << open_document
                   << "staked_balance" << stack_balance.toString()
                   << "unstacking_balance" << unstack_balance.toString()
+                  << "updatedAt" << b_date{now}
                   << close_document;
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
 
    } else if (msg.type == claim) {
+      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
       auto claim = msg.as<types::claim>();
       auto from_account = find_account(accounts, claim.account);
 
@@ -491,17 +513,20 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       update_from << "$set" << open_document
                   << "eos_balance" << balance.toString()
                   << "unstacking_balance" << unstack_balance.toString()
+                  << "updatedAt" << b_date{now}
                   << close_document;
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
 
    } else if (msg.type == setcode) {
+      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
       auto setcode = msg.as<types::setcode>();
       auto from_account = find_account(accounts, setcode.account);
 
       document update_from{};
       update_from << "$set" << open_document
                   << "abi" << bsoncxx::from_json(fc::json::to_string(setcode.abi))
+                  << "updatedAt" << b_date{now}
                   << close_document;
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
@@ -549,6 +574,7 @@ void db_plugin_impl::wipe_database() {
 }
 
 void db_plugin_impl::init() {
+   using namespace bsoncxx::types;
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
 
@@ -557,11 +583,15 @@ void db_plugin_impl::init() {
    accounts = mongo_conn[db_name][accounts_col]; // Accounts
    bsoncxx::builder::stream::document doc{};
    if (accounts.count(doc.view()) == 0) {
+      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
       doc << "name" << config::EosContractName.toString()
           << "eos_balance" << Asset(config::InitialTokenSupply).toString()
           << "staked_balance" << Asset().toString()
-          << "unstaked_balance" << Asset().toString()
-          << "abi" << bsoncxx::from_json(fc::json::to_string(eos_abi));
+          << "unstaking_balance" << Asset().toString()
+          << "abi" << bsoncxx::from_json(fc::json::to_string(eos_abi))
+          << "createdAt" << b_date{now}
+          << "updatedAt" << b_date{now};
+
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", config::EosContractName.toString()));
       }
