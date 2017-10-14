@@ -12,11 +12,11 @@ struct by_id;
 struct key_value_object : public object< 2, key_value_object >  {
    template<typename Constructor, typename Allocator>
    key_value_object( Constructor&& c, Allocator&& ){
-      ilog( "create key_value_object" );
+      ilog( "create key_value_object ${p}", ("p",int64_t(this)) );
       c(*this);
    }
    ~key_value_object() {
-      ilog( "destroy key_value_object" );
+      ilog( "destroy key_value_object ${p}", ("p",int64_t(this)) );
       idump((key)(value));
    }
    id_type id;
@@ -24,9 +24,11 @@ struct key_value_object : public object< 2, key_value_object >  {
    int value;
 };
 
+struct by_key;
 typedef shared_multi_index_container< key_value_object,
    indexed_by<
-      ordered_unique< tag<by_id>, member<key_value_object, key_value_object::id_type, &key_value_object::id > >
+      ordered_unique< tag<by_id>, member<key_value_object, key_value_object::id_type, &key_value_object::id > >,
+      ordered_unique< tag<by_key>, member<key_value_object, int, &key_value_object::key > >
    >
 > key_value_index;
 
@@ -42,29 +44,75 @@ int main( int argc, char** argv ) {
       wlog( "loading database" );
       database db( "test.db", 1024*1024 );
       db.register_table< key_value_object >();
+      idump((db.revision()));
+
+
       wlog( "undoing all pending state" );
       db.undo_all();
+      wlog( "setting revision to 100" );
       db.set_revision( 100 );
 
-      
-//      auto ses   = db.start_session();
+      {
+         auto ses   = db.start_session(101);
+
+         const database& cdb = db;
+         const auto* s = cdb.find_scope(1);
+         if( !s ) {
+            wlog( "creating scope 1" );
+            ses.create_scope(1);
+         }
+         auto shar = ses.start_shard( {1} );
+
+
+         auto okv_table = shar.find_table<key_value_object>(1,1000);
+         if( !okv_table ) {
+            elog("creating table" );
+            okv_table = shar.create_table<key_value_object>( 1, 1000 );
+            elog( "finding table" );
+            auto test_find = shar.find_table<key_value_object>(1,1000);
+            FC_ASSERT( test_find, "expected to find table just created" );
+         }
+
+         ilog( "emplacing object" );
+         const auto& obj = okv_table->emplace( [&]( key_value_object& o ) {
+             o.key = fc::time_point::now().sec_since_epoch();
+             o.value = 2;
+         });
+
+         wdump(("before")(obj.value));
+         okv_table->modify( obj, [&]( auto& o ) {
+            o.value++;
+         });
+
+         wdump(("after")(obj.value));
+
+         okv_table->remove(obj);
+
+         ses.push();
+      }
+      ilog( "commit revision 102" );
+      db.commit_revision(102);
+      idump((db.revision()));
+
+
+
 //      /*auto scope = */ses.create_scope( 1 );
- //     auto shard = ses.start_shard( {1} );
   //    auto scope = shard.get_scope( 1 );
    //   auto table = shard.create_table<key_value_object>( scope );
 
+      /*
       const auto& row = table.find( key );
          table.modify( row, [&]( auto& r ){
       });
 
       auto session = shard.start_undo_session();
 
-      /*
       session.squash();
       session.undo();
       */
 
 
+      /*
 
       wlog( "starting thread with scope 1" );
       auto t1 = db.start_thread( {1} );
@@ -107,6 +155,7 @@ int main( int argc, char** argv ) {
       wlog( "now popping 100" );
       db.pop_revision( 100 );
       wlog( "done popping 100" );
+      */
 
      // db.delete_table( table );
      // db.delete_scope( scope );
@@ -192,6 +241,8 @@ int main( int argc, char** argv ) {
 
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
+   } catch ( const std::exception& e ) {
+      elog(e.what());
    }
 
    return 0;
