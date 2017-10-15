@@ -13,9 +13,9 @@
 
 namespace eos {
 
-class connection_initiator {
+class tcp_connection_initiator {
 public:
-   connection_initiator(const boost::program_options::variables_map& options, boost::asio::io_service& ios);
+  tcp_connection_initiator(const boost::program_options::variables_map& options, boost::asio::io_service& ios);
 
    //starts the incoming/outgoing connections
    void go();
@@ -52,9 +52,9 @@ private:
     //      on to a reference _someone_ needs to hold on to a reference! Refactor once network_manager holds
     //      a list of the connections.
     struct active_connection : private boost::noncopyable {
-      active_connection(std::shared_ptr<connection> s) : connection(s) {}
+      active_connection(tcp_connection_ptr s) : connection(s) {}
 
-      std::shared_ptr<connection>  connection;
+      tcp_connection_ptr  connection;
       boost::signals2::connection  connection_failure_connection;
     };
     std::list<active_connection> active_connections;

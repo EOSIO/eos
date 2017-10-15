@@ -7,9 +7,9 @@
 namespace eos {
 using namespace appbase;
 
-class connection_plugin : public appbase::plugin<connection_plugin> {
+class tcp_connection_plugin : public appbase::plugin<tcp_connection_plugin> {
 public:
-   connection_plugin();
+   tcp_connection_plugin();
 
    APPBASE_PLUGIN_REQUIRES((network_plugin))
    void set_program_options(options_description& cli, options_description& cfg) override;
@@ -19,7 +19,7 @@ public:
    void plugin_shutdown();
 
 private:
-   std::unique_ptr<connection_initiator> initiator;
+   std::unique_ptr<tcp_connection_initiator> initiator;
 };
 
 }

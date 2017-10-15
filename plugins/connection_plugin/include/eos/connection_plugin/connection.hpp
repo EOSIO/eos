@@ -7,10 +7,10 @@
 
 namespace eos {
 
-class connection : public connection_interface {
+class tcp_connection : public connection_interface {
 public:
-   connection(boost::asio::ip::tcp::socket s);
-   ~connection();
+   tcp_connection(boost::asio::ip::tcp::socket s);
+   ~tcp_connection();
    
    bool disconnected() override;
    boost::signals2::connection connect_on_disconnected(const boost::signals2::signal<void()>::slot_type& slot) override;
@@ -30,5 +30,7 @@ private:
    boost::signals2::signal<void()> on_disconnected;
 
 };
+
+using tcp_connection_ptr = std::shared_ptr<tcp_connection>;
 
 }

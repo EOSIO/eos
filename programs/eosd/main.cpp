@@ -23,12 +23,12 @@ int main(int argc, char** argv)
 {
    try {
       app().register_plugin<network_plugin>();
-      app().register_plugin<connection_plugin>();
+      app().register_plugin<tcp_connection_plugin>();
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
       app().register_plugin<account_history_api_plugin>();
       app().register_plugin<wallet_api_plugin>();
-      if(!app().initialize<chain_plugin, http_plugin, network_plugin, connection_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, network_plugin, tcp_connection_plugin>(argc, argv))
          return -1;
       app().startup();
       app().exec();

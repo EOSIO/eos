@@ -6,7 +6,7 @@
 
 namespace eos {
 
-connection::connection(boost::asio::ip::tcp::socket s) :
+tcp_connection::tcp_connection(boost::asio::ip::tcp::socket s) :
    socket(std::move(s)),
    strand(socket.get_io_service())
 {
@@ -15,17 +15,17 @@ connection::connection(boost::asio::ip::tcp::socket s) :
    read();
 }
 
-connection::~connection() {
+tcp_connection::~tcp_connection() {
    ilog("Connection destroyed"); //XXX debug
 }
 
-void connection::read() {
+void tcp_connection::read() {
    socket.async_read_some(boost::asio::buffer(rxbuffer), strand.wrap([this](auto ec, auto r) {
       read_ready(ec, r);
    }));
 }
 
-void connection::read_ready(boost::system::error_code ec, size_t red) {
+void tcp_connection::read_ready(boost::system::error_code ec, size_t red) {
    ilog("read ${r} bytes!", ("r",red));
    if(ec == boost::asio::error::eof) {
        socket.close();
@@ -47,7 +47,7 @@ void connection::read_ready(boost::system::error_code ec, size_t red) {
    read();
 }
 
-void connection::send_complete(boost::system::error_code ec, size_t sent, std::list<std::vector<uint8_t>>::iterator it) {
+void tcp_connection::send_complete(boost::system::error_code ec, size_t sent, std::list<std::vector<uint8_t>>::iterator it) {
    if(ec) {
       socket.close();
       on_disconnected();
@@ -58,11 +58,11 @@ void connection::send_complete(boost::system::error_code ec, size_t sent, std::l
    queuedOutgoing.erase(it);
 }
 
-bool connection::disconnected() {
+bool tcp_connection::disconnected() {
    return socket.is_open();
 }
 
-boost::signals2::connection connection::connect_on_disconnected(const boost::signals2::signal<void()>::slot_type& slot) {
+boost::signals2::connection tcp_connection::connect_on_disconnected(const boost::signals2::signal<void()>::slot_type& slot) {
    return on_disconnected.connect(slot);
 }
 
