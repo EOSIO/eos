@@ -62,7 +62,7 @@ bool tcp_connection::disconnected() {
    return socket.is_open();
 }
 
-boost::signals2::connection tcp_connection::connect_on_disconnected(const boost::signals2::signal<void()>::slot_type& slot) {
+connection tcp_connection::connect_on_disconnected(const signal<void()>::slot_type& slot) {
    return on_disconnected.connect(slot);
 }
 

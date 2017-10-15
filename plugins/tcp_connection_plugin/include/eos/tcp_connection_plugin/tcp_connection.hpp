@@ -13,7 +13,7 @@ public:
    ~tcp_connection();
    
    bool disconnected() override;
-   boost::signals2::connection connect_on_disconnected(const boost::signals2::signal<void()>::slot_type& slot) override;
+   connection connect_on_disconnected(const signal<void()>::slot_type& slot) override;
 
 private:
    void read();
@@ -27,7 +27,7 @@ private:
    uint8_t rxbuffer[4096];
    std::list<std::vector<uint8_t>> queuedOutgoing;
 
-   boost::signals2::signal<void()> on_disconnected;
+   signal<void()> on_disconnected;
 
 };
 
