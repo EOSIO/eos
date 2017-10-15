@@ -1,4 +1,4 @@
-#include <eos/connection_plugin/connection_plugin.hpp>
+#include <eos/tcp_connection_plugin/tcp_connection_plugin.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>

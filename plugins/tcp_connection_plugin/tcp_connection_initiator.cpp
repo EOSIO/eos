@@ -1,4 +1,4 @@
-#include <eos/connection_plugin/connection_initiator.hpp>
+#include <eos/tcp_connection_plugin/tcp_connection_initiator.hpp>
 
 #include <fc/log/logger.hpp>
 

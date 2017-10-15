@@ -5,7 +5,7 @@
  connections. Outgoing connections retried on failure.
 */
 
-#include <eos/connection_plugin/connection.hpp>
+#include <eos/tcp_connection_plugin/tcp_connection.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>

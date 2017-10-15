@@ -1,6 +1,6 @@
 add_subdirectory(net_plugin)
 add_subdirectory(network_plugin)
-add_subdirectory(connection_plugin)
+add_subdirectory(tcp_connection_plugin)
 #add_subdirectory(p2p_plugin)
 add_subdirectory(http_plugin)
 add_subdirectory(database_plugin)

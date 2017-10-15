@@ -6,7 +6,7 @@
 #include <eos/chain_api_plugin/chain_api_plugin.hpp>
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/network_plugin/network_plugin.hpp>
-#include <eos/connection_plugin/connection_plugin.hpp>
+#include <eos/tcp_connection_plugin/tcp_connection_plugin.hpp>
 #include <eos/account_history_plugin/account_history_plugin.hpp>
 #include <eos/account_history_api_plugin/account_history_api_plugin.hpp>
 #include <eos/wallet_api_plugin/wallet_api_plugin.hpp>
