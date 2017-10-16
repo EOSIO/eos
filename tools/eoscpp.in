@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
-ABIGEN=${EOSIO_INSTALL_DIR}/bin/abi_generator
+ABIGEN=${EOSIO_INSTALL_DIR}/bin/abi_gen
 
 function copy_skeleton {
     cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname

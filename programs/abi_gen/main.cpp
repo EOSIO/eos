@@ -1,18 +1,22 @@
+#include <fc/exception/exception.hpp>
+#include <fc/io/json.hpp>
 #include <eos/abi_generator/abi_generator.hpp>
-
+#include <eos/types/AbiSerializer.hpp>
 using namespace eos::abi_generator;
 
-std::unique_ptr<FrontendActionFactory> createFactory(bool verbose, string abi_context) {
+std::unique_ptr<FrontendActionFactory> createFactory(bool verbose, bool opt_sfs, string abi_context, eos::types::Abi& output) {
   class MyFrontendActionFactory : public FrontendActionFactory {
-    bool    verbose;
-    string  abi_context;
+    bool             verbose;
+    bool             opt_sfs;
+    string           abi_context;
+    eos::types::Abi& output;
   public:
-    MyFrontendActionFactory(bool verbose, string abi_context) : verbose(verbose), abi_context(abi_context) {}
-    clang::FrontendAction *create() override { return new GenerateAbiAction(verbose, abi_context); }
+    MyFrontendActionFactory(bool verbose, bool opt_sfs, string abi_context, eos::types::Abi& output) : verbose(verbose), abi_context(abi_context), output(output) {}
+    clang::FrontendAction *create() override { return new GenerateAbiAction(verbose, opt_sfs, abi_context, output); }
   };
 
   return std::unique_ptr<FrontendActionFactory>(
-      new MyFrontendActionFactory(verbose, abi_context));
+      new MyFrontendActionFactory(verbose, opt_sfs, abi_context, output));
 }
 
 static cl::OptionCategory AbiGeneratorCategory("ABI generator options");
@@ -32,22 +36,21 @@ static cl::opt<bool> ABIVerbose(
     cl::desc("show debug info"),
     cl::cat(AbiGeneratorCategory));
 
-int main(int argc, const char **argv) {
+static cl::opt<bool> ABIOptSFS(
+    "optimize-sfs",
+    cl::desc("Optimize single field struct"),
+    cl::cat(AbiGeneratorCategory));
 
+int main(int argc, const char **argv) { try {
+   CommonOptionsParser op(argc, argv, AbiGeneratorCategory);
+   ClangTool Tool(op.getCompilations(), op.getSourcePathList());
 
-  // runToolOnCode returns whether the action was correctly run over the
-  // given code.
-  //auto x = runToolOnCode(new GenerateAbiAction(true,"pete"), "class X {};");
+   eos::types::Abi abi;
 
-    CommonOptionsParser op(argc, argv, AbiGeneratorCategory);
-    ClangTool Tool(op.getCompilations(), op.getSourcePathList());
-
-    int result = Tool.run(createFactory(ABIVerbose, ABIContext).get());
-
-    auto& abigen = AbiGenerator::get();
-
-    auto s = fc::json::to_string<eos::types::Abi>(abigen.abi);
-    cout << s << endl;
-
-    return result;
-}
+   int result = Tool.run(createFactory(ABIVerbose, ABIOptSFS, ABIContext, abi).get());
+   if(!result) {
+      eos::types::AbiSerializer(abi).validate();
+      fc::json::save_to_file<eos::types::Abi>(abi, ABIDestination, true);
+   }
+   return result;
+} FC_CAPTURE_AND_LOG(()) }
