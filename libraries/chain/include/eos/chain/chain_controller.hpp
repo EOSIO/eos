@@ -37,7 +37,9 @@ namespace eos { namespace chain {
    class chain_controller {
       public:
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin);
+                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
+                          uint32_t trans_execution_time, uint32_t rcvd_block_trans_execution_time,
+                          uint32_t create_block_trans_execution_time);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -86,7 +88,10 @@ namespace eos { namespace chain {
             skip_producer_schedule_check= 1 << 10, ///< used while reindexing
             skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
             skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
-            skip_output_check           = 1 << 13  ///< used to skip checks for outputs in block exactly matching those created from apply
+            skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
+            pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
+            created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
+            received_block              = 1 << 16  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
          };
 
          /**
@@ -359,6 +364,10 @@ namespace eos { namespace chain {
 
          bool                             _currently_applying_block = false;
          uint64_t                         _skip_flags = 0;
+
+         const uint32_t                   _trans_execution_time;
+         const uint32_t                   _rcvd_block_trans_execution_time;
+         const uint32_t                   _create_block_trans_execution_time;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 
