@@ -59,6 +59,19 @@ extern "C" {
   void* memcpy( void* destination, const void* source, uint32_t num );
 
   /**
+   * Compare block of memory from source to destination.
+   * @brief Copy a block of memory from source to destination.
+   * @param ptr1       Pointer to first data to compare
+   * @param ptr2       Pointer to second data to compare
+   * @param num        Number of bytes to compare.
+   *
+   * @return the destination pointer
+   *
+   */
+   int32_t memcmp( void* ptr1, const void* ptr2, uint32_t num );
+
+
+  /**
    * Fill block of memory.
    * @brief Fill a block of memory with the provided value.
    * @param ptr    Pointer to memory to fill.

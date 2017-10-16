@@ -32,6 +32,19 @@ extern "C" {
    void prints( const char* cstr );
 
    /**
+    *  Prints string up to given length
+    *  @brief Prints string
+    *  @param cstr - pointer to string
+    *  @param len - len of string to be printed
+    *
+    *  Example:
+    *  @code
+    *  prints_l("Hello World!", 5); // Output: Hello
+    *  @endcode
+    */
+   void prints_l( const char* cstr, uint32_t len);
+
+   /**
     * Prints value as a 64 bit unsigned integer
     * @brief Prints value as a 64 bit unsigned integer
     * @param Value of 64 bit unsigned integer to be printed
