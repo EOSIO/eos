@@ -32,44 +32,55 @@ namespace cl = llvm::cl;
 
 namespace eos { namespace abi_generator {
 
+FC_DECLARE_EXCEPTION( abi_generation_exception, 999999, "Unable to generate abi" );
+
+#define ABI_ASSERT( TEST, ... ) \
+  FC_EXPAND_MACRO( \
+    FC_MULTILINE_MACRO_BEGIN \
+      if( UNLIKELY(!(TEST)) ) \
+      {                                                                      \
+        if( fc::enable_record_assert_trip )                                  \
+           fc::record_assert_trip( __FILE__, __LINE__, #TEST );              \
+        FC_THROW_EXCEPTION( eos::abi_generator::abi_generation_exception, #TEST ": "  __VA_ARGS__ ); \
+      }                                                                      \
+    FC_MULTILINE_MACRO_END \
+  )
+
 struct AbiGenerator {
 
-  bool                      enabled;
-  bool                      error_found;
+  enum optimization {
+    OPT_SINGLE_FIELD_STRUCT
+  };
+
   bool                      verbose;
-  eos::types::Abi           abi;
+  int                       optimizations;
+  eos::types::Abi*          output;
   clang::ASTContext*        context;
   CompilerInstance*         compiler_instance;
   map<string, uint64_t>     type_size;
   map<string, string>       full_types;
   string                    abi_context;
 
-  static AbiGenerator& get() {
-     static AbiGenerator abigen;
-     return abigen;
-  } 
+  AbiGenerator() : optimizations(0), output(nullptr), compiler_instance(nullptr) {
+  
+  }
 
   void Initialize(clang::ASTContext& context) {
-    //ilog("AbiGenerator::Initialize");
     this->context = &context;
-    clear();
-  }
-  
-  void clear() {
-    abi.types.clear();
-    abi.structs.clear();
-    abi.actions.clear();
-    abi.tables.clear();
-    type_size.clear();
-    full_types.clear();
-    enabled=true;
-    error_found=false;
   }
 
   ~AbiGenerator() {}
 
-  bool isEnabled() {
-    return enabled;
+  void setOptimizaton(optimization o) {
+    optimizations |= o;
+  } 
+  
+  bool isEnabledOpt(optimization o) {
+    return (optimizations & o) != 0;
+  }
+
+  void setOutput(eos::types::Abi& output) {
+    this->output = &output;
   }
 
   void setVerbose(bool verbose) {
@@ -88,27 +99,27 @@ struct AbiGenerator {
     this->compiler_instance = &compiler_instance;
   }
  
-  void onError(const string& error_message) {
-    disableGeneration();
-    error_found = true;
-    elog(error_message.c_str());
-  }
-
-  void disableGeneration() {
-    enabled = false;
-  }
-
-  string removeNamespace(const string& full_type_name) {
+  string extractTypeNameOnly(const string& full_type_name) {
     string type_name = full_type_name;
     auto pos = type_name.find_last_of("::");
+    
     if(pos != string::npos)
       type_name = type_name.substr(pos+1);
+    
+    pos = type_name.find("struct ");
+    if(pos == 0)
+      type_name = type_name.substr(pos+7);
+    else {
+      pos = type_name.find("class ");
+      if(pos != string::npos)
+        type_name = type_name.substr(pos+6);
+    }
     return type_name;
   }
 
   bool isBuiltInType(const string& type_name) {
     eos::types::AbiSerializer serializer;
-    return serializer.isBuiltInType(type_name);
+    return serializer.isBuiltInType(resolveType(type_name));
   }
 
   string translateType(const string& type_name) {
@@ -138,36 +149,32 @@ struct AbiGenerator {
   void handleTranslationUnit(ASTContext& context) {
     //ilog("AbiGenerator::handleTranslationUnit");
   }
-
-  void handleTagDeclDefinition(TagDecl* tag_decl) {
-    //ilog("AbiGenerator::handleTagDeclDefinition");
-    try {
-      handleTagDeclDefinitionEx(tag_decl);
-    } catch(fc::exception& e) {
-      onError(e.to_string());
-    }    
+  
+  bool handleTopLevelDecl(DeclGroupRef decl_group) {
+    for( auto it = decl_group.begin(); it != decl_group.end(); ++it ) {
+      handleDecl(*it);        
+    }
+    return true;
   }
 
-  void handleTagDeclDefinitionEx(TagDecl* tag_decl) { try {
-    
-    if(!isEnabled()) return;
+  void handleTagDeclDefinition(TagDecl* tag_decl) {
+    handleDecl(tag_decl);
+  }
 
-    const CXXRecordDecl* recordDecl = dyn_cast<CXXRecordDecl>(tag_decl);
-    if(!recordDecl) return;
+  void handleDecl(const Decl* decl) { try {
 
-    if(verbose) {
-      cerr << "handleTagDeclDefinitionEx:" << tag_decl->getKindName().str() << " " << getCanonicalTypeName(recordDecl->getTypeForDecl()) << "\n";
-    }
+    ABI_ASSERT(decl != nullptr);
+    ABI_ASSERT(output != nullptr);
 
-    ASTContext& ctx = recordDecl->getASTContext();
-    const RawComment* raw_comment = ctx.getRawCommentForDeclNoCache(tag_decl);
-    
+    ASTContext& ctx = decl->getASTContext();
+    const RawComment* raw_comment = ctx.getRawCommentForDeclNoCache(decl);
+
     if(!raw_comment) return;
 
     SourceManager& source_manager = ctx.getSourceManager();
     string rawText = raw_comment->getRawText(source_manager);
 
-    regex r(R"(@abi ([a-zA-Z0-9]+) (action|table)((?: [a-z0-9]+)*))");
+    regex r(R"(@abi ([a-zA-Z0-9]+) (action|table|type)((?: [a-z0-9]+)*))");
 
     smatch smatch;
     while(regex_search(rawText, smatch, r))
@@ -185,12 +192,34 @@ struct AbiGenerator {
         if(!string_params.empty())
           boost::split(params, string_params, boost::is_any_of(" "));
 
-        auto type_name = addStruct(recordDecl);
+        if(type == "type") {
+          
+          const TypedefDecl* typeDefDecl = dyn_cast<TypedefDecl>(decl);
+          ABI_ASSERT(typeDefDecl != nullptr);
 
-        eos::types::Struct s;
-        FC_ASSERT(findStruct(type_name, s), "Unable to find type ${type}", ("type",type_name));
+          clang::QualType qt = typeDefDecl->getUnderlyingType().getUnqualifiedType();
+          
+          eos::types::TypeDef type_def;
+          type_def.newTypeName = extractTypeNameOnly(typeDefDecl->getName());
+          type_def.type = extractTypeNameOnly(qt.getAsString());
 
-        if(type == "action") {
+          eos::types::TypeDef td;
+          if( findType(type_def.newTypeName, td) ) {
+            ABI_ASSERT(type_def.type == td.type);
+            continue;
+          }
+
+          // eos::types::Struct dummy;
+          // ABI_ASSERT(isBuiltInType(type_def.type) || findStruct(type_def.type, dummy) || findType(type_def.newTypeName, td), "Unable to add TypeDef ${type} is unknown",("type",type_def.type));
+          output->types.push_back(type_def);
+
+        } else if(type == "action") {
+
+          const auto* actionDecl = dyn_cast<CXXRecordDecl>(decl);
+          ABI_ASSERT(actionDecl != nullptr);
+          
+          auto type_name = addStruct(actionDecl);
+
           if(params.size()==0) {
             params.push_back( boost::algorithm::to_lower_copy(type_name) );
           }
@@ -198,14 +227,23 @@ struct AbiGenerator {
           for(const auto& action : params) {
             eos::types::Action ac; 
             if( findAction(action, ac) ) {
-              FC_ASSERT(ac.type == type_name, "Same action name with different type ${action}",("action",action));
+              ABI_ASSERT(ac.type == type_name, "Same action name with different type ${action}",("action",action));
               continue;
             } 
 
-            abi.actions.push_back({action, type_name});
+            output->actions.push_back({action, type_name});
           }
 
         } else if (type == "table") {
+
+          const auto* tableDecl = dyn_cast<CXXRecordDecl>(decl);
+          ABI_ASSERT(tableDecl != nullptr);
+
+          auto type_name = addStruct(tableDecl);
+          
+          eos::types::Struct s;
+          ABI_ASSERT(findStruct(type_name, s), "Unable to find type ${type}", ("type",type_name));
+
           eos::types::Table table;
           table.table = boost::algorithm::to_lower_copy(type_name);
           table.type = type_name;
@@ -220,7 +258,12 @@ struct AbiGenerator {
             guessKeyNames(table, s);
           } FC_CAPTURE_AND_RETHROW( (type_name) )
 
-          abi.tables.push_back(table);
+          //TODO: assert that we are adding the same table
+          eos::types::Table ta;
+          if( !findTable(table.table, ta) ) {
+            output->tables.push_back(table);  
+          }
+
         }
 
       }
@@ -248,7 +291,7 @@ struct AbiGenerator {
     }
     if(s.base.size()) {
       eos::types::Struct base;
-      FC_ASSERT(findStruct(s.base, base), "Unable to find base type ${type}",("type",s.base));
+      ABI_ASSERT(findStruct(s.base, base), "Unable to find base type ${type}",("type",s.base));
       getAllFields(base, fields);
     }
   }
@@ -283,7 +326,7 @@ struct AbiGenerator {
     } else if( isstr(fields) ) {
       table.indextype = "str";
     } else {
-      FC_ASSERT(false, "Unable to guess index type");
+      ABI_ASSERT(false, "Unable to guess index type");
     }
   }
 
@@ -305,12 +348,32 @@ struct AbiGenerator {
       table.keynames  = vector<eos::types::FieldName>{fields[0].name};
       table.keytypes  = vector<eos::types::TypeName>{fields[0].type};
     } else {
-      FC_ASSERT(false, "Unable to guess key names");
+      ABI_ASSERT(false, "Unable to guess key names");
     }
   }
 
+  bool findTable(const types::Name& name, eos::types::Table& table) {
+    for( const auto& ta : output->tables ) {
+      if(ta.table == name) {
+        table = ta;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool findType(const string& newTypeName, eos::types::TypeDef& type_def) {
+    for( const auto& td : output->types ) {
+      if(td.newTypeName == newTypeName) {
+        type_def = td;
+        return true;
+      }
+    }
+    return false;
+  }
+
   bool findAction(const string& name, eos::types::Action& action) {
-    for( const auto& ac : abi.actions ) {
+    for( const auto& ac : output->actions ) {
       if(ac.action == name) {
         action = ac;
         return true;
@@ -319,14 +382,23 @@ struct AbiGenerator {
     return false;
   }
 
-  bool findStruct(const string& name, eos::types::Struct& s) {
-    for( const auto& st : abi.structs ) {
-      if(st.name == name) {
+  bool findStruct(const types::TypeName& name, eos::types::Struct& s) {
+    auto rname = resolveType(name);
+    //ilog("resolved => ${a} / ${b}", ("a",name)("b",rname));
+    for( const auto& st : output->structs ) {
+      if(st.name == rname) {
         s = st;
         return true;
       }
     }
     return false;
+  }
+
+  types::TypeName resolveType( const types::TypeName& type ){
+    eos::types::TypeDef td;
+    if ( findType(type, td) )
+      return resolveType(td.type);
+    return type;
   }
 
   bool isOneFieldNoBase(const string& type_name) {
@@ -336,22 +408,22 @@ struct AbiGenerator {
   }
 
   string addStruct(const clang::CXXRecordDecl* recordDecl, string full_type_name=string()) {
-    
-    //TODO: handle this better
-    if(!recordDecl) {
-      FC_ASSERT(false, "Null CXXRecordDecl");
-    }
+    ABI_ASSERT(recordDecl != nullptr, "Null CXXRecordDecl");
+    ABI_ASSERT(output != nullptr);
+
+    //TypedefNameDecl *tt = recordDecl->getTypedefNameForAnonDecl();
 
     const auto* type = recordDecl->getTypeForDecl();
 
-    if( full_type_name.empty() )
+    if( full_type_name.empty() ) {
       full_type_name = getCanonicalTypeName(type);
+    }
     
-    FC_ASSERT(type->isStructureType() || type->isClassType(), "Only struct and class are supported. ${full_type_name}",("full_type_name",full_type_name));
+    ABI_ASSERT(type->isStructureType() || type->isClassType(), "Only struct and class are supported. ${full_type_name}",("full_type_name",full_type_name));
 
-    auto name = removeNamespace(full_type_name);
+    auto name = extractTypeNameOnly(full_type_name);
 
-    FC_ASSERT(name.size() <= sizeof(eos::types::TypeName),
+    ABI_ASSERT(name.size() <= sizeof(eos::types::TypeName),
       "Type name > ${maxsize}, ${name}",
       ("type",full_type_name)("name",name)("maxsize",sizeof(eos::types::TypeName)));
 
@@ -359,7 +431,7 @@ struct AbiGenerator {
     if( findStruct(name, s) ) {
       auto itr = full_types.find(name);
       if(itr != full_types.end()) {
-        FC_ASSERT(itr->second == full_type_name, "Unable to add type '${full_type_name}' because '${conflict}' is already in.", ("full_type_name",full_type_name)("conflict",itr->second));
+        ABI_ASSERT(itr->second == full_type_name, "Unable to add type '${full_type_name}' because '${conflict}' is already in.", ("full_type_name",full_type_name)("conflict",itr->second));
       }
       return name;
     } 
@@ -367,57 +439,79 @@ struct AbiGenerator {
     auto bases = recordDecl->bases();
     auto total_bases = distance(bases.begin(), bases.end());
     if( total_bases > 1 ) {
-      FC_ASSERT(false, "Multiple inheritance not supported - ${type}", ("type",full_type_name));
+      ABI_ASSERT(false, "Multiple inheritance not supported - ${type}", ("type",full_type_name));
     }
 
     string base_name;
     if( total_bases == 1 ) {
-      auto const* base_record_type = bases.begin()->getType()->getAs<clang::RecordType>();
-      auto const* base_record_type_decl = clang::cast_or_null<clang::CXXRecordDecl>(base_record_type->getDecl()->getDefinition());
-      base_name = addStruct(base_record_type_decl);
+       
+       auto qt = bases.begin()->getType();
+       base_name = extractTypeNameOnly(qt.getAsString());
+
+       const auto* base_record_type = qt->getAs<clang::RecordType>();
+       const auto* base_record_type_decl = clang::cast_or_null<clang::CXXRecordDecl>(base_record_type->getDecl()->getDefinition());
+
+        if(qt.getAsString().find_last_of("::") != string::npos) {
+          addStruct(base_record_type_decl);
+        }
+        else {
+          addStruct(base_record_type_decl, resolveType(base_name));
+        }
     }
 
     eos::types::Struct abi_struct;
     for (const auto& field : recordDecl->fields()) {
       
       eos::types::Field struct_field;
+
       clang::QualType qt = field->getType().getUnqualifiedType();
 
-      auto field_type = removeNamespace(qt.getAsString());
-      auto const* field_record_type = qt->getAs<clang::RecordType>();
+      auto field_type = extractTypeNameOnly(qt.getAsString());
+
+      ABI_ASSERT(field_type.size() <= sizeof(decltype(struct_field.type)),
+        "Type name > ${maxsize}, ${type}::${name}", ("type",full_type_name)("name",field_type)("maxsize",sizeof(decltype(struct_field.type))));
+
+      ABI_ASSERT(field->getNameAsString().size() <= sizeof(decltype(struct_field.name)) , 
+        "Field name > ${maxsize}, ${type}::${name}", ("type",full_type_name)("name",field->getNameAsString())("maxsize", sizeof(decltype(struct_field.name))));
+
+      const auto* field_record_type = qt->getAs<clang::RecordType>();
       
       if(field_record_type) {
-        auto const* field_record = clang::cast_or_null<clang::CXXRecordDecl>(field_record_type->getDecl()->getDefinition());
-        addStruct(field_record, field_type);
-        if( isOneFieldNoBase(field_type) ) {
-          field_type = abi.structs.back().fields[0].type;
-          abi.structs.pop_back();
+        const auto* field_record = clang::cast_or_null<clang::CXXRecordDecl>(field_record_type->getDecl()->getDefinition());
+
+        //Only import user defined structs
+        auto is_user_type = !isBuiltInType(field_type);
+        if(is_user_type) {
+          if(qt.getAsString().find_last_of("::") != string::npos) {
+            addStruct(field_record);
+          }
+          else {
+            addStruct(field_record, resolveType(field_type));
+          }
         }
+
+        //TODO: fix this
+        // if( isEnabledOpt(OPT_SINGLE_FIELD_STRUCT) && isOneFieldNoBase(field_type) ) {
+        //   field_type = output->structs.back().fields[0].type;
+        //   output->structs.pop_back();
+        // }
+
       }
       
-      auto struct_field_name = field->getNameAsString();
-      auto struct_field_type = translateType(field_type);
-
-      FC_ASSERT(struct_field_name.size() <= sizeof(decltype(struct_field.name)) , 
-        "Field name > ${maxsize}, ${type}::${name}", ("type",full_type_name)("name",struct_field_name)("maxsize", sizeof(decltype(struct_field.name))));
-      
-      FC_ASSERT(struct_field_type.size() <= sizeof(decltype(struct_field.type)),
-        "Type name > ${maxsize}, ${type}::${name}", ("type",full_type_name)("name",struct_field_type)("maxsize",sizeof(decltype(struct_field.type))));
-
-      struct_field.name = struct_field_name;
-      struct_field.type = struct_field_type;
+      struct_field.name = field->getNameAsString();
+      struct_field.type = translateType(field_type);
 
       type_size[string(struct_field.type)] = context->getTypeSize(qt);
 
       eos::types::Struct dummy;
-      FC_ASSERT(isBuiltInType(struct_field.type) || findStruct(struct_field.type, dummy), "Unknown type ${type_name}", ("type_name",struct_field.type));
+      ABI_ASSERT(isBuiltInType(struct_field.type) || findStruct(struct_field.type, dummy), "Unknown type ${type} ${name} ${ttt} ${sss}", ("type",struct_field.type)("name",struct_field.name)("ttt", output->types)("sss",output->structs));
 
       abi_struct.fields.push_back(struct_field);
     }
 
     abi_struct.name = name;
-    abi_struct.base = removeNamespace(base_name);
-    abi.structs.push_back(abi_struct);
+    abi_struct.base = extractTypeNameOnly(base_name);
+    output->structs.push_back(abi_struct);
 
     if(verbose) {    
       cerr << "Adding type " << name << " (" << full_type_name << ")\n";
@@ -431,39 +525,47 @@ struct AbiGenerator {
 
 struct AbiGeneratorASTConsumer : public ASTConsumer {
 
-  AbiGenerator& abigen;
+  AbiGenerator& abi_gen;
 
-  AbiGeneratorASTConsumer(CompilerInstance& compiler_instance, bool verbose, string abi_context) : abigen(AbiGenerator::get()) {
-    abigen.setCompilerInstance(compiler_instance);
-    abigen.setVerbose(verbose);
-    abigen.setAbiContext(abi_context);
+  AbiGeneratorASTConsumer(CompilerInstance& compiler_instance, AbiGenerator& abi_gen) : abi_gen(abi_gen) {
+    abi_gen.setCompilerInstance(compiler_instance);
   }
 
   void Initialize(clang::ASTContext& context) override {
-    abigen.Initialize(context);
+    abi_gen.Initialize(context);
   }
 
   void HandleTranslationUnit(ASTContext& context) override {
-    abigen.handleTranslationUnit(context);
+    abi_gen.handleTranslationUnit(context);
   }
 
+  bool HandleTopLevelDecl( DeclGroupRef  decl_group ) override {
+    return abi_gen.handleTopLevelDecl(decl_group);
+  }  
+
   void HandleTagDeclDefinition(TagDecl* tag_decl) override {
-    abigen.handleTagDeclDefinition(tag_decl);
+    abi_gen.handleTagDeclDefinition(tag_decl);
   }
 
 };
 
 class GenerateAbiAction : public ASTFrontendAction {
-  set<string>   parsed_templates;
-  bool          verbose;
-  string        abi_context;
+  set<string>  parsed_templates;
+  AbiGenerator abi_gen;
 public:
-  GenerateAbiAction(bool verbose, string abi_context) : verbose(verbose), abi_context(abi_context) {}
+  GenerateAbiAction(bool verbose, bool opt_sfs, string abi_context, eos::types::Abi& output) {
+    abi_gen.setOutput(output);
+    abi_gen.setVerbose(verbose);
+    abi_gen.setAbiContext(abi_context);
+
+    if(opt_sfs)
+      abi_gen.setOptimizaton(AbiGenerator::OPT_SINGLE_FIELD_STRUCT);
+  }
 
 protected:
   unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance& compiler_instance,
                                                  llvm::StringRef) override {
-    return llvm::make_unique<AbiGeneratorASTConsumer>(compiler_instance, verbose, abi_context);
+    return llvm::make_unique<AbiGeneratorASTConsumer>(compiler_instance, abi_gen);
   }
 
 };

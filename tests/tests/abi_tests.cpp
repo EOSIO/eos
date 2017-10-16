@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 #include <iterator>
+#include <cstdlib>
 
 #include <boost/test/unit_test.hpp>
 
@@ -219,37 +220,132 @@ BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 { try {
 
-  auto is_assert_exception =[](const fc::assert_exception& e) -> bool { return true; };
+  if( std::getenv("EOSLIB") == nullptr ) {
+    wlog("*************************************");
+    wlog("*  EOSLIB env variable not defined  *");
+    wlog("*  ABIGenerator tests will not run  *");
+    wlog("*************************************");
+    return;
+  }
 
-  auto generate_abi = [](const char* source, const char* context, const char* abi) -> bool {
-    runToolOnCodeWithArgs(new GenerateAbiAction(false, context), source, {"-fparse-all-comments"} );
-    FC_ASSERT(AbiGenerator::get().error_found == false);
+  auto is_abi_generation_exception =[](const eos::abi_generator::abi_generation_exception& e) -> bool { return true; };
+
+  auto generate_abi = [this](const char* source, const char* context, const char* abi, bool opt_sfs=false) -> bool {
     
-    auto a1 = fc::json::from_string(abi);
-    auto a2 = AbiGenerator::get().abi;
+    const char* eoslib_path = std::getenv("EOSLIB");
+    FC_ASSERT(eoslib_path != NULL);
 
-    return fc::to_hex(fc::raw::pack(a1)) == fc::to_hex(fc::raw::pack(a2));
+    std::string include_param = std::string("-I") + eoslib_path;
+    
+    eos::types::Abi output;
+    bool res = runToolOnCodeWithArgs(new GenerateAbiAction(false, opt_sfs, context, output), source, 
+      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", include_param});
+    
+    FC_ASSERT(res == true);
+    AbiSerializer(output).validate();
+
+    auto abi1 = fc::json::from_string(abi).as<Abi>();
+
+    auto e = fc::to_hex(fc::raw::pack(abi1)) == fc::to_hex(fc::raw::pack(output));
+    
+    if(!e) {
+      std::cout << "expected: " <<  std::endl << fc::json::to_pretty_string(abi1) << std::endl << std::endl; 
+      std::cout << "generated: " <<  std::endl << fc::json::to_pretty_string(output) << std::endl << std::endl; 
+    }
+
+    return e;
   };
 
    const char* unknown_type = R"=====(
+   #include <eoslib/types.h>
    //@abi ctx action
    struct Transfer {
-      unsigned long long param1;
-      char*              param2;
+      uint64_t param1;
+      char*    param2;
    };
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, "ctx", ""), fc::assert_exception, is_assert_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
    
    const char* all_types = R"=====(
+   #include <eoslib/types.h>
+    
+    typedef int String; 
+    typedef int Signature;
+    typedef int Checksum;
+    typedef int FieldName;
+    typedef int FixedString32;
+    typedef int FixedString16;
+    typedef int TypeName;
+    typedef int Bytes;
+    typedef uint8_t UInt8;
+    typedef uint16_t UInt16;
+    typedef uint32_t UInt32;
+    typedef uint64_t UInt64;
+    typedef uint128_t UInt128;
+    //typedef uint256 UInt256;
+    typedef int8_t Int8;
+    typedef int16_t Int16;
+    typedef int32_t Int32;
+    typedef int64_t Int64;
+    typedef uint64_t Name;
+    typedef int Field;
+    typedef int Struct;
+    typedef int Fields;
+    typedef int MessageName;
+    typedef int AccountPermission;
+    typedef int Message;
+    typedef int AccountPermissionWeight;
+    typedef int Transaction;
+    typedef int SignedTransaction;
+    typedef int KeyPermissionWeight;
+    typedef int Authority;
+    typedef int BlockchainConfiguration;
+    typedef int TypeDef;
+    typedef int Action;
+    typedef int Table;
+    typedef int Abi;
+   
    //@abi ctx action
-   struct Transfer {
-      long long            param1;
-      unsigned long long   param2;
-      unsigned long        param3;
-      long                 param4;
-      unsigned __int128    param5;
-      unsigned char        param7;
+   struct TestStruct {
+      String                  field1;
+      Time                    field2;
+      Signature               field3;
+      Checksum                field4;
+      FieldName               field5;
+      FixedString32           field6;
+      FixedString16           field7;
+      TypeName                field8;
+      Bytes                   field9;
+      UInt8                   field10;
+      UInt16                  field11;
+      UInt32                  field12;
+      UInt64                  field13;
+      UInt128                 field14;
+      Int8                    field16;
+      Int16                   field17;
+      Int32                   field18;
+      Int64                   field19;
+      Name                    field20;
+      Field                   field21;
+      Struct                  field22;
+      Fields                  field23;
+      AccountName             field24;
+      PermissionName          field25;
+      FuncName                field26;
+      MessageName             field27;
+      AccountPermission       field28;
+      Message                 field29;
+      AccountPermissionWeight field30;
+      Transaction             field31;
+      SignedTransaction       field32;
+      KeyPermissionWeight     field33;
+      Authority               field34;
+      BlockchainConfiguration field35;
+      TypeDef                 field36;
+      Action                  field37;
+      Table                   field38;
+      Abi                     field39;
    };
    )=====";
 
@@ -257,26 +353,631 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    {
        "types": [],
        "structs": [{
-          name : "Transfer",
-          base : "",
-          fields : {
-            "Int64"   : "param1",
-            "UInt64"  : "param2",
-            "UInt32"  : "param3",
-            "Int32"   : "param4",
-            "UInt128" : "param5",
-            "Int128"  : "param6",
-            "UInt8"   : "param7"
+          "name" : "TestStruct",
+          "base" : "",
+          "fields" : {
+            "field1" : "String",
+            "field2" : "Time",
+            "field3" : "Signature",
+            "field4" : "Checksum",
+            "field5" : "FieldName",
+            "field6" : "FixedString32",
+            "field7" : "FixedString16",
+            "field8" : "TypeName",
+            "field9" : "Bytes",
+            "field10" : "UInt8",
+            "field11" : "UInt16",
+            "field12" : "UInt32",
+            "field13" : "UInt64",
+            "field14" : "UInt128",
+            "field16" : "Int8",
+            "field17" : "Int16",
+            "field18" : "Int32",
+            "field19" : "Int64",
+            "field20" : "Name",
+            "field21" : "Field",
+            "field22" : "Struct",
+            "field23" : "Fields",
+            "field24" : "AccountName",
+            "field25" : "PermissionName",
+            "field26" : "FuncName",
+            "field27" : "MessageName",
+            "field28" : "AccountPermission",
+            "field29" : "Message",
+            "field30" : "AccountPermissionWeight",
+            "field31" : "Transaction",
+            "field32" : "SignedTransaction",
+            "field33" : "KeyPermissionWeight",
+            "field34" : "Authority",
+            "field35" : "BlockchainConfiguration",
+            "field36" : "TypeDef",
+            "field37" : "Action",
+            "field38" : "Table",
+            "field39" : "Abi"
           }
        }],
        "actions": [{
-          "name" : "transfer",
-          "type" : "Transfer 
+          "action" : "teststruct",
+          "type" : "TestStruct"
        }],
        "tables": []
    }
    )=====";
-  //BOOST_CHECK_EQUAL( generate_abi(all_types, "ctx", all_types_abi), true );
+  BOOST_CHECK_EQUAL( generate_abi(all_types, "ctx", all_types_abi), true );
+
+   const char* double_base = R"=====(
+   #include <eoslib/types.h>
+
+   struct A {
+      uint64_t param3;
+   };
+   struct B {
+      uint64_t param2;
+   };
+   
+   //@abi ctx action
+   struct C : A,B {
+      uint64_t param1;
+   };
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(double_base, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   const char* double_action = R"=====(
+   #include <eoslib/types.h>
+
+   struct A {
+      uint64_t param3;
+   };
+   struct B : A {
+      uint64_t param2;
+   };
+   
+   //@abi ctx action action1 action2
+   struct C : B {
+      uint64_t param1;
+   };
+   )=====";
+
+   const char* double_action_abi = R"=====(
+   {
+       "types": [],
+       "structs": [{
+          "name" : "A",
+          "base" : "",
+          "fields" : {
+            "param3" : "UInt64",
+          }
+       },{
+          "name" : "B",
+          "base" : "A",
+          "fields" : {
+            "param2" : "UInt64",
+          }
+       },{
+          "name" : "C",
+          "base" : "B",
+          "fields" : {
+            "param1" : "UInt64",
+          }
+       }],
+       "actions": [{
+          "action" : "action1",
+          "type" : "C"
+       },{
+          "action" : "action2",
+          "type" : "C"
+       }],
+       "tables": []
+   }
+   )=====";
+
+
+   BOOST_CHECK_EQUAL( generate_abi(double_action, "ctx", double_action_abi), true );
+
+   const char* all_indexes = R"=====(
+   #include <eoslib/types.h>
+   
+   typedef int String;
+
+   //@abi ctx table
+   struct Table1 {
+      uint64_t field1;
+   };
+
+   //@abi ctx table
+   struct Table2 {
+      uint128_t field1;
+      uint128_t field2;
+   };
+
+   //@abi ctx table
+   struct Table3 {
+      uint64_t field1;
+      uint64_t field2;
+      uint64_t field3;
+   };
+
+   struct MyComplexValue {
+      uint64_t    a;
+      AccountName b;
+   };
+
+   //@abi ctx table
+   struct Table4 {
+      String key;
+      MyComplexValue value;
+   };
+
+   )=====";
+
+   const char* all_indexes_abi = R"=====(
+   {
+       "types": [],
+       "structs": [{
+          "name" : "Table1",
+          "base" : "",
+          "fields" : {
+            "field1" : "UInt64",
+          }
+       },{
+          "name" : "Table2",
+          "base" : "",
+          "fields" : {
+            "field1" : "UInt128",
+            "field2" : "UInt128",
+          }
+       },{
+          "name" : "Table3",
+          "base" : "",
+          "fields" : {
+            "field1" : "UInt64",
+            "field2" : "UInt64",
+            "field3" : "UInt64",
+          }
+       },{
+          "name" : "MyComplexValue",
+          "base" : "",
+          "fields" : {
+            "a" : "UInt64",
+            "b" : "AccountName",
+          }
+       },{
+          "name" : "Table4",
+          "base" : "",
+          "fields" : {
+            "key" : "String",
+            "value" : "MyComplexValue",
+          }
+       }],
+       "actions": [],
+       "tables": [
+        {
+          "table": "table1",
+          "type": "Table1",
+          "indextype": "i64",
+          "keynames": [
+            "field1"
+          ],
+          "keytypes": [
+            "UInt64"
+          ]
+        },{
+          "table": "table2",
+          "type": "Table2",
+          "indextype": "i128i128",
+          "keynames": [
+            "field1",
+            "field2"
+          ],
+          "keytypes": [
+            "UInt128",
+            "UInt128"
+          ]
+        },{
+          "table": "table3",
+          "type": "Table3",
+          "indextype": "i64i64i64",
+          "keynames": [
+            "field1",
+            "field2",
+            "field3"
+          ],
+          "keytypes": [
+            "UInt64",
+            "UInt64",
+            "UInt64"
+          ]
+        },{
+          "table": "table4",
+          "type": "Table4",
+          "indextype": "str",
+          "keynames": [
+            "key",
+          ],
+          "keytypes": [
+            "String",
+          ]
+        },
+
+       ]
+   }
+   )=====";
+
+   BOOST_CHECK_EQUAL( generate_abi(all_indexes, "ctx", all_indexes_abi), true );
+
+   const char* unable_to_determine_index = R"=====(
+   #include <eoslib/types.h>
+   
+   //@abi ctx table
+   struct PACKED(Table1) {
+      uint32_t field1;
+      uint64_t field2;
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(unable_to_determine_index, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   //TODO: full action / full table
+
+  // typedef FixedString16 FieldName;
+   const char* long_field_name = R"=====(
+   #include <eoslib/types.h>
+   
+   //@abi ctx table
+   struct PACKED(Table1) {
+      uint64_t thisisaverylongfieldname;
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   const char* long_type_name = R"=====(
+   #include <eoslib/types.h>
+
+   struct ThisIsAVeryVeryVeryVeryLongTypeName {
+      uint64_t field;
+   };
+
+   //@abi ctx table
+   struct PACKED(Table1) {
+      ThisIsAVeryVeryVeryVeryLongTypeName filed1;
+   };
+
+   )=====";
+
+
+   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "ctx", "{}"), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   const char* same_type_different_namespace = R"=====(
+   #include <eoslib/types.h>
+
+   namespace A {
+     //@abi ctx table
+     struct Table1 {
+        uint64_t field1;
+     };
+   }
+
+   namespace B {
+     //@abi ctx table
+     struct Table1 {
+        uint64_t field2;
+     };
+   }
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   const char* bad_index_type = R"=====(
+   #include <eoslib/types.h>
+
+   //@abi ctx table i64
+   struct Table1 {
+      uint32_t key;
+      uint64_t field1;
+      uint64_t field2;
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   const char* full_table_decl = R"=====(
+   #include <eoslib/types.hpp>
+
+   //@abi ctx table i64
+   class Table1 {
+   public:
+      uint64_t  id;
+      eos::Name name;
+      uint32_t  age;
+   };
+
+   )=====";
+
+   const char* full_table_decl_abi = R"=====(
+   {
+       "types": [],
+       "structs": [{
+          "name" : "Table1",
+          "base" : "",
+          "fields" : {
+            "id" : "UInt64",
+            "name" : "Name",
+            "age" : "UInt32"
+          }
+       }],
+       "actions": [],
+       "tables": [
+        {
+          "table": "table1",
+          "type": "Table1",
+          "indextype": "i64",
+          "keynames": [
+            "id"
+          ],
+          "keytypes": [
+            "UInt64"
+          ]
+        }]
+   }
+   )=====";
+
+   BOOST_CHECK_EQUAL( generate_abi(full_table_decl, "ctx", full_table_decl_abi), true );
+
+   const char* union_table = R"=====(
+   #include <eoslib/types.h>
+
+   //@abi ctx table
+   union Table1 {
+      uint64_t field1;
+      uint32_t field2;
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(union_table, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   const char* same_action_different_type = R"=====(
+   #include <eoslib/types.h>
+
+   //@abi ctx action action1
+   struct Table1 {
+      uint64_t field1;
+   };
+
+   //@abi ctx action action1
+   struct Table2 {
+      uint64_t field1;
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, "ctx", ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+
+   const char* template_base = R"=====(
+   #include <eoslib/types.h>
+
+   template<typename T>
+   class Base {
+      T field;
+   };
+
+   //@abi ctx type
+   typedef Base<uint32_t> Base32;
+
+   //@abi ctx table i64
+   class Table1 : Base32 {
+   public:
+      uint64_t id;
+   };
+
+   )=====";
+
+   const char* template_base_abi = R"=====(
+   {
+       "types": [{
+          "newTypeName" : "Base32",
+          "type" : "Base<uint32_t>"
+       }],
+       "structs": [{
+          "name" : "Base<uint32_t>",
+          "base" : "",
+          "fields" : {
+            "field" : "UInt32",
+          }
+       },{
+          "name" : "Table1",
+          "base" : "Base32",
+          "fields" : {
+            "id" : "UInt64",
+          }
+       }],
+       "actions": [],
+       "tables": [
+        {
+          "table": "table1",
+          "type": "Table1",
+          "indextype": "i64",
+          "keynames": [
+            "id"
+          ],
+          "keytypes": [
+            "UInt64"
+          ]
+        }]
+   }
+   )=====";
+
+   BOOST_CHECK_EQUAL( generate_abi(template_base, "ctx", template_base_abi), true );
+
+   const char* action_and_table = R"=====(
+   #include <eoslib/types.h>
+
+  /* @abi ctx table
+   * @abi ctx action
+   */
+   class TableAction {
+   public:
+      uint64_t id;
+   };
+
+   )=====";
+
+   const char* action_and_table_abi = R"=====(
+   {
+       "types": [],
+       "structs": [{
+          "name" : "TableAction",
+          "base" : "",
+          "fields" : {
+            "id" : "UInt64",
+          }
+       }],
+       "actions": [{
+          "action" : "tableaction",
+          "type" : "TableAction"
+       }],
+       "tables": [
+        {
+          "table": "tableaction",
+          "type": "TableAction",
+          "indextype": "i64",
+          "keynames": [
+            "id"
+          ],
+          "keytypes": [
+            "UInt64"
+          ]
+        }]
+   }
+   )=====";
+
+   BOOST_CHECK_EQUAL( generate_abi(action_and_table, "ctx", action_and_table_abi), true );
+
+   const char* simple_typedef = R"=====(
+   #include <eoslib/types.hpp>
+
+   using namespace eos;
+
+   struct CommonParams {
+      uint64_t c1;
+      uint64_t c2;
+      uint64_t c3;
+   };
+
+   //@abi ctx type
+   typedef CommonParams MyBaseAlias;
+
+   //@abi ctx action
+   struct MainAction : MyBaseAlias {
+      uint64_t param1;
+   };
+
+   )=====";
+
+   const char* simple_typedef_abi = R"=====(
+   {
+       "types": [{
+          "newTypeName" : "MyBaseAlias",
+          "type" : "CommonParams"
+       }],
+       "structs": [{
+          "name" : "CommonParams",
+          "base" : "",
+          "fields" : {
+            "c1" : "UInt64",
+            "c2" : "UInt64",
+            "c3" : "UInt64"
+          }
+       },{
+          "name" : "MainAction",
+          "base" : "MyBaseAlias",
+          "fields" : {
+            "param1" : "UInt64"
+          }
+       }],
+       "actions": [{
+          "action" : "mainaction",
+          "type" : "MainAction"
+       }],
+       "tables": []
+   }
+   )=====";
+
+   BOOST_CHECK_EQUAL( generate_abi(simple_typedef, "ctx", simple_typedef_abi), true );
+
+   const char* field_typedef = R"=====(
+   #include <eoslib/types.hpp>
+
+   using namespace eos;
+
+   //@abi ctx type
+   typedef Name MyNameAlias;
+
+   struct ComplexField {
+      uint64_t  f1;
+      uint32_t  f2; 
+   };
+
+   //@abi ctx type
+   typedef ComplexField MyComplexFieldAlias;
+
+   //@abi ctx table
+   struct PACKED(Table1) {
+      uint64_t            field1;
+      MyComplexFieldAlias field2;
+      MyNameAlias         name;
+   };
+
+   )=====";
+
+   const char* field_typedef_abi = R"=====(
+   {
+       "types": [{
+          "newTypeName" : "MyNameAlias",
+          "type" : "Name"
+       },{
+          "newTypeName" : "MyComplexFieldAlias",
+          "type" : "ComplexField"
+       }],
+       "structs": [{
+          "name" : "ComplexField",
+          "base" : "",
+          "fields" : {
+            "f1" : "UInt64",
+            "f2" : "UInt32",
+          }
+       },{
+          "name" : "Table1",
+          "base" : "",
+          "fields" : {
+            "field1" : "UInt64",
+            "field2" : "MyComplexFieldAlias",
+            "name"   : "MyNameAlias"
+          }
+       }],
+       "actions": [],
+       "tables": [{
+          "table": "table1",
+          "type": "Table1",
+          "indextype": "i64",
+          "keynames": [
+            "field1"
+          ],
+          "keytypes": [
+            "UInt64"
+          ]
+        }]
+   }
+   )=====";
+
+   BOOST_CHECK_EQUAL( generate_abi(field_typedef, "ctx", field_typedef_abi), true );
+
 
 } FC_LOG_AND_RETHROW() }
 
