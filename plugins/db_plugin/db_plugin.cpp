@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/db_plugin/db_plugin.hpp>
 #include <eos/chain/config.hpp>
 #include <eos/chain/exceptions.hpp>
