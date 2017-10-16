@@ -2,19 +2,46 @@
 
 #include <fc/log/logger.hpp>
 
+#include <boost/algorithm/string/erase.hpp>
+
 namespace eos {
 
+static void parse_ip_port(const std::string& in, std::string& ip, std::string& port) {
+   size_t last_colon = in.find_last_of(':');
+
+   //(naively) handle the case user didn't specify port; we'll not touch the passed port parameter
+   if(last_colon == std::string::npos)
+      ip = in;
+   else if(last_colon && in.find('[') != std::string::npos && in.find_last_of(']') != last_colon-1)
+      ip = in;
+   else {
+      ip = in.substr(0, last_colon);
+      port = in.substr(last_colon+1);
+   }
+   boost::erase_all(ip, "[");
+   boost::erase_all(ip, "]");
+}
+
 tcp_connection_initiator::tcp_connection_initiator(const boost::program_options::variables_map& options, boost::asio::io_service& i) :
-  strand(i), ios(i) {
+   strand(i), ios(i) {
 
-   //TODO: Create these lists based on command line arguments, for now, hardcode test values
+   for(const std::string& bindaddr : options["listen-endpoint"].as<std::vector<std::string>>()) {
+      std::string ip;
+      std::string port{"9876"};
+      parse_ip_port(bindaddr, ip, port);
 
-   try {
-      acceptors.emplace_front(ios, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 5556));
+      boost::asio::ip::tcp::resolver resolver(ios);
+      boost::asio::ip::tcp::resolver::query query(ip, port);
+
+      try {
+         boost::asio::ip::tcp::resolver::iterator addresses = resolver.resolve(query);
+         acceptors.emplace_front(ios, addresses->endpoint());
+      }
+      catch(boost::system::system_error sr) {
+        elog("Failed to listen on an incoming port-- ${sr}", ("sr", sr.what()));
+      }
    }
-   catch(boost::system::system_error sr) {
-      elog("Failed to listen on an incoming port-- ${sr}", ("sr", sr.what()));
-   }
+
 
    outgoing_connections.emplace_front(ios, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 6666));
 }
