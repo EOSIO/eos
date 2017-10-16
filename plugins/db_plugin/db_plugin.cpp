@@ -264,20 +264,28 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
    const auto block_id = block.id();
    const auto block_id_str = block_id.str();
    const auto prev_block_id_str = block.previous.str();
+   auto block_num = block.block_num();
 
    if (processed == 0) {
       if (startup) {
-         // verify on restart we have previous block
+         // verify on start we have no previous blocks
          verify_no_blocks(blocks);
+         FC_ASSERT(block_num < 2, "Expected start of block, instead received block_num: ${bn}", ("bn", block_num));
+         // Currently we are creating a 'fake' block in chain_controller::initialize_chain() since initial accounts
+         // and producers are not written to the block log. If this is the fake block, indicate it as block_num 0.
+         if (block_num == 1 && block.producer == AccountName{}) {
+            block_num = 0;
+         }
       } else {
-         // verify on start we have no previous block
+         // verify on restart we have previous block
          verify_last_block(blocks, prev_block_id_str);
       }
+
    }
 
    auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
 
-   block_doc << "block_num" << b_int32{static_cast<int32_t>(block.block_num())}
+   block_doc << "block_num" << b_int32{static_cast<int32_t>(block_num)}
        << "block_id" << block_id_str
        << "prev_block_id" << prev_block_id_str
        << "timestamp" << b_date{std::chrono::milliseconds{std::chrono::seconds{block.timestamp.sec_since_epoch()}}}
