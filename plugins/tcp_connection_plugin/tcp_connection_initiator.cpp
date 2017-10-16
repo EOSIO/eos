@@ -23,14 +23,13 @@ static void parse_ip_port(const std::string& in, std::string& ip, std::string& p
 }
 
 tcp_connection_initiator::tcp_connection_initiator(const boost::program_options::variables_map& options, boost::asio::io_service& i) :
-   strand(i), ios(i) {
+   strand(i), resolver(i), ios(i) {
 
    for(const std::string& bindaddr : options["listen-endpoint"].as<std::vector<std::string>>()) {
       std::string ip;
       std::string port{"9876"};
       parse_ip_port(bindaddr, ip, port);
 
-      boost::asio::ip::tcp::resolver resolver(ios);
       boost::asio::ip::tcp::resolver::query query(ip, port);
 
       try {
@@ -42,8 +41,14 @@ tcp_connection_initiator::tcp_connection_initiator(const boost::program_options:
       }
    }
 
+   for(const std::string& bindaddr : options["remote-endpoint"].as<std::vector<std::string>>()) {
+      std::string ip;
+      std::string port{"9876"};
+      parse_ip_port(bindaddr, ip, port);
 
-   outgoing_connections.emplace_front(ios, boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 6666));
+      outgoing_connections.emplace_front(ios, boost::asio::ip::tcp::resolver::query(ip, port));
+   }
+
 }
 
 void tcp_connection_initiator::go() {
@@ -65,7 +70,6 @@ void tcp_connection_initiator::accept_connection(active_acceptor& aa) {
  void tcp_connection_initiator::handle_incoming_connection(const boost::system::error_code& ec, active_acceptor& aa) {
    ilog("accepted connection");
   
-   //XX verify on some sort of acceptable incoming IP range
    active_connections.emplace_front(std::make_shared<tcp_connection>((std::move(aa.socket_to_accept))));
    std::list<active_connection>::iterator new_conn_it = active_connections.begin();
 
@@ -77,25 +81,26 @@ void tcp_connection_initiator::accept_connection(active_acceptor& aa) {
    accept_connection(aa);
 }
 void tcp_connection_initiator::retry_connection(outgoing_attempt& outgoing) {
-   outgoing.outgoing_socket = boost::asio::ip::tcp::socket(outgoing.reconnect_timer.get_io_service());
-   outgoing.outgoing_socket.async_connect(outgoing.remote_endpoint, strand.wrap([this,&outgoing](auto ec) {
-      outgoing_connection_complete(ec, outgoing);
-   }));
+   outgoing.outgoing_socket = boost::asio::ip::tcp::socket(ios);
+
+   resolver.async_resolve(outgoing.remote_resolver_query, [this, &outgoing](auto ec, auto i) {
+      outgoing_resolve_complete(ec, i, outgoing);
+   });
+}
+
+void tcp_connection_initiator::outgoing_resolve_complete(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator iterator, outgoing_attempt& outgoing) {
+   if(ec)
+      outgoing_failed_retry_inabit(outgoing);
+   else
+      boost::asio::async_connect(outgoing.outgoing_socket, iterator, strand.wrap([this,&outgoing](auto ec, auto i) {
+         outgoing_connection_complete(ec, outgoing);
+      }));
 }
 
 void tcp_connection_initiator::outgoing_connection_complete(const boost::system::error_code& ec, outgoing_attempt& outgoing) {
-   if(ec) {
-      ilog("connection failed");
-      outgoing.reconnect_timer.expires_from_now(std::chrono::seconds(3));
-      outgoing.reconnect_timer.async_wait([this,&outgoing](auto ec){
-         if(ec)
-            throw std::runtime_error("Unexpected timer wait failure");
-         retry_connection(outgoing);
-      });
-   }
+   if(ec)
+      outgoing_failed_retry_inabit(outgoing);
    else {
-      ilog("Connection good!");
-      outgoing.reconnect_timer.cancel();
       active_connections.emplace_front(std::make_shared<tcp_connection>(std::move(outgoing.outgoing_socket)));
       std::list<active_connection>::iterator new_conn_it = active_connections.begin();
 
@@ -104,7 +109,16 @@ void tcp_connection_initiator::outgoing_connection_complete(const boost::system:
          active_connections.erase(new_conn_it);
          retry_connection(outgoing);
        }));
-     }
- }
+    }
+}
+
+void tcp_connection_initiator::outgoing_failed_retry_inabit(outgoing_attempt& outgoing) {
+  outgoing.reconnect_timer.expires_from_now(std::chrono::seconds(3));
+  outgoing.reconnect_timer.async_wait([this,&outgoing](auto ec){
+     if(ec)
+        throw std::runtime_error("Unexpected timer wait failure");
+     retry_connection(outgoing);
+  });
+}
 
 }

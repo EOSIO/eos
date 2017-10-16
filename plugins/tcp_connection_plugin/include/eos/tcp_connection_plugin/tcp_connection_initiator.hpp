@@ -36,16 +36,18 @@ private:
 
     //////outgoing connections
     struct outgoing_attempt : private boost::noncopyable {
-      outgoing_attempt(boost::asio::io_service& ios, boost::asio::ip::tcp::endpoint ep) : 
-      remote_endpoint(ep), reconnect_timer(ios), outgoing_socket(ios) {}
+      outgoing_attempt(boost::asio::io_service& ios, boost::asio::ip::tcp::resolver::query q) : 
+      remote_resolver_query(q), reconnect_timer(ios), outgoing_socket(ios) {}
 
-      boost::asio::ip::tcp::endpoint  remote_endpoint;
+      boost::asio::ip::tcp::resolver::query remote_resolver_query;
       boost::asio::steady_timer       reconnect_timer;
       boost::asio::ip::tcp::socket    outgoing_socket;      //only used during conn. estab., then moved to connection object
     };
     std::list<outgoing_attempt> outgoing_connections;
     void retry_connection(outgoing_attempt& outgoing);
+    void outgoing_resolve_complete(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator iterator, outgoing_attempt& outgoing);
     void outgoing_connection_complete(const boost::system::error_code& ec, outgoing_attempt& outgoing);
+    void outgoing_failed_retry_inabit(outgoing_attempt& outgoing);
 
     //////keep a handle to all current connections and the signals2::connection that indicate their failure
     //Note: Actually, this class has no need to hang on to the connection. But until network_manager holds
@@ -59,6 +61,8 @@ private:
     };
     std::list<active_connection> active_connections;
     boost::asio::strand strand;  //serializes accesses to active_connections
+
+    boost::asio::ip::tcp::resolver resolver;
 
     boost::asio::io_service& ios;
 };
