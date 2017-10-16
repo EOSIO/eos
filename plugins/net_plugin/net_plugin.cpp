@@ -980,26 +980,30 @@ namespace eos {
       //
       notice_message fwd;
       request_message req;
-
+      chain_controller &cc = chain_plug->chain();
       for( const auto& t : msg.known_trx) {
-
         const auto &tx = my_impl->local_txns.find(t);
         if( tx == my_impl->local_txns.end()) {
           c->trx_state.insert((transaction_state){t,true,true,(uint32_t)-1,
                 fc::time_point(),fc::time_point()});
-
           fwd.known_trx.push_back(t);
           req.req_trx.push_back(t);
         }
       }
-      for( const auto& t : msg.known_blocks) {
-        const auto &tx = c->trx_state.find(t);
-        if( tx == c->trx_state.end()) {
-          c->trx_state.insert((transaction_state){t,true,true,(uint32_t)-1,
-                fc::time_point(),fc::time_point()});
-
-          fwd.known_trx.push_back(t);
-          req.req_trx.push_back(t);
+      for( const auto& blkid : msg.known_blocks) {
+        optional<signed_block> b;
+        try {
+          b = cc.fetch_block_by_id(blkid);
+        } catch (const assert_exception &ex) {
+          elog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
+            // keep going, client can ask another peer
+        } catch (...) {
+          elog( "failed to retrieve block for id");
+        }
+        if (!b) {
+          c->block_state.insert((block_state){blkid,true,true,fc::time_point()});
+          fwd.known_blocks.push_back(blkid);
+          req.req_blocks.push_back(blkid);
         }
       }
 
@@ -1037,7 +1041,7 @@ namespace eos {
           try {
             c->enqueue (cc.get_recent_transaction(t));
           } catch (const assert_exception &ex) {
-            elog( "caught assert on get_recent_transaction, ${ex} txnid = ${t}",("ex",ex.what())("t",t));
+            elog( "caught assert on get_recent_transaction, ${ex} txnid = ${t}",("ex",ex.get_log())("t",t));
             // keep going, client can ask another peer
           } catch (...) {
             elog( "failed to retrieve transaction");
@@ -1617,7 +1621,7 @@ namespace eos {
     my->chain_plug = app().find_plugin<chain_plugin>();
     my->chain_plug->get_chain_id(my->chain_id);
     fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
-    ilog ("my node_id is $id",("id",my->node_id));
+    ilog ("my node_id is ${id}",("id",my->node_id));
 
     my->keepalive_timer.reset(new boost::asio::steady_timer (app().get_io_service()));
     my->ticker();
