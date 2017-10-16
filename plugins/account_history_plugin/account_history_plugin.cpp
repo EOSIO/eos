@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/account_history_plugin/account_history_plugin.hpp>
 #include <eos/account_history_plugin/account_control_history_object.hpp>
 #include <eos/account_history_plugin/account_transaction_history_object.hpp>

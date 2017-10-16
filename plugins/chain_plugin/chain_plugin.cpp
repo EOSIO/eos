@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>

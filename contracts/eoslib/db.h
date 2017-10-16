@@ -1,5 +1,6 @@
 /**
  *  @file db.h
+ *  @copyright defined in eos/LICENSE.txt
  *  @brief Defines C API for interfacing with blockchain database
  */
 #pragma once

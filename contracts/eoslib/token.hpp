@@ -1,5 +1,6 @@
 /**
 * @file token.hpp
+* @copyright defined in eos/LICENSE.txt
 * @brief Defines types and ABI for standard token messages and database tables
 *
 */

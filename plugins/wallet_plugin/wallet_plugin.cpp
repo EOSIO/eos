@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/wallet_plugin/wallet_plugin.hpp>
 #include <eos/wallet_plugin/wallet_manager.hpp>
 #include <boost/filesystem/path.hpp>

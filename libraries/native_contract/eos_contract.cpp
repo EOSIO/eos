@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/native_contract/eos_contract.hpp>
 
 #include <eos/chain/chain_controller.hpp>

@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <appbase/application.hpp>
 
 #include <eos/producer_plugin/producer_plugin.hpp>

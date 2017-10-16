@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <fc/exception/exception.hpp>
 #include <eos/types/native.hpp>

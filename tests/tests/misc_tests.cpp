@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain/BlockchainConfiguration.hpp>
 #include <eos/chain/authority_checker.hpp>
 #include <eos/chain/authority.hpp>

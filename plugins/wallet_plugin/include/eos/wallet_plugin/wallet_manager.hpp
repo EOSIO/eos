@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eos/chain/transaction.hpp>
 #include <eos/wallet_plugin/wallet.hpp>

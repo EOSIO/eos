@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 extern "C" {
 typedef long long    uint64_t;
 typedef unsigned int uint32_t;

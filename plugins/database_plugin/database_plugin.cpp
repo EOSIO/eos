@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/database_plugin/database_plugin.hpp>
 
 #include <fc/filesystem.hpp>

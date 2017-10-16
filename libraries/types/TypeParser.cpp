@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/types/TypeParser.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/cxx11/all_of.hpp>

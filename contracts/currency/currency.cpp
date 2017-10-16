@@ -1,3 +1,8 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #include <currency/currency.hpp> /// defines transfer struct (abi)
 
 namespace TOKEN_NAME {

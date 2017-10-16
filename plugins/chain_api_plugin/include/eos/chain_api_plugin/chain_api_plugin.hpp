@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/http_plugin/http_plugin.hpp>

@@ -1,5 +1,7 @@
 /**
- * launch testnet nodes
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ *  @brief launch testnet nodes
  **/
 #include <string>
 #include <vector>

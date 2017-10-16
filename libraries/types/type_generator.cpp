@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/types/TypeParser.hpp>
 #include <fstream>
 #include <iomanip>

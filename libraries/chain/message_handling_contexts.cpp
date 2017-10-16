@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/permission_object.hpp>
 #include <eos/chain/exceptions.hpp>

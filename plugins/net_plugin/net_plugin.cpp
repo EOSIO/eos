@@ -1,4 +1,8 @@
 
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain/types.hpp>
 
 #include <eos/net_plugin/net_plugin.hpp>
