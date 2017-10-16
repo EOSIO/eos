@@ -172,18 +172,19 @@ namespace eos { namespace chain {
                member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
                member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
                member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::secondary_key>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>
-            >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t>,std::less<uint64_t> >
+               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
+               member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
+            >
          >,
          ordered_unique<tag<by_scope_tertiary>,
             composite_key< key64x64x64_value_object,
                member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::scope>,
                member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
                member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>
+               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
+               member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t> >
+            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t>,std::less<typename key64x64x64_value_object::id_type> >
          >         
       >
    >;

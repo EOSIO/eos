@@ -160,10 +160,18 @@ public:
    int32_t next_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
-      const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = next_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
+      const auto& pidx = db.get_index<IndexType, by_scope_primary>();
+      
+      auto tuple = next_record_tuple<typename IndexType::value_type>::get(scope, code, table, keys);
+      auto pitr = pidx.find(tuple);
 
-      auto itr = idx.lower_bound(tuple);
+      if(pitr == pidx.end())
+        return -1;
+
+      const auto& fidx = db.get_index<IndexType>();
+      auto itr = fidx.indicies().template project<Scope>(pitr);
+
+      const auto& idx = db.get_index<IndexType, Scope>();
 
       if( itr == idx.end() ||
           itr->scope != scope ||
@@ -195,9 +203,18 @@ public:
    int32_t previous_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
+      const auto& pidx = db.get_index<IndexType, by_scope_primary>();
+      
+      auto tuple = next_record_tuple<typename IndexType::value_type>::get(scope, code, table, keys);
+      auto pitr = pidx.find(tuple);
+
+      if(pitr == pidx.end())
+        return -1;
+
+      const auto& fidx = db.get_index<IndexType>();
+      auto itr = fidx.indicies().template project<Scope>(pitr);
+
       const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = next_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
-      auto itr = idx.lower_bound(tuple);
       
       if( itr == idx.end() ||
           itr == idx.begin() ||

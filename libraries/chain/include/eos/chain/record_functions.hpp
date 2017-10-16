@@ -220,59 +220,37 @@ struct front_record_tuple<keystr_value_object> {
 // };
 
 //next_record_tuple (same for previous)
-template <typename T, typename Q>
+template <typename T>
 struct next_record_tuple {};
 
 template <>
-struct next_record_tuple<key_value_object, by_scope_primary> {
+struct next_record_tuple<key_value_object> {
    inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
       return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
          *keys);
    }
 };
 template <>
-struct next_record_tuple<keystr_value_object, by_scope_primary> {
+struct next_record_tuple<keystr_value_object> {
    inline static auto get(Name scope, Name code, Name table, std::string* keys) {
       return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table),
          keys->data());
    }
 };
 template <>
-struct next_record_tuple<key128x128_value_object, by_scope_primary> {
+struct next_record_tuple<key128x128_value_object> {
    inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
       return boost::make_tuple( uint64_t(scope), uint64_t(code), uint64_t(table),
           *keys, *(keys+1));
    }
 };
 template <>
-struct next_record_tuple<key128x128_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
-      return boost::make_tuple( uint64_t(scope), uint64_t(code), uint64_t(table),
-          *(keys+1), *keys);
-   }
-};
-template <>
-struct next_record_tuple<key64x64x64_value_object, by_scope_primary> {
+struct next_record_tuple<key64x64x64_value_object> {
    inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
       return boost::make_tuple( uint64_t(scope), uint64_t(code), uint64_t(table),
           *keys, *(keys+1), *(keys+2));
    }
 };
-template <>
-struct next_record_tuple<key64x64x64_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( uint64_t(scope), uint64_t(code), uint64_t(table),
-          *(keys+1), *(keys+2));
-   }
-};
-template <>
-struct next_record_tuple<key64x64x64_value_object, by_scope_tertiary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( uint64_t(scope), uint64_t(code), uint64_t(table),
-          *(keys+2));
-   }
-};
-
 
 
 //lower_bound_tuple
