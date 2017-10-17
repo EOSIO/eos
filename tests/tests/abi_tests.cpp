@@ -983,4 +983,208 @@ BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(abi_type_repeat, testing_fixture)
+{ try {
+
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "newTypeName": "AccountName",
+         "type": "Name"
+       },{
+         "newTypeName": "AccountName",
+         "type": "Name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": {
+           "from": "AccountName",
+           "to": "AccountName",
+           "amount": "UInt64"
+         }
+       },{
+         "name": "account",
+         "base": "",
+         "fields": {
+           "account": "Name",
+           "balance": "UInt64"
+         }
+       }
+     ],
+     "actions": [{
+         "action": "transfer",
+         "type": "transfer"
+       }
+     ],
+     "tables": [{
+         "table": "account",
+         "type": "account",
+         "indextype": "i64",
+         "keynames" : ["account"],
+         "keytypes" : ["Name"]
+       }
+     ]
+   }
+   )=====";
+
+   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("types.size") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
+{ try {
+
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "newTypeName": "AccountName",
+         "type": "Name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": {
+           "from": "AccountName",
+           "to": "AccountName",
+           "amount": "UInt64"
+         }
+       },{
+         "name": "transfer",
+         "base": "",
+         "fields": {
+           "account": "Name",
+           "balance": "UInt64"
+         }
+       }
+     ],
+     "actions": [{
+         "action": "transfer",
+         "type": "transfer"
+       }
+     ],
+     "tables": [{
+         "table": "account",
+         "type": "account",
+         "indextype": "i64",
+         "keynames" : ["account"],
+         "keytypes" : ["Name"]
+       }
+     ]
+   }
+   )=====";
+
+   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("structs.size") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
+{ try {
+
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "newTypeName": "AccountName",
+         "type": "Name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": {
+           "from": "AccountName",
+           "to": "AccountName",
+           "amount": "UInt64"
+         }
+       },{
+         "name": "account",
+         "base": "",
+         "fields": {
+           "account": "Name",
+           "balance": "UInt64"
+         }
+       }
+     ],
+     "actions": [{
+         "action": "transfer",
+         "type": "transfer"
+       },{
+         "action": "transfer",
+         "type": "transfer"
+       }
+     ],
+     "tables": [{
+         "table": "account",
+         "type": "account",
+         "indextype": "i64",
+         "keynames" : ["account"],
+         "keytypes" : ["Name"]
+       }
+     ]
+   }
+   )=====";
+
+   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("actions.size") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
+{ try {
+
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "newTypeName": "AccountName",
+         "type": "Name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": {
+           "from": "AccountName",
+           "to": "AccountName",
+           "amount": "UInt64"
+         }
+       },{
+         "name": "account",
+         "base": "",
+         "fields": {
+           "account": "Name",
+           "balance": "UInt64"
+         }
+       }
+     ],
+     "actions": [{
+         "action": "transfer",
+         "type": "transfer"
+       }
+     ],
+     "tables": [{
+         "table": "account",
+         "type": "account",
+         "indextype": "i64",
+         "keynames" : ["account"],
+         "keytypes" : ["Name"]
+       },{
+         "table": "account",
+         "type": "account",
+         "indextype": "i64",
+         "keynames" : ["account"],
+         "keytypes" : ["Name"]
+       }
+     ]
+   }
+   )=====";
+
+   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
