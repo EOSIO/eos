@@ -38,7 +38,7 @@ std::string wallet_manager::create(const std::string& name) {
 
    auto wallet_filename = dir / (name + file_ext);
 
-   if (fc::exists( wallet_filename)) {
+   if (fc::exists(wallet_filename)) {
       FC_THROW("Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
    }
 
@@ -50,6 +50,13 @@ std::string wallet_manager::create(const std::string& name) {
    wallet->save_wallet_file();
    wallet->lock();
    wallet->unlock(password);
+
+   // If we have name in our map then remove it since we want the emplace below to replace.
+   // This can happen if the wallet file is removed while eos-walletd is running.
+   auto it = wallets.find(name);
+   if (it != wallets.end()) {
+      wallets.erase(it);
+   }
    wallets.emplace(name, std::move(wallet));
 
    return password;
@@ -63,6 +70,13 @@ void wallet_manager::open(const std::string& name) {
    wallet->set_wallet_filename(wallet_filename.string());
    if (!wallet->load_wallet_file()) {
       FC_THROW("Unable to open file: ${f}", ("f", wallet_filename.string()));
+   }
+
+   // If we have name in our map then remove it since we want the emplace below to replace.
+   // This can happen if the wallet file is added while eos-walletd is running.
+   auto it = wallets.find(name);
+   if (it != wallets.end()) {
+      wallets.erase(it);
    }
    wallets.emplace(name, std::move(wallet));
 }
