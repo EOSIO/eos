@@ -283,7 +283,8 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
 
    }
 
-   auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    block_doc << "block_num" << b_int32{static_cast<int32_t>(block_num)}
        << "block_id" << block_id_str
@@ -410,7 +411,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       return;
 
    if (msg.type == transfer) {
-      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto transfer = msg.as<types::transfer>();
       auto from_name = transfer.from.toString();
       auto to_name = transfer.to.toString();
@@ -435,7 +437,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
    } else if (msg.type == newaccount) {
-      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto newaccount = msg.as<types::newaccount>();
 
       // find creator to update its balance
@@ -468,7 +471,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       }
 
    } else if (msg.type == lock) {
-      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto lock = msg.as<types::lock>();
       auto from_account = find_account(accounts, lock.from);
       auto to_account = find_account(accounts, lock.to);
@@ -491,7 +495,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
    } else if (msg.type == unlock) {
-      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto unlock = msg.as<types::unlock>();
       auto from_account = find_account(accounts, unlock.account);
 
@@ -512,7 +517,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
 
    } else if (msg.type == claim) {
-      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto claim = msg.as<types::claim>();
       auto from_account = find_account(accounts, claim.account);
 
@@ -531,7 +537,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
 
    } else if (msg.type == setcode) {
-      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto setcode = msg.as<types::setcode>();
       auto from_account = find_account(accounts, setcode.account);
 
@@ -595,7 +602,8 @@ void db_plugin_impl::init() {
    accounts = mongo_conn[db_name][accounts_col]; // Accounts
    bsoncxx::builder::stream::document doc{};
    if (accounts.count(doc.view()) == 0) {
-      auto now = std::chrono::milliseconds{std::chrono::seconds{fc::time_point::now().sec_since_epoch()}};
+      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       doc << "name" << config::EosContractName.toString()
           << "eos_balance" << Asset(config::InitialTokenSupply).toString()
           << "staked_balance" << Asset().toString()
