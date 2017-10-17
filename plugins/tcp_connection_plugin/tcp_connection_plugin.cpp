@@ -9,7 +9,7 @@ tcp_connection_plugin::tcp_connection_plugin() {}
 
 void tcp_connection_plugin::set_program_options( options_description& cli, options_description& cfg ) {
    cfg.add_options()
-      ( "listen-endpoint", bpo::value<vector<string>>()->default_value(std::vector<std::string>(), "0.0.0.0:9876")->composing(), "Local IP address and port tuples to bind to for incoming connections.")
+      ( "listen-endpoint", bpo::value<vector<string>>()->composing(), "Local IP address and port tuples to bind to for incoming connections.")
       ( "remote-endpoint", bpo::value<vector<string>>()->composing(), "IP address and port tuples to connect to remote peers.")
       ;
    }
