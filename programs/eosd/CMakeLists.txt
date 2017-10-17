@@ -14,6 +14,8 @@ target_link_libraries( eosd
         PRIVATE account_history_api_plugin account_history_plugin
         PRIVATE chain_api_plugin producer_plugin chain_plugin wallet_api_plugin
         PRIVATE net_plugin http_plugin
+        PRIVATE network_plugin network_plugin
+        PRIVATE tcp_connection_plugin tcp_connection_plugin
         PRIVATE eos_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
