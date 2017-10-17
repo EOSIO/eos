@@ -161,11 +161,11 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
 endmacro(add_wast_target)
 
-function(add_wast_abi_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
+function(add_wast_abi_target target SOURCE_FILES INCLUDE_FOLDERS SOURCE_FOLDER DESTINATION_FOLDER)
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
-    DEPENDS ${DESTINATION_FOLDER}/${target}.abi
+    DEPENDS ${SOURCE_FOLDER}/${target}.abi
     COMMAND echo "const char* ${target}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
-    COMMAND cat ${DESTINATION_FOLDER}/${target}.abi >> ${DESTINATION_FOLDER}/${target}.abi.hpp
+    COMMAND cat ${SOURCE_FOLDER}/${target}.abi >> ${DESTINATION_FOLDER}/${target}.abi.hpp
     COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.abi.hpp
     COMMENT "Generating ${target}.abi.hpp"
     VERBATIM
