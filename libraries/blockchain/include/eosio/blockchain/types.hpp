@@ -1,5 +1,6 @@
 #pragma once
-#include <eos/types/types.hpp>
+#include <eosio/blockchain/name.hpp>
+#include <eosio/blockchain/public_key.hpp>
 
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/elliptic.hpp>
@@ -16,7 +17,6 @@
 
 
 namespace eosio { namespace blockchain {
-
 
    using std::vector;
    using std::map;
@@ -36,7 +36,6 @@ namespace eosio { namespace blockchain {
    using fc::static_variant;
    using fc::path;
 
-   typedef eos::types::Name name_type;
 
    typedef fc::sha256       block_id_type;
    typedef fc::sha256       chain_id_type;
@@ -44,6 +43,7 @@ namespace eosio { namespace blockchain {
    typedef fc::sha256       transaction_id_type;
    typedef fc::sha256       merkle_id_type;
 
+   typedef name             name_type;
    typedef name_type        account_name;
    typedef name_type        function_name;
    typedef name_type        permission_name;
@@ -51,10 +51,9 @@ namespace eosio { namespace blockchain {
 
 
    typedef fc::ecc::compact_signature     signature_type;
-   typedef eos::types::PublicKey          public_key_type;
+   typedef eosio::blockchain::public_key  public_key_type;
    typedef fc::ecc::private_key           private_key_type;
 
    typedef map<account_name, pair< account_name,public_key_type> > producer_changes_type;
-
 
 } }  /// eosio::blockchain

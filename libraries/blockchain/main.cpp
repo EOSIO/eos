@@ -1,5 +1,5 @@
 #include <eosio/blockchain/controller.hpp>
-#include <eosio/blockchain/database.hpp>
+#include <eosio/blockchain/db.hpp>
 #include <fc/log/logger.hpp>
 
 using namespace eosio::blockchain;
@@ -41,10 +41,45 @@ int main( int argc, char** argv ) {
       boost::asio::io_service ios;
       controller control( ios );
 
+      register_table< key_value_object >();
+
       wlog( "loading database" );
       database db( "test.db", 1024*1024 );
-      db.register_table< key_value_object >();
-      idump((db.revision()));
+
+      idump((db.last_reversible_block()));
+
+      if( db.last_reversible_block() == database::max_block_num ) {
+         auto blk = db.start_block(1);
+         auto cyc = blk.start_cycle();
+         auto shr = cyc.start_shard( {N(scope)} );
+         auto trx = shr.start_transaction();
+         auto sco = trx.create_scope( N(dan) );
+         auto tbl = sco.create_table<key_value_object>( N(test) );
+      }
+
+
+   } catch ( const fc::exception& e ) {
+      edump((e.to_detail_string()));
+   } catch ( const std::exception& e ) {
+      elog(e.what());
+   }
+
+   return 0;
+}
+
+#if 0
+      /*
+      db.undo_all_blocks();
+      auto b = db.start_block();
+      auto s = b.start_shard( {1} )
+      auto t = s.start_transaction();
+      auto tbl = t.create_table<...>()
+      t.squash();
+      t.undo();
+      s.start_transaction()
+
+
+
 
 
       wlog( "undoing all pending state" );
@@ -63,6 +98,7 @@ int main( int argc, char** argv ) {
          }
          auto shar = ses.start_shard( {1} );
 
+         shar.start_session
 
          auto okv_table = shar.find_table<key_value_object>(1,1000);
          if( !okv_table ) {
@@ -233,17 +269,4 @@ int main( int argc, char** argv ) {
 //      trx_session.squash(); // trx_session.undo() 
 //      thread_session.push(); /// prevent it from being undone
 
-     
-      
-
-      
-
-
-   } catch ( const fc::exception& e ) {
-      edump((e.to_detail_string()));
-   } catch ( const std::exception& e ) {
-      elog(e.what());
-   }
-
-   return 0;
-}
+#endif
