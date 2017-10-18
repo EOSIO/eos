@@ -49,7 +49,7 @@ namespace eosio { namespace blockchain {
 
    <h3>System Account Names<h3>
    - eosio.accounts : this scope permits read and/or write access accounts
-                      this scope is implicitly added to the write scopes for all of the following functions on the eos contract
+                      this scope is implicitly added to the write scopes for all of the following functions on the chain's system contract
                          - newaccount
                          - updateauth
                          - deleteauth
