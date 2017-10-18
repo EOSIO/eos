@@ -103,10 +103,11 @@ namespace eosio { namespace blockchain  {
          auto create_table( table_name t );
 
          template<typename ObjectType> 
-         optional<table_handle<ObjectType>> find_table( table_name t );
+         auto find_table( table_name t );
 
          template<typename ObjectType> 
-         table_handle<ObjectType>           get_table( table_name t );
+         auto get_table( table_name t );
+
       private:
          scope&                _scope;
          transaction_handle&   _trx;
@@ -185,9 +186,16 @@ namespace eosio { namespace blockchain  {
          undo_cycle&   _undo_cycle;
    };
 
-   class block_handle {
+   /**
+    *  @class block_handle
+    *  @brief provides write access to a block edit session
+    *
+    *  If commit() is not called all changes made via this handle will
+    *  be undone when the block_handle goes out of scope.
+    *  
+    */ 
+   class block_handle : public boost::noncopyable {
       public:
-
          block_handle( block_handle&& mv )
          :_db(mv._db),_undo_block(mv._undo_block) {
             _undo = mv._undo;
@@ -307,6 +315,30 @@ namespace eosio { namespace blockchain  {
       new_table->push();
       
       return table_handle<index_type>( _trx, *new_table );
+   }
+
+   template<typename ObjectType> 
+   auto scope_handle::find_table( table_name t ) {
+      typedef typename get_index_type<ObjectType>::type index_type;
+      FC_ASSERT( is_registered_table<ObjectType>(), "unknown table type" );
+
+      optional< table_handle<index_type> > result;
+
+      const table* existing_table = _scope.find_table(t);
+      if( existing_table ) {
+         FC_ASSERT( existing_table->_type == index_type::type_id, "table ${s}/${n} has different type than expected", ("s",_scope._name)("n",t) );
+
+         result = table_handle<index_type>(_trx, *existing_table);
+      }
+
+      return result;
+   }
+
+   template<typename ObjectType> 
+   auto scope_handle::get_table( table_name t ) {
+      auto existing_table = find_table<ObjectType>(t);
+      FC_ASSERT( existing_table, "unable to find table ${s}/${t}", ("s",_scope._name)("t",t) );
+      return *existing_table;
    }
 
    template<typename IndexType>
