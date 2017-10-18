@@ -95,6 +95,26 @@ namespace eosio { namespace blockchain {
       int64_t _id = 0;
    };
 
+   typedef name scope_name;
+   typedef name owner_name;
+
+   struct table_name {
+      name owner;
+      name tbl;
+
+      friend bool operator < ( const table_name& a, const table_name& b ) {
+         return std::tie( a.owner, a.tbl ) < std::tie(b.owner,b.tbl); 
+      }
+      friend bool operator == ( const table_name& a, const table_name& b ) {
+         return std::tie( a.owner, a.tbl ) < std::tie(b.owner,b.tbl); 
+      }
+   };
+   /**
+    * Every scope has a set of tables, tables are grouped by "sub-scopes" so 
+    * a table_name is scope/subscope/table table_name is the subscope/table
+    * within scope.
+    */
+   //typedef pair<owner_name,name> table_name;
 
    template<uint16_t TypeNumber, typename Derived>
    struct object {
@@ -161,7 +181,7 @@ namespace eosio { namespace blockchain {
     */
    struct table {
       uint64_t                      _type = 0;
-      name_type                     _name = name_type("");
+      table_name                    _name;
       offset_ptr<scope>             _scope;
    };
 
@@ -492,3 +512,9 @@ namespace eosio { namespace blockchain {
    abstract_table& get_abstract_table( const table& t);
 
 } } /// eosio::blockchain
+
+namespace fc {
+  class variant;
+  void to_variant(const eosio::blockchain::table_name& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::blockchain::table_name& check);
+}

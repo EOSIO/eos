@@ -1,383 +1,375 @@
 #pragma once
-#include <eosio/database/generic_table.hpp>
+#include <eosio/blockchain/generic_table.hpp>
 
-namespace eosio { namespace blockchain {
-
-
-   typedef uint64_t scope_name;
-   typedef uint64_t table_name;
+namespace eosio { namespace blockchain  {
 
 
+   typedef uint64_t block_num_type;
+   typedef uint16_t table_id_type;
 
+   struct shard;
 
-
-
-
-   struct scope_state;
-
-
-
-   struct shard_undo_state;
-
-   /**
-    * Track changes to the database, at the start of each block/cycle we create a new
-    * undo_state and set the increment the revision. This undo state can only be modified by
-    * the main database thread; however, it breaks up the undo states for threads based upon
-    * groups of scopes. 
-    *
-    * Given a scope we can find the current thread undo states.  Creating / modifying tables
-    * will only impact thre shard_undo_state and therefore can occur in parallel across non
-    * overlapping scopes.
-    */
-   struct database_undo_state {
-      database_undo_state( allocator<char> a ):new_scopes(a),shard_undo_states(a),read_locks(a),shards(a){}
-
-      uint64_t                                                 revision = 0; 
-      shared_deque< offset_ptr<scope_state> >                  new_scopes;
-      shared_map<scope_name, offset_ptr<shard_undo_state> >    shard_undo_states;
-      shared_set<scope_name>                                   read_locks;
-      shared_list<shard_undo_state>                            shards;
-   };
-
-   struct shard_undo_state {
-      shard_undo_state( allocator<char> a ):new_tables(a),modified_tables(a),write_scopes(a){}
-
-      void on_modify( table& t ) {
-         auto itr = modified_tables.find( t._name );
-         if( itr == modified_tables.end() )
-            modified_tables.emplace( pair<table_name,offset_ptr<table>>(t._name,&t) );
-      }
-
-      int64_t revision()const { return db_undo_state->revision; }
-
-      offset_ptr<database_undo_state>              db_undo_state;   ///< points to the higher level undo state (where revision lives)
-      shared_deque< pair<scope_name,table_name> >  new_tables;      ///< any time a new table is created it gets loged here so it can be removed if unwinding 
-      shared_map<table_name, offset_ptr<table> >   modified_tables; ///< tracks the tables which have been modified so they can be undone 
-      shared_vector<scope_name>                    write_scopes;
-   };
-
-
-
-
-   struct scope_state {
-      template<typename Allocator>
-      scope_state( Allocator&& a ):_tables( std::forward<Allocator>(a) ){}
-
-      ~scope_state() {
-         idump((_name));
-      }
-
-      const table* find_table( table_name name )const {
-         idump((name));
-         auto itr = _tables.find( name );
-         return itr == _tables.end() ? nullptr : &*itr->second;
-      }
-
-      table* find_table( table_name name ) {
-         idump((name));
-         auto itr = _tables.find( name );
-         return itr == _tables.end() ? nullptr : &*itr->second;
-      }
-
-      const table& get_table( table_name name )const {
-         auto t = find_table(name);
-         FC_ASSERT( t != nullptr, "unknown table" );
-         return *t;
-      }
-
-      scope_name                                  _name;
-      shared_map< table_name, offset_ptr<table> > _tables;
-      //offset_ptr<database::shard_undo_state>     _current_undo_state;
-   };
-
-
-
+   template<typename ObjectType> 
+   class table_handle;
+   class block_handle;
+   class scope_handle;
+   class transaction_handle;
+   class cycle_handle;
+   class shard_handle;
    class database;
 
-   template<typename ObjectType>
-   class table_handle;
+   using std::set;
+   using std::deque;
+   using std::vector;
 
-   class shard {
-      public:
-         template<typename ObjectType>
-         table_handle<ObjectType> create_table( scope_name, table_name tbl );
 
-         template<typename ObjectType>
-         optional<table_handle<ObjectType>> find_table( scope_name, table_name tbl );
+   struct undo_transaction {
+      undo_transaction( allocator<char> a, shard& s )
+      :new_scopes(a),new_tables(a),modified_tables(a),_shard(&s){}
 
-         void delete_table( const table& tbl ); 
-
-         template<typename ObjectType, typename Modifier>
-         const auto& modify( const ObjectType& obj, Modifier&& m );
-
-         shard( shard&& mv ):_db(mv._db),_suds(mv._suds){}
-      private:
-         friend class database;
-         shard( database& db, shard_undo_state& suds ):_db(db),_suds(suds){}
-         shard( const shard& ) = delete;
-
-         database&             _db;
-         shard_undo_state&    _suds;
+      shared_vector<scope_name>     new_scopes;
+      shared_set<table_optr>        new_tables;
+      shared_set<table_optr>        modified_tables;
+      offset_ptr<undo_transaction>  next;
+      offset_ptr<shard>             _shard;
    };
 
-   class session {
+   struct shard {
+      shard( allocator<char> a, const set<scope_name>& w, const set<scope_name>& r );
+
+      shared_set<scope_name>        _write_scope;
+      shared_set<scope_name>        _read_scope;
+      shared_list<undo_transaction> _transaction_history;
+   };
+
+   typedef offset_ptr<shard> shard_optr;
+
+   struct undo_cycle {
+      undo_cycle( allocator<char> a ):_write_scope_to_shard(a),_read_scope_to_shard(a),_shards(a){}
+
+      shared_map<scope_name,shard_optr> _write_scope_to_shard;
+      shared_map<scope_name,shard_optr> _read_scope_to_shard;
+      shared_list<shard>                _shards;
+   };
+
+   struct undo_block{
+      undo_block( allocator<char> a ):_cycle_undo_history(a){}
+
+      block_num_type           _block_num = 0;
+      shared_deque<undo_cycle> _cycle_undo_history;
+   };
+
+   struct scope {
+      scope( pair<allocator<char>,scope_name> d ):_tables(d.first),_name(d.second){}
+      ~scope() { assert( _tables.size() == 0 ); }
+
+      const table* find_table( table_name t )const;
+
+      shared_map<table_name,table_optr> _tables;
+      scope_name                        _name;
+   };
+
+   typedef offset_ptr<scope> scope_optr;
+
+
+
+   template<typename IndexType> 
+   class table_handle {
       public:
-         session( session&& mv );
-         ~session();
+         table_handle( transaction_handle& trx, generic_table<IndexType>& t ) 
+         :_trx(trx), _table( t )
+         {
+         }
 
-         void undo();
-         void push();
+         template<typename Constructor>
+         const auto& create( Constructor&& c );
 
-         shard start_shard( const flat_set<scope_name>& scopes, const flat_set<scope_name>& read_scopes = flat_set<scope_name>() );
-         void create_scope( scope_name scope );
+         template<typename Modifier>
+         void modify( const typename IndexType::value_type&, Modifier&& c );
+
+         void remove( const typename IndexType::value_type& );
 
       private:
-         friend class database;
-         session( database& db, database_undo_state& duds );
-
-         database&            _db;
-         database_undo_state& _duds;
-         bool                 _undo = true;
+         transaction_handle&         _trx;
+         generic_table<IndexType>&   _table;
    };
 
 
-   /**
-    *  The purpose of this class is to wrap tables that are returned to ensure
-    *  that all updates to the table get tracked in the shard_undo_state
-    */
-   template<typename ObjectType>
-   class table_handle
+   class scope_handle {
+      public:
+         scope_handle( transaction_handle& trx, scope& s );
+
+         template<typename ObjectType> 
+         auto create_table( table_name t );
+
+         template<typename ObjectType> 
+         auto find_table( table_name t );
+
+         template<typename ObjectType> 
+         auto get_table( table_name t );
+
+      private:
+         scope&                _scope;
+         transaction_handle&   _trx;
+   };
+
+   class transaction_handle
    {
       public:
-        typedef typename get_index_type<ObjectType>::type multi_index_type;
+         transaction_handle( shard_handle& sh, undo_transaction& udt );
+         transaction_handle( transaction_handle&& mv );
+         ~transaction_handle() {
+            if( !_applied ) undo();
+         }
+         void squash() { _applied = true; }
+         void undo();
+         void commit() { _applied = true; }
 
-        template<typename Constructor>
-        const auto& emplace( Constructor&& c );
 
-        template<typename Modifier>
-        void modify( const ObjectType& o, Modifier&& c );
-
-        void remove( const ObjectType& o );
-
-        // Make read-only access to the underlying table as easy as using a pointer operator
-        const generic_table<multi_index_type>& operator->()const { return _table; }
+         /**
+          * This only works if this transaction_handle is the head transaction handle
+          * and we have 'scope' scope. We cannot have two transactions in different shards
+          * creating new scopes, but we need scopes to be undoable as part of transactions.
+          *
+          * The scope handle is only good for the scope of the transaction
+          */
+         scope_handle create_scope( scope_name s );
 
       private:
-         friend class shard;
-         table_handle( scope_state& scope, generic_table<multi_index_type>& table, shard_undo_state& suds )
-         :_scope(scope),_table(table),_suds(suds){}
+         friend class scope_handle;
 
-         scope_state&                       _scope;
-         generic_table<multi_index_type>&   _table;
-         shard_undo_state&                  _suds;
+         template<typename IndexType>
+         friend class table_handle;
+
+         void on_create_table( table& t );
+
+         template<typename IndexType>
+         void on_modify_table( generic_table<IndexType>& t );
+
+         bool              _applied = false;
+         database&         _db;
+         undo_transaction& _undo_trx;
+   };
+
+
+   class shard_handle {
+      public:
+         shard_handle( cycle_handle& c, shard& s );
+
+         transaction_handle start_transaction();
+
+      private:
+         friend class transaction_handle;
+
+         void undo_transaction();
+         void squash_transaction();
+
+         database& _db;
+         shard&    _shard;
+   };
+
+
+   class cycle_handle {
+      public:
+         cycle_handle( const block_handle& blk, undo_cycle& cyc );
+
+         /**
+          * Assuming this block is the current head block handle, this will attempt to
+          * create a new shard.  It will fail if there is a conflict with the read/write scopes and
+          * existing shards.
+          */
+         shard_handle start_shard( const set<scope_name>& write, const set<scope_name>& read = set<scope_name>() );
+      private:
+         friend class shard_handle;
+         database&     _db;
+         undo_block&   _undo_block;
+         undo_cycle&   _undo_cycle;
+   };
+
+   /**
+    *  @class block_handle
+    *  @brief provides write access to a block edit session
+    *
+    *  If commit() is not called all changes made via this handle will
+    *  be undone when the block_handle goes out of scope.
+    *  
+    */ 
+   class block_handle : public boost::noncopyable {
+      public:
+         block_handle( block_handle&& mv )
+         :_db(mv._db),_undo_block(mv._undo_block) {
+            _undo = mv._undo;
+            mv._undo = false;
+         }
+
+         block_handle( database& db, undo_block& udb )
+         :_db(db),_undo_block(udb){}
+
+         ~block_handle() {
+            if( _undo ) undo();
+         }
+
+         cycle_handle start_cycle();
+
+         void commit() { _undo = false; }
+         void undo();
+
+      private:
+         friend class cycle_handle;
+         bool        _undo = true;
+         database&   _db;
+         undo_block& _undo_block;
    };
 
 
    /**
     *  @class database
-    *  @brief high level API for memory mapped database
+    *  @brief a revision tracking memory mapped database
     *
-    *  This database organizes data into named scopes and tables with the tables
-    *  being implemented as boost multi_index containers. Furthermore, this database
-    *  adds support for revision tracking so that changes can be reliably undone in
-    *  the event of an error.
-    *
-    *  Lastly, this database is designed to enable changes to be made by multiple threads
-    *  at the same time so long as each thread operates in non-intersecting scope groups (shards).
+    *  Maintains a set of scopes which contain a set of generic_table. Changes to the database
+    *  are tracked so that they can be rolled back in the event of an error. Access to the database
+    *  is safe to perform in parallel so long as new scopes are only created in shards with "scope" scope.
     */
-   class database 
-   {
+   class database {
       public:
+         static const block_num_type max_block_num = -1;
+
+
          database( const path& dir, uint64_t shared_file_size = 0 );
          ~database();
 
-         void flush();
+         /** the last block whose changes we can revert */
+         block_num_type last_reversible_block()const;
 
-         /// register virtual API (construct, destruct, insert, modify, etc)
-         template<typename ObjectType>
-         void register_table() {
-            typedef typename get_index_type<ObjectType>::type index_type;
-            typedef generic_table<index_type> generic_object_table_type;
-            FC_ASSERT( !is_registered_table<ObjectType>(), "Table type already registered" );
-            _table_interfaces[ObjectType::type_id] = new table_interface_impl<generic_object_table_type>();
-         }
-
-         uint64_t revision()const;
-         session  start_session( uint64_t revision );
-
-         /** If there is non undo history then the initial revision number can be set to 
-          * anything we want. This is normally called on startup after calling undo_all()
-          */
-         void set_revision( uint64_t revision );
-         void push_revision( uint64_t revision );
-         void pop_revision( uint64_t revision );
-         void commit_revision( uint64_t revision );
-
-         void undo_all();
-         void undo();
-
-         const scope_state* find_scope( scope_name scope )const;
-         const scope_state& get_scope( scope_name scope )const;
-
-
-
-      private:
-         friend class shard;
-         friend class session;
+         /** starts a new block */
+         block_handle start_block( block_num_type block = 1 );
+         block_handle head_block();
 
          /**
-          * Starts a new shard undo state for the following scopes, if a shard already exists
-          * for any of the scopes then this method will fail.
+          * Undoes the changes made since the most recent call to start_block()
           */
-         shard start_shard( database_undo_state& duds, const flat_set<scope_name>& write_scopes, const flat_set<scope_name>& read_scopes = flat_set<scope_name>()  );
-         void create_scope( database_undo_state& duds, scope_name scope );
+         void undo();
 
-         void delete_table( const table& tbl );
-         void delete_scope( scope_state& scope );
+         /** Undoes all changes made in blocks greater than blocknum */
+         void undo_until( block_num_type blocknum );
 
-         scope_state* find_scope( scope_name scope );
-         scope_state& get_scope( scope_name scope );
+         /** marks all blocks before and including blocknum irreversible */
+         void commit( block_num_type blocknum );
 
+         allocator<char> get_allocator() { return _segment->get_segment_manager(); }
 
-         template<typename ObjectType>
-         auto find_table( shard_undo_state& suds, const scope_state& scope, table_name tbl ) {
-            scope_state& mscope = const_cast<scope_state&>(scope);
+         const scope* find_scope( scope_name n )const;
+         const scope& get_scope( scope_name n )const;
 
-            typedef typename get_index_type<ObjectType>::type index_type;
-            typedef generic_table<index_type> generic_object_table_type;
-            FC_ASSERT( is_registered_table<ObjectType>(), "unknown table type being registered" );
+      private:
+         friend class transaction_handle;
+         friend class block_handle;
+         friend class scope_handle;
 
-            generic_object_table_type* result = nullptr;
+         void undo( undo_block& udb );
+         void undo( undo_transaction& udb );
 
-            auto t = mscope.find_table(tbl);
+         scope* create_scope( scope_name n );
+         void   delete_scope( scope_name n );
 
-            if( t && t->_type == generic_object_table_type::value_type::type_id )
-               result = static_cast<generic_object_table_type*>(t);
-            return result;
-         } // find_table
-
-
-         template<typename ObjectType>
-         auto& create_table( shard_undo_state& suds, const scope_state& scope, table_name tbl )
-         {
-            scope_state& mscope = const_cast<scope_state&>(scope);
-
-            typedef typename get_index_type<ObjectType>::type index_type;
-            typedef generic_table<index_type> generic_object_table_type;
-            FC_ASSERT( is_registered_table<ObjectType>(), "unknown table type being registered" );
-
+         template<typename T>
+         T* construct() {
             auto memory = _segment->get_segment_manager();
-
-            auto& tables = mscope._tables;
-
-            auto table_itr = tables.find( tbl );
-            FC_ASSERT( table_itr == tables.end(), "table already exists" );
-
-            auto gtable = _segment->construct<generic_object_table_type>( bip::anonymous_instance )( memory );
-            gtable->start_revision( suds.revision() );
-            table* new_table = static_cast<table*>(gtable);
-
-            new_table->_name = tbl;
-            new_table->_scope = &scope;
-            ilog( "create table ${t}", ("t",tbl) );
-            table_itr = tables.emplace( tbl, new_table ).first;
-
-            suds.new_tables.emplace_front( pair<scope_name,table_name>(scope._name, tbl) );
-            return static_cast<generic_object_table_type&>(*table_itr->second);
-         } // create_table
-
-         template<typename ObjectType, typename Modifier>
-         const auto& modify( shard_undo_state& suds, const ObjectType& obj, Modifier&& m ) {
-
-            return obj;
-         } 
-
-
-
-
-
-         shard_undo_state* find_shard_undo_state_for_scope( scope_name scope )const;
-
-         template<typename ObjectType>
-         bool is_registered_table()const {
-            auto itr = _table_interfaces.find( ObjectType::type_id );
-            return itr != _table_interfaces.end();
+            return _segment->construct<T>( bip::anonymous_instance )( memory );
          }
-
-
-         abstract_table& get_interface( const table& t )const {
-            return get_interface( t._type );
-         }
-
-         abstract_table& get_interface( uint16_t table_type )const {
-            auto itr = _table_interfaces.find(table_type);
-            FC_ASSERT( itr != _table_interfaces.end(), "unknown table type" );
-            return *itr->second;
-         }
-
-         typedef shared_map< scope_name, bip::offset_ptr<scope_state> > scopes_type;
-         map<uint16_t, abstract_table*>        _table_interfaces;
 
          bfs::path                             _data_dir;
-
          bip::file_lock                        _flock;
          unique_ptr<bip::managed_mapped_file>  _segment;
          unique_ptr<bip::managed_mapped_file>  _meta;
 
          /// Variables below this point are allocated in shared memory 
+         typedef shared_map< scope_name, scope > scopes_type;
+
          scopes_type*                          _scopes = nullptr; /// allocated in shared memory
-         shared_deque< database_undo_state >*  _undo_stack = nullptr;
+         shared_deque<undo_block>*             _block_undo_history = nullptr;
    };
 
 
-   
-   template<typename ObjectType, typename Modifier>
-   const auto& shard::modify( const ObjectType& obj, Modifier&& m ) {
-      _db.modify( _suds, obj, std::forward<Modifier>(m) );
+   /**
+    *  Create a new table, informing the transaction undo state of that this table
+    *  might be modified. If it is the first time this table was added to the transactions
+    *  modified tables, then push an extra undo session to the generic table
+    */
+   template<typename ObjectType> 
+   auto scope_handle::create_table( table_name t ) {
+      typedef typename get_index_type<ObjectType>::type index_type;
+
+      FC_ASSERT( is_registered_table<ObjectType>(), "unknown table type" );
+
+      const table* existing_table = _scope.find_table(t);
+      FC_ASSERT( !existing_table, "table with name ${s}/${o}/${n} already exists", ("s",_scope._name)("o",t.owner)("n",t.tbl) );
+
+
+      wlog( "creating table ${s}/${ss}/${n}", ("s",_scope._name)("ss",name(t.owner))("n",t.tbl) );
+      auto* new_table = _trx._db.construct< generic_table<index_type> >(); 
+      new_table->_scope = &_scope;
+      new_table->_name  = t;
+
+      _trx.on_create_table( *new_table );
+      new_table->push();
+      
+      return table_handle<index_type>( _trx, *new_table );
    }
 
+   template<typename ObjectType> 
+   auto scope_handle::find_table( table_name t ) {
+      typedef typename get_index_type<ObjectType>::type index_type;
+      FC_ASSERT( is_registered_table<ObjectType>(), "unknown table type" );
 
-   template<typename ObjectType>
-   optional<table_handle<ObjectType>> shard::find_table( scope_name s, table_name t ) {
-      auto& scoperef = _db.get_scope(s);
-      auto* tableref = _db.find_table<ObjectType>( _suds, scoperef, t );
-      wdump((int64_t(tableref)));
-      if( tableref )
-         return table_handle<ObjectType>( scoperef, *tableref, _suds );
-      return optional<table_handle<ObjectType>>();
+      optional< table_handle<index_type> > result;
+
+      const table* existing_table = _scope.find_table(t);
+      if( existing_table ) {
+         FC_ASSERT( existing_table->_type == index_type::type_id, "table ${s}/${n} has different type than expected", ("s",_scope._name)("n",t) );
+
+         result = table_handle<index_type>(_trx, *existing_table);
+      }
+
+      return result;
    }
 
-   template<typename ObjectType>
-   table_handle<ObjectType> shard::create_table( scope_name s, table_name t )
-   {
-      typedef typename get_index_type<ObjectType>::type multi_index_type;
-
-      auto& scoperef = _db.get_scope(s);
-      //auto& tableref = scoperef.get_table(t);
-      auto& tableref = _db.create_table<ObjectType>( _suds, scoperef, t );
-      //FC_ASSERT( tableref.type == multi_index_type::id_type, "table type mistmatch" );
-      return table_handle<ObjectType>( scoperef, static_cast<generic_table<multi_index_type>&>(tableref), _suds );
+   template<typename ObjectType> 
+   auto scope_handle::get_table( table_name t ) {
+      auto existing_table = find_table<ObjectType>(t);
+      FC_ASSERT( existing_table, "unable to find table ${s}/${t}", ("s",_scope._name)("t",t) );
+      return *existing_table;
    }
 
+   template<typename IndexType>
+   void transaction_handle::on_modify_table( generic_table<IndexType>& t ) {
+      auto isnew  = _undo_trx.new_tables.find( t._name ) != _undo_trx.new_tables.end();
+      if( !isnew ) {
+         auto result = _undo_trx.modified_tables.insert(&t);
+         if( result.second ) {  /// insert successful 
+            t.push(); /// start a new undo tracking session for this table
+         }
+      }
+   }
 
-   template<typename ObjectType>
+   template<typename IndexType>
    template<typename Constructor>
-   const auto& table_handle<ObjectType>::emplace( Constructor&& c ) {
-      _suds.on_modify( _table );
-      return _table.emplace( std::forward<Constructor>( c ) );
+   const auto& table_handle<IndexType>::create( Constructor&& c ) {
+      _trx.on_modify_table( _table );
+      return _table.create( std::forward<Constructor>(c) );
    }
 
-   template<typename ObjectType>
+   template<typename IndexType>
    template<typename Modifier>
-   void table_handle<ObjectType>::modify( const ObjectType& obj, Modifier&& m ) {
-      _suds.on_modify( _table );
-      _table.modify( obj, std::forward<Modifier>( m ) );
+   void table_handle<IndexType>::modify( const typename IndexType::value_type& v, Modifier&& c ) {
+      _trx.on_modify_table( _table );
+      _table.modify( v, std::forward<Modifier>(c) );
    }
 
-   template<typename ObjectType>
-   void table_handle<ObjectType>::remove( const ObjectType& obj ) {
-      _suds.on_modify( _table );
-      _table.remove( obj );
+   template<typename IndexType>
+   void table_handle<IndexType>::remove( const typename IndexType::value_type& v ) {
+      _trx.on_modify_table( _table );
+      _table.remove( v );
    }
 
 

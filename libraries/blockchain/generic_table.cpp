@@ -20,3 +20,13 @@ abstract_table& get_abstract_table( const table& t ) {
 }
 
 } } /// eosio::blockchain
+
+namespace fc {
+  void to_variant(const eosio::blockchain::table_name& c, fc::variant& v) { v = std::string(c.owner) + "/" + std::string(c.tbl); }
+  void from_variant(const fc::variant& v, eosio::blockchain::table_name& check) { 
+     const auto& str = v.get_string();
+     auto pos = str.find( '/' );
+     check.owner = str.substr( 0, pos );
+     check.tbl   = str.substr( pos+1 );
+  }
+} // fc

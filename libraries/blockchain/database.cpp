@@ -1,5 +1,4 @@
 #include <eosio/blockchain/database.hpp>
-#include <fc/log/logger.hpp>
 
 namespace eosio { namespace blockchain {
 
@@ -27,7 +26,6 @@ struct environment_check {
    bool                    apple = false;
    bool                    windows = false;
 };
-
 
 database::database( const path& dir, uint64_t shared_file_size ) {
    _data_dir = dir;
@@ -58,9 +56,9 @@ database::database( const path& dir, uint64_t shared_file_size ) {
          if( !_scopes ) {
             BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find 'scopes' in shared memory file" ) );
          }
-         _undo_stack = _segment->find< shared_deque<database_undo_state>  >( "undo_stack" ).first;
-         if( !_undo_stack ) {
-            BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find 'undo_stack' in shared memory file" ) );
+         _block_undo_history = _segment->find< shared_deque<undo_block>  >( "block_undo_stack" ).first;
+         if( !_block_undo_history ) {
+            BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find 'block_undo_stack' in shared memory file" ) );
          }
 
       } 
@@ -73,234 +71,169 @@ database::database( const path& dir, uint64_t shared_file_size ) {
       _segment->find_or_construct< environment_check >( "environment" )();
 
       _scopes = _segment->find_or_construct< scopes_type  >( "scopes" )( _segment->get_segment_manager() ); 
-      _undo_stack = _segment->find_or_construct< shared_deque<database_undo_state>  >( "undo_stack" )( _segment->get_segment_manager() ); 
+      _block_undo_history = _segment->find_or_construct< shared_deque<undo_block>  >( "block_undo_stack" )( _segment->get_segment_manager() ); 
    }
 }
 
 database::~database() {
 } // ~database
 
-
-void database::flush() {
-   if( _segment )
-      _segment->flush();
-   if( _meta )
-      _meta->flush();
-} // flush
-
-const scope_state* database::find_scope( scope_name scope )const {
-   auto scope_itr = _scopes->find( scope );
-   return scope_itr == _scopes->end() ? nullptr : scope_itr->second.get();
+/**
+ * @return -1 if there is no undo history, otherwise returns the first block for which there exists an undo state
+ */
+block_num_type database::last_reversible_block() const {
+   if( _block_undo_history->size() == 0 ) return block_num_type(-1);
+   return _block_undo_history->front()._block_num;
 }
-
-scope_state* database::find_scope( scope_name scope ) {
-   auto scope_itr = _scopes->find( scope );
-   return scope_itr == _scopes->end() ? nullptr : scope_itr->second.get();
-}
-
-const scope_state& database::get_scope( scope_name scope )const {
-   auto existing_scope = find_scope( scope );
-   FC_ASSERT( existing_scope, "unknown scope ${s}", ("s",scope) );
-   return *existing_scope;
-}
-
-scope_state& database::get_scope( scope_name scope ) {
-   auto existing_scope = find_scope( scope );
-   FC_ASSERT( existing_scope, "unknown scope ${s}", ("s",scope) );
-   return *existing_scope;
-}
-
-
-void database::create_scope( database_undo_state& duds, scope_name scope ) {
-   FC_ASSERT( &duds == &_undo_stack->back(), "attempt to create scope in prior revision" );
-
-   auto memory = _segment->get_segment_manager();
-
-   auto scope_itr = _scopes->find( scope );
-   FC_ASSERT( scope_itr == _scopes->end(), "scope with name ${n} already exists", ("n",scope));
-   if( _scopes->end() == scope_itr ) {
-      ilog( "creating scope state ${n}", ("n",scope) );
-      auto state = _segment->construct<scope_state>( bip::anonymous_instance )( memory );
-      scope_itr = _scopes->emplace( scope, state ).first;
-      scope_itr->second->_name = scope;
-
-      duds.new_scopes.emplace_back( state );
-   }
-   /*return *scope_itr->second;*/
-}
-
-void database::delete_scope( scope_state& scope ) { 
-   auto scope_name = scope._name;
-   idump((scope_name));
-   try {
-      /** this would normally be in the scope_state destructor, except that
-       * scope_state does not have access to database to get the virtual interfaces
-       * for the different tables.
-       */
-      auto itr = scope._tables.begin();
-      while( itr != scope._tables.end() ) {
-         delete_table( *itr->second );
-         itr = scope._tables.begin();
-      }
-      _segment->destroy_ptr( &scope );
-      _scopes->erase( _scopes->find(scope_name) );
-   } FC_CAPTURE_AND_RETHROW( (scope_name) ) 
-}
-
-void database::delete_table( const table& tbl ) {
-   auto& tables = const_cast<scope_state&>(*tbl._scope)._tables;
-
-   auto table_itr = tables.find( tbl._name );
-   if( table_itr != tables.end() ) {
-      table* tab = table_itr->second.get();
-      auto& tab_interface = get_interface(tab->_type);
-      tab_interface.destruct( tab, _segment->get_segment_manager() );
-      tables.erase( table_itr );
-   }
-}
-
-void database::undo_all() {
-   auto& stack = *_undo_stack;
-   while( stack.size() ) {
-      undo();
-   }
-}
-
-void database::undo() 
-{ try{
-
-   if( _undo_stack->size() == 0 ) 
-      return;
-
-   auto& changes = _undo_stack->back();
-   auto prior_revision = changes.revision - 1;
-
-   for( const auto& thread : changes.shards ) {
-      for( const auto& mod_table : thread.modified_tables ) {
-         ilog( ".");
-         get_interface(*mod_table.second).undo_until( *mod_table.second, prior_revision );
-         ilog( ".");
-      }
-      for( auto new_table : thread.new_tables )
-         delete_table( get_scope( new_table.first ).get_table( new_table.second ) );
-   }
-
-   for( auto& new_scope : changes.new_scopes ) {
-      delete_scope( *new_scope );
-   }
-
-   _undo_stack->pop_back();
-   ilog( "now on revision ${r} plus changes", ("r",_undo_stack->size() ? _undo_stack->back().revision : 0) );
-} FC_CAPTURE_AND_RETHROW() } // database::undo()
-
 
 /**
- * Return the revision that we were on at the start of the current undo session
+ * Starts a new block, if a current undo history exists it must be a sequential increment on the current block number,
+ * otherwise, if the last_reversible_block == max_block_num then it can be any block number.
  */
-uint64_t database::revision()const {
-   return _undo_stack->size() == 0 ? 0 : _undo_stack->back().revision;
+block_handle database::start_block( block_num_type num ) {
+   if( last_reversible_block() != max_block_num ) {
+      auto& head_udb = _block_undo_history->back();
+      FC_ASSERT( head_udb._block_num + 1 == num, "new blocks must have sequential block numbers" );
+   }
+   _block_undo_history->emplace_back( _segment->get_segment_manager() );
+   auto& udb = _block_undo_history->back();
+   udb._block_num = num;
+
+   return block_handle( *this, udb );
+} /// start_block
+
+cycle_handle block_handle::start_cycle() {
+  _undo_block._cycle_undo_history.emplace_back( _db.get_allocator() );
+  return cycle_handle( *this, _undo_block._cycle_undo_history.back() );
 }
 
-void database::set_revision( uint64_t revision ) {
-   FC_ASSERT( _undo_stack->size() == 0, "revision has already been set" );
-   _undo_stack->emplace_back( _segment->get_segment_manager() );
-   _undo_stack->back().revision = revision;
+
+cycle_handle::cycle_handle( const block_handle& blk, undo_cycle& cyc )
+:_db(blk._db),_undo_block(blk._undo_block),_undo_cycle(cyc){}
+
+shard_handle cycle_handle::start_shard( const set<scope_name>& write, const set<scope_name>& read ) {
+  /// TODO: verify there are no conflicts in scopes, then create new shard
+  auto itr = _undo_cycle._shards.emplace( _undo_cycle._shards.begin(), _db.get_allocator(), write, read );
+  return shard_handle( *this, *itr );
 }
 
-shard_undo_state* database::find_shard_undo_state_for_scope( scope_name scope )const {
-   if( !_undo_stack->size() ) return nullptr;
-   auto& head = _undo_stack->back();
-   auto itr = head.shard_undo_states.find( scope );
-   if( itr == head.shard_undo_states.end() )
-      return nullptr;
+shard_handle::shard_handle( cycle_handle& c, shard& s )
+:_db(c._db),_shard(s) {
+}
+
+transaction_handle shard_handle::start_transaction() {
+   auto& hist = _shard._transaction_history;
+   auto itr = hist.emplace( hist.end(), _db.get_allocator(), std::ref(_shard)  );
+
+   return transaction_handle( *this, *itr );
+}
+
+shard::shard( allocator<char> a, const set<scope_name>& w, const set<scope_name>& r )
+:_write_scope(w.begin(),w.end(),a),_read_scope(r.begin(),r.end(),a),_transaction_history(a){}
+
+
+transaction_handle::transaction_handle( shard_handle& sh, undo_transaction& udt )
+:_db(sh._db),_undo_trx(udt) {
+}
+
+scope_handle transaction_handle::create_scope( scope_name s ) {
+   /// TODO: this method is only valid if we have scope-scope in the shard
+   auto existing_scope = _db.find_scope( s ); 
+   FC_ASSERT( !existing_scope, "scope ${s} already exists", ("s",s) );
+
+   auto new_scope = _db.create_scope(s);
+   _undo_trx.new_scopes.push_back(s);
+
+   return scope_handle( *this, *new_scope );
+}
+
+
+scope_handle::scope_handle( transaction_handle& trx, scope& s )
+:_scope(s),_trx(trx){}
+
+
+
+scope* database::create_scope( scope_name n ) {
+   auto result = _scopes->insert( pair<scope_name,scope>( n, std::make_pair(get_allocator(),n) ) );
+   FC_ASSERT( result.second, "unable to insert new scope ${n}", ("n",n) );
+   wlog( "created scope ${s}", ("s",name(n)));
+   return &result.first->second;
+}
+void database::delete_scope( scope_name n ) {
+  // auto itr = _scopes->find(n);
+ //  FC_ASSERT( itr != _scopes->end(), "unable to find scope to delete it" );
+    _scopes->erase(n);
+   idump((name(n)));
+}
+
+const scope* database::find_scope( scope_name n )const {
+   auto itr = _scopes->find( n );
+   if( itr == _scopes->end() ) return nullptr;
+   return &itr->second;
+} // find_scope
+
+const scope& database::get_scope( scope_name n )const {
+   auto ptr = find_scope( n );
+   FC_ASSERT( ptr != nullptr, "unable to find expected scope ${n}", ("n",name(n)) );
+   return *ptr;
+}
+
+
+const table* scope::find_table( table_name t )const {
+   auto itr = _tables.find(t);
+   if( itr == _tables.end() ) return nullptr;
    return itr->second.get();
 }
 
-shard database::start_shard( database_undo_state& duds, const flat_set<scope_name>& scopes, const flat_set<scope_name>& read_scopes ) {
-   FC_ASSERT( _undo_stack->size() );
-   auto& head = _undo_stack->back();
+void transaction_handle::on_create_table( table& t ) {
+   FC_ASSERT( _undo_trx.new_tables.insert(&t).second, "unable to insert table" );
+}
 
-   FC_ASSERT( &head == &duds, "attempt to start a shard in a prior database revision" ); /// TODO: make this a debug assert, this is a programmer error
+void transaction_handle::undo() {
+   _applied = true; 
+   _db.undo( _undo_trx );
+}
 
-   for( const auto& scope : scopes ) {
-      auto suds = find_shard_undo_state_for_scope( scope );
-      FC_ASSERT( suds == nullptr, "scope already in use by another shard" );
-      FC_ASSERT( head.read_locks.find( scope ) == head.read_locks.end(), "scope ${n} is already locked for reading", ("n",scope) );
+void block_handle::undo() {
+   _db.undo( _undo_block ); 
+}
+
+/**
+ *  After calling this @udt will be invalid
+ */
+void database::undo( undo_transaction& udt ) {
+   /// this transaction should be part of a shard, undoing it should remove the udt from _transaction_history
+   FC_ASSERT( &udt._shard->_transaction_history.back() == &udt, "must undo last transaction in shard first" );
+
+   for( const auto& item : udt.new_tables ) {
+      auto& t = *item;
+      auto& s = *t._scope;
+      s._tables.erase( t._name );
+      get_abstract_table( t ).destruct( t, get_allocator() );
+   }
+   udt.new_tables.clear();
+
+   for( const auto& s: udt.new_scopes ) {
+      FC_ASSERT( get_scope(s)._tables.size() == 0, "all tables should be deleted before deleting scope" );
+      delete_scope( s );
    }
 
-   for( auto read_scope : read_scopes ) {
-      FC_ASSERT( scopes.find(read_scope) == scopes.end(), "cannot ask for RO & RW for same scope: ${n}", ("n",read_scope) );
-      auto suds = find_shard_undo_state_for_scope( read_scope );
-      FC_ASSERT( !suds, "attempt to grab read scope for scope '${n}' that is already open with write lock", ("n",read_scope) );
-      head.read_locks.insert(read_scope);
+   /// frees the memory referenced by udt
+   udt._shard->_transaction_history.pop_back();
+}
+
+void database::undo( undo_block& udb ) {
+   auto& last = _block_undo_history->back();
+   FC_ASSERT( &last == &udb, "attempt to undo block other than head" );
+   for( auto& c : udb._cycle_undo_history ) {
+      for( auto& s : c._shards ) {
+         while( s._transaction_history.size() ) {
+            undo( s._transaction_history.back() );
+         }
+      }
    }
-
-   head.shards.emplace_back( _segment->get_segment_manager() );
-   auto& suds = head.shards.back();
-   suds.db_undo_state = &head;
-   suds.write_scopes.reserve(scopes.size());
-   for( auto scope : scopes ) {
-      head.shard_undo_states[scope] = &suds;
-      suds.write_scopes.push_back(scope);
-   }
-
-   return shard( *this, suds );
-} /// start_thread
-
-void database::push_revision(uint64_t revision) {
-   if( _undo_stack->size() ) {
-      FC_ASSERT( _undo_stack->back().revision < revision, "new revision must be higher than current revision" );
-   }
-   _undo_stack->emplace_back( _segment->get_segment_manager() );
-   _undo_stack->back().revision = revision;
+   wlog( "poping block ${b}", ("b", udb._block_num) );
+   _block_undo_history->pop_back();
 }
 
-void database::pop_revision( uint64_t revision ) {
-   while( _undo_stack->size() && _undo_stack->back().revision >= revision )
-      undo();
-}
-void database::commit_revision( uint64_t revision ) {
-   while( _undo_stack->size() && _undo_stack->front().revision < revision )
-      _undo_stack->pop_front();
-}
-
-
-void shard::delete_table( const table& tbl ) {
-   /// TODO: verify scope
-   _db.delete_table( tbl );
-}
-
-session database::start_session( uint64_t revision ) {
-   push_revision( revision );
-   return session( *this, _undo_stack->back() );
-}
-
-session::session( database& db, database_undo_state& duds )
-:_db(db),_duds(duds){}
-
-session::~session() {
-   if( _undo ) undo();
-}
-
-void session::undo() {
-   ilog( "undo session" );
-   FC_ASSERT( _undo, "changes already undone or committed" );
-   _undo = false;
-   _db.pop_revision( _duds.revision );
-}
-
-void session::push() {
-   ilog( "commit session" );
-   _undo = false;
-}
-
-shard session::start_shard( const flat_set<scope_name>& scopes, const flat_set<scope_name>& read_scopes ) {
-   return _db.start_shard( _duds, scopes, read_scopes );
-}
-
-void session::create_scope( scope_name s ) {
-   _db.create_scope( _duds, s );
-}
-
-
-} } /// eosio::blockchain
+} } // eosio::blockchain
