@@ -30,18 +30,13 @@ namespace proxy {
       }
    }
 
-   void apply_setowner(account_name owner) {
+   void apply_setowner(set_owner params) {
       const auto self = current_code();
       config code_config;
-      bool configured = configs::get(code_config, self);
-      code_config.owner = owner;
-      if (configured) {
-         configs::update(code_config, self);
-      } else {
-         configs::store(code_config, self);
-      }
+      configs::get(code_config, self);
+      code_config.owner = params.owner;
+      configs::store(config, self);
    }
- 
 }
 
 using namespace proxy;
@@ -63,7 +58,11 @@ extern "C" {
           }
        } else if (code == N(proxy) ) {
           if ( action == N(setowner)) {
+<<<<<<< 77f0f32aa72d8f1bbedbf4abafcf8c8655b8c3eb
              apply_setowner(current_message<account_name>());
+=======
+             apply_setowner(currentMessage<SetOwner>());
+>>>>>>> * Change the strategy to export types/typedefs from C++ to the ABI definition
           }
        }
     }
