@@ -1,4 +1,4 @@
-#include <eosio/blockchain/db.hpp>
+#include <eosio/blockchain/database.hpp>
 
 namespace eosio { namespace blockchain {
 

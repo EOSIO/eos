@@ -1,5 +1,5 @@
 #include <eosio/blockchain/controller.hpp>
-#include <eosio/blockchain/db.hpp>
+#include <eosio/blockchain/database.hpp>
 #include <fc/log/logger.hpp>
 
 using namespace eosio::blockchain;
