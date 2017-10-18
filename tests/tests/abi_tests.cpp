@@ -767,7 +767,6 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
       T field;
    };
 
-   //@abi ctx type
    typedef Base<uint32_t> Base32;
 
    //@abi ctx table i64
@@ -780,12 +779,9 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    const char* template_base_abi = R"=====(
    {
-       "types": [{
-          "newTypeName" : "Base32",
-          "type" : "Base<uint32_t>"
-       }],
+       "types": [],
        "structs": [{
-          "name" : "Base<uint32_t>",
+          "name" : "Base32",
           "base" : "",
           "fields" : {
             "field" : "UInt32",
@@ -870,7 +866,6 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
       uint64_t c3;
    };
 
-   //@abi ctx type
    typedef CommonParams MyBaseAlias;
 
    //@abi ctx action
@@ -916,7 +911,6 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    using namespace eos;
 
-   //@abi ctx type
    typedef Name MyNameAlias;
 
    struct ComplexField {
@@ -924,7 +918,6 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
       uint32_t  f2; 
    };
 
-   //@abi ctx type
    typedef ComplexField MyComplexFieldAlias;
 
    //@abi ctx table
@@ -939,11 +932,11 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* field_typedef_abi = R"=====(
    {
        "types": [{
-          "newTypeName" : "MyNameAlias",
-          "type" : "Name"
-       },{
           "newTypeName" : "MyComplexFieldAlias",
           "type" : "ComplexField"
+       },{
+          "newTypeName" : "MyNameAlias",
+          "type" : "Name"
        }],
        "structs": [{
           "name" : "ComplexField",
