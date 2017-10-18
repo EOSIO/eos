@@ -54,7 +54,7 @@ int main( int argc, char** argv ) {
          auto shr = cyc.start_shard( {N(scope)} );
          auto trx = shr.start_transaction();
          auto sco = trx.create_scope( N(dan) );
-         auto tbl = sco.create_table<key_value_object>( N(test) );
+         auto tbl = sco.create_table<key_value_object>( {N(owner),N(test)} );
       }
 
 

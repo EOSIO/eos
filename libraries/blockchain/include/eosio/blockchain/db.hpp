@@ -3,8 +3,7 @@
 
 namespace eosio { namespace blockchain  {
 
-   typedef uint64_t scope_name;
-   typedef uint64_t table_name;
+
    typedef uint64_t block_num_type;
    typedef uint16_t table_id_type;
 
@@ -61,12 +60,13 @@ namespace eosio { namespace blockchain  {
    };
 
    struct scope {
-      scope( allocator<char> a ):_tables(a){}
+      scope( pair<allocator<char>,scope_name> d ):_tables(d.first),_name(d.second){}
       ~scope() { assert( _tables.size() == 0 ); }
 
       const table* find_table( table_name t )const;
 
       shared_map<table_name,table_optr> _tables;
+      scope_name                        _name;
    };
 
    typedef offset_ptr<scope> scope_optr;
@@ -76,12 +76,22 @@ namespace eosio { namespace blockchain  {
    template<typename IndexType> 
    class table_handle {
       public:
-         table_handle( generic_table<IndexType>& t ) 
-         :_table( t )
+         table_handle( transaction_handle& trx, generic_table<IndexType>& t ) 
+         :_trx(trx), _table( t )
          {
          }
+
+         template<typename Constructor>
+         const auto& create( Constructor&& c );
+
+         template<typename Modifier>
+         void modify( const typename IndexType::value_type&, Modifier&& c );
+
+         void remove( const typename IndexType::value_type& );
+
       private:
-         generic_table<IndexType>& _table;
+         transaction_handle&         _trx;
+         generic_table<IndexType>&   _table;
    };
 
 
@@ -127,10 +137,13 @@ namespace eosio { namespace blockchain  {
       private:
          friend class scope_handle;
 
+         template<typename IndexType>
+         friend class table_handle;
+
          void on_create_table( table& t );
 
-         template<typename ObjectType>
-         void on_modify_table( generic_table<ObjectType>& t );
+         template<typename IndexType>
+         void on_modify_table( generic_table<IndexType>& t );
 
          bool              _applied = false;
          database&         _db;
@@ -282,10 +295,10 @@ namespace eosio { namespace blockchain  {
       FC_ASSERT( is_registered_table<ObjectType>(), "unknown table type" );
 
       const table* existing_table = _scope.find_table(t);
-      FC_ASSERT( !existing_table, "table with name ${n} already exists", ("n",name(t)) );
+      FC_ASSERT( !existing_table, "table with name ${s}/${o}/${n} already exists", ("s",_scope._name)("o",t.owner)("n",t.tbl) );
 
 
-      wlog( "creating table ${n}", ("n",name(t)) );
+      wlog( "creating table ${s}/${ss}/${n}", ("s",_scope._name)("ss",name(t.owner))("n",t.tbl) );
       auto* new_table = _trx._db.construct< generic_table<index_type> >(); 
       new_table->_scope = &_scope;
       new_table->_name  = t;
@@ -293,52 +306,39 @@ namespace eosio { namespace blockchain  {
       _trx.on_create_table( *new_table );
       new_table->push();
       
-      return table_handle<index_type>( *new_table );
+      return table_handle<index_type>( _trx, *new_table );
    }
 
    template<typename IndexType>
    void transaction_handle::on_modify_table( generic_table<IndexType>& t ) {
-      auto result = _undo_trx.modified_tables.insert(&t);
-      if( result.second ) {  /// insert successful 
-         t.push(); /// start a new undo tracking session for this table
+      auto isnew  = _undo_trx.new_tables.find( t._name ) != _undo_trx.new_tables.end();
+      if( !isnew ) {
+         auto result = _undo_trx.modified_tables.insert(&t);
+         if( result.second ) {  /// insert successful 
+            t.push(); /// start a new undo tracking session for this table
+         }
       }
    }
 
-
-      /*
-      FC_ASSERT( existing_table->_type == ObjectType::type_id, "mismatch of expected table types" );
-      auto& gt = static_cast<generic_table<ObjectType>&>(*existing_table);
-      */
-   /*
-   shard::squash() {
-
+   template<typename IndexType>
+   template<typename Constructor>
+   const auto& table_handle<IndexType>::create( Constructor&& c ) {
+      _trx.on_modify_table( _table );
+      return _table.create( std::forward<Constructor>(c) );
    }
 
-   database::commit_block() {
-      _block_undo_history.front().commit();
-   }
-   undo_block::commit() {
-      for( auto& c : _cycle_undo_history )
-         c.commit();
-   }
-   undo_cycle::commit() {
-      for( auto& s : _shards ) 
-         s.commit();
+   template<typename IndexType>
+   template<typename Modifier>
+   void table_handle<IndexType>::modify( const typename IndexType::value_type& v, Modifier&& c ) {
+      _trx.on_modify_table( _table );
+      _table.modify( v, std::forward<Modifier>(c) );
    }
 
-   shard::commit() {
-      for( auto& t : _transaction_history )
-         t.commit();
+   template<typename IndexType>
+   void table_handle<IndexType>::remove( const typename IndexType::value_type& v ) {
+      _trx.on_modify_table( _table );
+      _table.remove( v );
    }
 
-   undo_transaction::commit() {
-      for( auto& t : modified_tables ) 
-         t.commit();
-   }
-
-   table::commit() {
-      undo.pop_front();
-   }
-   */
 
 } } /// eosio::blockchain

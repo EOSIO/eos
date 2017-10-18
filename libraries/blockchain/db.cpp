@@ -154,7 +154,7 @@ scope_handle::scope_handle( transaction_handle& trx, scope& s )
 
 
 scope* database::create_scope( scope_name n ) {
-   auto result = _scopes->insert( pair<scope_name,scope>( n, get_allocator() ) );
+   auto result = _scopes->insert( pair<scope_name,scope>( n, std::make_pair(get_allocator(),n) ) );
    FC_ASSERT( result.second, "unable to insert new scope ${n}", ("n",n) );
    wlog( "created scope ${s}", ("s",name(n)));
    return &result.first->second;
