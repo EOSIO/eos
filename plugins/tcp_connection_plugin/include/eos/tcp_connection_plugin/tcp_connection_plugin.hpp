@@ -8,18 +8,18 @@ namespace eos {
 using namespace appbase;
 
 class tcp_connection_plugin : public appbase::plugin<tcp_connection_plugin> {
-public:
-   tcp_connection_plugin();
+   public:
+      tcp_connection_plugin();
 
-   APPBASE_PLUGIN_REQUIRES((network_plugin))
-   void set_program_options(options_description& cli, options_description& cfg) override;
+      APPBASE_PLUGIN_REQUIRES((network_plugin))
+      void set_program_options(options_description& cli, options_description& cfg) override;
 
-   void plugin_initialize(const variables_map& options);
-   void plugin_startup();
-   void plugin_shutdown();
+      void plugin_initialize(const variables_map& options);
+      void plugin_startup();
+      void plugin_shutdown();
 
-private:
-   std::unique_ptr<tcp_connection_initiator> initiator;
+   private:
+      std::unique_ptr<tcp_connection_initiator> initiator;
 };
 
 }

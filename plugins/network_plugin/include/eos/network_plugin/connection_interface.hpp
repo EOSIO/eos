@@ -7,21 +7,21 @@ namespace eos {
 using namespace boost::signals2;
 
 class connection_interface {
-public:
-   //Query if the connection is disconnected as well as a coresponding signals when the connection
-   // becomes disconnected.
-   //Once a connection becomes disconnected references to the particular connection must be reliniqushed
-   // in short order. (a connection can never come alive again)
-   virtual bool disconnected() = 0;
-   virtual connection connect_on_disconnected(const signal<void()>::slot_type & slot) = 0;
+   public:
+      //Query if the connection is disconnected as well as a coresponding signals when the connection
+      // becomes disconnected.
+      //Once a connection becomes disconnected references to the particular connection must be reliniqushed
+      // in short order. (a connection can never come alive again)
+      virtual bool disconnected() = 0;
+      virtual connection on_disconnected(const signal<void()>::slot_type& slot) = 0;
 
-   //get peer identify. Always valid once connection is given to network_manager
+      //get peer identify. Always valid once connection is given to network_manager
 
-   //Send a transaction to the peer on this connection should it not already know of the transaction.
-   //NOOP on disconnected connection.
+      //Send a transaction to the peer on this connection should it not already know of the transaction.
+      //NOOP on disconnected connection.
 
-   //Send a block to the peer on this connection
-   //NOOP on disconnected connection.
+      //Send a block to the peer on this connection
+      //NOOP on disconnected connection.
 
 };
 
