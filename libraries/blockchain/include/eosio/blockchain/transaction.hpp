@@ -12,11 +12,11 @@ namespace eosio { namespace blockchain {
       account_name               code;
       function_name              function;
       vector<permission_level>   permissions;
-      vector<public_key_type>    key_permissions;
       bytes                      data;
    };
 
    struct transaction {
+      uint16_t               region        = 0;
       uint16_t               ref_block_num = 0;
       uint32_t               ref_block_prefix = 0;
       time_point_sec         expiration;

@@ -12,7 +12,16 @@ namespace eosio { namespace blockchain {
 
       block_id_type                 previous;
       fc::time_point                timestamp;
-      merkle_id_type                transaction_merkle_root;
+
+      /**
+       * Used to prove inputs to block as intended by producer 
+       */
+      merkle_id_type                summary_root;
+      /**
+       * Used to prove side effects of processing blocks
+       */
+      merkle_id_type                merkle_root;
+
       account_name                  producer;
 
       /**
@@ -51,7 +60,13 @@ namespace eosio { namespace blockchain {
    };
 
 
+
    /**
+    *  The block_summary defines the set of transactions that were successfully applied as they
+    *  are organized into cycles and shards. A shard contains the set of transactions IDs which
+    *  are either user generated transactions or code-generated transactions.
+    *
+    *
     *  The primary purpose of a block is to define the order in which messages are processed.
     *
     *  The secodnary purpose of a block is certify that the messages are valid according to 
@@ -71,9 +86,9 @@ namespace eosio { namespace blockchain {
     *  tree of a block should be generated over a set of message IDs rather than a set of
     *  transaction ids. 
     */
-   class block_summary : public signed_block_header {
-      typedef vector<merkle_id>   thread; /// new or generated transactions 
-      typedef vector<thread>      cycle;
+   struct block_summary : public signed_block_header {
+      typedef vector<transaction_id_type>   shard; /// new or generated transactions 
+      typedef vector<shard>                 cycle;
 
       vector<cycle>               cycles;
    };
@@ -88,14 +103,21 @@ namespace eosio { namespace blockchain {
     * The transactions are grouped to mirror the cycles in block_summary, generated
     * transactions are not included.  
     */
-   class block_data : public block_summary {
-      public:
-         typedef vector<signed_transaction_ptr> thread;
-         typedef vector<thread>                 cycle;
-                                            
-         vector<thread>                         cycles;
+   struct block_data : public block_summary {
+      typedef vector<signed_transaction_ptr> shard;
+      typedef vector<shard>                  cycle;
+                                         
+      vector<cycle>                          cycles;
    };
    typedef shared_ptr<block_data> block_data_ptr;
 
 
 } } /// eosio::blockchain
+
+FC_REFLECT( eosio::blockchain::block_header, (previous)(timestamp)(summary_root)(merkle_root)(producer)(producer_changes) )
+FC_REFLECT_DERIVED( eosio::blockchain::signed_block_header, (eosio::blockchain::block_header), (producer_signature) )
+FC_REFLECT_DERIVED( eosio::blockchain::block_summary, (eosio::blockchain::signed_block_header), (cycles) )
+FC_REFLECT_DERIVED( eosio::blockchain::block_data, (eosio::blockchain::block_summary), (cycles) )
+
+
+

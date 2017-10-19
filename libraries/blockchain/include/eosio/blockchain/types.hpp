@@ -37,9 +37,17 @@ namespace eosio { namespace blockchain {
    using fc::path;
 
 
+   /**
+    * The first 32 bits are the block number
+    */
    typedef fc::sha256       block_id_type;
    typedef fc::sha256       chain_id_type;
    typedef fc::sha256       message_id_type;
+
+   /**
+    * The first byte indicates the type of the transaction id: 0 for user, 1 for generated, other bytes
+    * bits in the first byte are reserved for future use.
+    */
    typedef fc::sha256       transaction_id_type;
    typedef fc::sha256       merkle_id_type;
 
