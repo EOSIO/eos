@@ -71,11 +71,21 @@ namespace eosio { namespace blockchain {
        * Used to prove inputs to block as intended by producer 
        */
       merkle_id_type                summary_root;
-      /**
-       * Used to prove side effects of processing blocks
-       */
-      merkle_id_type                merkle_root;
 
+      /**
+       * Used to prove side effects of processing messages
+       */
+      merkle_id_type                message_root;
+
+      /**
+       * The merkle root of all block ids, this is kept outside the merkl
+       */
+      merkle_id_type                block_root;
+
+      /**
+       * Account name of the producer that signed this block for the purpose of
+       * looking up the expected public key.
+       */
       account_name                  producer;
 
       /**
@@ -171,7 +181,7 @@ namespace eosio { namespace blockchain {
 
 } } /// eosio::blockchain
 
-FC_REFLECT( eosio::blockchain::block_header, (previous)(timestamp)(summary_root)(merkle_root)(producer)(producer_changes) )
+FC_REFLECT( eosio::blockchain::block_header, (previous)(timestamp)(summary_root)(message_root)(block_root)(producer)(producer_changes) )
 FC_REFLECT_DERIVED( eosio::blockchain::signed_block_header, (eosio::blockchain::block_header), (producer_signature) )
 FC_REFLECT_DERIVED( eosio::blockchain::block_summary, (eosio::blockchain::signed_block_header), (cycles) )
 FC_REFLECT_DERIVED( eosio::blockchain::block_data, (eosio::blockchain::block_summary), (cycles) )
