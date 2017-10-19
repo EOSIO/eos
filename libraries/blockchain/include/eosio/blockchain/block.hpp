@@ -3,6 +3,60 @@
 
 namespace eosio { namespace blockchain {
 
+
+   /**
+    * <h2>Proof-of-message and Proof-of-complete-transcript</h2>
+    * 
+    * Each block header will include a merkle tree root which can be used to efficiently 
+    * prove that a message or transaction has been processed by the primary chain.
+    * 
+    * Additionally, it will be possible to recursively prove that a transcript of messages
+    * affecting an entry in the database is complete (it has no ommissions )
+    * 
+    * Given a block number N
+    * BlockMerkle(N) ->
+    *    MerkleTree( SummaryMerkle(N),  MerkleTree([BlockMerkle(P)] | P <- [0..N) ]) )
+    *
+    * SummaryMerkle(N) ->
+    *    MerkleTree([ CycleMerkle(C,N) | C <- [0..BlockData[N].cycles.size()) ])
+    *
+    * CycleMerkle(C, N) ->
+    *    MerkleTree([ ShardMerkle(S,C,N) | S <- [0..BlockData[N].cycles[C].shards.size()) ])
+    *
+    * ShardMerkle(S, C, N) ->
+    *    MerkleTree([ TxMerkle(T,S,C,N) | T <- [0..BlockData[N].cycles[C].shards[S].transactions.size())  ])
+    *
+    * TxMerkle(T,S,C,N) ->
+    *    MerkleTree([ BlockData[N].cycles[C].shards[S].transactions[T].tx_id, TxProofsMerkle(T,S,C,N) ])
+    * 
+    * TxProofsMerkle(T,S,C,N) ->
+    *    let tx = BlockData[N].cycles[C].shards[S].transactions[T];
+    *    MerkleTree([ MessageProof(M,T,S,C,N) | M <- [0..tx.messageOutputs.size() ], 
+    *              ,[ GeneratedProof(G,T,S,C,N) | G <- [0..tx.generatedTransactions.size() ])
+    *
+    * MessageProof(M,T,S,C,N) ->
+    *    let { code, func, data, reciever, scope_code_versions } <- BlockData[N].cycles[C].shards[S].transactions[T].messageOutputs[M];
+    *    Hash(code, func, data, reciever, scope_code_versions, N, C, S, R, M)
+    *    
+    * GeneratedProof(G,T,S,C,N) ->
+    *    let { tx, parent_index } <- BlockData[N].cycles[C].shards[S].transactions[T].generatedTransactions[G];
+    *    Hash(tx, parent_index, G)
+    *
+    * <h2>What is a "Scope_code_version"?</h2>
+    * 
+    * For each tuple of (scope, code) eos will track a monotonically increasing version number.
+    * This version number increments AFTER processing any message that gave write access (regardless of mutation) to the given code
+    *
+    * The version prior to execution is recorded as part of the message output.  This allows construction of a provable complete 
+    * transcript of messages that may have affected a given scopes data.  For instance, if you wanted to prove that there was
+    * no material transactions between the reciept of funds and a further transfer of said funds you can produce a set of message proofs
+    * that completely documents the messages that affect the funded account scope from the receipts version number to the transfers version.
+    *
+    * Any gap in versions indicates an ommission of data.  
+    *
+    *
+    */
+
    struct block_header
    {
       block_id_type   digest() const;
