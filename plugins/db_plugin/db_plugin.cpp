@@ -291,11 +291,8 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
        << "prev_block_id" << prev_block_id_str
        << "timestamp" << b_date{std::chrono::milliseconds{std::chrono::seconds{block.timestamp.sec_since_epoch()}}}
        << "transaction_merkle_root" << block.transaction_merkle_root.str()
-       << "producer_account_id" << block.producer.toString()
-       << "createdAt" << b_date{now};
-   if (!blocks.insert_one(block_doc.view())) {
-      elog("Failed to insert block ${bid}", ("bid", block_id));
-   }
+       << "producer_account_id" << block.producer.toString();
+   auto blk_doc = block_doc << "transactions" << stream::open_array;
 
    int32_t trx_num = -1;
    const bool check_relevance = !filter_on.empty();
@@ -306,9 +303,12 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
             if (check_relevance && !is_scope_relevant(trx.scope))
                continue;
 
+            auto txn_oid = bsoncxx::oid{};
+            blk_doc = blk_doc << txn_oid; // add to transaction.messages array
             stream::document doc{};
             const auto trans_id_str = trx.id().str();
             auto trx_doc = doc
+                  << "_id" << txn_oid
                   << "transaction_id" << trans_id_str
                   << "sequence_num" << b_int32{trx_num}
                   << "block_id" << block_id_str
@@ -387,7 +387,15 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
          }
       }
    }
-   
+
+   auto blk_complete = blk_doc << stream::close_array
+                               << "createdAt" << b_date{now}
+                               << stream::finalize;
+
+   if (!blocks.insert_one(blk_complete.view())) {
+      elog("Failed to insert block ${bid}", ("bid", block_id));
+   }
+
    if (transactions_in_block) {
       auto result = trans.bulk_write(bulk_trans);
       if (!result) {
