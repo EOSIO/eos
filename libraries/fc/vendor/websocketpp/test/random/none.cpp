@@ -31,10 +31,10 @@
 #include <websocketpp/common/stdint.hpp>
 #include <websocketpp/random/none.hpp>
 
-BOOST_AUTO_TEST_CASE( does_it_compile ) {
-    websocketpp::random::none::int_generator<int32_t> rng;
+BOOST_AUTO_TEST_CASE(does_it_compile) {
+  websocketpp::random::none::int_generator<int32_t> rng;
 
-    int32_t foo = rng();
+  int32_t foo = rng();
 
-    BOOST_CHECK( foo == 0 );
+  BOOST_CHECK(foo == 0);
 }

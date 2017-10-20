@@ -5,7 +5,8 @@
 #pragma once
 #include <eos/types/types.hpp>
 
-namespace eos { namespace config {
+namespace eos {
+namespace config {
 using types::UInt16;
 using types::UInt32;
 using types::UInt64;
@@ -26,7 +27,8 @@ const static AccountName ProducersAccountName = N(producers);
 const static PermissionName ActiveName = N(active);
 const static PermissionName OwnerName = N(owner);
 
-const static ShareType InitialTokenSupply = Asset::fromString("90000000.0000 EOS").amount;
+const static ShareType InitialTokenSupply =
+    Asset::fromString("90000000.0000 EOS").amount;
 
 const static int BlockIntervalSeconds = 3;
 
@@ -40,9 +42,9 @@ const static UInt64 DefaultMaxStorageSize = 10 * 1024;
 const static ShareType DefaultElectedPay = Asset(100).amount;
 const static ShareType DefaultRunnerUpPay = Asset(75).amount;
 const static ShareType DefaultMinEosBalance = Asset(100).amount;
-const static UInt32 DefaultMaxTrxLifetime = 60*60;
+const static UInt32 DefaultMaxTrxLifetime = 60 * 60;
 const static UInt16 DefaultAuthDepthLimit = 6;
-const static UInt32 DefaultMaxTrxRuntime = 10*1000;
+const static UInt32 DefaultMaxTrxRuntime = 10 * 1000;
 const static UInt16 DefaultInlineDepthLimit = 4;
 const static UInt32 DefaultMaxInlineMsgSize = 4 * 1024;
 const static UInt32 DefaultMaxGenTrxSize = 64 * 1024;
@@ -53,12 +55,13 @@ const static int VotedProducersPerRound = 20;
 const static int IrreversibleThresholdPercent = 70 * Percent1;
 const static int MaxProducerVotes = 30;
 
-const static UInt128 ProducerRaceLapLength = std::numeric_limits<UInt128>::max();
+const static UInt128 ProducerRaceLapLength =
+    std::numeric_limits<UInt128>::max();
 
 const static auto StakedBalanceCooldownSeconds = fc::days(3).to_seconds();
-} } // namespace eos::config
+}
+} // namespace eos::config
 
-template<typename Number>
-Number EOS_PERCENT(Number value, int percentage) {
-   return value * percentage / eos::config::Percent100;
+template <typename Number> Number EOS_PERCENT(Number value, int percentage) {
+  return value * percentage / eos::config::Percent100;
 }

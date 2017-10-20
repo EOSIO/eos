@@ -4,32 +4,48 @@
 //
 //    BLOWFISH ENCRYPTION ALGORITHM
 //
-//    encryption and decryption of Byte Strings using the Blowfish encryption Algorithm.
-//    Blowfish is a block cipher that encrypts data in 8-byte blocks. The algorithm consists
-//    of two parts: a key-expansion part and a data-ancryption part. Key expansion converts a
-//    variable key of at least 1 and at most 56 bytes into several subkey arrays totaling
-//    4168 bytes. Blowfish has 16 rounds. Each round consists of a key-dependent permutation,
-//    and a key and data-dependent substitution. All operations are XORs and additions on 32-bit words.
-//    The only additional operations are four indexed array data lookups per round.
-//    Blowfish uses a large number of subkeys. These keys must be precomputed before any data
-//    encryption or decryption. The P-array consists of 18 32-bit subkeys: P0, P1,...,P17.
-//    There are also four 32-bit S-boxes with 256 entries each: S0,0, S0,1,...,S0,255;
+//    encryption and decryption of Byte Strings using the Blowfish encryption
+//    Algorithm.
+//    Blowfish is a block cipher that encrypts data in 8-byte blocks. The
+//    algorithm consists
+//    of two parts: a key-expansion part and a data-ancryption part. Key
+//    expansion converts a
+//    variable key of at least 1 and at most 56 bytes into several subkey arrays
+//    totaling
+//    4168 bytes. Blowfish has 16 rounds. Each round consists of a key-dependent
+//    permutation,
+//    and a key and data-dependent substitution. All operations are XORs and
+//    additions on 32-bit words.
+//    The only additional operations are four indexed array data lookups per
+//    round.
+//    Blowfish uses a large number of subkeys. These keys must be precomputed
+//    before any data
+//    encryption or decryption. The P-array consists of 18 32-bit subkeys: P0,
+//    P1,...,P17.
+//    There are also four 32-bit S-boxes with 256 entries each: S0,0,
+//    S0,1,...,S0,255;
 //    S1,0, S1,1,...,S1,255; S2,0, S2,1,...,S2,255; S3,0, S3,1,...,S3,255;
 //
-//    The Electronic Code Book (ECB), Cipher Block Chaining (CBC) and Cipher Feedback modes
+//    The Electronic Code Book (ECB), Cipher Block Chaining (CBC) and Cipher
+//    Feedback modes
 //    are used:
 //
-//    In ECB mode if the same block is encrypted twice with the same key, the resulting
+//    In ECB mode if the same block is encrypted twice with the same key, the
+//    resulting
 //    ciphertext blocks are the same.
 //
 //    In CBC Mode a ciphertext block is obtained by first xoring the
-//    plaintext block with the previous ciphertext block, and encrypting the resulting value.
+//    plaintext block with the previous ciphertext block, and encrypting the
+//    resulting value.
 //
-//    In CFB mode a ciphertext block is obtained by encrypting the previous ciphertext block
+//    In CFB mode a ciphertext block is obtained by encrypting the previous
+//    ciphertext block
 //    and xoring the resulting value with the plaintext
 //
-//    The previous ciphertext block is usually stored in an Initialization Vector (IV).
-//    An Initialization Vector of zero is commonly used for the first block, though other
+//    The previous ciphertext block is usually stored in an Initialization
+//    Vector (IV).
+//    An Initialization Vector of zero is commonly used for the first block,
+//    though other
 //    arrangements are also in use.
 
 /*
@@ -113,9 +129,9 @@ data[29]  = "7654321 Now is the time for " (includes trailing '\0')
 data[29]  = 37363534333231204E6F77206973207468652074696D6520666F722000
 cbc cipher text
 cipher[32]= 6B77B4D63006DEE605B156E27403979358DEB9E7154616D959F1652BD5FF92CC
-cfb64 cipher text cipher[29]= 
-E73214A2822139CAF26ECF6D2EB9E76E3DA3DE04D1517200519D57A6C3 
-ofb64 cipher text cipher[29]= 
+cfb64 cipher text cipher[29]=
+E73214A2822139CAF26ECF6D2EB9E76E3DA3DE04D1517200519D57A6C3
+ofb64 cipher text cipher[29]=
 E73214A2822139CA62B343CC5B65587310DD908D0C241B2263C2CF80DA
 
 */
@@ -125,54 +141,56 @@ E73214A2822139CA62B343CC5B65587310DD908D0C241B2263C2CF80DA
 
 namespace fc {
 
-//Block Structure
-struct sblock
-{
-	//Constructors
-	sblock(unsigned int l=0, unsigned int r=0) : m_uil(l), m_uir(r) {}
-	//Copy Constructor
-	sblock(const sblock& roBlock) : m_uil(roBlock.m_uil), m_uir(roBlock.m_uir) {}
-	sblock& operator^=(sblock& b) { m_uil ^= b.m_uil; m_uir ^= b.m_uir; return *this; }
-	unsigned int m_uil, m_uir;
+// Block Structure
+struct sblock {
+  // Constructors
+  sblock(unsigned int l = 0, unsigned int r = 0) : m_uil(l), m_uir(r) {}
+  // Copy Constructor
+  sblock(const sblock &roBlock) : m_uil(roBlock.m_uil), m_uir(roBlock.m_uir) {}
+  sblock &operator^=(sblock &b) {
+    m_uil ^= b.m_uil;
+    m_uir ^= b.m_uir;
+    return *this;
+  }
+  unsigned int m_uil, m_uir;
 };
 
-class blowfish
-{
+class blowfish {
 public:
-	enum { ECB=0, CBC=1, CFB=2 };
+  enum { ECB = 0, CBC = 1, CFB = 2 };
 
-	//Constructor - Initialize the P and S boxes for a given Key
-	blowfish();
-	void start(unsigned char* ucKey, uint64_t n, const sblock& roChain = sblock(0UL,0UL));
+  // Constructor - Initialize the P and S boxes for a given Key
+  blowfish();
+  void start(unsigned char *ucKey, uint64_t n,
+             const sblock &roChain = sblock(0UL, 0UL));
 
-	//Resetting the chaining block
-	void reset_chain() { m_oChain = m_oChain0; }
+  // Resetting the chaining block
+  void reset_chain() { m_oChain = m_oChain0; }
 
-	// encrypt/decrypt Buffer in Place
-	void encrypt(unsigned char* buf, uint64_t n, int iMode=CFB);
-	void decrypt(unsigned char* buf, uint64_t n, int iMode=CFB);
+  // encrypt/decrypt Buffer in Place
+  void encrypt(unsigned char *buf, uint64_t n, int iMode = CFB);
+  void decrypt(unsigned char *buf, uint64_t n, int iMode = CFB);
 
-	// encrypt/decrypt from Input Buffer to Output Buffer
-	void encrypt(const unsigned char* in, unsigned char* out, uint64_t n, int iMode=CFB);
-	void decrypt(const unsigned char* in, unsigned char* out, uint64_t n, int iMode=CFB);
+  // encrypt/decrypt from Input Buffer to Output Buffer
+  void encrypt(const unsigned char *in, unsigned char *out, uint64_t n,
+               int iMode = CFB);
+  void decrypt(const unsigned char *in, unsigned char *out, uint64_t n,
+               int iMode = CFB);
 
-//Private Functions
+  // Private Functions
 private:
-	unsigned int F(unsigned int ui);
-	void encrypt(sblock&);
-	void decrypt(sblock&);
+  unsigned int F(unsigned int ui);
+  void encrypt(sblock &);
+  void decrypt(sblock &);
 
 private:
-	//The Initialization Vector, by default {0, 0}
-	sblock m_oChain0;
-	sblock m_oChain;
-	unsigned int m_auiP[18];
-	unsigned int m_auiS[4][256];
-	static const unsigned int scm_auiInitP[18];
-	static const unsigned int scm_auiInitS[4][256];
+  // The Initialization Vector, by default {0, 0}
+  sblock m_oChain0;
+  sblock m_oChain;
+  unsigned int m_auiP[18];
+  unsigned int m_auiS[4][256];
+  static const unsigned int scm_auiInitP[18];
+  static const unsigned int scm_auiInitS[4][256];
 };
-
 
 } // namespace fc
-
-

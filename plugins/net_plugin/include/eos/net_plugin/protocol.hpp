@@ -1,91 +1,85 @@
 #pragma once
+#include <chrono>
 #include <eos/chain/block.hpp>
 #include <eos/chain/types.hpp>
-#include <chrono>
 
 namespace eos {
-   using namespace chain;
-   using namespace fc;
+using namespace chain;
+using namespace fc;
 
-  struct handshake_message {
-      int16_t         network_version = 0;
-      chain_id_type   chain_id; ///< used to identify chain
-      fc::sha256      node_id; ///< used to identify peers and prevent self-connect
-      string          p2p_address;
-      uint32_t        last_irreversible_block_num = 0;
-      block_id_type   last_irreversible_block_id;
-      uint32_t        head_num = 0;
-      block_id_type   head_id;
-      string          os;
-      string          agent;
-   };
+struct handshake_message {
+  int16_t network_version = 0;
+  chain_id_type chain_id; ///< used to identify chain
+  fc::sha256 node_id;     ///< used to identify peers and prevent self-connect
+  string p2p_address;
+  uint32_t last_irreversible_block_num = 0;
+  block_id_type last_irreversible_block_id;
+  uint32_t head_num = 0;
+  block_id_type head_id;
+  string os;
+  string agent;
+};
 
-   typedef std::chrono::system_clock::duration::rep tstamp;
-   typedef int32_t                                  tdist;
+typedef std::chrono::system_clock::duration::rep tstamp;
+typedef int32_t tdist;
 
-   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
+static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8,
+              "system_clock is expected to be at least 64 bits");
 
-   struct time_message {
-              tstamp  org;       //!< origin timestamp
-              tstamp  rec;       //!< receive timestamp
-              tstamp  xmt;       //!< transmit timestamp
-      mutable tstamp  dst;       //!< destination timestamp
-   };
+struct time_message {
+  tstamp org;         //!< origin timestamp
+  tstamp rec;         //!< receive timestamp
+  tstamp xmt;         //!< transmit timestamp
+  mutable tstamp dst; //!< destination timestamp
+};
 
-  using ordered_txn_ids = vector<transaction_id_type>;
-  using ordered_blk_ids = vector<block_id_type>;
+using ordered_txn_ids = vector<transaction_id_type>;
+using ordered_blk_ids = vector<block_id_type>;
 
-  struct notice_message {
-      ordered_txn_ids known_trx;
-      ordered_blk_ids known_blocks;
-   };
+struct notice_message {
+  ordered_txn_ids known_trx;
+  ordered_blk_ids known_blocks;
+};
 
-   struct request_message {
-      ordered_txn_ids req_trx;
-      ordered_blk_ids req_blocks;
-   };
+struct request_message {
+  ordered_txn_ids req_trx;
+  ordered_blk_ids req_blocks;
+};
 
-  struct thread_ids {
-    ordered_txn_ids gen_trx; // is this necessary to send?
-    ordered_txn_ids user_trx;
-  };
+struct thread_ids {
+  ordered_txn_ids gen_trx; // is this necessary to send?
+  ordered_txn_ids user_trx;
+};
 
-  using cycle_ids = vector<thread_ids>;
-   struct block_summary_message {
-      signed_block_header         block_header;
-      vector<cycle_ids>           trx_ids;
-   };
+using cycle_ids = vector<thread_ids>;
+struct block_summary_message {
+  signed_block_header block_header;
+  vector<cycle_ids> trx_ids;
+};
 
-   struct sync_request_message {
-      uint32_t start_block;
-      uint32_t end_block;
-   };
+struct sync_request_message {
+  uint32_t start_block;
+  uint32_t end_block;
+};
 
-   using net_message = static_variant<handshake_message,
-                                      time_message,
-                                      notice_message,
-                                      request_message,
-                                      sync_request_message,
-                                      block_summary_message,
-                                      SignedTransaction,
-                                      signed_block>;
+using net_message =
+    static_variant<handshake_message, time_message, notice_message,
+                   request_message, sync_request_message, block_summary_message,
+                   SignedTransaction, signed_block>;
 
 } // namespace eos
 
+FC_REFLECT(eos::handshake_message,
+           (network_version)(chain_id)(node_id)(p2p_address)(
+               last_irreversible_block_num)(last_irreversible_block_id)(
+               head_num)(head_id)(os)(agent))
 
-FC_REFLECT( eos::handshake_message,
-            (network_version)(chain_id)(node_id)
-            (p2p_address)
-            (last_irreversible_block_num)(last_irreversible_block_id)
-            (head_num)(head_id)
-            (os)(agent) )
-
-FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( eos::thread_ids, (gen_trx)(user_trx) );
-FC_REFLECT( eos::block_summary_message, (block_header)(trx_ids) )
-FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
-FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
-FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
+FC_REFLECT(eos::time_message, (org)(rec)(xmt)(dst))
+FC_REFLECT(eos::thread_ids, (gen_trx)(user_trx));
+FC_REFLECT(eos::block_summary_message, (block_header)(trx_ids))
+FC_REFLECT(eos::notice_message, (known_trx)(known_blocks))
+FC_REFLECT(eos::request_message, (req_trx)(req_blocks))
+FC_REFLECT(eos::sync_request_message, (start_block)(end_block))
 
 /**
  *
@@ -118,7 +112,8 @@ State:
          if peer does not know about transactions
             sends the oldest transactions that is not known by the remote peer
             yield continue
-         wait for new validated block, transaction, or peer signal from network fiber
+         wait for new validated block, transaction, or peer signal from network
+fiber
       } else {
          we assume peer is in sync mode in which case it is operating on a
          request / response basis
@@ -129,23 +124,30 @@ State:
 
     read loop
       if hello message
-         verify that peers Last Ir Block is in our state or disconnect, they are on fork
+         verify that peers Last Ir Block is in our state or disconnect, they are
+on fork
          verify peer network protocol
 
       if notice message update list of transactions known by remote peer
       if trx message then insert into global state as unvalidated
-      if blk summary message then insert into global state *if* we know of all dependent transactions
+      if blk summary message then insert into global state *if* we know of all
+dependent transactions
          else close connection
 
 
-    if my head block < the LIB of a peer and my head block age > block interval * round_size/2 then
+    if my head block < the LIB of a peer and my head block age > block interval
+* round_size/2 then
     enter sync mode...
-        divide the block numbers you need to fetch among peers and send fetch request
-        if peer does not respond to request in a timely manner then make request to another peer
-        ensure that there is a constant queue of requests in flight and everytime a request is filled
+        divide the block numbers you need to fetch among peers and send fetch
+request
+        if peer does not respond to request in a timely manner then make request
+to another peer
+        ensure that there is a constant queue of requests in flight and
+everytime a request is filled
         send of another request.
 
-     Once you have caught up to all peers, notify all peers of your head block so they know that you
+     Once you have caught up to all peers, notify all peers of your head block
+so they know that you
      know the LIB and will start sending you real time transactions
 
 parallel fetches, request in groups

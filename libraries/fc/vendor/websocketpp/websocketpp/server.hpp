@@ -30,4 +30,4 @@
 
 #include <websocketpp/roles/server_endpoint.hpp>
 
-#endif //WEBSOCKETPP_SERVER_HPP
+#endif // WEBSOCKETPP_SERVER_HPP

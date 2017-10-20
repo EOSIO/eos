@@ -56,127 +56,112 @@ namespace parser {
  */
 class response : public parser {
 public:
-    typedef response type;
-    typedef lib::shared_ptr<type> ptr;
+  typedef response type;
+  typedef lib::shared_ptr<type> ptr;
 
-    response()
-      : m_read(0)
-      , m_buf(lib::make_shared<std::string>())
-      , m_status_code(status_code::uninitialized)
-      , m_state(RESPONSE_LINE) {}
+  response()
+      : m_read(0), m_buf(lib::make_shared<std::string>()),
+        m_status_code(status_code::uninitialized), m_state(RESPONSE_LINE) {}
 
-    /// Process bytes in the input buffer
-    /**
-     * Process up to len bytes from input buffer buf. Returns the number of
-     * bytes processed. Bytes left unprocessed means bytes left over after the
-     * final header delimiters.
-     *
-     * Consume is a streaming processor. It may be called multiple times on one
-     * response and the full headers need not be available before processing can
-     * begin. If the end of the response was reached during this call to consume
-     * the ready flag will be set. Further calls to consume once ready will be
-     * ignored.
-     *
-     * Consume will throw an http::exception in the case of an error. Typical
-     * error reasons include malformed responses, incomplete responses, and max
-     * header size being reached.
-     *
-     * @param buf Pointer to byte buffer
-     * @param len Size of byte buffer
-     * @return Number of bytes processed.
-     */
-    size_t consume(char const * buf, size_t len);
+  /// Process bytes in the input buffer
+  /**
+   * Process up to len bytes from input buffer buf. Returns the number of
+   * bytes processed. Bytes left unprocessed means bytes left over after the
+   * final header delimiters.
+   *
+   * Consume is a streaming processor. It may be called multiple times on one
+   * response and the full headers need not be available before processing can
+   * begin. If the end of the response was reached during this call to consume
+   * the ready flag will be set. Further calls to consume once ready will be
+   * ignored.
+   *
+   * Consume will throw an http::exception in the case of an error. Typical
+   * error reasons include malformed responses, incomplete responses, and max
+   * header size being reached.
+   *
+   * @param buf Pointer to byte buffer
+   * @param len Size of byte buffer
+   * @return Number of bytes processed.
+   */
+  size_t consume(char const *buf, size_t len);
 
-    /// Process bytes in the input buffer (istream version)
-    /**
-     * Process bytes from istream s. Returns the number of bytes processed. 
-     * Bytes left unprocessed means bytes left over after the final header
-     * delimiters.
-     *
-     * Consume is a streaming processor. It may be called multiple times on one
-     * response and the full headers need not be available before processing can
-     * begin. If the end of the response was reached during this call to consume
-     * the ready flag will be set. Further calls to consume once ready will be
-     * ignored.
-     *
-     * Consume will throw an http::exception in the case of an error. Typical
-     * error reasons include malformed responses, incomplete responses, and max
-     * header size being reached.
-     *
-     * @param buf Pointer to byte buffer
-     * @param len Size of byte buffer
-     * @return Number of bytes processed.
-     */
-    size_t consume(std::istream & s);
+  /// Process bytes in the input buffer (istream version)
+  /**
+   * Process bytes from istream s. Returns the number of bytes processed.
+   * Bytes left unprocessed means bytes left over after the final header
+   * delimiters.
+   *
+   * Consume is a streaming processor. It may be called multiple times on one
+   * response and the full headers need not be available before processing can
+   * begin. If the end of the response was reached during this call to consume
+   * the ready flag will be set. Further calls to consume once ready will be
+   * ignored.
+   *
+   * Consume will throw an http::exception in the case of an error. Typical
+   * error reasons include malformed responses, incomplete responses, and max
+   * header size being reached.
+   *
+   * @param buf Pointer to byte buffer
+   * @param len Size of byte buffer
+   * @return Number of bytes processed.
+   */
+  size_t consume(std::istream &s);
 
-    /// Returns true if the response is ready.
-    /**
-     * @note will never return true if the content length header is not present
-     */
-    bool ready() const {
-        return m_state == DONE;
-    }
+  /// Returns true if the response is ready.
+  /**
+   * @note will never return true if the content length header is not present
+   */
+  bool ready() const { return m_state == DONE; }
 
-    /// Returns true if the response headers are fully parsed.
-    bool headers_ready() const {
-        return (m_state == BODY || m_state == DONE);
-    }
+  /// Returns true if the response headers are fully parsed.
+  bool headers_ready() const { return (m_state == BODY || m_state == DONE); }
 
-    /// Returns the full raw response
-    std::string raw() const;
+  /// Returns the full raw response
+  std::string raw() const;
 
-    /// Set response status code and message
-    /**
-     * Sets the response status code to `code` and looks up the corresponding
-     * message for standard codes. Non-standard codes will be entered as Unknown
-     * use set_status(status_code::value,std::string) overload to set both
-     * values explicitly.
-     *
-     * @param code Code to set
-     * @param msg Message to set
-     */
-    void set_status(status_code::value code);
+  /// Set response status code and message
+  /**
+   * Sets the response status code to `code` and looks up the corresponding
+   * message for standard codes. Non-standard codes will be entered as Unknown
+   * use set_status(status_code::value,std::string) overload to set both
+   * values explicitly.
+   *
+   * @param code Code to set
+   * @param msg Message to set
+   */
+  void set_status(status_code::value code);
 
-    /// Set response status code and message
-    /**
-     * Sets the response status code and message to independent custom values.
-     * use set_status(status_code::value) to set the code and have the standard
-     * message be automatically set.
-     *
-     * @param code Code to set
-     * @param msg Message to set
-     */
-    void set_status(status_code::value code, std::string const & msg);
+  /// Set response status code and message
+  /**
+   * Sets the response status code and message to independent custom values.
+   * use set_status(status_code::value) to set the code and have the standard
+   * message be automatically set.
+   *
+   * @param code Code to set
+   * @param msg Message to set
+   */
+  void set_status(status_code::value code, std::string const &msg);
 
-    /// Return the response status code
-    status_code::value get_status_code() const {
-        return m_status_code;
-    }
+  /// Return the response status code
+  status_code::value get_status_code() const { return m_status_code; }
 
-    /// Return the response status message
-    const std::string& get_status_msg() const {
-        return m_status_msg;
-    }
+  /// Return the response status message
+  const std::string &get_status_msg() const { return m_status_msg; }
+
 private:
-    /// Helper function for consume. Process response line
-    void process(std::string::iterator begin, std::string::iterator end);
+  /// Helper function for consume. Process response line
+  void process(std::string::iterator begin, std::string::iterator end);
 
-    /// Helper function for processing body bytes
-    size_t process_body(char const * buf, size_t len);
+  /// Helper function for processing body bytes
+  size_t process_body(char const *buf, size_t len);
 
-    enum state {
-        RESPONSE_LINE = 0,
-        HEADERS = 1,
-        BODY = 2,
-        DONE = 3
-    };
+  enum state { RESPONSE_LINE = 0, HEADERS = 1, BODY = 2, DONE = 3 };
 
-    std::string                     m_status_msg;
-    size_t                          m_read;
-    lib::shared_ptr<std::string>    m_buf;
-    status_code::value              m_status_code;
-    state                           m_state;
-
+  std::string m_status_msg;
+  size_t m_read;
+  lib::shared_ptr<std::string> m_buf;
+  status_code::value m_status_code;
+  state m_state;
 };
 
 } // namespace parser

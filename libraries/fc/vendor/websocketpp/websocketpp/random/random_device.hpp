@@ -49,32 +49,30 @@ namespace random_device {
  *
  * Call operator() to generate the next number
  */
-template <typename int_type, typename concurrency>
-class int_generator {
-    public:
-        typedef typename concurrency::scoped_lock_type scoped_lock_type;
-        typedef typename concurrency::mutex_type mutex_type;
+template <typename int_type, typename concurrency> class int_generator {
+public:
+  typedef typename concurrency::scoped_lock_type scoped_lock_type;
+  typedef typename concurrency::mutex_type mutex_type;
 
-        /// constructor
-        //mac TODO: figure out if signed types present a range problem
-        int_generator() {}
+  /// constructor
+  // mac TODO: figure out if signed types present a range problem
+  int_generator() {}
 
-        /// advances the engine's state and returns the generated value
-        int_type operator()() {
-            scoped_lock_type guard(m_lock);
-            return m_dis(m_rng);
-        }
-    private:
+  /// advances the engine's state and returns the generated value
+  int_type operator()() {
+    scoped_lock_type guard(m_lock);
+    return m_dis(m_rng);
+  }
 
+private:
+  lib::random_device m_rng;
+  lib::uniform_int_distribution<int_type> m_dis;
 
-        lib::random_device m_rng;
-        lib::uniform_int_distribution<int_type> m_dis;
-
-        mutex_type m_lock;
+  mutex_type m_lock;
 };
 
 } // namespace random_device
 } // namespace random
 } // namespace websocketpp
 
-#endif //WEBSOCKETPP_RANDOM_RANDOM_DEVICE_HPP
+#endif // WEBSOCKETPP_RANDOM_RANDOM_DEVICE_HPP

@@ -6,8 +6,9 @@
 
 #include <fc/variant_object.hpp>
 
-namespace eos { namespace chain {
+namespace eos {
+namespace chain {
 
 fc::variant_object get_config();
-
-} } // eos::chain
+}
+} // eos::chain

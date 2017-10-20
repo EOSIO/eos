@@ -6,12 +6,13 @@
 #include <eos/native_contract/genesis_state.hpp>
 
 // these are required to serialize a genesis_state
-#include <fc/smart_ref_impl.hpp>   // required for gcc in release mode
+#include <fc/smart_ref_impl.hpp> // required for gcc in release mode
 
-namespace eos { namespace native_contract {
+namespace eos {
+namespace native_contract {
 
 chain::chain_id_type genesis_state_type::compute_chain_id() const {
-   return initial_chain_id;
+  return initial_chain_id;
 }
-
-} } // eos::native_contract
+}
+} // eos::native_contract

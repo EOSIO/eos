@@ -28,8 +28,8 @@
 #ifndef WEBSOCKETPP_TRANSPORT_BASE_CON_HPP
 #define WEBSOCKETPP_TRANSPORT_BASE_CON_HPP
 
-#include <websocketpp/common/cpp11.hpp>
 #include <websocketpp/common/connection_hdl.hpp>
+#include <websocketpp/common/cpp11.hpp>
 #include <websocketpp/common/functional.hpp>
 #include <websocketpp/common/system_error.hpp>
 
@@ -117,7 +117,7 @@ namespace transport {
 typedef lib::function<void(lib::error_code const &)> init_handler;
 
 /// The type and signature of the callback passed to the read method
-typedef lib::function<void(lib::error_code const &,size_t)> read_handler;
+typedef lib::function<void(lib::error_code const &, size_t)> read_handler;
 
 /// The type and signature of the callback passed to the write method
 typedef lib::function<void(lib::error_code const &)> write_handler;
@@ -136,102 +136,102 @@ typedef lib::function<void()> dispatch_handler;
 
 /// A simple utility buffer class
 struct buffer {
-    buffer(char const * b, size_t l) : buf(b),len(l) {}
+  buffer(char const *b, size_t l) : buf(b), len(l) {}
 
-    char const * buf;
-    size_t len;
+  char const *buf;
+  size_t len;
 };
 
 /// Generic transport related errors
 namespace error {
 enum value {
-    /// Catch-all error for transport policy errors that don't fit in other
-    /// categories
-    general = 1,
+  /// Catch-all error for transport policy errors that don't fit in other
+  /// categories
+  general = 1,
 
-    /// underlying transport pass through
-    pass_through,
+  /// underlying transport pass through
+  pass_through,
 
-    /// async_read_at_least call requested more bytes than buffer can store
-    invalid_num_bytes,
+  /// async_read_at_least call requested more bytes than buffer can store
+  invalid_num_bytes,
 
-    /// async_read called while another async_read was in progress
-    double_read,
+  /// async_read called while another async_read was in progress
+  double_read,
 
-    /// Operation aborted
-    operation_aborted,
+  /// Operation aborted
+  operation_aborted,
 
-    /// Operation not supported
-    operation_not_supported,
+  /// Operation not supported
+  operation_not_supported,
 
-    /// End of file
-    eof,
+  /// End of file
+  eof,
 
-    /// TLS short read
-    tls_short_read,
+  /// TLS short read
+  tls_short_read,
 
-    /// Timer expired
-    timeout,
+  /// Timer expired
+  timeout,
 
-    /// read or write after shutdown
-    action_after_shutdown,
+  /// read or write after shutdown
+  action_after_shutdown,
 
-    /// Other TLS error
-    tls_error
+  /// Other TLS error
+  tls_error
 };
 
 class category : public lib::error_category {
-    public:
-    category() {}
+public:
+  category() {}
 
-    char const * name() const _WEBSOCKETPP_NOEXCEPT_TOKEN_ {
-        return "websocketpp.transport";
-    }
+  char const *name() const _WEBSOCKETPP_NOEXCEPT_TOKEN_ {
+    return "websocketpp.transport";
+  }
 
-    std::string message(int value) const {
-        switch(value) {
-            case general:
-                return "Generic transport policy error";
-            case pass_through:
-                return "Underlying Transport Error";
-            case invalid_num_bytes:
-                return "async_read_at_least call requested more bytes than buffer can store";
-            case operation_aborted:
-                return "The operation was aborted";
-            case operation_not_supported:
-                return "The operation is not supported by this transport";
-            case eof:
-                return "End of File";
-            case tls_short_read:
-                return "TLS Short Read";
-            case timeout:
-                return "Timer Expired";
-            case action_after_shutdown:
-                return "A transport action was requested after shutdown";
-            case tls_error:
-                return "Generic TLS related error";
-            default:
-                return "Unknown";
-        }
+  std::string message(int value) const {
+    switch (value) {
+    case general:
+      return "Generic transport policy error";
+    case pass_through:
+      return "Underlying Transport Error";
+    case invalid_num_bytes:
+      return "async_read_at_least call requested more bytes than buffer can "
+             "store";
+    case operation_aborted:
+      return "The operation was aborted";
+    case operation_not_supported:
+      return "The operation is not supported by this transport";
+    case eof:
+      return "End of File";
+    case tls_short_read:
+      return "TLS Short Read";
+    case timeout:
+      return "Timer Expired";
+    case action_after_shutdown:
+      return "A transport action was requested after shutdown";
+    case tls_error:
+      return "Generic TLS related error";
+    default:
+      return "Unknown";
     }
+  }
 };
 
-inline lib::error_category const & get_category() {
-    static category instance;
-    return instance;
+inline lib::error_category const &get_category() {
+  static category instance;
+  return instance;
 }
 
 inline lib::error_code make_error_code(error::value e) {
-    return lib::error_code(static_cast<int>(e), get_category());
+  return lib::error_code(static_cast<int>(e), get_category());
 }
 
 } // namespace error
 } // namespace transport
 } // namespace websocketpp
 _WEBSOCKETPP_ERROR_CODE_ENUM_NS_START_
-template<> struct is_error_code_enum<websocketpp::transport::error::value>
-{
-    static bool const value = true;
+template <> struct is_error_code_enum<websocketpp::transport::error::value> {
+  static bool const value = true;
 };
 _WEBSOCKETPP_ERROR_CODE_ENUM_NS_END_
 

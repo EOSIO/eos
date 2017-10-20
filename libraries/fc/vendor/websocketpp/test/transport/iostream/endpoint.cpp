@@ -32,7 +32,7 @@
 
 #include <websocketpp/transport/iostream/endpoint.hpp>
 
-BOOST_AUTO_TEST_CASE( placeholder ) {}
+BOOST_AUTO_TEST_CASE(placeholder) {}
 
 /*BOOST_AUTO_TEST_CASE( blank_error ) {
     websocketpp::lib::error_code ec;

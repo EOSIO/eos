@@ -31,28 +31,27 @@
 //#include <city.h>
 
 #include <algorithm>
-#include <string.h>  // for memcpy and memset
+#include <fc/array.hpp>
 #include <fc/crypto/city.hpp>
 #include <fc/uint128.hpp>
-#include <fc/array.hpp>
+#include <string.h> // for memcpy and memset
 
 #if defined(__SSE4_2__) && defined(__x86_64__)
 #include <nmmintrin.h>
 #else
-uint64_t _mm_crc32_u64(uint64_t a, uint64_t b );
+uint64_t _mm_crc32_u64(uint64_t a, uint64_t b);
 #endif
 
 namespace fc {
 
 using namespace std;
 
-
-inline uint64_t Uint128Low64(const uint128& x) { return x.low_bits(); }
-inline uint64_t Uint128High64(const uint128& x) { return x.high_bits(); }
+inline uint64_t Uint128Low64(const uint128 &x) { return x.low_bits(); }
+inline uint64_t Uint128High64(const uint128 &x) { return x.high_bits(); }
 
 // Hash 128 input bits down to 64 bits of output.
 // This is intended to be a reasonably good hash function.
-inline uint64_t Hash128to64(const uint128& x) {
+inline uint64_t Hash128to64(const uint128 &x) {
   // Murmur-inspired hashing.
   const uint64_t kMul = 0x9ddfea08eb382d69ULL;
   uint64_t a = (Uint128Low64(x) ^ Uint128High64(x)) * kMul;
@@ -108,8 +107,8 @@ static uint32_t UNALIGNED_LOAD32(const char *p) {
 
 #elif defined(__NetBSD__)
 
-#include <sys/types.h>
 #include <machine/bswap.h>
+#include <sys/types.h>
 #if defined(__BSWAP_RENAME) && !defined(__bswap_32)
 #define bswap_32(x) bswap32(x)
 #define bswap_64(x) bswap64(x)
@@ -155,8 +154,7 @@ static const uint32_t c1 = 0xcc9e2d51;
 static const uint32_t c2 = 0x1b873593;
 
 // A 32-bit to 32-bit integer hash copied from Murmur3.
-static uint32_t fmix(uint32_t h)
-{
+static uint32_t fmix(uint32_t h) {
   h ^= h >> 16;
   h *= 0x85ebca6b;
   h ^= h >> 13;
@@ -171,7 +169,11 @@ static uint32_t Rotate32(uint32_t val, int shift) {
 }
 
 #undef PERMUTE3
-#define PERMUTE3(a, b, c) do { std::swap(a, b); std::swap(a, c); } while (0)
+#define PERMUTE3(a, b, c)                                                      \
+  do {                                                                         \
+    std::swap(a, b);                                                           \
+    std::swap(a, c);                                                           \
+  } while (0)
 
 static uint32_t Mur(uint32_t a, uint32_t h) {
   // Helper from Murmur3 for combining two 32-bit values.
@@ -216,9 +218,9 @@ static uint32_t Hash32Len5to12(const char *s, size_t len) {
 
 uint32_t city_hash32(const char *s, size_t len) {
   if (len <= 24) {
-    return len <= 12 ?
-        (len <= 4 ? Hash32Len0to4(s, len) : Hash32Len5to12(s, len)) :
-        Hash32Len13to24(s, len);
+    return len <= 12
+               ? (len <= 4 ? Hash32Len0to4(s, len) : Hash32Len5to12(s, len))
+               : Hash32Len13to24(s, len);
   }
 
   // len > 24
@@ -290,9 +292,7 @@ static uint64_t Rotate(uint64_t val, int shift) {
   return shift == 0 ? val : ((val >> shift) | (val << (64 - shift)));
 }
 
-static uint64_t ShiftMix(uint64_t val) {
-  return val ^ (val >> 47);
-}
+static uint64_t ShiftMix(uint64_t val) { return val ^ (val >> 47); }
 
 static uint64_t HashLen16(uint64_t u, uint64_t v) {
   return Hash128to64(uint128(u, v));
@@ -347,8 +347,9 @@ static uint64_t HashLen17to32(const char *s, size_t len) {
 
 // Return a 16-byte hash for 48 bytes.  Quick and dirty.
 // Callers do best to use "random-looking" values for a and b.
-static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(
-    uint64_t w, uint64_t x, uint64_t y, uint64_t z, uint64_t a, uint64_t b) {
+static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(uint64_t w, uint64_t x,
+                                                       uint64_t y, uint64_t z,
+                                                       uint64_t a, uint64_t b) {
   a += w;
   b = Rotate(b + a + z, 21);
   uint64_t c = a;
@@ -359,14 +360,10 @@ static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(
 }
 
 // Return a 16-byte hash for s[0] ... s[31], a, and b.  Quick and dirty.
-static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(
-    const char* s, uint64_t a, uint64_t b) {
-  return WeakHashLen32WithSeeds(Fetch64(s),
-                                Fetch64(s + 8),
-                                Fetch64(s + 16),
-                                Fetch64(s + 24),
-                                a,
-                                b);
+static pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(const char *s,
+                                                       uint64_t a, uint64_t b) {
+  return WeakHashLen32WithSeeds(Fetch64(s), Fetch64(s + 8), Fetch64(s + 16),
+                                Fetch64(s + 24), a, b);
 }
 
 // Return an 8-byte hash for 33 to 64 bytes.
@@ -429,8 +426,8 @@ uint64_t city_hash64(const char *s, size_t len) {
                    HashLen16(v.second, w.second) + x);
 }
 
-uint64_t CityHash64WithSeeds(const char *s, size_t len,
-                           uint64_t seed0, uint64_t seed1) {
+uint64_t CityHash64WithSeeds(const char *s, size_t len, uint64_t seed0,
+                             uint64_t seed1) {
   return HashLen16(city_hash64(s, len) - seed0, seed1);
 }
 
@@ -446,11 +443,11 @@ static uint128 CityMurmur(const char *s, size_t len, uint128 seed) {
   uint64_t c = 0;
   uint64_t d = 0;
   signed long l = len - 16;
-  if (l <= 0) {  // len <= 16
+  if (l <= 0) { // len <= 16
     a = ShiftMix(a * k1) * k1;
     c = b * k1 + HashLen0to16(s, len);
     d = ShiftMix(a + (len >= 8 ? Fetch64(s) : c));
-  } else {  // len > 16
+  } else { // len > 16
     c = HashLen16(Fetch64(s + len - 8) + k1, a);
     d = HashLen16(b + len, c + Fetch64(s + len - 16));
     a += d;
@@ -514,7 +511,7 @@ uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed) {
   w.first *= 9;
   v.first *= k0;
   // If 0 < len < 128, hash up to 4 chunks of 32 bytes each from the end of s.
-  for (size_t tail_done = 0; tail_done < len; ) {
+  for (size_t tail_done = 0; tail_done < len;) {
     tail_done += 32;
     y = Rotate(x + y, 42) * k0 + v.second;
     w.first += Fetch64(s + len - tail_done + 16);
@@ -534,10 +531,10 @@ uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed) {
 }
 
 uint128 city_hash128(const char *s, size_t len) {
-  return len >= 16 ?
-      CityHash128WithSeed(s + 16, len - 16,
-                          uint128(Fetch64(s), Fetch64(s + 8) + k0)) :
-      CityHash128WithSeed(s, len, uint128(k0, k1));
+  return len >= 16
+             ? CityHash128WithSeed(s + 16, len - 16,
+                                   uint128(Fetch64(s), Fetch64(s + 8) + k0))
+             : CityHash128WithSeed(s, len, uint128(k0, k1));
 }
 
 //#ifdef __SSE4_2__
@@ -545,8 +542,8 @@ uint128 city_hash128(const char *s, size_t len) {
 //#include <nmmintrin.h>
 
 // Requires len >= 240.
-static void CityHashCrc256Long(const char *s, size_t len,
-                               uint32_t seed, uint64_t *result) {
+static void CityHashCrc256Long(const char *s, size_t len, uint32_t seed,
+                               uint64_t *result) {
   uint64_t a = Fetch64(s + 56) + k0;
   uint64_t b = Fetch64(s + 96) + k0;
   uint64_t c = result[0] = HashLen16(b, len);
@@ -564,33 +561,39 @@ static void CityHashCrc256Long(const char *s, size_t len,
   len -= iters * 240;
   do {
 #undef CHUNK
-#define CHUNK(r)                                \
-    PERMUTE3(x, z, y);                          \
-    b += Fetch64(s);                            \
-    c += Fetch64(s + 8);                        \
-    d += Fetch64(s + 16);                       \
-    e += Fetch64(s + 24);                       \
-    f += Fetch64(s + 32);                       \
-    a += b;                                     \
-    h += f;                                     \
-    b += c;                                     \
-    f += d;                                     \
-    g += e;                                     \
-    e += z;                                     \
-    g += x;                                     \
-    z = _mm_crc32_u64(z, b + g);                \
-    y = _mm_crc32_u64(y, e + h);                \
-    x = _mm_crc32_u64(x, f + a);                \
-    e = Rotate(e, r);                           \
-    c += e;                                     \
-    s += 40
+#define CHUNK(r)                                                               \
+  PERMUTE3(x, z, y);                                                           \
+  b += Fetch64(s);                                                             \
+  c += Fetch64(s + 8);                                                         \
+  d += Fetch64(s + 16);                                                        \
+  e += Fetch64(s + 24);                                                        \
+  f += Fetch64(s + 32);                                                        \
+  a += b;                                                                      \
+  h += f;                                                                      \
+  b += c;                                                                      \
+  f += d;                                                                      \
+  g += e;                                                                      \
+  e += z;                                                                      \
+  g += x;                                                                      \
+  z = _mm_crc32_u64(z, b + g);                                                 \
+  y = _mm_crc32_u64(y, e + h);                                                 \
+  x = _mm_crc32_u64(x, f + a);                                                 \
+  e = Rotate(e, r);                                                            \
+  c += e;                                                                      \
+  s += 40
 
-    CHUNK(0); PERMUTE3(a, h, c);
-    CHUNK(33); PERMUTE3(a, h, f);
-    CHUNK(0); PERMUTE3(b, h, f);
-    CHUNK(42); PERMUTE3(b, h, d);
-    CHUNK(0); PERMUTE3(b, h, e);
-    CHUNK(33); PERMUTE3(a, h, e);
+    CHUNK(0);
+    PERMUTE3(a, h, c);
+    CHUNK(33);
+    PERMUTE3(a, h, f);
+    CHUNK(0);
+    PERMUTE3(b, h, f);
+    CHUNK(42);
+    PERMUTE3(b, h, d);
+    CHUNK(0);
+    PERMUTE3(b, h, e);
+    CHUNK(33);
+    PERMUTE3(a, h, e);
   } while (--iters > 0);
 
   while (len >= 40) {
@@ -648,11 +651,10 @@ void CityHashCrc256(const char *s, size_t len, uint64_t *result) {
   }
 }
 
-array<uint64_t,4> city_hash_crc_256(const char *s, size_t len)
-{
-   array<uint64_t,4> buf;
-   CityHashCrc256( s, len, (uint64_t*)&buf );
-   return buf;
+array<uint64_t, 4> city_hash_crc_256(const char *s, size_t len) {
+  array<uint64_t, 4> buf;
+  CityHashCrc256(s, len, (uint64_t *)&buf);
+  return buf;
 }
 
 uint128 CityHashCrc128WithSeed(const char *s, size_t len, uint128 seed) {
