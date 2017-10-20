@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 
 /* Common stuff for cryptographic hashes
  */
