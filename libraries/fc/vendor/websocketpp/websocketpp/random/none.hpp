@@ -42,19 +42,16 @@ namespace none {
  *
  * Call operator() to generate the next number
  */
-template <typename int_type>
-class int_generator {
-    public:
-        int_generator() {}
+template <typename int_type> class int_generator {
+public:
+  int_generator() {}
 
-        /// advances the engine's state and returns the generated value
-        int_type operator()() {
-            return 0;
-        }
+  /// advances the engine's state and returns the generated value
+  int_type operator()() { return 0; }
 };
 
 } // namespace none
 } // namespace random
 } // namespace websocketpp
 
-#endif //WEBSOCKETPP_RANDOM_NONE_HPP
+#endif // WEBSOCKETPP_RANDOM_NONE_HPP

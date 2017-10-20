@@ -40,8 +40,8 @@ namespace config {
  * own policies for components that even the core config includes.
  *
  * NOTE: this config stubs out enough that it cannot be used directly. You must
- * supply at least a transport policy and a cryptographically secure random 
- * number generation policy for a config based on `minimal_client` to do 
+ * supply at least a transport policy and a cryptographically secure random
+ * number generation policy for a config based on `minimal_client` to do
  * anything useful.
  *
  * Present dependency list for minimal_server config:

@@ -8,27 +8,27 @@
 namespace fc {
 
 class file_appender : public appender {
-    public:
-         struct config {
-            config( const fc::path& p = "log.txt" );
+public:
+  struct config {
+    config(const fc::path &p = "log.txt");
 
-            fc::string                         format;
-            fc::path                           filename;
-            bool                               flush = true;
-            bool                               rotate = false;
-            microseconds                       rotation_interval;
-            microseconds                       rotation_limit;
-         };
-         file_appender( const variant& args );
-         ~file_appender();
-         virtual void log( const log_message& m )override;
+    fc::string format;
+    fc::path filename;
+    bool flush = true;
+    bool rotate = false;
+    microseconds rotation_interval;
+    microseconds rotation_limit;
+  };
+  file_appender(const variant &args);
+  ~file_appender();
+  virtual void log(const log_message &m) override;
 
-      private:
-         class impl;
-         fc::shared_ptr<impl> my;
-   };
+private:
+  class impl;
+  fc::shared_ptr<impl> my;
+};
 } // namespace fc
 
 #include <fc/reflect/reflect.hpp>
-FC_REFLECT( fc::file_appender::config,
-            (format)(filename)(flush)(rotate)(rotation_interval)(rotation_limit) )
+FC_REFLECT(fc::file_appender::config,
+           (format)(filename)(flush)(rotate)(rotation_interval)(rotation_limit))

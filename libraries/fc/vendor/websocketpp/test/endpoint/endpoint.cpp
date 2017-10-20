@@ -34,34 +34,34 @@
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
 
-BOOST_AUTO_TEST_CASE( construct_server_iostream ) {
-    websocketpp::server<websocketpp::config::core> s;
+BOOST_AUTO_TEST_CASE(construct_server_iostream) {
+  websocketpp::server<websocketpp::config::core> s;
 }
 
-BOOST_AUTO_TEST_CASE( construct_server_asio_plain ) {
-    websocketpp::server<websocketpp::config::asio> s;
+BOOST_AUTO_TEST_CASE(construct_server_asio_plain) {
+  websocketpp::server<websocketpp::config::asio> s;
 }
 
-BOOST_AUTO_TEST_CASE( construct_server_asio_tls ) {
-    websocketpp::server<websocketpp::config::asio_tls> s;
+BOOST_AUTO_TEST_CASE(construct_server_asio_tls) {
+  websocketpp::server<websocketpp::config::asio_tls> s;
 }
 
-BOOST_AUTO_TEST_CASE( initialize_server_asio ) {
-    websocketpp::server<websocketpp::config::asio> s;
-    s.init_asio();
+BOOST_AUTO_TEST_CASE(initialize_server_asio) {
+  websocketpp::server<websocketpp::config::asio> s;
+  s.init_asio();
 }
 
-BOOST_AUTO_TEST_CASE( initialize_server_asio_external ) {
-    websocketpp::server<websocketpp::config::asio> s;
-    boost::asio::io_service ios;
-    s.init_asio(&ios);
+BOOST_AUTO_TEST_CASE(initialize_server_asio_external) {
+  websocketpp::server<websocketpp::config::asio> s;
+  boost::asio::io_service ios;
+  s.init_asio(&ios);
 }
 
 #ifdef _WEBSOCKETPP_MOVE_SEMANTICS_
-BOOST_AUTO_TEST_CASE( move_construct_server_core ) {
-    websocketpp::server<websocketpp::config::core> s1;
-    
-    websocketpp::server<websocketpp::config::core> s2(std::move(s1));
+BOOST_AUTO_TEST_CASE(move_construct_server_core) {
+  websocketpp::server<websocketpp::config::core> s1;
+
+  websocketpp::server<websocketpp::config::core> s2(std::move(s1));
 }
 
 /*
@@ -69,15 +69,15 @@ BOOST_AUTO_TEST_CASE( move_construct_server_core ) {
 BOOST_AUTO_TEST_CASE( emplace ) {
     std::stringstream out1;
     std::stringstream out2;
-    
+
     std::vector<websocketpp::server<websocketpp::config::asio_tls>> v;
-    
+
     v.emplace_back();
     v.emplace_back();
-    
+
     v[0].get_alog().set_ostream(&out1);
     v[0].get_alog().set_ostream(&out2);
-    
+
     v[0].get_alog().write(websocketpp::log::alevel::app,"devel0");
     v[1].get_alog().write(websocketpp::log::alevel::app,"devel1");
     BOOST_CHECK( out1.str().size() > 0 );
@@ -87,69 +87,67 @@ BOOST_AUTO_TEST_CASE( emplace ) {
 #endif // _WEBSOCKETPP_MOVE_SEMANTICS_
 
 struct endpoint_extension {
-    endpoint_extension() : extension_value(5) {}
+  endpoint_extension() : extension_value(5) {}
 
-    int extension_method() {
-        return extension_value;
-    }
+  int extension_method() { return extension_value; }
 
-    bool is_server() const {
-        return false;
-    }
+  bool is_server() const { return false; }
 
-    int extension_value;
+  int extension_value;
 };
 
 struct stub_config : public websocketpp::config::core {
-    typedef core::concurrency_type concurrency_type;
+  typedef core::concurrency_type concurrency_type;
 
-    typedef core::request_type request_type;
-    typedef core::response_type response_type;
+  typedef core::request_type request_type;
+  typedef core::response_type response_type;
 
-    typedef core::message_type message_type;
-    typedef core::con_msg_manager_type con_msg_manager_type;
-    typedef core::endpoint_msg_manager_type endpoint_msg_manager_type;
+  typedef core::message_type message_type;
+  typedef core::con_msg_manager_type con_msg_manager_type;
+  typedef core::endpoint_msg_manager_type endpoint_msg_manager_type;
 
-    typedef core::alog_type alog_type;
-    typedef core::elog_type elog_type;
+  typedef core::alog_type alog_type;
+  typedef core::elog_type elog_type;
 
-    typedef core::rng_type rng_type;
+  typedef core::rng_type rng_type;
 
-    typedef core::transport_type transport_type;
+  typedef core::transport_type transport_type;
 
-    typedef endpoint_extension endpoint_base;
+  typedef endpoint_extension endpoint_base;
 };
 
-BOOST_AUTO_TEST_CASE( endpoint_extensions ) {
-    websocketpp::server<stub_config> s;
+BOOST_AUTO_TEST_CASE(endpoint_extensions) {
+  websocketpp::server<stub_config> s;
 
-    BOOST_CHECK_EQUAL( s.extension_value, 5 );
-    BOOST_CHECK_EQUAL( s.extension_method(), 5 );
+  BOOST_CHECK_EQUAL(s.extension_value, 5);
+  BOOST_CHECK_EQUAL(s.extension_method(), 5);
 
-    BOOST_CHECK( s.is_server() );
+  BOOST_CHECK(s.is_server());
 }
 
-BOOST_AUTO_TEST_CASE( listen_after_listen_failure ) {
-    using websocketpp::transport::asio::error::make_error_code;
-    using websocketpp::transport::asio::error::pass_through;
+BOOST_AUTO_TEST_CASE(listen_after_listen_failure) {
+  using websocketpp::transport::asio::error::make_error_code;
+  using websocketpp::transport::asio::error::pass_through;
 
-    websocketpp::server<websocketpp::config::asio> server1;
-    websocketpp::server<websocketpp::config::asio> server2;
+  websocketpp::server<websocketpp::config::asio> server1;
+  websocketpp::server<websocketpp::config::asio> server2;
 
-    websocketpp::lib::error_code ec;
+  websocketpp::lib::error_code ec;
 
-    server1.init_asio();
-    server2.init_asio();
+  server1.init_asio();
+  server2.init_asio();
 
-    boost::asio::ip::tcp::endpoint ep1(boost::asio::ip::address::from_string("127.0.0.1"), 12345);
-    boost::asio::ip::tcp::endpoint ep2(boost::asio::ip::address::from_string("127.0.0.1"), 23456);
+  boost::asio::ip::tcp::endpoint ep1(
+      boost::asio::ip::address::from_string("127.0.0.1"), 12345);
+  boost::asio::ip::tcp::endpoint ep2(
+      boost::asio::ip::address::from_string("127.0.0.1"), 23456);
 
-    server1.listen(ep1, ec);
-    BOOST_CHECK(!ec);
+  server1.listen(ep1, ec);
+  BOOST_CHECK(!ec);
 
-    server2.listen(ep1, ec);
-    BOOST_REQUIRE_EQUAL(ec, make_error_code(pass_through));
+  server2.listen(ep1, ec);
+  BOOST_REQUIRE_EQUAL(ec, make_error_code(pass_through));
 
-    server2.listen(ep2, ec);
-    BOOST_CHECK(!ec);
+  server2.listen(ep2, ec);
+  BOOST_CHECK(!ec);
 }

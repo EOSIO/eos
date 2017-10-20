@@ -30,4 +30,4 @@
 
 #include <websocketpp/roles/client_endpoint.hpp>
 
-#endif //WEBSOCKETPP_CLIENT_HPP
+#endif // WEBSOCKETPP_CLIENT_HPP

@@ -5,6 +5,10 @@
 #pragma once
 #include <fc/exception/exception.hpp>
 
-namespace eos { namespace client { namespace help {
-   bool print_help_text(const fc::exception& e);
-}}}
+namespace eos {
+namespace client {
+namespace help {
+bool print_help_text(const fc::exception &e);
+}
+}
+}

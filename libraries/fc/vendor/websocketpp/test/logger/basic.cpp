@@ -30,80 +30,87 @@
 
 #include <string>
 
-#include <websocketpp/logger/basic.hpp>
-#include <websocketpp/concurrency/none.hpp>
 #include <websocketpp/concurrency/basic.hpp>
+#include <websocketpp/concurrency/none.hpp>
+#include <websocketpp/logger/basic.hpp>
 
-typedef websocketpp::log::basic<websocketpp::concurrency::basic,websocketpp::log::alevel> basic_access_log_type;
+typedef websocketpp::log::basic<websocketpp::concurrency::basic,
+                                websocketpp::log::alevel>
+    basic_access_log_type;
 
-BOOST_AUTO_TEST_CASE( is_token_char ) {
-    typedef websocketpp::log::basic<websocketpp::concurrency::none,websocketpp::log::elevel> error_log;
+BOOST_AUTO_TEST_CASE(is_token_char) {
+  typedef websocketpp::log::basic<websocketpp::concurrency::none,
+                                  websocketpp::log::elevel>
+      error_log;
 
-    error_log elog;
+  error_log elog;
 
-    BOOST_CHECK( elog.static_test(websocketpp::log::elevel::info ) == true );
-    BOOST_CHECK( elog.static_test(websocketpp::log::elevel::warn ) == true );
-    BOOST_CHECK( elog.static_test(websocketpp::log::elevel::rerror ) == true );
-    BOOST_CHECK( elog.static_test(websocketpp::log::elevel::fatal ) == true );
+  BOOST_CHECK(elog.static_test(websocketpp::log::elevel::info) == true);
+  BOOST_CHECK(elog.static_test(websocketpp::log::elevel::warn) == true);
+  BOOST_CHECK(elog.static_test(websocketpp::log::elevel::rerror) == true);
+  BOOST_CHECK(elog.static_test(websocketpp::log::elevel::fatal) == true);
 
-    elog.set_channels(websocketpp::log::elevel::info);
+  elog.set_channels(websocketpp::log::elevel::info);
 
-    elog.write(websocketpp::log::elevel::info,"Information");
-    elog.write(websocketpp::log::elevel::warn,"A warning");
-    elog.write(websocketpp::log::elevel::rerror,"A error");
-    elog.write(websocketpp::log::elevel::fatal,"A critical error");
+  elog.write(websocketpp::log::elevel::info, "Information");
+  elog.write(websocketpp::log::elevel::warn, "A warning");
+  elog.write(websocketpp::log::elevel::rerror, "A error");
+  elog.write(websocketpp::log::elevel::fatal, "A critical error");
 }
 
-BOOST_AUTO_TEST_CASE( access_clear ) {
-    typedef websocketpp::log::basic<websocketpp::concurrency::none,websocketpp::log::alevel> access_log;
+BOOST_AUTO_TEST_CASE(access_clear) {
+  typedef websocketpp::log::basic<websocketpp::concurrency::none,
+                                  websocketpp::log::alevel>
+      access_log;
 
-    std::stringstream out;
-    access_log logger(0xffffffff,&out);
+  std::stringstream out;
+  access_log logger(0xffffffff, &out);
 
-    // clear all channels
-    logger.clear_channels(0xffffffff);
+  // clear all channels
+  logger.clear_channels(0xffffffff);
 
-    // writes shouldn't happen
-    logger.write(websocketpp::log::alevel::devel,"devel");
-    //std::cout << "|" << out.str() << "|" << std::endl;
-    BOOST_CHECK( out.str().size() == 0 );
+  // writes shouldn't happen
+  logger.write(websocketpp::log::alevel::devel, "devel");
+  // std::cout << "|" << out.str() << "|" << std::endl;
+  BOOST_CHECK(out.str().size() == 0);
 }
 
-BOOST_AUTO_TEST_CASE( basic_concurrency ) {
-    typedef websocketpp::log::basic<websocketpp::concurrency::basic,websocketpp::log::alevel> access_log;
+BOOST_AUTO_TEST_CASE(basic_concurrency) {
+  typedef websocketpp::log::basic<websocketpp::concurrency::basic,
+                                  websocketpp::log::alevel>
+      access_log;
 
-    std::stringstream out;
-    access_log logger(0xffffffff,&out);
+  std::stringstream out;
+  access_log logger(0xffffffff, &out);
 
-    logger.set_channels(0xffffffff);
+  logger.set_channels(0xffffffff);
 
-    logger.write(websocketpp::log::alevel::devel,"devel");
-    //std::cout << "|" << out.str() << "|" << std::endl;
-    BOOST_CHECK( out.str().size() > 0 );
+  logger.write(websocketpp::log::alevel::devel, "devel");
+  // std::cout << "|" << out.str() << "|" << std::endl;
+  BOOST_CHECK(out.str().size() > 0);
 }
 
+BOOST_AUTO_TEST_CASE(copy_constructor) {
+  std::stringstream out;
 
-BOOST_AUTO_TEST_CASE( copy_constructor ) {
-    std::stringstream out;
+  basic_access_log_type logger1(0xffffffff, &out);
+  basic_access_log_type logger2(logger1);
 
-    basic_access_log_type logger1(0xffffffff,&out);
-    basic_access_log_type logger2(logger1);
-
-    logger2.set_channels(0xffffffff);
-    logger2.write(websocketpp::log::alevel::devel,"devel");
-    BOOST_CHECK( out.str().size() > 0 );
+  logger2.set_channels(0xffffffff);
+  logger2.write(websocketpp::log::alevel::devel, "devel");
+  BOOST_CHECK(out.str().size() > 0);
 }
 
 #ifdef _WEBSOCKETPP_MOVE_SEMANTICS_
-BOOST_AUTO_TEST_CASE( move_constructor ) {
-    std::stringstream out;
+BOOST_AUTO_TEST_CASE(move_constructor) {
+  std::stringstream out;
 
-    basic_access_log_type logger1(0xffffffff,&out);
-    basic_access_log_type logger2(std::move(logger1));
+  basic_access_log_type logger1(0xffffffff, &out);
+  basic_access_log_type logger2(std::move(logger1));
 
-    logger2.set_channels(0xffffffff);
-    logger2.write(websocketpp::log::alevel::devel,"devel");
-    BOOST_CHECK( out.str().size() > 0 );
+  logger2.set_channels(0xffffffff);
+  logger2.write(websocketpp::log::alevel::devel, "devel");
+  BOOST_CHECK(out.str().size() > 0);
 }
 
 // Emplace requires move assignment, which logger doesn't support right now

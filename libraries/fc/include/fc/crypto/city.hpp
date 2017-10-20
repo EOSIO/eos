@@ -41,14 +41,13 @@
 // doesn't hold for any hash functions in this file.
 #pragma once
 
-#include <stdlib.h>  // for size_t.
 #include <stdint.h>
+#include <stdlib.h> // for size_t.
 #include <utility>
 
 namespace fc {
 
-template<typename T, size_t N>
-class array;
+template <typename T, size_t N> class array;
 class uint128;
 
 // Hash function for a byte array.
@@ -57,9 +56,13 @@ uint64_t city_hash64(const char *buf, size_t len);
 uint32_t city_hash32(const char *buf, size_t len);
 
 #if SIZE_MAX > UINT32_MAX
-inline size_t city_hash_size_t(const char *buf, size_t len) { return city_hash64(buf, len); }
+inline size_t city_hash_size_t(const char *buf, size_t len) {
+  return city_hash64(buf, len);
+}
 #else
-inline size_t city_hash_size_t(const char *buf, size_t len) { return city_hash32(buf, len); }
+inline size_t city_hash_size_t(const char *buf, size_t len) {
+  return city_hash32(buf, len);
+}
 #endif
 
 // Hash function for a byte array.
@@ -69,8 +72,7 @@ uint128 city_hash128(const char *s, size_t len);
 uint64_t city_hash_crc_64(const char *buf, size_t len);
 
 // Hash function for a byte array.
-uint128           city_hash_crc_128(const char *s, size_t len);
-array<uint64_t,4> city_hash_crc_256(const char *s, size_t len);
-
+uint128 city_hash_crc_128(const char *s, size_t len);
+array<uint64_t, 4> city_hash_crc_256(const char *s, size_t len);
 
 } // namespace fc

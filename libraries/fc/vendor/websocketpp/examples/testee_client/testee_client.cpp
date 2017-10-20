@@ -25,48 +25,48 @@
  *
  */
 
-#include <websocketpp/config/asio_no_tls_client.hpp>
 #include <websocketpp/client.hpp>
+#include <websocketpp/config/asio_no_tls_client.hpp>
 #include <websocketpp/extensions/permessage_deflate/enabled.hpp>
 
 #include <iostream>
 
 struct deflate_config : public websocketpp::config::asio_client {
-    typedef deflate_config type;
-    typedef asio_client base;
-    
-    typedef base::concurrency_type concurrency_type;
-    
-    typedef base::request_type request_type;
-    typedef base::response_type response_type;
+  typedef deflate_config type;
+  typedef asio_client base;
 
-    typedef base::message_type message_type;
-    typedef base::con_msg_manager_type con_msg_manager_type;
-    typedef base::endpoint_msg_manager_type endpoint_msg_manager_type;
-    
-    typedef base::alog_type alog_type;
-    typedef base::elog_type elog_type;
-    
-    typedef base::rng_type rng_type;
-    
-    struct transport_config : public base::transport_config {
-        typedef type::concurrency_type concurrency_type;
-        typedef type::alog_type alog_type;
-        typedef type::elog_type elog_type;
-        typedef type::request_type request_type;
-        typedef type::response_type response_type;
-        typedef websocketpp::transport::asio::basic_socket::endpoint 
-            socket_type;
-    };
+  typedef base::concurrency_type concurrency_type;
 
-    typedef websocketpp::transport::asio::endpoint<transport_config> 
-        transport_type;
-        
-    /// permessage_compress extension
-    struct permessage_deflate_config {};
+  typedef base::request_type request_type;
+  typedef base::response_type response_type;
 
-    typedef websocketpp::extensions::permessage_deflate::enabled
-        <permessage_deflate_config> permessage_deflate_type;
+  typedef base::message_type message_type;
+  typedef base::con_msg_manager_type con_msg_manager_type;
+  typedef base::endpoint_msg_manager_type endpoint_msg_manager_type;
+
+  typedef base::alog_type alog_type;
+  typedef base::elog_type elog_type;
+
+  typedef base::rng_type rng_type;
+
+  struct transport_config : public base::transport_config {
+    typedef type::concurrency_type concurrency_type;
+    typedef type::alog_type alog_type;
+    typedef type::elog_type elog_type;
+    typedef type::request_type request_type;
+    typedef type::response_type response_type;
+    typedef websocketpp::transport::asio::basic_socket::endpoint socket_type;
+  };
+
+  typedef websocketpp::transport::asio::endpoint<transport_config>
+      transport_type;
+
+  /// permessage_compress extension
+  struct permessage_deflate_config {};
+
+  typedef websocketpp::extensions::permessage_deflate::enabled<
+      permessage_deflate_config>
+      permessage_deflate_type;
 };
 
 typedef websocketpp::client<deflate_config> client;
@@ -80,66 +80,66 @@ typedef websocketpp::config::asio_client::message_type::ptr message_ptr;
 
 int case_count = 0;
 
-void on_message(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
-    client::connection_ptr con = c->get_con_from_hdl(hdl);
+void on_message(client *c, websocketpp::connection_hdl hdl, message_ptr msg) {
+  client::connection_ptr con = c->get_con_from_hdl(hdl);
 
-    if (con->get_resource() == "/getCaseCount") {
-        std::cout << "Detected " << msg->get_payload() << " test cases."
-                  << std::endl;
-        case_count = atoi(msg->get_payload().c_str());
-    } else {
-        c->send(hdl, msg->get_payload(), msg->get_opcode());
-    }
+  if (con->get_resource() == "/getCaseCount") {
+    std::cout << "Detected " << msg->get_payload() << " test cases."
+              << std::endl;
+    case_count = atoi(msg->get_payload().c_str());
+  } else {
+    c->send(hdl, msg->get_payload(), msg->get_opcode());
+  }
 }
 
-int main(int argc, char* argv[]) {
-    // Create a server endpoint
-    client c;
+int main(int argc, char *argv[]) {
+  // Create a server endpoint
+  client c;
 
-    std::string uri = "ws://localhost:9001";
+  std::string uri = "ws://localhost:9001";
 
-    if (argc == 2) {
-        uri = argv[1];
+  if (argc == 2) {
+    uri = argv[1];
+  }
+
+  try {
+    // We expect there to be a lot of errors, so suppress them
+    c.clear_access_channels(websocketpp::log::alevel::all);
+    c.clear_error_channels(websocketpp::log::elevel::all);
+
+    // Initialize ASIO
+    c.init_asio();
+
+    // Register our handlers
+    c.set_message_handler(bind(&on_message, &c, ::_1, ::_2));
+
+    websocketpp::lib::error_code ec;
+    client::connection_ptr con = c.get_connection(uri + "/getCaseCount", ec);
+    c.connect(con);
+
+    // Start the ASIO io_service run loop
+    c.run();
+
+    std::cout << "case count: " << case_count << std::endl;
+
+    for (int i = 1; i <= case_count; i++) {
+      c.reset();
+
+      std::stringstream url;
+
+      url << uri << "/runCase?case=" << i
+          << "&agent=" << websocketpp::user_agent;
+
+      con = c.get_connection(url.str(), ec);
+
+      c.connect(con);
+
+      c.run();
     }
 
-    try {
-        // We expect there to be a lot of errors, so suppress them
-        c.clear_access_channels(websocketpp::log::alevel::all);
-        c.clear_error_channels(websocketpp::log::elevel::all);
+    std::cout << "done" << std::endl;
 
-        // Initialize ASIO
-        c.init_asio();
-
-        // Register our handlers
-        c.set_message_handler(bind(&on_message,&c,::_1,::_2));
-
-        websocketpp::lib::error_code ec;
-        client::connection_ptr con = c.get_connection(uri+"/getCaseCount", ec);
-        c.connect(con);
-
-        // Start the ASIO io_service run loop
-        c.run();
-
-        std::cout << "case count: " << case_count << std::endl;
-
-        for (int i = 1; i <= case_count; i++) {
-            c.reset();
-
-            std::stringstream url;
-
-            url << uri << "/runCase?case=" << i << "&agent="
-                << websocketpp::user_agent;
-
-            con = c.get_connection(url.str(), ec);
-
-            c.connect(con);
-
-            c.run();
-        }
-
-        std::cout << "done" << std::endl;
-
-    } catch (websocketpp::exception const & e) {
-        std::cout << e.what() << std::endl;
-    }
+  } catch (websocketpp::exception const &e) {
+    std::cout << e.what() << std::endl;
+  }
 }

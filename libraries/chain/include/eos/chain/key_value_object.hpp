@@ -7,196 +7,247 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eos {
+namespace chain {
 
-   struct by_scope_primary;
-   struct by_scope_secondary;
-   struct by_scope_tertiary;
+struct by_scope_primary;
+struct by_scope_secondary;
+struct by_scope_tertiary;
 
-   struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {
-      OBJECT_CTOR(key_value_object, (value))
-      
-      typedef uint64_t key_type;
-      static const int number_of_keys = 1;
+struct key_value_object
+    : public chainbase::object<key_value_object_type, key_value_object> {
+  OBJECT_CTOR(key_value_object, (value))
 
-      id_type               id;
-      AccountName           scope; 
-      AccountName           code;
-      AccountName           table;
-      uint64_t              primary_key;
-      shared_string         value;
-   };
+  typedef uint64_t key_type;
+  static const int number_of_keys = 1;
 
-   using key_value_index = chainbase::shared_multi_index_container<
-      key_value_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<key_value_object, key_value_object::id_type, &key_value_object::id>>,
-         ordered_unique<tag<by_scope_primary>, 
-            composite_key< key_value_object,
-               member<key_value_object, AccountName, &key_value_object::scope>,
-               member<key_value_object, AccountName, &key_value_object::code>,
-               member<key_value_object, AccountName, &key_value_object::table>,
-               member<key_value_object, uint64_t, &key_value_object::primary_key>
-            >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t> >
-         >
-      >
-   >;
+  id_type id;
+  AccountName scope;
+  AccountName code;
+  AccountName table;
+  uint64_t primary_key;
+  shared_string value;
+};
 
-   struct shared_string_less {
-      bool operator()( const char* a, const char* b )const {
-         return less(a, b);
-      }
+using key_value_index = chainbase::shared_multi_index_container<
+    key_value_object,
+    indexed_by<
+        ordered_unique<tag<by_id>,
+                       member<key_value_object, key_value_object::id_type,
+                              &key_value_object::id>>,
+        ordered_unique<
+            tag<by_scope_primary>,
+            composite_key<
+                key_value_object,
+                member<key_value_object, AccountName, &key_value_object::scope>,
+                member<key_value_object, AccountName, &key_value_object::code>,
+                member<key_value_object, AccountName, &key_value_object::table>,
+                member<key_value_object, uint64_t,
+                       &key_value_object::primary_key>>,
+            composite_key_compare<
+                std::less<AccountName>, std::less<AccountName>,
+                std::less<AccountName>, std::less<uint64_t>>>>>;
 
-      bool operator()( const std::string& a, const char* b )const {
-         return less(a.c_str(), b);
-      }
+struct shared_string_less {
+  bool operator()(const char *a, const char *b) const { return less(a, b); }
 
-      bool operator()( const char* a, const std::string& b )const {
-         return less(a, b.c_str());
-      }
+  bool operator()(const std::string &a, const char *b) const {
+    return less(a.c_str(), b);
+  }
 
-      inline bool less( const char* a, const char* b )const{
-         return std::strcmp( a, b ) < 0;
-      }
-   };
+  bool operator()(const char *a, const std::string &b) const {
+    return less(a, b.c_str());
+  }
 
-   struct keystr_value_object : public chainbase::object<keystr_value_object_type, keystr_value_object> {
-      OBJECT_CTOR(keystr_value_object, (primary_key)(value))
-      
-      typedef std::string key_type;
-      static const int number_of_keys = 1;
+  inline bool less(const char *a, const char *b) const {
+    return std::strcmp(a, b) < 0;
+  }
+};
 
-      const char* data() const { return primary_key.data(); }
+struct keystr_value_object
+    : public chainbase::object<keystr_value_object_type, keystr_value_object> {
+  OBJECT_CTOR(keystr_value_object, (primary_key)(value))
 
-      id_type               id;
-      AccountName           scope; 
-      AccountName           code;
-      AccountName           table;
-      shared_string         primary_key;
-      shared_string         value;
-   };
+  typedef std::string key_type;
+  static const int number_of_keys = 1;
 
-   using keystr_value_index = chainbase::shared_multi_index_container<
-      keystr_value_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<keystr_value_object, keystr_value_object::id_type, &keystr_value_object::id>>,
-         ordered_unique<tag<by_scope_primary>, 
-            composite_key< keystr_value_object,
-               member<keystr_value_object, AccountName, &keystr_value_object::scope>,
-               member<keystr_value_object, AccountName, &keystr_value_object::code>,
-               member<keystr_value_object, AccountName, &keystr_value_object::table>,
-               const_mem_fun<keystr_value_object, const char*, &keystr_value_object::data>
-            >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,shared_string_less>
-         >
-      >
-   >;
+  const char *data() const { return primary_key.data(); }
 
-   struct key128x128_value_object : public chainbase::object<key128x128_value_object_type, key128x128_value_object> {
-      OBJECT_CTOR(key128x128_value_object, (value))
+  id_type id;
+  AccountName scope;
+  AccountName code;
+  AccountName table;
+  shared_string primary_key;
+  shared_string value;
+};
 
-      typedef uint128_t key_type;
-      static const int number_of_keys = 2;
+using keystr_value_index = chainbase::shared_multi_index_container<
+    keystr_value_object,
+    indexed_by<
+        ordered_unique<tag<by_id>,
+                       member<keystr_value_object, keystr_value_object::id_type,
+                              &keystr_value_object::id>>,
+        ordered_unique<
+            tag<by_scope_primary>,
+            composite_key<keystr_value_object,
+                          member<keystr_value_object, AccountName,
+                                 &keystr_value_object::scope>,
+                          member<keystr_value_object, AccountName,
+                                 &keystr_value_object::code>,
+                          member<keystr_value_object, AccountName,
+                                 &keystr_value_object::table>,
+                          const_mem_fun<keystr_value_object, const char *,
+                                        &keystr_value_object::data>>,
+            composite_key_compare<
+                std::less<AccountName>, std::less<AccountName>,
+                std::less<AccountName>, shared_string_less>>>>;
 
-      id_type               id;
-      AccountName           scope; 
-      AccountName           code;
-      AccountName           table;
-      uint128_t             primary_key;
-      uint128_t             secondary_key;
-      shared_string         value;
-   };
+struct key128x128_value_object
+    : public chainbase::object<key128x128_value_object_type,
+                               key128x128_value_object> {
+  OBJECT_CTOR(key128x128_value_object, (value))
 
-   using key128x128_value_index = chainbase::shared_multi_index_container<
-      key128x128_value_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<key128x128_value_object, key128x128_value_object::id_type, &key128x128_value_object::id>>,
-         ordered_unique<tag<by_scope_primary>, 
-            composite_key< key128x128_value_object,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::scope>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::code>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::table>,
-               member<key128x128_value_object, uint128_t, &key128x128_value_object::primary_key>,
-               member<key128x128_value_object, uint128_t, &key128x128_value_object::secondary_key>
-            >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint128_t>,std::less<uint128_t> >
-         >,
-         ordered_unique<tag<by_scope_secondary>, 
-            composite_key< key128x128_value_object,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::scope>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::code>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::table>,
-               member<key128x128_value_object, uint128_t, &key128x128_value_object::secondary_key>,
-               member<key128x128_value_object, uint128_t, &key128x128_value_object::primary_key>
-            >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint128_t>,std::less<uint128_t> >
-         >
-      >
-   >;
+  typedef uint128_t key_type;
+  static const int number_of_keys = 2;
 
-   struct key64x64x64_value_object : public chainbase::object<key64x64x64_value_object_type, key64x64x64_value_object> {
-      OBJECT_CTOR(key64x64x64_value_object, (value))
+  id_type id;
+  AccountName scope;
+  AccountName code;
+  AccountName table;
+  uint128_t primary_key;
+  uint128_t secondary_key;
+  shared_string value;
+};
 
-      typedef uint64_t key_type;
-      static const int number_of_keys = 3;
+using key128x128_value_index = chainbase::shared_multi_index_container<
+    key128x128_value_object,
+    indexed_by<
+        ordered_unique<tag<by_id>, member<key128x128_value_object,
+                                          key128x128_value_object::id_type,
+                                          &key128x128_value_object::id>>,
+        ordered_unique<
+            tag<by_scope_primary>,
+            composite_key<key128x128_value_object,
+                          member<key128x128_value_object, AccountName,
+                                 &key128x128_value_object::scope>,
+                          member<key128x128_value_object, AccountName,
+                                 &key128x128_value_object::code>,
+                          member<key128x128_value_object, AccountName,
+                                 &key128x128_value_object::table>,
+                          member<key128x128_value_object, uint128_t,
+                                 &key128x128_value_object::primary_key>,
+                          member<key128x128_value_object, uint128_t,
+                                 &key128x128_value_object::secondary_key>>,
+            composite_key_compare<std::less<AccountName>,
+                                  std::less<AccountName>,
+                                  std::less<AccountName>, std::less<uint128_t>,
+                                  std::less<uint128_t>>>,
+        ordered_unique<
+            tag<by_scope_secondary>,
+            composite_key<key128x128_value_object,
+                          member<key128x128_value_object, AccountName,
+                                 &key128x128_value_object::scope>,
+                          member<key128x128_value_object, AccountName,
+                                 &key128x128_value_object::code>,
+                          member<key128x128_value_object, AccountName,
+                                 &key128x128_value_object::table>,
+                          member<key128x128_value_object, uint128_t,
+                                 &key128x128_value_object::secondary_key>,
+                          member<key128x128_value_object, uint128_t,
+                                 &key128x128_value_object::primary_key>>,
+            composite_key_compare<std::less<AccountName>,
+                                  std::less<AccountName>,
+                                  std::less<AccountName>, std::less<uint128_t>,
+                                  std::less<uint128_t>>>>>;
 
-      id_type               id;
-      AccountName           scope;
-      AccountName           code;
-      AccountName           table;
-      uint64_t              primary_key;
-      uint64_t              secondary_key;
-      uint64_t              tertiary_key;
-      shared_string         value;
-   };
+struct key64x64x64_value_object
+    : public chainbase::object<key64x64x64_value_object_type,
+                               key64x64x64_value_object> {
+  OBJECT_CTOR(key64x64x64_value_object, (value))
 
-   using key64x64x64_value_index = chainbase::shared_multi_index_container<
-      key64x64x64_value_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<key64x64x64_value_object, key64x64x64_value_object::id_type, &key64x64x64_value_object::id>>,
-         ordered_unique<tag<by_scope_primary>,
-            composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::scope>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::primary_key>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::secondary_key>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>
-            >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t>,std::less<uint64_t>,std::less<uint64_t> >
-         >,
-         ordered_unique<tag<by_scope_secondary>,
-            composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::scope>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::secondary_key>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
-               member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
-            >
-         >,
-         ordered_unique<tag<by_scope_tertiary>,
-            composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::scope>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
-               member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
-            >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t>,std::less<typename key64x64x64_value_object::id_type> >
-         >         
-      >
-   >;
+  typedef uint64_t key_type;
+  static const int number_of_keys = 3;
 
+  id_type id;
+  AccountName scope;
+  AccountName code;
+  AccountName table;
+  uint64_t primary_key;
+  uint64_t secondary_key;
+  uint64_t tertiary_key;
+  shared_string value;
+};
 
+using key64x64x64_value_index = chainbase::shared_multi_index_container<
+    key64x64x64_value_object,
+    indexed_by<
+        ordered_unique<tag<by_id>, member<key64x64x64_value_object,
+                                          key64x64x64_value_object::id_type,
+                                          &key64x64x64_value_object::id>>,
+        ordered_unique<
+            tag<by_scope_primary>,
+            composite_key<key64x64x64_value_object,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::scope>,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::code>,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::table>,
+                          member<key64x64x64_value_object, uint64_t,
+                                 &key64x64x64_value_object::primary_key>,
+                          member<key64x64x64_value_object, uint64_t,
+                                 &key64x64x64_value_object::secondary_key>,
+                          member<key64x64x64_value_object, uint64_t,
+                                 &key64x64x64_value_object::tertiary_key>>,
+            composite_key_compare<std::less<AccountName>,
+                                  std::less<AccountName>,
+                                  std::less<AccountName>, std::less<uint64_t>,
+                                  std::less<uint64_t>, std::less<uint64_t>>>,
+        ordered_unique<
+            tag<by_scope_secondary>,
+            composite_key<key64x64x64_value_object,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::scope>,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::code>,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::table>,
+                          member<key64x64x64_value_object, uint64_t,
+                                 &key64x64x64_value_object::secondary_key>,
+                          member<key64x64x64_value_object, uint64_t,
+                                 &key64x64x64_value_object::tertiary_key>,
+                          member<key64x64x64_value_object,
+                                 typename key64x64x64_value_object::id_type,
+                                 &key64x64x64_value_object::id>>>,
+        ordered_unique<
+            tag<by_scope_tertiary>,
+            composite_key<key64x64x64_value_object,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::scope>,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::code>,
+                          member<key64x64x64_value_object, AccountName,
+                                 &key64x64x64_value_object::table>,
+                          member<key64x64x64_value_object, uint64_t,
+                                 &key64x64x64_value_object::tertiary_key>,
+                          member<key64x64x64_value_object,
+                                 typename key64x64x64_value_object::id_type,
+                                 &key64x64x64_value_object::id>>,
+            composite_key_compare<
+                std::less<AccountName>, std::less<AccountName>,
+                std::less<AccountName>, std::less<uint64_t>,
+                std::less<typename key64x64x64_value_object::id_type>>>>>;
+}
+} // eos::chain
 
+CHAINBASE_SET_INDEX_TYPE(eos::chain::key_value_object,
+                         eos::chain::key_value_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::keystr_value_object,
+                         eos::chain::keystr_value_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::key128x128_value_object,
+                         eos::chain::key128x128_value_index)
+CHAINBASE_SET_INDEX_TYPE(eos::chain::key64x64x64_value_object,
+                         eos::chain::key64x64x64_value_index)
 
-} } // eos::chain
-
-CHAINBASE_SET_INDEX_TYPE(eos::chain::key_value_object, eos::chain::key_value_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::keystr_value_object, eos::chain::keystr_value_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::key128x128_value_object, eos::chain::key128x128_value_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::key64x64x64_value_object, eos::chain::key64x64x64_value_index)
-
-FC_REFLECT(eos::chain::key_value_object, (id)(scope)(code)(table)(primary_key)(value) )
+FC_REFLECT(eos::chain::key_value_object,
+           (id)(scope)(code)(table)(primary_key)(value))

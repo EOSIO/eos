@@ -30,69 +30,69 @@
 
 #include <iostream>
 
-#include "../../src/processors/hybi_util.hpp"
 #include "../../src/network_utilities.hpp"
+#include "../../src/processors/hybi_util.hpp"
 
-BOOST_AUTO_TEST_CASE( circshift_0 ) {
-    if (sizeof(size_t) == 8) {
-        size_t test = 0x0123456789abcdef;
+BOOST_AUTO_TEST_CASE(circshift_0) {
+  if (sizeof(size_t) == 8) {
+    size_t test = 0x0123456789abcdef;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,0);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 0);
 
-        BOOST_CHECK( test == 0x0123456789abcdef);
-    } else {
-        size_t test = 0x01234567;
+    BOOST_CHECK(test == 0x0123456789abcdef);
+  } else {
+    size_t test = 0x01234567;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,0);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 0);
 
-        BOOST_CHECK( test == 0x01234567);
-    }
+    BOOST_CHECK(test == 0x01234567);
+  }
 }
 
-BOOST_AUTO_TEST_CASE( circshift_1 ) {
-    if (sizeof(size_t) == 8) {
-        size_t test = 0x0123456789abcdef;
+BOOST_AUTO_TEST_CASE(circshift_1) {
+  if (sizeof(size_t) == 8) {
+    size_t test = 0x0123456789abcdef;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,1);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 1);
 
-        BOOST_CHECK( test == 0xef0123456789abcd);
-    } else {
-        size_t test = 0x01234567;
+    BOOST_CHECK(test == 0xef0123456789abcd);
+  } else {
+    size_t test = 0x01234567;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,1);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 1);
 
-        BOOST_CHECK( test == 0x67012345);
-    }
+    BOOST_CHECK(test == 0x67012345);
+  }
 }
 
-BOOST_AUTO_TEST_CASE( circshift_2 ) {
-    if (sizeof(size_t) == 8) {
-        size_t test = 0x0123456789abcdef;
+BOOST_AUTO_TEST_CASE(circshift_2) {
+  if (sizeof(size_t) == 8) {
+    size_t test = 0x0123456789abcdef;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,2);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 2);
 
-        BOOST_CHECK( test == 0xcdef0123456789ab);
-    } else {
-        size_t test = 0x01234567;
+    BOOST_CHECK(test == 0xcdef0123456789ab);
+  } else {
+    size_t test = 0x01234567;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,2);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 2);
 
-        BOOST_CHECK( test == 0x45670123);
-    }
+    BOOST_CHECK(test == 0x45670123);
+  }
 }
 
-BOOST_AUTO_TEST_CASE( circshift_3 ) {
-    if (sizeof(size_t) == 8) {
-        size_t test = 0x0123456789abcdef;
+BOOST_AUTO_TEST_CASE(circshift_3) {
+  if (sizeof(size_t) == 8) {
+    size_t test = 0x0123456789abcdef;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,3);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 3);
 
-        BOOST_CHECK( test == 0xabcdef0123456789);
-    } else {
-        size_t test = 0x01234567;
+    BOOST_CHECK(test == 0xabcdef0123456789);
+  } else {
+    size_t test = 0x01234567;
 
-        test = websocketpp::processor::hybi_util::circshift_prepared_key(test,3);
+    test = websocketpp::processor::hybi_util::circshift_prepared_key(test, 3);
 
-        BOOST_CHECK( test == 0x23456701);
-    }
+    BOOST_CHECK(test == 0x23456701);
+  }
 }
