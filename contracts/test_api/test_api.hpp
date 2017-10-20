@@ -147,4 +147,5 @@ struct test_string {
   static unsigned int print_null_terminated();
   static unsigned int print_non_null_terminated();
   static unsigned int print_unicode();
+  static unsigned int test_utf8_validation();
 };

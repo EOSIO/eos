@@ -1,4 +1,5 @@
 #pragma once
+#include <eoslib/string.h>
 #include <eoslib/types.hpp>
 #include <eoslib/system.h>
 #include <eoslib/memory.hpp>
@@ -229,5 +230,10 @@ namespace eos {
         prints_l(data, size);
       }
    }
+
+    bool is_valid_utf8() const {
+      return (bool)is_valid_utf8_str(data, size);
+    }
   };
+
 }

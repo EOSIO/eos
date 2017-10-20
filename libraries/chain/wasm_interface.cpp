@@ -341,6 +341,86 @@ DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
    return *reinterpret_cast<uint64_t *>(&res);
 }
 
+DEFINE_INTRINSIC_FUNCTION2(env,is_valid_utf8_str,is_valid_utf8_str,i32,i32,charptr,i32,len) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const char* str = &memoryRef<const char>( mem, charptr );
+  const unsigned char* iterator = reinterpret_cast<const unsigned char*>(str);
+  const unsigned char* end = iterator + uint32_t(len);
+  
+  uint32_t is_valid = 0;
+  while (iterator != end) {
+    unsigned char first_byte = *iterator;
+    if (first_byte >> 3 == 0b11110) {
+      // 4 bytes utf8 character, 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx (codepoint range 0x10000-0x10ffff)
+      if (iterator + 3 >= end) break;
+
+      unsigned char second_byte = *(iterator + 1);
+      unsigned char third_byte = *(iterator + 2);
+      unsigned char fourth_byte = *(iterator + 3);
+      // Check marker
+      bool has_valid_marker = (second_byte & third_byte & fourth_byte) >> 6 == 0b10;
+      if (!has_valid_marker) break;
+
+      // Check code point range
+      uint32_t code_point = (fourth_byte & 0x7f) + ((third_byte & 0x7f) << 6) + ((second_byte & 0x7f) << 12)  + ((first_byte & 0x7) << 18);
+      bool has_valid_range = code_point >= 0x10000 && code_point <= 0x10ffff;
+      if (!has_valid_range) break;
+
+      // Move to the next character
+      iterator += 4;
+    } else if (first_byte >> 4 == 0b1110) {
+      // 3 bytes utf8 character, 1110xxx 10xxxxxx 10xxxxxx (codepoint range 0x0800-0xffff)
+      if (iterator + 2 >= end) break;
+      
+      unsigned char second_byte = *(iterator + 1);
+      unsigned char third_byte = *(iterator + 2);
+      // Check marker
+      bool has_valid_marker = (second_byte & third_byte) >> 6 == 0b10;
+      if (!has_valid_marker) break;
+
+      // Check code point range
+      uint32_t code_point = (third_byte & 0x7f) + ((second_byte & 0x7f) << 6) + ((first_byte & 0xf) << 12);
+      bool has_valid_range = code_point >= 0x800 && code_point <= 0xffff;
+      if (!has_valid_range) break;
+
+      // Move to the next character
+      iterator += 3;
+    } else if (first_byte >> 5 == 0b110) {
+      // 2 bytes utf8 character, 110xxx 10xxxxxx (codepoint range 0x0080-0x07ff)
+      if (iterator + 2 >= end) break;
+      
+      unsigned char second_byte = *(iterator + 1);
+      // Check marker
+      bool has_valid_marker = (second_byte >> 6) == 0b10;
+      if (!has_valid_marker) break;
+
+      // Check code point range
+      uint32_t code_point = (second_byte & 0x7f) + ((first_byte & 0x1f) << 6);
+      bool has_valid_range = code_point >= 0x80 && code_point <= 0x7ff;
+      if (!has_valid_range) break;
+
+      // Move to the next character
+      iterator += 2;
+    } else  if (first_byte >> 7 == 0b0) {
+      // 1 byte utf8 character, 0xxxxxxx (codepointrange 0x0000-0x007f)
+      // Check code point range
+      uint32_t code_point = first_byte & 0x7f;
+      bool has_valid_range = code_point <= 0x7f;
+      if (!has_valid_range) break;
+
+      // Move to the next character
+      iterator += 1;
+    } else {
+      // Invalid utf8 character
+      break;
+    }
+  }
+  if (iterator == end) is_valid = 1;
+  return is_valid;
+}
+
 DEFINE_INTRINSIC_FUNCTION2(env,getActiveProducers,getActiveProducers,none,i32,producers,i32,datalen) {
    auto& wasm    = wasm_interface::get();
    auto  mem     = wasm.current_memory;

@@ -290,3 +290,45 @@ unsigned int test_string::print_unicode() {
 
   return WASM_TEST_PASS;
 }
+
+
+unsigned int test_string::test_utf8_validation() {
+  // Roman alphabet is 1 byte UTF-8
+  char data[] = "abcdefghij";
+  uint32_t size = sizeof(data)/sizeof(char);
+  eos::string str(data, size, false);
+  WASM_ASSERT( str.is_valid_utf8() == true,  "str.is_valid_utf8() == true" );
+
+  // Greek character is 2 bytes UTF-8
+  char greek_str_data[] = "γειά σου κόσμος";
+  uint32_t greek_str_size = sizeof(greek_str_data)/sizeof(char);
+  eos::string valid_greek_str(greek_str_data, greek_str_size, false);
+  // Size that is not multiple of 2 is invalid
+  eos::string invalid_greek_str(greek_str_data, 7, false);
+
+  WASM_ASSERT( valid_greek_str.is_valid_utf8() == true,  "valid_greek_str.is_valid_utf8() == true" );
+  WASM_ASSERT( invalid_greek_str.is_valid_utf8() == false,  "invalid_greek_str.is_valid_utf8() == false" );
+
+  // Common chinese character is 3 bytes UTF-8
+  char chinese_str_data1[] = "你好，世界！";
+  uint32_t chinese_str_size1 = sizeof(chinese_str_data1)/sizeof(char);
+  eos::string valid_chinese_str1(chinese_str_data1, chinese_str_size1, false);
+  // Size that is not multiple of 3 is invalid
+  eos::string invalid_chinese_str1(chinese_str_data1, 5, false);
+
+  WASM_ASSERT( valid_chinese_str1.is_valid_utf8() == true,  "valid_chinese_str1.is_valid_utf8() == true" );
+  WASM_ASSERT( invalid_chinese_str1.is_valid_utf8() == false,  "invalid_chinese_str1.is_valid_utf8() == false" );
+
+  // The following chinese character is 4 bytes UTF-8
+  char chinese_str_data2[] = "𥄫";
+  uint32_t chinese_str_size2 = sizeof(chinese_str_data2)/sizeof(char);
+  eos::string valid_chinese_str2(chinese_str_data2, chinese_str_size2, false);
+  // Size that is not multiple of 4 is invalid
+  eos::string invalid_chinese_str2(chinese_str_data2, 2, false);
+
+  WASM_ASSERT( valid_chinese_str2.is_valid_utf8() == true,  "valid_chinese_str2.is_valid_utf8() == true" );
+  WASM_ASSERT( invalid_chinese_str2.is_valid_utf8() == false,  "invalid_chinese_str2.is_valid_utf8() == false" );
+
+
+  return WASM_TEST_PASS;
+}
