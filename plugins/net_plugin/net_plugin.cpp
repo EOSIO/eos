@@ -60,7 +60,7 @@ namespace eos {
     UInt16 new_bnum;
     update_block_num (UInt16 bnum) : new_bnum(bnum) {}
     void operator() (node_transaction_state& nts) {
-      nts.block_num = static_cast<uint32_t>(new_bnum);
+        nts.block_num = static_cast<uint32_t>(new_bnum);
     }
   };
 
@@ -295,7 +295,7 @@ namespace eos {
     sync_state_ptr          sync_requested;  // this peer is requesting info from us
     socket_ptr              socket;
 
-#warning ("TODO: Rework Message Caching for efficiency")
+    //#warning ("TODO: Rework Message Caching for efficiency")
     // WHat I mean here is that incoming data should be read in chunks that are as
     // large as possible. We can query the recv buffer size. When using async_read_some(),
     // we will frequently end a read in the middle of a message. That could happen with
@@ -317,6 +317,7 @@ namespace eos {
 
     fc::sha256              node_id;
     handshake_message       last_handshake;
+    int16_t                 sent_handshake_count;
     deque<net_message>      out_queue;
     bool                    connecting;
     bool                    syncing;
@@ -434,6 +435,7 @@ namespace eos {
         send_buffer(send_buf_size),
         node_id(),
         last_handshake(),
+        sent_handshake_count(0),
         out_queue(),
         connecting (false),
         syncing (false),
@@ -459,6 +461,7 @@ namespace eos {
         send_buffer(send_buf_size),
         node_id(),
         last_handshake(),
+        sent_handshake_count(0),
         out_queue(),
         connecting (false),
         syncing (false),
@@ -489,6 +492,9 @@ namespace eos {
   }
 
   bool connection::current () {
+    if( syncing ) {
+      dlog( "skipping connection ${n} due to syncing", ("n",peer_name()));
+    }
     return (connected() && !syncing);
   }
 
@@ -538,6 +544,7 @@ namespace eos {
   }
 
   uint32_t connection::send_branch (chain_controller &cc, block_id_type bid, uint32_t lib_num, block_id_type lib_id) {
+    static uint32_t dbg_depth = 0;
     uint32_t count = 0;
     try {
       optional<signed_block> b = cc.fetch_block_by_id (bid);
@@ -547,14 +554,32 @@ namespace eos {
           enqueue( *b );
           count = 1;
         }
-        if( block_header::num_from_id( prev ) <= lib_num ) {
-          elog( "Woah! branch regression passed last orrreversible block!" );
-        }
         else {
-          count = send_branch (cc, prev, lib_num, lib_id );
-          if (count > 0) {
-            enqueue( *b );
-            ++count;
+          uint32_t pnum = block_header::num_from_id( prev );
+          if( pnum < lib_num ) {
+            uint32_t irr = cc.last_irreversible_block_num();
+            elog( "Whoa! branch regression passed last irreversible block! depth = ${d}", ("d",dbg_depth ));
+            optional<signed_block> pb = cc.fetch_block_by_id (prev);
+            block_id_type pprev;
+            if (!pb ) {
+              dlog( "no block for prev");
+            } else {
+              pprev = pb->previous;
+            }
+            dlog( "irr = ${irr} lib_nim = ${ln} pnum = ${pn}", ("irr",irr)("ln",lib_num)("pn",pnum));
+            dlog( "prev = ${p}", ("p",prev));
+            dlog( "lib  = ${p}", ("p",lib_id));
+            dlog( "bid  = ${p}", ("p",bid));
+            dlog( "ppre = ${p}", ("p",pprev));
+          }
+          else {
+            ++dbg_depth;
+            count = send_branch (cc, prev, lib_num, lib_id );
+            --dbg_depth;
+            if (count > 0) {
+              enqueue( *b );
+              ++count;
+            }
           }
         }
       }
@@ -579,12 +604,10 @@ namespace eos {
     block_id_type head_id;
     block_id_type lib_id;
     uint32_t lib_num;
-    //    vector<block_id_type> myfork;
     try {
       lib_num = cc.last_irreversible_block_num();
       lib_id = cc.get_block_id_for_num(lib_num);
       head_id = cc.get_block_id_for_num (head_num);
-      //      myfork = cc.get_block_ids_on_fork(head_id);
     }
     catch (const assert_exception &ex) {
       dlog ("caught assert ${x}",("x",ex.what()));
@@ -601,6 +624,7 @@ namespace eos {
 #endif
     uint32_t count = send_branch (cc, head_id, lib_num, lib_id);
     dlog( "Sent ${n} blocks on my fork",("n",count));
+    syncing = false;
   }
 
   void connection::blk_send(const vector<block_id_type> &ids) {
@@ -635,6 +659,7 @@ namespace eos {
     void connection::send_handshake ( ) {
       handshake_message hello;
       handshake_initializer::populate(hello);
+      hello.generation = ++sent_handshake_count;
       dlog( "Sending handshake to ${ep}", ("ep", peer_addr));
       enqueue (hello);
     }
@@ -955,11 +980,14 @@ namespace eos {
         handshake_message hello;
         handshake_initializer::populate(hello);
         dlog( "All caught up with last known last irreversible block resending handshake");
-        my_impl->send_all( hello, [](connection_ptr c /* no arg */) -> bool  {
-            dlog( "send to ${p}", ("p",c->peer_name()));
-          return true;
-        });
-    }
+        for( auto &ci : my_impl->connections) {
+          if( ci->current()) {
+            hello.generation = ++ci->sent_handshake_count;
+            dlog( "send to ${p}", ("p",ci->peer_name()));
+            ci->enqueue( hello );
+          }
+        }
+      }
       if( c->connected()) {
         assign_chunk( c);
       }
@@ -1499,7 +1527,7 @@ namespace eos {
     }
 
   void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
-    dlog ("got signed_block #${n} from ${p}", ("n",msg.block_num())("p",c->peer_name()));
+    // dlog ("got signed_block #${n} from ${p}", ("n",msg.block_num())("p",c->peer_name()));
     chain_controller &cc = chain_plug->chain();
     block_id_type blk_id = msg.id();
     try {
@@ -1511,6 +1539,9 @@ namespace eos {
     if( cc.head_block_num() >= msg.block_num()) {
       elog( "received forking block #${n}",( "n",msg.block_num()));
     }
+    fc::microseconds age( fc::time_point::now() - msg.timestamp);
+    dlog( "got signed_block #${n} from ${p} block age in secs = ${age}",
+          ("n",msg.block_num())("p",c->peer_name())("age",age.to_seconds()));
 
     bool has_chunk = false;
     uint32_t num = msg.block_num();
@@ -1564,7 +1595,7 @@ namespace eos {
     }
     else {
       //        dlog ("forwarding the signed block");
-      if (fc::raw::pack_size(msg) < just_send_it_max && !c->syncing) {
+      if (age < fc::seconds(3) && fc::raw::pack_size(msg) < just_send_it_max && !c->syncing) {
         send_all( msg, [c, blk_id, num](connection_ptr conn) -> bool {
             bool sendit = false;
             if ( c != conn ) {

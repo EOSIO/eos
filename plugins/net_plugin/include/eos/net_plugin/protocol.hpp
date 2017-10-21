@@ -18,6 +18,7 @@ namespace eos {
       block_id_type   head_id;
       string          os;
       string          agent;
+    int16_t           generation;
    };
 
   enum go_away_reason {
@@ -133,7 +134,7 @@ FC_REFLECT( eos::handshake_message,
             (p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
-            (os)(agent) )
+            (os)(agent)(generation) )
 FC_REFLECT( eos::go_away_message, (reason)(node_id) )
 FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eos::thread_ids, (gen_trx)(user_trx) )
