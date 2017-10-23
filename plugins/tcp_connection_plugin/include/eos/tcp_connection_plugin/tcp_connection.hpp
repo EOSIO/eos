@@ -39,6 +39,7 @@ class tcp_connection : public connection_interface {
       std::list<std::vector<uint8_t>> queuedOutgoing;
 
       signal<void()> on_disconnected_sig;
+      bool disconnected_fired{false};    //be sure to only fire the signal once
 
       fc::aes_encoder    sending_aes_enc_ctx;
       fc::aes_decoder    receiving_aes_dec_ctx;

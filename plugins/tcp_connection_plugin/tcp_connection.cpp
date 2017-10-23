@@ -35,7 +35,9 @@ tcp_connection::~tcp_connection() {
 void tcp_connection::handle_failure() {
     socket.cancel();
     socket.close();
-    on_disconnected_sig();
+    if(!disconnected_fired)
+       on_disconnected_sig();
+    disconnected_fired = true;
 }
 
 void tcp_connection::finish_key_exchange(boost::system::error_code ec, size_t red, fc::ecc::private_key priv_key) {
@@ -64,10 +66,9 @@ void tcp_connection::read() {
 
 void tcp_connection::read_ready(boost::system::error_code ec, size_t red) {
    ilog("read ${r} bytes!", ("r",red));
-   if(ec == boost::asio::error::eof) {
-       socket.close();
-       on_disconnected_sig();
-       return;
+   if(ec) {
+      handle_failure();
+      return;
    }
 
   // queuedOutgoing.emplace_front(rxbuffer, rxbuffer+red);
@@ -86,8 +87,7 @@ void tcp_connection::read_ready(boost::system::error_code ec, size_t red) {
 
 void tcp_connection::send_complete(boost::system::error_code ec, size_t sent, std::list<std::vector<uint8_t>>::iterator it) {
    if(ec) {
-      socket.close();
-      on_disconnected_sig();
+      handle_failure();
       return;
    }
    //sent should always == sent requested unless error, right? because _write() not _send_some()etc
