@@ -23,7 +23,8 @@ class connection_interface {
       //Send a block to the peer on this connection
       //NOOP on disconnected connection.
 
+      virtual ~connection_interface() {};
+
 };
 
-using connection_interface_ptr = std::shared_ptr<connection_interface>;
 }

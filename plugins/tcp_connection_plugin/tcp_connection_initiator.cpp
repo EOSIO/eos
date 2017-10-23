@@ -1,4 +1,5 @@
 #include <eos/tcp_connection_plugin/tcp_connection_initiator.hpp>
+#include <eos/network_plugin/network_plugin.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -70,13 +71,8 @@ void tcp_connection_initiator::accept_connection(active_acceptor& aa) {
  void tcp_connection_initiator::handle_incoming_connection(const boost::system::error_code& ec, active_acceptor& aa) {
    ilog("accepted connection");
   
-   active_connections.emplace_front(std::make_shared<tcp_connection>((std::move(aa.socket_to_accept))));
-   std::list<active_connection>::iterator new_conn_it = active_connections.begin();
-
-   new_conn_it->connection_failure_connection = new_conn_it->connection->connect_on_disconnected(strand.wrap([this,new_conn_it]() {
-      new_conn_it->connection_failure_connection.disconnect();
-      active_connections.erase(new_conn_it);
-    }));
+   std::unique_ptr<tcp_connection> new_conn = std::make_unique<tcp_connection>(std::move(aa.socket_to_accept));
+   appbase::app().get_plugin<network_plugin>().new_connection(std::move(new_conn));
   
    accept_connection(aa);
 }
@@ -101,14 +97,13 @@ void tcp_connection_initiator::outgoing_connection_complete(const boost::system:
    if(ec)
       outgoing_failed_retry_inabit(outgoing);
    else {
-      active_connections.emplace_front(std::make_shared<tcp_connection>(std::move(outgoing.outgoing_socket)));
-      std::list<active_connection>::iterator new_conn_it = active_connections.begin();
+      std::unique_ptr<tcp_connection> new_conn = std::make_unique<tcp_connection>(std::move(outgoing.outgoing_socket));
 
-      new_conn_it->connection_failure_connection = new_conn_it->connection->connect_on_disconnected(strand.wrap([this,new_conn_it,&outgoing]() {
-         new_conn_it->connection_failure_connection.disconnect();
-         active_connections.erase(new_conn_it);
-         retry_connection(outgoing);
-       }));
+      new_conn->on_disconnected(strand.wrap([this, &outgoing]() {
+        retry_connection(outgoing);
+      }));
+
+      appbase::app().get_plugin<network_plugin>().new_connection(std::move(new_conn));
     }
 }
 

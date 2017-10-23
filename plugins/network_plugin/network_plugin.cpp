@@ -1,70 +1,106 @@
-
-#include <eos/chain/types.hpp>
-
 #include <eos/network_plugin/network_plugin.hpp>
 
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/block.hpp>
-
-
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ip/host_name.hpp>
-
+#include <thread>
+#include <algorithm>
 
 namespace eos {
-  using std::vector;
 
-  using boost::asio::ip::tcp;
-  using boost::asio::ip::address_v4;
-  using boost::asio::ip::host_name;
+class network_plugin_impl {
+   public:
+      std::unique_ptr<boost::asio::io_service> network_ios;
+      std::unique_ptr<boost::asio::strand> strand;
+      std::unique_ptr<boost::asio::io_service::work> network_work;
+      std::vector<std::thread> thread_pool;
+      unsigned int num_threads;
 
-  using fc::time_point;
-  using fc::time_point_sec;
-  using eos::chain::transaction_id_type;
-  namespace bip = boost::interprocess;
+      void shutdown() {
+        if(!network_ios)
+          return;
+        network_ios->stop();
+        for(std::thread& t : thread_pool)
+          t.join();
+        network_ios.reset();
+      }
 
-  class connection;
-  class sync_manager;
+      struct active_connection {
+         active_connection(unsigned int cid, std::unique_ptr<connection_interface> c) :
+            connection_id(cid), connection(std::move(c)) {}
 
-  class network_plugin_impl {
+         unsigned int connection_id;
+         std::unique_ptr<connection_interface> connection;
+      };
+      std::list<active_connection> active_connections;
+      unsigned int next_active_connection_id{0};
+};
 
-  };
+network_plugin::network_plugin()
+   :pimpl(new network_plugin_impl) {}
 
-  network_plugin::network_plugin()
-    :pimpl( new network_plugin_impl ) {
-  }
-
-  network_plugin::~network_plugin() {
-  }
-
-  void network_plugin::set_program_options( options_description& cli, options_description& cfg )
-  {
-     /*
-    cfg.add_options()
-     ( "listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The local IP address and port to listen for incoming connections.")
-     ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
-     ( "public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
-     ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
-      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
+void network_plugin::set_program_options(options_description& cli, options_description& cfg) {
+   cfg.add_options()
+      ("network-threadpool-size", bpo::value<unsigned int>()->default_value(std::max(std::thread::hardware_concurrency()/4U, 1U)), "Number of threads to use for network operation.")
       ;
-      */
-  }
+}
 
-  void network_plugin::plugin_initialize( const variables_map& options ) {
-    ilog("Initialize network plugin");
+void network_plugin::plugin_initialize(const variables_map& options) {
+   pimpl->num_threads = options["network-threadpool-size"].as<unsigned int>();
+   if(!pimpl->num_threads)
+      throw std::runtime_error("Must configure at least 1 network-threadpool-size");
+   pimpl->network_ios = std::make_unique<boost::asio::io_service>();
+   pimpl->strand = std::make_unique<boost::asio::strand>(*pimpl->network_ios);
+}
 
-  }
+void network_plugin::plugin_startup() {
+   pimpl->network_work = std::make_unique<boost::asio::io_service::work>(*pimpl->network_ios);
+   for(unsigned int i = 0; i < pimpl->num_threads; ++i)
+      pimpl->thread_pool.emplace_back([&ios=*pimpl->network_ios]() {
+         ios.run();
+      });
+}
 
-  void network_plugin::plugin_startup() {
+boost::asio::io_service& network_plugin::network_io_service() {
+   return *pimpl->network_ios;
+}
 
-  }
+void network_plugin::new_connection(std::unique_ptr<connection_interface> connection) {
+  //ugh, asio callbacks have to be copyable
+  connection_interface* bare_connection = connection.release();
+  pimpl->strand->dispatch([this,bare_connection]() {
+    unsigned int this_conn_id = pimpl->next_active_connection_id++;
 
-  void network_plugin::plugin_shutdown() {
- }
+    pimpl->active_connections.emplace_back(this_conn_id, std::unique_ptr<connection_interface>(bare_connection));
 
-    void network_plugin::broadcast_block( const chain::signed_block &sb) {
-      //      dlog( "broadcasting block #${num}",("num",sb.block_num()) );
-     
-    }
+    network_plugin_impl::active_connection& added_connection = pimpl->active_connections.back();
+
+    //when the connection indicates failure; remove it from the list. This will implictly
+    // destroy the connection. WARNING: use strand.post() here to prevent dtor getting
+    // called which signal is still processing.
+    added_connection.connection->on_disconnected([this, this_conn_id]() {
+       pimpl->strand->post([this, this_conn_id]() {
+          pimpl->active_connections.remove_if([this_conn_id](const network_plugin_impl::active_connection& ac) {
+             return ac.connection_id == this_conn_id;
+          });
+       });
+    });
+
+    //there is a possiblity that the connection indicated failure before the signal was
+    // connected. Check the synchronous indicatior.
+    if(added_connection.connection->disconnected()) {
+       pimpl->strand->post([this, this_conn_id]() {
+          pimpl->active_connections.remove_if([this_conn_id](const network_plugin_impl::active_connection& ac) {
+             return ac.connection_id == this_conn_id;
+          });
+       });
+     }
+  });
+}
+
+void network_plugin::indicate_about_to_shutdown() {
+   pimpl->shutdown();
+}
+
+void network_plugin::plugin_shutdown() {
+   pimpl->shutdown();
+}
+
 }

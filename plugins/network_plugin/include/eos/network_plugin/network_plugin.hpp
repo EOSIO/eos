@@ -9,7 +9,6 @@ using namespace appbase;
 class network_plugin : public appbase::plugin<network_plugin> {
    public:
       network_plugin();
-      virtual ~network_plugin();
 
       APPBASE_PLUGIN_REQUIRES((chain_plugin))
       void set_program_options(options_description& cli, options_description& cfg) override;
@@ -18,16 +17,15 @@ class network_plugin : public appbase::plugin<network_plugin> {
       void plugin_startup();
       void plugin_shutdown();
 
-      void broadcast_block(const chain::signed_block &sb);
-
-      //broadcast_transaction
+      void indicate_about_to_shutdown();
+      boost::asio::io_service& network_io_service();
 
       /*
        * Use a new connection. Only connections that are connected and otherwise valid
        * should be passed to network_plugin. Connections will continue to be used until
        * they indicate on_disconnected()
        */
-      void new_connection(connection_interface_ptr new_connection);
+      void new_connection(std::unique_ptr<connection_interface> new_connection);
 
    private:
       std::unique_ptr<class network_plugin_impl> pimpl;

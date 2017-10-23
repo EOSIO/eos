@@ -48,18 +48,7 @@ class tcp_connection_initiator {
        void outgoing_connection_complete(const boost::system::error_code& ec, outgoing_attempt& outgoing);
        void outgoing_failed_retry_inabit(outgoing_attempt& outgoing);
 
-       //////keep a handle to all current connections and the signals2::connection that indicate their failure
-       //Note: Actually, this class has no need to hang on to the connection. But until network_manager holds
-       //      on to a reference _someone_ needs to hold on to a reference! Refactor once network_manager holds
-       //      a list of the connections.
-       struct active_connection : private boost::noncopyable {
-         active_connection(tcp_connection_ptr s) : connection(s) {}
-
-         tcp_connection_ptr  connection;
-         boost::signals2::connection  connection_failure_connection;
-       };
-       std::list<active_connection> active_connections;
-       boost::asio::strand strand;  //serializes accesses to active_connections
+       boost::asio::strand strand;  //look in to removing me
 
        boost::asio::ip::tcp::resolver resolver;
 
