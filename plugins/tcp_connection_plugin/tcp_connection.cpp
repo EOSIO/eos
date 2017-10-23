@@ -25,7 +25,6 @@ tcp_connection::tcp_connection(boost::asio::ip::tcp::socket s) :
    boost::asio::async_read(socket, boost::asio::buffer(rxbuffer, pkd.size()), [this, priv_key](auto ec, auto r) {
       finish_key_exchange(ec, r, priv_key);
    });
-   //read();
 }
 
 tcp_connection::~tcp_connection() {
@@ -41,14 +40,24 @@ void tcp_connection::handle_failure() {
 }
 
 void tcp_connection::finish_key_exchange(boost::system::error_code ec, size_t red, fc::ecc::private_key priv_key) {
-   //check ec/wrote
-   ilog("finished key exchange");
    fc::ecc::public_key_data* rpub = (fc::ecc::public_key_data*)rxbuffer;
    if(ec || red != rpub->size()) {
        handle_failure();
        return;
    }
-   fc::sha512 shared_secret = priv_key.get_shared_secret(*rpub);
+
+   fc::sha512 shared_secret;
+   try {
+      shared_secret = priv_key.get_shared_secret(*rpub);
+   }
+   catch(fc::assert_exception) {
+       elog("Failed to negotiate shared encrpytion secret with ${ip}:${port}. Not an EOSIO peer?",
+            ("ip", socket.remote_endpoint().address().to_string())
+            ("port", socket.remote_endpoint().port())
+           );
+       handle_failure();
+       return;
+   }
 
    auto ss_data = shared_secret.data();
    auto ss_data_size = shared_secret.data_size();
@@ -56,31 +65,30 @@ void tcp_connection::finish_key_exchange(boost::system::error_code ec, size_t re
    sending_aes_enc_ctx.init  (fc::sha256::hash(ss_data, ss_data_size), fc::city_hash_crc_128(ss_data, ss_data_size));
    receiving_aes_dec_ctx.init(fc::sha256::hash(ss_data, ss_data_size), fc::city_hash_crc_128(ss_data, ss_data_size));
 
+   read();
 }
 
 void tcp_connection::read() {
-   socket.async_read_some(boost::asio::buffer(rxbuffer), strand.wrap([this](auto ec, auto r) {
+   auto read_buffer_offset = boost::asio::mutable_buffers_1(boost::asio::buffer(rxbuffer)+4);
+   socket.async_read_some(read_buffer_offset, [this](auto ec, auto r) {
       read_ready(ec, r);
-   }));
+   });
 }
 
 void tcp_connection::read_ready(boost::system::error_code ec, size_t red) {
-   ilog("read ${r} bytes!", ("r",red));
    if(ec) {
       handle_failure();
       return;
    }
+   //the amount read, plus the amount left over from last time, is what we
+   // have to work with
+   const char* const end_of_red = rxbuffer+red+rxbuffer_leftover;
+   const char* const end_of_ready_to_dec = rxbuffer + (end_of_red-rxbuffer)/16*16;
 
-  // queuedOutgoing.emplace_front(rxbuffer, rxbuffer+red);
+   receiving_aes_dec_ctx.decode(rxbuffer, end_of_ready_to_dec-rxbuffer, parsebuffer+parsebuffer_leftover);
 
-   ///XXX Note this is wrong Wrong WRONG as the async sends don't guarantee ordering;
-   //     there needs to be a work queue of sorts.
-
-   /*boost::asio::async_write(socket,
-                            boost::asio::buffer(queuedOutgoing.front().data(), queuedOutgoing.front().size()),
-                            strand.wrap([this, it=queuedOutgoing.begin()](auto ec, auto s) {
-                               send_complete(ec, s, it);
-                            }));*/
+   rxbuffer_leftover = end_of_red-end_of_ready_to_dec;
+   memmove(rxbuffer, end_of_ready_to_dec, rxbuffer_leftover);
 
    read();
 }
