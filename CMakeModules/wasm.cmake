@@ -161,7 +161,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
 endmacro(add_wast_target)
 
-function(add_wast_abi_target target SOURCE_FILES INCLUDE_FOLDERS SOURCE_FOLDER DESTINATION_FOLDER)
+function(add_wast_abi_target target INCLUDE_FOLDERS SOURCE_FOLDER DESTINATION_FOLDER)
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
     DEPENDS ${SOURCE_FOLDER}/${target}.abi
     COMMAND echo "const char* ${target}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
@@ -172,5 +172,5 @@ function(add_wast_abi_target target SOURCE_FILES INCLUDE_FOLDERS SOURCE_FOLDER D
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.abi.hpp)
   set(extra_target_dependency   ${DESTINATION_FOLDER}/${target}.abi.hpp)
-  add_wast_target(${target} "${SOURCE_FILES}" "${INCLUDE_FOLDERS}" ${CMAKE_CURRENT_BINARY_DIR})
-endfunction(add_abi_dependency)
+  add_wast_target(${target} "${INCLUDE_FOLDERS}" ${CMAKE_CURRENT_BINARY_DIR})
+endfunction(add_wast_abi_target)
