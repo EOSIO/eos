@@ -1,7 +1,11 @@
 #pragma once
 #include <eosio/blockchain/block.hpp>
 
+#include <thread>
+
 namespace eosio { namespace blockchain {
+
+   class database;
 
    /**
     * @class controller
@@ -18,6 +22,8 @@ namespace eosio { namespace blockchain {
 
          controller();
          ~controller();
+
+         void open_database( path datadir, size_t shared_mem_size );
 
          database& db();
 
@@ -38,10 +44,10 @@ namespace eosio { namespace blockchain {
          transaction_metadata_ptr lookup_transaction( transaction_id_type id );
 
          /**
-          * Looks up a block by id and will call callback() with the block_metadata_ptr once it is found,
+          * Looks up a block by id and will call callback() with the meta_block_ptr once it is found,
           * if it is not found then it will call the callback with a nullptr.
           */
-         void  lookup_block( block_id_type, function<void(block_metadata_ptr)> callback );
+         void  lookup_block( block_id_type, function<void(meta_block_ptr)> callback );
 
          /**
           * Looks up a range of blocks by sequence number. The purpose of this interface is to
@@ -49,7 +55,7 @@ namespace eosio { namespace blockchain {
           */
          void  lookup_block( block_num_type first, 
                              block_num_type last, 
-                             function<void(vector<block_metadata_ptr>)> callback );
+                             function<void(vector<meta_block_ptr>)> callback );
 
          /**
           *  When a new transaction is received from any source this method will attempt
@@ -108,9 +114,9 @@ namespace eosio { namespace blockchain {
          signal<void(transaction_metadata_ptr)> transaction_confirmed;
          signal<void(transaction_metadata_ptr)> transaction_rejected; /// perminenent rejection (expired or invalid)
 
-         signal<void(block_metadata_ptr)>       block_linked; /// block linked, but not validated
-         signal<void(block_metadata_ptr)>       block_validated; /// block linked and validated
-         signal<void(block_metadata_ptr)>       block_confirmed; /// declared immutable 
+         signal<void(meta_block_ptr)>       block_linked; /// block linked, but not validated
+         signal<void(meta_block_ptr)>       block_validated; /// block linked and validated
+         signal<void(meta_block_ptr)>       block_confirmed; /// declared immutable 
 
          /*
          signal<void(precommit)>                new_precommit;
@@ -120,17 +126,9 @@ namespace eosio { namespace blockchain {
          ///}
 
       private:
-         io_service&         _ios;
-         unique_ptr<strand>  _strand;
-
-         /// DATABASE
-             // auth scope
-             // per account scope
-             // block scope
-             
-         /// FORKDB (track what fork each producer should be on based on messages received)
-         /// BLOCK LOG (committed blocks)
-
+         unique_ptr<std::thread> _thread;
+         unique_ptr<database>    _db;
+         path                    _datadir;
    };
 
 } } /// eosio::blockchain

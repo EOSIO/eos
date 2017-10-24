@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <fc/reflect/reflect.hpp>
 
 namespace eosio { namespace blockchain {
    using std::string;
@@ -95,3 +96,4 @@ namespace fc {
 } // fc
 
 
+FC_REFLECT( eosio::blockchain::name, (value) )

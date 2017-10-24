@@ -45,7 +45,6 @@ namespace eosio { namespace blockchain {
     *  over it.
     */
    struct processed_transaction : public signed_transaction {
-      flat_set<public_key_type>       signedby;
       vector<message_output>          output;
       vector<processed_transaction>   inline_transaction;
       vector<signed_transaction>      deferred_transactions;
@@ -64,17 +63,13 @@ namespace eosio { namespace blockchain {
 
       transaction_id_type          id;
       vector<char>                 packed;
-      processed_transaction_ptr    trx;
-      block_id_type                validated_in_block;
-      std::exception_ptr           error;
+      flat_set<public_key_type>    signedby;
+      signed_transaction_ptr       trx;
    }; 
 
    typedef std::shared_ptr<transaction_metadata> transaction_metadata_ptr;
 
-   struct  generated_transaction_id { transaction_id_type id; };
-   struct  delivered_message_id     { message_id_type     id; };
-   struct  executed_transaction_id  { transaction_id_type id; };
-   typedef static_variant<generated_transaction_id,delivered_message_id,executed_transaction_id> merkle_id;
-
 
 } } /// eosio::blockchain
+
+

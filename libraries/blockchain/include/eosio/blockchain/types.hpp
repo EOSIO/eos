@@ -20,10 +20,13 @@ namespace eosio { namespace blockchain {
 
    using std::vector;
    using std::map;
+   using std::set;
    using std::pair;
+   using std::weak_ptr;
    using std::shared_ptr;
    using std::unique_ptr;
    using std::string;
+   using std::function;
 
    using boost::signals2::signal;
    using boost::asio::io_service;
@@ -35,6 +38,7 @@ namespace eosio { namespace blockchain {
    using fc::time_point_sec;
    using fc::static_variant;
    using fc::path;
+   using fc::optional;
 
 
    /**
@@ -84,5 +88,6 @@ namespace eosio { namespace blockchain {
    typedef fc::ecc::private_key           private_key_type;
 
    typedef map<account_name, pair< account_name,public_key_type> > producer_changes_type;
+   typedef uint32_t                       block_num_type;
 
 } }  /// eosio::blockchain

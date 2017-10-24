@@ -39,7 +39,8 @@ EOSIO_SET_INDEX_TYPE( eosio::blockchain::key_value_object, eosio::blockchain::ke
 int main( int argc, char** argv ) {
    try {
       boost::asio::io_service ios;
-      controller control( ios );
+      controller control;
+      control.open_database( "datadir", 1024*1024 );
 
       register_table< key_value_object >();
 

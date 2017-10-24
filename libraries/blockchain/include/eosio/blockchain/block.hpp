@@ -175,8 +175,34 @@ namespace eosio { namespace blockchain {
    };
    typedef shared_ptr<block_data> block_data_ptr;
 
-   struct block_summary_meta {
-     // block_data_ptr 
+   /**
+    *  Tracks high-level information about pending blocks and how they link.
+    */
+   struct meta_block {
+      meta_block( block_data_ptr p ):id(p->id()),previous_id(p->previous),data(move(p)){}
+
+      weak_ptr< meta_block > prev; ///< weak ptr to the previous block
+      bool                   invalid  = false; ///< used to flag invalid blocks and prevent others from building on top
+      block_num_type         blocknum = 0;
+      block_id_type          id;
+      block_id_type          previous_id;
+      block_data_ptr         data; ///< the deserialized version of the block, this may be null
+      public_key_type        producer_key; ///< the recovered producer key
+      vector<char>           packed; ///<< includes the serialized version of the packed_block
+   };
+
+   typedef shared_ptr<meta_block> meta_block_ptr;
+
+
+   /**
+    * A packed block makes it effecient to read blocks from disk without having to dynamically allocate all of the
+    * individual cycles, shards, transactions, messages, and message data. Instead it simply contains the block header
+    * along with a buffer containing the packed_cycles.
+    */
+   struct packed_block : public signed_block_header {
+      vector<char> packed_cycles; ///< contains block_summary::cycles and block_data::cycles 
+
+      meta_block_ptr to_meta_block()const;
    };
 
 } } /// eosio::blockchain
@@ -185,6 +211,7 @@ FC_REFLECT( eosio::blockchain::block_header, (previous)(timestamp)(summary_root)
 FC_REFLECT_DERIVED( eosio::blockchain::signed_block_header, (eosio::blockchain::block_header), (producer_signature) )
 FC_REFLECT_DERIVED( eosio::blockchain::block_summary, (eosio::blockchain::signed_block_header), (cycles) )
 FC_REFLECT_DERIVED( eosio::blockchain::block_data, (eosio::blockchain::block_summary), (cycles) )
+FC_REFLECT_DERIVED( eosio::blockchain::packed_block, (eosio::blockchain::signed_block_header), (packed_cycles) )
 
 
 

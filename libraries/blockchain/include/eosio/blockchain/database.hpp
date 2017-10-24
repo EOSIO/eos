@@ -4,7 +4,6 @@
 namespace eosio { namespace blockchain  {
 
 
-   typedef uint64_t block_num_type;
    typedef uint16_t table_id_type;
 
    struct shard;
