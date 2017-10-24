@@ -20,7 +20,7 @@ namespace eos {
    *  @{
    */
 
-   class memory_manager
+   class memory_manager  // NOTE: Should never allocate another instance of memory_manager
    {
    friend void* malloc(uint32_t size);
    friend void* realloc(void* ptr, uint32_t size);
