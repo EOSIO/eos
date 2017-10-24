@@ -6,6 +6,9 @@
 namespace eosio { namespace blockchain {
 
    class database;
+   class block_log;
+   class fork_database;
+   struct global_state_object;
 
    /**
     * @class controller
@@ -125,10 +128,19 @@ namespace eosio { namespace blockchain {
          */
          ///}
 
+        const global_state_object& get_global_state()const;
       private:
-         unique_ptr<std::thread> _thread;
-         unique_ptr<database>    _db;
-         path                    _datadir;
+         void reset_state_database();
+         void open_state_database();
+         void initialize_state_database();
+
+         unique_ptr<boost::asio::io_service> _ios;
+         unique_ptr<std::thread>             _thread;
+         unique_ptr<database>                _db;
+         unique_ptr<block_log>               _block_log;
+         unique_ptr<fork_database>           _fork_db;
+         path                                _datadir;
+         size_t                              _shared_mem_size;
    };
 
 } } /// eosio::blockchain

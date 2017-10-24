@@ -136,6 +136,14 @@ transaction_handle::transaction_handle( shard_handle& sh, undo_transaction& udt 
 :_db(sh._db),_undo_trx(udt) {
 }
 
+scope_handle transaction_handle::get_scope( scope_name s ) {
+  const auto& ws = _undo_trx._shard->_write_scope;
+  FC_ASSERT( ws.end() != ws.find(s), "scope ${s} is not in write scope of shard", ("s",s) );
+  auto itr = _db._scopes->find( s );
+  FC_ASSERT( itr != _db._scopes->end(), "unknown scope ${s}", ("s", s) );
+  return scope_handle( *this, itr->second );
+}
+
 scope_handle transaction_handle::create_scope( scope_name s ) {
    /// TODO: this method is only valid if we have scope-scope in the shard
    auto existing_scope = _db.find_scope( s ); 
@@ -202,6 +210,7 @@ void block_handle::undo() {
  *  After calling this @udt will be invalid
  */
 void database::undo( undo_transaction& udt ) {
+   ilog( "undo" );
    /// this transaction should be part of a shard, undoing it should remove the udt from _transaction_history
    FC_ASSERT( &udt._shard->_transaction_history.back() == &udt, "must undo last transaction in shard first" );
 
@@ -234,6 +243,23 @@ void database::undo( undo_block& udb ) {
    }
    wlog( "poping block ${b}", ("b", udb._block_num) );
    _block_undo_history->pop_back();
+}
+
+void database::undo() {
+  if( _block_undo_history->size() ) {
+     undo( _block_undo_history->back() );
+  }
+}
+
+void database::undo_until( block_num_type n ) {
+  while( _block_undo_history->size() && _block_undo_history->back()._block_num > n ) {
+     undo( _block_undo_history->back() );
+  }
+}
+
+void database::commit( block_num_type n ) {
+   while( _block_undo_history->size() && _block_undo_history->front()._block_num <= n )
+      _block_undo_history->pop_front();
 }
 
 } } // eosio::blockchain

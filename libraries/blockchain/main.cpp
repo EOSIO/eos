@@ -42,6 +42,7 @@ int main( int argc, char** argv ) {
       controller control;
       control.open_database( "datadir", 1024*1024 );
 
+      /*
       register_table< key_value_object >();
 
       wlog( "loading database" );
@@ -57,6 +58,7 @@ int main( int argc, char** argv ) {
          auto sco = trx.create_scope( N(dan) );
          auto tbl = sco.create_table<key_value_object>( {N(owner),N(test)} );
       }
+      */
 
 
    } catch ( const fc::exception& e ) {

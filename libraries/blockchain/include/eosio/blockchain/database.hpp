@@ -3,9 +3,6 @@
 
 namespace eosio { namespace blockchain  {
 
-
-   typedef uint16_t table_id_type;
-
    struct shard;
 
    template<typename ObjectType> 
@@ -64,6 +61,17 @@ namespace eosio { namespace blockchain  {
 
       const table* find_table( table_name t )const;
 
+
+      template<typename IndexType>
+      const auto& get_table( table_name t )const {
+         auto ptr = find_table( t );
+         name type_id = generic_table<IndexType>::type_id;
+         FC_ASSERT( ptr != nullptr, "unable to find table ${s}/${n}", ("s",_name)("n",t) );
+         FC_ASSERT( ptr->_type == type_id.value, "${s}/${n} table type ${t} doesn't match expected type ${e}", 
+                    ("t", name(ptr->_type))("e",type_id)("s",_name)("n",t) );
+         return static_cast< const generic_table<IndexType>& >(*ptr);
+      } // get_table<IndexType>
+
       shared_map<table_name,table_optr> _tables;
       scope_name                        _name;
    };
@@ -97,6 +105,8 @@ namespace eosio { namespace blockchain  {
    class scope_handle {
       public:
          scope_handle( transaction_handle& trx, scope& s );
+
+         name get_name()const { return _scope._name; }
 
          template<typename ObjectType> 
          auto create_table( table_name t );
@@ -133,6 +143,7 @@ namespace eosio { namespace blockchain  {
           * The scope handle is only good for the scope of the transaction
           */
          scope_handle create_scope( scope_name s );
+         scope_handle get_scope( scope_name s );
 
       private:
          friend class scope_handle;
@@ -311,6 +322,8 @@ namespace eosio { namespace blockchain  {
       new_table->_name  = t;
 
       _trx.on_create_table( *new_table );
+
+      _scope._tables.emplace( std::pair<table_name,table_optr>( t, new_table ) );
       new_table->push();
       
       return table_handle<index_type>( _trx, *new_table );
@@ -342,7 +355,7 @@ namespace eosio { namespace blockchain  {
 
    template<typename IndexType>
    void transaction_handle::on_modify_table( generic_table<IndexType>& t ) {
-      auto isnew  = _undo_trx.new_tables.find( t._name ) != _undo_trx.new_tables.end();
+      auto isnew  = _undo_trx.new_tables.find( &t ) != _undo_trx.new_tables.end();
       if( !isnew ) {
          auto result = _undo_trx.modified_tables.insert(&t);
          if( result.second ) {  /// insert successful 
@@ -355,7 +368,7 @@ namespace eosio { namespace blockchain  {
    template<typename Constructor>
    const auto& table_handle<IndexType>::create( Constructor&& c ) {
       _trx.on_modify_table( _table );
-      return _table.create( std::forward<Constructor>(c) );
+      return _table.emplace( std::forward<Constructor>(c) );
    }
 
    template<typename IndexType>

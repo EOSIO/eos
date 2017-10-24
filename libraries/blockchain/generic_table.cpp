@@ -2,12 +2,12 @@
 
 namespace eosio { namespace blockchain {
 
-map<uint16_t,abstract_table*>& get_abstract_table_map() {
-   static map<uint16_t,abstract_table*> tbls;
+map<table_id_type,abstract_table*>& get_abstract_table_map() {
+   static map<table_id_type,abstract_table*> tbls;
    return tbls;
 }
 
-abstract_table& get_abstract_table( uint16_t table_type )
+abstract_table& get_abstract_table( table_id_type table_type )
 {
    const auto& tables = get_abstract_table_map();
    auto itr = tables.find(table_type);

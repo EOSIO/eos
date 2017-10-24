@@ -74,6 +74,9 @@ namespace eosio { namespace blockchain {
    template<typename Object, typename... Args>
    using shared_multi_index_container = boost::multi_index_container<Object,Args..., eosio::blockchain::allocator<Object> >;
 
+   typedef uint64_t table_id_type;
+
+   struct by_id; ///< tag for primary key
 
    /**
     *  Object ID type that includes the type of the object it references
@@ -116,7 +119,7 @@ namespace eosio { namespace blockchain {
     */
    //typedef pair<owner_name,name> table_name;
 
-   template<uint16_t TypeNumber, typename Derived>
+   template<table_id_type TypeNumber, typename Derived>
    struct object {
       typedef oid<Derived> id_type;
       enum type_id_enum {
@@ -209,6 +212,11 @@ namespace eosio { namespace blockchain {
         ~generic_table() {
            ilog( "~generic_table destructor '${n}'", ("n",_name) );
         }
+
+        const auto& indices()const{ return _indices; }
+
+        template<typename T>
+        const auto& get_index()const{ return _indices.template get<T>(); }
         
         /**
          * Construct a new element in the multi_index_container.
@@ -491,7 +499,7 @@ namespace eosio { namespace blockchain {
    using table_optr = offset_ptr<table>;
 
    /// defines global static map
-   map<uint16_t,abstract_table*>& get_abstract_table_map();
+   map<table_id_type,abstract_table*>& get_abstract_table_map();
 
 
    template<typename ObjectType>
@@ -508,7 +516,7 @@ namespace eosio { namespace blockchain {
       FC_ASSERT( !is_registered_table<ObjectType>(), "Table type already registered" );
       get_abstract_table_map()[ObjectType::type_id] = new table_interface_impl<generic_object_table_type>();
    }
-   abstract_table& get_abstract_table( uint16_t table_type );
+   abstract_table& get_abstract_table( table_id_type table_type );
    abstract_table& get_abstract_table( const table& t);
 
 } } /// eosio::blockchain

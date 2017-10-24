@@ -54,6 +54,7 @@ namespace eosio { namespace blockchain {
     */
    typedef fc::sha256       transaction_id_type;
    typedef fc::sha256       merkle_id_type;
+   typedef fc::sha256       digest_type;
 
    /*
    <h2>Reserved Names</h2>
