@@ -5,6 +5,16 @@
 #include <eoslib/eos.hpp>
 #include "test_api.hpp"
 
+#include "test_chain.cpp"
+#include "test_crypto.cpp"
+#include "test_db.cpp"
+#include "test_math.cpp"
+#include "test_message.cpp"
+#include "test_print.cpp"
+#include "test_string.cpp"
+#include "test_transaction.cpp"
+#include "test_types.cpp"
+
 extern "C" {
 
     void init()  {

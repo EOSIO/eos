@@ -58,10 +58,12 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
   set(WASM_TOOLCHAIN TRUE)
 endif()
 
-macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
+macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
-  set(outfiles "")
-  foreach(srcfile ${SOURCE_FILES})
+  # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
+  # linking ${target}.bc's rule 
+  set(SOURCE_FILE ${target}.cpp)
+  foreach(srcfile ${SOURCE_FILE})
     
     get_filename_component(outfile ${srcfile} NAME)
     get_filename_component(infile ${srcfile} ABSOLUTE)
