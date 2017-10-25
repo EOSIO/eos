@@ -4,6 +4,10 @@
 #include <fc/reflect/variant.hpp>
 
 namespace eosio { namespace blockchain {
+   namespace config {
+      static const char*    public_key_prefix = "EOS";
+   };
+
    struct public_key
    {
        struct binary_key

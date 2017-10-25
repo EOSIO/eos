@@ -3,11 +3,16 @@
 #include <eosio/blockchain/fork_database.hpp>
 #include <eosio/blockchain/block_log.hpp>
 #include <eosio/blockchain/global_state_index.hpp>
+#include <eosio/blockchain/producer_index.hpp>
+#include <eosio/blockchain/config.hpp>
+#include <fc/io/raw.hpp>
 
 namespace eosio { namespace blockchain {
 
    controller::controller() {
       register_table< global_state_object >();
+      register_table< active_producers_object >();
+      register_table< producer_object >();
 
       _ios.reset( new boost::asio::io_service() );
       _thread.reset( new std::thread( [&](){ _ios->run(); } ) );
@@ -65,10 +70,28 @@ namespace eosio { namespace blockchain {
       auto block_scope = trx.create_scope( N(eosio.block) );
       ilog( "get block scope: ${s}", ("s",name(N(eosio.block)))("sh",block_scope.get_name()) );
 
-      auto tbl = block_scope.create_table<global_state_object>( {N(eosio.block),N(global)} );
-      tbl.create( [&]( auto& global ) {
-         global.head_block_time = time_point() + fc::seconds( 60*60*24*365*30 ); /// TODO: set genesis time from config
+      auto globaltbl = block_scope.create_table<global_state_object>( {N(eosio.block),N(global)} );
+      globaltbl.create( [&]( auto& global ) {
+         global.head_block_time = config::initial_blockchain_time;
       });
+
+      auto active_producers_tbl = block_scope.create_table<active_producers_object>( {N(eosio.block),N(activepro)} );
+      active_producers_tbl.create( [&]( auto& active ) {
+           active.producers.resize( config::producer_count );
+           for( auto i = 0; i < config::producer_count; ++i ) {
+              active.producers[i] = N(inita) + i;
+           }
+      });
+
+      auto producertbl = block_scope.create_table<producer_object>( {N(eosio.block),N(producers)} );
+      auto first = N(inita);
+      for( auto i = 0; i < config::producer_count; ++i ) {
+         producertbl.create( [&]( auto& initproducer ) {
+             initproducer.producer = first + i;
+             initproducer.key      = config::initial_public_key;
+         });
+      }
+
       trx.commit();
       blk.commit();
 

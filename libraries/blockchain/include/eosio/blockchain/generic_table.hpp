@@ -7,6 +7,8 @@
 #pragma once
 #include <eosio/blockchain/types.hpp>
 
+#include <boost/core/ignore_unused.hpp>
+
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/set.hpp>
@@ -511,10 +513,14 @@ namespace eosio { namespace blockchain {
    /// register virtual API (construct, destruct, insert, modify, etc)
    template<typename ObjectType>
    void register_table() {
-      typedef typename get_index_type<ObjectType>::type index_type;
-      typedef generic_table<index_type> generic_object_table_type;
-      FC_ASSERT( !is_registered_table<ObjectType>(), "Table type already registered" );
-      get_abstract_table_map()[ObjectType::type_id] = new table_interface_impl<generic_object_table_type>();
+      static bool registered = [](){
+         typedef typename get_index_type<ObjectType>::type index_type;
+         typedef generic_table<index_type> generic_object_table_type;
+         FC_ASSERT( !is_registered_table<ObjectType>(), "Table type ${n} already registered", ("n", name(ObjectType::type_id)) );
+         get_abstract_table_map()[ObjectType::type_id] = new table_interface_impl<generic_object_table_type>();
+         return true;
+      }();
+      boost::ignore_unused(registered);
    }
    abstract_table& get_abstract_table( table_id_type table_type );
    abstract_table& get_abstract_table( const table& t);
