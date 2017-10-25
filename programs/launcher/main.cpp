@@ -443,9 +443,6 @@ launcher_def::write_config_file (eosd_def &node) {
     scp_cmd_line += filename.string() + " ";
 
     const string &uid = node.ssh_identity.length() ? node.ssh_identity : network.ssh_helper.ssh_identity;
-    if (args.length()) {
-      scp_cmd_line += args + " ";
-    }
     if (uid.length()) {
       scp_cmd_line += uid + "@";
     }
