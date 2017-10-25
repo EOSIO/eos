@@ -1,0 +1,79 @@
+{
+  "types": [{
+      "newTypeName": "AccountName",
+      "type": "Name"
+    }
+  ],
+  "structs": [{
+      "name": "game",
+      "base": "",
+      "fields": {
+        "challenger": "AccountName",
+        "host": "AccountName",
+        "turn": "AccountName",
+        "winner": "AccountName",
+        "board": "UInt8[]"      
+      }
+    },{
+      "name": "create",
+      "base": "",
+      "fields": {
+        "challenger": "AccountName",
+        "host": "AccountName"
+      }
+    },{
+      "name": "restart",
+      "base": "",
+      "fields": {
+        "challenger": "AccountName",
+        "host": "AccountName",
+        "by": "AccountName"
+      }
+    },{
+      "name": "close",
+      "base": "",
+      "fields": {
+        "challenger": "AccountName",
+        "host": "AccountName"
+      }
+    },{
+      "name": "movement",
+      "base": "",
+      "fields": {
+        "row": "UInt32",
+        "column": "UInt32"
+      }
+    },{
+      "name": "move",
+      "base": "",
+      "fields": {
+        "challenger": "AccountName",
+        "host": "AccountName",
+        "by": "AccountName",
+        "movement": "movement"
+      }
+    }
+  ],
+  "actions": [{
+      "action": "create",
+      "type": "create"
+    },{
+      "action": "restart",
+      "type": "restart"
+    },{
+      "action": "close",
+      "type": "close"
+    },{
+      "action": "move",
+      "type": "move"
+    }
+  ],
+  "tables": [{
+        "table": "games",
+        "type": "game",
+        "indextype": "i64",
+        "keynames" : ["challenger"],
+        "keytypes" : ["AccountName"]
+      }
+  ]
+}
