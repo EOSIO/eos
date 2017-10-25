@@ -1,31 +1,13 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/exceptions.hpp>
+#include <eos/chain_plugin/chain_plugin.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
@@ -44,6 +26,9 @@
 using namespace eos::chain;
 
 extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
+
+#define HAVE_DATABASE_FIXTURE
+#include "testing_macros.hpp"
 
 #define TEST_DB_SIZE (1024*1024*1000)
 
@@ -116,6 +101,7 @@ public:
 
    void store_private_key(const private_key_type& key);
    private_key_type get_private_key(const public_key_type& public_key) const;
+   flat_set<public_key_type> available_keys() const;
 
 protected:
    std::vector<fc::temp_directory> anonymous_temp_dirs;
@@ -138,15 +124,22 @@ protected:
  */
 class testing_blockchain : public chain_controller {
 public:
-    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                      chain_initializer_interface& initializer, testing_fixture& fixture);
+
+   /**
+    * @brief Publish the provided contract to the blockchain, owned by owner
+    * @param owner The account to publish the contract under
+    * @param contract_wast The WAST of the contract
+    */
+   void set_contract(AccountName owner, const char* contract_wast);
 
    /**
     * @brief Produce new blocks, adding them to the blockchain, optionally following a gap of missed blocks
     * @param count Number of blocks to produce
     * @param blocks_to_miss Number of block intervals to miss a production before producing the next block
     *
-    * Creates and adds  @ref count new blocks to the blockchain, after going @ref blocks_to_miss intervals without
+    * Creates and adds @ref count new blocks to the blockchain, after going @ref blocks_to_miss intervals without
     * producing a block.
     */
    void produce_blocks(uint32_t count = 1, uint32_t blocks_to_miss = 0);
@@ -175,8 +168,44 @@ public:
    /// @brief Get the specified block producer's signing key
    PublicKey get_block_signing_key(const AccountName& producerName);
 
+   /// @brief Attempt to sign the provided transaction using the keys available to the testing_fixture
+   void sign_transaction(SignedTransaction& trx) const;
+
+   /// @brief Override push_transaction to apply testing policies
+   /// If transactions are being held for review, transaction will be held after testing policies are applied
+   fc::optional<ProcessedTransaction> push_transaction(SignedTransaction trx, uint32_t skip_flags = 0);
+   /// @brief Review and optionally push last held transaction
+   /// @tparam F A callable with signature `bool f(SignedTransaction&, uint32_t&)`
+   /// @param reviewer Callable which inspects and potentially alters the held transaction and skip flags, and returns
+   /// whether it should be pushed or not
+   template<typename F>
+   fc::optional<ProcessedTransaction> review_transaction(F&& reviewer) {
+      if (reviewer(review_storage.first, review_storage.second))
+         return chain_controller::push_transaction(review_storage.first, review_storage.second);
+      return {};
+   }
+
+   /// @brief Set whether testing_blockchain::push_transaction checks signatures by default
+   /// @param skip_sigs If true, push_transaction will skip signature checks; otherwise, no changes will be made
+   void set_skip_transaction_signature_checking(bool skip_sigs) {
+      skip_trx_sigs = skip_sigs;
+   }
+   /// @brief Set whether testing_blockchain::push_transaction attempts to sign transactions or not
+   void set_auto_sign_transactions(bool auto_sign) {
+      auto_sign_trxs = auto_sign;
+   }
+   /// @brief Set whether testing_blockchain::push_transaction holds transactions for review or not
+   void set_hold_transactions_for_review(bool hold_trxs) {
+      hold_for_review = hold_trxs;
+   }
+
 protected:
+   chainbase::database& db;
    testing_fixture& fixture;
+   std::pair<SignedTransaction, uint32_t> review_storage;
+   bool skip_trx_sigs = true;
+   bool auto_sign_trxs = false;
+   bool hold_for_review = false;
 };
 
 using boost::signals2::scoped_connection;
@@ -217,267 +246,4 @@ protected:
    std::map<testing_blockchain*, scoped_connection> blockchains;
 };
 
-/// Some helpful macros to reduce boilerplate when making testcases
-/// @{
-#include "macro_support.hpp"
-
-/**
- * @brief Create/Open a testing_blockchain, optionally with an ID
- *
- * Creates and opens a testing_blockchain with the first argument as its name, and, if present, the second argument as
- * its ID. The ID should be provided without quotes.
- *
- * Example:
- * @code{.cpp}
- * // Create testing_blockchain chain1
- * Make_Blockchain(chain1)
- *
- * // The above creates the following objects:
- * chainbase::database chain1_db;
- * block_log chain1_log;
- * fork_database chain1_fdb;
- * native_contract::native_contract_chain_initializer chain1_initializer;
- * testing_blockchain chain1;
- * @endcode
- */
-#define Make_Blockchain(...) BOOST_PP_OVERLOAD(MKCHAIN, __VA_ARGS__)(__VA_ARGS__)
-/**
- * @brief Similar to @ref Make_Blockchain, but works with several chains at once
- *
- * Creates and opens several testing_blockchains
- *
- * Example:
- * @code{.cpp}
- * // Create testing_blockchains chain1 and chain2, with chain2 having ID "id2"
- * Make_Blockchains((chain1)(chain2, id2))
- * @endcode
- */
-#define Make_Blockchains(...) BOOST_PP_SEQ_FOR_EACH(MKCHAINS_MACRO, _, __VA_ARGS__)
-
-/**
- * @brief Make_Network is a shorthand way to create a testing_network and connect some testing_blockchains to it.
- *
- * Example usage:
- * @code{.cpp}
- * // Create and open testing_blockchains named alice, bob, and charlie
- * MKDBS((alice)(bob)(charlie))
- * // Create a testing_network named net and connect alice and bob to it
- * Make_Network(net, (alice)(bob))
- *
- * // Connect charlie to net, then disconnect alice
- * net.connect_blockchain(charlie);
- * net.disconnect_blockchain(alice);
- *
- * // Create a testing_network named net2 with no blockchains connected
- * Make_Network(net2)
- * @endcode
- */
-#define Make_Network(...) BOOST_PP_OVERLOAD(MKNET, __VA_ARGS__)(__VA_ARGS__)
-
-/**
- * @brief Make_Key is a shorthand way to create a keypair
- *
- * @code{.cpp}
- * // This line:
- * Make_Key(a_key)
- * // ...defines these objects:
- * private_key_type a_key_private_key;
- * PublicKey a_key_public_key;
- * // The private key is generated off of the sha256 hash of "a_key_private_key", so it should be unique from all
- * // other keys created with MKKEY in the same scope.
- * @endcode
- */
-#define Make_Key(name) auto name ## _private_key = private_key_type::regenerate(fc::digest(#name "_private_key")); \
-   store_private_key(name ## _private_key); \
-   PublicKey name ## _public_key = name ## _private_key.get_public_key();
-
-/**
- * @brief Key_Authority is a shorthand way to create an inline Authority based on a key
- *
- * Invoke Key_Authority passing the name of a public key in the current scope, and AUTHK will resolve inline to an authority
- * which can be satisfied by a signature generated by the corresponding private key.
- */
-#define Key_Authority(pubkey) (Authority{1, {{pubkey, 1}}, {}})
-/**
- * @brief Account_Authority is a shorthand way to create an inline Authority based on an account
- *
- * Invoke Account_Authority passing the name of an account, and AUTHA will resolve inline to an authority which can be satisfied by
- * the provided account's active authority.
- */
-#define Account_Authority(account) (Authority{1, {}, {{{#account, "active"}, 1}}})
-
-/**
- * @brief Make_Account is a shorthand way to create an account
- *
- * Use Make_Account to create an account, including keys. The changes will be applied via a transaction applied to the
- * provided blockchain object. The changes will not be incorporated into a block; they will be left in the pending 
- * state.
- *
- * Unless overridden, new accounts are created with a balance of Asset(100)
- *
- * Example:
- * @code{.cpp}
- * Make_Account(chain, joe)
- * // ... creates these objects:
- * private_key_type joe_private_key;
- * PublicKey joe_public_key;
- * // ...and also registers the account joe with owner and active authorities satisfied by these keys, created by
- * // init0, with init0's active authority as joe's recovery authority, and initially endowed with Asset(100)
- * @endcode
- *
- * You may specify a third argument for the creating account:
- * @code{.cpp}
- * // Same as MKACCT(chain, joe) except that sam will create joe's account instead of init0
- * Make_Account(chain, joe, sam)
- * @endcode
- *
- * You may specify a fourth argument for the amount to transfer in account creation:
- * @code{.cpp}
- * // Same as MKACCT(chain, joe, sam) except that sam will send joe ASSET(100) during creation
- * Make_Account(chain, joe, sam, Asset(100))
- * @endcode
- *
- * You may specify a fifth argument, which will be used as the owner authority (must be an Authority, NOT a key!).
- *
- * You may specify a sixth argument, which will be used as the active authority. If six or more arguments are provided,
- * the default keypair will NOT be created or put into scope.
- *
- * You may specify a seventh argument, which will be used as the recovery authority.
- */
-#define Make_Account(...) BOOST_PP_OVERLOAD(MKACCT, __VA_ARGS__)(__VA_ARGS__)
-
-/**
- * @brief Shorthand way to transfer funds
- *
- * Use Transfer_Asset to send funds from one account to another:
- * @code{.cpp}
- * // Send 10 EOS from alice to bob
- * Transfer_Asset(chain, alice, bob, Asset(10));
- *
- * // Send 10 EOS from alice to bob with memo "Thanks for all the fish!"
- * Transfer_Asset(chain, alice, bob, Asset(10), "Thanks for all the fish!");
- * @endcode
- *
- * The changes will be applied via a transaction applied to the provided blockchain object. The changes will not be
- * incorporated into a block; they will be left in the pending state.
- */
-#define Transfer_Asset(...) BOOST_PP_OVERLOAD(XFER, __VA_ARGS__)(__VA_ARGS__)
-
-/**
- * @brief Shorthand way to convert liquid funds to staked funds
- *
- * Use Stake_Asset to stake liquid funds:
- * @code{.cpp}
- * // Convert 10 of bob's EOS from liquid to staked
- * Stake_Asset(chain, bob, Asset(10).amount);
- *
- * // Stake and transfer 10 EOS from alice to bob (alice pays liquid EOS and bob receives stake)
- * Stake_Asset(chain, alice, bob, Asset(10).amount);
- * @endcode
- */
-#define Stake_Asset(...) BOOST_PP_OVERLOAD(STAKE, __VA_ARGS__)(__VA_ARGS__)
-
-/**
- * @brief Shorthand way to begin conversion from staked funds to liquid funds
- *
- * Use Unstake_Asset to begin unstaking funds:
- * @code{.cpp}
- * // Begin unstaking 10 of bob's EOS
- * Unstake_Asset(chain, bob, Asset(10).amount);
- * @endcode
- *
- * This can also be used to cancel an unstaking in progress, by passing Asset(0) as the amount.
- */
-#define Begin_Unstake_Asset(...) BOOST_PP_OVERLOAD(BEGIN_UNSTAKE, __VA_ARGS__)(__VA_ARGS__)
-
-/**
- * @brief Shorthand way to claim unstaked EOS as liquid
- *
- * Use Finish_Unstake_Asset to liquidate unstaked funds:
- * @code{.cpp}
- * // Reclaim as liquid 10 of bob's unstaked EOS
- * Unstake_Asset(chain, bob, Asset(10).amount);
- * @endcode
- */
-#define Finish_Unstake_Asset(...) BOOST_PP_OVERLOAD(FINISH_UNSTAKE, __VA_ARGS__)(__VA_ARGS__)
-
-
-/**
- * @brief Shorthand way to set voting proxy
- *
- * Use Set_Proxy to set what account a stakeholding account proxies its voting power to
- * @code{.cpp}
- * // Proxy sam's votes to bob
- * Set_Proxy(chain, sam, bob);
- *
- * // Unproxy sam's votes
- * Set_Proxy(chain, sam, sam);
- * @endcode
- */
-#define Set_Proxy(chain, stakeholder, proxy) \
-{ \
-   eos::chain::SignedTransaction trx; \
-   trx.authorizations = vector<types::AccountPermission>{{#stakeholder,"active"}}; \
-   trx.emplaceMessage(config::EosContractName, "setproxy", types::setproxy{#stakeholder, #proxy}); \
-   trx.expiration = chain.head_block_time() + 100; \
-   trx.set_reference_block(chain.head_block_id()); \
-   chain.push_transaction(trx); \
-}
-
-/**
- * @brief Shorthand way to create a block producer
- *
- * Use Make_Producer to create a block producer:
- * @code{.cpp}
- * // Create a block producer belonging to joe using signing_key as the block signing key and config as the producer's
- * // vote for a @ref BlockchainConfiguration:
- * Make_Producer(chain, joe, signing_key, config);
- *
- * // Create a block producer belonging to joe using signing_key as the block signing key:
- * Make_Producer(chain, joe, signing_key);
- *
- * // Create a block producer belonging to joe, using a new key as the block signing key:
- * Make_Producer(chain, joe);
- * // ... creates the objects:
- * private_key_type joe_producer_private_key;
- * PublicKey joe_producer_public_key;
- * @endcode
- */
-#define Make_Producer(...) BOOST_PP_OVERLOAD(MKPDCR, __VA_ARGS__)(__VA_ARGS__)
-
-/**
- * @brief Shorthand way to set approval of a block producer
- *
- * Use Approve_Producer to change an account's approval of a block producer:
- * @code{.cpp}
- * // Set joe's approval for pete's block producer to Approve
- * Approve_Producer(chain, joe, pete, true);
- * // Set joe's approval for pete's block producer to Disapprove
- * Approve_Producer(chain, joe, pete, false);
- * @endcode
- */
-#define Approve_Producer(...) BOOST_PP_OVERLOAD(APPDCR, __VA_ARGS__)(__VA_ARGS__)
-
-/**
- * @brief Shorthand way to update a block producer
- *
- * @note Unlike with the Make_* macros, the Update_* macros take an expression as the owner/name field, so be sure to
- * wrap names like this in quotes. You may also pass a normal C++ expression to be evaulated here instead. The reason
- * for this discrepancy is that the Make_* macros add identifiers to the current scope based on the owner/name field;
- * moreover, which can't be done with C++ expressions; however, the Update_* macros do not add anything to the scope,
- * and it's more likely that these will be used in a loop or other context where it is inconvenient to know the
- * owner/name at compile time.
- *
- * Use Update_Producer to update a block producer:
- * @code{.cpp}
- * // Update a block producer belonging to joe using signing_key as the new block signing key, and config as the
- * // producer's new vote for a @ref BlockchainConfiguration:
- * Update_Producer(chain, "joe", signing_key, config)
- *
- * // Update a block producer belonging to joe using signing_key as the new block signing key:
- * Update_Producer(chain, "joe", signing_key)
- * @endcode
- */
-#define Update_Producer(...) BOOST_PP_OVERLOAD(UPPDCR, __VA_ARGS__)(__VA_ARGS__)
-/// @}
 } }

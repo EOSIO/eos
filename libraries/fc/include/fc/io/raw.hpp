@@ -16,10 +16,16 @@
 #include <deque>
 
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/managed_mapped_file.hpp>
 #include <fc/crypto/hex.hpp>
 
 namespace fc {
     namespace raw {
+
+    namespace bip = boost::interprocess;
+    using shared_string = bip::basic_string< char, std::char_traits< char >, bip::allocator<char, bip::managed_mapped_file::segment_manager> >;
 
     using namespace boost::multiprecision;
     template<size_t Size>
@@ -268,6 +274,19 @@ namespace fc {
       if( tmp.size() )
          v = fc::string(tmp.data(),tmp.data()+tmp.size());
       else v = fc::string();
+    }
+
+    // bip::basic_string
+    template<typename Stream> inline void pack( Stream& s, const shared_string& v )  {
+      fc::raw::pack( s, unsigned_int((uint32_t)v.size()));
+      if( v.size() ) s.write( v.c_str(), v.size() );
+    }
+
+    template<typename Stream> inline void unpack( Stream& s, shared_string& v )  {
+      std::vector<char> tmp; fc::raw::unpack(s,tmp);
+      if( tmp.size() )
+         v = shared_string(tmp.data(),tmp.data()+tmp.size());
+      else v = shared_string();
     }
 
     // bool

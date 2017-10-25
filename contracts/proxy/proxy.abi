@@ -1,0 +1,29 @@
+{
+  "types": [{
+      "newTypeName": "AccountName",
+      "type": "Name"
+    }
+  ],
+  "structs": [{
+      "name": "config",
+      "base": "",
+      "fields": {
+        "key": "Name",
+        "owner": "Name"
+      }
+    }
+  ],
+  "actions": [{
+      "action": "setowner",
+      "type": "Name"
+    }
+  ],
+  "tables": [{
+      "table": "configs",
+      "type": "config",
+      "indextype": "i64",
+      "keynames" : ["key"],
+      "keytypes" : ["Name"]
+    }
+  ]
+}

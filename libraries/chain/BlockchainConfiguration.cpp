@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain/BlockchainConfiguration.hpp>
 
 #include <boost/range/algorithm/nth_element.hpp>

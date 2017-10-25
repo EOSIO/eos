@@ -1,0 +1,44 @@
+digraph G
+{ 
+  inita->initb [dir="both"]
+  inita->initd [dir="both"]
+  inita->initf [dir="both"]
+  inita->inith [dir="both"]
+  inita->initj [dir="both"]
+
+  initb->initc [dir="both"]
+  initb->inite [dir="both"]
+  initb->initg [dir="both"]
+  initb->initi [dir="both"]
+  initb->initk [dir="both"]
+
+  initc->initd [dir="both"]
+  initc->initf [dir="both"]
+  initc->inith [dir="both"]
+  initc->initj [dir="both"]
+
+  initd->inite [dir="both"]
+  initd->initg [dir="both"]
+  initd->initi [dir="both"]
+  initd->initk [dir="both"]
+
+  inite->initf [dir="both"]
+  inite->inith [dir="both"]
+  inite->initj [dir="both"]
+
+  initf->initg [dir="both"]
+  initf->initi [dir="both"]
+  initf->initk [dir="both"]
+
+  initg->inith [dir="both"]
+  initg->initj [dir="both"]
+
+  inith->initi [dir="both"]
+  inith->initk [dir="both"]
+
+  initi->initj [dir="both"]
+  initi->initk [dir="both"]
+
+  initj->initk [dir="both"]
+}
+

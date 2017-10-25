@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 /// @file Exists to make including the eos types less toxic. Build error hilarity ensues if you don't include enough of

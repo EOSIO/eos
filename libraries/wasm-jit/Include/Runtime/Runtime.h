@@ -212,6 +212,7 @@ namespace Runtime
 
 	// Gets the default table/memory for a ModuleInstance.
 	RUNTIME_API MemoryInstance* getDefaultMemory(ModuleInstance* moduleInstance);
+   RUNTIME_API uint64_t getDefaultMemorySize(ModuleInstance* moduleInstance);
 	RUNTIME_API TableInstance* getDefaultTable(ModuleInstance* moduleInstance);
 
 	// Gets an object exported by a ModuleInstance by name.

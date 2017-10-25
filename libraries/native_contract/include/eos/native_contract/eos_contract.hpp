@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <eos/chain/message_handling_contexts.hpp>
@@ -18,6 +22,10 @@ void apply_eos_okproducer(chain::apply_context&);
 void apply_eos_setproducer(chain::apply_context&);
 void apply_eos_setproxy(chain::apply_context&);
 void apply_eos_setcode(chain::apply_context&);
+void apply_eos_updateauth(chain::apply_context&);
+void apply_eos_deleteauth(chain::apply_context&);
+void apply_eos_linkauth(chain::apply_context&);
+void apply_eos_unlinkauth(chain::apply_context&);
 
 } // namespace eos
 } // namespace native

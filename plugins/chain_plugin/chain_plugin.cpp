@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
@@ -11,7 +15,9 @@
 #include <eos/native_contract/staked_balance_objects.hpp>
 #include <eos/native_contract/balance_object.hpp>
 #include <eos/native_contract/genesis_state.hpp>
-#include <eos/types/AbiSerializer.hpp>
+
+#include <eos/utilities/key_conversion.hpp>
+#include <eos/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -26,8 +32,10 @@ using chain::block_log;
 using chain::chain_id_type;
 using chain::account_object;
 using chain::key_value_object;
+using chain::key128x128_value_object;
+using chain::key64x64x64_value_object;
 using chain::by_name;
-using chain::by_scope_key;
+using chain::by_scope_primary;
 using chain::uint128_t;
 
 
@@ -36,6 +44,7 @@ public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    chain::Time                      genesis_timestamp;
+   uint32_t                         skip_flags = chain_controller::skip_nothing;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -43,7 +52,21 @@ public:
    fc::optional<block_log>          block_logger;
    fc::optional<chain_controller>   chain;
    chain_id_type                    chain_id;
+   uint32_t                         rcvd_block_trans_execution_time;
+   uint32_t                         trans_execution_time;
+   uint32_t                         create_block_trans_execution_time;
 };
+
+#ifdef NDEBUG
+const uint32_t chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME = 12;
+const uint32_t chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME = 3;
+const uint32_t chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME = 3;
+#else
+const uint32_t chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME = 72;
+const uint32_t chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME = 18;
+const uint32_t chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME = 18;
+#endif
+
 
 
 chain_plugin::chain_plugin()
@@ -56,16 +79,24 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 {
    cfg.add_options()
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
-     ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME),
+          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
+         ("trans-execution-time", bpo::value<uint32_t>()->default_value(DEFAULT_TRANSACTION_EXECUTION_TIME),
+          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
+         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME),
+          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
+         ("skip-transaction-signatures", bpo::bool_switch()->default_value(false),
+          "Disable Transaction signature verification. ONLY for TESTING.")
          ;
 }
 
@@ -107,6 +138,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       app().get_plugin<database_plugin>().wipe_database();
       fc::remove_all(my->block_log_dir);
    }
+   if (options.at("skip-transaction-signatures").as<bool>()) {
+      ilog("Setting skip_transaction_signatures");
+      elog("Setting skip_transaction_signatures\n"
+           "\n"
+           "**************************************\n"
+           "*                                    *\n"
+           "*   -- EOSD IGNORING SIGNATURES --   *\n"
+           "*   -         TEST MODE          -   *\n"
+           "*   ------------------------------   *\n"
+           "*                                    *\n"
+           "**************************************\n");
+
+      my->skip_flags |= chain_controller::skip_transaction_signatures;
+   }
 
    if(options.count("checkpoint"))
    {
@@ -118,6 +163,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->loaded_checkpoints[item.first] = item.second;
       }
    }
+
+   my->rcvd_block_trans_execution_time = options.at("rcvd-block-trans-execution-time").as<uint32_t>() * 1000;
+   my->trans_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
+   my->create_block_trans_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
 }
 
 void chain_plugin::plugin_startup() 
@@ -139,7 +188,10 @@ void chain_plugin::plugin_startup()
    my->block_logger = block_log(my->block_log_dir);
    my->chain_id = genesis.compute_chain_id();
    my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
-                                initializer, native_contract::make_administrator());
+                                initializer, native_contract::make_administrator(),
+                                my->trans_execution_time,
+                                my->rcvd_block_trans_execution_time,
+                                my->create_block_trans_execution_time);
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
@@ -154,6 +206,10 @@ void chain_plugin::plugin_startup()
 void chain_plugin::plugin_shutdown() {
 }
 
+chain_apis::read_write chain_plugin::get_read_write_api() {
+   return chain_apis::read_write(chain(), my->skip_flags);
+}
+
 bool chain_plugin::accept_block(const chain::signed_block& block, bool currently_syncing) {
    if (currently_syncing && block.block_num() % 10000 == 0) {
       ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
@@ -162,11 +218,11 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
            ("p", block.producer));
    }
 
-   return chain().push_block(block);
+   return chain().push_block(block, my->skip_flags);
 }
 
 void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
-   chain().push_transaction(trx);
+   chain().push_transaction(trx, my->skip_flags);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block_id) {
@@ -177,6 +233,10 @@ bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block
    return chain().get_block_id_for_num(chain::block_header::num_from_id(block_id)) == block_id;
 }
 
+bool chain_plugin::is_skipping_transaction_signatures() const {
+   return my->skip_flags & chain_controller::skip_transaction_signatures;
+}
+
 chain_controller& chain_plugin::chain() { return *my->chain; }
 const chain::chain_controller& chain_plugin::chain() const { return *my->chain; }
 
@@ -185,6 +245,14 @@ const chain::chain_controller& chain_plugin::chain() const { return *my->chain; 
   }
 
 namespace chain_apis {
+
+const string read_only::KEYi64 = "i64";
+const string read_only::KEYstr = "str";
+const string read_only::KEYi128i128 = "i128i128";
+const string read_only::KEYi64i64i64 = "i64i64i64";
+const string read_only::PRIMARY = "primary";
+const string read_only::SECONDARY = "secondary";
+const string read_only::TERTIARY = "tertiary";
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
    return {
@@ -198,87 +266,52 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-read_only::get_table_rows_i64_result read_only::get_table_rows_i64( const read_only::get_table_rows_i64_params& p )const {
-   read_only::get_table_rows_i64_result result;
+types::Abi getAbi( const chain_controller& db, const Name& account ) {
    const auto& d = db.get_database();
-   const auto& code_account = d.get<account_object,by_name>( p.code );
+   const auto& code_accnt  = d.get<account_object,by_name>( account );
 
-   types::AbiSerializer abis;
-   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
+   eos::types::Abi abi;
+   if( code_accnt.abi.size() > 4 ) {
+      fc::datastream<const char*> ds( code_accnt.abi.data(), code_accnt.abi.size() );
       fc::raw::unpack( ds, abi );
-      abis.setAbi( abi );
    }
-
-   const auto& idx = d.get_index<chain::key_value_index,by_scope_key>();
-   auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
-   auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
-
-   vector<char> data;
-
-   auto start = fc::time_point::now();
-   auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
-
-   int count = 0;
-   auto itr = lower;
-   for( itr = lower; itr != upper; ++itr ) {
-      data.resize( sizeof(uint64_t) + itr->value.size() );
-      memcpy( data.data(), &itr->key, sizeof(itr->key) );
-      memcpy( data.data()+sizeof(uint64_t), itr->value.data(), itr->value.size() );
-
-      if( p.json ) 
-         result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
-      else
-         result.rows.emplace_back( fc::variant(data) );
-      if( ++count == p.limit || fc::time_point::now() > end )
-         break;
-   }
-   if( itr != upper ) 
-      result.more = true;
-   return result;
+   return abi;
 }
 
-read_only::get_table_rows_i128i128_primary_result read_only::get_table_rows_i128i128_primary( const read_only::get_table_rows_i128i128_primary_params& p )const {
-   read_only::get_table_rows_i128i128_primary_result result;
+string getTableType( const types::Abi& abi, const Name& tablename ) {
+   for( const auto& t : abi.tables ) {
+      if( t.table == tablename ){
+         return t.indextype;
+      }
+   }
+   FC_ASSERT( !"Abi does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
+}
+
+read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
    const auto& d = db.get_database();
-   const auto& code_account = d.get<account_object,by_name>( p.code );
 
-   types::AbiSerializer abis;
-   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-      fc::raw::unpack( ds, abi );
-      abis.setAbi( abi );
+   const types::Abi abi = getAbi( db, p.code );
+   auto table_type = getTableType( abi, p.table );
+   auto table_key = PRIMARY;
+
+   if( table_type == KEYi64 ) {
+      return get_table_rows_ex<chain::key_value_index, chain::by_scope_primary>(p,abi);
+   } else if( table_type == KEYstr ) {
+      return get_table_rows_ex<chain::keystr_value_index, chain::by_scope_primary>(p,abi);
+   } else if( table_type == KEYi128i128 ) { 
+      if( table_key == PRIMARY )
+         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_primary>(p,abi);
+      if( table_key == SECONDARY )
+         return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_secondary>(p,abi);
+   } else if( table_type == KEYi64i64i64 ) {
+      if( table_key == PRIMARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_primary>(p,abi);
+      if( table_key == SECONDARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_secondary>(p,abi);
+      if( table_key == TERTIARY )
+         return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_tertiary>(p,abi);
    }
-
-   const auto& idx = d.get_index<chain::key128x128_value_index,chain::by_scope_primary>();
-   auto lower = idx.lower_bound( boost::make_tuple( p.scope, p.code, p.table, p.lower_bound ) );
-   auto upper = idx.upper_bound( boost::make_tuple( p.scope, p.code, p.table, p.upper_bound ) );
-
-   vector<char> data;
-
-   auto start = fc::time_point::now();
-   auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
-
-   int count = 0;
-   auto itr = lower;
-   for( itr = lower; itr != upper; ++itr ) {
-      data.resize( sizeof(uint128_t)*2 + itr->value.size() );
-      memcpy( data.data(), &itr->primary_key, sizeof(itr->primary_key) );
-      memcpy( data.data()+sizeof(uint128_t), &itr->secondary_key, sizeof(itr->secondary_key) );
-      memcpy( data.data()+sizeof(uint128_t)*2, itr->value.data(), itr->value.size() );
-
-      if( p.json ) 
-         result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
-      else
-         result.rows.emplace_back( fc::variant(data) );
-      if( ++count == p.limit || fc::time_point::now() > end )
-         break;
-   }
-   if( itr != upper ) 
-      result.more = true;
-   return result;
+   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
@@ -296,14 +329,50 @@ read_only::get_block_results read_only::get_block(const read_only::get_block_par
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
-   db.push_block(params);
+   db.push_block(params, chain_controller::validation_steps::skip_nothing);
    return read_write::push_block_results();
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   auto ptrx = db.push_transaction(params);
+   auto pretty_input = db.transaction_from_variant( params );
+   auto ptrx = db.push_transaction(pretty_input, skip_flags);
    auto pretty_trx = db.transaction_to_variant( ptrx );
-   return read_write::push_transaction_results{ params.id(), pretty_trx };
+   return read_write::push_transaction_results{ pretty_input.id(), pretty_trx };
+}
+
+read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
+   FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
+
+   push_transactions_results result;
+   result.reserve(params.size());
+   for( const auto& item : params ) {
+      try {
+        result.emplace_back( push_transaction( item ) ); 
+      } catch ( const fc::exception& e ) {
+        result.emplace_back( read_write::push_transaction_results{ chain::transaction_id_type(), 
+                          fc::mutable_variant_object( "error", e.to_detail_string() ) } );
+      }
+   }
+   return result;
+}
+
+read_only::get_code_results read_only::get_code( const get_code_params& params )const {
+   get_code_results result;
+   result.name = params.name;
+   const auto& d = db.get_database();
+   const auto& accnt  = d.get<account_object,by_name>( params.name );
+
+   if( accnt.code.size() ) {
+      result.wast = chain::wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
+      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+   }
+   if( accnt.abi.size() > 4 ) {
+      eos::types::Abi abi;
+      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
+      fc::raw::unpack( ds, abi );
+      result.abi = std::move(abi);
+   }
+   return result;
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
@@ -317,17 +386,29 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
    const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
 
-   if( accnt.abi.size() > 4 ) {
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
-      fc::raw::unpack( ds, abi );
-      result.abi = std::move(abi);
-   }
-
-   result.eos_balance          = balance.balance;
-   result.staked_balance       = staked_balance.stakedBalance;
-   result.unstaking_balance    = staked_balance.unstakingBalance;
+   result.eos_balance          = Asset(balance.balance, EOS_SYMBOL);
+   result.staked_balance       = Asset(staked_balance.stakedBalance);
+   result.unstaking_balance    = Asset(staked_balance.unstakingBalance);
    result.last_unstaking_time  = staked_balance.lastUnstakingTime;
+
+   const auto& permissions = d.get_index<permission_index,by_owner>();
+   auto perm = permissions.lower_bound( boost::make_tuple( params.name ) );
+   while( perm != permissions.end() && perm->owner == params.name ) {
+      /// TODO: lookup perm->parent name 
+      Name parent;
+
+      // Don't lookup parent if null
+      if( perm->parent._id ) {
+         const auto* p = d.find<permission_object,by_id>( perm->parent );
+         if( p ) {
+            FC_ASSERT(perm->owner == p->owner, "Invalid parent");
+            parent = p->name; 
+         } 
+      }
+
+      result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );
+      ++perm;
+   }
 
 
    return result;
@@ -342,6 +423,15 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    result.args = db.message_from_binary( params.code, params.action, params.binargs );
    return result;
 }
+
+read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
+   auto pretty_input = db.transaction_from_variant(params.transaction);
+   auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
+   get_required_keys_result result;
+   result.required_keys = required_keys_set;
+   return result;
+}
+
 
 } // namespace chain_apis
 } // namespace eos

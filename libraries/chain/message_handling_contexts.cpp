@@ -1,22 +1,42 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/permission_object.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/chain_controller.hpp>
 
+#include <eos/utilities/parallel_markers.hpp>
+
+#include <fc/bitutil.hpp>
+
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 
 namespace eos { namespace chain {
 
-void message_validate_context::require_authorization(const types::AccountName& account) {
-#warning TODO: Look up the permission_object that account has specified to use for this message type
-   if (authChecker)
-      EOS_ASSERT(authChecker->requirePermission({account, "active"}), tx_missing_auth,
-                 "Transaction does not declare required authority '${auth}'", ("auth", account));
+void apply_context::get_active_producers(types::AccountName* producers, uint32_t datalen) {
+   const auto& gpo = controller.get_global_properties();
+   memcpy(producers, gpo.active_producers.data(), std::min(sizeof(AccountName)*gpo.active_producers.size(),(size_t)datalen)); 
 }
 
-void message_validate_context::require_scope(const types::AccountName& account)const {
+void apply_context::require_authorization(const types::AccountName& account) {
+   auto itr = boost::find_if(msg.authorization, [&account](const auto& auth) { return auth.account == account; });
+   EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
+              "Transaction is missing required authorization from ${acct}", ("acct", account));
+   used_authorizations[itr - msg.authorization.begin()] = true;
+}
+
+void apply_context::require_authorization(const types::AccountName& account,const types::PermissionName& permission) {
+   auto itr = boost::find_if(msg.authorization, [&account, &permission](const auto& auth) { return auth.account == account && auth.permission == permission; });
+   EOS_ASSERT(itr != msg.authorization.end(), tx_missing_auth,
+              "Transaction is missing required authorization from ${acct} with permission ${permission}", ("acct", account)("permission", permission));
+   used_authorizations[itr - msg.authorization.begin()] = true;
+}
+
+void apply_context::require_scope(const types::AccountName& account)const {
    auto itr = boost::find_if(trx.scope, [&account](const auto& scope) {
       return scope == account;
    });
@@ -27,347 +47,103 @@ void message_validate_context::require_scope(const types::AccountName& account)c
    }
 }
 
-bool apply_context::has_recipient( const types::AccountName& account )const {
-   if( msg.code == account ) return true;
+void apply_context::require_recipient(const types::AccountName& account) {
+   if (account == msg.code)
+      return;
 
    auto itr = boost::find_if(notified, [&account](const auto& recipient) {
       return recipient == account;
    });
 
-   return itr != notified.end();
-}
-
-void apply_context::require_recipient(const types::AccountName& account) {
-   if( !has_recipient( account ) ) {
+   if (itr == notified.end()) {
       notified.push_back(account);
    }
 }
 
-int32_t message_validate_context::load_i64( Name scope, Name code, Name table, Name key, char* value, uint32_t valuelen ) {
-   require_scope( scope );
+bool apply_context::all_authorizations_used() const {
+   return boost::algorithm::all_of_equal(used_authorizations, true);
+}
 
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
-                                                            AccountName(key) ) );
-   if( obj == nullptr ) { return -1; }
-   auto copylen =  std::min<size_t>(obj->value.size(),valuelen);
-   if( copylen ) {
-      obj->value.copy(value, copylen);
+vector<types::AccountPermission> apply_context::unused_authorizations() const {
+   auto range = utilities::FilterDataByMarker(msg.authorization, used_authorizations, false);
+   return {range.begin(), range.end()};
+}
+
+apply_context::pending_transaction& apply_context::get_pending_transaction(pending_transaction::handle_type handle) {
+   auto itr = boost::find_if(pending_transactions, [&](const auto& trx) { return trx.handle == handle; });
+   EOS_ASSERT(itr != pending_transactions.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending transaction");
+   return *itr;
+}
+
+const auto Pending_transaction_expiration = fc::seconds(21 * 3);
+const int Max_pending_messages = 4;
+const int Max_pending_transactions = 4;
+
+apply_context::pending_transaction& apply_context::create_pending_transaction() {
+   EOS_ASSERT(pending_transactions.size() < Max_pending_transactions, tx_resource_exhausted,
+              "Transaction is attempting to create too many pending transactions. The max is ${max}", ("max", Max_pending_transactions));
+   
+   
+   pending_transaction::handle_type handle = next_pending_transaction_serial++;
+   auto head_block_id = controller.head_block_id();
+   decltype(pending_transaction::refBlockNum) head_block_num = fc::endian_reverse_u32(head_block_id._hash[0]);
+   decltype(pending_transaction::refBlockPrefix) head_block_ref = head_block_id._hash[1];
+   decltype(pending_transaction::expiration) expiration = controller.head_block_time() + Pending_transaction_expiration;
+   pending_transactions.emplace_back(handle, *this, head_block_num, head_block_ref, expiration);
+   return pending_transactions.back();
+}
+
+void apply_context::release_pending_transaction(pending_transaction::handle_type handle) {
+   auto itr = boost::find_if(pending_transactions, [&](const auto& trx) { return trx.handle == handle; });
+   EOS_ASSERT(itr != pending_transactions.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending transaction");
+
+   auto last = pending_transactions.end() - 1;
+   if (itr != last) {
+      std::swap(itr, last);
    }
-   return copylen;
+   pending_transactions.pop_back();
 }
 
-int32_t message_validate_context::back_primary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-   return -1;
-   /*
-    require_scope( scope );
-    const auto& idx = db.get_index<key128x128_value_index,by_scope_primary>();
-    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  table.value+1, 
-                                                  *primary, uint128_t(0) ) );
-
-    if( itr == idx.begin() && itr == idx.end() ) 
-       return 0;
-
-    --itr;
-
-    if( itr->scope != scope ||
-        itr->code != code ||
-        itr->table != table ||
-        itr->primary_key != *primary ) return -1;
-
-    *secondary = itr->secondary_key;
-    *primary = itr->primary_key;
-    
-    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-    if( copylen ) {
-       itr->value.copy(value, copylen);
-    }
-    return copylen;
-    */
+void apply_context::pending_transaction::check_size() const {
+   const types::Transaction& trx = *this;
+   const BlockchainConfiguration& chain_configuration = context.controller.get_global_properties().configuration;
+   EOS_ASSERT(fc::raw::pack_size(trx) <= chain_configuration.maxGenTrxSize, tx_resource_exhausted,
+              "Transaction is attempting to create a transaction which is too large. The max size is ${max} bytes", ("max", chain_configuration.maxGenTrxSize));
 }
 
-int32_t message_validate_context::back_secondary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-    require_scope( scope );
-    const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
-    auto itr = idx.lower_bound( boost::make_tuple( AccountName(scope), 
-                                                  AccountName(code), 
-                                                  table.value+1, 
-                                                  *secondary, uint128_t(0) ) );
-
-    if( itr == idx.end() ) 
-       return -1;
-
-    --itr;
-
-    if( itr->scope != scope ||
-        itr->code != code ||
-        itr->table != table 
-        ) return -2;
-
-    *secondary = itr->secondary_key;
-    *primary = itr->primary_key;
-    
-    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-    if( copylen ) {
-       itr->value.copy(value, copylen);
-    }
-    return copylen;
+apply_context::pending_message& apply_context::get_pending_message(pending_message::handle_type handle) {
+   auto itr = boost::find_if(pending_messages, [&](const auto& msg) { return msg.handle == handle; });
+   EOS_ASSERT(itr != pending_messages.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending message");
+   return *itr;
 }
 
-
-int32_t message_validate_context::front_primary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-    require_scope( scope );
-    const auto& idx = db.get_index<key128x128_value_index,by_scope_primary>();
-    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
-                                                  *primary, uint128_t(0) ) );
-
-    if( itr == idx.end() ) 
-       return -1;
-
-    --itr;
-
-    if( itr->scope != scope ||
-        itr->code != code ||
-        itr->table != table 
-       ) return -2;
-
-    *secondary = itr->secondary_key;
-    *primary = itr->primary_key;
-    
-    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-    if( copylen ) {
-       itr->value.copy(value, copylen);
-    }
-    return copylen;
-}
-int32_t message_validate_context::front_secondary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-    require_scope( scope );
-    const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
-    auto itr = idx.lower_bound( boost::make_tuple( AccountName(scope), 
-                                                  AccountName(code), 
-                                                  AccountName(table), 
-                                                  uint128_t(0), uint128_t(0) ) );
-
-    FC_ASSERT( itr == idx.begin(), "lower bound of all 0 should be begin" );
-
-    if( itr == idx.end() )  {
-       return -1;
-    }
-
-
-    if( itr->scope != scope ||
-        itr->code != code ||
-        itr->table != table ) {
-        return -2;  
-    }
-
-    *secondary = itr->secondary_key;
-    *primary = itr->primary_key;
-    
-    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-    if( copylen ) {
-       itr->value.copy(value, copylen);
-    }
-    return copylen;
+apply_context::pending_message& apply_context::create_pending_message(const AccountName& code, const FuncName& type, const Bytes& data) {
+   const BlockchainConfiguration& chain_configuration = controller.get_global_properties().configuration;
+   
+   EOS_ASSERT(pending_messages.size() < Max_pending_messages, tx_resource_exhausted,
+              "Transaction is attempting to create too many pending messages. The max is ${max}", ("max", Max_pending_messages));
+   
+   EOS_ASSERT(data.size() < chain_configuration.maxInlineMsgSize, tx_resource_exhausted,
+              "Transaction is attempting to create a pending message that is too large. The max is ${max}", ("max", chain_configuration.maxInlineMsgSize));
+   
+   pending_message::handle_type handle = next_pending_message_serial++;
+   pending_messages.emplace_back(handle, code, type, data);
+   return pending_messages.back();
 }
 
+void apply_context::release_pending_message(pending_message::handle_type handle) {
+   auto itr = boost::find_if(pending_messages, [&](const auto& trx) { return trx.handle == handle; });
+   EOS_ASSERT(itr != pending_messages.end(), tx_unknown_argument,
+              "Transaction refers to non-existant/destroyed pending message");
 
-int32_t message_validate_context::load_primary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-    require_scope( scope );
-    const auto& idx = db.get_index<key128x128_value_index,by_scope_primary>();
-    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
-                                                  *primary, uint128_t(0) ) );
-
-    if( itr == idx.end() ||
-        itr->scope != (scope) ||
-        itr->code != (code) ||
-        itr->table != (table) ||
-        itr->primary_key != *primary ) return -1;
-
-    *secondary = itr->secondary_key;
-    
-    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-    if( copylen ) {
-       itr->value.copy(value, copylen);
-    }
-    return copylen;
-}
-
-int32_t message_validate_context::load_secondary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-    require_scope( scope );
-    const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
-    auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                   uint64_t(code), 
-                                                   uint64_t(table), 
-                                                  *secondary, uint128_t(0) ) );
-
-    if( itr == idx.end() ||
-        itr->scope != (scope) ||
-        itr->code != (code) ||
-        itr->table != (table) ||
-        itr->secondary_key != *secondary ) return -1;
-
-    *primary = itr->primary_key;
-    
-    auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-    if( copylen ) {
-       itr->value.copy(value, copylen);
-    }
-    return copylen;
-}
-
-int32_t message_validate_context::lowerbound_primary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-   require_scope( scope );
-   const auto& idx = db.get_index<key128x128_value_index,by_scope_primary>();
-   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
-                                                  *primary, uint128_t(0) ) );
-
-   if( itr == idx.end() ||
-       itr->scope != scope ||
-       itr->code != code ||
-       itr->table != table ) return -1;
-
-   *primary   = itr->primary_key;
-   *secondary = itr->secondary_key;
-
-   auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-   if( copylen ) {
-      itr->value.copy(value, copylen);
+   auto last = pending_messages.end() - 1;
+   if (itr != last) {
+      std::swap(itr, last);
    }
-   return copylen;
-}
-
-int32_t message_validate_context::lowerbound_secondary_i128i128( Name scope, Name code, Name table, 
-                                 uint128_t* primary, uint128_t* secondary, char* value, uint32_t valuelen ) {
-
-   require_scope( scope );
-   const auto& idx = db.get_index<key128x128_value_index,by_scope_secondary>();
-   auto itr = idx.lower_bound( boost::make_tuple( uint64_t(scope), 
-                                                  uint64_t(code), 
-                                                  uint64_t(table), 
-                                                  uint128_t(0), *secondary  ) );
-
-   if( itr == idx.end() ||
-       itr->scope != scope ||
-       itr->code != code ||
-       itr->table != table ) return -1;
-
-   *primary   = itr->primary_key;
-   *secondary = itr->secondary_key;
-
-   auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-   if( copylen ) {
-      itr->value.copy(value, copylen);
-   }
-   return copylen;
-}
-
-int32_t apply_context::remove_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary ) {
-   require_scope( scope );
-
-   const auto* obj = db.find<key128x128_value_object,by_scope_primary>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
-                                                            primary, secondary) );
-   if( obj ) {
-      mutable_db.remove( *obj );
-      return 1;
-   }
-   return 0;
-}
-
-int32_t apply_context::remove_i64( Name scope, Name table, Name key ) {
-   require_scope( scope );
-
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
-                                                            AccountName(key) ) );
-   if( obj ) {
-      mutable_db.remove( *obj );
-      return 1;
-   }
-   return 0;
-}
-
-int32_t apply_context::store_i64( Name scope, Name table, Name key, const char* value, uint32_t valuelen ) {
-   require_scope( scope );
-
-   const auto* obj = db.find<key_value_object,by_scope_key>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
-                                                            AccountName(key) ) );
-   if( obj ) {
-      mutable_db.modify( *obj, [&]( auto& o ) {
-         o.value.assign(value, valuelen);
-      });
-      return 0;
-   } else {
-      mutable_db.create<key_value_object>( [&](auto& o) {
-         o.scope = scope;
-         o.code  = code;
-         o.table = table;
-         o.key   = key;
-         o.value.insert( 0, value, valuelen );
-      });
-      return valuelen;
-   }
-}
-
-int32_t apply_context::store_i128i128( Name scope, Name table, uint128_t primary, uint128_t secondary,
-                                       const char* value, uint32_t valuelen ) {
-   const auto* obj = db.find<key128x128_value_object,by_scope_primary>( boost::make_tuple(
-                                                            AccountName(scope), 
-                                                            AccountName(code), 
-                                                            AccountName(table), 
-                                                            primary, secondary ) );
-   idump(( *((fc::uint128_t*)&primary)) );
-   idump(( *((fc::uint128_t*)&secondary)) );
-   if( obj ) {
-      wlog( "modify" );
-      mutable_db.modify( *obj, [&]( auto& o ) {
-         o.value.assign(value, valuelen);
-      });
-      return 0;
-   } else {
-      wlog( "new" );
-      mutable_db.create<key128x128_value_object>( [&](auto& o) {
-         o.scope = scope;
-         o.code  = code;
-         o.table = table;
-         o.primary_key = primary;
-         o.secondary_key = secondary;
-         o.value.insert( 0, value, valuelen );
-      });
-      return valuelen;
-   }
+   pending_messages.pop_back();
 }
 
 } } // namespace eos::chain

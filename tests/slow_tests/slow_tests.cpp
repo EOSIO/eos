@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 
 #include <boost/test/unit_test.hpp>
@@ -50,6 +31,7 @@
 
 using namespace eos;
 using namespace chain;
+
 
    struct OrderID {
       AccountName name;
@@ -171,7 +153,10 @@ BOOST_FIXTURE_TEST_CASE(multiindex, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(tapos_wrap, testing_fixture)
 { try {
       Make_Blockchain(chain)
+      Make_Account(chain, system);
       Make_Account(chain, acct);
+      chain.produce_blocks(1);
+      Transfer_Asset(chain, inita, system, Asset(1000) );
       Transfer_Asset(chain, system, acct, Asset(5));
       Stake_Asset(chain, acct, Asset(5).amount);
       wlog("Hang on, this will take a minute...");
@@ -185,6 +170,9 @@ BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
    // Create account sam with default balance of 100, and stake 55 of it
    Make_Blockchain(chain);
    Make_Account(chain, sam);
+
+   chain.produce_blocks();
+
    Transfer_Asset(chain, inita, sam, Asset(55) );
 
    // MakeAccount should start sam out with some staked balance
@@ -290,9 +278,10 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
          trx.scope = {account};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
-         trx.setMessage(0, "setcode", handler);
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{account,"active"});
+         transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
-         trx.set_reference_block(chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          chain.push_transaction(trx);
          chain.produce_blocks(1);
       }
@@ -301,11 +290,12 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
 void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.authorizations = vector<types::AccountPermission>{{from,"active"}};
-   trx.emplaceMessage("currency", "transfer", types::transfer{from, to, amount});
+   transaction_emplace_message(trx, "currency", 
+                      vector<types::AccountPermission>{ {from,"active"} },
+                      "transfer", types::transfer{from, to, amount,""});
 
    trx.expiration = chain.head_block_time() + 100;
-   trx.set_reference_block(chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    idump((trx));
    chain.push_transaction(trx);
 }
@@ -313,10 +303,11 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
 void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.authorizations = vector<types::AccountPermission>{{from,"active"},{to,"active"}};
-   trx.emplaceMessage("currency", "transfer", types::transfer{from, to, amount});
+   transaction_emplace_message(trx, "currency", 
+                      vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
+                      "transfer", types::transfer{from, to, amount,""});
    trx.expiration = chain.head_block_time() + 100;
-   trx.set_reference_block(chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
 }
 
@@ -341,9 +332,10 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          trx.scope = {"currency"};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
-         trx.setMessage(0, "setcode", handler);
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+         transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
-         trx.set_reference_block(chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          chain.push_transaction(trx);
          chain.produce_blocks(1);
       }
@@ -354,10 +346,11 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         trx.authorizations = vector<types::AccountPermission>{{"currency","active"}};
-         trx.emplaceMessage("currency", "transfer", types::transfer{"currency", "inita", 1+i});
+         transaction_emplace_message(trx, "currency", 
+                            vector<types::AccountPermission>{ {"currency","active"} },
+                            "transfer", types::transfer{"currency", "inita", 1+i,""});
          trx.expiration = chain.head_block_time() + 100;
-         trx.set_reference_block(chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          //idump((trx));
          chain.push_transaction(trx);
       }
@@ -391,11 +384,12 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.authorizations = vector<types::AccountPermission>{{seller,"active"}};
-   trx.emplaceMessage("exchange", "sell", b );
+   transaction_emplace_message(trx, "exchange", 
+                      vector<types::AccountPermission>{ {seller,"active"} },
+                      "sell", b );
    //trx.messages.back().set_packed( "sell", b);
    trx.expiration = chain.head_block_time() + 100;
-   trx.set_reference_block(chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
 
 }
@@ -408,19 +402,20 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
 
    eos::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
-   trx.authorizations = vector<types::AccountPermission>{{buyer,"active"}};
-   trx.emplaceMessage("exchange", "buy", b );
+   transaction_emplace_message(trx, "exchange", 
+                      vector<types::AccountPermission>{ {buyer,"active"} },
+                      "buy", b );
    //trx.messages.back().set_packed( "buy", b);
    trx.expiration = chain.head_block_time() + 100;
-   trx.set_reference_block(chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
    chain.push_transaction(trx);
 }
 
 BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
-  try {
    try {
       Make_Blockchain(chain);
       chain.produce_blocks(2);
+      Make_Account(chain, system);
       Make_Account(chain, currency);
       Make_Account(chain, exchange);
       chain.produce_blocks(1);
@@ -434,8 +429,6 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
       TransferCurrency( chain, "currency", "inita", 1000 );
       TransferCurrency( chain, "currency", "initb", 2000 );
 
-      Transfer_Asset(chain, system, inita, Asset(50));
-      Transfer_Asset(chain, system, initb, Asset(50));
       chain.produce_blocks(1);
       ilog( "transfering funds to the exchange" );
       TransferCurrency( chain, "inita", "exchange", 1000 );
@@ -459,23 +452,21 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
       chain.produce_blocks(1);
 
       wlog( "start buy and sell" );
-      SellCurrency( chain, "initb", "exchange", 1, 100, .5 );
-      SellCurrency( chain, "initb", "exchange", 1, 100, .75 );
-      SellCurrency( chain, "initb", "exchange", 1, 100, .85 );
+      uint64_t order_num = 1;
+      SellCurrency( chain, "initb", "exchange", order_num++, 100, .5 );
+      SellCurrency( chain, "initb", "exchange", order_num++, 100, .75 );
+      SellCurrency( chain, "initb", "exchange", order_num++, 100, .85 );
       //BOOST_REQUIRE_THROW( SellCurrency( chain, "initb", "exchange", 1, 100, .5 ), fc::exception ); // order id already exists
       //SellCurrency( chain, "initb", "exchange", 2, 100, .75 );
 
 //      BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ); 
-      BuyCurrency( chain, "initb", "exchange", 1, 50, .5 ); 
+      BuyCurrency( chain, "initb", "exchange", order_num++, 50, .5 );
       //BOOST_REQUIRE_THROW( BuyCurrency( chain, "initb", "exchange", 1, 50, .25 ), fc::exception );  // order id already exists
 
       /// this should buy 5 from initb order 2 at a price of .75
       //BuyCurrency( chain, "initb", "exchange", 2, 50, .8 ); 
 
    } FC_LOG_AND_RETHROW() 
-  }catch(...) {
-     elog( "unexpected exception" );
-  }
 }
 
 //Test account script float rejection
@@ -1106,9 +1097,10 @@ R"(
       trx.scope = {"simplecoin"};
       trx.messages.resize(1);
       trx.messages[0].code = config::EosContractName;
-      trx.setMessage(0, "setcode", handler);
+      trx.messages[0].authorization.emplace_back(types::AccountPermission{"simplecoin","active"});
+      transaction_set_message(trx, 0, "setcode", handler);
       trx.expiration = chain.head_block_time() + 100;
-      trx.set_reference_block(chain.head_block_id());
+      transaction_set_reference_block(trx, chain.head_block_id());
       try {
          chain.push_transaction(trx);
          BOOST_FAIL("floating point instructions should be rejected");
@@ -1142,9 +1134,10 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
          trx.scope = {"currency"};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
-         trx.setMessage(0, "setcode", handler);
+         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+         transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
-         trx.set_reference_block(chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          chain.push_transaction(trx);
          chain.produce_blocks(1);
       }
@@ -1153,10 +1146,11 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
       {
          eos::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
-         trx.authorizations = vector<types::AccountPermission>{{"currency","active"}};
-         trx.emplaceMessage("currency", "transfer", types::transfer{"currency", "inita", 1});
+         transaction_emplace_message(trx, "currency",
+                            vector<types::AccountPermission>{ {"currency","active"} },
+                            "transfer", types::transfer{"currency", "inita", 1,""});
          trx.expiration = chain.head_block_time() + 100;
-         trx.set_reference_block(chain.head_block_id());
+         transaction_set_reference_block(trx, chain.head_block_id());
          try
          {
             wlog("starting long transaction");

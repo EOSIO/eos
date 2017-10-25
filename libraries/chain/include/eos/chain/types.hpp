@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 
@@ -118,6 +99,7 @@ namespace eos { namespace chain {
    using eos::types::Transaction;
    using eos::types::PermissionName;
    using eos::types::TypeName;
+   using eos::types::FuncName;
    using eos::types::Time;
    using eos::types::Field;
    using eos::types::String;
@@ -161,6 +143,7 @@ namespace eos { namespace chain {
       null_object_type,
       account_object_type,
       permission_object_type,
+      permission_link_object_type,
       action_code_object_type,
       key_value_object_type,
       key128x128_value_object_type,
@@ -169,13 +152,20 @@ namespace eos { namespace chain {
       dynamic_global_property_object_type,
       block_summary_object_type,
       transaction_object_type,
+      generated_transaction_object_type,
       producer_object_type,
       chain_property_object_type,
+      account_control_history_object_type, ///< Defined by account_history_plugin
+      account_transaction_history_object_type, ///< Defined by account_history_plugin
+      transaction_history_object_type, ///< Defined by account_history_plugin
+      public_key_history_object_type, ///< Defined by account_history_plugin
       balance_object_type, ///< Defined by native_contract library
       staked_balance_object_type, ///< Defined by native_contract library
       producer_votes_object_type, ///< Defined by native_contract library
       producer_schedule_object_type, ///< Defined by native_contract library
       proxy_vote_object_type, ///< Defined by native_contract library
+      key64x64x64_value_object_type,
+      keystr_value_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -206,6 +196,7 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (null_object_type)
                 (account_object_type)
                 (permission_object_type)
+                (permission_link_object_type)
                 (action_code_object_type)
                 (key_value_object_type)
                 (key128x128_value_object_type)
@@ -214,13 +205,20 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (dynamic_global_property_object_type)
                 (block_summary_object_type)
                 (transaction_object_type)
+                (generated_transaction_object_type)
                 (producer_object_type)
                 (chain_property_object_type)
+                (account_control_history_object_type)
+                (account_transaction_history_object_type)
+                (transaction_history_object_type)
+                (public_key_history_object_type)
                 (balance_object_type)
                 (staked_balance_object_type)
                 (producer_votes_object_type)
                 (producer_schedule_object_type)
                 (proxy_vote_object_type)
+                (key64x64x64_value_object_type)
+                (keystr_value_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eos::chain::void_t, )

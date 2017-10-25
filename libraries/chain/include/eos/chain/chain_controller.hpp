@@ -1,29 +1,11 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/account_object.hpp>
+#include <eos/chain/permission_object.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
 
@@ -32,10 +14,12 @@
 
 #include <boost/signals2/signal.hpp>
 
+#include <eos/chain/block_schedule.hpp>
 #include <eos/chain/protocol.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/chain_initializer_interface.hpp>
 #include <eos/chain/chain_administration_interface.hpp>
+#include <eos/chain/exceptions.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -44,6 +28,7 @@
 namespace eos { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
+   struct path_cons_list;
 
    /**
     *   @class database
@@ -52,7 +37,9 @@ namespace eos { namespace chain {
    class chain_controller {
       public:
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin);
+                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
+                          uint32_t trans_execution_time, uint32_t rcvd_block_trans_execution_time,
+                          uint32_t create_block_trans_execution_time);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -72,6 +59,11 @@ namespace eos { namespace chain {
           */
          signal<void(const SignedTransaction&)> on_pending_transaction;
 
+         /**
+          * @brief Check whether the controller is currently applying a block or not
+          * @return True if the controller is now applying a block; false otherwise
+          */
+         bool is_applying_block()const { return _currently_applying_block; }
 
          /**
           *  The controller can override any script endpoint with native code.
@@ -93,22 +85,28 @@ namespace eos { namespace chain {
             skip_merkle_check           = 1 << 7,  ///< used while reindexing
             skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_producer_schedule_check= 1 << 10,  ///< used while reindexing
+            skip_producer_schedule_check= 1 << 10, ///< used while reindexing
             skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
-            skip_scope_check            = 1 << 12  ///< used to skip checks for proper scope
+            skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
+            skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
+            pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
+            created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
+            received_block              = 1 << 16  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
          };
 
          /**
           *  @return true if the block is in our fork DB or saved to disk as
           *  part of the official chain, otherwise return false
           */
-         bool                       is_known_block( const block_id_type& id )const;
-         bool                       is_known_transaction( const transaction_id_type& id )const;
-         block_id_type              get_block_id_for_num( uint32_t block_num )const;
-         optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
-         optional<signed_block>     fetch_block_by_number( uint32_t num )const;
-         const SignedTransaction&   get_recent_transaction( const transaction_id_type& trx_id )const;
-         std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork)const;
+         bool                        is_known_block( const block_id_type& id )const;
+         bool                        is_known_transaction( const transaction_id_type& id )const;
+         block_id_type               get_block_id_for_num( uint32_t block_num )const;
+         optional<signed_block>      fetch_block_by_id( const block_id_type& id )const;
+         optional<signed_block>      fetch_block_by_number( uint32_t num )const;
+         const SignedTransaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
+         std::vector<block_id_type>  get_block_ids_on_fork(block_id_type head_of_fork)const;
+         const GeneratedTransaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
+
 
          /**
           *  This method will convert a variant to a SignedTransaction using a contract's ABI to
@@ -145,6 +143,15 @@ namespace eos { namespace chain {
          ProcessedTransaction push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
          ProcessedTransaction _push_transaction( const SignedTransaction& trx );
 
+         /**
+          * Determine which public keys are needed to sign the given transaction.
+          * @param trx Transaction that requires signature
+          * @param candidateKeys Set of public keys to examine for applicability
+          * @return Subset of candidateKeys whose private keys should be used to sign transaction
+          * @throws fc::exception if candidateKeys does not contain all required keys
+          */
+         flat_set<public_key_type> get_required_keys(const SignedTransaction& trx, const flat_set<public_key_type>& candidateKeys)const;
+
 
          bool _push_block( const signed_block& b );
 
@@ -152,12 +159,14 @@ namespace eos { namespace chain {
             fc::time_point_sec when,
             const AccountName& producer,
             const fc::ecc::private_key& block_signing_private_key,
-            uint32_t skip
+            block_schedule::factory scheduler = block_schedule::in_single_thread,
+            uint32_t skip = skip_nothing
             );
          signed_block _generate_block(
             fc::time_point_sec when,
             const AccountName& producer,
-            const fc::ecc::private_key& block_signing_private_key
+            const fc::ecc::private_key& block_signing_private_key,
+            block_schedule::factory scheduler
             );
 
 
@@ -243,6 +252,9 @@ namespace eos { namespace chain {
          chainbase::database& get_mutable_database() { return _db; }
          
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
+
+
+         const deque<SignedTransaction>&  pending()const { return _pending_transactions; }
    private:
 
          /// Reset the object graph in-memory
@@ -254,29 +266,70 @@ namespace eos { namespace chain {
          void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
          void _apply_block(const signed_block& next_block);
 
+         template<typename Function>
+         auto with_applying_block(Function&& f) -> decltype((*((Function*)nullptr))()) {
+            auto on_exit = fc::make_scoped_exit([this](){
+               _currently_applying_block = false;
+            });
+            _currently_applying_block = true;
+            return f();
+         }
 
-         ProcessedTransaction apply_transaction(const SignedTransaction& trx, uint32_t skip = skip_nothing);
-         ProcessedTransaction _apply_transaction(const SignedTransaction& trx);
-         ProcessedTransaction process_transaction( const SignedTransaction& trx );
+         void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
+
+         template<typename T>
+         void check_transaction_output(const T& expected, const T& actual, const path_cons_list& path)const;
+
+         template<typename T>
+         typename T::Processed apply_transaction(const T& trx);
+         
+         template<typename T>
+         typename T::Processed process_transaction(const T& trx, int depth, const fc::time_point& start_time);
 
          void require_account(const AccountName& name) const;
 
          /**
-          * This method validates transactions without adding it to the pending state.
-          * @return true if the transaction would validate
+          * This method performs some consistency checks on a transaction.
+          * @thow transaction_exception if the transaction is invalid
           */
-         void validate_transaction(const SignedTransaction& trx)const;
+         template<typename T>
+         void validate_transaction(const T& trx) const {
+         try {
+            EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
+
+            validate_scope(trx);
+            validate_expiration(trx);
+            validate_uniqueness(trx);
+            validate_tapos(trx);
+
+         } FC_CAPTURE_AND_RETHROW( (trx) ) }
+         
          /// Validate transaction helpers @{
          void validate_uniqueness(const SignedTransaction& trx)const;
-         void validate_tapos(const SignedTransaction& trx)const;
-         void validate_referenced_accounts(const SignedTransaction& trx)const;
-         void validate_expiration(const SignedTransaction& trx) const;
-         void validate_scope(const SignedTransaction& trx) const;
-         void validate_authority(const SignedTransaction& trx )const;
+         void validate_uniqueness(const GeneratedTransaction& trx)const;
+         void validate_tapos(const Transaction& trx)const;
+         void validate_referenced_accounts(const Transaction& trx)const;
+         void validate_expiration(const Transaction& trx) const;
+         void validate_scope(const Transaction& trx) const;
+
+         void record_transaction(const SignedTransaction& trx);
+         void record_transaction(const GeneratedTransaction& trx);         
          /// @}
 
-         void process_message(const ProcessedTransaction& trx, AccountName code, const Message& message,
-                              TransactionAuthorizationChecker* authChecker, MessageOutput& output);
+         /**
+          * @brief Find the lowest authority level required for @ref authorizer_account to authorize a message of the
+          * specified type
+          * @param authorizer_account The account authorizing the message
+          * @param code_account The account which publishes the contract that handles the message
+          * @param type The type of message
+          * @return
+          */
+         const permission_object& lookup_minimum_permission(types::AccountName authorizer_account,
+                                                            types::AccountName code_account,
+                                                            types::FuncName type) const;
+
+         void process_message(const Transaction& trx, AccountName code, const Message& message,
+                              MessageOutput& output, apply_context* parent_context = nullptr);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
@@ -309,8 +362,12 @@ namespace eos { namespace chain {
          optional<database::session>      _pending_tx_session;
          deque<SignedTransaction>         _pending_transactions;
 
-         bool                             _pushing  = false;
+         bool                             _currently_applying_block = false;
          uint64_t                         _skip_flags = 0;
+
+         const uint32_t                   _trans_execution_time;
+         const uint32_t                   _rcvd_block_trans_execution_time;
+         const uint32_t                   _create_block_trans_execution_time;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 

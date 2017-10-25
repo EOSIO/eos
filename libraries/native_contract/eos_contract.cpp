@@ -1,12 +1,18 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/native_contract/eos_contract.hpp>
-#include <eos/native_contract/balance_object.hpp>
 
+#include <eos/chain/chain_controller.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
 #include <eos/chain/message.hpp>
-#include <eos/chain/account_object.hpp>
 #include <eos/chain/exceptions.hpp>
 
+#include <eos/chain/account_object.hpp>
+#include <eos/native_contract/balance_object.hpp>
 #include <eos/chain/permission_object.hpp>
+#include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/global_property_object.hpp>
 #include <eos/native_contract/staked_balance_objects.hpp>
 #include <eos/native_contract/producer_objects.hpp>
@@ -23,8 +29,10 @@ namespace chain = ::eos::chain;
 using namespace ::eos::types;
 
 void validate_authority_precondition( const apply_context& context, const Authority& auth ) {
-   for(const auto& a : auth.accounts)
-      context.db.get<account_object,by_name>(a.permission.account);
+   for(const auto& a : auth.accounts) {
+      context.db.get<account_object, by_name>(a.permission.account);
+      context.db.find<permission_object, by_owner>(boost::make_tuple(a.permission.account, a.permission.permission));
+   }
 }
 
 /**
@@ -55,19 +63,20 @@ void apply_eos_newaccount(apply_context& context) {
       a.name = create.name;
       a.creation_date = db.get(dynamic_global_property_object::id_type()).time;
    });
-   const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
-      p.name = "owner";
-      p.parent = 0;
-      p.owner = new_account.name;
-      p.auth = std::move(create.owner);
-   });
-   db.create<permission_object>([&create, &owner_permission](permission_object& p) {
-      p.name = "active";
-      p.parent = owner_permission.id;
-      p.owner = owner_permission.owner;
-      p.auth = std::move(create.active);
-   });
-
+   if (context.controller.is_applying_block()) {
+      const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
+         p.name = "owner";
+         p.parent = 0;
+         p.owner = new_account.name;
+         p.auth = std::move(create.owner);
+      });
+      db.create<permission_object>([&create, &owner_permission](permission_object& p) {
+         p.name = "active";
+         p.parent = owner_permission.id;
+         p.owner = owner_permission.owner;
+         p.auth = std::move(create.active);
+      });
+   }
 
    const auto& creatorBalance = context.mutable_db.get<BalanceObject, byOwnerName>(create.creator);
 
@@ -87,21 +96,6 @@ void apply_eos_newaccount(apply_context& context) {
    context.mutable_db.create<StakedBalanceObject>([&create](StakedBalanceObject& sbo) {
       sbo.ownerName = create.name;
       sbo.stakedBalance = create.deposit.amount;
-   });
-}
-
-/**
- *  This method is called when the claim message is delivered to @staked 
- *  staked::validate_staked_claim must require that @eos be notified.
- *
- *  This method trusts that staked::precondition_staked_claim verifies that claim.amount is
- *  available.
- */
-void apply_staked_claim(apply_context& context) {
-   auto claim = context.msg.as<types::claim>();
-   const auto& claimant = context.db.get<BalanceObject, byOwnerName>(claim.account);
-   context.mutable_db.modify(claimant, [&claim](BalanceObject& a) {
-      a.balance += claim.amount;
    });
 }
 
@@ -158,6 +152,8 @@ void apply_eos_lock(apply_context& context) {
    context.require_scope(lock.from);
    context.require_scope(config::EosContractName);
 
+   context.require_authorization(lock.from);
+
    context.require_recipient(lock.to);
    context.require_recipient(lock.from);
 
@@ -177,6 +173,8 @@ void apply_eos_lock(apply_context& context) {
 void apply_eos_unlock(apply_context& context) {
    auto unlock = context.msg.as<types::unlock>();
 
+   context.require_authorization(unlock.account);
+
    EOS_ASSERT(unlock.amount >= 0, message_validate_exception, "Unlock amount cannot be negative");
 
    const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(unlock.account);
@@ -192,6 +190,8 @@ void apply_eos_setcode(apply_context& context) {
    auto& db = context.mutable_db;
    auto  msg = context.msg.as<types::setcode>();
 
+   context.require_authorization(msg.account);
+
    FC_ASSERT( msg.vmtype == 0 );
    FC_ASSERT( msg.vmversion == 0 );
 
@@ -201,9 +201,9 @@ void apply_eos_setcode(apply_context& context) {
 
 
    const auto& account = db.get<account_object,by_name>(msg.account);
-   wlog( "set code: ${size}", ("size",msg.code.size()));
+//   wlog( "set code: ${size}", ("size",msg.code.size()));
    db.modify( account, [&]( auto& a ) {
-      /** TODO: consider whether a microsecond level local timestamp is sufficient */
+      /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate 
       a.code_version = fc::sha256::hash( msg.code.data(), msg.code.size() );
       a.code.resize( msg.code.size() );
@@ -212,8 +212,7 @@ void apply_eos_setcode(apply_context& context) {
       a.set_abi( msg.abi );
    });
 
-   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account,
-                               context.authChecker);
+   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account );
    wasm_interface::get().init( init_context );
 }
 
@@ -222,20 +221,25 @@ void apply_eos_claim(apply_context& context) {
 
    EOS_ASSERT(claim.amount > 0, message_validate_exception, "Claim amount must be positive");
 
+   context.require_authorization(claim.account);
+
    auto balance = context.db.find<StakedBalanceObject, byOwnerName>(claim.account);
    EOS_ASSERT(balance != nullptr, message_precondition_exception,
               "Could not find staked balance for ${name}", ("name", claim.account));
    auto balanceReleaseTime = balance->lastUnstakingTime + config::StakedBalanceCooldownSeconds;
-   auto now = context.db.get(dynamic_global_property_object::id_type()).time;
+   auto now = context.controller.head_block_time();
    EOS_ASSERT(now >= balanceReleaseTime, message_precondition_exception,
               "Cannot claim balance until ${releaseDate}", ("releaseDate", balanceReleaseTime));
    EOS_ASSERT(balance->unstakingBalance >= claim.amount, message_precondition_exception,
               "Cannot claim ${claimAmount} as only ${available} is available for claim",
               ("claimAmount", claim.amount)("available", balance->unstakingBalance));
 
-   context.mutable_db.modify(context.db.get<StakedBalanceObject, byOwnerName>(claim.account),
-                             [&claim](StakedBalanceObject& sbo) {
-      sbo.unstakingBalance -= claim.amount;
+   const auto& stakedBalance = context.db.get<StakedBalanceObject, byOwnerName>(claim.account);
+   stakedBalance.finishUnstakingTokens(claim.amount, context.mutable_db);
+
+   const auto& liquidBalance = context.db.get<BalanceObject, byOwnerName>(claim.account);
+   context.mutable_db.modify(liquidBalance, [&claim](BalanceObject& a) {
+      a.balance += claim.amount;
    });
 }
 
@@ -361,8 +365,134 @@ void apply_eos_setproxy(apply_context& context) {
    */
 }
 
+void apply_eos_updateauth(apply_context& context) {
+   auto update = context.msg.as<types::updateauth>();
+   EOS_ASSERT(!update.permission.empty(), message_validate_exception, "Cannot create authority with empty name");
+   EOS_ASSERT(update.permission != update.parent, message_validate_exception,
+              "Cannot set an authority as its own parent");
+   EOS_ASSERT(validate(update.authority), message_validate_exception,
+              "Invalid authority: ${auth}", ("auth", update.authority));
+   if (update.permission == "active")
+      EOS_ASSERT(update.parent == "owner", message_validate_exception, "Cannot change active authority's parent");
+   if (update.permission == "owner")
+      EOS_ASSERT(update.parent.empty(), message_validate_exception, "Cannot change owner authority's parent");
 
-///@}
+   auto& db = context.mutable_db;
+   context.require_authorization(update.account);
+
+   db.get<account_object, by_name>(update.account);
+   validate_authority_precondition(context, update.authority);
+
+   auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+   
+   permission_object::id_type parent_id = 0;
+   if(update.permission != "owner") {
+      auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
+      parent_id = parent.id;
+   }
+
+   if (permission) {
+      EOS_ASSERT(parent_id == permission->parent, message_precondition_exception,
+                 "Changing parent authority is not currently supported");
+      if (context.controller.is_applying_block())
+      // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
+      // permission satisfies the permission we want to modify?
+         db.modify(*permission, [&update, &parent_id](permission_object& po) {
+            po.auth = update.authority;
+            po.parent = parent_id;
+         });
+   } else if (context.controller.is_applying_block()) {
+      // TODO/QUESTION: If we are creating a new permission, should we check if the message declared
+      // permission satisfies the parent permission?
+      db.create<permission_object>([&update, &parent_id](permission_object& po) {
+         po.name = update.permission;
+         po.owner = update.account;
+         po.auth = update.authority;
+         po.parent = parent_id;
+      });
+   }
+}
+
+void apply_eos_deleteauth(apply_context& context) {
+   auto remove = context.msg.as<types::deleteauth>();
+   EOS_ASSERT(remove.permission != "active", message_validate_exception, "Cannot delete active authority");
+   EOS_ASSERT(remove.permission != "owner", message_validate_exception, "Cannot delete owner authority");
+
+   auto& db = context.mutable_db;
+   context.require_authorization(remove.account);
+   const auto& permission = db.get<permission_object, by_owner>(boost::make_tuple(remove.account, remove.permission));
+
+   // TODO/QUESTION: If we are deleting a permission, should we check if the message declared
+   // permission satisfies the permission we want to delete?
+
+   // const auto& declaredAuthority = context.msg.authorization[0];
+   // const auto& declaredPermission = db.get<permission_object, by_owner>(boost::make_tuple(declaredAuthority.account, declaredAuthority.permission));
+   // const auto& index = _db.get_index<permission_index>().indices();
+   // EOS_ASSERT(declaredPermission.satisfies(permission, index), unsatisfied_permission,
+   //   "Unable to delete '${todelete}' with declared authority '${declared}'",
+   //   ("declared", declaredAuthority)("todelete", permission.name));
+
+   { // Check for children
+      const auto& index = db.get_index<permission_index, by_parent>();
+      auto range = index.equal_range(permission.id);
+      EOS_ASSERT(range.first == range.second, message_precondition_exception,
+                 "Cannot delete an authority which has children. Delete the children first");
+   }
+
+   { // Check for links to this permission
+      const auto& index = db.get_index<permission_link_index, by_permission_name>();
+      auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
+      EOS_ASSERT(range.first == range.second, message_precondition_exception,
+                 "Cannot delete a linked authority. Unlink the authority first");
+   }
+
+   if (context.controller.is_applying_block())
+      db.remove(permission);
+}
+
+void apply_eos_linkauth(apply_context& context) {
+   auto requirement = context.msg.as<types::linkauth>();
+   EOS_ASSERT(!requirement.requirement.empty(), message_validate_exception, "Required permission cannot be empty");
+
+   context.require_authorization(requirement.account);
+   
+   auto& db = context.mutable_db;
+   db.get<account_object, by_name>(requirement.account);
+   db.get<account_object, by_name>(requirement.code);
+   db.get<permission_object, by_name>(requirement.requirement);
+   
+   auto linkKey = boost::make_tuple(requirement.account, requirement.code, requirement.type);
+   auto link = db.find<permission_link_object, by_message_type>(linkKey);
+   
+   if (link) {
+      EOS_ASSERT(link->required_permission != requirement.requirement, message_precondition_exception,
+                 "Attempting to update required authority, but new requirement is same as old");
+      if (context.controller.is_applying_block())
+         db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
+            link.required_permission = requirement;
+         });
+   } else if (context.controller.is_applying_block()) {
+      db.create<permission_link_object>([&requirement](permission_link_object& link) {
+         link.account = requirement.account;
+         link.code = requirement.code;
+         link.message_type = requirement.type;
+         link.required_permission = requirement.requirement;
+      });
+   }
+}
+
+void apply_eos_unlinkauth(apply_context& context) {
+   auto& db = context.mutable_db;
+   auto unlink = context.msg.as<types::unlinkauth>();
+
+   context.require_authorization(unlink.account);
+
+   auto linkKey = boost::make_tuple(unlink.account, unlink.code, unlink.type);
+   auto link = db.find<permission_link_object, by_message_type>(linkKey);
+   EOS_ASSERT(link != nullptr, message_precondition_exception, "Attempting to unlink authority, but no link found");
+   if (context.controller.is_applying_block())
+      db.remove(*link);
+}
 
 } // namespace eos
 } // namespace native

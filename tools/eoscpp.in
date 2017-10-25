@@ -1,0 +1,95 @@
+#!/bin/bash -e
+
+EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
+
+function copy_skeleton {
+    cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname
+
+    for file in $(find ./$newname -name 'skeleton.*')
+    do
+        newfile=`echo $file | sed 's/skeleton\./'"$newname"'./'`
+#        echo mv "${file}" "${newfile}"
+        mv "${file}" "${newfile}"
+        exp=s/skeleton/${newname}/g
+#        echo sed -i ${exp}  ${newfile}
+        sed ${exp}  ${newfile} > ${newfile}1
+        mv ${newfile}1 ${newfile}
+    done
+    echo "created $newname from skeleton"
+}
+
+function build_contract {
+    workdir=`mktemp -d`
+#    echo mkdir $workdir/built
+    mkdir $workdir/built
+
+    for file in $@; do
+        name=`basename $file`
+        filePath=`dirname $file`
+
+        echo @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include -I $filePath -c $file -o $workdir/built/$name
+        @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include -I $filePath -c $file -o $workdir/built/$name
+    done
+
+#    echo @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
+    @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
+#    echo @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
+    @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
+#  echo @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
+    @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
+
+#    echo rm -rf $workdir
+    rm -rf $workdir
+}
+
+function print_help {
+    echo "Usage: $0 -o output.wast contract.cpp [other.cpp ...]"
+    echo "       OR"
+    echo "       $0 -n mycontract"
+    echo
+    echo "Options:"
+    echo "   -n | --newcontract [name]"
+    echo "      Create a new contract in the [name] folder, based on the example contract"
+    echo "   OR"
+    echo "   -o | --outname [output.wast] [input.cpp ...]"
+    echo "      Generate the wast output file based on input cpp files"
+}
+
+command=""
+
+while [[ $# -gt 1 ]]
+do
+key="$1"
+
+case $key in
+    -n|--newcontract)
+        newname="$2"
+        command="newcontract"
+        shift 2
+        ;;
+    -h|--help)
+        print_help
+        ;;
+     -o|--outname)
+        outname="$2"
+  command="outname"
+        shift 2
+        break
+        ;;
+    *)
+        echo "Unrecognized option: $1"
+        exit 1
+       ;;
+esac
+done
+
+if [[ "outname" == "$command" ]]; then
+    build_contract $@
+else
+    if [[ "newcontract" == "$command" ]]; then
+  copy_skeleton
+    else
+        print_help
+        exit 1
+    fi
+fi

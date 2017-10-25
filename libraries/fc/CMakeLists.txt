@@ -2,7 +2,7 @@
 #INCLUDE(GetPrerequisites)
 #INCLUDE(VersionMacros)
 
-SET( DEFAULT_HEADER_INSTALL_DIR include/\${target} )
+SET( DEFAULT_HEADER_INSTALL_DIR include/${target} )
 SET( DEFAULT_LIBRARY_INSTALL_DIR lib/ )
 SET( DEFAULT_EXECUTABLE_INSTALL_DIR bin/ )
 SET( CMAKE_DEBUG_POSTFIX _debug )
@@ -65,6 +65,7 @@ set( fc_sources
      src/io/json.cpp
      src/io/varint.cpp
      src/io/fstream.cpp
+     src/io/console.cpp
      src/filesystem.cpp
      src/interprocess/file_mapping.cpp
      src/interprocess/mmap_struct.cpp
@@ -111,8 +112,15 @@ set( sources
 #list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 list(APPEND sources ${fc_headers})
 
-setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC DONT_INSTALL_LIBRARY )
+setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC )
 
+INSTALL( TARGETS fc
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)
+INSTALL( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include DESTINATION . )
+  
 IF(APPLE)
   # As of 10.10 yosemite, the OpenSSL static libraries shipped with os x have a dependency
   # on zlib, so any time you link in openssl you also need to link zlib.  .  We really want to detect whether openssl was configured with the --no-zlib

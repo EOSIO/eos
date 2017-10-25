@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <vector>
 #include <array>
@@ -15,6 +19,7 @@
 #include <fc/io/datastream.hpp>
 #include <fc/time.hpp>
 #include <fc/fixed_string.hpp>
+#include <fc/string.hpp>
 
 #include <fc/reflect/reflect.hpp>
 
@@ -60,9 +65,9 @@ namespace eos { namespace types {
    
    static constexpr char char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
-         return (c - 'a') + 1;
+         return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
-         return (c - '1') + 27;
+         return (c - '1') + 1;
       return 0;
    }
 
@@ -105,14 +110,13 @@ namespace eos { namespace types {
          const auto len = strnlen(str,14);
          FC_ASSERT( len <= 13 );
          value = string_to_name(str);
+         FC_ASSERT( toString() == String(str), "name not properly normalized", ("name",String(str))("normalized",toString())  );
       }FC_CAPTURE_AND_RETHROW( (str) ) }
 
-      Name( uint64_t v = 0 ):value(v){
-      //   FC_ASSERT( !(v>>(5*12)), "invalid name id" );
-      }
+      Name( uint64_t v = 0 ):value(v){}
 
       explicit operator String()const {
-         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
+        static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
          String str(13,'.');
 

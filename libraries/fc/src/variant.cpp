@@ -562,7 +562,7 @@ const string&        variant::get_string()const
 {
   if( get_type() == string_type )
      return **reinterpret_cast<const const_string_ptr*>(this);
-  FC_THROW_EXCEPTION( bad_cast_exception, "Invalid cast from type '${type}' to Object", ("type",get_type()) );
+  FC_THROW_EXCEPTION( bad_cast_exception, "Invalid cast from type '${type}' to string", ("type",get_type()) );
 }
 
 /// @throw if get_type() != object_type 
@@ -666,6 +666,21 @@ void from_variant( const variant& var,  std::vector<char>& vo )
 //   std::string b64 = base64_decode( var.as_string() );
 //   vo = std::vector<char>( b64.c_str(), b64.c_str() + b64.size() );
 }
+
+void to_variant( const UInt<8>& n, variant& v ) { v = uint64_t(n); }
+// TODO: warn on overflow?
+void from_variant( const variant& v, UInt<8>& n ) { n = static_cast<uint8_t>(v.as_uint64()); }
+
+void to_variant( const UInt<16>& n, variant& v ) { v = uint64_t(n); }
+// TODO: warn on overflow?
+void from_variant( const variant& v, UInt<16>& n ) { n = static_cast<uint16_t>(v.as_uint64()); }
+
+void to_variant( const UInt<32>& n, variant& v ) { v = uint64_t(n); }
+// TODO: warn on overflow?
+void from_variant( const variant& v, UInt<32>& n ) { n = static_cast<uint32_t>(v.as_uint64()); }
+
+void to_variant( const UInt<64>& n, variant& v ) { v = uint64_t(n); }
+void from_variant( const variant& v, UInt<64>& n ) { n = v.as_uint64(); }
 
 string      format_string( const string& format, const variant_object& args )
 {

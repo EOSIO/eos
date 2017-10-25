@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos.hpp>
 
 /**
@@ -89,7 +93,7 @@ void apply_social_vote() {
       static Account account;
       Db::get( "account", account );
       auto abs_vote = abs(vote.vote_power);
-      account.vote_power = max( account.social_power, 
+      account.vote_power = min( account.social_power, 
                                 account.vote_power + (account.social_power * (now()-last_vote)) / days(7));
       assert( abs_vote <= account.vote_power, "insufficient vote power" );
       post.votes += vote.vote_power;

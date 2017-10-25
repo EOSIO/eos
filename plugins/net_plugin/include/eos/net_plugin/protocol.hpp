@@ -1,17 +1,16 @@
 #pragma once
 #include <eos/chain/block.hpp>
 #include <eos/chain/types.hpp>
+#include <chrono>
 
 namespace eos {
    using namespace chain;
    using namespace fc;
 
-  using node_id_type = fc::sha256;
-
-   struct handshake_message {
+  struct handshake_message {
       int16_t         network_version = 0;
       chain_id_type   chain_id; ///< used to identify chain
-      node_id_type    node_id; ///< used to identify peers and prevent self-connect
+      fc::sha256      node_id; ///< used to identify peers and prevent self-connect
       string          p2p_address;
       uint32_t        last_irreversible_block_num = 0;
       block_id_type   last_irreversible_block_id;
@@ -21,23 +20,40 @@ namespace eos {
       string          agent;
    };
 
-   struct notice_message {
-      vector<transaction_id_type> known_trx;
-      vector<block_id_type>       known_blocks;
-      vector<node_id_type>        known_to;
+   typedef std::chrono::system_clock::duration::rep tstamp;
+   typedef int32_t                                  tdist;
+
+   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
+
+   struct time_message {
+              tstamp  org;       //!< origin timestamp
+              tstamp  rec;       //!< receive timestamp
+              tstamp  xmt;       //!< transmit timestamp
+      mutable tstamp  dst;       //!< destination timestamp
    };
 
+  using ordered_txn_ids = vector<transaction_id_type>;
+  using ordered_blk_ids = vector<block_id_type>;
+
+  struct notice_message {
+      ordered_txn_ids known_trx;
+      ordered_blk_ids known_blocks;
+   };
 
    struct request_message {
-      vector<transaction_id_type> req_trx;
-      vector<block_id_type>       req_blocks;
+      ordered_txn_ids req_trx;
+      ordered_blk_ids req_blocks;
    };
 
-   struct block_summary_message {
-      signed_block                block;
-      vector<transaction_id_type> trx_ids;
-      vector<node_id_type>        known_to;
+  struct thread_ids {
+    ordered_txn_ids gen_trx; // is this necessary to send?
+    ordered_txn_ids user_trx;
+  };
 
+  using cycle_ids = vector<thread_ids>;
+   struct block_summary_message {
+      signed_block_header         block_header;
+      vector<cycle_ids>           trx_ids;
    };
 
    struct sync_request_message {
@@ -45,22 +61,14 @@ namespace eos {
       uint32_t end_block;
    };
 
-   struct peer_message {
-     vector<node_id_type> peers;
-   };
-
    using net_message = static_variant<handshake_message,
-                                      peer_message,
+                                      time_message,
                                       notice_message,
                                       request_message,
                                       sync_request_message,
                                       block_summary_message,
                                       SignedTransaction,
                                       signed_block>;
-
-  using forward_message = static_variant<peer_message,
-                                         notice_message,
-                                         block_summary_message>;
 
 } // namespace eos
 
@@ -72,11 +80,12 @@ FC_REFLECT( eos::handshake_message,
             (head_num)(head_id)
             (os)(agent) )
 
-FC_REFLECT( eos::block_summary_message, (block)(trx_ids) )
-FC_REFLECT( eos::notice_message, (known_trx)(known_blocks)(known_to) )
+FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
+FC_REFLECT( eos::thread_ids, (gen_trx)(user_trx) );
+FC_REFLECT( eos::block_summary_message, (block_header)(trx_ids) )
+FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
-FC_REFLECT( eos::peer_message, (peers) )
 
 /**
  *
@@ -137,7 +146,7 @@ State:
         send of another request.
 
      Once you have caught up to all peers, notify all peers of your head block so they know that you
-     know the LIB and will start sending you real time tranasctions
+     know the LIB and will start sending you real time transactions
 
 parallel fetches, request in groups
 

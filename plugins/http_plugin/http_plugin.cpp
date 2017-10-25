@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/http_plugin/http_plugin.hpp>
 
 #include <fc/network/ip.hpp>
@@ -76,10 +80,13 @@ namespace eos {
 
    class http_plugin_impl {
       public:
-         shared_ptr<std::thread>  http_thread;
-         asio::io_service         http_ios;
+         //shared_ptr<std::thread>  http_thread;
+         //asio::io_service         http_ios;
          map<string,url_handler>  url_handlers;
          optional<tcp::endpoint>  listen_endpoint;
+         string                   access_control_allow_origin;
+         string                   access_control_allow_headers;
+         bool                     access_control_allow_credentials = false;
 
          websocket_server_type    server;
    };
@@ -91,6 +98,26 @@ namespace eos {
       cfg.add_options()
             ("http-server-endpoint", bpo::value<string>()->default_value("127.0.0.1:8888"),
              "The local IP and port to listen for incoming http connections.")
+
+            ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
+                my->access_control_allow_origin = v;
+                ilog("configured http with Access-Control-Allow-Origin: ${o}", ("o", my->access_control_allow_origin));
+             }),
+             "Specify the Access-Control-Allow-Origin to be returned on each request.")
+
+
+            ("access-control-allow-headers", bpo::value<string>()->notifier([this](const string& v) {
+                my->access_control_allow_headers = v;
+                ilog("configured http with Access-Control-Allow-Headers : ${o}", ("o", my->access_control_allow_headers));
+             }),
+             "Specify the Access-Control-Allow-Headers to be returned on each request.")
+
+            ("access-control-allow-credentials",
+             bpo::bool_switch()->notifier([this](bool v) {
+                my->access_control_allow_credentials = v;
+                if (v) ilog("configured http with Access-Control-Allow-Credentials: true");
+             })->default_value(false),
+             "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
             ;
    }
 
@@ -120,19 +147,28 @@ namespace eos {
    void http_plugin::plugin_startup() {
       if(my->listen_endpoint) {
 
-         my->http_thread = std::make_shared<std::thread>([&](){
+         //my->http_thread = std::make_shared<std::thread>([&](){
             ilog("start processing http thread");
             try {
                my->server.clear_access_channels(websocketpp::log::alevel::all);
-               my->server.init_asio(&my->http_ios);
+               my->server.init_asio(&app().get_io_service()); //&my->http_ios);
                my->server.set_reuse_addr(true);
 
                my->server.set_http_handler([&](connection_hdl hdl) {
                   auto con = my->server.get_con_from_hdl(hdl);
                   try {
-                     ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
-                     ilog("${body}", ("body", con->get_request_body()));
+                     //ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
+                     //ilog("${body}", ("body", con->get_request_body()));
 
+                     if (!my->access_control_allow_origin.empty()) {
+                        con->append_header("Access-Control-Allow-Origin", my->access_control_allow_origin);
+                     }
+                     if (!my->access_control_allow_headers.empty()) {
+                        con->append_header("Access-Control-Allow-Headers", my->access_control_allow_headers);
+                     }
+                     if (my->access_control_allow_credentials) {
+                        con->append_header("Access-Control-Allow-Credentials", "true");
+                     }
                      auto body = con->get_request_body();
                      auto resource = con->get_uri()->get_resource();
                      auto handler_itr = my->url_handlers.find(resource);
@@ -164,7 +200,7 @@ namespace eos {
                my->server.listen(*my->listen_endpoint);
                my->server.start_accept();
 
-               my->http_ios.run();
+           //    my->http_ios.run();
                ilog("http io service exit");
             } catch ( const fc::exception& e ){
                elog( "http: ${e}", ("e",e.to_detail_string()));
@@ -173,24 +209,24 @@ namespace eos {
             } catch (...) {
                 elog("error thrown from http io service");
             }
-         });
+         //});
 
       }
    }
 
    void http_plugin::plugin_shutdown() {
-      if(my->http_thread) {
+     // if(my->http_thread) {
          if(my->server.is_listening())
              my->server.stop_listening();
-         my->http_ios.stop();
-         my->http_thread->join();
-         my->http_thread.reset();
-      }
+     //    my->http_ios.stop();
+     //    my->http_thread->join();
+     //    my->http_thread.reset();
+     // }
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
       ilog( "add api url: ${c}", ("c",url) );
-      my->http_ios.post([=](){
+      app().get_io_service().post([=](){
         my->url_handlers.insert(std::make_pair(url,handler));
       });
    }

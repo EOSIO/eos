@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
@@ -27,6 +8,8 @@
 
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/producer_object.hpp>
+#include <eos/chain/authority_checker.hpp>
+#include <eos/producer_plugin/producer_plugin.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -36,6 +19,8 @@
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
+
+#include <boost/range/adaptor/map.hpp>
 
 #include <iostream>
 #include <iomanip>
@@ -94,9 +79,18 @@ private_key_type testing_fixture::get_private_key(const public_key_type& public_
    return itr->second;
 }
 
+flat_set<public_key_type> testing_fixture::available_keys() const {
+   auto range = key_ring | boost::adaptors::map_keys;
+   return {range.begin(), range.end()};
+}
+
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& initializer, testing_fixture& fixture)
-   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator()),
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
+                      ::eos::chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME * 1000,
+                      ::eos::chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME * 1000,
+                      ::eos::chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME * 1000),
+     db(db),
      fixture(fixture) {}
 
 void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
@@ -107,7 +101,8 @@ void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss)
       auto slot = blocks_to_miss + 1;
       auto producer = get_producer(get_scheduled_producer(slot));
       auto private_key = fixture.get_private_key(producer.signing_key);
-      generate_block(get_slot_time(slot), producer.owner, private_key, 0);
+      generate_block(get_slot_time(slot), producer.owner, private_key, block_schedule::in_single_thread,
+                     chain_controller::created_block | (skip_trx_sigs? chain_controller::skip_transaction_signatures : 0));
    }
 }
 
@@ -123,7 +118,7 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
       for (int i = 1; i <= a.head_block_num(); ++i) {
          auto block = a.fetch_block_by_number(i);
          if (block && !b.is_known_block(block->id())) {
-            b.push_block(*block);
+            b.push_block(*block, chain_controller::validation_steps::created_block);
          }
       }
    };
@@ -157,12 +152,35 @@ types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountN
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
+void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
+   auto keys = get_required_keys(trx, fixture.available_keys());
+   for (const auto& k : keys) {
+      // TODO: Use a real chain_id here
+      trx.sign(fixture.get_private_key(k), chain_id_type{});
+   }
+}
+
+fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
+   if (skip_trx_sigs)
+      skip_flags |= chain_controller::skip_transaction_signatures;
+
+   if (auto_sign_trxs) {
+      sign_transaction(trx);
+   }
+
+   if (hold_for_review) {
+      review_storage = std::make_pair(trx, skip_flags);
+      return {};
+   }
+   return chain_controller::push_transaction(trx, skip_flags | chain_controller::pushed_transaction);
+}
+
 void testing_network::connect_blockchain(testing_blockchain& new_database) {
    if (blockchains.count(&new_database))
       return;
 
    // If the network isn't empty, sync the new database with one of the old ones. The old ones are already in sync with
-   // eachother, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
+   // each other, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
    // of them gets synced, it will propagate blocks to the others as well.
    if (!blockchains.empty()) {
         blockchains.begin()->first->sync_with(new_database);
@@ -186,7 +204,7 @@ void testing_network::propagate_block(const signed_block& block, const testing_b
    for (const auto& pair : blockchains) {
       if (pair.first == &skip_db) continue;
       boost::signals2::shared_connection_block blocker(pair.second);
-      pair.first->push_block(block);
+      pair.first->push_block(block, chain_controller::created_block);
    }
 }
 

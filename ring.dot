@@ -1,0 +1,14 @@
+digraph G
+{
+  inita->initb [dir="both"]
+  initb->initc [dir="both"]
+  initc->initd [dir="both"]
+  initd->inite [dir="both"]
+  inite->initf [dir="both"]
+  initf->initg [dir="both"]
+  initg->inith [dir="both"]
+  inith->initi [dir="both"]
+  initi->initj [dir="both"]
+  initj->initk [dir="both"]
+  initk->inita [dir="both"]
+}

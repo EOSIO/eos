@@ -1,0 +1,132 @@
+{
+  "types": [],
+  "structs": [
+    {
+      "name": "record1",
+      "fields": {
+        "key1": "UInt64"
+      }
+    },
+    {
+      "name": "record2",
+      "fields": {
+        "key1": "UInt128",
+        "key2": "UInt128"
+      }
+    },
+    {
+      "name": "record3",
+      "fields": {
+        "key1": "UInt64",
+        "key2": "UInt64",
+        "key3": "UInt64"
+      }
+    },
+    {
+      "name": "KeyValue1",
+      "fields": {
+        "key": "String",
+        "value": "String"
+      }
+    },
+    {
+      "name": "ComplexType",
+      "fields": {
+        "name": "String",
+        "age": "UInt64"
+      }
+    },
+    {
+      "name": "KeyValue2",
+      "fields": {
+        "key": "String",
+        "value": "ComplexType"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "action": "insert1",
+      "type": "record1"
+    },
+    {
+      "action": "insertkv1",
+      "type": "KeyValue1"
+    },
+    {
+      "action": "insert2",
+      "type": "record2"
+    },
+    {
+      "action": "insert3",
+      "type": "record3"
+    },
+    {
+      "action": "insertkv2",
+      "type": "KeyValue2"
+    }
+  ],
+  "tables": [
+    {
+      "table": "record1",
+      "type": "record1",
+      "indextype": "i64",
+      "keynames": [
+        "key1"
+      ],
+      "keytypes": [
+        "UInt64"
+      ]
+    },
+    {
+      "table": "record2",
+      "type": "record2",
+      "indextype": "i128i128",
+      "keynames": [
+        "key1",
+        "key2"
+      ],
+      "keytypes": [
+        "UInt128",
+        "UInt128"
+      ]
+    },
+    {
+      "table": "record3",
+      "type": "record3",
+      "indextype": "i64i64i64",
+      "keynames": [
+        "key1",
+        "key2",
+        "key3"
+      ],
+      "keytypes": [
+        "UInt64",
+        "UInt64",
+        "UInt64"
+      ]
+    },
+    {
+      "table": "keyvalue1",
+      "type": "KeyValue1",
+      "indextype": "str",
+      "keynames": [
+        "key"
+      ],
+      "keytypes": [
+        "String"
+      ]
+    },
+    {
+      "table": "keyvalue2",
+      "type": "KeyValue2",
+      "indextype": "str",
+      "keynames": [
+        "key"
+      ],
+      "keytypes": [
+        "String"
+      ]
+    }
+  ]
+}

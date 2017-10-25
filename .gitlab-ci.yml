@@ -1,0 +1,7 @@
+image: docker:latest
+
+build:
+  script:
+      - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+      - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -f Docker/Dockerfile .
+      - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA

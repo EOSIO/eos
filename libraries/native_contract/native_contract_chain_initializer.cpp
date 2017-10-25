@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/objects.hpp>
 #include <eos/native_contract/eos_contract.hpp>
@@ -48,6 +52,43 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_APP_HANDLER( eos, eos, setproducer );
    SET_APP_HANDLER( eos, eos, setproxy );
    SET_APP_HANDLER( eos, eos, setcode );
+   SET_APP_HANDLER( eos, eos, updateauth );
+   SET_APP_HANDLER( eos, eos, deleteauth );
+   SET_APP_HANDLER( eos, eos, linkauth );
+   SET_APP_HANDLER( eos, eos, unlinkauth );
+}
+
+types::Abi native_contract_chain_initializer::eos_contract_abi()
+{
+   types::Abi eos_abi;
+   eos_abi.types.push_back( types::TypeDef{"AccountName","Name"} );
+   eos_abi.types.push_back( types::TypeDef{"ShareType","Int64"} );
+   eos_abi.actions.push_back( types::Action{Name("transfer"), "transfer"} );
+   eos_abi.actions.push_back( types::Action{Name("lock"), "lock"} );
+   eos_abi.actions.push_back( types::Action{Name("unlock"), "unlock"} );
+   eos_abi.actions.push_back( types::Action{Name("claim"), "claim"} );
+   eos_abi.actions.push_back( types::Action{Name("okproducer"), "okproducer"} );
+   eos_abi.actions.push_back( types::Action{Name("setproducer"), "setproducer"} );
+   eos_abi.actions.push_back( types::Action{Name("setproxy"), "setproxy"} );
+   eos_abi.actions.push_back( types::Action{Name("linkauth"), "linkauth"} );
+   eos_abi.actions.push_back( types::Action{Name("unlinkauth"), "unlinkauth"} );
+   eos_abi.actions.push_back( types::Action{Name("updateauth"), "updateauth"} );
+   eos_abi.actions.push_back( types::Action{Name("deleteauth"), "deleteauth"} );
+   eos_abi.actions.push_back( types::Action{Name("newaccount"), "newaccount"} );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::transfer>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::lock>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlock>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::claim>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::okproducer>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproducer>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproxy>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::updateauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::linkauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlinkauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::deleteauth>::type() );
+   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::newaccount>::type() );
+
+   return eos_abi;
 }
 
 std::vector<chain::Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
@@ -64,12 +105,19 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
          a.creation_date = genesis.initial_timestamp;
 
          if( name == config::EosContractName ) {
-            types::Abi eos_abi;
-            eos_abi.types.push_back( types::TypeDef{"AccountName","Name"} );
-            eos_abi.actions.push_back( types::Action{Name("transfer"), "transfer"} );
-            eos_abi.structs.push_back( eos::types::GetStruct<eos::types::transfer>::type() );
-            a.set_abi(eos_abi);
+            a.set_abi(eos_contract_abi());
          }
+      });
+      const auto& owner = db.create<permission_object>([&name](permission_object& p) {
+         p.owner = name;
+         p.name = "owner";
+         p.auth.threshold = 1;
+      });
+      db.create<permission_object>([&name, &owner](permission_object& p) {
+         p.owner = name;
+         p.parent = owner.id;
+         p.name = "active";
+         p.auth.threshold = 1;
       });
       db.create<native::eos::BalanceObject>([&name, liquidBalance]( auto& b) {
          b.ownerName = name;
@@ -85,6 +133,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
    };
    for (const auto& acct : genesis.initial_accounts) {
       chain::Message message(config::EosContractName,
+                             vector<types::AccountPermission>{{config::EosContractName, "active"}},
                              "newaccount", types::newaccount(config::EosContractName, acct.name,
                                                              KeyAuthority(acct.owner_key),
                                                              KeyAuthority(acct.active_key),
@@ -92,16 +141,17 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
                                                              acct.staking_balance));
       messages_to_process.emplace_back(std::move(message));
       if (acct.liquid_balance > 0) {
-         message = chain::Message(config::EosContractName, 
+         message = chain::Message(config::EosContractName,
+                                  vector<types::AccountPermission>{{config::EosContractName, "active"}},
                                   "transfer", types::transfer(config::EosContractName, acct.name,
-                                                              acct.liquid_balance.amount/*, "Genesis Allocation"*/));
+                                                              acct.liquid_balance.amount, "Genesis Allocation"));
          messages_to_process.emplace_back(std::move(message));
       }
    }
 
    // Create initial producers
    auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
-      return chain::Message(config::EosContractName, 
+      return chain::Message(config::EosContractName, vector<types::AccountPermission>{{p.owner_name, "active"}},
                             "setproducer", types::setproducer(p.owner_name, p.block_signing_key, config));
    });
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));

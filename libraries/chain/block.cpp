@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/chain/block.hpp>
 #include <fc/io/raw.hpp>
@@ -102,16 +83,10 @@ namespace eos { namespace chain {
       */
 
       for( const auto& trx : user_input )
-         ids.push_back( trx.digest() );
+         ids.push_back( transaction_digest(trx) );
 
-      /**
-       *  When generating the merkle hash of an output transaction we hash it
-       *  a second time. This is because the transaction has not been confirmed as
-       *  "valid and applied" just "produced".  Later, when this transaction is included
-       *  as part of "generated input" its ID will be used without the extra hash.
-      for( const auto& trx : output_transactions )
-         ids.push_back( digest_type::hash(trx.merkle_digest()) );
-       */
+      for( const auto& trx : generated_input )
+         ids.push_back( trx.id );
 
 
       return merkle(ids);

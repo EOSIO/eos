@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <eos/native_contract/genesis_state.hpp>
@@ -19,6 +23,8 @@ public:
    virtual void register_types(chain::chain_controller& chain, chainbase::database& db) override;
    virtual std::vector<chain::Message> prepare_database(chain::chain_controller& chain,
                                                         chainbase::database& db) override;
+
+   static types::Abi eos_contract_abi();
 };
 
 } } // namespace eos::native_contract

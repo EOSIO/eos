@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 
 #include <boost/test/unit_test.hpp>
@@ -48,6 +29,7 @@ using namespace chain;
 
 
 
+
 BOOST_AUTO_TEST_SUITE(block_tests)
 
 
@@ -58,7 +40,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
  *
  *  This simple single threaded algorithm sorts 3M transactions each of which
  *  requires scope of 2 accounts chosen with a normal probability distribution
- *  amoung a set of 2 million accounts.
+ *  among a set of 2 million accounts.
  *
  *  This algorithm executes in less than 0.5 seconds on a 4Ghz Core i7 and could
  *  potentially take just .05 seconds with 10+ CPU cores. Future improvements might
@@ -145,27 +127,52 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
 
    eos::chain::ProcessedTransaction trx;
    trx.scope = sort_names({from,to});
-   trx.authorizations = vector<types::AccountPermission>{{from,"active"}};
-   trx.emplaceMessage("eos", "transfer", types::transfer{from, to, amount});
+   transaction_emplace_message(trx, "eos", 
+                      vector<types::AccountPermission>{ {from,"active"} },
+                      "transfer", types::transfer{from, to, amount, ""});
    trx.expiration = chain.head_block_time() + 100;
-   trx.set_reference_block(chain.head_block_id());
+   transaction_set_reference_block(trx, chain.head_block_id());
 
    auto original = fc::raw::pack( trx );
    auto var      = chain.transaction_to_variant( trx );
    auto from_var = chain.transaction_from_variant( var );
    auto _process  = fc::raw::pack( from_var );
 
+   /*
    idump((trx));
    idump((var));
    idump((from_var));
    idump((original));
    idump((_process));
-   FC_ASSERT( original == _process, "Transaction seralization not reversible" );
+   */
+   FC_ASSERT( original == _process, "Transaction serialization not reversible" );
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
       throw;
    }
 }
+
+BOOST_FIXTURE_TEST_CASE(irrelevant_auth, testing_fixture) {
+   try {
+   Make_Blockchain(chain)
+   Make_Account(chain, joe);
+   chain.produce_blocks();
+
+   ProcessedTransaction trx;
+   trx.scope = sort_names({"joe", "inita"});
+   transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{"inita", "active"}},
+                      "transfer", types::transfer{"inita", "joe", 50,""});
+   trx.expiration = chain.head_block_time() + 100;
+   transaction_set_reference_block(trx, chain.head_block_id());
+   chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
+
+   chain.clear_pending();
+   chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
+   chain.clear_pending();
+
+   trx.messages.front().authorization.emplace_back(types::AccountPermission{"initb", "active"});
+   BOOST_CHECK_THROW(chain.push_transaction(trx, chain_controller::skip_transaction_signatures), tx_irrelevant_auth);
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(name_test) {
    using eos::types::Name;
@@ -196,11 +203,10 @@ BOOST_FIXTURE_TEST_CASE(produce_blocks, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
 { try {
       Make_Blockchain(chain);
+      Make_Account(chain, newguy);
       chain.produce_blocks(10);
 
-      Make_Account(chain, newguy);
       Transfer_Asset(chain, inita, newguy, Asset(100));
-
       Transfer_Asset(chain, newguy, inita, Asset(1));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
@@ -210,7 +216,7 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK(chain.fetch_block_by_number(11).valid());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.empty());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.front().empty());
-      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 3);
+      BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
 } FC_LOG_AND_RETHROW() }
@@ -241,7 +247,7 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       }
 } FC_LOG_AND_RETHROW() }
 
-// Simple sanity test of test network: if databases aren't connected to the network, they don't sync to eachother
+// Simple sanity test of test network: if databases aren't connected to the network, they don't sync to each other
 BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
 { try {
       Make_Blockchains((chain1)(chain2));
@@ -256,7 +262,7 @@ BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
       BOOST_CHECK_EQUAL(chain2.head_block_num(), 5);
 } FC_LOG_AND_RETHROW() }
 
-// Test that two databases on the same network do sync to eachother
+// Test that two databases on the same network do sync to each other
 BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
 { try {
       Make_Blockchains((chain1)(chain2))
@@ -549,5 +555,37 @@ BOOST_FIXTURE_TEST_CASE(wipe, testing_fixture)
          BOOST_CHECK_EQUAL(chain1.head_block_id().str(), chain3.head_block_id().str());
       }
 } FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(irrelevant_sig_soft_check, testing_fixture) {
+   try {
+      Make_Blockchain(chain);
+      chain.set_hold_transactions_for_review(true);
+      chain.set_skip_transaction_signature_checking(false);
+      chain.set_auto_sign_transactions(true);
+
+      // Make an account, but add an extra signature to the transaction
+      Make_Account(chain, alice);
+      // Check that it throws for irrelevant signatures
+      BOOST_CHECK_THROW(chain.review_transaction([](SignedTransaction& trx, auto) {
+                           trx.sign(fc::ecc::private_key::regenerate(fc::digest("an unknown key")), {});
+                           return true;
+                        }), tx_irrelevant_sig);
+      // Push it through with a skip flag
+      chain.review_transaction([](SignedTransaction& trx, uint32_t& skip) {
+         trx.sign(fc::ecc::private_key::regenerate(fc::digest("an unknown key")), {});
+         skip |= chain_controller::skip_transaction_signatures;
+         return true;
+      });
+
+      // Skip sig checks so we can produce a block with the oversigned transaction
+      chain.set_skip_transaction_signature_checking(true);
+      chain.produce_blocks();
+
+      // Now check that a second blockchain accepts the block with the oversigned transaction
+      Make_Blockchain(newchain);
+      Make_Network(net, (chain)(newchain));
+      BOOST_CHECK_NE((newchain_db.find<account_object, by_name>("alice")), nullptr);
+   } FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()

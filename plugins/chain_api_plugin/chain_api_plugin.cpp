@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain_api_plugin/chain_api_plugin.hpp>
 #include <eos/chain/exceptions.hpp>
 
@@ -51,12 +55,14 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_info),
       CHAIN_RO_CALL(get_block),
       CHAIN_RO_CALL(get_account),
-      CHAIN_RO_CALL(get_table_rows_i64),
-      CHAIN_RO_CALL(get_table_rows_i128i128_primary),
+      CHAIN_RO_CALL(get_code),
+      CHAIN_RO_CALL(get_table_rows),
       CHAIN_RO_CALL(abi_json_to_bin),
       CHAIN_RO_CALL(abi_bin_to_json),
+      CHAIN_RO_CALL(get_required_keys),
       CHAIN_RW_CALL(push_block),
-      CHAIN_RW_CALL(push_transaction)
+      CHAIN_RW_CALL(push_transaction),
+      CHAIN_RW_CALL(push_transactions)
    });
 }
 

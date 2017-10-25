@@ -4,7 +4,7 @@ machine:
 
 dependencies:
   override:
-    - cd ~/eos/Docker && docker build -t eosio/eos .
+    - cd ~/eos && docker build -t eosio/eos -f Docker/Dockerfile .
 
 test:
   pre:

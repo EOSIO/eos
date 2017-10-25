@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/native_contract/staked_balance_objects.hpp>
 #include <eos/native_contract/producer_objects.hpp>
 
@@ -29,6 +33,12 @@ void StakedBalanceObject::beginUnstakingTokens(ShareType amount, chainbase::data
    db.modify(*this, [&amount, &db](StakedBalanceObject& sbo) {
       sbo.unstakingBalance = amount;
       sbo.lastUnstakingTime = db.get(dynamic_global_property_object::id_type()).time;
+   });
+}
+
+void StakedBalanceObject::finishUnstakingTokens(ShareType amount, chainbase::database& db) const {
+   db.modify(*this, [&amount](StakedBalanceObject& sbo) {
+      sbo.unstakingBalance -= amount;
    });
 }
 

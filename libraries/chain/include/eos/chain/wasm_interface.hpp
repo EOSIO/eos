@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/message.hpp>
@@ -7,8 +11,8 @@
 
 namespace eos { namespace chain {
 
-class  chain_controller;
-typedef int32_t (message_validate_context::*load_i128i128_fnc)(Name, Name, Name, uint128_t* , uint128_t*, char* , uint32_t);
+class chain_controller;
+class wasm_memory;
 
 /**
  * @class wasm_interface
@@ -32,19 +36,22 @@ class wasm_interface {
       static wasm_interface& get();
 
       void init( apply_context& c );
-      void apply( apply_context& c );
-      void validate( message_validate_context& c );
-      void precondition( precondition_validate_context& c );
+      void apply( apply_context& c, uint32_t execution_time );
+      void validate( apply_context& c );
+      void precondition( apply_context& c );
 
       int64_t current_execution_time();
 
-      apply_context*                  current_apply_context        = nullptr;
-      message_validate_context*       current_validate_context     = nullptr;
-      precondition_validate_context*  current_precondition_context = nullptr;
+      apply_context*       current_apply_context        = nullptr;
+      apply_context*       current_validate_context     = nullptr;
+      apply_context*       current_precondition_context = nullptr;
 
       Runtime::MemoryInstance*   current_memory  = nullptr;
       Runtime::ModuleInstance*   current_module  = nullptr;
       ModuleState*               current_state   = nullptr;
+      wasm_memory*               current_memory_management = nullptr;
+
+      uint32_t                   checktime_limit = 0;
 
    private:
       void load( const AccountName& name, const chainbase::database& db );
@@ -63,8 +70,6 @@ class wasm_interface {
       fc::time_point checktimeStart;
 
       wasm_interface();
-
-      int32_t load_i128i128_object( uint64_t scope, uint64_t code, uint64_t table, int32_t valueptr, int32_t valuelen, load_i128i128_fnc function );
 };
 
 

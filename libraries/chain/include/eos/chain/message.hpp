@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <eos/chain/types.hpp>
@@ -22,13 +26,13 @@ namespace eos { namespace chain {
 struct Message : public types::Message {
    Message() = default;
    template<typename T>
-   Message(const AccountName& code, const types::FuncName& type, T&& value)
-      :types::Message(code, type, Bytes()) {
+   Message(const AccountName& code, const vector<types::AccountPermission>& authorization, const types::FuncName& type, T&& value)
+      :types::Message(code, type, authorization, Bytes()) {
       set<T>(type, std::forward<T>(value));
    }
 
-   Message(const AccountName& code, const types::FuncName& type)
-      :types::Message(code, type, Bytes()) {}
+   Message(const AccountName& code, const vector<types::AccountPermission>& authorization, const types::FuncName& type)
+      :types::Message(code, type, authorization, Bytes()) {}
 
    Message(const types::Message& m) : types::Message(m) {}
 

@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <eos/chain/types.hpp>
@@ -74,6 +78,15 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
     * updating vote tallies
     */
    void beginUnstakingTokens(types::ShareType amount, chainbase::database& db) const;
+   /**
+    * @brief Finish unstaking the specified amount of stake
+    * @param amount The amount of stake to finish unstaking
+    * @param db Read-write reference to the database
+    *
+    * This method will update this object's balances. There aren't really any invariants to maintain on this call, as
+    * the tokens are already unstaked and removed from vote tallies, but it is provided for completeness' sake.
+    */
+   void finishUnstakingTokens(types::ShareType amount, chainbase::database& db) const;
 
    /**
     * @brief Propagate the specified change in stake to the producer votes or the proxy
