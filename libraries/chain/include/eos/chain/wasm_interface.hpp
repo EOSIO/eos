@@ -24,6 +24,14 @@ class wasm_memory;
  */
 class wasm_interface {
    public:
+      enum key_type {
+         str,
+         i64,
+         i128i128,
+         i64i64i64,
+         invalid_key_type
+      };
+      typedef map<Name, key_type> TableMap;
       struct ModuleState {
          Runtime::ModuleInstance* instance     = nullptr;
          IR::Module*              module       = nullptr;
@@ -31,16 +39,21 @@ class wasm_interface {
          int                      mem_end      = 1<<16;
          vector<char>             init_memory;
          fc::sha256               code_version;
+         TableMap                 table_key_types;
+         bool                     tables_fixed = false;
       };
 
       static wasm_interface& get();
 
       void init( apply_context& c );
-      void apply( apply_context& c, uint32_t execution_time );
+      void apply( apply_context& c, uint32_t execution_time, bool received_block );
       void validate( apply_context& c );
       void precondition( apply_context& c );
 
       int64_t current_execution_time();
+
+      static key_type to_key_type(const types::TypeName& type_name);
+      static std::string to_type_name(key_type key_type);
 
       apply_context*       current_apply_context        = nullptr;
       apply_context*       current_validate_context     = nullptr;
@@ -50,6 +63,8 @@ class wasm_interface {
       Runtime::ModuleInstance*   current_module  = nullptr;
       ModuleState*               current_state   = nullptr;
       wasm_memory*               current_memory_management = nullptr;
+      TableMap*                  table_key_types = nullptr;
+      bool                       tables_fixed    = false;
 
       uint32_t                   checktime_limit = 0;
 

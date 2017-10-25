@@ -943,7 +943,8 @@ void chain_controller::apply_message(apply_context& context)
              : _skip_flags | created_block
                ? _create_block_trans_execution_time
                : _trans_execution_time;
-       wasm_interface::get().apply(context, execution_time);
+       const bool is_received_block = _skip_flags & received_block;
+       wasm_interface::get().apply(context, execution_time, is_received_block);
     }
 
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
@@ -1449,10 +1450,8 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
                result.messages[i].data = message_to_binary( result.messages[i].code, result.messages[i].type, data ); 
                /*
                const auto& code_account = _db.get<account_object,by_name>( result.messages[i].code );
-               if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-                  fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-                  eos::types::Abi abi;
-                  fc::raw::unpack( ds, abi );
+               eos::types::Abi abi;
+               if( AbiSerializer::to_abi(code_account.abi, abi) ) {
                   types::AbiSerializer abis( abi );
                   result.messages[i].data = abis.variantToBinary( abis.getActionType( result.messages[i].type ), data );
                }
@@ -1471,10 +1470,8 @@ ProcessedTransaction chain_controller::transaction_from_variant( const fc::varia
 vector<char> chain_controller::message_to_binary( Name code, Name type, const fc::variant& obj )const 
 { try {
    const auto& code_account = _db.get<account_object,by_name>( code );
-   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-      eos::types::Abi abi;
-      fc::raw::unpack( ds, abi );
+   eos::types::Abi abi;
+   if( types::AbiSerializer::to_abi(code_account.abi, abi) ) {
       types::AbiSerializer abis( abi );
       return abis.variantToBinary( abis.getActionType( type ), obj );
    }
@@ -1482,10 +1479,8 @@ vector<char> chain_controller::message_to_binary( Name code, Name type, const fc
 } FC_CAPTURE_AND_RETHROW( (code)(type)(obj) ) }
 fc::variant chain_controller::message_from_binary( Name code, Name type, const vector<char>& data )const {
    const auto& code_account = _db.get<account_object,by_name>( code );
-   if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
-      fc::datastream<const char*> ds( code_account.abi.data(), code_account.abi.size() );
-      eos::types::Abi abi;
-      fc::raw::unpack( ds, abi );
+   eos::types::Abi abi;
+   if( types::AbiSerializer::to_abi(code_account.abi, abi) ) {
       types::AbiSerializer abis( abi );
       return abis.binaryToVariant( abis.getActionType( type ), data );
    }
@@ -1513,7 +1508,7 @@ fc::variant  chain_controller::transaction_to_variant( const ProcessedTransactio
        SET_FIELD( msg_mvo, msg, authorization );
 
        const auto& code_account = _db.get<account_object,by_name>( msg.code );
-       if( code_account.abi.size() > 4 ) { /// 4 == packsize of empty Abi
+       if( !types::AbiSerializer::is_empty_abi(code_account.abi) ) {
           try {
              msg_mvo( "data", message_from_binary( msg.code, msg.type, msg.data ) ); 
              msg_mvo( "hex_data", msg.data );

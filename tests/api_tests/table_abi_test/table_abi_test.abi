@@ -1,0 +1,109 @@
+{
+  "types": [],
+  "structs": [
+    {
+      "name": "table1",
+      "fields": {
+        "key1": "UInt64",
+        "value1": "UInt128",
+        "value2": "Int64"
+      }
+    },
+    {
+      "name": "table2",
+      "fields": {
+        "key1": "UInt128",
+        "key2": "UInt128",
+        "value1": "UInt64",
+        "value2": "Int64"
+      }
+    },
+    {
+      "name": "table3",
+      "fields": {
+        "key1": "UInt64",
+        "key2": "UInt64",
+        "key3": "UInt64",
+        "value1": "UInt128",
+        "value2": "Int64"
+      }
+    },
+    {
+      "name": "strkey",
+      "fields": {
+        "key": "String",
+        "value": "String"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "action": "storei",
+      "type": "table1"
+    },
+    {
+      "action": "storestr",
+      "type": "strkey"
+    },
+    {
+      "action": "storeii",
+      "type": "table2"
+    },
+    {
+      "action": "storeiii",
+      "type": "table3"
+    }
+  ],
+  "tables": [
+    {
+      "table": "table1",
+      "type": "table1",
+      "indextype": "i64",
+      "keynames": [
+        "key1"
+      ],
+      "keytypes": [
+        "UInt64"
+      ]
+    },
+    {
+      "table": "table2",
+      "type": "table2",
+      "indextype": "i128i128",
+      "keynames": [
+        "key1",
+        "key2"
+      ],
+      "keytypes": [
+        "UInt128",
+        "UInt128"
+      ]
+    },
+    {
+      "table": "table3",
+      "type": "table3",
+      "indextype": "i64i64i64",
+      "keynames": [
+        "key1",
+        "key2",
+        "key3"
+      ],
+      "keytypes": [
+        "UInt64",
+        "Int64",
+        "UInt64"
+      ]
+    },
+    {
+      "table": "strkey",
+      "type": "strkey",
+      "indextype": "str",
+      "keynames": [
+        "key"
+      ],
+      "keytypes": [
+        "String"
+      ]
+    }
+  ]
+}

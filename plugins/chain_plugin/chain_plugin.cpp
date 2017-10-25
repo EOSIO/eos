@@ -271,10 +271,7 @@ types::Abi getAbi( const chain_controller& db, const Name& account ) {
    const auto& code_accnt  = d.get<account_object,by_name>( account );
 
    eos::types::Abi abi;
-   if( code_accnt.abi.size() > 4 ) {
-      fc::datastream<const char*> ds( code_accnt.abi.data(), code_accnt.abi.size() );
-      fc::raw::unpack( ds, abi );
-   }
+   types::AbiSerializer::to_abi(code_accnt.abi, abi);
    return abi;
 }
 
@@ -366,10 +363,8 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
       result.wast = chain::wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
-   if( accnt.abi.size() > 4 ) {
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
-      fc::raw::unpack( ds, abi );
+   eos::types::Abi abi;
+   if( types::AbiSerializer::to_abi(accnt.abi, abi) ) {
       result.abi = std::move(abi);
    }
    return result;

@@ -54,6 +54,23 @@ struct AbiSerializer {
    fc::variant binaryToVariant(const TypeName& type, fc::datastream<const char*>& binary )const;
    void        variantToBinary(const TypeName& type, const fc::variant& var, fc::datastream<char*>& ds )const;
 
+   template<typename Vec>
+   static bool is_empty_abi(const Vec& abi_vec)
+   {
+      return abi_vec.size() <= 4;
+   }
+
+   template<typename Vec>
+   static bool to_abi(const Vec& abi_vec, Abi& abi)
+   {
+      if( !is_empty_abi(abi_vec) ) { /// 4 == packsize of empty Abi
+         fc::datastream<const char*> ds( abi_vec.data(), abi_vec.size() );
+         fc::raw::unpack( ds, abi );
+         return true;
+      }
+      return false;
+   }
+
    private:
    void binaryToVariant(const TypeName& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj )const;
 };

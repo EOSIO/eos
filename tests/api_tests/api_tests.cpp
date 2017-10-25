@@ -40,6 +40,8 @@
 
 #include "memory_test/memory_test.wast.hpp"
 #include "extended_memory_test/extended_memory_test.wast.hpp"
+#include "table_abi_test/table_abi_test.wast.hpp"
+#include "table_abi_test/table_abi_test.abi.hpp"
 
 FC_REFLECT( dummy_message, (a)(b)(c) );
 FC_REFLECT( u128_msg, (values) );
@@ -457,14 +459,13 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 
 } FC_LOG_AND_RETHROW() }
 
-#define MEMORY_TEST_RUN(account_name, test_wast)                                                           \
+#define RUN_CODE_HANDLER_WITH_TRANSFER(account_name, test_wast)                                            \
       Make_Blockchain(chain);                                                                              \
       chain.produce_blocks(1);                                                                             \
       Make_Account(chain, account_name);                                                                   \
       chain.produce_blocks(1);                                                                             \
                                                                                                            \
                                                                                                            \
-      types::setcode handler;                                                                              \
       handler.account = #account_name;                                                                     \
                                                                                                            \
       auto wasm = assemble_wast( test_wast );                                                              \
@@ -497,35 +498,50 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          chain.produce_blocks(1);                                                                          \
       }
 
-#define MEMORY_TEST_CASE(test_case_name, account_name, test_wast)                                          \
+#define RUN_CODE_WITH_TRANSFER(account_name, test_wast)                                                    \
+      types::setcode handler;                                                                              \
+      RUN_CODE_HANDLER_WITH_TRANSFER(account_name, test_wast)
+
+#define TEST_CASE_RUN_CODE_W_XFER(test_case_name, account_name, test_wast)                                 \
 BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                                                   \
 { try{                                                                                                     \
-   MEMORY_TEST_RUN(account_name, test_wast);                                                               \
+   RUN_CODE_WITH_TRANSFER(account_name, test_wast);                                                        \
+} FC_LOG_AND_RETHROW() }
+
+#define RUN_CODE_ABI_WITH_TRANSFER(account_name, test_wast, test_abi)                                      \
+      types::setcode handler;                                                                              \
+      handler.abi = fc::json::from_string(test_abi).as<types::Abi>();                                      \
+      RUN_CODE_HANDLER_WITH_TRANSFER(account_name, test_wast)
+
+#define TEST_CASE_RUN_CODE_ABI_W_XFER(test_case_name, account_name, test_wast, test_abi)                   \
+BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                                                   \
+{ try{                                                                                                     \
+   RUN_CODE_ABI_WITH_TRANSFER(account_name, test_wast, test_abi);                                          \
 } FC_LOG_AND_RETHROW() }
 
 //Test wasm memory allocation
-MEMORY_TEST_CASE(test_memory, testmemory, memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_memory, testmemory, memory_test_wast)
 
 //Test memcmp
-MEMORY_TEST_CASE(test_memcmp, testmemcmp, memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_memcmp, testmemcmp, memory_test_wast)
 
 //Test wasm memory allocation of one large hunk
-MEMORY_TEST_CASE(test_memory_hunk, testmemhunk, memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_memory_hunk, testmemhunk, memory_test_wast)
 
 //Test wasm memory allocation of many medium hunks in contiguous 2nd heap
-MEMORY_TEST_CASE(test_memory_hunks, testmemhunks, memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_memory_hunks, testmemhunks, memory_test_wast)
 
 //Test wasm memory allocation of many medium hunks with disjoint heaps
-MEMORY_TEST_CASE(test_memory_hunks_disjoint, testdisjoint, memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_memory_hunks_disjoint, testdisjoint, memory_test_wast)
 
 //Test intrinsic provided memset and memcpy
-MEMORY_TEST_CASE(test_memset_memcpy, testmemset, memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_memset_memcpy, testmemset, memory_test_wast)
 
 //Test memcpy overlap at start of destination
 BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_start, testing_fixture)
 {
    try {
-      MEMORY_TEST_RUN(testolstart, memory_test_wast);
+      RUN_CODE_WITH_TRANSFER(testolstart, memory_test_wast);
       BOOST_FAIL("memcpy should have thrown assert exception");
    }
    catch(fc::assert_exception& ex)
@@ -538,7 +554,7 @@ BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_start, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_end, testing_fixture)
 {
    try {
-      MEMORY_TEST_RUN(testolend, memory_test_wast);
+      RUN_CODE_WITH_TRANSFER(testolend, memory_test_wast);
       BOOST_FAIL("memcpy should have thrown assert exception");
    }
    catch(fc::assert_exception& ex)
@@ -548,16 +564,16 @@ BOOST_FIXTURE_TEST_CASE(test_memcpy_overlap_end, testing_fixture)
 }
 
 //Test logic for memory.hpp adding extra pages of memory
-MEMORY_TEST_CASE(test_extended_memory, testextmem, extended_memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_extended_memory, testextmem, extended_memory_test_wast)
 
 //Test logic for extra pages of memory
-MEMORY_TEST_CASE(test_page_memory, testpagemem, extended_memory_test_wast)
+TEST_CASE_RUN_CODE_W_XFER(test_page_memory, testpagemem, extended_memory_test_wast)
 
 //Test logic for exceeding extra pages of memory
 BOOST_FIXTURE_TEST_CASE(test_page_memory_exceeded, testing_fixture)
 {
    try {
-      MEMORY_TEST_RUN(testmemexc, extended_memory_test_wast);
+      RUN_CODE_WITH_TRANSFER(testmemexc, extended_memory_test_wast);
       BOOST_FAIL("sbrk should have thrown exception");
    }
    catch (eos::chain::page_memory_error& )
@@ -570,7 +586,7 @@ BOOST_FIXTURE_TEST_CASE(test_page_memory_exceeded, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(test_page_memory_negative_bytes, testing_fixture)
 {
    try {
-      MEMORY_TEST_RUN(testnegbytes, extended_memory_test_wast);
+      RUN_CODE_WITH_TRANSFER(testnegbytes, extended_memory_test_wast);
       BOOST_FAIL("sbrk should have thrown exception");
    }
    catch (fc::assert_exception& ex)
@@ -578,5 +594,44 @@ BOOST_FIXTURE_TEST_CASE(test_page_memory_negative_bytes, testing_fixture)
       BOOST_REQUIRE(ex.to_detail_string().find("not reduce") != std::string::npos);
    }
 }
+
+TEST_CASE_RUN_CODE_ABI_W_XFER(test_table_store_i64, storei, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_RUN_CODE_ABI_W_XFER(test_table_store_i128i128, storeii, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_RUN_CODE_ABI_W_XFER(test_table_store_i64i64i64, storeiii, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_RUN_CODE_ABI_W_XFER(test_table_store_str, storestr, table_abi_test_wast, table_abi_test_abi)
+
+#define TEST_CASE_TABLE_TYPE_FAILURE(test_case_name, account_name, test_wast, test_abi)                   \
+BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                                                  \
+{                                                                                                         \
+   try {                                                                                                  \
+      RUN_CODE_ABI_WITH_TRANSFER(account_name, test_wast, test_abi);                                      \
+      BOOST_FAIL("should have thrown assert exception");                                                  \
+   }                                                                                                      \
+   catch(fc::assert_exception& ex)                                                                        \
+   {                                                                                                      \
+      const auto first = ex.to_detail_string().find("abi definition for");                                \
+      BOOST_REQUIRE(first != std::string::npos);                                                          \
+      BOOST_REQUIRE(ex.to_detail_string().substr(first).find(" expects ") != std::string::npos);          \
+   }                                                                                                      \
+}
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_str_with_i64, strnoti, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i64_with_i128i128, inotii, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i128i128_with_i64i64i64, iinotiii, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i64i64i64_with_str, iiinotstr, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_str_with_i64, ldstrnoti, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64_with_i128i128, ldinotii, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i128i128_with_i64i64i64, ldiinotiii, table_abi_test_wast, table_abi_test_abi)
+
+TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64i64i64_with_str, ldiiinotstr, table_abi_test_wast, table_abi_test_abi)
 
 BOOST_AUTO_TEST_SUITE_END()
