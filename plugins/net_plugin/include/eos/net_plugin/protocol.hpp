@@ -18,7 +18,39 @@ namespace eos {
       block_id_type   head_id;
       string          os;
       string          agent;
+    int16_t           generation;
    };
+
+  enum go_away_reason {
+    no_reason, ///< no reason to go away
+    self, ///< the connection is to itself
+    duplicate, ///< the connection is redundant
+    wrong_chain, ///< the peer's chain id doesn't match
+    wrong_version, ///< the peer's network version doesn't match
+    forked, ///< the peer's irreversible blocks are different
+    unlinkable, ///< the peer sent a block we couldn't use
+    bad_transaction ///< the peer sent a transaction that failed verification
+  };
+
+  const string reason_str( go_away_reason rsn ) {
+    switch (rsn ) {
+    case no_reason : return "no reason";
+    case self : return "self connect";
+    case duplicate : return "duplicate";
+    case wrong_chain : return "wrong chain";
+    case wrong_version : return "wrong version";
+    case forked : return "chain is forked";
+    case unlinkable : return "unlinkable block received";
+    case bad_transaction : return "bad transaction";
+    default : return "some crazy reason";
+    }
+  }
+
+  struct go_away_message {
+    go_away_message (go_away_reason r = no_reason) : reason(r), node_id() {}
+    go_away_reason reason;
+    fc::sha256 node_id; ///< for duplicate notification
+  };
 
    typedef std::chrono::system_clock::duration::rep tstamp;
    typedef int32_t                                  tdist;
@@ -32,22 +64,50 @@ namespace eos {
       mutable tstamp  dst;       //!< destination timestamp
    };
 
-  using ordered_txn_ids = vector<transaction_id_type>;
-  using ordered_blk_ids = vector<block_id_type>;
+  enum id_list_modes {
+    none,
+    catch_up,
+    normal
+  };
+
+  const string modes_str( id_list_modes m ) {
+    switch( m ) {
+    case none : return "none";
+    case catch_up : return "catch up";
+    case normal : return "normal";
+    default: return "undefined mode";
+    }
+  }
+
+  template<typename T>
+  struct select_ids {
+    id_list_modes  mode;
+    uint32_t       pending;
+    vector<T>      ids;
+    bool           empty () const { return (mode == none || ids.empty()); }
+  };
+
+  using ordered_txn_ids = select_ids<transaction_id_type>;
+  using ordered_blk_ids = select_ids<block_id_type>;
 
   struct notice_message {
-      ordered_txn_ids known_trx;
-      ordered_blk_ids known_blocks;
-   };
+    ordered_txn_ids known_trx;
+    ordered_blk_ids known_blocks;
+  };
 
-   struct request_message {
-      ordered_txn_ids req_trx;
-      ordered_blk_ids req_blocks;
-   };
+  struct request_message {
+    ordered_txn_ids req_trx;
+    ordered_blk_ids req_blocks;
+  };
+
+  struct processed_trans_summary {
+    transaction_id_type id;
+    vector<MessageOutput> outmsgs;
+  };
 
   struct thread_ids {
-    ordered_txn_ids gen_trx; // is this necessary to send?
-    ordered_txn_ids user_trx;
+    vector<transaction_id_type> gen_trx; // is this necessary to send?
+    vector<processed_trans_summary> user_trx;
   };
 
   using cycle_ids = vector<thread_ids>;
@@ -62,6 +122,7 @@ namespace eos {
    };
 
    using net_message = static_variant<handshake_message,
+                                      go_away_message,
                                       time_message,
                                       notice_message,
                                       request_message,
@@ -72,16 +133,17 @@ namespace eos {
 
 } // namespace eos
 
-
+FC_REFLECT( eos::select_ids<fc::sha256>, (mode)(pending)(ids) )
 FC_REFLECT( eos::handshake_message,
             (network_version)(chain_id)(node_id)
             (p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
-            (os)(agent) )
-
+            (os)(agent)(generation) )
+FC_REFLECT( eos::go_away_message, (reason)(node_id) )
 FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( eos::thread_ids, (gen_trx)(user_trx) );
+FC_REFLECT( eos::processed_trans_summary, (id)(outmsgs) )
+FC_REFLECT( eos::thread_ids, (gen_trx)(user_trx) )
 FC_REFLECT( eos::block_summary_message, (block_header)(trx_ids) )
 FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
