@@ -500,6 +500,10 @@ namespace eos {
   bool connection::current () {
     if( syncing ) {
       // dlog( "skipping connection ${n} due to syncing", ("n",peer_name()));
+    } else if (!connected()) {
+      // dlog( "skipping connection ${n} due to not connected", ("n",peer_name()));
+    } else {
+      // dlog( "connection ${n} is current", ("n",peer_name()));
     }
     return (connected() && !syncing);
   }
@@ -1392,6 +1396,7 @@ namespace eos {
     void net_plugin_impl::handle_message( connection_ptr c, const block_summary_message &msg) {
       // dlog ("got a block_summary_message from ${p}", ("p",c->peer_name()));
       // dlog( "bsm header = ${h}",("h",msg.block_header));
+      // dlog( "txn count = ${c}", ("c",msg.trx_ids.size()));
 
       const auto& itr = c->block_state.get<by_id>();
       auto bs = itr.find(msg.block_header.id());
@@ -1419,10 +1424,21 @@ namespace eos {
         sb.producer_changes = msg.block_header.producer_changes;
         sb.producer = msg.block_header.producer;
         sb.producer_signature = msg.block_header.producer_signature;
+
         for( auto &cyc : msg.trx_ids ) {
-          eos::chain::cycle sbcycle;
+          // dlog( "cycle count = ${c}", ("c",cyc.size()));
+          if( cyc.size() == 0 ) {
+            continue;
+          }
+          sb.cycles.emplace_back( eos::chain::cycle( ) );
+          eos::chain::cycle &sbcycle = sb.cycles.back( );
           for( auto &cyc_thr_id : cyc ) {
-            eos::chain::thread cyc_thr;
+            // dlog( "cycle user theads count = ${c}", ("c",cyc_thr_id.user_trx.size()));
+            if (cyc_thr_id.user_trx.size() == 0) {
+              continue;
+            }
+            sbcycle.emplace_back( eos::chain::thread( ) );
+            eos::chain::thread &cyc_thr = sbcycle.back();
             /*
             for( auto &gt : cyc_thr_id.gen_trx ) {
               try {
@@ -1440,8 +1456,14 @@ namespace eos {
             }
             */
             for( auto &ut : cyc_thr_id.user_trx ) {
+              // auto ltxn = local_txns.get<by_id>().find(ut);
+
               try {
-                cyc_thr.user_input.push_back( ProcessedTransaction( cc.get_recent_transaction( ut ) ) );
+                ProcessedTransaction pt(cc.get_recent_transaction(ut.id));
+                pt.output = ut.outmsgs;
+                cyc_thr.user_input.emplace_back(pt);
+
+                // dlog ("Found the transaction");
               } catch ( const exception &ex) {
                 fetch_error = true;
                 elog( "unable to retieve user transaction, caught {ex}", ("ex",ex) );
@@ -1452,24 +1474,19 @@ namespace eos {
                 break;
               }
             }
-            if( !fetch_error ){
-              sbcycle.push_back( cyc_thr );
-            }
-            else {
+            if( fetch_error ){
               break;
             }
           }
-          if( !fetch_error ){
-            sb.cycles.push_back( sbcycle );
-          }
-          else {
+          if( fetch_error ){
             break;
           }
         }
 
         try {
+          // dlog( "calling accept block, fetcherror = ${fe}",("fe",fetch_error));
           if( !fetch_error )
-            chain_plug->accept_block(sb, false);
+            chain_plug->accept_block( sb, false );
         } catch( const unlinkable_block_exception &ex) {
           elog( "caught unlinkable block exception #${n}",("n",sb.block_num()));
           c->enqueue( go_away_message( go_away_reason::unlinkable ));
@@ -1489,6 +1506,7 @@ namespace eos {
       auto entry = local_txns.get<by_id>().find( txnid );
       if (entry != local_txns.end( ) ) {
         if( entry->validated ) {
+          // dlog( "the txnid is known and validated, so short circuit" );
           return;
         }
       }
@@ -1526,7 +1544,8 @@ namespace eos {
       }
 
       try {
-        chain_plug->accept_transaction( msg);
+        chain_plug->accept_transaction( msg );
+        // dlog(  "chain accepted transaction" );
       } catch( const fc::exception &ex) {
         // received a block due to out of sequence
         elog( "accept txn threw  ${m}",("m",ex.what()));
@@ -1675,8 +1694,7 @@ namespace eos {
                 edump((e.to_detail_string() ));
               }
             } else {
-              elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );
-            }
+              elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );            }
             close( c );
           });
     }
@@ -1801,30 +1819,37 @@ namespace eos {
     void net_plugin_impl::send_all_txn( const SignedTransaction& txn) {
       transaction_id_type txnid = txn.id();
       if( local_txns.get<by_id>().find( txnid ) != local_txns.end( ) ) { //found
+        // dlog( "found txnid in local_txns" );
         return;
       }
 
       size_t bufsiz = cache_txn (txnid, txn);
+      // dlog( "bufsiz = ${bs} max = ${max}",("bs", (uint32_t)bufsiz)("max", just_send_it_max));
 
       if( bufsiz <= just_send_it_max) {
         send_all( txn, [txn, txnid](connection_ptr c) -> bool {
             const auto& bs = c->trx_state.find(txnid);
             bool unknown = bs == c->trx_state.end();
-            if( unknown)
+            if( unknown) {
               c->trx_state.insert(transaction_state({txnid,true,true,(uint32_t)-1,
                       fc::time_point(),fc::time_point() }));
+              // dlog( "sending whole txn to ${n}", ("n",c->peer_name() ) );
+            }
             return unknown;
           });
       }
       else {
+        // dlog ("pending_notify, mode = ${m}, pending count = ${p}",("m",modes_str(pending_notify.mode))("p",pending_notify.pending));
         pending_notify.ids.push_back( txnid );
         notice_message nm = { pending_notify, ordered_blk_ids( ) };
         send_all( nm, [txn, txnid](connection_ptr c) -> bool {
             const auto& bs = c->trx_state.find(txnid);
             bool unknown = bs == c->trx_state.end();
-            if( unknown)
+            if( unknown) {
+              // dlog( "sending notice to ${n}", ("n",c->peer_name() ) );
               c->trx_state.insert(transaction_state({txnid,false,true,(uint32_t)-1,
                       fc::time_point(),fc::time_point() }));
+            }
             return unknown;
           });
         pending_notify.ids.clear();
@@ -1841,56 +1866,56 @@ namespace eos {
     void net_plugin_impl::broadcast_block_impl( const chain::signed_block &sb) {
       if( send_whole_blocks) {
         send_all( sb,[](connection_ptr c) -> bool { return true; });
+        return;
       }
-      chain_controller &cc = chain_plug->chain();
 
-      vector<cycle_ids> trxs;
+      block_summary_message bsm = {sb, vector<cycle_ids>()};
+      vector<cycle_ids> &trxs = bsm.trx_ids;
       if( !sb.cycles.empty()) {
         for( const auto& cyc : sb.cycles) {
-          if( !cyc.empty() ) {
-            thread_ids thd_ids;
-            for( const auto& thr : cyc) {
-              /*
-              for( auto gi : thr.generated_input ) {
-                thd_ids.gen_trx.push_back( gi.id );
-              }
-              */
-              for( auto ui : thr.user_input) {
-                auto &txn = cc.get_recent_transaction( ui.id( ) );
-                auto &id_iter = local_txns.get<by_id>();
-                auto lt = id_iter.find( ui.id( ) );
-                if( lt != local_txns.end()) {
-                  id_iter.modify( lt, update_block_num(txn.refBlockNum));
-                } else {
-                  transaction_id_type txnid = txn.id();
-                  if( local_txns.get<by_id>().find( txnid ) == local_txns.end( ) ) { //not found
-                    uint16_t bn = static_cast<uint16_t>(txn.refBlockNum);
-                    node_transaction_state nts = {txnid,time_point::now(),
-                                                  txn.expiration,
-                                                  vector<char>(),
-                                                  bn, true};
-                    local_txns.insert(nts);
-                  }
-                }
-                thd_ids.user_trx.push_back( ui.id( ) );
-              }
+          // dlog( "cyc.size = ${cs}",( "cs", cyc.size()));
+          if( cyc.empty() ) {
+            continue;
+          }
+          trxs.emplace_back (cycle_ids());
+          cycle_ids &cycs = trxs.back();
+          // dlog( "trxs.size = ${ts} cycles.size = ${cs}",("ts", trxs.size())("cs", cycs.size()));
+          for( const auto& thr : cyc) {
+            // dlog( "user txns = ${ui} generated = ${gi}",("ui",thr.user_input.size( ))("gi",thr.generated_input.size( )));
+            if( thr.user_input.size( ) == 0 ) {
+              continue;
+            }
+            cycs.emplace_back (thread_ids());
+            thread_ids &thd_ids = cycs.back();
+
+            for( auto gi : thr.generated_input ) {
+              thd_ids.gen_trx.emplace_back( gi.id );
+            }
+
+            for( auto &ui : thr.user_input) {
+              processed_trans_summary pts ({ui.id( ),ui.output });
+              thd_ids.user_trx.emplace_back( pts );
+              // dlog ("user txn has ${m} messages, summary has ${ms}", ("m",ui.output.size())("ms",pts.outmsgs.size()));
             }
           }
         }
       }
 
-      if( !send_whole_blocks) {
-        block_summary_message bsm = {sb, trxs};
-        // dlog( "bsm header = ${h}",("h",bsm.block_header));
-        send_all( bsm,[sb](connection_ptr c) -> bool {
-            const auto& bs = c->block_state.find(sb.id());
-            if( bs == c->block_state.end()) {
-              c->block_state.insert( (block_state){sb.id(),true,true,fc::time_point()});
-              return true;
-            }
-            return false;
-          });
+      // dlog ("sending bsm with ${c} transactions",("c",trxs.size()));
+      // dlog( "bsm header = ${h} txns = ${t}",("h",bsm.block_header)("t",bsm.trx_ids.size()));
+      if (bsm.trx_ids.size() > 0) {
+        // dlog( "cycles.size = ${cs}",("cs", bsm.trx_ids[0].size()));
+        if (bsm.trx_ids[0].size()) {
+        }
       }
+      send_all( bsm,[sb](connection_ptr c) -> bool {
+          const auto& bs = c->block_state.find(sb.id());
+          if( bs == c->block_state.end()) {
+            c->block_state.insert( (block_state){sb.id(),true,true,fc::time_point()});
+            return true;
+          }
+          return false;
+        });
     }
 
   void

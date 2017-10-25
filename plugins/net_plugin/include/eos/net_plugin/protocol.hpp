@@ -100,9 +100,14 @@ namespace eos {
     ordered_blk_ids req_blocks;
   };
 
+  struct processed_trans_summary {
+    transaction_id_type id;
+    vector<MessageOutput> outmsgs;
+  };
+
   struct thread_ids {
     vector<transaction_id_type> gen_trx; // is this necessary to send?
-    vector<transaction_id_type> user_trx;
+    vector<processed_trans_summary> user_trx;
   };
 
   using cycle_ids = vector<thread_ids>;
@@ -137,6 +142,7 @@ FC_REFLECT( eos::handshake_message,
             (os)(agent)(generation) )
 FC_REFLECT( eos::go_away_message, (reason)(node_id) )
 FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
+FC_REFLECT( eos::processed_trans_summary, (id)(outmsgs) )
 FC_REFLECT( eos::thread_ids, (gen_trx)(user_trx) )
 FC_REFLECT( eos::block_summary_message, (block_header)(trx_ids) )
 FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
