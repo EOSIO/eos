@@ -36,7 +36,7 @@ class key_recovery_service {
                result.reserve(signatures.size());
 
                for (const auto &signature: signatures) {
-                  result.emplace_back(signature, digest);
+                  result.emplace_back(fc::ecc::public_key(signature, digest));
                }
 
                cb(std::move(result));

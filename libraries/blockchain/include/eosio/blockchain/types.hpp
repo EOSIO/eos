@@ -85,7 +85,7 @@ namespace eosio { namespace blockchain {
 
 
    typedef fc::ecc::compact_signature     signature_type;
-   typedef fc::ecc::public_key            public_key_type;
+   typedef eosio::blockchain::public_key  public_key_type;
    typedef fc::ecc::private_key           private_key_type;
    typedef fc::sha256                     digest_type;
 
