@@ -2,6 +2,7 @@
 
 #include <eos/network_plugin/connection_interface.hpp>
 #include <eos/chain_plugin/chain_plugin.hpp>
+#include <eos/network_plugin/protocol.hpp>
 
 #include <boost/signals2.hpp>
 #include <boost/asio.hpp>
@@ -76,6 +77,8 @@ class tcp_connection : public connection_interface {
 
       fc::aes_encoder    sending_aes_enc_ctx;
       fc::aes_decoder    receiving_aes_dec_ctx;
+
+      handshake2_message fill_handshake();
 };
 
 using tcp_connection_ptr = std::shared_ptr<tcp_connection>;

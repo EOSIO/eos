@@ -69,7 +69,7 @@ void tcp_connection::finish_key_exchange(boost::system::error_code ec, size_t re
 }
 
 void tcp_connection::read() {
-   auto read_buffer_offset = boost::asio::mutable_buffers_1(boost::asio::buffer(rxbuffer)+4);
+   auto read_buffer_offset = boost::asio::mutable_buffers_1(boost::asio::buffer(rxbuffer)+rxbuffer_leftover);
    socket.async_read_some(read_buffer_offset, [this](auto ec, auto r) {
       read_ready(ec, r);
    });
@@ -80,15 +80,50 @@ void tcp_connection::read_ready(boost::system::error_code ec, size_t red) {
       handle_failure();
       return;
    }
-   //the amount read, plus the amount left over from last time, is what we
-   // have to work with
-   const char* const end_of_red = rxbuffer+red+rxbuffer_leftover;
-   const char* const end_of_ready_to_dec = rxbuffer + (end_of_red-rxbuffer)/16*16;
+   //the amount read (red), plus the amount left over from last time (rxbuffer_leftover), is what we
+   // have to work with entirely
+   unsigned int amount_in_rxbuffer = red+rxbuffer_leftover;
+   //but we will only actually decode up to last multiple of AES block size (16 bytes)
+   unsigned int amount_decryptable_in_rxbuffer = amount_in_rxbuffer & ~15U;
 
-   receiving_aes_dec_ctx.decode(rxbuffer, end_of_ready_to_dec-rxbuffer, parsebuffer+parsebuffer_leftover);
+   receiving_aes_dec_ctx.decode(rxbuffer, amount_decryptable_in_rxbuffer, parsebuffer+parsebuffer_leftover);
 
-   rxbuffer_leftover = end_of_red-end_of_ready_to_dec;
-   memmove(rxbuffer, end_of_ready_to_dec, rxbuffer_leftover);
+   //whatever 0-15 bytes are leftover in rxbuffer; save them to next time through
+   rxbuffer_leftover = amount_in_rxbuffer % 16;
+   memmove(rxbuffer, rxbuffer+amount_decryptable_in_rxbuffer, rxbuffer_leftover);
+
+   unsigned int successfully_parsed_bytes = 0;
+   //the amount of data left in parsebuffer from last time around (parsebuffer_leftover) plus the
+   // number of bytes we decrypted in this pass (amount_decryptable_in_rxbuffer) is what we should try to parse
+   unsigned int parseable_bytes = parsebuffer_leftover+amount_decryptable_in_rxbuffer;
+   datastream<const char*> parse_me(parsebuffer, parseable_bytes);
+   do {
+      net2_message message;
+      try {
+         fc::raw::unpack(parse_me, message);
+      }
+      catch(fc::out_of_range_exception& e) {
+         //the entire message hasn't arrived yet; we're done processing this go around
+         break;
+      }
+      //if we're here, we successfully got the entire message; dispatch it and move
+      // up to the next 16 byte boundary
+      if(parse_me.tellp()%16)
+         parse_me.skip(16 - (parse_me.tellp()%16));
+      successfully_parsed_bytes = parse_me.tellp();
+   } while(parse_me.remaining());
+
+   if(successfully_parsed_bytes == 0 && parseable_bytes > max_message_size) {
+       ///XXX blerg, we're not making progress; kill connection
+   }
+
+   //retain partially recieved message for next time around
+   parsebuffer_leftover = parseable_bytes - successfully_parsed_bytes;
+   memmove(parsebuffer, parsebuffer+successfully_parsed_bytes, parsebuffer_leftover);
+
+   //catch(fc::exception& e) {
+   //need this in here somewhere
+   //}
 
    read();
 }
@@ -109,6 +144,15 @@ bool tcp_connection::disconnected() {
 
 connection tcp_connection::on_disconnected(const signal<void()>::slot_type& slot) {
    return on_disconnected_sig.connect(slot);
+}
+
+handshake2_message tcp_connection::fill_handshake() {
+   handshake2_message hand;
+
+   hand.protocol_message_level = net2_message::count();
+   app().get_plugin<chain_plugin>().get_chain_id(hand.chain_id);;
+
+   return hand;
 }
 
 }
