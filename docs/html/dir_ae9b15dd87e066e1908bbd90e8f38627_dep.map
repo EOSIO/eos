@@ -1,0 +1,28 @@
+<map id="contracts" name="contracts">
+<area shape="rect" id="node2" href="dir_a9257b511e702fbd3462fee4a063915c.html" title="currency" alt="" coords="648,123,720,171"/>
+<area shape="rect" id="node5" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html" title="eoslib" alt="" coords="475,219,547,267"/>
+<area shape="rect" id="edge9-headlabel" href="dir_000001_000004.html" title="3" alt="" coords="563,213,571,228"/>
+<area shape="rect" id="node3" href="dir_df9ec5dd3eb98ed2672871667d1ff010.html" title="dice" alt="" coords="669,27,741,75"/>
+<area shape="rect" id="node4" href="dir_ef94cdb01f4e9712d25c43b7c1d91b58.html" title="eos" alt="" coords="573,27,645,75"/>
+<area shape="rect" id="node6" href="dir_5dc13a1abd435123f7be5ea8dc751d1b.html" title="exchange" alt="" coords="470,27,549,75"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000005_000001.html" title="1" alt="" coords="631,102,639,117"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000005_000004.html" title="1" alt="" coords="561,241,569,255"/>
+<area shape="rect" id="node7" href="dir_da2258ea5bfae2641df967be076d9dbe.html" title="infinite" alt="" coords="744,123,816,171"/>
+<area shape="rect" id="edge8-headlabel" href="dir_000006_000004.html" title="3" alt="" coords="563,227,571,242"/>
+<area shape="rect" id="node8" href="dir_2f68902bd8ea4562ac77bb3db95ba614.html" title="proxy" alt="" coords="373,27,445,75"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000007_000001.html" title="1" alt="" coords="630,108,638,123"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000007_000004.html" title="2" alt="" coords="563,217,571,232"/>
+<area shape="rect" id="node9" href="dir_6c7312813aa58ebc3dfdce40169e8db5.html" title="simpledb" alt="" coords="523,123,597,171"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000008_000004.html" title="2" alt="" coords="535,199,543,214"/>
+<area shape="rect" id="node10" href="dir_3680d2f7810f6721560f2a624729277d.html" title="skeleton" alt="" coords="427,123,499,171"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000009_000004.html" title="2" alt="" coords="494,191,502,206"/>
+<area shape="rect" id="node11" href="dir_44e8454330c52effb0ef98d8f3108add.html" title="social" alt="" coords="331,123,403,171"/>
+<area shape="rect" id="edge11-headlabel" href="dir_000010_000004.html" title="1" alt="" coords="461,194,469,209"/>
+<area shape="rect" id="node12" href="dir_322cd3c97a9c45f1dd8d138b04e20992.html" title="storage" alt="" coords="235,123,307,171"/>
+<area shape="rect" id="edge10-headlabel" href="dir_000011_000004.html" title="3" alt="" coords="456,208,464,223"/>
+<area shape="rect" id="node13" href="dir_4512a307eab2a9ca08d8433965f51830.html" title="test_api" alt="" coords="139,123,211,171"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000012_000004.html" title="19" alt="" coords="451,216,466,231"/>
+<area shape="rect" id="node14" href="dir_822c996966d1ea617c855d743c3f3186.html" title="tic_tac_toe" alt="" coords="27,123,114,171"/>
+<area shape="rect" id="edge12-headlabel" href="dir_000013_000004.html" title="2" alt="" coords="454,219,462,234"/>
+<area shape="rect" id="clust1" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html" alt="" coords="16,16,853,277"/>
+</map>

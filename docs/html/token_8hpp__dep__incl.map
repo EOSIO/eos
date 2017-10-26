@@ -1,0 +1,11 @@
+<map id="contracts/eoslib/token.hpp" name="contracts/eoslib/token.hpp">
+<area shape="rect" id="node2" href="$currency_8hpp.html" title="contracts/currency\l/currency.hpp" alt="" coords="252,80,383,121"/>
+<area shape="rect" id="node7" href="$infinite_8hpp.html" title="contracts/infinite\l/infinite.hpp" alt="" coords="518,80,637,121"/>
+<area shape="rect" id="node9" href="$storage_8hpp.html" title="contracts/storage/storage.hpp" alt="" coords="661,87,856,114"/>
+<area shape="rect" id="node3" href="$currency_8cpp.html" title="contracts/currency\l/currency.cpp" alt="" coords="5,169,136,211"/>
+<area shape="rect" id="node4" href="$exchange_8hpp.html" title="contracts/exchange\l/exchange.hpp" alt="" coords="160,169,296,211"/>
+<area shape="rect" id="node6" href="$proxy_8cpp.html" title="contracts/proxy/proxy.cpp" alt="" coords="320,177,493,203"/>
+<area shape="rect" id="node5" href="$exchange_8cpp.html" title="defines an example exchange contract " alt="" coords="160,259,296,300"/>
+<area shape="rect" id="node8" href="$infinite_8cpp.html" title="contracts/infinite\l/infinite.cpp" alt="" coords="518,169,637,211"/>
+<area shape="rect" id="node10" href="$storage_8cpp.html" title="contracts/storage/storage.cpp" alt="" coords="661,177,856,203"/>
+</map>
