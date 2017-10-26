@@ -207,7 +207,6 @@ public:
    read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const types::Abi& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.get_database();
-      const auto& code_account = d.get<chain::account_object,chain::by_name>( p.code );
    
       types::AbiSerializer abis;
       abis.setAbi(abi);
@@ -302,6 +301,9 @@ public:
   static const uint32_t            DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME;
   static const uint32_t            DEFAULT_TRANSACTION_EXECUTION_TIME;
   static const uint32_t            DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME;
+
+  static const uint32_t            DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT_TIME_FRAME_SECONDS;
+  static const uint32_t            DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
