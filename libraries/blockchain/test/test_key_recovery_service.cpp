@@ -1,39 +1,31 @@
 #define BOOST_TEST_MODULE key_recovery_service
 #include <boost/test/unit_test.hpp>
 
-#include <eosio/blockchain/internal/key_recovery_service.hpp>
-#include <eosio/blockchain/internal/shared_dispatch_policy.hpp>
+#include <eosio/blockchain/key_recovery_service.hpp>
 #include <eosio/blockchain/internal/thread_pool_policy.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread/thread.hpp>
-#include <fc/optional.hpp>
 
-using namespace eosio;
-using namespace blockchain;
-using namespace internal;
-using namespace fc;
+using namespace eosio::blockchain;
+using namespace eosio::blockchain::internal;
 
 template<int ThreadCount>
 class thread_fixture {
-public:
-   typedef key_recovery_service<static_thread_pool_policy<ThreadCount>> key_recovery_service_type;
-   thread_fixture()
-      :krs(std::make_unique<key_recovery_service_type>())
-   {
-   }
+   public:
+      typedef key_recovery_service<static_thread_pool_policy<ThreadCount>> key_recovery_service_type;
+      thread_fixture()
+      :krs(make_unique<key_recovery_service_type>())
+      {}
 
-   ~thread_fixture() {
-   }
+      ~thread_fixture() {}
 
-   void wait_for_completion() {
-      krs = nullptr;
-   }
+      void wait_for_completion() {
+         krs = nullptr;
+      }
 
-   std::unique_ptr<key_recovery_service_type> krs;
+      unique_ptr<key_recovery_service_type> krs;
 };
 
 #define CATCH_LOG_DROP( )  \
-   catch( fc::exception& er ) { \
+   catch( const fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
    } catch( const std::exception& e ) {  \
       fc::exception fce( \

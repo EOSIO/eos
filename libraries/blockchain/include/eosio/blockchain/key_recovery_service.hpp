@@ -1,7 +1,7 @@
 #pragma once
 #include <eosio/blockchain/types.hpp>
 
-namespace eosio { namespace blockchain { namespace internal {
+namespace eosio { namespace blockchain {
 
 /**
  * Service that asynchronously recovers keys from signatures
@@ -16,8 +16,8 @@ class key_recovery_service {
        *
        * @param policy - the dispatch policy to use (defaults to trivial constructor if available)
        */
-      key_recovery_service(DispatchPolicy policy = DispatchPolicy())
-         :_dispatcher(policy)
+      key_recovery_service( DispatchPolicy&& policy = DispatchPolicy() )
+         :_dispatcher(forward<decltype(policy)>(policy))
       {};
 
       /**
@@ -29,18 +29,18 @@ class key_recovery_service {
        * @tparam Callback - callable type for void(vector<public_key_type>&&|std::exception_ptr)
        */
       template<typename Callback>
-      void recover_keys(const digest_type& digest, const vector<signature_type>& signatures, Callback cb) {
-         _dispatcher.dispatch([=]() -> void {
+      void recover_keys( const digest_type& digest, const vector<signature_type>& signatures, Callback&& cb ) {
+         _dispatcher.dispatch([=](){
             try {
                auto result = vector<public_key_type>();
                result.reserve(signatures.size());
 
-               for (const auto &signature: signatures) {
+               for( const auto& signature: signatures ) {
                   result.emplace_back(fc::ecc::public_key(signature, digest));
                }
 
-               cb(std::move(result));
-            } CATCH_AND_THROW_TO_CALLBACK(cb);
+               cb(move(result));
+            } ESIO_CATCH_AND_THROW_TO_CALLBACK(cb);
          });
       }
 
@@ -48,4 +48,4 @@ class key_recovery_service {
       typename DispatchPolicy::dispatcher _dispatcher;
 };
 
-}}} // eosio::blockchain::internal
+}} // eosio::blockchain

@@ -24,9 +24,12 @@ namespace eosio { namespace blockchain {
    using std::pair;
    using std::weak_ptr;
    using std::shared_ptr;
+   using std::make_shared;
    using std::unique_ptr;
+   using std::make_unique;
    using std::string;
    using std::function;
+   using std::forward;
 
    using boost::signals2::signal;
    using boost::asio::io_service;
@@ -102,20 +105,16 @@ namespace eosio { namespace blockchain {
       public:
          typedef fc::static_variant<Result, std::exception_ptr> storage_type;
 
-         async_result(Result&& success)
-            : _value(std::move(success))
+         template<typename Arg>
+         async_result( Arg&& success )
+         :_value(forward<Arg>(success))
          {}
-
-         async_result(std::exception_ptr&& failure)
-            : _value(std::move(failure))
-         {}
-
 
          Result&& get() {
             if (_value.template contains<std::exception_ptr>()) {
                std::rethrow_exception(_value.template get<std::exception_ptr>());
             } else {
-               return std::move(_value.template get<Result>());
+               return move(_value.template get<Result>());
             }
          }
 
@@ -123,7 +122,7 @@ namespace eosio { namespace blockchain {
          storage_type _value;
    };
 
-#define CATCH_AND_THROW_TO_CALLBACK(cb)\
+#define ESIO_CATCH_AND_THROW_TO_CALLBACK(cb)\
    catch (...) {\
       cb(std::current_exception());\
    }
