@@ -199,6 +199,8 @@ public:
       hold_for_review = hold_trxs;
    }
 
+   static std::vector<uint8_t> assemble_wast(const std::string& wast);
+
 protected:
    chainbase::database& db;
    testing_fixture& fixture;
