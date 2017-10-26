@@ -14,7 +14,7 @@
 #include <vector>
 #include <map>
 #include <string>
-
+#include <exception>
 
 namespace eosio { namespace blockchain {
 
@@ -85,10 +85,47 @@ namespace eosio { namespace blockchain {
 
 
    typedef fc::ecc::compact_signature     signature_type;
-   typedef eosio::blockchain::public_key  public_key_type;
+   typedef fc::ecc::public_key            public_key_type;
    typedef fc::ecc::private_key           private_key_type;
+   typedef fc::sha256                     digest_type;
+
 
    typedef map<account_name, pair< account_name,public_key_type> > producer_changes_type;
    typedef uint32_t                       block_num_type;
+
+
+   /*
+    * switch to composition
+    */
+   template<typename Result>
+   class async_result  {
+      public:
+         typedef fc::static_variant<Result, std::exception_ptr> storage_type;
+
+         async_result(Result&& success)
+            : _value(std::move(success))
+         {}
+
+         async_result(std::exception_ptr&& failure)
+            : _value(std::move(failure))
+         {}
+
+
+         Result&& get() {
+            if (_value.template contains<std::exception_ptr>()) {
+               std::rethrow_exception(_value.template get<std::exception_ptr>());
+            } else {
+               return std::move(_value.template get<Result>());
+            }
+         }
+
+      private:
+         storage_type _value;
+   };
+
+#define CATCH_AND_THROW_TO_CALLBACK(cb)\
+   catch (...) {\
+      cb(std::current_exception());\
+   }
 
 } }  /// eosio::blockchain
