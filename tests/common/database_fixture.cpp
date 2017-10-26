@@ -102,6 +102,18 @@ testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& f
      db(db),
      fixture(fixture) {}
 
+testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                   chain_initializer_interface& initializer, testing_fixture& fixture,
+                                   uint32_t rate_limit_time_frame_sec,  uint32_t rate_limit)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
+                      ::eos::chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME * 1000,
+                      ::eos::chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME * 1000,
+                      ::eos::chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME * 1000,
+                      rate_limit_time_frame_sec,
+                      rate_limit),
+     db(db),
+     fixture(fixture) {}
+
 void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss) {
    if (count == 0)
       return;

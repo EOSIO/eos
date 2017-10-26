@@ -127,6 +127,10 @@ public:
    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                      chain_initializer_interface& initializer, testing_fixture& fixture);
 
+   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                     chain_initializer_interface& initializer, testing_fixture& fixture,
+                     uint32_t rate_limit_time_frame_sec,  uint32_t rate_limit);
+
    /**
     * @brief Publish the provided contract to the blockchain, owned by owner
     * @param owner The account to publish the contract under
