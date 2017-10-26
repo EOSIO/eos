@@ -1,0 +1,17 @@
+<map id="contracts/currency/currency.hpp" name="contracts/currency/currency.hpp">
+<area shape="rect" id="node2" href="$eos_8hpp.html" title="eoslib/eos.hpp" alt="" coords="320,95,427,121"/>
+<area shape="rect" id="node14" href="$token_8hpp.html" title="Defines types and ABI for standard token messages and database tables. " alt="" coords="5,169,123,196"/>
+<area shape="rect" id="node15" href="$db_8hpp.html" title="eoslib/db.hpp" alt="" coords="539,95,637,121"/>
+<area shape="rect" id="node3" href="$types_8hpp.html" title="eoslib/types.hpp" alt="" coords="392,319,509,345"/>
+<area shape="rect" id="node5" href="$message_8hpp.html" title="eoslib/message.hpp" alt="" coords="197,169,336,196"/>
+<area shape="rect" id="node8" href="$print_8hpp.html" title="eoslib/print.hpp" alt="" coords="273,244,383,271"/>
+<area shape="rect" id="node10" href="$math_8hpp.html" title="eoslib/math.hpp" alt="" coords="83,319,197,345"/>
+<area shape="rect" id="node12" href="$transaction_8hpp.html" title="eoslib/transaction.hpp" alt="" coords="411,169,560,196"/>
+<area shape="rect" id="node4" href="$types_8h.html" title="eoslib/types.h" alt="" coords="446,543,549,569"/>
+<area shape="rect" id="node6" href="$message_8h.html" title="eoslib/message.h" alt="" coords="214,393,338,420"/>
+<area shape="rect" id="node7" href="$system_8h.html" title="eoslib/system.h" alt="" coords="219,468,333,495"/>
+<area shape="rect" id="node9" href="$print_8h.html" title="eoslib/print.h" alt="" coords="272,319,368,345"/>
+<area shape="rect" id="node11" href="$math_8h.html" title="eoslib/math.h" alt="" coords="90,393,190,420"/>
+<area shape="rect" id="node13" href="$transaction_8h.html" title="eoslib/transaction.h" alt="" coords="483,468,618,495"/>
+<area shape="rect" id="node16" href="$db_8h.html" title="Defines C API for interfacing with blockchain database. " alt="" coords="635,244,720,271"/>
+</map>

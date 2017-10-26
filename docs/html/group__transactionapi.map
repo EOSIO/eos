@@ -1,0 +1,5 @@
+<map id="Transaction API" name="Transaction API">
+<area shape="rect" id="node1" href="$group__transactioncapi.html" title="Define API for sending transactions. " alt="" coords="389,5,520,32"/>
+<area shape="rect" id="node2" href="$group__contractdev.html" title="Introduction to writing contracts for EOS.IO. " alt="" coords="5,31,169,57"/>
+<area shape="rect" id="node3" href="$group__transactioncppapi.html" title="Type&#45;safe C++ wrappers for Transaction C API. " alt="" coords="381,56,528,83"/>
+</map>
