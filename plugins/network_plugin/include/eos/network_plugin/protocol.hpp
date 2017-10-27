@@ -32,13 +32,13 @@ struct DelimitingSignedTransaction : public SignedTransaction {
 template<typename Stream>
 inline Stream& operator>>(Stream& s, DelimitingSignedTransaction& d) {
    d.start = s.pos();
-   fc::raw::unpack<fc::datastream<const char *>, eos::chain::SignedTransaction>(s, d);
+   fc::raw::unpack(s, *static_cast<SignedTransaction*>(&d));
    d.end = s.pos();
    return s;
 }
 template<typename Stream>
 inline Stream& operator<<(Stream& s, const DelimitingSignedTransaction& d) {
-   fc::raw::pack<fc::datastream<char *>, eos::chain::SignedTransaction>(s, d);
+   fc::raw::pack(s, *static_cast<const SignedTransaction*>(&d));
    return s;
 }
 
