@@ -21,7 +21,7 @@ using chain::transaction_id_type;
 using namespace boost::multi_index;
 using types::Time;
 
-class tcp_connection : public connection_interface {
+class tcp_connection : public connection_interface, public fc::visitor<void> {
    public:
       tcp_connection(boost::asio::ip::tcp::socket s);
       ~tcp_connection();
@@ -32,6 +32,10 @@ class tcp_connection : public connection_interface {
       //set a callback to be fired when the connection is "open for business" -- any
       // initialization is done and it's ready to pass transactions, block, etc.
       void set_cb_on_ready(std::function<void()> cb);
+
+   public:
+      void operator()(const handshake2_message& handshake);
+      void operator()(const std::vector<DelimitingSignedTransaction>& transactions);
 
    private:
       void finish_key_exchange(boost::system::error_code ec, size_t red, fc::ecc::private_key priv_key);
@@ -54,11 +58,13 @@ class tcp_connection : public connection_interface {
       char parsebuffer[max_rx_read + max_message_size]; //decrypt to this buffer, with carry over for split messages
       size_t parsebuffer_leftover{0};
 
-      //boost::asio::io_service::strand tx_strand;
+
+
       std::list<std::vector<uint8_t>> queuedOutgoing;
 
       std::mutex transaction_mutex;
       struct seen_transaction : public boost::noncopyable {
+         seen_transaction(transaction_id_type t, Time e) : transaction_id(t), expires(e) {}
          transaction_id_type transaction_id;
          Time expires;
       };
@@ -80,7 +86,5 @@ class tcp_connection : public connection_interface {
 
       handshake2_message fill_handshake();
 };
-
-using tcp_connection_ptr = std::shared_ptr<tcp_connection>;
 
 }
