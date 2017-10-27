@@ -55,6 +55,8 @@ public:
    uint32_t                         rcvd_block_trans_execution_time;
    uint32_t                         trans_execution_time;
    uint32_t                         create_block_trans_execution_time;
+   uint32_t                         per_scope_trans_msg_rate_limit_time_frame_sec;
+   uint32_t                         per_scope_trans_msg_rate_limit;
 };
 
 #ifdef NDEBUG
@@ -66,6 +68,9 @@ const uint32_t chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME =
 const uint32_t chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME = 18;
 const uint32_t chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME = 18;
 #endif
+
+const uint32_t chain_plugin::DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT_TIME_FRAME_SECONDS = 18;
+const uint32_t chain_plugin::DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT = 1800;
 
 
 
@@ -89,6 +94,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
          ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
+         ("per-scope-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT_TIME_FRAME_SECONDS),
+          "The time frame, in seconds, that the per-scope-transaction-msg-rate-limit is imposed over.")
+         ("per-scope-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT),
+          "Limits the maximum rate of transaction messages that an account is allowed each per-scope-transaction-msg-rate-limit-time-frame-sec.")
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -167,6 +176,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->rcvd_block_trans_execution_time = options.at("rcvd-block-trans-execution-time").as<uint32_t>() * 1000;
    my->trans_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
    my->create_block_trans_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
+
+   my->per_scope_trans_msg_rate_limit_time_frame_sec = options.at("per-scope-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>();
+   my->per_scope_trans_msg_rate_limit = options.at("per-scope-transaction-msg-rate-limit").as<uint32_t>();
 }
 
 void chain_plugin::plugin_startup() 
@@ -191,7 +203,9 @@ void chain_plugin::plugin_startup()
                                 initializer, native_contract::make_administrator(),
                                 my->trans_execution_time,
                                 my->rcvd_block_trans_execution_time,
-                                my->create_block_trans_execution_time);
+                                my->create_block_trans_execution_time,
+                                my->per_scope_trans_msg_rate_limit_time_frame_sec,
+                                my->per_scope_trans_msg_rate_limit);
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
@@ -285,8 +299,6 @@ string getTableType( const types::Abi& abi, const Name& tablename ) {
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   const auto& d = db.get_database();
-
    const types::Abi abi = getAbi( db, p.code );
    auto table_type = getTableType( abi, p.table );
    auto table_key = PRIMARY;
@@ -377,7 +389,6 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.name = params.name;
 
    const auto& d = db.get_database();
-   const auto& accnt          = d.get<account_object,by_name>( params.name );
    const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
    const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
 

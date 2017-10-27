@@ -14,6 +14,7 @@
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/authority_checker.hpp>
+#include <eos/chain/rate_limiting_object.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
 
@@ -642,7 +643,6 @@ void chain_controller::check_transaction_output(const T& expected, const T& actu
 
 void chain_controller::_apply_block(const signed_block& next_block)
 { try {
-   uint32_t next_block_num = next_block.block_num();
    uint32_t skip = _skip_flags;
 
    FC_ASSERT((skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(),
@@ -871,6 +871,53 @@ void chain_controller::validate_expiration(const Transaction& trx) const
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
+uint32_t chain_controller::_transaction_message_rate(uint32_t now, uint32_t last_update_sec, uint32_t rate_limit_time_frame_sec,
+                                                     uint32_t rate_limit, uint32_t previous_rate, const char* type, const AccountName& name)
+{
+   const auto delta_time = now - last_update_sec;
+   uint32_t message_count = 1;
+   if (delta_time <= rate_limit_time_frame_sec)
+   {
+      message_count += ( ( ( rate_limit_time_frame_sec - delta_time ) * fc::uint128( previous_rate ) )
+                     / rate_limit_time_frame_sec ).to_uint64();
+      EOS_ASSERT(message_count <= rate_limit, tx_msgs_exceeded,
+                 "Rate limiting ${type}=${name} messages sent, ${count} exceeds ${max} messages limit per ${sec} seconds. Wait 1 second and try again",
+                 ("type",type)
+                 ("name",name)
+                 ("count",message_count)
+                 ("max",rate_limit)
+                 ("sec", rate_limit_time_frame_sec));
+   }
+
+   return message_count;
+}
+
+void chain_controller::rate_limit_message(const Message& message)
+{ try {
+   for (const auto& permission : message.authorization)
+   {
+      auto rate_limiting = _db.find<rate_limiting_object, by_name>(permission.account);
+      const auto now = head_block_time().sec_since_epoch();
+      if (rate_limiting == nullptr)
+      {
+         _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
+            rlo.name = permission.account;
+            rlo.trans_msg_rate_per_account = 1;
+            rlo.last_update_sec = now;
+         });
+      }
+      else
+      {
+         const auto message_rate =
+               _transaction_message_rate(now, rate_limiting->last_update_sec, _per_scope_trans_msg_rate_limit_time_frame_sec,
+                                        _per_scope_trans_msg_rate_limit, rate_limiting->trans_msg_rate_per_account, "account", permission.account);
+         _db.modify(*rate_limiting, [&] (rate_limiting_object& rlo) {
+            rlo.trans_msg_rate_per_account = message_rate;
+            rlo.last_update_sec = now;
+         });
+      }
+   }
+} FC_CAPTURE_AND_RETHROW((message)) }
 
 void chain_controller::process_message(const Transaction& trx, AccountName code,
                                        const Message& message, MessageOutput& output, apply_context* parent_context) {
@@ -976,6 +1023,7 @@ typename T::Processed chain_controller::process_transaction( const T& trx, int d
 
    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
       auto& output = ptrx.output[i];
+      rate_limit_message(trx.messages[i]);
       process_message(trx, trx.messages[i].code, trx.messages[i], output);
       if (output.inline_transaction.valid() ) {
          const Transaction& trx = *output.inline_transaction;
@@ -1116,6 +1164,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<transaction_multi_index>();
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
+   _db.add_index<rate_limiting_index>();
 }
 
 void chain_controller::initialize_chain(chain_initializer_interface& starter)
@@ -1157,9 +1206,11 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
                                    uint32_t trans_execution_time, uint32_t rcvd_block_trans_execution_time,
-                                   uint32_t create_block_trans_execution_time)
+                                   uint32_t create_block_trans_execution_time, uint32_t per_scope_trans_msg_rate_limit_time_frame_sec,
+                                   uint32_t per_scope_trans_msg_rate_limit)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _trans_execution_time(trans_execution_time),
-     _rcvd_block_trans_execution_time(rcvd_block_trans_execution_time), _create_block_trans_execution_time(create_block_trans_execution_time) {
+     _rcvd_block_trans_execution_time(rcvd_block_trans_execution_time), _create_block_trans_execution_time(create_block_trans_execution_time),
+     _per_scope_trans_msg_rate_limit_time_frame_sec(per_scope_trans_msg_rate_limit_time_frame_sec), _per_scope_trans_msg_rate_limit(per_scope_trans_msg_rate_limit) {
 
    initialize_indexes();
    starter.register_types(*this, _db);

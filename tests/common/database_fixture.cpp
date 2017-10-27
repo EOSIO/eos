@@ -20,6 +20,13 @@
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
 
+#include <Inline/BasicTypes.h>
+#include <IR/Module.h>
+#include <IR/Validate.h>
+#include <WAST/WAST.h>
+#include <WASM/WASM.h>
+#include <Runtime/Runtime.h>
+
 #include <boost/range/adaptor/map.hpp>
 
 #include <iostream>
@@ -89,7 +96,21 @@ testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& f
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
                       ::eos::chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME * 1000,
                       ::eos::chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME * 1000,
-                      ::eos::chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME * 1000),
+                      ::eos::chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME * 1000,
+                      ::eos::chain_plugin::DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT_TIME_FRAME_SECONDS,
+                      ::eos::chain_plugin::DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT),
+     db(db),
+     fixture(fixture) {}
+
+testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                   chain_initializer_interface& initializer, testing_fixture& fixture,
+                                   uint32_t rate_limit_time_frame_sec,  uint32_t rate_limit)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
+                      ::eos::chain_plugin::DEFAULT_TRANSACTION_EXECUTION_TIME * 1000,
+                      ::eos::chain_plugin::DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME * 1000,
+                      ::eos::chain_plugin::DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME * 1000,
+                      rate_limit_time_frame_sec,
+                      rate_limit),
      db(db),
      fixture(fixture) {}
 
@@ -174,6 +195,41 @@ fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTr
    }
    return chain_controller::push_transaction(trx, skip_flags | chain_controller::pushed_transaction);
 }
+
+vector<uint8_t> testing_blockchain::assemble_wast( const std::string& wast ) {
+   //   std::cout << "\n" << wast << "\n";
+   IR::Module module;
+   std::vector<WAST::Error> parseErrors;
+   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
+   if(parseErrors.size())
+   {
+      // Print any parse errors;
+      std::cerr << "Error parsing WebAssembly text file:" << std::endl;
+      for(auto& error : parseErrors)
+      {
+         std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
+         std::cerr << error.locus.sourceLine << std::endl;
+         std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
+      }
+      FC_ASSERT( !"error parsing wast" );
+   }
+
+   try
+   {
+      // Serialize the WebAssembly module.
+      Serialization::ArrayOutputStream stream;
+      WASM::serialize(stream,module);
+      return stream.getBytes();
+   }
+   catch(Serialization::FatalSerializationException exception)
+   {
+      std::cerr << "Error serializing WebAssembly binary file:" << std::endl;
+      std::cerr << exception.message << std::endl;
+      throw;
+   }
+}
+
+
 
 void testing_network::connect_blockchain(testing_blockchain& new_database) {
    if (blockchains.count(&new_database))
