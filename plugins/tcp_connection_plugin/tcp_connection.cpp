@@ -31,14 +31,6 @@ tcp_connection::~tcp_connection() {
    ilog("Connection destroyed"); //XXX debug
 }
 
-void tcp_connection::handle_failure() {
-    socket.cancel();
-    socket.close();
-    if(!disconnected_fired)
-       on_disconnected_sig();
-    disconnected_fired = true;
-}
-
 void tcp_connection::finish_key_exchange(boost::system::error_code ec, size_t red, fc::ecc::private_key priv_key) {
    fc::ecc::public_key_data* rpub = (fc::ecc::public_key_data*)rxbuffer;
    if(ec || red != rpub->size()) {
@@ -68,10 +60,26 @@ void tcp_connection::finish_key_exchange(boost::system::error_code ec, size_t re
    read();
 }
 
+//Threading strategy: The RX and TX callbacks will not be wrapped -- they may indeed be called simulatnously
+// from different threads. However, need to make sure that any calls _back_ to the socket object are
+// serialized. This includes new async_reads, async_writes, or even close()s.
+
+void tcp_connection::handle_failure() {
+   strand.dispatch([this]() {
+      socket.cancel();
+      socket.close();
+      if(!disconnected_fired)
+         on_disconnected_sig();
+      disconnected_fired = true;
+   });
+}
+
 void tcp_connection::read() {
-   auto read_buffer_offset = boost::asio::mutable_buffers_1(boost::asio::buffer(rxbuffer)+rxbuffer_leftover);
-   socket.async_read_some(read_buffer_offset, [this](auto ec, auto r) {
-      read_ready(ec, r);
+   strand.dispatch([this]() {
+      auto read_buffer_offset = boost::asio::mutable_buffers_1(boost::asio::buffer(rxbuffer)+rxbuffer_leftover);
+      socket.async_read_some(read_buffer_offset, [this](auto ec, auto r) {
+         read_ready(ec, r);
+      });
    });
 }
 
@@ -101,10 +109,16 @@ void tcp_connection::read_ready(boost::system::error_code ec, size_t red) {
       net2_message message;
       try {
          fc::raw::unpack(parse_me, message);
+         message.visit(*this);
       }
       catch(fc::out_of_range_exception& e) {
          //the entire message hasn't arrived yet; we're done processing this go around
          break;
+      }
+      catch(fc::exception& e) {
+         //any other exception from unpacking is grounds for connection termination
+         handle_failure();
+         return;
       }
       //if we're here, we successfully got the entire message; dispatch it and move
       // up to the next 16 byte boundary
@@ -114,18 +128,32 @@ void tcp_connection::read_ready(boost::system::error_code ec, size_t red) {
    } while(parse_me.remaining());
 
    if(successfully_parsed_bytes == 0 && parseable_bytes > max_message_size) {
-       ///XXX blerg, we're not making progress; kill connection
+       //Something is wedged, we're not making progress.
+       handle_failure();
+       return;
    }
 
    //retain partially recieved message for next time around
    parsebuffer_leftover = parseable_bytes - successfully_parsed_bytes;
    memmove(parsebuffer, parsebuffer+successfully_parsed_bytes, parsebuffer_leftover);
 
-   //catch(fc::exception& e) {
-   //need this in here somewhere
-   //}
-
    read();
+}
+
+void tcp_connection::operator()(const handshake2_message& handshake) {
+
+}
+
+void tcp_connection::operator()(const std::vector<DelimitingSignedTransaction>& transactions) {
+   std::lock_guard<std::mutex> lock(transaction_mutex);
+
+   for(const DelimitingSignedTransaction& trx : transactions) {
+      auto p = seen_transactions.emplace(trx.id(), trx.expiration);
+      if(!p.second) //couldn't emplace; we've seen trx in/egress recently already
+         continue;
+
+      std::vector<char> packed_trx = std::vector<char>(trx.start, trx.end);
+   }
 }
 
 void tcp_connection::send_complete(boost::system::error_code ec, size_t sent, std::list<std::vector<uint8_t>>::iterator it) {

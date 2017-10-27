@@ -23,8 +23,28 @@ struct handshake2_message {
       string            agent;
 };
 
+//XXX Abuse?
+struct DelimitingSignedTransaction : public SignedTransaction {
+   const char* start;
+   const char* end;
+};
+
+template<typename Stream>
+inline Stream& operator>>(Stream& s, DelimitingSignedTransaction& d) {
+   d.start = s.pos();
+   fc::raw::unpack<fc::datastream<const char *>, eos::chain::SignedTransaction>(s, d);
+   d.end = s.pos();
+   return s;
+}
+template<typename Stream>
+inline Stream& operator<<(Stream& s, const DelimitingSignedTransaction& d) {
+   fc::raw::pack<fc::datastream<char *>, eos::chain::SignedTransaction>(s, d);
+   return s;
+}
+
 using net2_message = static_variant<
-   handshake2_message
+   handshake2_message,
+   std::vector<DelimitingSignedTransaction>
 >;
 
 }
