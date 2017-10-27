@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/blockchain/block.hpp>
+#include <eosio/blockchain/database.hpp>
 
 #include <thread>
 
@@ -9,6 +10,7 @@ namespace eosio { namespace blockchain {
    class block_log;
    class fork_database;
    struct global_state_object;
+   struct active_producers_object;
 
    /**
     * @class controller
@@ -87,6 +89,7 @@ namespace eosio { namespace blockchain {
                               block_id_type block_id,
                               block_data_ptr full_block = block_data_ptr() );
 
+
          /**
           * Calling this method will cause the current "pending state" to be converted into a block
           * and the block_validated() signal to be generated. This process will occur at the given time
@@ -128,11 +131,31 @@ namespace eosio { namespace blockchain {
          */
          ///}
 
-        const global_state_object& get_global_state()const;
       private:
+         /**
+          * These methods are private because they access state which requires proper scheduling to
+          * prevent non-deterministic power.
+          */
+         ///@{
+         account_name                     get_scheduled_producer( time_point when )const;
+         const global_state_object&       get_global_state()const;
+         const active_producers_object&   get_active_producers()const;
+         ///@}
+
          void reset_state_database();
          void open_state_database();
          void initialize_state_database();
+
+         void start_pending_block();
+         void sign_block( time_point when, account_name producer, private_key_type producer_key );
+         void abort_pending_block();
+         void finalize_pending_block();
+
+         void validate_producer( time_point when, account_name producer, public_key_type producer_key );
+
+         optional<block_handle>              _pending_block;
+         optional<cycle_handle>              _pending_cycle;
+         meta_block_ptr                      _pending_meta_block;
 
          unique_ptr<boost::asio::io_service> _ios;
          unique_ptr<std::thread>             _thread;

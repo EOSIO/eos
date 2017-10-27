@@ -17,6 +17,7 @@ namespace eosio { namespace blockchain  {
    using std::set;
    using std::deque;
    using std::vector;
+   using std::make_shared;
 
 
    struct undo_transaction {

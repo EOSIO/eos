@@ -19,6 +19,7 @@ namespace eosio { namespace blockchain {
    }
 
    controller::~controller() {
+     abort_pending_block();
      _ios.reset();
      _thread->join();
    }
@@ -55,6 +56,12 @@ namespace eosio { namespace blockchain {
    const global_state_object& controller::get_global_state()const {
       const auto& scope = _db->get_scope( N(eosio.block) );
       const auto& t = scope.get_table<global_state_index>( {N(eosio.block), N(global)} );
+      return *t.get_index<by_id>().begin();
+   }
+
+   const active_producers_object& controller::get_active_producers()const {
+      const auto& scope = _db->get_scope( N(eosio.block) );
+      const auto& t = scope.get_table<active_producers_index>( {N(eosio.block), N(activepro)} );
       return *t.get_index<by_id>().begin();
    }
 
@@ -96,7 +103,81 @@ namespace eosio { namespace blockchain {
       blk.commit();
 
       _db->commit( 0 );
+
+      start_pending_block();
+
    } FC_CAPTURE_AND_RETHROW() }
+
+   void controller::start_pending_block() {
+      FC_ASSERT( !_pending_block, "a pending block is already in progress" );
+      auto data           = make_shared<block_data>();
+      auto head           = _fork_db->head();
+
+      if( head ) { /// then this is the gensis block
+         data->previous      = head->id;
+      }
+      _pending_meta_block = make_shared<meta_block>( data );
+      _pending_block      = _db->start_block( data->block_num() );
+      _pending_cycle      = _pending_block->start_cycle();
+   }
+
+   void controller::abort_pending_block() {
+     _pending_cycle.reset();
+     _pending_block.reset();
+     _pending_meta_block.reset();
+   }
+
+   /**
+    *  This is the final step that should be called after all pending transactions have finished execution,
+    *  this will validate the time is appropriate for the producer and that the key is correct, then it will
+    *  update the global state. 
+    *
+    *  After calling this method the pending block will be finalized, added to the fork db, and signaled to the
+    *  network.
+    */
+   void controller::sign_block( time_point when, account_name producer, private_key_type producer_key ) {
+      FC_ASSERT( _pending_meta_block, "no pending block" );
+
+      const auto& gs = get_global_state();
+
+      _pending_meta_block->producer_key = producer_key.get_public_key();
+
+      _pending_meta_block->data->timestamp  = when;
+      _pending_meta_block->data->producer   = producer;
+      _pending_meta_block->data->block_root = gs.block_root;
+
+      validate_producer( when, producer, _pending_meta_block->producer_key );
+
+      /// update block_root, time, head id, etc...
+
+      _pending_meta_block->data->sign( producer_key );
+      finalize_pending_block();
+      _fork_db->push_block( move(_pending_meta_block) );
+   } // sign_block
+
+   void controller::validate_producer( time_point when, account_name producer, public_key_type producer_key ) {
+      // const auto& active_producers = get_active_producers();
+   }
+
+   void controller::finalize_pending_block() {
+      /// commit the changes and remove the pending state
+      _pending_block->commit();
+      _pending_block.reset();
+      _pending_block.reset();
+      _pending_meta_block.reset();
+   } // finalize_pending_block
+
+   /**
+    * This returns the active producers for time based upon the current active set,
+    * this may not be acurate for past blocks if the set of active producers has changed
+    */
+   account_name controller::get_scheduled_producer( time_point when )const {
+      const auto& active = get_active_producers();
+      const auto& gs     = get_global_state();
+      auto slot = when.time_since_epoch().count() / (config::block_interval_ms * 1000);
+      return active.producers[ slot % active.producers.size() ];
+   } // get_scheduled_producer
+
 
    void controller::reset_state_database() // private
    {

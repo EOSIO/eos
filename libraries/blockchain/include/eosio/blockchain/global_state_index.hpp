@@ -13,6 +13,7 @@ struct global_state_object : public object< N(globalstate), global_state_object 
    global_state_object::id_type   id;
    block_num_type                 head_block_num = 0;
    block_id_type                  head_block_id;
+   digest_type                    block_root;
    time_point                     head_block_time;
 };
 

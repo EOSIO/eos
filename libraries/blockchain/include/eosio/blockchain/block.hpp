@@ -178,7 +178,7 @@ namespace eosio { namespace blockchain {
    /**
     *  Tracks high-level information about pending blocks and how they link.
     */
-   struct meta_block {
+   struct meta_block : std::enable_shared_from_this<meta_block> {
       meta_block( block_data_ptr p ):id(p->id()),previous_id(p->previous),data(move(p)){}
 
       weak_ptr< meta_block > prev; ///< weak ptr to the previous block

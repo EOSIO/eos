@@ -45,6 +45,7 @@ namespace eosio { namespace blockchain {
           *  @return the new head block ( the longest fork )
           */
          meta_block_ptr            push_block( block_data_ptr b );
+         meta_block_ptr            push_block( meta_block_ptr b );
          meta_block_ptr            head()const { return _head; }
          void                      pop_block();
 

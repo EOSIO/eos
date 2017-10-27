@@ -49,6 +49,17 @@ meta_block_ptr  fork_database::push_block( block_data_ptr b )
    return _head;
 }
 
+meta_block_ptr fork_database::push_block( meta_block_ptr blk ) {
+   try { _push_block( blk ); }
+   catch ( const unlinkable_block_exception& e )
+   {
+      wlog( "Pushing block to fork database that failed to link: ${id}, ${num}", ("id",blk->id)("num",blk->blocknum) );
+      wlog( "Head: ${num}, ${id}", ("num",_head->blocknum)("id",_head->id) );
+      throw;
+   }
+   return _head;
+}
+
 void  fork_database::_push_block(const meta_block_ptr& item)
 {
    if( _head ) // make sure the block is within the range that we are caching
