@@ -253,6 +253,16 @@ DEFINE_INTRINSIC_FUNCTION7(env,upper_bound_str,upper_bound_str,i32,i64,scope,i64
   READ_RECORD_STR(upper_bound_record)
 }
 
+DEFINE_INTRINSIC_FUNCTION3(env, assert_is_utf8,assert_is_utf8,none,i32,dataptr,i32,datalen,i32,msg) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const char* str = &memoryRef<const char>( mem, dataptr );
+  const bool test = fc::is_utf8(std::string( str, datalen ));
+
+  FC_ASSERT( test, "assertion failed: ${s}", ("s",msg) );
+}
+
 DEFINE_INTRINSIC_FUNCTION3(env, assert_sha256,assert_sha256,none,i32,dataptr,i32,datalen,i32,hash) {
    FC_ASSERT( datalen > 0 );
 
@@ -342,14 +352,6 @@ DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
    return *reinterpret_cast<uint64_t *>(&res);
 }
 
-DEFINE_INTRINSIC_FUNCTION2(env,is_valid_utf8_str,is_valid_utf8_str,i32,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  return (uint32_t)fc::is_utf8(std::string( str, len ));
-}
 
 DEFINE_INTRINSIC_FUNCTION2(env,getActiveProducers,getActiveProducers,none,i32,producers,i32,datalen) {
    auto& wasm    = wasm_interface::get();
