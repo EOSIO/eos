@@ -202,7 +202,7 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
    }
 }
 
-auto tx_expiration = fc::microseconds(100);
+auto tx_expiration = fc::seconds(1);
 bool tx_force_unique = false;
 void add_standard_transaction_options(CLI::App* cmd) {
    CLI::callback_t parse_exipration = [](CLI::results_t res) -> bool {
@@ -215,7 +215,7 @@ void add_standard_transaction_options(CLI::App* cmd) {
       return true;
    };
 
-   cmd->add_option("-x,--expiration", parse_exipration, localized("set the time in milliseconds before a transaction expires, defaults to 0.1ms"));
+   cmd->add_option("-x,--expiration", parse_exipration, localized("set the time in milliseconds before a transaction expires, defaults to 1000ms"));
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
 }
 
@@ -272,7 +272,7 @@ void sign_transaction(SignedTransaction& trx) {
 
 fc::variant push_transaction( SignedTransaction& trx, bool sign ) {
     auto info = get_info();
-    trx.expiration = info.head_block_time + tx_expiration; //chain.head_block_time() + 100;
+    trx.expiration = info.head_block_time + tx_expiration;
     transaction_set_reference_block(trx, info.head_block_id);
     boost::sort( trx.scope );
 
@@ -335,7 +335,7 @@ void send_transaction(const std::vector<types::Message>& messages, const std::ve
    }
 
    auto info = get_info();
-   trx.expiration = info.head_block_time + 100; //chain.head_block_time() + 100;
+   trx.expiration = info.head_block_time + tx_expiration;
    transaction_set_reference_block(trx, info.head_block_id);
    if (!skip_sign) {
       sign_transaction(trx);
@@ -792,7 +792,7 @@ int main( int argc, char** argv ) {
 
 
       auto info = get_info();
-      trx.expiration = info.head_block_time + tx_expiration; //chain.head_block_time() + 100;
+      trx.expiration = info.head_block_time + tx_expiration;
       transaction_set_reference_block(trx, info.head_block_id);
       if (!skip_sign) {
          sign_transaction(trx);
