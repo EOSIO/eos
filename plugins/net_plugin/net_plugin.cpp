@@ -213,7 +213,7 @@ namespace eos {
   constexpr auto     def_network_version = 0;
   constexpr auto     def_sync_rec_span = 10;
   constexpr auto     def_max_just_send = 1300 * 3; // "mtu" * 3
-  constexpr auto     def_send_whole_blocks = false;
+  constexpr auto     def_send_whole_blocks = true;
 
   /**
    *  Index by id

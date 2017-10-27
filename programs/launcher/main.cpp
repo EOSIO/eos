@@ -256,7 +256,7 @@ launcher_def::set_options (bpo::options_description &cli) {
   cli.add_options()
     ("nodes,n",bpo::value<int>()->default_value(1),"total number of nodes to configure and launch")
     ("pnodes,p",bpo::value<int>()->default_value(1),"number of nodes that are producers")
-    ("shape,s",bpo::value<string>()->default_value("ring"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
+    ("shape,s",bpo::value<string>()->default_value("star"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.")
@@ -408,6 +408,7 @@ launcher_def::write_config_file (eosd_def &node) {
   cfg << "genesis-json = " << node.genesis << "\n"
       << "block-log-dir = blocks\n"
       << "readonly = 0\n"
+      << "send-whole-blocks = true\n"
       << "shared-file-dir = blockchain\n"
       << "shared-file-size = " << node.filesize << "\n"
       << "http-server-endpoint = " << node.hostname << ":" << node.http_port << "\n"
@@ -644,7 +645,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
       exit (-1);
     }
 
-    string cmd = "cd node.eos_root_dir; kill -9 `cat " + pidf.string() + "`";
+    string cmd = "cd " + node.eos_root_dir + "; kill -9 `cat " + pidf.string() + "`";
     format_ssh (cmd, node.hostname, info.kill_cmd);
   }
   else {
@@ -742,8 +743,9 @@ int main (int argc, char *argv[]) {
 
     if (vmap.count("timestamp"))
       gts = vmap["timestamp"].as<string>();
-    if (vmap.count("kill"))
+    if (vmap.count("kill")) {
       kill_arg = vmap["kill"].as<string>();
+    }
     if (vmap.count("help") > 0) {
       opts.print(cerr);
       return 0;
@@ -769,6 +771,7 @@ int main (int argc, char *argv[]) {
     }
 
     if (!kill_arg.empty()) {
+      cout << "killing" << std::endl;
       if (kill_arg[0] != '-') {
         kill_arg = "-" + kill_arg;
       }
