@@ -26,30 +26,38 @@ static void parse_ip_port(const std::string& in, std::string& ip, std::string& p
 tcp_connection_initiator::tcp_connection_initiator(const boost::program_options::variables_map& options, boost::asio::io_service& i) :
    strand(i), resolver(i), ios(i) {
 
-   for(const std::string& bindaddr : options["listen-endpoint"].as<std::vector<std::string>>()) {
-      std::string ip;
-      std::string port{"9876"};
-      parse_ip_port(bindaddr, ip, port);
+   if(options.count("listen-endpoint")) {
+      for(const std::string& bindaddr : options["listen-endpoint"].as<std::vector<std::string>>()) {
+         std::string ip;
+         std::string port{"9876"};
+         parse_ip_port(bindaddr, ip, port);
 
-      boost::asio::ip::tcp::resolver::query query(ip, port);
+         boost::asio::ip::tcp::resolver::query query(ip, port);
 
-      try {
-         boost::asio::ip::tcp::resolver::iterator addresses = resolver.resolve(query);
-         acceptors.emplace_front(ios, addresses->endpoint());
-      }
-      catch(boost::system::system_error sr) {
-        elog("Failed to listen on an incoming port-- ${sr}", ("sr", sr.what()));
+         try {
+            boost::asio::ip::tcp::resolver::iterator addresses = resolver.resolve(query);
+            acceptors.emplace_front(ios, addresses->endpoint());
+         }
+         catch(boost::system::system_error sr) {
+            elog("Failed to listen on an incoming port-- ${sr}", ("sr", sr.what()));
+         }
       }
    }
 
-   for(const std::string& bindaddr : options["remote-endpoint"].as<std::vector<std::string>>()) {
-      std::string ip;
-      std::string port{"9876"};
-      parse_ip_port(bindaddr, ip, port);
+   if(options.count("remote-endpoint")) {
+      for(const std::string& bindaddr : options["remote-endpoint"].as<std::vector<std::string>>()) {
+         std::string ip;
+         std::string port{"9876"};
+         parse_ip_port(bindaddr, ip, port);
 
-      outgoing_connections.emplace_front(ios, boost::asio::ip::tcp::resolver::query(ip, port));
+         outgoing_connections.emplace_front(ios, boost::asio::ip::tcp::resolver::query(ip, port));
+      }
    }
 
+   if(acceptors.empty())
+      wlog("Not listening on any TCP address/ports for incoming connections");
+   if(outgoing_connections.empty())
+      wlog("Not attempting any outgoing TCP connections");
 }
 
 void tcp_connection_initiator::go() {
@@ -69,8 +77,6 @@ void tcp_connection_initiator::accept_connection(active_acceptor& aa) {
 }
 
  void tcp_connection_initiator::handle_incoming_connection(const boost::system::error_code& ec, active_acceptor& aa) {
-   ilog("accepted connection");
-  
    std::unique_ptr<tcp_connection> new_conn = std::make_unique<tcp_connection>(std::move(aa.socket_to_accept));
    appbase::app().get_plugin<network_plugin>().new_connection(std::move(new_conn));
   
@@ -79,9 +85,9 @@ void tcp_connection_initiator::accept_connection(active_acceptor& aa) {
 void tcp_connection_initiator::retry_connection(outgoing_attempt& outgoing) {
    outgoing.outgoing_socket = boost::asio::ip::tcp::socket(ios);
 
-   resolver.async_resolve(outgoing.remote_resolver_query, [this, &outgoing](auto ec, auto i) {
+   resolver.async_resolve(outgoing.remote_resolver_query, strand.wrap([this, &outgoing](auto ec, auto i) {
       outgoing_resolve_complete(ec, i, outgoing);
-   });
+   }));
 }
 
 void tcp_connection_initiator::outgoing_resolve_complete(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator iterator, outgoing_attempt& outgoing) {
@@ -109,11 +115,11 @@ void tcp_connection_initiator::outgoing_connection_complete(const boost::system:
 
 void tcp_connection_initiator::outgoing_failed_retry_inabit(outgoing_attempt& outgoing) {
   outgoing.reconnect_timer.expires_from_now(std::chrono::seconds(3));
-  outgoing.reconnect_timer.async_wait([this,&outgoing](auto ec){
+  outgoing.reconnect_timer.async_wait(strand.wrap([this,&outgoing](auto ec){
      if(ec)
         throw std::runtime_error("Unexpected timer wait failure");
      retry_connection(outgoing);
-  });
+  }));
 }
 
 }
