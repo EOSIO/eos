@@ -1719,7 +1719,7 @@ namespace eos {
             expire_txns( );
           }
           else {
-            elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
+            elog( "Error from transaction check monitor: ${m}",( "m", ec.message()));
             start_txn_timer( );
           }
         });
