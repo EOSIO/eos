@@ -106,11 +106,6 @@ struct keypair {
   {}
 };
 
-struct nvpair {
-  string name;
-  string value;
-};
-
 struct eosd_def {
   eosd_def ()
     : genesis("genesis.json"),
@@ -130,8 +125,7 @@ struct eosd_def {
       onhost_set(false),
       onhost(true),
       localaddrs(),
-      dot_alias_str(),
-      extras()
+      dot_alias_str()
   {}
 
   bool on_host () {
@@ -183,7 +177,6 @@ struct eosd_def {
   vector<keypair> keys;
   vector<string> peers;
   vector<string> producers;
-  vector<nvpair> extras;
 
 private:
   string p2p_endpoint_str;
@@ -263,7 +256,7 @@ launcher_def::set_options (bpo::options_description &cli) {
   cli.add_options()
     ("nodes,n",bpo::value<int>()->default_value(1),"total number of nodes to configure and launch")
     ("pnodes,p",bpo::value<int>()->default_value(1),"number of nodes that are producers")
-    ("shape,s",bpo::value<string>()->default_value("string"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
+    ("shape,s",bpo::value<string>()->default_value("star"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.")
@@ -423,9 +416,6 @@ launcher_def::write_config_file (eosd_def &node) {
       << "public-endpoint = " << node.public_name << ":" << node.p2p_port << "\n";
   for (const auto &p : node.peers) {
     cfg << "remote-endpoint = " << network.nodes.find(p)->second.p2p_endpoint() << "\n";
-  }
-  for (const auto &ex : node.extras) {
-    cfg << ex.name << " = " << ex.value << "\n";
   }
   if (node.producers.size()) {
     cfg << "enable-stale-production = true\n"
@@ -755,9 +745,6 @@ int main (int argc, char *argv[]) {
       gts = vmap["timestamp"].as<string>();
     if (vmap.count("kill")) {
       kill_arg = vmap["kill"].as<string>();
-      if (kill_arg.empty()) {
-        kill_arg = "15";
-      }
     }
     if (vmap.count("help") > 0) {
       opts.print(cerr);
@@ -784,6 +771,7 @@ int main (int argc, char *argv[]) {
     }
 
     if (!kill_arg.empty()) {
+      cout << "killing" << std::endl;
       if (kill_arg[0] != '-') {
         kill_arg = "-" + kill_arg;
       }
