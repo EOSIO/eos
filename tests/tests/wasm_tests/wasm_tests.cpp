@@ -6,7 +6,7 @@
 
 #include "../../common/database_fixture.hpp"
 
-#include "../contracts/rate_limit_auth/rate_limit_auth.wast.hpp"
+#include <rate_limit_auth/rate_limit_auth.wast.hpp>
 #include <currency/currency.wast.hpp>
 
 using namespace eos;
