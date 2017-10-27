@@ -257,6 +257,18 @@ namespace eos { namespace chain {
 
          const deque<SignedTransaction>&  pending()const { return _pending_transactions; }
 
+         /**
+          * Determine what the current message rate is.
+          * @param now                       The current block time seconds
+          * @param last_update_sec           The block time at the last update of the message rate
+          * @param rate_limit_time_frame_sec The time frame, in seconds, that the rate limit is over
+          * @param rate_limit                The rate that is not allowed to be exceeded
+          * @param previous_rate             The rate at the last_update_sec
+          * @param type                      The string type description (for logging errors)
+          * @param name                      The account name associated with this rate (for logging errors)
+          * @return the calculated rate at this time
+          * @throws tx_msgs_exceeded if current message rate exceeds the passed in rate_limit
+          */
          static uint32_t _transaction_message_rate(uint32_t now, uint32_t last_update_sec, uint32_t rate_limit_time_frame_sec,
                                                    uint32_t rate_limit, uint32_t previous_rate, const char* type, const AccountName& name);
    private:
@@ -332,7 +344,13 @@ namespace eos { namespace chain {
                                                             types::AccountName code_account,
                                                             types::FuncName type) const;
 
+         /**
+          * Calculate all rates associated with the given message and enforce rate limiting.
+          * @param message  The message to calculate
+          * @throws tx_msgs_exceeded if any of the calculated message rates exceed the configured rate limit
+          */
          void rate_limit_message(const Message& message);
+
          void process_message(const Transaction& trx, AccountName code, const Message& message,
                               MessageOutput& output, apply_context* parent_context = nullptr);
          void apply_message(apply_context& c);

@@ -894,7 +894,7 @@ uint32_t chain_controller::_transaction_message_rate(uint32_t now, uint32_t last
 
 void chain_controller::rate_limit_message(const Message& message)
 { try {
-   for (auto permission : message.authorization)
+   for (const auto& permission : message.authorization)
    {
       auto rate_limiting = _db.find<rate_limiting_object, by_name>(permission.account);
       const auto now = head_block_time().sec_since_epoch();

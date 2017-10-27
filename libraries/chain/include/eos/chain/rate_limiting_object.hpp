@@ -10,14 +10,17 @@
 
 namespace eos { namespace chain {
 
+   /**
+    *  @brief tracks message rates associated with an account
+    *  @ingroup object
+    *
+    *  An account has rate limits imposed on it for sending transaction messages for
+    *  being part of the message's authorities and for it's code being used
+    *  computationally. This structure is used for tracking data associated with the
+    *  rate calculation.
+    */
    class rate_limiting_object : public chainbase::object<rate_limiting_object_type, rate_limiting_object> {
-//      OBJECT_CTOR(rate_limiting_object)
-      rate_limiting_object() = delete;
-      public:
-      template<typename Constructor, typename Allocator>
-      rate_limiting_object(Constructor&& c, chainbase::allocator<Allocator>)
-      { c(*this); }
-      ~rate_limiting_object() {}
+      OBJECT_CTOR(rate_limiting_object)
       id_type             id;
       AccountName         name;
       uint32_t            last_update_sec                   = 0;
@@ -40,4 +43,4 @@ CHAINBASE_SET_INDEX_TYPE(eos::chain::rate_limiting_object, eos::chain::rate_limi
 
 FC_REFLECT(chainbase::oid<eos::chain::rate_limiting_object>, (_id))
 
-FC_REFLECT(eos::chain::rate_limiting_object, (id)(name)(trans_msg_rate_per_account))
+FC_REFLECT(eos::chain::rate_limiting_object, (id)(name)(last_update_sec)(trans_msg_rate_per_account))
