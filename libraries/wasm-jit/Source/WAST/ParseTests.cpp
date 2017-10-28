@@ -256,6 +256,7 @@ static Command* parseCommand(ParseState& state)
 				else if(!strcmp(expectedErrorMessage.c_str(),"integer overflow")) { expectedCause = Runtime::Exception::Cause::integerDivideByZeroOrIntegerOverflow; }
 				else if(!strcmp(expectedErrorMessage.c_str(),"integer divide by zero")) { expectedCause = Runtime::Exception::Cause::integerDivideByZeroOrIntegerOverflow; }
 				else if(!strcmp(expectedErrorMessage.c_str(),"invalid conversion to integer")) { expectedCause = Runtime::Exception::Cause::invalidFloatOperation; }
+				else if(!strcmp(expectedErrorMessage.c_str(),"unaligned atomic")) { expectedCause = Runtime::Exception::Cause::misalignedAtomicMemoryAccess; }
 				else if(stringStartsWith(expectedErrorMessage.c_str(),"unreachable")) { expectedCause = Runtime::Exception::Cause::reachedUnreachable; }
 				else if(stringStartsWith(expectedErrorMessage.c_str(),"indirect call")) { expectedCause = Runtime::Exception::Cause::indirectCallSignatureMismatch; }
 				else if(stringStartsWith(expectedErrorMessage.c_str(),"undefined")) { expectedCause = Runtime::Exception::Cause::undefinedTableElement; }

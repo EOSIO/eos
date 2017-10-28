@@ -1360,7 +1360,8 @@ namespace LLVMJIT
 					llvm::AtomicOrdering::SequentiallyConsistent, \
 					llvm::AtomicOrdering::SequentiallyConsistent); \
 				atomicCmpXchg->setVolatile(true); \
-				push(memoryToValueConversion(atomicCmpXchg,asLLVMType(ValueType::valueTypeId))); \
+				auto previousValue = irBuilder.CreateExtractValue(atomicCmpXchg,{0}); \
+				push(memoryToValueConversion(previousValue,asLLVMType(ValueType::valueTypeId))); \
 			}
 
 		EMIT_ATOMIC_CMPXCHG(i32,atomic_rmw8_u_cmpxchg,llvmI8Type,0,irBuilder.CreateZExt,irBuilder.CreateTrunc)
@@ -1394,7 +1395,7 @@ namespace LLVMJIT
 
 		EMIT_ATOMIC_RMW(i64,atomic_rmw8_u_xchg,Xchg,llvmI8Type,0,irBuilder.CreateZExt,irBuilder.CreateTrunc)
 		EMIT_ATOMIC_RMW(i64,atomic_rmw16_u_xchg,Xchg,llvmI16Type,1,irBuilder.CreateZExt,irBuilder.CreateTrunc)
-		EMIT_ATOMIC_RMW(i64,atomic_rmw32_u_xchg,Xchg,llvmI16Type,2,irBuilder.CreateZExt,irBuilder.CreateTrunc)
+		EMIT_ATOMIC_RMW(i64,atomic_rmw32_u_xchg,Xchg,llvmI32Type,2,irBuilder.CreateZExt,irBuilder.CreateTrunc)
 		EMIT_ATOMIC_RMW(i64,atomic_rmw_xchg,Xchg,llvmI64Type,3,identityConversion,identityConversion)
 
 		EMIT_ATOMIC_RMW(i32,atomic_rmw8_u_add,Add,llvmI8Type,0,irBuilder.CreateZExt,irBuilder.CreateTrunc)

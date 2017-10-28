@@ -7,6 +7,7 @@ add_test(WAVM_known_failures ${TEST_BIN} ${CMAKE_CURRENT_LIST_DIR}/WAVM_known_fa
 
 add_test(address ${TEST_BIN} ${CMAKE_CURRENT_LIST_DIR}/address.wast)
 add_test(align ${TEST_BIN} ${CMAKE_CURRENT_LIST_DIR}/align.wast)
+add_test(atomic ${TEST_BIN} ${CMAKE_CURRENT_LIST_DIR}/atomic.wast)
 add_test(binary ${TEST_BIN} ${CMAKE_CURRENT_LIST_DIR}/binary.wast)
 add_test(block ${TEST_BIN} ${CMAKE_CURRENT_LIST_DIR}/block.wast)
 add_test(br ${TEST_BIN} ${CMAKE_CURRENT_LIST_DIR}/br.wast)
