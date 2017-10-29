@@ -2,7 +2,7 @@
 #include <memory>
 #include <boost/signals2.hpp>
 
-namespace eos {
+namespace eosio {
 
 using namespace boost::signals2;
 

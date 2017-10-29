@@ -4,7 +4,7 @@
 
 #include <boost/asio.hpp>
 
-namespace eos {
+namespace eosio {
 
 tcp_connection::tcp_connection(boost::asio::ip::tcp::socket s) :
    socket(std::move(s)),

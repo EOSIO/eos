@@ -15,7 +15,7 @@
 
 #include <mutex>
 
-namespace eos {
+namespace eosio {
 
 using chain::transaction_id_type;
 using namespace boost::multi_index;

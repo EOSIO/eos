@@ -5,7 +5,7 @@
 
 #include <boost/algorithm/string/erase.hpp>
 
-namespace eos {
+namespace eosio {
 
 static void parse_ip_port(const std::string& in, std::string& ip, std::string& port) {
    size_t last_colon = in.find_last_of(':');

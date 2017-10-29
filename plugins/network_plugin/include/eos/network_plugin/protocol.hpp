@@ -5,8 +5,9 @@
 
 #include <fc/reflect/reflect.hpp>
 
-namespace eos {
-   
+namespace eosio {
+
+using namespace eos;
 using namespace chain;
 using namespace fc;
 
@@ -49,7 +50,7 @@ using net2_message = static_variant<
 
 }
 
-FC_REFLECT( eos::handshake2_message,
+FC_REFLECT( eosio::handshake2_message,
             (protocol_message_level)(chain_id)(node_id)
             (p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)

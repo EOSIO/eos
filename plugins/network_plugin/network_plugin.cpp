@@ -3,7 +3,7 @@
 #include <thread>
 #include <algorithm>
 
-namespace eos {
+namespace eosio {
 
 class network_plugin_impl {
    public:

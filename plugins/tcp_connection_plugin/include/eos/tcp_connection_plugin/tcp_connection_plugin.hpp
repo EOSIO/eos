@@ -4,7 +4,7 @@
 #include <eos/network_plugin/network_plugin.hpp>
 #include <eos/tcp_connection_plugin/tcp_connection_initiator.hpp>
 
-namespace eos {
+namespace eosio {
 using namespace appbase;
 
 class tcp_connection_plugin : public appbase::plugin<tcp_connection_plugin> {

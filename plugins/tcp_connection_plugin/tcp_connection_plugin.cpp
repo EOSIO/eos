@@ -3,7 +3,7 @@
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
 
-namespace eos {
+namespace eosio {
 
 tcp_connection_plugin::tcp_connection_plugin() {}
 

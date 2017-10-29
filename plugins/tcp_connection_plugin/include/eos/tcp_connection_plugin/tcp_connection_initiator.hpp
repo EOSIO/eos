@@ -11,7 +11,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/program_options/variables_map.hpp>
 
-namespace eos {
+namespace eosio {
 
 class tcp_connection_initiator {
    public:
