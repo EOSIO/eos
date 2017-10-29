@@ -196,6 +196,18 @@
   "type mismatch"
 )
 (assert_invalid
+  (module (func $type-unary-num-vs-void-in-loop-after-unreachable
+    (unreachable) (loop (drop (i32.eqz (nop))))
+  ))
+  "type mismatch"
+)
+(assert_invalid
+  (module (func $type-unary-num-vs-void-in-i32-loop-after-unreachable
+    (unreachable) (loop (result i32) (i32.eqz (nop)))
+  ))
+  "type mismatch"
+)
+(assert_invalid
   (module (func $type-unary-num-vs-num-after-unreachable
     (unreachable) (drop (i32.eqz (f32.const 1)))
   ))
@@ -246,6 +258,24 @@
 (assert_invalid
   (module (func $type-func-value-num-vs-num-after-unreachable (result i32)
     (unreachable) (f32.const 0)
+  ))
+  "type mismatch"
+)
+(assert_invalid
+  (module (func $type-unary-num-vs-void-in-if-after-unreachable
+    (unreachable) (if (i32.const 0) (then (drop (i32.eqz (nop)))))
+  ))
+  "type mismatch"
+)
+(assert_invalid
+  (module (func $type-unary-num-vs-void-in-else-after-unreachable
+    (unreachable) (if (i32.const 0) (then (nop)) (else (drop (i32.eqz (nop)))))
+  ))
+  "type mismatch"
+)
+(assert_invalid
+  (module (func $type-unary-num-vs-void-in-else-after-unreachable-if
+    (if (i32.const 0) (then (unreachable)) (else (drop (i32.eqz (nop)))))
   ))
   "type mismatch"
 )

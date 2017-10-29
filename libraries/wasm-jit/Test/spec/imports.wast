@@ -106,92 +106,92 @@
 
 (assert_unlinkable
   (module (import "test" "func" (func (param i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func" (func (result i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func" (func (param i32) (result i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32" (func (result i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32" (func (param f32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32" (func (param i64))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32" (func (param i32) (result i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func->i32" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func->i32" (func (param i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func->i32" (func (result f32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func->i32" (func (result i64))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func->i32" (func (param i32) (result i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32->i32" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32->i32" (func (param i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "func-i32->i32" (func (result i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 
 (assert_unlinkable
   (module (import "test" "global-i32" (func (result i32))))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "table-10-inf" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "memory-2-inf" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "global" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "table" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "memory" (func)))
-  "type mismatch"
+  "incompatible import type"
 )
 
 
@@ -234,27 +234,27 @@
 
 (assert_unlinkable
   (module (import "test" "func" (global i32)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "table-10-inf" (global i32)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "memory-2-inf" (global i32)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "print" (global i32)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "table" (global i32)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "memory" (global i32)))
-  "type mismatch"
+  "incompatible import type"
 )
 
 
@@ -330,36 +330,36 @@
 
 (assert_unlinkable
   (module (import "test" "table-10-inf" (table 12 anyfunc)))
-  "actual size smaller than declared"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "table-10-inf" (table 10 20 anyfunc)))
-  "maximum size larger than declared"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "table" (table 12 anyfunc)))
-  "actual size smaller than declared"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "table" (table 10 15 anyfunc)))
-  "maximum size larger than declared"
+  "incompatible import type"
 )
 
 (assert_unlinkable
   (module (import "test" "func" (table 10 anyfunc)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "global-i32" (table 10 anyfunc)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "memory-2-inf" (table 10 anyfunc)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "print" (table 10 anyfunc)))
-  "type mismatch"
+  "incompatible import type"
 )
 
 
@@ -423,53 +423,53 @@
 
 (assert_unlinkable
   (module (import "test" "memory-2-inf" (memory 3)))
-  "actual size smaller than declared"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "memory-2-inf" (memory 2 3)))
-  "maximum size larger than declared"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "memory" (memory 2)))
-  "actual size smaller than declared"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "memory" (memory 1 1)))
-  "maximum size larger than declared"
+  "incompatible import type"
 )
 
 (assert_unlinkable
   (module (import "test" "func-i32" (memory 1)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "global-i32" (memory 1)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "test" "table-10-inf" (memory 1)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "print" (memory 1)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "global" (memory 1)))
-  "type mismatch"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "table" (memory 1)))
-  "type mismatch"
+  "incompatible import type"
 )
 
 (assert_unlinkable
   (module (import "spectest" "memory" (memory 2)))
-  "actual size smaller than declared"
+  "incompatible import type"
 )
 (assert_unlinkable
   (module (import "spectest" "memory" (memory 1 1)))
-  "maximum size larger than declared"
+  "incompatible import type"
 )
 
 (module
