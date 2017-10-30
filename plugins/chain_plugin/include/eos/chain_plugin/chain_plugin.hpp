@@ -298,12 +298,9 @@ public:
 
   void get_chain_id (chain::chain_id_type &cid) const;
 
-  static const uint32_t            DEFAULT_RECEIVED_BLOCK_TRANSACTION_EXECUTION_TIME;
-  static const uint32_t            DEFAULT_TRANSACTION_EXECUTION_TIME;
-  static const uint32_t            DEFAULT_CREATE_BLOCK_TRANSACTION_EXECUTION_TIME;
-
-  static const uint32_t            DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT_TIME_FRAME_SECONDS;
-  static const uint32_t            DEFAULT_PER_SCOPE_TRANSACTION_MSG_RATE_LIMIT;
+  static const uint32_t            default_received_block_transaction_execution_time;
+  static const uint32_t            default_transaction_execution_time;
+  static const uint32_t            default_create_block_transaction_execution_time;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
