@@ -151,7 +151,7 @@ namespace eosio { namespace blockchain {
     *  transaction ids. 
     */
    struct block_summary : public signed_block_header {
-      typedef vector<transaction_id_type>   shard; /// new or generated transactions 
+      typedef vector<transaction_receipt>   shard; /// new or generated transactions 
       typedef vector<shard>                 cycle;
 
       vector<cycle>               cycles;
