@@ -28,7 +28,7 @@ class network_plugin : public appbase::plugin<network_plugin> {
       void new_connection(std::unique_ptr<connection_interface> new_connection);
 
    private:
-      std::unique_ptr<class network_plugin_impl> pimpl;
+      std::unique_ptr<class network_plugin_impl> my;
    };
 
 }
