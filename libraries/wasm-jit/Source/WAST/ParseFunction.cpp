@@ -14,8 +14,6 @@ using namespace IR;
 
 namespace
 {
-	struct Local {};
-	
 	// State associated with parsing a function.
 	struct FunctionParseState : ParseState
 	{
