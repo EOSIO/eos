@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eoslib/eos.hpp>
-#include <eoslib/db.hpp>
+#include <eoslib/string.hpp>
 
 struct PACKED(record1) {
    uint64_t key;
@@ -21,16 +21,16 @@ struct PACKED(record3) {
 };
 
 struct KeyValue1 {
-   String key;
-   String value;
+   eos::string key;
+   eos::string value;
 };
 
 struct ComplexType {
-   String name;
-   UInt64 age;
+   eos::string name;
+   uint64_t age;
 };
 
 struct KeyValue2 {
-   String key;
+   eos::string key;
    ComplexType value;
 };

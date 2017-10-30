@@ -77,30 +77,27 @@ namespace eos {
     template<typename Stream> inline void pack( Stream& s, const Bytes& value ) {
       eos::raw::pack( s, unsigned_int((uint32_t)value.len) );
       if( value.len )
-        s.write( value.data, (uint32_t)value.len );
+        s.write( (char *)value.data, (uint32_t)value.len );
     }
     template<typename Stream> inline void unpack( Stream& s, Bytes& value ) {
       unsigned_int size; eos::raw::unpack( s, size );
       //assert( size.value < MAX_ARRAY_ALLOC_SIZE, "unpack Bytes" );
       value.len = size.value;
       if( value.len )
-        s.read( value.data, value.len );
+        s.read( (char *)value.data, value.len );
     }
 
     // String
-    template<typename Stream> inline void pack( Stream& s, const String& v )  {
-      eos::raw::pack( s, unsigned_int((uint32_t)v.len));
-      if( v.len ) s.write( v.str, v.len );
+    template<typename Stream> inline void pack( Stream& s, const string& v )  {
+      auto size = v.get_size();
+      eos::raw::pack( s, unsigned_int(size));
+      if( size ) s.write( v.get_data(), size );
     }
 
-    template<typename Stream> inline void unpack( Stream& s, String& v )  {
+    template<typename Stream> inline void unpack( Stream& s, string& v, bool copy=true )  {
       unsigned_int size; eos::raw::unpack( s, size );
-      v.len = size.value;
-      if( v.len ) {
-        v.str = (char *)eos::malloc(v.len + 1);
-        s.read( v.str, v.len );
-        v.str[v.len] = 0;
-      }
+      v.assign(s.pos(), size.value, copy);
+      s.skip(size.value);
     }
 
     // bool
@@ -112,117 +109,6 @@ namespace eos {
        assert( (b & ~1) == 0, "unpack bool" );
        v=(b!=0);
     }
-
-    // namespace detail {
-
-    //   template<typename Stream, typename Class>
-    //   struct pack_object_visitor {
-    //     pack_object_visitor(const Class& _c, Stream& _s)
-    //     :c(_c),s(_s){}
-
-    //     template<typename T, typename C, T(C::*p)>
-    //     void operator()( const char* name )const {
-    //       eos::raw::pack( s, c.*p );
-    //     }
-    //     private:
-    //       const Class& c;
-    //       Stream&      s;
-    //   };
-
-    //   template<typename Stream, typename Class>
-    //   struct unpack_object_visitor {
-    //     unpack_object_visitor(Class& _c, Stream& _s)
-    //     :c(_c),s(_s){}
-
-    //     template<typename T, typename C, T(C::*p)>
-    //     inline void operator()( const char* name )const
-    //     {
-    //       eos::raw::unpack( s, c.*p );
-    //     }
-    //     private:
-    //       Class&  c;
-    //       Stream& s;
-    //   };
-
-    //   template<typename IsClass=eos::true_type>
-    //   struct if_class{
-    //     template<typename Stream, typename T>
-    //     static inline void pack( Stream& s, const T& v ) { s << v; }
-    //     template<typename Stream, typename T>
-    //     static inline void unpack( Stream& s, T& v ) { s >> v; }
-    //   };
-
-    //   template<>
-    //   struct if_class<eos::false_type> {
-    //     template<typename Stream, typename T>
-    //     static inline void pack( Stream& s, const T& v ) {
-    //       s.write( (char*)&v, sizeof(v) );
-    //     }
-    //     template<typename Stream, typename T>
-    //     static inline void unpack( Stream& s, T& v ) {
-    //       s.read( (char*)&v, sizeof(v) );
-    //     }
-    //   };
-
-    //   template<typename IsEnum=eos::false_type>
-    //   struct if_enum {
-    //     template<typename Stream, typename T>
-    //     static inline void pack( Stream& s, const T& v ) {
-    //       eos::reflector<T>::visit( pack_object_visitor<Stream,T>( v, s ) );
-    //     }
-    //     template<typename Stream, typename T>
-    //     static inline void unpack( Stream& s, T& v ) {
-    //       eos::reflector<T>::visit( unpack_object_visitor<Stream,T>( v, s ) );
-    //     }
-    //   };
-    //   template<>
-    //   struct if_enum<eos::true_type> {
-    //     template<typename Stream, typename T>
-    //     static inline void pack( Stream& s, const T& v ) {
-    //       eos::raw::pack(s, (int64_t)v);
-    //     }
-    //     template<typename Stream, typename T>
-    //     static inline void unpack( Stream& s, T& v ) {
-    //       int64_t temp;
-    //       eos::raw::unpack(s, temp);
-    //       v = (T)temp;
-    //     }
-    //   };
-
-    //   template<typename IsReflected=eos::false_type>
-    //   struct if_reflected {
-    //     template<typename Stream, typename T>
-    //     static inline void pack( Stream& s, const T& v ) {
-    //       if_class<typename eos::is_class<T>::type>::pack(s,v);
-    //     }
-    //     template<typename Stream, typename T>
-    //     static inline void unpack( Stream& s, T& v ) {
-    //       if_class<typename eos::is_class<T>::type>::unpack(s,v);
-    //     }
-    //   };
-    //   template<>
-    //   struct if_reflected<eos::true_type> {
-    //     template<typename Stream, typename T>
-    //     static inline void pack( Stream& s, const T& v ) {
-    //       if_enum< typename eos::reflector<T>::is_enum >::pack(s,v);
-    //     }
-    //     template<typename Stream, typename T>
-    //     static inline void unpack( Stream& s, T& v ) {
-    //       if_enum< typename eos::reflector<T>::is_enum >::unpack(s,v);
-    //     }
-    //   };
-
-    // } // namesapce detail
-
-    // template<typename Stream, typename T>
-    // inline void pack( Stream& s, const T& v ) {
-    //   eos::raw::detail::if_reflected< typename eos::reflector<T>::is_defined >::pack(s,v);
-    // }
-    // template<typename Stream, typename T>
-    // inline void unpack( Stream& s, T& v )
-    // {
-    //   eos::raw::detail::if_reflected< typename eos::reflector<T>::is_defined >::unpack(s,v);
-    // }
 
     template<typename T>
     inline size_t pack_size( const T& v )

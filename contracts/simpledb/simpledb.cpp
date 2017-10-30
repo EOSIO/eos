@@ -4,6 +4,7 @@
  */
 #include "simpledb.hpp"
 #include "simpledb.gen.hpp"
+#include <eoslib/db.hpp>
 
 extern "C" {
    void init()  {
@@ -21,7 +22,7 @@ extern "C" {
             //Use kv1 in some way
             Bytes bytes = eos::valueToBytes(kv1);
 
-            uint32_t err = store_str( N(simpledb), N(keyvalue1), kv1.key.str, kv1.key.len, (char*)bytes.data, bytes.len);
+            uint32_t err = store_str( N(simpledb), N(keyvalue1), (char *)kv1.key.get_data(), kv1.key.get_size(), (char*)bytes.data, bytes.len);
          } else if( action == N(insertkv2) ) {
             // eosc push message simpledb insertkv2 '{"key":"a", "value":{"name":"aaa", "age":10}}' -S simpledb
             // eosc get table simpledb simpledb keyvalue2
@@ -31,7 +32,7 @@ extern "C" {
             //Use kv2 in some way
             Bytes bytes = eos::valueToBytes(kv2);
 
-            uint32_t err = store_str( N(simpledb), N(keyvalue2), kv2.key.str, kv2.key.len, (char*)bytes.data, bytes.len);
+            uint32_t err = store_str( N(simpledb), N(keyvalue2), (char *)kv2.key.get_data(), kv2.key.get_size(), (char*)bytes.data, bytes.len);
 
          } else if( action == N(insert1) ) {
             record1 tmp;

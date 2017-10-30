@@ -39,7 +39,7 @@ namespace eos {
 
    Bytes valueToBytes(const KeyValue1& s) {
       uint32_t maxsize=0;
-      maxsize += s.value.len + 4;
+      maxsize += s.value.get_size() + 4;
       
       char* buffer = (char *)eos::malloc(maxsize);
       datastream<char *> ds(buffer, maxsize);     
@@ -77,7 +77,7 @@ namespace eos {
 
    Bytes valueToBytes(const KeyValue2& s) {
       uint32_t maxsize=0;
-      maxsize += s.value.name.len + 4;
+      maxsize += s.value.name.get_size() + 4;
       maxsize += sizeof(s.value.age);
       
       char* buffer = (char *)eos::malloc(maxsize);

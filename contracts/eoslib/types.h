@@ -26,16 +26,6 @@ typedef short                int16_t;
 
 typedef unsigned int size_t;
 
-typedef uint8_t UInt8;
-typedef uint16_t UInt16;
-typedef uint32_t UInt32;
-typedef uint64_t UInt64;
-typedef uint128_t UInt128;
-typedef int8_t Int8;
-typedef int16_t Int16;
-typedef int32_t Int32;
-typedef int64_t Int64;
-
 typedef uint64_t AccountName;
 typedef uint64_t PermissionName;
 typedef uint64_t TokenName;
@@ -51,7 +41,6 @@ typedef int64_t ShareType;
 struct uint256 {
    uint64_t words[4];
 };
-typedef uint256 UInt256;
 
 struct PublicKey {
    uint8_t data[33];
@@ -67,11 +56,6 @@ struct Price {
    Asset quote;
 };
 
-struct String {
-   uint32_t len;
-   char*    str;
-};
-
 struct Signature {
    uint8_t data[65];
 };
@@ -81,22 +65,22 @@ struct Checksum {
 };
 
 struct FixedString16 {
-   uint32_t len;
-   char     str[17];
+   uint8_t len;
+   char    str[16];
 };
 
 typedef FixedString16 FieldName;
 
 struct FixedString32 {
-   uint32_t len;
-   char     str[33];
+   uint8_t len;
+   char    str[32];
 };
 
 typedef FixedString32 TypeName;
 
 struct Bytes {
    uint32_t len;
-   uint8_t* data; 
+   uint8_t* data;
 };
 
 
