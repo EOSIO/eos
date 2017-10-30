@@ -36,11 +36,13 @@ namespace eos { namespace chain {
     */
    class chain_controller {
       public:
+         struct trans_msg_rate_limits;
+
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                           chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
                           uint32_t trans_execution_time, uint32_t rcvd_block_trans_execution_time,
-                          uint32_t create_block_trans_execution_time, uint32_t per_scope_trans_msg_rate_limit_time_frame_sec,
-                          uint32_t per_scope_trans_msg_rate_limit);
+                          uint32_t create_block_trans_execution_time,
+                          const trans_msg_rate_limits& rate_limit);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -271,6 +273,18 @@ namespace eos { namespace chain {
           */
          static uint32_t _transaction_message_rate(uint32_t now, uint32_t last_update_sec, uint32_t rate_limit_time_frame_sec,
                                                    uint32_t rate_limit, uint32_t previous_rate, const char* type, const AccountName& name);
+
+         struct trans_msg_rate_limits {
+            static const uint32_t default_per_auth_account_time_frame_seconds;
+            static const uint32_t default_per_auth_account;
+            static const uint32_t default_per_code_account_time_frame_seconds;
+            static const uint32_t default_per_code_account;
+            uint32_t per_auth_account_time_frame_sec = default_per_auth_account_time_frame_seconds;
+            uint32_t per_auth_account = default_per_auth_account;
+            uint32_t per_code_account_time_frame_sec = default_per_code_account_time_frame_seconds;
+            uint32_t per_code_account = default_per_code_account;
+         };
+
    private:
 
          /// Reset the object graph in-memory
@@ -391,8 +405,10 @@ namespace eos { namespace chain {
          const uint32_t                   _trans_execution_time;
          const uint32_t                   _rcvd_block_trans_execution_time;
          const uint32_t                   _create_block_trans_execution_time;
-         const uint32_t                   _per_scope_trans_msg_rate_limit_time_frame_sec;
-         const uint32_t                   _per_scope_trans_msg_rate_limit;
+         const uint32_t                   _per_auth_account_trans_msg_rate_limit_time_frame_sec;
+         const uint32_t                   _per_auth_account_trans_msg_rate_limit;
+         const uint32_t                   _per_code_account_trans_msg_rate_limit_time_frame_sec;
+         const uint32_t                   _per_code_account_trans_msg_rate_limit;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 
