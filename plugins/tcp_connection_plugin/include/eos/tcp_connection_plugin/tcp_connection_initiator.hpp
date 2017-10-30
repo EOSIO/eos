@@ -21,38 +21,37 @@ class tcp_connection_initiator {
       void go();
 
    private:
-      ///////incoming connections
-      struct active_acceptor : private boost::noncopyable {
+      struct active_acceptor : private boost::noncopyable {  //state for incoming connection handling
          active_acceptor(boost::asio::io_service& ios, boost::asio::ip::tcp::endpoint ep) :
             acceptor(ios, ep), socket_to_accept(ios) {}
 
          boost::asio::ip::tcp::acceptor acceptor;
          boost::asio::ip::tcp::socket   socket_to_accept;
-       };
-       std::list<active_acceptor> acceptors;
-       void accept_connection(active_acceptor& aa);
-       void handle_incoming_connection(const boost::system::error_code& ec, active_acceptor& aa);
-
-       //////outgoing connections
-       struct outgoing_attempt : private boost::noncopyable {
+      };
+      struct outgoing_attempt : private boost::noncopyable {  //state for outgoing connection handling
          outgoing_attempt(boost::asio::io_service& ios, boost::asio::ip::tcp::resolver::query q) : 
             remote_resolver_query(q), reconnect_timer(ios), outgoing_socket(ios) {}
 
          boost::asio::ip::tcp::resolver::query remote_resolver_query;
          boost::asio::steady_timer       reconnect_timer;
          boost::asio::ip::tcp::socket    outgoing_socket;      //only used during conn. estab., then moved to connection object
-       };
-       std::list<outgoing_attempt> outgoing_connections;
-       void retry_connection(outgoing_attempt& outgoing);
-       void outgoing_resolve_complete(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator iterator, outgoing_attempt& outgoing);
-       void outgoing_connection_complete(const boost::system::error_code& ec, outgoing_attempt& outgoing);
-       void outgoing_failed_retry_inabit(outgoing_attempt& outgoing);
+      };
 
-       boost::asio::strand strand;
+      //incoming handling..
+      std::list<active_acceptor> _acceptors;
+      void accept_connection(active_acceptor& aa);
+      void handle_incoming_connection(const boost::system::error_code& ec, active_acceptor& aa);
 
-       boost::asio::ip::tcp::resolver resolver;
+      //outgoing handling..
+      std::list<outgoing_attempt> _outgoing_connections;
+      void retry_connection(outgoing_attempt& outgoing);
+      void outgoing_resolve_complete(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator iterator, outgoing_attempt& outgoing);
+      void outgoing_connection_complete(const boost::system::error_code& ec, outgoing_attempt& outgoing);
+      void outgoing_failed_retry_inabit(outgoing_attempt& outgoing);
 
-       boost::asio::io_service& ios;
+      boost::asio::strand _strand;
+      boost::asio::ip::tcp::resolver _resolver;
+      boost::asio::io_service& _ios;
 };
 
 }

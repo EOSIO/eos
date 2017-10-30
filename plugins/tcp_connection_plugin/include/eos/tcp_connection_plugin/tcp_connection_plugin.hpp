@@ -19,7 +19,7 @@ class tcp_connection_plugin : public appbase::plugin<tcp_connection_plugin> {
       void plugin_shutdown();
 
    private:
-      std::unique_ptr<tcp_connection_initiator> initiator;
+      std::unique_ptr<tcp_connection_initiator> _initiator;
 };
 
 }

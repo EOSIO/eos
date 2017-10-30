@@ -24,7 +24,7 @@ static void parse_ip_port(const std::string& in, std::string& ip, std::string& p
 }
 
 tcp_connection_initiator::tcp_connection_initiator(const boost::program_options::variables_map& options, boost::asio::io_service& i) :
-   strand(i), resolver(i), ios(i) {
+   _strand(i), _resolver(i), _ios(i) {
 
    if(options.count("listen-endpoint")) {
       for(const std::string& bindaddr : options["listen-endpoint"].as<std::vector<std::string>>()) {
@@ -35,8 +35,8 @@ tcp_connection_initiator::tcp_connection_initiator(const boost::program_options:
          boost::asio::ip::tcp::resolver::query query(ip, port);
 
          try {
-            boost::asio::ip::tcp::resolver::iterator addresses = resolver.resolve(query);
-            acceptors.emplace_front(ios, addresses->endpoint());
+            boost::asio::ip::tcp::resolver::iterator addresses = _resolver.resolve(query);
+            _acceptors.emplace_front(_ios, addresses->endpoint());
          }
          catch(boost::system::system_error sr) {
             elog("Failed to listen on an incoming port-- ${sr}", ("sr", sr.what()));
@@ -50,28 +50,28 @@ tcp_connection_initiator::tcp_connection_initiator(const boost::program_options:
          std::string port{"9876"};
          parse_ip_port(bindaddr, ip, port);
 
-         outgoing_connections.emplace_front(ios, boost::asio::ip::tcp::resolver::query(ip, port));
+         _outgoing_connections.emplace_front(_ios, boost::asio::ip::tcp::resolver::query(ip, port));
       }
    }
 
-   if(acceptors.empty())
+   if(_acceptors.empty())
       wlog("Not listening on any TCP address/ports for incoming connections");
-   if(outgoing_connections.empty())
+   if(_outgoing_connections.empty())
       wlog("Not attempting any outgoing TCP connections");
 }
 
 void tcp_connection_initiator::go() {
-   for(active_acceptor& aa : acceptors) {
+   for(active_acceptor& aa : _acceptors) {
       aa.acceptor.listen();
       accept_connection(aa);
    }
 
-   for(outgoing_attempt& oa : outgoing_connections)
+   for(outgoing_attempt& oa : _outgoing_connections)
       retry_connection(oa);
 }
 
 void tcp_connection_initiator::accept_connection(active_acceptor& aa) {
-   aa.acceptor.async_accept(aa.socket_to_accept, strand.wrap([this,&aa](auto ec) {
+   aa.acceptor.async_accept(aa.socket_to_accept, _strand.wrap([this,&aa](auto ec) {
       handle_incoming_connection(ec, aa);
    }));
 }
@@ -83,9 +83,9 @@ void tcp_connection_initiator::accept_connection(active_acceptor& aa) {
    accept_connection(aa);
 }
 void tcp_connection_initiator::retry_connection(outgoing_attempt& outgoing) {
-   outgoing.outgoing_socket = boost::asio::ip::tcp::socket(ios);
+   outgoing.outgoing_socket = boost::asio::ip::tcp::socket(_ios);
 
-   resolver.async_resolve(outgoing.remote_resolver_query, strand.wrap([this, &outgoing](auto ec, auto i) {
+   _resolver.async_resolve(outgoing.remote_resolver_query, _strand.wrap([this, &outgoing](auto ec, auto i) {
       outgoing_resolve_complete(ec, i, outgoing);
    }));
 }
@@ -94,7 +94,7 @@ void tcp_connection_initiator::outgoing_resolve_complete(const boost::system::er
    if(ec)
       outgoing_failed_retry_inabit(outgoing);
    else
-      boost::asio::async_connect(outgoing.outgoing_socket, iterator, strand.wrap([this,&outgoing](auto ec, auto i) {
+      boost::asio::async_connect(outgoing.outgoing_socket, iterator, _strand.wrap([this,&outgoing](auto ec, auto i) {
          outgoing_connection_complete(ec, outgoing);
       }));
 }
@@ -105,7 +105,7 @@ void tcp_connection_initiator::outgoing_connection_complete(const boost::system:
    else {
       std::unique_ptr<tcp_connection> new_conn = std::make_unique<tcp_connection>(std::move(outgoing.outgoing_socket));
 
-      new_conn->on_disconnected(strand.wrap([this, &outgoing]() {
+      new_conn->on_disconnected(_strand.wrap([this, &outgoing]() {
         retry_connection(outgoing);
       }));
 
@@ -115,7 +115,7 @@ void tcp_connection_initiator::outgoing_connection_complete(const boost::system:
 
 void tcp_connection_initiator::outgoing_failed_retry_inabit(outgoing_attempt& outgoing) {
   outgoing.reconnect_timer.expires_from_now(std::chrono::seconds(3));
-  outgoing.reconnect_timer.async_wait(strand.wrap([this,&outgoing](auto ec){
+  outgoing.reconnect_timer.async_wait(_strand.wrap([this,&outgoing](auto ec){
      if(ec)
         throw std::runtime_error("Unexpected timer wait failure");
      retry_connection(outgoing);

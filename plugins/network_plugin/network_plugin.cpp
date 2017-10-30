@@ -34,7 +34,7 @@ class network_plugin_impl {
 };
 
 network_plugin::network_plugin()
-   :pimpl(new network_plugin_impl) {}
+   :my(new network_plugin_impl) {}
 
 void network_plugin::set_program_options(options_description& cli, options_description& cfg) {
    cfg.add_options()
@@ -43,41 +43,41 @@ void network_plugin::set_program_options(options_description& cli, options_descr
 }
 
 void network_plugin::plugin_initialize(const variables_map& options) {
-   pimpl->num_threads = options["network-threadpool-size"].as<unsigned int>();
-   if(!pimpl->num_threads)
+   my->num_threads = options["network-threadpool-size"].as<unsigned int>();
+   if(!my->num_threads)
       throw std::runtime_error("Must configure at least 1 network-threadpool-size");
-   pimpl->network_ios = std::make_unique<boost::asio::io_service>();
-   pimpl->strand = std::make_unique<boost::asio::strand>(*pimpl->network_ios);
+   my->network_ios = std::make_unique<boost::asio::io_service>();
+   my->strand = std::make_unique<boost::asio::strand>(*my->network_ios);
 }
 
 void network_plugin::plugin_startup() {
-   pimpl->network_work = std::make_unique<boost::asio::io_service::work>(*pimpl->network_ios);
-   for(unsigned int i = 0; i < pimpl->num_threads; ++i)
-      pimpl->thread_pool.emplace_back([&ios=*pimpl->network_ios]() {
+   my->network_work = std::make_unique<boost::asio::io_service::work>(*my->network_ios);
+   for(unsigned int i = 0; i < my->num_threads; ++i)
+      my->thread_pool.emplace_back([&ios=*my->network_ios]() {
          ios.run();
       });
 }
 
 boost::asio::io_service& network_plugin::network_io_service() {
-   return *pimpl->network_ios;
+   return *my->network_ios;
 }
 
 void network_plugin::new_connection(std::unique_ptr<connection_interface> connection) {
   //ugh, asio callbacks have to be copyable
   connection_interface* bare_connection = connection.release();
-  pimpl->strand->dispatch([this,bare_connection]() {
-    unsigned int this_conn_id = pimpl->next_active_connection_id++;
+  my->strand->dispatch([this,bare_connection]() {
+    unsigned int this_conn_id = my->next_active_connection_id++;
 
-    pimpl->active_connections.emplace_back(this_conn_id, std::unique_ptr<connection_interface>(bare_connection));
+    my->active_connections.emplace_back(this_conn_id, std::unique_ptr<connection_interface>(bare_connection));
 
-    network_plugin_impl::active_connection& added_connection = pimpl->active_connections.back();
+    network_plugin_impl::active_connection& added_connection = my->active_connections.back();
 
     //when the connection indicates failure; remove it from the list. This will implictly
     // destroy the connection. WARNING: use strand.post() here to prevent dtor getting
     // called which signal is still processing.
     added_connection.connection->on_disconnected([this, this_conn_id]() {
-       pimpl->strand->post([this, this_conn_id]() {
-          pimpl->active_connections.remove_if([this_conn_id](const network_plugin_impl::active_connection& ac) {
+       my->strand->post([this, this_conn_id]() {
+          my->active_connections.remove_if([this_conn_id](const network_plugin_impl::active_connection& ac) {
              return ac.connection_id == this_conn_id;
           });
        });
@@ -86,8 +86,8 @@ void network_plugin::new_connection(std::unique_ptr<connection_interface> connec
     //there is a possiblity that the connection indicated failure before the signal was
     // connected. Check the synchronous indicatior.
     if(added_connection.connection->disconnected()) {
-       pimpl->strand->post([this, this_conn_id]() {
-          pimpl->active_connections.remove_if([this_conn_id](const network_plugin_impl::active_connection& ac) {
+       my->strand->post([this, this_conn_id]() {
+          my->active_connections.remove_if([this_conn_id](const network_plugin_impl::active_connection& ac) {
              return ac.connection_id == this_conn_id;
           });
        });
@@ -96,11 +96,11 @@ void network_plugin::new_connection(std::unique_ptr<connection_interface> connec
 }
 
 void network_plugin::indicate_about_to_shutdown() {
-   pimpl->shutdown();
+   my->shutdown();
 }
 
 void network_plugin::plugin_shutdown() {
-   pimpl->shutdown();
+   my->shutdown();
 }
 
 }
