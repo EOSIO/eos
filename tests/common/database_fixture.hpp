@@ -125,11 +125,8 @@ protected:
 class testing_blockchain : public chain_controller {
 public:
    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                     chain_initializer_interface& initializer, testing_fixture& fixture);
-
-   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                     chain_initializer_interface& initializer, testing_fixture& fixture,
-                     uint32_t rate_limit_time_frame_sec,  uint32_t rate_limit);
+                      chain_initializer_interface& initializer, testing_fixture& fixture,
+                      const chain_controller::trans_msg_rate_limits& rate_limits = chain_controller::trans_msg_rate_limits());
 
    /**
     * @brief Publish the provided contract to the blockchain, owned by owner

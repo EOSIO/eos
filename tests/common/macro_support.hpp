@@ -25,12 +25,17 @@
    native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
    testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this); \
    BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
-#define MKCHAIN3(name,rate_limit_time_frame_sec,rate_limit) \
+#define MKCHAIN5(name,per_auth_account_rate_limit_time_frame_sec,per_auth_account_rate_limit,per_code_account_rate_limit_time_frame_sec,per_code_account_rate_limit) \
    chainbase::database name ## _db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE); \
    block_log name ## _log(get_temp_dir() / "blocklog"); \
    fork_database name ## _fdb; \
    native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
-   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this,rate_limit_time_frame_sec,rate_limit); \
+   chain_controller::trans_msg_rate_limits rate_limits; \
+   rate_limits.per_auth_account_time_frame_sec = per_auth_account_rate_limit_time_frame_sec; \
+   rate_limits.per_auth_account = per_auth_account_rate_limit; \
+   rate_limits.per_code_account_time_frame_sec = per_code_account_rate_limit_time_frame_sec; \
+   rate_limits.per_code_account = per_code_account_rate_limit; \
+   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this, rate_limits); \
    BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
 #define MKCHAINS_MACRO(x, y, name) Make_Blockchain(name)
 
