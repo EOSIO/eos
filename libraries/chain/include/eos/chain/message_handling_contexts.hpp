@@ -24,7 +24,7 @@ public:
                  const types::AccountName& code)
       : controller(con), db(db), trx(t), msg(m), code(code), mutable_controller(con),
         mutable_db(db), used_authorizations(msg.authorization.size(), false),
-        next_pending_transaction_serial(0){}
+        next_pending_transaction_serial(0), next_pending_message_serial(0){}
 
    template <typename ObjectType>
    int32_t store_record( Name scope, Name code, Name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
