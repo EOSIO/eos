@@ -18,6 +18,7 @@
 
 using namespace appbase;
 using namespace eos;
+using namespace eosio;
 
 int main(int argc, char** argv)
 {
