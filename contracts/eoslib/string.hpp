@@ -3,6 +3,7 @@
 #include <eoslib/system.h>
 #include <eoslib/memory.hpp>
 #include <eoslib/print.hpp>
+#include <eoslib/string.h>
 
 namespace eos {
 
@@ -229,5 +230,23 @@ namespace eos {
         prints_l(data, size);
       }
    }
+
+   static string to_string(uint64_t num) {
+     uint32_t digit_len = uint_digit_len(num);
+
+     char buff[digit_len];
+     uint_to_char_arr(num, digit_len, buff);
+
+     return string(buff, digit_len, true);
+   }
+
+   static string to_string(int64_t num) {
+    uint32_t digit_len = int_digit_len(num);
+
+    char buff[digit_len];
+    int_to_char_arr(num, digit_len, buff);
+
+    return string(buff, digit_len, true);
+  }
   };
 }
