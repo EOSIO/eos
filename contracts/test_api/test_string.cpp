@@ -290,3 +290,42 @@ unsigned int test_string::print_unicode() {
 
   return WASM_TEST_PASS;
 }
+
+unsigned int test_string::to_string() {
+  uint64_t num1 = 123456789;
+  char num1_char_array[] = {'1','2','3','4','5','6','7','8','9'};
+
+  int64_t num2 = -123456789;
+  char num2_char_array[] = {'-','1','2','3','4','5','6','7','8','9'};
+
+  uint32_t num1_digit_len = uint_digit_len(num1);
+  WASM_ASSERT( num1_digit_len == 9,  "num1_digit_len == 9" );
+
+  uint32_t num2_digit_len = int_digit_len(num2);
+  WASM_ASSERT( num2_digit_len == 10,  "num2_digit_len == 9" );
+
+  char buffer1[9];
+  uint_to_char_arr(num1,9,buffer1);
+  for (uint8_t i = 0; i < 9; i++) {
+    WASM_ASSERT( buffer1[i] == num1_char_array[i],  "buffer1[i] == num1_char_array[i]" );
+  }
+
+  char buffer2[10];
+  int_to_char_arr(num2,10,buffer2);
+  for (uint8_t i = 0; i < 10; i++) {
+    WASM_ASSERT( buffer2[i] == num2_char_array[i],  "buffer2[i] == num2_char_array[i]" );
+  }
+
+  eos::string str1 = eos::string::to_string(num1);
+  for (uint8_t i = 0; i < str1.get_size(); i++) {
+    WASM_ASSERT( str1[i] == num1_char_array[i],  "str1[i] == num1_char_array[i]" );
+  }
+
+  eos::string str2 = eos::string::to_string(num2);
+  for (uint8_t i = 0; i < str2.get_size(); i++) {
+    WASM_ASSERT( str2[i] == num2_char_array[i],  "str2[i] == num2_char_array[i]" );
+  }
+
+
+  return WASM_TEST_PASS;
+}

@@ -252,6 +252,60 @@ DEFINE_INTRINSIC_FUNCTION7(env,upper_bound_str,upper_bound_str,i32,i64,scope,i64
   READ_RECORD_STR(upper_bound_record)
 }
 
+DEFINE_INTRINSIC_FUNCTION1(env,uint_digit_len,uint_digit_len,i32,i64,val) {
+  uint64_t num = uint64_t(val);
+  
+  if (num == 0) return 1;
+
+  uint32_t len = 0;
+  while (num > 0) {
+    num /= 10;
+    len++;
+  }
+  return len;
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,int_digit_len,int_digit_len,i32,i64,val) {
+  int64_t num = int64_t(val);
+ 
+  if (num == 0) return 1;
+  
+  uint32_t len = 0;
+  if (num < 0) {
+    len++;
+    num *= -1;
+  }
+  while (num > 0) {
+    num /= 10;
+    len++;
+  }
+  return len;
+}
+
+DEFINE_INTRINSIC_FUNCTION3(env,uint_to_char_arr,uint_to_char_arr,none,i64,input,i32,digit_len,i32,output) {
+  FC_ASSERT( digit_len > 0 );
+
+  auto& wasm  = wasm_interface::get();
+  auto  mem          = wasm.current_memory;
+
+  uint64_t num = uint64_t(input);
+  char* v = &memoryRef<char>( mem, output );
+  string res = std::to_string(num);
+  memcpy(v, res.data(), digit_len);
+}
+
+DEFINE_INTRINSIC_FUNCTION3(env,int_to_char_arr,int_to_char_arr,none,i64,input,i32,digit_len,i32,output) {
+  FC_ASSERT( digit_len > 0 );
+  
+  auto& wasm  = wasm_interface::get();
+  auto  mem          = wasm.current_memory;
+
+  int64_t num = int64_t(input);
+  char* v = &memoryRef<char>( mem, output );
+  string res = std::to_string(num);
+  memcpy(v, res.data(), digit_len);
+}
+
 DEFINE_INTRINSIC_FUNCTION3(env, assert_sha256,assert_sha256,none,i32,dataptr,i32,datalen,i32,hash) {
    FC_ASSERT( datalen > 0 );
 
