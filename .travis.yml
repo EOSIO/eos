@@ -30,6 +30,7 @@ after_failure:
   - cat /home/travis/build/EOSIO/eos/ext/mongo-cxx-driver/build/src/bsoncxx/third_party/EP_mnmlstc_core-prefix/src/EP_mnmlstc_core-stamp/EP_mnmlstc_core-configure-*.log
 script:
   - cd $TRAVIS_BUILD_DIR/ext && git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+  - export CC="clang-4.0" && export CXX="clang++-4.0"
   - cd mongo-cxx-driver/build && $TRAVIS_BUILD_DIR/ext/cmake-3.9.0-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DCMAKE_INSTALL_PREFIX=/usr/local .. && sudo make EP_mnmlstc_core && make && sudo make install
   - cd $TRAVIS_BUILD_DIR
   - mkdir build && cd build
