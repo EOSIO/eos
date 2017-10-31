@@ -18,6 +18,12 @@ account_history_api_plugin::~account_history_api_plugin(){}
 void account_history_api_plugin::set_program_options(options_description&, options_description&) {}
 void account_history_api_plugin::plugin_initialize(const variables_map&) {}
 
+struct error_results {
+  uint16_t code;
+  string message;
+  string details;
+};
+
 #define CALL(api_name, api_handle, api_namespace, call_name) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [this, api_handle](string, string body, url_response_callback cb) mutable { \
@@ -25,11 +31,13 @@ void account_history_api_plugin::plugin_initialize(const variables_map&) {}
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
              cb(200, fc::json::to_string(result)); \
-          } catch (fc::eof_exception) { \
-             cb(400, "Invalid arguments"); \
+          } catch (fc::eof_exception& e) { \
+             error_results results{400, "Bad Request", e.to_string()}; \
+             cb(400, fc::json::to_string(results)); \
              elog("Unable to parse arguments: ${args}", ("args", body)); \
           } catch (fc::exception& e) { \
-             cb(500, e.to_detail_string()); \
+             error_results results{500, "Internal Service Error", e.to_detail_string()}; \
+             cb(500, fc::json::to_string(results)); \
              elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
           } \
        }}
@@ -53,3 +61,5 @@ void account_history_api_plugin::plugin_startup() {
 void account_history_api_plugin::plugin_shutdown() {}
 
 }
+
+FC_REFLECT(eos::error_results, (code)(message)(details))
