@@ -4,40 +4,27 @@
  */
 #include <eoslib/message.h>
 #include <eoslib/types.hpp>
-#include "rate_limit_auth.hpp"
+#include <currency/currency.hpp>
 
 extern "C" {
     void init()
     {
     }
 
-    void test_auths2(const rate_limit_auth::Auths2& auth)
+    void test_auths(const currency::Transfer& auth)
     {
-       eos::print("auths2\n");
-       requireAuth( auth.acct1 );
-       requireAuth( auth.acct2 );
-    }
-
-    void test_auths3(const rate_limit_auth::Auths3& auth)
-    {
-       eos::print("auths3\n");
-       requireAuth( auth.acct1 );
-       requireAuth( auth.acct2 );
-       requireAuth( auth.acct3 );
+       requireAuth( auth.from );
+       requireAuth( auth.to );
     }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action )
     {
-       if( code == N(test1) )
+       if( code == N(test1) || code == N(test5) )
        {
-          if( action == N(auth2) )
+          if( action == N(transfer) )
           {
-             test_auths2( eos::currentMessage< rate_limit_auth::Auths2 >() );
-          }
-          else if( action == N(auth3) )
-          {
-             test_auths3( eos::currentMessage< rate_limit_auth::Auths3 >() );
+             test_auths( eos::currentMessage< currency::Transfer >() );
           }
        }
     }
