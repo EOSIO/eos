@@ -27,6 +27,9 @@ before_install:
   - cd $TRAVIS_BUILD_DIR/ext && git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
   - cd mongo-cxx-driver/build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. && sudo make EP_mnmlstc_core && make && sudo make install
   - cd $TRAVIS_BUILD_DIR
+after_failure:
+  - echo log
+  - cat /home/travis/build/EOSIO/eos/ext/mongo-cxx-driver/build/src/bsoncxx/third_party/EP_mnmlstc_core-prefix/src/EP_mnmlstc_core-stamp/EP_mnmlstc_core-configure-*.log
 script:
   - mkdir build && cd build
   - ../ext/cmake-3.9.0-Linux-x86_64/bin/cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler/ ..
