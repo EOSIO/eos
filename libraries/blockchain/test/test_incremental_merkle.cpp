@@ -48,10 +48,9 @@ BOOST_AUTO_TEST_CASE(test_against_merkle_iterative) {
    digests.reserve( test_digests.size() );
 
    for(const auto& digest : test_digests) {
-      incremental.append(digest);
       digests.emplace_back(digest);
-      auto root = incremental.get_root();
       auto expected = merkle(digests);
+      auto root =incremental.append(digest);
       BOOST_TEST_INFO( "Node Count = " << digests.size() );
       BOOST_REQUIRE_EQUAL(root.str(), expected.str());
    }
