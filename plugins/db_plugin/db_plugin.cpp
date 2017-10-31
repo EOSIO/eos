@@ -406,7 +406,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
    ++processed;
 }
 
-
+// For now providing some simple account processing to maintain eos_balance
 void db_plugin_impl::update_account(const chain::Message& msg) {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::stream::document;

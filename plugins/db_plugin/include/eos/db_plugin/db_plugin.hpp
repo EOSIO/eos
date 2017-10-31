@@ -20,6 +20,14 @@ using db_plugin_impl_ptr = std::shared_ptr<class db_plugin_impl>;
  *   Accounts
  *
  *   See data dictionary (DB Schema Definition - EOS API) for description of MongoDB schema.
+ *
+ *   The goal ultimately is for all chainbase data to be mirrored in MongoDB via a delayed node processing
+ *   irreversible blocks. Currently, only Blocks, Transactions, Messages, and Account balance it mirrored.
+ *   Chainbase is being rewritten to be multi-threaded. Once chainbase is stable, integration directly with
+ *   a mirror database approach can be followed removing the need for the direct processing of Blocks employed
+ *   with this implementation.
+ *
+ *   If MongoDB env not available (#ifndef MONGODB) this plugin is a no-op.
  */
 class db_plugin : public plugin<db_plugin> {
 public:
