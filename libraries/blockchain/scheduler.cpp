@@ -22,6 +22,12 @@ scheduler::scheduler( uint32_t thread_count  )
 
 }
 
+scheduler::~scheduler() {
+   _work.reset();
+   for( auto& t : _threads )
+      t.join();
+}
+
 scheduler::strand_handle scheduler::create_strand() {
    FC_ASSERT( !_wait, "cannot post new tasks while waiting for execution to abort" );
    _current_strands.emplace_back( _ios );

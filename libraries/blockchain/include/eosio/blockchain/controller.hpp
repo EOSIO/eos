@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/blockchain/block.hpp>
 #include <eosio/blockchain/database.hpp>
+#include <eosio/blockchain/scheduler.hpp>
 
 #include <thread>
 
@@ -11,6 +12,7 @@ namespace eosio { namespace blockchain {
    class fork_database;
    struct global_state_object;
    struct active_producers_object;
+   
 
    /**
     * @class controller
@@ -23,7 +25,7 @@ namespace eosio { namespace blockchain {
     */
    class controller {
       public:
-         typedef std::function<void( const transaction_metadata_ptr& ) > completion_handler;
+         typedef std::function<void( const meta_transaction_ptr& ) > completion_handler;
 
          controller();
          ~controller();
@@ -46,7 +48,7 @@ namespace eosio { namespace blockchain {
          /**
           * Performs lookup of an existing known transaction.
           */
-         transaction_metadata_ptr lookup_transaction( transaction_id_type id );
+         meta_transaction_ptr lookup_transaction( transaction_id_type id );
 
          /**
           * Looks up a block by id and will call callback() with the meta_block_ptr once it is found,
@@ -114,11 +116,11 @@ namespace eosio { namespace blockchain {
          ///{
          
          /// emitted when a new transaction is discovered but before it is validated
-         signal<void(transaction_metadata_ptr)> transaction_added;
+         signal<void(meta_transaction_ptr)> transaction_added;
          /// emitted when a new transaction has been executed and applied to pending state
-         signal<void(transaction_metadata_ptr)> transaction_validated;
-         signal<void(transaction_metadata_ptr)> transaction_confirmed;
-         signal<void(transaction_metadata_ptr)> transaction_rejected; /// perminenent rejection (expired or invalid)
+         signal<void(meta_transaction_ptr)> transaction_validated;
+         signal<void(meta_transaction_ptr)> transaction_confirmed;
+         signal<void(meta_transaction_ptr)> transaction_rejected; /// perminenent rejection (expired or invalid)
 
          signal<void(meta_block_ptr)>       block_linked; /// block linked, but not validated
          signal<void(meta_block_ptr)>       block_validated; /// block linked and validated
@@ -164,6 +166,8 @@ namespace eosio { namespace blockchain {
          unique_ptr<fork_database>           _fork_db;
          path                                _datadir;
          size_t                              _shared_mem_size;
+
+         scheduler                           _scheduler;
    };
 
 } } /// eosio::blockchain

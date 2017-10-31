@@ -94,10 +94,15 @@ namespace eosio { namespace blockchain {
       vector<account_name>   read_scope;
       vector<account_name>   write_scope;
       vector<action>         actions;
+
+      digest_type  digest()const;
    };
 
    struct signed_transaction : public transaction {
+
       vector<signature_type> signatures;
+
+      transaction_id_type id()const;
    };
 
 
@@ -121,6 +126,9 @@ namespace eosio { namespace blockchain {
     *  over it.
     */
    struct processed_transaction : public signed_transaction {
+      processed_transaction( const signed_transaction& t ):signed_transaction(t){}
+      processed_transaction(){}
+
       set<account_name>               used_read_scopes;
       set<account_name>               used_write_scopes;
       vector<vector<action_output>>   output; /// one output per action in the transaction, each action may notify multiple receivers
@@ -133,17 +141,21 @@ namespace eosio { namespace blockchain {
     *  This class is designed to be used as a shared pointer so that it can be easily moved 
     *  between threads, blocks, and pending queues. 
     */
-   struct transaction_metadata : public std::enable_shared_from_this<transaction_metadata> {
-      transaction_metadata( const processed_transaction& trx );
-      transaction_metadata( const signed_transaction& trx );
+   struct meta_transaction : public std::enable_shared_from_this<meta_transaction> {
+      public:
+         meta_transaction( processed_transaction_ptr trx );
+         meta_transaction( const signed_transaction& trx );
 
-      transaction_id_type          id;
-      vector<char>                 packed;
-      flat_set<public_key_type>    signedby;
-      signed_transaction_ptr       trx;
+         processed_transaction_ptr    trx;
+
+         const transaction_id_type    id; /// const because it is used as index in multi index container
+         const time_point_sec         expiration; /// const because it is used as index in multi index container
+
+         vector<char>                 packed;
+         flat_set<public_key_type>    signedby;
    }; 
 
-   typedef std::shared_ptr<transaction_metadata> transaction_metadata_ptr;
+   typedef std::shared_ptr<meta_transaction> meta_transaction_ptr;
 
 
 } } /// eosio::blockchain
@@ -159,7 +171,7 @@ FC_REFLECT( eosio::blockchain::transaction_receipt, (status)(id) )
 
 FC_REFLECT( eosio::blockchain::action_output, (receiver)(log)(inline_transaction)(deferred_transactions) )
 FC_REFLECT_DERIVED( eosio::blockchain::processed_transaction, (eosio::blockchain::signed_transaction), (used_read_scopes)(used_write_scopes)(output) );
-FC_REFLECT( eosio::blockchain::transaction_metadata, (id)(packed)(signedby)(trx) )
+FC_REFLECT( eosio::blockchain::meta_transaction, (id)(packed)(signedby)(trx) )
 
 
 

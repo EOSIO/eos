@@ -168,7 +168,7 @@ namespace eosio { namespace blockchain {
     * transactions are not included.  
     */
    struct block_data : public block_summary {
-      typedef vector<transaction_metadata_ptr> shard;
+      typedef vector<meta_transaction_ptr>     shard;
       typedef vector<shard>                    cycle;
                                          
       vector<cycle>                            cycles;
