@@ -2,6 +2,7 @@ sudo: false
 dist: trusty
 language: cpp
 compiler: clang
+services: mongodb
 addons:
   apt:
     sources:
@@ -21,6 +22,10 @@ before_install:
   - cd secp256k1-zkp && ./autogen.sh && ./configure --prefix=$TRAVIS_BUILD_DIR/ext CC=clang-4.0 CXX=clang++-4.0 && make && make install
   - cd $TRAVIS_BUILD_DIR/ext && wget https://cmake.org/files/v3.9/cmake-3.9.0-Linux-x86_64.tar.gz && tar xzf cmake-3.9.0-Linux-x86_64.tar.gz
   - cd $TRAVIS_BUILD_DIR/ext && git clone --depth=1 --single-branch git://github.com/oci-labs/clang-WebAssembly wasm-compiler
+  - cd $TRAVIS_BUILD_DIR/ext && wget https://github.com/mongodb/mongo-c-driver/releases/download/1.8.0/mongo-c-driver-1.8.0.tar.gz && tar xzf mongo-c-driver-1.8.0.tar.gz
+  - cd mongo-c-driver-1.8.0 && ./configure --disable-automatic-init-and-cleanup --enable-static && make && make install
+  - cd $TRAVIS_BUILD_DIR/ext && git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+  - cd mongo-cxx-driver/build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. && make EP_mnmlstc_core && make && make install
   - cd $TRAVIS_BUILD_DIR
 script:
   - mkdir build && cd build
