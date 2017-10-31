@@ -90,14 +90,14 @@ inline void move_nodes(Container& to, Container&& from) {
  * after some time has past only needing to update or add a single
  * value to maintain validity.
  */
-template<typename DigestType, template<typename, typename ...> class Container = vector, typename ...Args>
+template<typename DigestType, template<typename ...> class Container = vector, typename ...Args>
 class incremental_merkle_impl {
    public:
    incremental_merkle_impl()
       :_node_count(0)
       {}
 
-      template<template<typename, typename ...> class OtherContainer, typename ...OtherArgs>
+      template<template<typename ...> class OtherContainer, typename ...OtherArgs>
       incremental_merkle_impl( incremental_merkle_impl<DigestType, OtherContainer, OtherArgs...> &&other )
       :_node_count(other._node_count)
       ,_active_nodes(other._active_nodes.begin(), other.active_nodes.end())
