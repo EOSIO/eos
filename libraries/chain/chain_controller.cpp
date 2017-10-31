@@ -878,7 +878,7 @@ void chain_controller::validate_expiration(const Transaction& trx) const
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 uint32_t chain_controller::_transaction_message_rate(uint32_t now, uint32_t last_update_sec, uint32_t rate_limit_time_frame_sec,
-                                                     uint32_t rate_limit, uint32_t previous_rate, const char* type, const AccountName& name)
+                                                     uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const AccountName& name)
 {
    const auto delta_time = now - last_update_sec;
    uint32_t message_count = 1;
@@ -886,13 +886,23 @@ uint32_t chain_controller::_transaction_message_rate(uint32_t now, uint32_t last
    {
       message_count += ( ( ( rate_limit_time_frame_sec - delta_time ) * fc::uint128( previous_rate ) )
                      / rate_limit_time_frame_sec ).to_uint64();
-      EOS_ASSERT(message_count <= rate_limit, tx_msgs_exceeded,
-                 "Rate limiting ${type}=${name} messages sent, ${count} exceeds ${max} messages limit per ${sec} seconds. Wait 1 second and try again",
-                 ("type",type)
-                 ("name",name)
-                 ("count",message_count)
-                 ("max",rate_limit)
-                 ("sec", rate_limit_time_frame_sec));
+#define RATE_LIMIT_ASSERT(tx_msgs_exceeded, type_str) \
+      EOS_ASSERT(message_count <= rate_limit, tx_msgs_exceeded, \
+                 "Rate limiting ${type} account=${name} messages sent, ${count} exceeds ${max} messages limit per ${sec} seconds. Wait 1 second and try again", \
+                 ("type",type_str) \
+                 ("name",name) \
+                 ("count",message_count) \
+                 ("max",rate_limit) \
+                 ("sec", rate_limit_time_frame_sec))
+      switch (type)
+      {
+      case authorization_account:
+         RATE_LIMIT_ASSERT(tx_msgs_auth_exceeded, "authorization");
+         break;
+      case code_account:
+         RATE_LIMIT_ASSERT(tx_msgs_code_exceeded, "code");
+         break;
+      }
    }
 
    return message_count;
@@ -910,7 +920,7 @@ void chain_controller::rate_limit_message(const Message& message)
       {
          _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
             rlo.name = permission.account;
-            rlo.per_auth_code_trans_msg_rate = 1;
+            rlo.per_auth_account_trans_msg_rate = 1;
             rlo.per_auth_account_last_update_sec = now;
          });
       }
@@ -918,9 +928,9 @@ void chain_controller::rate_limit_message(const Message& message)
       {
          const auto message_rate =
                _transaction_message_rate(now, rate_limiting->per_auth_account_last_update_sec, _per_auth_account_trans_msg_rate_limit_time_frame_sec,
-                                        _per_auth_account_trans_msg_rate_limit, rate_limiting->per_auth_code_trans_msg_rate, "account", permission.account);
+                                        _per_auth_account_trans_msg_rate_limit, rate_limiting->per_auth_account_trans_msg_rate, authorization_account, permission.account);
          _db.modify(*rate_limiting, [&] (rate_limiting_object& rlo) {
-            rlo.per_auth_code_trans_msg_rate = message_rate;
+            rlo.per_auth_account_trans_msg_rate = message_rate;
             rlo.per_auth_account_last_update_sec = now;
          });
       }
@@ -940,7 +950,7 @@ void chain_controller::rate_limit_message(const Message& message)
    {
       const auto message_rate =
             _transaction_message_rate(now, rate_limiting->per_code_account_last_update_sec, _per_code_account_trans_msg_rate_limit_time_frame_sec,
-                                     _per_code_account_trans_msg_rate_limit, rate_limiting->per_code_account_trans_msg_rate, "account", message.code);
+                                     _per_code_account_trans_msg_rate_limit, rate_limiting->per_code_account_trans_msg_rate, code_account, message.code);
       _db.modify(*rate_limiting, [&] (rate_limiting_object& rlo) {
          rlo.per_code_account_trans_msg_rate = message_rate;
          rlo.per_code_account_last_update_sec = now;

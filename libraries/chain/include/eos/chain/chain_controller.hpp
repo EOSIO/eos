@@ -260,19 +260,29 @@ namespace eos { namespace chain {
          const deque<SignedTransaction>&  pending()const { return _pending_transactions; }
 
          /**
+          * Enum to indicate what type of rate limiting is being performed.
+          */
+         enum rate_limit_type
+         {
+            authorization_account,
+            code_account
+         };
+
+         /**
           * Determine what the current message rate is.
           * @param now                       The current block time seconds
           * @param last_update_sec           The block time at the last update of the message rate
           * @param rate_limit_time_frame_sec The time frame, in seconds, that the rate limit is over
           * @param rate_limit                The rate that is not allowed to be exceeded
           * @param previous_rate             The rate at the last_update_sec
-          * @param type                      The string type description (for logging errors)
+          * @param type                      The type of the rate limit
           * @param name                      The account name associated with this rate (for logging errors)
           * @return the calculated rate at this time
-          * @throws tx_msgs_exceeded if current message rate exceeds the passed in rate_limit
+          * @throws tx_msgs_auth_exceeded if current message rate exceeds the passed in rate_limit, and type is authorization_account
+          * @throws tx_msgs_code_exceeded if current message rate exceeds the passed in rate_limit, and type is code_account
           */
          static uint32_t _transaction_message_rate(uint32_t now, uint32_t last_update_sec, uint32_t rate_limit_time_frame_sec,
-                                                   uint32_t rate_limit, uint32_t previous_rate, const char* type, const AccountName& name);
+                                                   uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const AccountName& name);
 
          struct trans_msg_rate_limits {
             static const uint32_t default_per_auth_account_time_frame_seconds;
@@ -361,7 +371,8 @@ namespace eos { namespace chain {
          /**
           * Calculate all rates associated with the given message and enforce rate limiting.
           * @param message  The message to calculate
-          * @throws tx_msgs_exceeded if any of the calculated message rates exceed the configured rate limit
+          * @throws tx_msgs_auth_exceeded if any of the calculated message rates exceed the configured authorization account rate limit
+          * @throws tx_msgs_code_exceeded if the calculated message rate exceed the configured code account rate limit
           */
          void rate_limit_message(const Message& message);
 
