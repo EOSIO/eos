@@ -12,6 +12,8 @@
 #include "test_message.cpp"
 #include "test_print.cpp"
 #include "test_string.cpp"
+#include "test_fixedpoint.cpp"
+#include "test_real.cpp"
 #include "test_transaction.cpp"
 #include "test_types.cpp"
 
@@ -110,6 +112,19 @@ extern "C" {
       WASM_TEST_HANDLER(test_string, print_non_null_terminated);
       WASM_TEST_HANDLER(test_string, print_unicode);
 
+      // test fixed_point
+      WASM_TEST_HANDLER(test_fixedpoint, create_instances);
+      WASM_TEST_HANDLER(test_fixedpoint, test_addition);
+      WASM_TEST_HANDLER(test_fixedpoint, test_subtraction);
+      WASM_TEST_HANDLER(test_fixedpoint, test_multiplication);
+      WASM_TEST_HANDLER(test_fixedpoint, test_division);
+
+
+      // test double
+      WASM_TEST_HANDLER(test_real, create_instances);
+      WASM_TEST_HANDLER(test_real, test_addition);
+      WASM_TEST_HANDLER(test_real, test_multiplication);
+      WASM_TEST_HANDLER(test_real, test_division);
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }

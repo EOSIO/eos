@@ -447,7 +447,20 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "concatenation_non_null_terminated"), {}, {} ) == WASM_TEST_PASS, "test_string::concatenation_non_null_terminated()" );
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "assign"), {}, {} ) == WASM_TEST_PASS, "test_string::assign()" );
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "comparison_operator"), {}, {} ) == WASM_TEST_PASS, "test_string::comparison_operator()" );
+
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "create_instances"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::create_instances()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_addition"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_addition()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_subtraction"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_subtraction()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_multiplication"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_multiplication()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_division"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_division()" );
+
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "create_instances"), {}, {} ) == WASM_TEST_PASS, "test_real::create_instances()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "test_addition"), {}, {} ) == WASM_TEST_PASS, "test_real::test_addition()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "test_multiplication"), {}, {} ) == WASM_TEST_PASS, "test_real::test_multiplication()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "test_division"), {}, {} ) == WASM_TEST_PASS, "test_real::test_division()" );
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_real", "create_instances"), {}, {}) );
       CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_null_terminated"), {}, {}) );
+
       BOOST_CHECK_EQUAL( capture.size() , 1);
       BOOST_CHECK_EQUAL( capture[0], "Hello World!");
       CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_non_null_terminated"), {}, {}) );

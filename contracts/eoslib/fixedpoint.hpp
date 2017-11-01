@@ -17,22 +17,28 @@ namespace eos
     */
 
     // Some forward declarations
-    template <uint32_t q> struct fixed_point32;
-    template <uint32_t q> struct fixed_point64;
-    template <uint32_t q> struct fixed_point128;
+    template <uint8_t Q> struct fixed_point32;
+    template <uint8_t Q> struct fixed_point64;
+    template <uint8_t Q> struct fixed_point128;
 
     // Will support fixed_point256 in next release    
 #if 0
-    template <uint32_t q> struct fixed_point256;
-    template <uint32_t q> 
+    template <uint8_t Q> struct fixed_point256;
+    /**
+    * @defgroup Template classe for Fixed Point 256 bits representaton
+    * @ingroup contractdev
+    * @brief Template param Q is the Q factor i.e. number of decimals
+    *
+    */
+    template <uint8_t Q>
     struct fixed_point256
     {
         int128_t val;
         fixed_point256(int256_t v=0) : val(v) {}    
-        template <uint32_t qr> fixed_point256(const fixed_point256<qr> &r);
-        template <uint32_t qr> fixed_point256(const fixed_point128<qr> &r);
-        template <uint32_t qr> fixed_point256(const fixed_point64<qr> &r);
-        template <uint32_t qr> fixed_point256(const fixed_point32<qr> &r);
+        template <uint8_t QR> fixed_point256(const fixed_point256<QR> &r);
+        template <uint8_t QR> fixed_point256(const fixed_point128<QR> &r);
+        template <uint8_t QR> fixed_point256(const fixed_point64<QR> &r);
+        template <uint8_t QR> fixed_point256(const fixed_point32<QR> &r);
         /**
         * Get the integer part of the 64 bit fixed number
         * @brief To get the integer part of the fixed number
@@ -60,26 +66,26 @@ namespace eos
         * @endcode
         */
         uint128_t frac_part() const {
-            if(!q) return 0;
-            return val << (32-q);
+            if(!Q) return 0;
+            return val << (32-Q);
         }
 
         
 
-        template <uint32_t qr> fixed_point256 &operator=(const fixed_point32<qr> &r);
-        template <uint32_t qr> fixed_point256 &operator=(const fixed_point64<qr> &r);
-        template <uint32_t qr> fixed_point256 &operator=(const fixed_point128<qr> &r);
-        template <uint32_t qr> fixed_point256 &operator=(const fixed_point256<qr> &r);
+        template <uint8_t QR> fixed_point256 &operator=(const fixed_point32<QR> &r);
+        template <uint8_t QR> fixed_point256 &operator=(const fixed_point64<QR> &r);
+        template <uint8_t QR> fixed_point256 &operator=(const fixed_point128<QR> &r);
+        template <uint8_t QR> fixed_point256 &operator=(const fixed_point256<QR> &r);
         // Comparison functions
-        template <uint32_t qr> bool operator==(const fixed_point256<qr> &r) { return (val == r.val);}
-        template <uint32_t qr> bool operator>(const fixed_point256<qr> &r) { return (val > r.val);}
-        template <uint32_t qr> bool operator<(const fixed_point256<qr> &r) { return (val < r.val);}
+        template <uint8_t QR> bool operator==(const fixed_point256<QR> &r) { return (val == r.val);}
+        template <uint8_t QR> bool operator>(const fixed_point256<QR> &r) { return (val > r.val);}
+        template <uint8_t QR> bool operator<(const fixed_point256<QR> &r) { return (val < r.val);}
     };
 #endif    
 
     /**
     * 128 bits representation of Fixed Point class
-    *
+    * The template param Q represents the Q Factor i.e number of decimals
     * Example:
     * @code
     * fixed_point128<6> a(123232.455667233)
@@ -89,9 +95,10 @@ namespace eos
     * fixed_point128<24> e = b/a;
     * @endcode
     */
-    template <uint32_t q> 
+    template <uint8_t Q>
     struct fixed_point128
     {
+        static_assert(Q < 128, "Maximum number of decimals supported in fixed_point128 is 128 decimals");
         int128_t val;
         /**
         * Various constructors for fixed_point128
@@ -101,15 +108,15 @@ namespace eos
         * Example:
         * @code
         * fixed_point64<18> a(1234.455667);
-        * fixed_point128<3> b(a);
+ope        * fixed_point128<3> b(a);
         * fixed_point32<6> b(13324.32323);
         * fixed_point128<5> c(a);
         * @endcode
         */
         fixed_point128(int128_t v=0) : val(v) {}    
-        template <uint32_t qr> fixed_point128(const fixed_point128<qr> &r);
-        template <uint32_t qr> fixed_point128(const fixed_point64<qr> &r);
-        template <uint32_t qr> fixed_point128(const fixed_point32<qr> &r);
+        template <uint8_t qr> fixed_point128(const fixed_point128<qr> &r);
+        template <uint8_t qr> fixed_point128(const fixed_point64<qr> &r);
+        template <uint8_t qr> fixed_point128(const fixed_point32<qr> &r);
         /**
         * Get the integer part of the 64 bit fixed number
         * @brief To get the integer part of the fixed number
@@ -122,7 +129,7 @@ namespace eos
         * @endcode
         */
         int128_t int_part() const {
-            return val >> q;
+            return val >> Q;
         }
 
         /**
@@ -137,19 +144,19 @@ namespace eos
         * @endcode
         */
         uint128_t frac_part() const {
-            if(!q) return 0;
-            return val << (32-q);
+            if(!Q) return 0;
+            return val << (32-Q);
         }
 
         
         // Various assignment operators
-        template <uint32_t qr> fixed_point128 &operator=(const fixed_point32<qr> &r);
-        template <uint32_t qr> fixed_point128 &operator=(const fixed_point64<qr> &r);
-        template <uint32_t qr> fixed_point128 &operator=(const fixed_point128<qr> &r);
+        template <uint8_t qr> fixed_point128 &operator=(const fixed_point32<qr> &r);
+        template <uint8_t qr> fixed_point128 &operator=(const fixed_point64<qr> &r);
+        template <uint8_t qr> fixed_point128 &operator=(const fixed_point128<qr> &r);
         // Comparison functions
-        template <uint32_t qr> bool operator==(const fixed_point128<qr> &r) { return (val == r.val);}
-        template <uint32_t qr> bool operator>(const fixed_point128<qr> &r) { return (val > r.val);}
-        template <uint32_t qr> bool operator<(const fixed_point128<qr> &r) { return (val < r.val);}
+        template <uint8_t qr> bool operator==(const fixed_point128<qr> &r) { return (val == r.val);}
+        template <uint8_t qr> bool operator>(const fixed_point128<qr> &r) { return (val > r.val);}
+        template <uint8_t qr> bool operator<(const fixed_point128<qr> &r) { return (val < r.val);}
     };
 
     /**
@@ -164,9 +171,10 @@ namespace eos
     * fixed_point64<24> e = b/a;
     * @endcode
     */
-    template <uint32_t q> 
+template <uint8_t Q>
     struct fixed_point64 
     {
+        static_assert(Q < 128, "Maximum number of decimals supported in fixed_point64 is 128 decimals");
         int64_t val;
         fixed_point64(int64_t v=0) : val(v) {}    
         /**
@@ -182,8 +190,8 @@ namespace eos
         * fixed_point64<5> c(a);
         * @endcode
         */
-        template <uint32_t qr> fixed_point64(const fixed_point64<qr> &r);
-        template <uint32_t qr> fixed_point64(const fixed_point32<qr> &r);
+        template <uint8_t QR> fixed_point64(const fixed_point64<QR> &r);
+        template <uint8_t QR> fixed_point64(const fixed_point32<QR> &r);
         /**
         * Get the integer part of the 64 bit fixed number
         * @brief To get the integer part of the fixed number
@@ -196,7 +204,7 @@ namespace eos
         * @endcode
         */
         int64_t int_part() const {
-            return val >> q;
+            return val >> Q;
         }
 
         /**
@@ -211,25 +219,25 @@ namespace eos
         * @endcode
         */
         uint64_t frac_part() const {
-            if(!q) return 0;
-            return val << (32-q);
+            if(!Q) return 0;
+            return val << (32-Q);
         }
 
         // Various assignment operators
-        template <uint32_t qr> fixed_point64 &operator=(const fixed_point32<qr> &r);
-        template <uint32_t qr> fixed_point64 &operator=(const fixed_point64<qr> &r);
+        template <uint8_t QR> fixed_point64 &operator=(const fixed_point32<QR> &r);
+        template <uint8_t QR> fixed_point64 &operator=(const fixed_point64<QR> &r);
         
         // Arithmetic operations 
-        template <uint32_t qr> fixed_point64< (q>qr)?q:qr > operator+(const fixed_point64<qr> &r) const;
-        template <uint32_t qr> fixed_point64< (q>qr)?q:qr > operator-(const fixed_point64<qr> &r) const;
+        template <uint8_t QR> fixed_point64< (Q>QR)?Q:QR > operator+(const fixed_point64<QR> &r) const;
+        template <uint8_t QR> fixed_point64< (Q>QR)?Q:QR > operator-(const fixed_point64<QR> &r) const;
         // product and division of two fixed_point64 instances will be fixed_point128
         // The total number of decimals will be the max 
-        template <uint32_t qr> fixed_point128<q+qr> operator*(const fixed_point64<qr> &r) const;
-        template <uint32_t qr> fixed_point128<q+64-qr> operator/(const fixed_point64<qr> &r) const;
+        template <uint8_t QR> fixed_point128<Q+QR> operator*(const fixed_point64<QR> &r) const;
+        template <uint8_t QR> fixed_point128<Q+64-QR> operator/(const fixed_point64<QR> &r) const;
         // Comparison functions
-        template <uint32_t qr> bool operator==(const fixed_point64<qr> &r) { return (val == r.val);}
-        template <uint32_t qr> bool operator>(const fixed_point64<qr> &r) { return (val > r.val);}
-        template <uint32_t qr> bool operator<(const fixed_point64<qr> &r) { return (val < r.val);}
+        template <uint8_t QR> bool operator==(const fixed_point64<QR> &r) { return (val == r.val);}
+        template <uint8_t QR> bool operator>(const fixed_point64<QR> &r) { return (val > r.val);}
+        template <uint8_t QR> bool operator<(const fixed_point64<QR> &r) { return (val < r.val);}
     };
 
     /**
@@ -254,13 +262,14 @@ namespace eos
      * @endcode
      */
     // fixed_point 32 bit version. The template param 'q' is the scale factor 
-    template <uint32_t q> 
+    template <uint8_t Q>
     struct fixed_point32
     {
+        static_assert(Q < 128, "Maximum number of decimals supported in fixed_point32 is 128 decimals");
         // trsnslates given double variable to the int32 based on the scale factor
         int32_t val;
-        template <uint32_t qr> fixed_point32(const fixed_point32<qr> &r);
-        template <uint32_t qr> fixed_point32(const fixed_point64<qr> &r);
+        template <uint8_t QR> fixed_point32(const fixed_point32<QR> &r);
+        template <uint8_t QR> fixed_point32(const fixed_point64<QR> &r);
 
         fixed_point32(int32_t param=0) : val(param) {}
         // fixed_point32(double d=0) : val(d * (1<<q) ) { }
@@ -282,30 +291,30 @@ namespace eos
         * @endcode
         */
         int32_t int_part() const {
-            return val >> q;
+            return val >> Q;
         }
         uint32_t frac_part() const {
-            if(!q) return 0;
-            return val << (32-q);
+            if(!Q) return 0;
+            return val << (32-Q);
         }
 
         // Various assignment operators
-        template <uint32_t qr> fixed_point32 &operator=(const fixed_point32<qr> &r);
-        template <uint32_t qr> fixed_point32 &operator=(const fixed_point64<qr> &r);
-        template <uint32_t qr> fixed_point32< (q>qr)?q:qr > operator+(const fixed_point32<qr> &r) const;
-        template <uint32_t qr> fixed_point32< (q>qr)?q:qr > operator-(const fixed_point32<qr> &r) const;
+        template <uint8_t QR> fixed_point32 &operator=(const fixed_point32<QR> &r);
+        template <uint8_t QR> fixed_point32 &operator=(const fixed_point64<QR> &r);
+        template <uint8_t QR> fixed_point32< (Q>QR)?Q:QR > operator+(const fixed_point32<QR> &r) const;
+        template <uint8_t QR> fixed_point32< (Q>QR)?Q:QR > operator-(const fixed_point32<QR> &r) const;
         // productd of to fixed_point32 instances will be fixed_point64
-        template <uint32_t qr> fixed_point64<q+qr> operator*(const fixed_point32<qr> &r) const;
-        template <uint32_t qr> fixed_point64<q+32-qr> operator/(const fixed_point32<qr> &r) const;
+        template <uint8_t QR> fixed_point64<Q+QR> operator*(const fixed_point32<QR> &r) const;
+        template <uint8_t QR> fixed_point64<Q+32-QR> operator/(const fixed_point32<QR> &r) const;
         // Comparison functions
-        template <uint32_t qr> bool operator==(const fixed_point32<qr> &r) { return (val == r.val);}
-        template <uint32_t qr> bool operator>(const fixed_point32<qr> &r) { return (val > r.val);}
-        template <uint32_t qr> bool operator<(const fixed_point32<qr> &r) { return (val < r.val);}
+        template <uint8_t QR> bool operator==(const fixed_point32<QR> &r) { return (val == r.val);}
+        template <uint8_t QR> bool operator>(const fixed_point32<QR> &r) { return (val > r.val);}
+        template <uint8_t QR> bool operator<(const fixed_point32<QR> &r) { return (val < r.val);}
     };
 
     // Helper functions
     template<typename T>
-    T assignHelper(T rhs_val, uint32_t q, uint32_t qr)
+    T assignHelper(T rhs_val, uint8_t q, uint8_t qr)
     {
         T result = (q > qr) ? rhs_val << (q-qr) : rhs_val >> (qr-q);
         return result;
@@ -335,31 +344,31 @@ namespace eos
 #endif    
 
     // fixed_point128 methods
-    template<uint32_t q> template<uint32_t qr>
-    fixed_point128<q>::fixed_point128(const fixed_point128<qr> &r) {
-        val = assignHelper<int128_t>(r.val, q, qr);
+    template<uint8_t Q> template<uint8_t QR>
+    fixed_point128<Q>::fixed_point128(const fixed_point128<QR> &r) {
+        val = assignHelper<int128_t>(r.val, Q, QR);
     }
 
-    template<uint32_t q> template<uint32_t qr>
-    fixed_point128<q>::fixed_point128(const fixed_point64<qr> &r) {
-        val = assignHelper<int128_t>(r.val, q, qr);
+    template<uint8_t Q> template<uint8_t QR>
+    fixed_point128<Q>::fixed_point128(const fixed_point64<QR> &r) {
+        val = assignHelper<int128_t>(r.val, Q, QR);
     }
 
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point128<q>::fixed_point128(const fixed_point32<qr> &r) {
-        val = assignHelper<int128_t>(r.val, q, qr);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point128<Q>::fixed_point128(const fixed_point32<QR> &r) {
+        val = assignHelper<int128_t>(r.val, Q, QR);
     }
 
 
     // fixed_point64 methods
-    template<uint32_t q> template<uint32_t qr>
-    fixed_point64<q>::fixed_point64(const fixed_point64<qr> &r) {
-        val = assignHelper<int64_t>(r.val, q, qr);
+    template<uint8_t Q> template<uint8_t QR>
+    fixed_point64<Q>::fixed_point64(const fixed_point64<QR> &r) {
+        val = assignHelper<int64_t>(r.val, Q, QR);
     }
 
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point64<q>::fixed_point64(const fixed_point32<qr> &r) {
-        val = assignHelper<int32_t>(r.val, q, qr);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point64<Q>::fixed_point64(const fixed_point32<QR> &r) {
+        val = assignHelper<int32_t>(r.val, Q, QR);
     }
 
     /**
@@ -368,17 +377,17 @@ namespace eos
     * Number of decimal on result will be max of decimals of lhs and rhs
     *
     */
-    template<uint32_t q> template<uint32_t qr>
-    fixed_point64< (q>qr)?q:qr > fixed_point64<q>::operator+(const fixed_point64<qr> &rhs) const 
+    template<uint8_t Q> template<uint8_t QR>
+    fixed_point64< (Q>QR)?Q:QR > fixed_point64<Q>::operator+(const fixed_point64<QR> &rhs) const
     {
         // if the scaling factor for both are same, no need to make any intermediate objects except the result
-        if(q == qr)
+        if(Q == QR)
         {
-            return fixed_point64<q>(val + rhs.val);
+            return fixed_point64<Q>(val + rhs.val);
         }
-        return fixed_point64<(q>qr)?q:qr>(
-            fixed_point64<(q>qr)?q:qr>( *this ).val +
-            fixed_point64<(q>qr)?q:qr>( rhs ).val
+        return fixed_point64<(Q>QR)?Q:QR>(
+            fixed_point64<(Q>QR)?Q:QR>( *this ).val +
+            fixed_point64<(Q>QR)?Q:QR>( rhs ).val
         );
     }
 
@@ -388,17 +397,17 @@ namespace eos
     * Number of decimal on result will be max of decimals of lhs and rhs
     *
     */
-    template<uint32_t q> template<uint32_t qr>
-    fixed_point64< (q>qr)?q:qr > fixed_point64<q>::operator-(const fixed_point64<qr> &rhs) const 
+    template<uint8_t Q> template<uint8_t QR>
+    fixed_point64< (Q>QR)?Q:QR > fixed_point64<Q>::operator-(const fixed_point64<QR> &rhs) const
     {
         // if the scaling factor for both are same, no need to make any intermediate objects except the result
-        if(q == qr)
+        if(Q == QR)
         {
-            return fixed_point64<q>(val - rhs.val);
+            return fixed_point64<Q>(val - rhs.val);
         }
-        return fixed_point64<(q>qr)?q:qr>(
-            fixed_point64<(q>qr)?q:qr>( *this ).val -
-            fixed_point64<(q>qr)?q:qr>( rhs ).val
+        return fixed_point64<(Q>QR)?Q:QR>(
+            fixed_point64<(Q>QR)?Q:QR>( *this ).val -
+            fixed_point64<(Q>QR)?Q:QR>( rhs ).val
         );
     }
 
@@ -412,9 +421,9 @@ namespace eos
     * fixed_point128<33> result = fixed_point64<0>(131313) / fixed_point64<0>(2323)
     * @endcode
     */
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point128<q+qr> fixed_point64<q>::operator*(const fixed_point64<qr> &r) const {
-        return fixed_point128<q+qr>(int128_t(val)*r.val);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point128<Q+QR> fixed_point64<Q>::operator*(const fixed_point64<QR> &r) const {
+        return fixed_point128<Q+QR>(int128_t(val)*r.val);
     }
 
     /**
@@ -427,33 +436,33 @@ namespace eos
     * fixed_point128<33> result = fixed_point64<0>(131313) / fixed_point64<0>(2323)
     * @endcode
     */
-    template <uint32_t q> template <uint32_t qr>
-    fixed_point128<q+64-qr> fixed_point64<q>::operator/(const fixed_point64<qr> &r) const {
+    template <uint8_t Q> template <uint8_t QR>
+    fixed_point128<Q+64-QR> fixed_point64<Q>::operator/(const fixed_point64<QR> &r) const {
         // std::cout << "Performing division on " << val << ", with " << q << " precision / " << r.val << ", with " << qr << " precision. Result precision " << ((q>qr) ? q:qr) << std::endl;
         // Convert val to 128 bit by additionally shifting 64 bit and take the result to 128bit
         // Q(X+64-Y) = Q(X+64) / Q(Y)
-        return fixed_point128<q+64-qr>((int128_t(val)<<64)/r.val);
+        return fixed_point128<Q+64-QR>((int128_t(val)<<64)/r.val);
     }
 
     // fixed_point32 methods
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point32<q>::fixed_point32(const fixed_point32<qr> &r) {
-        val = assignHelper<int32_t, uint32_t>(r.val, q, qr);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point32<Q>::fixed_point32(const fixed_point32<QR> &r) {
+        val = assignHelper<int32_t>(r.val, Q, QR);
     }
 
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point32<q>::fixed_point32(const fixed_point64<qr> &r) {
-        val = assignHelper<int32_t, uint32_t>(r.val, q, qr);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point32<Q>::fixed_point32(const fixed_point64<QR> &r) {
+        val = assignHelper<int32_t>(r.val, Q, QR);
     }
 
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point32<q> &fixed_point32<q>::operator=(const fixed_point32<qr> &r) {
-        val = assignHelper<int32_t, uint32_t>(r.val, q, qr);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point32<Q> &fixed_point32<Q>::operator=(const fixed_point32<QR> &r) {
+        val = assignHelper<int32_t>(r.val, Q, QR);
     }
 
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point32<q> &fixed_point32<q>::operator=(const fixed_point64<qr> &r) {
-        val = assignHelper<int32_t, uint32_t>(r.val, q, qr);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point32<Q> &fixed_point32<Q>::operator=(const fixed_point64<QR> &r) {
+        val = assignHelper<int32_t>(r.val, Q, QR);
     }
 
     /**
@@ -462,17 +471,17 @@ namespace eos
     * Number of decimal on result will be max of decimals of lhs and rhs
     *
     */
-    template<uint32_t q> template<uint32_t qr>
-    fixed_point32< (q>qr)?q:qr > fixed_point32<q>::operator+(const fixed_point32<qr> &rhs) const 
+    template<uint8_t Q> template<uint8_t QR>
+    fixed_point32< (Q>QR)?Q:QR > fixed_point32<Q>::operator+(const fixed_point32<QR> &rhs) const
     {
         // if the scaling factor for both are same, no need to make any intermediate objects except the result
-        if(q == qr)
+        if(Q == QR)
         {
-            return fixed_point32<q>(val + rhs.val);
+            return fixed_point32<Q>(val + rhs.val);
         }
-        return fixed_point32<(q>qr)?q:qr>(
-            fixed_point32<(q>qr)?q:qr>( *this ).val +
-            fixed_point32<(q>qr)?q:qr>( rhs ).val
+        return fixed_point32<(Q>QR)?Q:QR>(
+            fixed_point32<(Q>QR)?Q:QR>( *this ).val +
+            fixed_point32<(Q>QR)?Q:QR>( rhs ).val
         );
     }
 
@@ -482,17 +491,17 @@ namespace eos
     * Number of decimal on result will be max of decimals of lhs and rhs
     *
     */
-    template<uint32_t q> template<uint32_t qr>
-    fixed_point32< (q>qr)?q:qr > fixed_point32<q>::operator-(const fixed_point32<qr> &rhs) const 
+    template<uint8_t Q> template<uint8_t QR>
+    fixed_point32< (Q>QR)?Q:QR > fixed_point32<Q>::operator-(const fixed_point32<QR> &rhs) const
     {
         // if the scaling factor for both are same, no need to make any intermediate objects except the result
-        if(q == qr)
+        if(Q == QR)
         {
-            return fixed_point32<q>(val - rhs.val);
+            return fixed_point32<Q>(val - rhs.val);
         }
-        return fixed_point32<(q>qr)?q:qr>(
-            fixed_point32<(q>qr)?q:qr>( *this ).val -
-            fixed_point32<(q>qr)?q:qr>( rhs ).val
+        return fixed_point32<(Q>QR)?Q:QR>(
+            fixed_point32<(Q>QR)?Q:QR>( *this ).val -
+            fixed_point32<(Q>QR)?Q:QR>( rhs ).val
         );
     }
 
@@ -506,9 +515,9 @@ namespace eos
     * fixed_point64<33> result = fixed_point32<0>(131313) / fixed_point32<0>(2323)
     * @endcode
     */
-    template<uint32_t q> template <uint32_t qr>
-    fixed_point64<q+qr> fixed_point32<q>::operator*(const fixed_point32<qr> &r) const {
-        return fixed_point64<q+qr>(int64_t(val)*r.val);
+    template<uint8_t Q> template <uint8_t QR>
+    fixed_point64<Q+QR> fixed_point32<Q>::operator*(const fixed_point32<QR> &r) const {
+        return fixed_point64<Q+QR>(int64_t(val)*r.val);
     }
 
     /**
@@ -521,11 +530,11 @@ namespace eos
     * fixed_point64<33> result = fixed_point32<0>(131313) / fixed_point32<0>(2323)
     * @endcode
     */
-    template <uint32_t q> template <uint32_t qr>
-    fixed_point64<q+32-qr> fixed_point32<q>::operator/(const fixed_point32<qr> &r) const {
+    template <uint8_t Q> template <uint8_t QR>
+    fixed_point64<Q+32-QR> fixed_point32<Q>::operator/(const fixed_point32<QR> &r) const {
         // Convert val into 64 bit and perform the division
         // Q(X+32-Y) = Q(X+32) / Q(Y)
-        return fixed_point64<q+32-qr>((int64_t(val)<<32)/r.val);
+        return fixed_point64<Q+32-QR>((int64_t(val)<<32)/r.val);
     }
 
     /**
@@ -538,10 +547,10 @@ namespace eos
     * fixed_point64<33> result = fixed_divide(131313, 2323)
     * @endcode
     */
-    template <uint32_t q> 
-    fixed_point64<q> fixed_divide(uint32_t lhs, uint32_t rhs)
+    template <uint8_t Q>
+    fixed_point64<Q> fixed_divide(uint32_t lhs, uint32_t rhs)
     {
-        fixed_point64<q> result = fixed_point32<0>(lhs) / fixed_point32<0>(rhs);
+        fixed_point64<Q> result = fixed_point32<0>(lhs) / fixed_point32<0>(rhs);
         return result;
     }
 
@@ -556,10 +565,10 @@ namespace eos
     * @endcode
     */
         
-    template <uint32_t q> 
-    fixed_point128<q> fixed_divide(uint64_t lhs, uint64_t rhs)
+    template <uint8_t Q>
+    fixed_point128<Q> fixed_divide(uint64_t lhs, uint64_t rhs)
     {
-        fixed_point128<q> result = fixed_point64<0>(lhs) / fixed_point64<0>(rhs);
-        return fixed_point128<q>(result);
+        fixed_point128<Q> result = fixed_point64<0>(lhs) / fixed_point64<0>(rhs);
+        return fixed_point128<Q>(result);
     }
 };
