@@ -171,6 +171,7 @@ namespace eos {
                      if (my->access_control_allow_credentials) {
                         con->append_header("Access-Control-Allow-Credentials", "true");
                      }
+                     con->append_header("Content-type", "application/json");
                      auto body = con->get_request_body();
                      auto resource = con->get_uri()->get_resource();
                      auto handler_itr = my->url_handlers.find(resource);
