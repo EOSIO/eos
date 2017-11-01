@@ -6,6 +6,7 @@
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
+#include <fc/reflect/variant.hpp>
 #include <fc/io/json.hpp>
 
 #include <boost/asio.hpp>
