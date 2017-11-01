@@ -6,7 +6,21 @@
 #include <eoslib/print.hpp>
 
 namespace eosio {
-
+  /**
+   * @brief Count the length of null terminated string (excluding the null terminated symbol)
+   * Non-null terminated string need to be passed here, 
+   * Otherwise it will not give the right length
+   * @param cstr - null terminated string
+   */
+  inline uint32_t cstrlen(const char* cstr) {
+    uint32_t len = 0;
+    while(*cstr != '\0') {
+      len++;
+      cstr++;
+    }
+    return len;
+  }
+    
   class string {
 
   private:
@@ -61,6 +75,21 @@ namespace eosio {
         refcount = obj.refcount;
         if (refcount != nullptr) (*refcount)++;
       }
+    }
+
+    /**
+     * @brief Constructor for string literal
+     * Non-null terminated string need to be passed here, 
+     * Otherwise it will have extraneous data
+     * @param cstr - null terminated string
+     */
+    string(const char* cstr) {
+      size = cstrlen(cstr) + 1;
+      data = (char *)malloc(size * sizeof(char));
+      memcpy(data, cstr, size * sizeof(char));
+      own_memory = true;
+      refcount = (uint32_t*)malloc(sizeof(uint32_t));
+      *refcount = 1;
     }
 
     // Destructor
@@ -131,6 +160,7 @@ namespace eosio {
       return *(data + index);
     }
 
+    // Assignment operator
     string& operator = (const string& obj) {
       if (this != &obj) {
         release_data_if_needed();
@@ -141,6 +171,23 @@ namespace eosio {
         if (refcount != nullptr) (*refcount)++;
       }
       return *this;
+    }
+
+    /**
+     * @brief Assignment operator for string literal
+     * Non-null terminated string need to be passed here, 
+     * Otherwise it will have extraneous data
+     * @param cstr - null terminated string
+     */
+    string& operator = (const char* cstr) {
+        release_data_if_needed();
+        size = cstrlen(cstr) + 1;
+        data = (char *)malloc(size * sizeof(char));
+        memcpy(data, cstr, size * sizeof(char));
+        own_memory = true;
+        refcount = (uint32_t*)malloc(sizeof(uint32_t));
+        *refcount = 1;
+        return *this;
     }
 
     string& operator += (const string& str){

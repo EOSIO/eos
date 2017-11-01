@@ -291,7 +291,6 @@ unsigned int test_string::print_unicode() {
   return WASM_TEST_PASS;
 }
 
-
 unsigned int test_string::valid_utf8() {
   // Roman alphabet is 1 byte UTF-8
   char data[] = "abcdefghij";
@@ -327,6 +326,31 @@ unsigned int test_string::invalid_utf8() {
   // If it is not multiple of 3, then it is invalid
   eosio::string invalid_chinese_str(chinese_str_data, 5, false);
   assert_is_utf8(invalid_chinese_str.get_data(), invalid_chinese_str.get_size(), "the string should be a valid utf8 string");
+
+  return WASM_TEST_PASS;
+}
+
+
+unsigned int test_string::string_literal() {
+  // Construct
+  char data1[] = "abcdefghij";
+  char data2[] = "klmnopqrstuvwxyz";
+
+  eos::string str = "abcdefghij";
+
+  WASM_ASSERT( str.get_size() == 11,  "data1 str.get_size() == 11" );
+  for (uint8_t i = 0; i < 11; i++) {
+    WASM_ASSERT( str[i] == data1[i],  "data1 str[i] == data1[i]" );
+  }
+  WASM_ASSERT( str.is_own_memory() == true,  "data1 str.is_own_memory() == true" );
+
+  str = "klmnopqrstuvwxyz";
+  
+  WASM_ASSERT( str.get_size() == 17,  "data2 str.get_size() == 17" );
+  for (uint8_t i = 0; i < 17; i++) {
+    WASM_ASSERT( str[i] == data2[i],  "data2 str[i] == data2[i]" );
+  }
+  WASM_ASSERT( str.is_own_memory() == true,  "data2 str.is_own_memory() == true" );
 
   return WASM_TEST_PASS;
 }
