@@ -173,7 +173,7 @@ namespace eosio { namespace blockchain {
     */
    account_name controller::get_scheduled_producer( time_point when )const {
       const auto& active = get_active_producers();
-      const auto& gs     = get_global_state();
+      //const auto& gs     = get_global_state();
       auto slot = when.time_since_epoch().count() / (config::block_interval_ms * 1000);
       return active.producers[ slot % active.producers.size() ];
    } // get_scheduled_producer
@@ -189,6 +189,13 @@ namespace eosio { namespace blockchain {
    void controller::open_state_database() // private
    {
       _db.reset( new database( _datadir / "shared_mem", _shared_mem_size ) );
+   }
+
+   void controller::add_transaction( meta_transaction_ptr trx ) {
+      auto new_trx = _transaction_cache.add_transaction( trx );
+      if( new_trx != trx ) return; /// we already know about this transaction
+
+
    }
 
 

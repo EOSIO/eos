@@ -112,10 +112,68 @@ cycle_handle::cycle_handle( const block_handle& blk, undo_cycle& cyc )
 :_db(blk._db),_undo_block(blk._undo_block),_undo_cycle(cyc){}
 
 shard_handle cycle_handle::start_shard( const set<scope_name>& write, const set<scope_name>& read ) {
-  /// TODO: verify there are no conflicts in scopes, then create new shard
-  auto itr = _undo_cycle._shards.emplace( _undo_cycle._shards.begin(), _db.get_allocator(), write, read );
+   /// verify there are no read or write conflicts with existing shards
+   for( const auto s : write ) {
+      auto existing_write = _undo_cycle._write_scope_to_shard.find( s );
+      FC_ASSERT( existing_write == _undo_cycle._write_scope_to_shard.end(), "shard conflict detected" );
+      auto existing_read = _undo_cycle._read_scopes.find( s );
+      FC_ASSERT( existing_read == _undo_cycle._read_scopes.end(), "shard conflict detected" );
+   }
+
+   /// verify there are no read conflicts with existing shards
+   for( const auto s : read ) {
+      auto existing = _undo_cycle._write_scope_to_shard.find( s );
+      FC_ASSERT( existing == _undo_cycle._write_scope_to_shard.end(), "shard conflict detected" );
+   }
+   
+   /// create a new shard
+   auto itr = _undo_cycle._shards.emplace( _undo_cycle._shards.begin(), _db.get_allocator(), write, read );
+
+   /// update our mappings for this new shard
+   for( const auto& s : write ) {
+      _undo_cycle._write_scope_to_shard.emplace( s, shard_optr(&*itr) );
+   }
+   for( const auto& s : read ) {
+      _undo_cycle._read_scopes.insert( s );
+   }
+
   return shard_handle( *this, *itr );
+} // cycle_handle::start_shard
+
+void cycle_handle::extend_shard( shard_handle& h, const set<scope_name>& write, const set<scope_name>& read )
+{
+
+   /// TODO: this loop is a sanity check and can be removed in release
+   /// verify there are no read or write conflicts with existing shards
+   for( const auto& s : write ) {
+      auto existing_write = _undo_cycle._write_scope_to_shard.find( s );
+      if( existing_write != _undo_cycle._write_scope_to_shard.end() )
+         FC_ASSERT( existing_write->second.get() == &h._shard );
+
+      auto existing_read = _undo_cycle._read_scopes.find( s );
+      FC_ASSERT( existing_read == _undo_cycle._read_scopes.end(), "shard conflict detected" );
+   }
+
+   /// TODO: this loop is a sanity check and can be removed in release
+   /// verify there are no read conflicts with existing shards
+   for( const auto& s : read ) {
+      auto existing = _undo_cycle._write_scope_to_shard.find( s );
+      if( existing != _undo_cycle._write_scope_to_shard.end() )
+         FC_ASSERT( existing->second.get() == &h._shard, "shard conflict detected" );
+   }
+
+   for( const auto& s : write ) {
+      auto result = _undo_cycle._write_scope_to_shard.emplace( s, &h._shard );
+      if( !result.second ) {
+         FC_ASSERT( result.first->second.get() == &h._shard, "shard conflict detected" );
+      }
+   }
+
+   for( const auto& s : read ) {
+      _undo_cycle._read_scopes.emplace(s);
+   }
 }
+
 
 shard_handle::shard_handle( cycle_handle& c, shard& s )
 :_db(c._db),_shard(s) {

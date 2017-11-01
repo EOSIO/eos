@@ -34,18 +34,18 @@ namespace eosio { namespace blockchain  {
    struct shard {
       shard( allocator<char> a, const set<scope_name>& w, const set<scope_name>& r );
 
-      shared_set<scope_name>        _write_scope;
-      shared_set<scope_name>        _read_scope;
-      shared_list<undo_transaction> _transaction_history;
+      shared_set<scope_name>        _write_scope; ///< owned by cycle strand
+      shared_set<scope_name>        _read_scope;  ///< owned by cycle strand
+      shared_list<undo_transaction> _transaction_history; ///< owned by shard strand
    };
 
    typedef offset_ptr<shard> shard_optr;
 
    struct undo_cycle {
-      undo_cycle( allocator<char> a ):_write_scope_to_shard(a),_read_scope_to_shard(a),_shards(a){}
+      undo_cycle( allocator<char> a ):_write_scope_to_shard(a),_read_scopes(a),_shards(a){}
 
       shared_map<scope_name,shard_optr> _write_scope_to_shard;
-      shared_map<scope_name,shard_optr> _read_scope_to_shard;
+      shared_set<scope_name>            _read_scopes;
       shared_list<shard>                _shards;
    };
 
@@ -171,6 +171,7 @@ namespace eosio { namespace blockchain  {
 
       private:
          friend class transaction_handle;
+         friend class cycle_handle;
 
          void undo_transaction();
          void squash_transaction();
@@ -188,8 +189,20 @@ namespace eosio { namespace blockchain  {
           * Assuming this block is the current head block handle, this will attempt to
           * create a new shard.  It will fail if there is a conflict with the read/write scopes and
           * existing shards.
+          *
+          * Throws an exception if there is a scope conflict.
           */
-         shard_handle start_shard( const set<scope_name>& write, const set<scope_name>& read = set<scope_name>() );
+         shard_handle start_shard( const set<scope_name>& write, 
+                                   const set<scope_name>& read = set<scope_name>() );
+
+         /**
+          * Given an existing shard, expand its range to include the given write and read scopes 
+          * provided it would not create a conflict with existing shards.
+          *
+          * Throws an exception if there is a scope conflict.
+          */
+         void extend_shard( shard_handle& h, const set<scope_name>& write, 
+                                             const set<scope_name>& read = set<scope_name>() );
       private:
          friend class shard_handle;
          database&     _db;

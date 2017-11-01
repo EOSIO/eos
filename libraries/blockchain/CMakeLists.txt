@@ -1,6 +1,20 @@
 file(GLOB HEADERS "include/eosio/blockchain/*.hpp" "include/eosio/blockchain/internal/*.hpp")
 
-add_library( eosio_blockchain scheduler.cpp transaction.cpp transaction_cache.cpp name.cpp public_key.cpp block.cpp merkle.cpp generic_table.cpp database.cpp fork_database.cpp block_log.cpp controller.cpp )
+add_library( eosio_blockchain 
+             scheduler.cpp 
+             transaction_scheduler.cpp
+             transaction.cpp 
+             transaction_cache.cpp 
+             name.cpp 
+             public_key.cpp 
+             block.cpp 
+             merkle.cpp 
+             generic_table.cpp 
+             database.cpp 
+             fork_database.cpp 
+             block_log.cpp 
+             controller.cpp )
+
 target_link_libraries( eosio_blockchain fc chainbase eos_types )
 target_include_directories( eosio_blockchain PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inlcude" "${CMAKE_CURRENT_SOURCE_DIR}/include"
                                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include" )

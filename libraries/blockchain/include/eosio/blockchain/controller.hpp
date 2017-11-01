@@ -2,6 +2,7 @@
 #include <eosio/blockchain/block.hpp>
 #include <eosio/blockchain/database.hpp>
 #include <eosio/blockchain/scheduler.hpp>
+#include <eosio/blockchain/transaction_cache.hpp>
 
 #include <thread>
 
@@ -70,10 +71,7 @@ namespace eosio { namespace blockchain {
           *  already known then nothing will happen, otherwise the various signals will be
           *  emitted as the transaction is processed.
           */
-         void add_transaction( vector<char>&& packed_transaction,
-                               transaction_id_type trx_id, 
-                               signed_transaction_ptr = signed_transaction_ptr(), 
-                               set<public_key_type> signatures = set<public_key_type>() );
+         void add_transaction( meta_transaction_ptr trx );
 
          /**
           * Given a block summary, this method will reconstitute the block_data from the
@@ -155,9 +153,12 @@ namespace eosio { namespace blockchain {
 
          void validate_producer( time_point when, account_name producer, public_key_type producer_key );
 
+         optional<scheduler>                 _cycle_scheduler;
          optional<block_handle>              _pending_block;
          optional<cycle_handle>              _pending_cycle;
          meta_block_ptr                      _pending_meta_block;
+
+         transaction_cache                   _transaction_cache;
 
          unique_ptr<boost::asio::io_service> _ios;
          unique_ptr<std::thread>             _thread;
@@ -166,8 +167,6 @@ namespace eosio { namespace blockchain {
          unique_ptr<fork_database>           _fork_db;
          path                                _datadir;
          size_t                              _shared_mem_size;
-
-         scheduler                           _scheduler;
    };
 
 } } /// eosio::blockchain

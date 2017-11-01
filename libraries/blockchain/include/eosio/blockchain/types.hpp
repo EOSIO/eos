@@ -21,7 +21,9 @@ namespace eosio { namespace blockchain {
    using std::vector;
    using std::map;
    using std::set;
+   using std::list;
    using std::pair;
+   using std::make_pair;
    using std::weak_ptr;
    using std::shared_ptr;
    using std::make_shared;
