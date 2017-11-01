@@ -23,13 +23,6 @@ namespace eos {
 
 using namespace eos;
 
-
-struct error_results {
-  uint16_t code;
-  string message;
-  string details;
-};
-
 #define CALL(api_name, api_handle, call_name, INVOKE) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [&api_handle](string, string body, url_response_callback cb) mutable { \
@@ -130,5 +123,3 @@ void wallet_api_plugin::plugin_initialize(const variables_map& options) {
 #undef CALL
 
 }
-
-FC_REFLECT(eos::error_results, (code)(message)(details))
