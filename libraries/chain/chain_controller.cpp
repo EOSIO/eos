@@ -39,13 +39,7 @@
 #include <chrono>
 
 namespace eos { namespace chain {
-
-const uint32_t chain_controller::trans_msg_rate_limits::default_per_auth_account_time_frame_seconds = 18;
-const uint32_t chain_controller::trans_msg_rate_limits::default_per_auth_account = 1800;
-const uint32_t chain_controller::trans_msg_rate_limits::default_per_code_account_time_frame_seconds = 18;
-const uint32_t chain_controller::trans_msg_rate_limits::default_per_code_account = 18000;
-
-
+bool chain_controller::test = false;
 bool chain_controller::is_known_block(const block_id_type& id)const
 {
    return _fork_db.is_known_block(id) || _block_log.read_block_by_id(id);
@@ -877,15 +871,15 @@ void chain_controller::validate_expiration(const Transaction& trx) const
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-uint32_t chain_controller::_transaction_message_rate(uint32_t now, uint32_t last_update_sec, uint32_t rate_limit_time_frame_sec,
+uint32_t chain_controller::_transaction_message_rate(const fc::time_point_sec& now, const fc::time_point_sec& last_update_sec, const fc::time_point_sec& rate_limit_time_frame_sec,
                                                      uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const AccountName& name)
 {
-   const auto delta_time = now - last_update_sec;
+   const fc::time_point_sec delta_time = fc::time_point(now - last_update_sec);
    uint32_t message_count = 1;
    if (delta_time <= rate_limit_time_frame_sec)
    {
-      message_count += ( ( ( rate_limit_time_frame_sec - delta_time ) * fc::uint128( previous_rate ) )
-                     / rate_limit_time_frame_sec ).to_uint64();
+      message_count += ( ( ( rate_limit_time_frame_sec - delta_time ).to_seconds() * fc::uint128( previous_rate ) )
+                     / rate_limit_time_frame_sec.sec_since_epoch() ).to_uint64();
 #define RATE_LIMIT_ASSERT(tx_msgs_exceeded, type_str) \
       EOS_ASSERT(message_count <= rate_limit, tx_msgs_exceeded, \
                  "Rate limiting ${type} account=${name} messages sent, ${count} exceeds ${max} messages limit per ${sec} seconds. Wait 1 second and try again", \
@@ -902,6 +896,8 @@ uint32_t chain_controller::_transaction_message_rate(uint32_t now, uint32_t last
       case code_account:
          RATE_LIMIT_ASSERT(tx_msgs_code_exceeded, "code");
          break;
+      default:
+         FC_ASSERT(true, "Undefined rate_limit_type: ${rlt}", ("rlt", (uint32_t)type));
       }
    }
 
@@ -910,7 +906,8 @@ uint32_t chain_controller::_transaction_message_rate(uint32_t now, uint32_t last
 
 void chain_controller::rate_limit_message(const Message& message)
 { try {
-   const auto now = head_block_time().sec_since_epoch();
+   const auto now = head_block_time();
+   if (chain_controller::test) wlog("rate limit for ${a} ${t}",("a",message.code)("t",now.sec_since_epoch()));
 
    // per authorization rate limiting
    for (const auto& permission : message.authorization)
@@ -918,19 +915,21 @@ void chain_controller::rate_limit_message(const Message& message)
       auto rate_limiting = _db.find<rate_limiting_object, by_name>(permission.account);
       if (rate_limiting == nullptr)
       {
+         if (chain_controller::test) wlog("create auth ${a} ${t}",("a",permission.account)("t",now.sec_since_epoch()));
          _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
             rlo.name = permission.account;
-            rlo.per_auth_account_trans_msg_rate = 1;
+            rlo.per_auth_account_txn_msg_rate = 1;
             rlo.per_auth_account_last_update_sec = now;
          });
       }
       else
       {
+         if (chain_controller::test) wlog("modify auth ${a} ${t} ${mr}",("a",permission.account)("t",now.sec_since_epoch())("mr",rate_limiting->per_auth_account_txn_msg_rate));
          const auto message_rate =
-               _transaction_message_rate(now, rate_limiting->per_auth_account_last_update_sec, _per_auth_account_trans_msg_rate_limit_time_frame_sec,
-                                        _per_auth_account_trans_msg_rate_limit, rate_limiting->per_auth_account_trans_msg_rate, authorization_account, permission.account);
+               _transaction_message_rate(now, rate_limiting->per_auth_account_last_update_sec, _per_auth_account_txn_msg_rate_limit_time_frame_sec,
+                                        _per_auth_account_txn_msg_rate_limit, rate_limiting->per_auth_account_txn_msg_rate, authorization_account, permission.account);
          _db.modify(*rate_limiting, [&] (rate_limiting_object& rlo) {
-            rlo.per_auth_account_trans_msg_rate = message_rate;
+            rlo.per_auth_account_txn_msg_rate = message_rate;
             rlo.per_auth_account_last_update_sec = now;
          });
       }
@@ -940,19 +939,21 @@ void chain_controller::rate_limit_message(const Message& message)
    auto rate_limiting = _db.find<rate_limiting_object, by_name>(message.code);
    if (rate_limiting == nullptr)
    {
+      if (chain_controller::test) wlog("create code ${a} ${t}",("a",message.code)("t",now.sec_since_epoch()));
       _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
          rlo.name = message.code;
-         rlo.per_code_account_trans_msg_rate = 1;
+         rlo.per_code_account_txn_msg_rate = 1;
          rlo.per_code_account_last_update_sec = now;
       });
    }
    else
    {
+      if (chain_controller::test) wlog("modify code ${a} ${t} ${mr}",("a",message.code)("t",now.sec_since_epoch())("mr",rate_limiting->per_code_account_txn_msg_rate));
       const auto message_rate =
-            _transaction_message_rate(now, rate_limiting->per_code_account_last_update_sec, _per_code_account_trans_msg_rate_limit_time_frame_sec,
-                                     _per_code_account_trans_msg_rate_limit, rate_limiting->per_code_account_trans_msg_rate, code_account, message.code);
+            _transaction_message_rate(now, rate_limiting->per_code_account_last_update_sec, _per_code_account_txn_msg_rate_limit_time_frame_sec,
+                                     _per_code_account_txn_msg_rate_limit, rate_limiting->per_code_account_txn_msg_rate, code_account, message.code);
       _db.modify(*rate_limiting, [&] (rate_limiting_object& rlo) {
-         rlo.per_code_account_trans_msg_rate = message_rate;
+         rlo.per_code_account_txn_msg_rate = message_rate;
          rlo.per_code_account_last_update_sec = now;
       });
    }
@@ -1025,10 +1026,10 @@ void chain_controller::apply_message(apply_context& context)
        //idump((context.code)(context.msg.type));
        const uint32_t execution_time =
           _skip_flags | received_block
-             ? _rcvd_block_trans_execution_time
+             ? _rcvd_block_txn_execution_time
              : _skip_flags | created_block
-               ? _create_block_trans_execution_time
-               : _trans_execution_time;
+               ? _create_block_txn_execution_time
+               : _txn_execution_time;
        const bool is_received_block = _skip_flags & received_block;
        wasm_interface::get().apply(context, execution_time, is_received_block);
     }
@@ -1244,15 +1245,15 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
-                                   uint32_t trans_execution_time, uint32_t rcvd_block_trans_execution_time,
-                                   uint32_t create_block_trans_execution_time,
-                                   const trans_msg_rate_limits& rate_limit)
-   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _trans_execution_time(trans_execution_time),
-     _rcvd_block_trans_execution_time(rcvd_block_trans_execution_time), _create_block_trans_execution_time(create_block_trans_execution_time),
-     _per_auth_account_trans_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_time_frame_sec),
-     _per_auth_account_trans_msg_rate_limit(rate_limit.per_auth_account),
-     _per_code_account_trans_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_time_frame_sec),
-     _per_code_account_trans_msg_rate_limit(rate_limit.per_code_account) {
+                                   uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
+                                   uint32_t create_block_txn_execution_time,
+                                   const txn_msg_rate_limits& rate_limit)
+   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _txn_execution_time(txn_execution_time),
+     _rcvd_block_txn_execution_time(rcvd_block_txn_execution_time), _create_block_txn_execution_time(create_block_txn_execution_time),
+     _per_auth_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_time_frame_sec),
+     _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account),
+     _per_code_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_time_frame_sec),
+     _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account) {
 
    initialize_indexes();
    starter.register_types(*this, _db);

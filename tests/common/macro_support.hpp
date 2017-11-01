@@ -30,7 +30,7 @@
    block_log name ## _log(get_temp_dir() / "blocklog"); \
    fork_database name ## _fdb; \
    native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
-   chain_controller::trans_msg_rate_limits rate_limits; \
+   chain_controller::txn_msg_rate_limits rate_limits; \
    rate_limits.per_auth_account_time_frame_sec = per_auth_account_rate_limit_time_frame_sec; \
    rate_limits.per_auth_account = per_auth_account_rate_limit; \
    rate_limits.per_code_account_time_frame_sec = per_code_account_rate_limit_time_frame_sec; \

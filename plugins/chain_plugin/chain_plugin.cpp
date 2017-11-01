@@ -37,7 +37,7 @@ using chain::key64x64x64_value_object;
 using chain::by_name;
 using chain::by_scope_primary;
 using chain::uint128_t;
-using trans_msg_rate_limits = chain_controller::trans_msg_rate_limits;
+using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
 
 
 class chain_plugin_impl {
@@ -53,10 +53,10 @@ public:
    fc::optional<block_log>          block_logger;
    fc::optional<chain_controller>   chain;
    chain_id_type                    chain_id;
-   uint32_t                         rcvd_block_trans_execution_time;
-   uint32_t                         trans_execution_time;
-   uint32_t                         create_block_trans_execution_time;
-   trans_msg_rate_limits            rate_limits;
+   uint32_t                         rcvd_block_txn_execution_time;
+   uint32_t                         txn_execution_time;
+   uint32_t                         create_block_txn_execution_time;
+   txn_msg_rate_limits              rate_limits;
 };
 
 #ifdef NDEBUG
@@ -90,13 +90,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
          ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_create_block_transaction_execution_time),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
-         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(trans_msg_rate_limits::default_per_auth_account_time_frame_seconds),
+         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::DefaultPerAuthAccountTimeFrameSeconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
-         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(trans_msg_rate_limits::default_per_auth_account),
+         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::DefaultPerAuthAccount),
           "Limits the maximum rate of transaction messages that an account is allowed each per-authorized-account-transaction-msg-rate-limit-time-frame-sec.")
-          ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(trans_msg_rate_limits::default_per_code_account_time_frame_seconds),
+          ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::DefaultPerCodeAccountTimeFrameSeconds),
            "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
-          ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(trans_msg_rate_limits::default_per_code_account),
+          ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::DefaultPerCodeAccount),
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
          ;
    cli.add_options()
@@ -173,14 +173,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    }
 
-   my->rcvd_block_trans_execution_time = options.at("rcvd-block-trans-execution-time").as<uint32_t>() * 1000;
-   my->trans_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
-   my->create_block_trans_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
+   my->rcvd_block_txn_execution_time = options.at("rcvd-block-trans-execution-time").as<uint32_t>() * 1000;
+   my->txn_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
+   my->create_block_txn_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
 
-   my->rate_limits.per_auth_account_time_frame_sec = options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>();
+   my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
    my->rate_limits.per_auth_account = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
 
-   my->rate_limits.per_code_account_time_frame_sec = options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>();
+   my->rate_limits.per_code_account_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
    my->rate_limits.per_code_account = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
 }
 
@@ -204,9 +204,9 @@ void chain_plugin::plugin_startup()
    my->chain_id = genesis.compute_chain_id();
    my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
                                 initializer, native_contract::make_administrator(),
-                                my->trans_execution_time,
-                                my->rcvd_block_trans_execution_time,
-                                my->create_block_trans_execution_time,
+                                my->txn_execution_time,
+                                my->rcvd_block_txn_execution_time,
+                                my->create_block_txn_execution_time,
                                 my->rate_limits);
 
    if(!my->readonly) {

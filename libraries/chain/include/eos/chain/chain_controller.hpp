@@ -36,13 +36,14 @@ namespace eos { namespace chain {
     */
    class chain_controller {
       public:
-         struct trans_msg_rate_limits;
+      static bool test;
+         struct txn_msg_rate_limits;
 
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                           chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
-                          uint32_t trans_execution_time, uint32_t rcvd_block_trans_execution_time,
-                          uint32_t create_block_trans_execution_time,
-                          const trans_msg_rate_limits& rate_limit);
+                          uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
+                          uint32_t create_block_txn_execution_time,
+                          const txn_msg_rate_limits& rate_limit);
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
 
@@ -281,18 +282,14 @@ namespace eos { namespace chain {
           * @throws tx_msgs_auth_exceeded if current message rate exceeds the passed in rate_limit, and type is authorization_account
           * @throws tx_msgs_code_exceeded if current message rate exceeds the passed in rate_limit, and type is code_account
           */
-         static uint32_t _transaction_message_rate(uint32_t now, uint32_t last_update_sec, uint32_t rate_limit_time_frame_sec,
+         static uint32_t _transaction_message_rate(const fc::time_point_sec& now, const fc::time_point_sec& last_update_sec, const fc::time_point_sec& rate_limit_time_frame_sec,
                                                    uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const AccountName& name);
 
-         struct trans_msg_rate_limits {
-            static const uint32_t default_per_auth_account_time_frame_seconds;
-            static const uint32_t default_per_auth_account;
-            static const uint32_t default_per_code_account_time_frame_seconds;
-            static const uint32_t default_per_code_account;
-            uint32_t per_auth_account_time_frame_sec = default_per_auth_account_time_frame_seconds;
-            uint32_t per_auth_account = default_per_auth_account;
-            uint32_t per_code_account_time_frame_sec = default_per_code_account_time_frame_seconds;
-            uint32_t per_code_account = default_per_code_account;
+         struct txn_msg_rate_limits {
+            fc::time_point_sec per_auth_account_time_frame_sec = fc::time_point_sec(config::DefaultPerAuthAccountTimeFrameSeconds);
+            uint32_t per_auth_account = config::DefaultPerAuthAccount;
+            fc::time_point_sec per_code_account_time_frame_sec = fc::time_point_sec(config::DefaultPerCodeAccountTimeFrameSeconds);
+            uint32_t per_code_account = config::DefaultPerCodeAccount;
          };
 
    private:
@@ -413,13 +410,13 @@ namespace eos { namespace chain {
          bool                             _currently_applying_block = false;
          uint64_t                         _skip_flags = 0;
 
-         const uint32_t                   _trans_execution_time;
-         const uint32_t                   _rcvd_block_trans_execution_time;
-         const uint32_t                   _create_block_trans_execution_time;
-         const uint32_t                   _per_auth_account_trans_msg_rate_limit_time_frame_sec;
-         const uint32_t                   _per_auth_account_trans_msg_rate_limit;
-         const uint32_t                   _per_code_account_trans_msg_rate_limit_time_frame_sec;
-         const uint32_t                   _per_code_account_trans_msg_rate_limit;
+         const uint32_t                   _txn_execution_time;
+         const uint32_t                   _rcvd_block_txn_execution_time;
+         const uint32_t                   _create_block_txn_execution_time;
+         const fc::time_point_sec         _per_auth_account_txn_msg_rate_limit_time_frame_sec;
+         const uint32_t                   _per_auth_account_txn_msg_rate_limit;
+         const fc::time_point_sec         _per_code_account_txn_msg_rate_limit_time_frame_sec;
+         const uint32_t                   _per_code_account_txn_msg_rate_limit;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 

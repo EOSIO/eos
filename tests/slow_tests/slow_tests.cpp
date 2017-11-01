@@ -314,7 +314,7 @@ void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName 
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
-      Make_Blockchain(chain, 10, 100000, 10, 100000);
+      Make_Blockchain(chain, fc::time_point_sec(10), 100000, fc::time_point_sec(10), 100000);
       chain.produce_blocks(10);
       Make_Account(chain, currency);
       chain.produce_blocks(1);
