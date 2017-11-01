@@ -39,7 +39,6 @@
 #include <chrono>
 
 namespace eos { namespace chain {
-bool chain_controller::test = false;
 bool chain_controller::is_known_block(const block_id_type& id)const
 {
    return _fork_db.is_known_block(id) || _block_log.read_block_by_id(id);
@@ -907,7 +906,6 @@ uint32_t chain_controller::_transaction_message_rate(const fc::time_point_sec& n
 void chain_controller::rate_limit_message(const Message& message)
 { try {
    const auto now = head_block_time();
-   if (chain_controller::test) wlog("rate limit for ${a} ${t}",("a",message.code)("t",now.sec_since_epoch()));
 
    // per authorization rate limiting
    for (const auto& permission : message.authorization)
@@ -915,7 +913,6 @@ void chain_controller::rate_limit_message(const Message& message)
       auto rate_limiting = _db.find<rate_limiting_object, by_name>(permission.account);
       if (rate_limiting == nullptr)
       {
-         if (chain_controller::test) wlog("create auth ${a} ${t}",("a",permission.account)("t",now.sec_since_epoch()));
          _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
             rlo.name = permission.account;
             rlo.per_auth_account_txn_msg_rate = 1;
@@ -924,7 +921,6 @@ void chain_controller::rate_limit_message(const Message& message)
       }
       else
       {
-         if (chain_controller::test) wlog("modify auth ${a} ${t} ${mr}",("a",permission.account)("t",now.sec_since_epoch())("mr",rate_limiting->per_auth_account_txn_msg_rate));
          const auto message_rate =
                _transaction_message_rate(now, rate_limiting->per_auth_account_last_update_sec, _per_auth_account_txn_msg_rate_limit_time_frame_sec,
                                         _per_auth_account_txn_msg_rate_limit, rate_limiting->per_auth_account_txn_msg_rate, authorization_account, permission.account);
@@ -939,7 +935,6 @@ void chain_controller::rate_limit_message(const Message& message)
    auto rate_limiting = _db.find<rate_limiting_object, by_name>(message.code);
    if (rate_limiting == nullptr)
    {
-      if (chain_controller::test) wlog("create code ${a} ${t}",("a",message.code)("t",now.sec_since_epoch()));
       _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
          rlo.name = message.code;
          rlo.per_code_account_txn_msg_rate = 1;
@@ -948,7 +943,6 @@ void chain_controller::rate_limit_message(const Message& message)
    }
    else
    {
-      if (chain_controller::test) wlog("modify code ${a} ${t} ${mr}",("a",message.code)("t",now.sec_since_epoch())("mr",rate_limiting->per_code_account_txn_msg_rate));
       const auto message_rate =
             _transaction_message_rate(now, rate_limiting->per_code_account_last_update_sec, _per_code_account_txn_msg_rate_limit_time_frame_sec,
                                      _per_code_account_txn_msg_rate_limit, rate_limiting->per_code_account_txn_msg_rate, code_account, message.code);

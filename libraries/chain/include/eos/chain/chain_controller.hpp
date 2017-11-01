@@ -36,7 +36,6 @@ namespace eos { namespace chain {
     */
    class chain_controller {
       public:
-      static bool test;
          struct txn_msg_rate_limits;
 
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
