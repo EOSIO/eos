@@ -6,6 +6,7 @@
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
+#include <fc/io/json.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
@@ -179,20 +180,28 @@ namespace eos {
                         });
                      } else {
                         wlog("404 - not found: ${ep}", ("ep",resource));
-                        con->set_body("Unknown Endpoint");
+                        error_results results{websocketpp::http::status_code::not_found,
+                                              "Not Found", "Unknown Endpoint"};
+                        con->set_body(fc::json::to_string(results));
                         con->set_status(websocketpp::http::status_code::not_found);
                      }
                   } catch( const fc::exception& e ) {
                      elog( "http: ${e}", ("e",e.to_detail_string()));
-                        con->set_body(e.to_detail_string());
-                        con->set_status(websocketpp::http::status_code::internal_server_error);
+                     error_results results{websocketpp::http::status_code::internal_server_error,
+                                           "Internal Service Error", e.to_detail_string()};
+                     con->set_body(fc::json::to_string(results));
+                     con->set_status(websocketpp::http::status_code::internal_server_error);
                   } catch( const std::exception& e ) {
                      elog( "http: ${e}", ("e",e.what()));
-                        con->set_body(e.what());
-                        con->set_status(websocketpp::http::status_code::internal_server_error);
+                     error_results results{websocketpp::http::status_code::internal_server_error,
+                                           "Internal Service Error", e.what()};
+                     con->set_body(fc::json::to_string(results));
+                     con->set_status(websocketpp::http::status_code::internal_server_error);
                   } catch( ... ) {
-                        con->set_body("unknown exception");
-                        con->set_status(websocketpp::http::status_code::internal_server_error);
+                     error_results results{websocketpp::http::status_code::internal_server_error,
+                                           "Internal Service Error", "unknown exception"};
+                     con->set_body(fc::json::to_string(results));
+                     con->set_status(websocketpp::http::status_code::internal_server_error);
                   }
                });
 

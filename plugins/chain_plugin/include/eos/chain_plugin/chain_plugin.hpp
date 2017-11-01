@@ -224,7 +224,7 @@ public:
    
       auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
    
-      int count = 0;
+      unsigned int count = 0;
       auto itr = lower;
       for( itr = lower; itr != upper && itr->table == p.table; ++itr ) {
          copy_row(*itr, data);
