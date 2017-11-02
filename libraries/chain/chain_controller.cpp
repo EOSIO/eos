@@ -703,6 +703,9 @@ void chain_controller::_apply_block(const signed_block& next_block)
    // notify observers that the block has been applied
    // TODO: do this outside the write lock...? 
    applied_block( next_block ); //emit
+   if (_currently_replaying_blocks)
+     applied_irreversible_block(next_block);
+
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
@@ -1224,15 +1227,26 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
          for (int i = 0; i < 0x10000; i++)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
+         // create a dummy block and cycle for our dummy transactions to send to applied_irreversible_block below
+         signed_block block{};
+         block.cycles.emplace_back();
+         block.cycles[0].emplace_back();
+
          auto messages = starter.prepare_database(*this, _db);
-         std::for_each(messages.begin(), messages.end(), [&](const Message& m) { 
+         std::for_each(messages.begin(), messages.end(), [&](const Message& m) {
             MessageOutput output;
-            ProcessedTransaction trx; /// dummy tranaction required for scope validation
+            ProcessedTransaction trx; /// dummy transaction required for scope validation
             std::sort(trx.scope.begin(), trx.scope.end() );
             with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, [&](){
                process_message(trx,m.code,m,output); 
             });
+
+            trx.messages.push_back(m);
+            block.cycles[0][0].user_input.push_back(std::move(trx));
          });
+
+         // TODO: Should we write this genesis block instead of faking it on startup?
+         applied_irreversible_block(block);
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
@@ -1241,13 +1255,17 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
                                    uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                                    uint32_t create_block_txn_execution_time,
-                                   const txn_msg_rate_limits& rate_limit)
+                                   const txn_msg_rate_limits& rate_limit,
+                                   const applied_irreverisable_block_func& applied_func)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _txn_execution_time(txn_execution_time),
      _rcvd_block_txn_execution_time(rcvd_block_txn_execution_time), _create_block_txn_execution_time(create_block_txn_execution_time),
      _per_auth_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_time_frame_sec),
      _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account),
      _per_code_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_time_frame_sec),
      _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account) {
+
+   if (applied_func)
+      applied_irreversible_block.connect(*applied_func);
 
    initialize_indexes();
    starter.register_types(*this, _db);
@@ -1273,6 +1291,12 @@ chain_controller::~chain_controller() {
 void chain_controller::replay() {
    ilog("Replaying blockchain");
    auto start = fc::time_point::now();
+
+   auto on_exit = fc::make_scoped_exit([&_currently_replaying_blocks = _currently_replaying_blocks](){
+      _currently_replaying_blocks = false;
+   });
+   _currently_replaying_blocks = true;
+
    auto last_block = _block_log.read_head();
    if (!last_block) {
       elog("No blocks in block log; skipping replay");
@@ -1433,6 +1457,7 @@ void chain_controller::update_last_irreversible_block()
          auto block = fetch_block_by_number(block_to_write);
          assert(block);
          _block_log.append(*block);
+         applied_irreversible_block(*block);
       }
 
    // Trim fork_database and undo histories

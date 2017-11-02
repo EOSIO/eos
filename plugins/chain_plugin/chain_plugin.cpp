@@ -10,6 +10,8 @@
 #include <eos/chain/config.hpp>
 #include <eos/chain/types.hpp>
 
+#include <eos/db_plugin/db_plugin.hpp>
+
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
 #include <eos/native_contract/staked_balance_objects.hpp>
@@ -141,10 +143,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if (options.at("replay-blockchain").as<bool>()) {
       ilog("Replay requested: wiping database");
       app().get_plugin<database_plugin>().wipe_database();
+      if (db_plugin* db = app().find_plugin<db_plugin>()) {
+         db->wipe_database();
+      }
    }
    if (options.at("resync-blockchain").as<bool>()) {
       ilog("Resync requested: wiping blocks");
       app().get_plugin<database_plugin>().wipe_database();
+      if (db_plugin* db = app().find_plugin<db_plugin>()) {
+         db->wipe_database();
+      }
       fc::remove_all(my->block_log_dir);
    }
    if (options.at("skip-transaction-signatures").as<bool>()) {
@@ -187,6 +195,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup() 
 { try {
    auto& db = app().get_plugin<database_plugin>().db();
+   eos::chain::applied_irreverisable_block_func applied_func;
+   if (db_plugin* plugin = app().find_plugin<db_plugin>()) {
+      if (plugin->get_state() != registered) {
+         ilog("Blockchain configured with external database.");
+         applied_func = [plugin](const chain::signed_block& b) { plugin->applied_irreversible_block(b); };
+      }
+   }
 
    FC_ASSERT( fc::exists( my->genesis_file ), 
               "unable to find genesis file '${f}', check --genesis-json argument", 
@@ -207,7 +222,8 @@ void chain_plugin::plugin_startup()
                                 my->txn_execution_time,
                                 my->rcvd_block_txn_execution_time,
                                 my->create_block_txn_execution_time,
-                                my->rate_limits);
+                                my->rate_limits,
+                                applied_func);
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
