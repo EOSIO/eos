@@ -8,7 +8,7 @@
  *  provided an API header defined in currency.hpp which the exchange
  *  contract will use to process messages related to deposits and withdraws.
  *
- *  The exchange contract knows that the currency contracts requireNotice()
+ *  The exchange contract knows that the currency contracts require_notice()
  *  of both the sender and receiver; therefore, the exchange contract can
  *  implement a message handler that will be called anytime funds are deposited
  *  to or withdrawn from the exchange.
@@ -69,7 +69,7 @@ void apply_currency_transfer( const currency::Transfer& transfer ) {
           account.currency_balance += transfer.quantity; 
       });
    } else if( transfer.from == N(exchange) ) {
-      requireAuth( transfer.to ); /// require the receiver of funds (account owner) to authorize this transfer
+      require_auth( transfer.to ); /// require the receiver of funds (account owner) to authorize this transfer
 
       modifyAccount( transfer.to, [&]( Account& account ){ 
           account.currency_balance -= transfer.quantity; 
@@ -89,7 +89,7 @@ void apply_eos_transfer( const eos::Transfer& transfer ) {
           account.eos_balance += transfer.quantity; 
       });
    } else if( transfer.from == N(exchange) ) {
-      requireAuth( transfer.to ); /// require the receiver of funds (account owner) to authorize this transfer
+      require_auth( transfer.to ); /// require the receiver of funds (account owner) to authorize this transfer
 
       modifyAccount( transfer.to, [&]( Account& account ){ 
           account.eos_balance -= transfer.quantity; 
@@ -130,7 +130,7 @@ void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
  */
 void apply_exchange_buy( BuyOrder order ) {
    Bid& bid = order;
-   requireAuth( bid.buyer.name ); 
+   require_auth( bid.buyer.name );
 
    assert( bid.quantity > eos::Tokens(0), "invalid quantity" );
    assert( bid.expiration > now(), "order expired" );
@@ -193,7 +193,7 @@ void apply_exchange_buy( BuyOrder order ) {
 
 void apply_exchange_sell( SellOrder order ) {
    Ask& ask = order;
-   requireAuth( ask.seller.name ); 
+   require_auth( ask.seller.name );
 
    assert( ask.quantity > CurrencyTokens(0), "invalid quantity" );
    assert( ask.expiration > now(), "order expired" );
@@ -251,7 +251,7 @@ void apply_exchange_sell( SellOrder order ) {
 }
 
 void apply_exchange_cancel_buy( OrderID order ) {
-   requireAuth( order.name ); 
+   require_auth( order.name );
 
    Bid bid_to_cancel;
    assert( BidsById::get( order, bid_to_cancel ), "bid with this id does not exists" );
@@ -267,7 +267,7 @@ void apply_exchange_cancel_buy( OrderID order ) {
 }
 
 void apply_exchange_cancel_sell( OrderID order ) {
-   requireAuth( order.name ); 
+   require_auth( order.name );
 
    Ask ask_to_cancel;
    assert( AsksById::get( order, ask_to_cancel ), "ask with this id does not exists" );
@@ -303,16 +303,16 @@ extern "C" {
       if( code == N(exchange) ) {
          switch( action ) {
             case N(buy):
-               apply_exchange_buy( currentMessage<exchange::BuyOrder>() );
+               apply_exchange_buy( current_message<exchange::BuyOrder>() );
                break;
             case N(sell):
-               apply_exchange_sell( currentMessage<exchange::SellOrder>() );
+               apply_exchange_sell( current_message<exchange::SellOrder>() );
                break;
             case N(cancelbuy):
-               apply_exchange_cancel_buy( currentMessage<exchange::OrderID>() );
+               apply_exchange_cancel_buy( current_message<exchange::OrderID>() );
                break;
             case N(cancelsell):
-               apply_exchange_cancel_sell( currentMessage<exchange::OrderID>() );
+               apply_exchange_cancel_sell( current_message<exchange::OrderID>() );
                break;
             default:
                assert( false, "unknown action" );
@@ -320,11 +320,11 @@ extern "C" {
       } 
       else if( code == N(currency) ) {
         if( action == N(transfer) ) 
-           apply_currency_transfer( currentMessage<currency::Transfer>() );
+           apply_currency_transfer( current_message<currency::Transfer>() );
       } 
       else if( code == N(eos) ) {
         if( action == N(transfer) ) 
-           apply_eos_transfer( currentMessage<eos::Transfer>() );
+           apply_eos_transfer( current_message<eos::Transfer>() );
       } 
       else {
       }

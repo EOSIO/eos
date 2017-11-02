@@ -81,33 +81,33 @@ extern "C" {
  * res = store_i64(CurrentCOde(), N(test_table), &alice, sizeof(TestModel));
  * TestModel alice;
  * alice.name = N(alice);
- * res = load_i64( currentCode(), currentCode(), N(test_table), &alice, sizeof(TestModel) );
+ * res = load_i64( current_code(), current_code(), N(test_table), &alice, sizeof(TestModel) );
  * ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "load_i64");
  *
- * res = front_i64( currentCode(), currentCode(), N(test_table), &tmp, sizeof(TestModel) );
+ * res = front_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
  * ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
  *
- * res = back_i64( currentCode(), currentCode(), N(test_table), &tmp, sizeof(TestModel) );
+ * res = back_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
  * ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "back_i64 2");
  *
- * res = previous_i64( currentCode(), currentCode(), N(test_table), &tmp, sizeof(TestModel) );
+ * res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
  * ASSERT(res == sizeof(TestModel) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
  *
- * res = next_i64( currentCode(), currentCode(), N(test_table), &tmp, sizeof(TestModel) );
+ * res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
  * ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "back_i64 2");
  *
  * uint64_t key = N(alice);
- * res = remove_i64(currentCode(), N(test_table), &key);
+ * res = remove_i64(current_code(), N(test_table), &key);
  * ASSERT(res == 1, "remove alice");
  *
  * TestModel lb;
  * lb.name = N(bob);
- * res = lower_bound_i64( currentCode(), currentCode(), N(test_table), &lb, sizeof(TestModel) );
+ * res = lower_bound_i64( current_code(), current_code(), N(test_table), &lb, sizeof(TestModel) );
  * ASSERT(res == sizeof(TestModel) && lb.name == N(bob), "lower_bound_i64 bob" );
  *
  * TestModel ub;
  * ub.name = N(alice);
- * res = upper_bound_i64( currentCode(), currentCode(), N(test_table), &ub, sizeof(TestModel) );
+ * res = upper_bound_i64( current_code(), current_code(), N(test_table), &ub, sizeof(TestModel) );
  * ASSERT(res == sizeof(TestModel) && ub.age == 15 && ub.name == N(bob), "upper_bound_i64 bob" );
  * @endcode
  * @{

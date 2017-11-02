@@ -32,7 +32,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_types, name_class);
 
       //test_message
-      WASM_TEST_HANDLER(test_message, read_message);
+      WASM_TEST_HANDLER(test_message, read_message_normal);
       WASM_TEST_HANDLER(test_message, read_message_to_0);
       WASM_TEST_HANDLER(test_message, read_message_to_64k);
       WASM_TEST_HANDLER(test_message, require_notice);

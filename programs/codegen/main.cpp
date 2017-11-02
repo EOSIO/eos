@@ -37,10 +37,10 @@ void generateBytesToValue(ostringstream& output, const types::Table& table) {
 
 void generateCurrentMessage(ostringstream& output, const types::Action& action) {
    output << tab << "template<>" << endl;
-   output << tab << action.type << " currentMessage<" << action.type << ">() {" << endl;
-   output << tab << tab << "uint32_t msgsize = messageSize();" << endl;
+   output << tab << action.type << " current_message<" << action.type << ">() {" << endl;
+   output << tab << tab << "uint32_t msgsize = message_size();" << endl;
    output << tab << tab << "char* buffer = (char *)eos::malloc(msgsize);" << endl;
-   output << tab << tab << "assert(readMessage(buffer, msgsize) == msgsize, \"error reading " << action.type << "\");" << endl;
+   output << tab << tab << "assert(read_message(buffer, msgsize) == msgsize, \"error reading " << action.type << "\");" << endl;
    output << tab << tab << "datastream<char *> ds(buffer, msgsize);" << endl;
    output << tab << tab << action.type << " value;" << endl;
    output << tab << tab << "raw::unpack(ds, value);" << endl;
@@ -120,7 +120,7 @@ int main (int argc, char *argv[]) {
    }
    output << "} }" << endl << endl;
 
-   //Generate currentMessage specialization for every action
+   //Generate current_message specialization for every action
    output << "namespace eos {" << endl;
    vector<types::TypeName> types_seen;
    for(const auto& action : abi.actions) {

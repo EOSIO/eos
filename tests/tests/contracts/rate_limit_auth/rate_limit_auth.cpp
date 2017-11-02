@@ -13,8 +13,8 @@ extern "C" {
 
     void test_auths(const currency::Transfer& auth)
     {
-       requireAuth( auth.from );
-       requireAuth( auth.to );
+       require_auth( auth.from );
+       require_auth( auth.to );
     }
 
     /// The apply method implements the dispatch of events to this contract

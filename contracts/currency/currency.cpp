@@ -20,8 +20,8 @@ namespace TOKEN_NAME {
    }
 
    void apply_currency_transfer( const TOKEN_NAME::Transfer& transfer ) {
-      requireNotice( transfer.to, transfer.from );
-      requireAuth( transfer.from );
+      require_notice( transfer.to, transfer.from );
+      require_auth( transfer.from );
 
       auto from = getAccount( transfer.from );
       auto to   = getAccount( transfer.to );
@@ -46,7 +46,7 @@ extern "C" {
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(currency) ) {
           if( action == N(transfer) ) 
-             currency::apply_currency_transfer( currentMessage< TOKEN_NAME::Transfer >() );
+             currency::apply_currency_transfer( current_message< TOKEN_NAME::Transfer >() );
        }
     }
 }

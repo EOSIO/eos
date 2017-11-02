@@ -21,11 +21,11 @@ extern "C" {
     *  Example:
     *  @code
     *  AccountName producers[21];
-    *  getActiveProducers(producers, sizeof(AccountName)*21);
+    *  get_active_producers(producers, sizeof(AccountName)*21);
     *  @endcode
     */
 
-   void getActiveProducers( AccountName* producers, uint32_t datalen );
+   void get_active_producers( AccountName* producers, uint32_t datalen );
 
    ///@ } chaincapi
 }

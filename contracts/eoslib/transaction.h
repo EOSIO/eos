@@ -76,7 +76,7 @@ extern "C" {
     * 
     * @return handle used to refer to this transaction in future API calls
     */
-   TransactionHandle transactionCreate();
+   TransactionHandle transaction_create();
 
    /**
     * @brief require a scope to process a pending transaction
@@ -88,7 +88,7 @@ extern "C" {
     * @param scope - the `AccountName` to add  
     * @param readOnly - whether `scope` should be added to `scope[]` or `readScope[]`
     */
-   void transactionRequireScope(TransactionHandle trx, AccountName scope, int readOnly = 0);
+   void transaction_require_scope(TransactionHandle trx, AccountName scope, int readOnly = 0);
 
    /**
     * @brief finalize the pending message and add it to the transaction
@@ -98,7 +98,7 @@ extern "C" {
     * @param trx - the `TransactionHandle` of the pending transaction to modify
     * @param msg - the `MessageHandle` of the pending message to add
     */
-   void transactionAddMessage(TransactionHandle trx, MessageHandle msg);
+   void transaction_add_message(TransactionHandle trx, MessageHandle msg);
 
 
    /**
@@ -112,7 +112,7 @@ extern "C" {
     *
     * @param trx - the `TransactionHandle` of the pending transaction to send
     */
-   void transactionSend(TransactionHandle trx);
+   void transaction_send(TransactionHandle trx);
 
    /**
     * @brief drop a pending transaction
@@ -124,7 +124,7 @@ extern "C" {
     *
     * @param trx - the `TransactionHandle` of the pending transaction to send
     */
-   void transactionDrop(TransactionHandle trx);
+   void transaction_drop(TransactionHandle trx);
    
 
    /**
@@ -133,14 +133,14 @@ extern "C" {
     * This function creates a pending message to be included in a deferred
     * transaction or to be send as an inline message
     * 
-    * This message has no default permissions, see @ref messageRequirePermission
+    * This message has no default permissions, see @ref message_require_permission
     *
     * @param code - the `AccountName` which owns the contract code to execute
     * @param type - the type of this message
     * @param data - the payload data for this message
     * @param size - the size of `data`
     */
-   MessageHandle messageCreate(AccountName code, FuncName type, void const* data, int size);
+   MessageHandle message_create(AccountName code, FuncName type, void const* data, int size);
 
    /**
     * @brief require a permission for the pending message
@@ -151,7 +151,7 @@ extern "C" {
     * @param account - the `AccountName` to of the permission
     * @param permission - the `PermissionName` to of the permision
     */
-   void messageRequirePermission(MessageHandle msg, AccountName account, PermissionName permission);
+   void message_require_permission(MessageHandle msg, AccountName account, PermissionName permission);
 
 
    /**
@@ -161,7 +161,7 @@ extern "C" {
     *
     * @param msg - the `MessageHandle` of the pending message to send inline
     */
-   void messageSend(MessageHandle msg);
+   void message_send(MessageHandle msg);
 
 
    /**
@@ -171,7 +171,7 @@ extern "C" {
     *
     * @param trx - the `MessageHandle` of the pending message to discard
     */
-   void messageDrop(MessageHandle msg);
+   void message_drop(MessageHandle msg);
 
 
    ///@ } transactioncapi

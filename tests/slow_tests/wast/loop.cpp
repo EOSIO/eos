@@ -8,7 +8,7 @@ typedef unsigned int uint32_t;
 typedef uint64_t     AccountName;
 int load( const void* keyptr, int keylen, void* valueptr, int valuelen );
 void store( const void* keyptr, int keylen, const void* valueptr, int valuelen );
-int readMessage( void* dest, int destsize );
+int read_message( void* dest, int destsize );
 int remove( const void* key, int keyLength );
 void printi( uint64_t );
 void print( const char* str );
@@ -36,7 +36,7 @@ void store( const Key& key, const Value& v ) { store( &key, sizeof(key), &v, siz
 template<typename Key>
 void remove( const Key& key ) { remove( &key, sizeof(key) );  }
 template<typename Message>
-void readMessage( Message& m ) { readMessage( &m, sizeof(Message) ); }
+void read_message( Message& m ) { read_message( &m, sizeof(Message) ); }
 /// END BUILT IN LIBRARY.... everything below this is "user contract"
 
 
@@ -68,7 +68,7 @@ void apply_simplecoin_transfer() {
    static Balance to_balance;
    to_balance.balance = 0;
 
-   readMessage( message  );
+   read_message( message  );
    load( message.from, from_balance );
    load( message.to, to_balance );
 

@@ -16,12 +16,12 @@ struct Producers {
 
 unsigned int test_chain::test_activeprods() {
   Producers msg_prods;
-  readMessage(&msg_prods, sizeof(Producers));
+  read_message(&msg_prods, sizeof(Producers));
 
   WASM_ASSERT(msg_prods.len == 21, "Producers.len != 21");
 
   Producers api_prods;
-  getActiveProducers(api_prods.producers, sizeof(AccountName)*21);
+  get_active_producers(api_prods.producers, sizeof(AccountName)*21);
 
   for( int i = 0; i < 21 ; ++i ) {
     WASM_ASSERT(api_prods.producers[i] == msg_prods.producers[i], "Active producer");
