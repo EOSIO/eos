@@ -376,10 +376,6 @@ DEFINE_INTRINSIC_FUNCTION1(env,require_notice,require_notice,none,i64,account) {
    wasm_interface::get().current_apply_context->require_recipient( account );
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,require_scope,require_scope,none,i64,scope) {
-   wasm_interface::get().current_validate_context->require_scope( scope );
-}
-
 DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
    auto& wasm          = wasm_interface::get();
    auto  mem           = wasm.current_memory;
