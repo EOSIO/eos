@@ -50,10 +50,17 @@ namespace eosio {
      * Constructor to create string with reserved space
      * @param s size to be reserved (in number o)
      */
-    string(size_t s) : size(s), own_memory(true) {
-      data = (char *)malloc(s * sizeof(char));
-      refcount = (uint32_t*)malloc(sizeof(uint32_t));
-      *refcount = 1;
+    string(size_t s) : size(s) {
+      if (s == 0) {
+        data = nullptr;
+        own_memory = false;
+        refcount = nullptr;
+      } else {
+        data = (char *)malloc(s * sizeof(char));
+        own_memory = true;
+        refcount = (uint32_t*)malloc(sizeof(uint32_t));
+        *refcount = 1;
+      }
     }
 
     /**
@@ -125,22 +132,36 @@ namespace eosio {
      * @return      the current string
      */
     string& assign(char* d, size_t s, bool copy) {
-      release_data_if_needed();
-
-      if (copy) {
-        data = (char *)malloc(s * sizeof(char));
-        memcpy(data, d, s * sizeof(char));
-        own_memory = true;
-        refcount = (uint32_t*)malloc(sizeof(uint32_t));
-        *refcount = 1;
+      if (s == 0) {
+        clear();
       } else {
-        data = d;
-        own_memory = false;
-        refcount = nullptr;
+        release_data_if_needed();
+        if (copy) {
+          data = (char *)malloc(s * sizeof(char));
+          memcpy(data, d, s * sizeof(char));
+          own_memory = true;
+          refcount = (uint32_t*)malloc(sizeof(uint32_t));
+          *refcount = 1;
+        } else {
+          data = d;
+          own_memory = false;
+          refcount = nullptr;
+        }
+        size = s;
       }
-      size = s;
 
       return *this;
+    }
+    
+    /**
+     * Clear the content of the string
+     */
+    void clear() {
+      release_data_if_needed();
+      data = nullptr;
+      size = 0;
+      own_memory = false;
+      refcount = nullptr;
     }
 
     /**
