@@ -1,4 +1,5 @@
 #pragma once
+#include <eoslib/string.h>
 #include <eoslib/types.hpp>
 #include <eoslib/system.h>
 #include <eoslib/memory.hpp>
@@ -230,4 +231,5 @@ namespace eos {
       }
    }
   };
+
 }

@@ -456,7 +456,9 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_unicode"), {}, {}) );
       BOOST_CHECK_EQUAL( capture.size() , 1);
       BOOST_CHECK_EQUAL( capture[0], "你好，世界！");
-
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "valid_utf8"), {}, {} ) == WASM_TEST_PASS, "test_string::valid_utf8()" );
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "invalid_utf8"), {}, {} ), fc::assert_exception, is_assert_exception );
+      
 } FC_LOG_AND_RETHROW() }
 
 #define RUN_CODE_HANDLER_WITH_TRANSFER(account_name, test_wast)                                            \

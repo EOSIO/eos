@@ -290,3 +290,43 @@ unsigned int test_string::print_unicode() {
 
   return WASM_TEST_PASS;
 }
+
+
+unsigned int test_string::valid_utf8() {
+  // Roman alphabet is 1 byte UTF-8
+  char data[] = "abcdefghij";
+  uint32_t size = sizeof(data)/sizeof(char);
+  eos::string str(data, size, false);
+  assert_is_utf8(str.get_data(), str.get_size(), "the string should be a valid utf8 string");
+
+  // Greek character is 2 bytes UTF-8
+  char greek_str_data[] = "γειά σου κόσμος";
+  uint32_t greek_str_size = sizeof(greek_str_data)/sizeof(char);
+  eos::string valid_greek_str(greek_str_data, greek_str_size, false);
+  assert_is_utf8(valid_greek_str.get_data(), valid_greek_str.get_size(), "the string should be a valid utf8 string");
+
+  // Common chinese character is 3 bytes UTF-8
+  char chinese_str_data1[] = "你好，世界！";
+  uint32_t chinese_str_size1 = sizeof(chinese_str_data1)/sizeof(char);
+  eos::string valid_chinese_str1(chinese_str_data1, chinese_str_size1, false);
+  assert_is_utf8(valid_chinese_str1.get_data(), valid_chinese_str1.get_size(), "the string should be a valid utf8 string");
+
+  // The following chinese character is 4 bytes UTF-8
+  char chinese_str_data2[] = "𥄫";
+  uint32_t chinese_str_size2 = sizeof(chinese_str_data2)/sizeof(char);
+  eos::string valid_chinese_str2(chinese_str_data2, chinese_str_size2, false);
+  assert_is_utf8(valid_chinese_str2.get_data(), valid_chinese_str2.get_size(), "the string should be a valid utf8 string");
+
+  return WASM_TEST_PASS;
+}
+
+unsigned int test_string::invalid_utf8() {
+  // The following common chinese character is 3 bytes UTF-8
+  char chinese_str_data[] = "你好，世界！";
+  uint32_t chinese_str_size = sizeof(chinese_str_data)/sizeof(char);
+  // If it is not multiple of 3, then it is invalid
+  eos::string invalid_chinese_str(chinese_str_data, 5, false);
+  assert_is_utf8(invalid_chinese_str.get_data(), invalid_chinese_str.get_size(), "the string should be a valid utf8 string");
+
+  return WASM_TEST_PASS;
+}

@@ -109,6 +109,8 @@ extern "C" {
       WASM_TEST_HANDLER(test_string, print_null_terminated);
       WASM_TEST_HANDLER(test_string, print_non_null_terminated);
       WASM_TEST_HANDLER(test_string, print_unicode);
+      WASM_TEST_HANDLER(test_string, valid_utf8);
+      WASM_TEST_HANDLER(test_string, invalid_utf8);
 
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;

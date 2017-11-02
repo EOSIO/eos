@@ -19,6 +19,7 @@
 #include <eos/types/AbiSerializer.hpp>
 #include <chrono>
 #include <boost/lexical_cast.hpp>
+#include <fc/utf8.hpp>
 
 namespace eos { namespace chain {
    using namespace IR;
@@ -252,6 +253,16 @@ DEFINE_INTRINSIC_FUNCTION7(env,upper_bound_str,upper_bound_str,i32,i64,scope,i64
   READ_RECORD_STR(upper_bound_record)
 }
 
+DEFINE_INTRINSIC_FUNCTION3(env, assert_is_utf8,assert_is_utf8,none,i32,dataptr,i32,datalen,i32,msg) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const char* str = &memoryRef<const char>( mem, dataptr );
+  const bool test = fc::is_utf8(std::string( str, datalen ));
+
+  FC_ASSERT( test, "assertion failed: ${s}", ("s",msg) );
+}
+
 DEFINE_INTRINSIC_FUNCTION3(env, assert_sha256,assert_sha256,none,i32,dataptr,i32,datalen,i32,hash) {
    FC_ASSERT( datalen > 0 );
 
@@ -340,6 +351,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
    double res = DOUBLE(a).convert_to<double>();
    return *reinterpret_cast<uint64_t *>(&res);
 }
+
 
 DEFINE_INTRINSIC_FUNCTION2(env,getActiveProducers,getActiveProducers,none,i32,producers,i32,datalen) {
    auto& wasm    = wasm_interface::get();
