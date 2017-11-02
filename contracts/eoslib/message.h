@@ -47,22 +47,22 @@ extern "C" {
     * // }
     *
     * char buffer[128];
-    * uint32_t total = readMessage(buffer, 5); // buffer contains the content of the message up to 5 bytes
+    * uint32_t total = read_message(buffer, 5); // buffer contains the content of the message up to 5 bytes
     * print(total); // Output: 5
     *
-    * uint32_t msgsize = messageSize();
+    * uint32_t msgsize = message_size();
     * print(msgsize); // Output: size of the above message's data field
     *
-    * requireNotice(N(initc)); // initc account will be notified for this message
+    * require_notice(N(initc)); // initc account will be notified for this message
     *
-    * requireAuth(N(inita)); // Do nothing since inita exists in the auth list
-    * requireAuth(N(initb)); // Throws an exception
+    * require_auth(N(inita)); // Do nothing since inita exists in the auth list
+    * require_auth(N(initb)); // Throws an exception
     *
-    * AccountName code = currentCode();
+    * AccountName code = current_code();
     * print(Name(code)); // Output: eos
     *
-    * assert(Name(currentCode()) === "eos", "This message expects to be received by eos"); // Do nothing
-    * assert(Name(currentCode()) === "inita", "This message expects to be received by inita"); // Throws exception and roll back transfer transaction
+    * assert(Name(current_code()) === "eos", "This message expects to be received by eos"); // Do nothing
+    * assert(Name(current_code()) === "inita", "This message expects to be received by inita"); // Throws exception and roll back transfer transaction
     *
     * print(now()); // Output: timestamp of last accepted block
     *
@@ -79,7 +79,7 @@ extern "C" {
     *  @param len - len of the current message to be copied
     *  @return the number of bytes copied to msg
     */
-   uint32_t readMessage( void* msg, uint32_t len );
+   uint32_t read_message( void* msg, uint32_t len );
 
    /**
     * Get the length of the current message's data field
@@ -87,28 +87,35 @@ extern "C" {
     * @brief Get the length of current message's data field
     * @return the length of the current message's data field
     */
-   uint32_t messageSize();
+   uint32_t message_size();
 
    /**
     *  Add the specified account to set of accounts to be notified
     *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
-   void        requireNotice( AccountName name );
+   void require_notice( AccountName name );
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a message. Throws if not found
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     */
-   void        requireAuth( AccountName name );
+   void require_auth( AccountName name );
+
+   /**
+    *  Verifies that @ref name exists in the scope on a message. Throws if not found
+    *  @brief Verify specified account exists in the scope
+    *  @param name - name of the account to be verified
+    */
+   void require_scope( AccountName name );
 
    /**
     *  Get the account which specifies the code that is being run
     *  @brief Get the account which specifies the code that is being run
     *  @return the account which specifies the code that is being run
     */
-   AccountName currentCode();
+   AccountName current_code();
 
    ///@ } messagecapi
 }

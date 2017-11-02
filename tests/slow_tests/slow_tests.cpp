@@ -491,7 +491,7 @@ R"(
   (import "env" "assert" (func $assert (param i32 i32)))
   (import "env" "load" (func $load (param i32 i32 i32 i32) (result i32)))
   (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
-  (import "env" "readMessage" (func $readMessage (param i32 i32) (result i32)))
+  (import "env" "read_message" (func $read_message (param i32 i32) (result i32)))
   (import "env" "remove" (func $remove (param i32 i32) (result i32)))
   (import "env" "store" (func $store (param i32 i32 i32 i32)))
   (table 0 anyfunc)
@@ -855,7 +855,7 @@ R"(
     (local $1 i32)
     (local $2 i64)
     (set_local $0
-      (call $readMessage
+      (call $read_message
         (i32.const 8384)
         (i32.const 100)
       )

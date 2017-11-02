@@ -231,7 +231,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
 
       //Test message
       dummy_message dummy13{DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message"), {}, fc::raw::pack(dummy13) ) == WASM_TEST_PASS, "test_message::read_message()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_normal"), {}, fc::raw::pack(dummy13) ) == WASM_TEST_PASS, "test_message::read_message_normal()" );
 
       std::vector<char> raw_bytes((1<<16));
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "read_message_to_0"), {}, raw_bytes) == WASM_TEST_PASS, "test_message::read_message_to_0()" );

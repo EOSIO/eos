@@ -352,8 +352,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
    return *reinterpret_cast<uint64_t *>(&res);
 }
 
-
-DEFINE_INTRINSIC_FUNCTION2(env,getActiveProducers,getActiveProducers,none,i32,producers,i32,datalen) {
+DEFINE_INTRINSIC_FUNCTION2(env,get_active_producers,get_active_producers,none,i32,producers,i32,datalen) {
    auto& wasm    = wasm_interface::get();
    auto  mem     = wasm.current_memory;
    types::AccountName* dst = memoryArrayPtr<types::AccountName>( mem, producers, datalen );
@@ -364,20 +363,20 @@ DEFINE_INTRINSIC_FUNCTION0(env,now,now,i32) {
    return wasm_interface::get().current_validate_context->controller.head_block_time().sec_since_epoch();
 }
 
-DEFINE_INTRINSIC_FUNCTION0(env,currentCode,currentCode,i64) {
+DEFINE_INTRINSIC_FUNCTION0(env,current_code,current_code,i64) {
    auto& wasm  = wasm_interface::get();
    return wasm.current_validate_context->code.value;
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
+DEFINE_INTRINSIC_FUNCTION1(env,require_auth,require_auth,none,i64,account) {
    wasm_interface::get().current_validate_context->require_authorization( Name(account) );
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
+DEFINE_INTRINSIC_FUNCTION1(env,require_notice,require_notice,none,i64,account) {
    wasm_interface::get().current_apply_context->require_recipient( account );
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,requireScope,requireScope,none,i64,scope) {
+DEFINE_INTRINSIC_FUNCTION1(env,require_scope,require_scope,none,i64,scope) {
    wasm_interface::get().current_validate_context->require_scope( scope );
 }
 
@@ -434,7 +433,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,sbrk,sbrk,i32,i32,num_bytes) {
  * @{
  */ 
 
-DEFINE_INTRINSIC_FUNCTION0(env,transactionCreate,transactionCreate,i32) {
+DEFINE_INTRINSIC_FUNCTION0(env,transaction_create,transaction_create,i32) {
    auto& ptrx = wasm_interface::get().current_apply_context->create_pending_transaction();
    return ptrx.handle;
 }
@@ -446,7 +445,7 @@ static void emplace_scope(const Name& scope, std::vector<Name>& scopes) {
    }
 }
 
-DEFINE_INTRINSIC_FUNCTION3(env,transactionRequireScope,transactionRequireScope,none,i32,handle,i64,scope,i32,readOnly) {
+DEFINE_INTRINSIC_FUNCTION3(env,transaction_require_scope,transaction_require_scope,none,i32,handle,i64,scope,i32,readOnly) {
    auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
    if(readOnly == 0) {
       emplace_scope(scope, ptrx.scope);
@@ -457,7 +456,7 @@ DEFINE_INTRINSIC_FUNCTION3(env,transactionRequireScope,transactionRequireScope,n
    ptrx.check_size();
 }
 
-DEFINE_INTRINSIC_FUNCTION2(env,transactionAddMessage,transactionAddMessage,none,i32,handle,i32,msg_handle) {
+DEFINE_INTRINSIC_FUNCTION2(env,transaction_add_message,transaction_add_message,none,i32,handle,i32,msg_handle) {
    auto apply_context  = wasm_interface::get().current_apply_context;
    auto& ptrx = apply_context->get_pending_transaction(handle);
    auto& pmsg = apply_context->get_pending_message(msg_handle);
@@ -466,7 +465,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,transactionAddMessage,transactionAddMessage,none,
    apply_context->release_pending_message(msg_handle);
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,transactionSend,transactionSend,none,i32,handle) {
+DEFINE_INTRINSIC_FUNCTION1(env,transaction_send,transaction_send,none,i32,handle) {
    auto apply_context  = wasm_interface::get().current_apply_context;
    auto& ptrx = apply_context->get_pending_transaction(handle);
 
@@ -477,11 +476,11 @@ DEFINE_INTRINSIC_FUNCTION1(env,transactionSend,transactionSend,none,i32,handle) 
    apply_context->release_pending_transaction(handle);
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,transactionDrop,transactionDrop,none,i32,handle) {
+DEFINE_INTRINSIC_FUNCTION1(env,transaction_drop,transaction_drop,none,i32,handle) {
    wasm_interface::get().current_apply_context->release_pending_transaction(handle);
 }
 
-DEFINE_INTRINSIC_FUNCTION4(env,messageCreate,messageCreate,i32,i64,code,i64,type,i32,data,i32,length) {
+DEFINE_INTRINSIC_FUNCTION4(env,message_create,message_create,i32,i64,code,i64,type,i32,data,i32,length) {
    auto& wasm  = wasm_interface::get();
    auto  mem   = wasm.current_memory;
    
@@ -505,7 +504,7 @@ DEFINE_INTRINSIC_FUNCTION4(env,messageCreate,messageCreate,i32,i64,code,i64,type
    return pmsg.handle;
 }
 
-DEFINE_INTRINSIC_FUNCTION3(env,messageRequirePermission,messageRequirePermission,none,i32,handle,i64,account,i64,permission) {
+DEFINE_INTRINSIC_FUNCTION3(env,message_require_permission,message_require_permission,none,i32,handle,i64,account,i64,permission) {
    auto apply_context  = wasm_interface::get().current_apply_context;
    // if this is not sent from the code account with the permission of "code" then we must
    // presently have the permission to add it, otherwise its a failure
@@ -516,7 +515,7 @@ DEFINE_INTRINSIC_FUNCTION3(env,messageRequirePermission,messageRequirePermission
    pmsg.authorization.emplace_back(Name(account), Name(permission));
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,messageSend,messageSend,none,i32,handle) {
+DEFINE_INTRINSIC_FUNCTION1(env,message_send,message_send,none,i32,handle) {
    auto apply_context  = wasm_interface::get().current_apply_context;
    auto& pmsg = apply_context->get_pending_message(handle);
 
@@ -524,7 +523,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,messageSend,messageSend,none,i32,handle) {
    apply_context->release_pending_message(handle);
 }
 
-DEFINE_INTRINSIC_FUNCTION1(env,messageDrop,messageDrop,none,i32,handle) {
+DEFINE_INTRINSIC_FUNCTION1(env,message_drop,message_drop,none,i32,handle) {
    wasm_interface::get().current_apply_context->release_pending_message(handle);
 }
 
@@ -534,7 +533,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,messageDrop,messageDrop,none,i32,handle) {
 
 
 
-DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
+DEFINE_INTRINSIC_FUNCTION2(env,read_message,read_message,i32,i32,destptr,i32,destsize) {
    FC_ASSERT( destsize > 0 );
 
    wasm_interface& wasm = wasm_interface::get();
@@ -555,7 +554,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
   FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
 }
 
-DEFINE_INTRINSIC_FUNCTION0(env,messageSize,messageSize,i32) {
+DEFINE_INTRINSIC_FUNCTION0(env,message_size,message_size,i32) {
    return wasm_interface::get().current_validate_context->msg.data.size();
 }
 

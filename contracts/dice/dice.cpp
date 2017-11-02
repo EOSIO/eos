@@ -8,7 +8,7 @@ namespace dice {
 void apply_offer( const OfferBet& offer ) {
    assert( offer.amount > 0, "insufficient bet" );
    assert( !hasOffer( offer.commitment ), "offer with this commitment already exist" );
-   requireAuth( offer.player );
+   require_auth( offer.player );
 
    auto acnt = getAccount( offer.player );
    acnt.balance -= offer.amount;

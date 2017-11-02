@@ -13,8 +13,8 @@ extern "C" {
 
     void test_auths(const currency::Transfer& auth)
     {
-       requireAuth( auth.from );
-       requireAuth( auth.to );
+       require_auth( auth.from );
+       require_auth( auth.to );
     }
 
     /// The apply method implements the dispatch of events to this contract
@@ -24,7 +24,7 @@ extern "C" {
        {
           if( action == N(transfer) )
           {
-             test_auths( eos::currentMessage< currency::Transfer >() );
+             test_auths( eos::current_message< currency::Transfer >() );
           }
        }
     }

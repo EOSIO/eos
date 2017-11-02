@@ -88,7 +88,7 @@ namespace tic_tac_toe {
    * @param create - action to be applied
    */
   void apply_create(const Create& create) {
-    requireAuth(create.host);
+    require_auth(create.host);
     assert(create.challenger != create.host, "challenger shouldn't be the same as host");
 
     // Check if game already exists
@@ -105,7 +105,7 @@ namespace tic_tac_toe {
    * @param restart - action to be applied
    */
   void apply_restart(const Restart& restart) {
-    requireAuth(restart.by);
+    require_auth(restart.by);
 
     // Check if game exists
     Game game;
@@ -126,7 +126,7 @@ namespace tic_tac_toe {
    * @param close - action to be applied
    */
   void apply_close(const Close& close) {
-    requireAuth(close.host);
+    require_auth(close.host);
 
     // Check if game exists
     Game game;
@@ -141,7 +141,7 @@ namespace tic_tac_toe {
    * @param move - action to be applied
    */
   void apply_move(const Move& move) {
-    requireAuth(move.by);
+    require_auth(move.by);
 
     // Check if game exists
     Game game;
@@ -194,13 +194,13 @@ extern "C" {
   void apply( uint64_t code, uint64_t action ) {
     if (code == N(tic.tac.toe)) {
       if (action == N(create)) {
-        tic_tac_toe::apply_create(currentMessage<tic_tac_toe::Create>());
+        tic_tac_toe::apply_create(current_message<tic_tac_toe::Create>());
       } else if (action == N(restart)) {
-        tic_tac_toe::apply_restart(currentMessage<tic_tac_toe::Restart>());
+        tic_tac_toe::apply_restart(current_message<tic_tac_toe::Restart>());
       } else if (action == N(close)) {
-        tic_tac_toe::apply_close(currentMessage<tic_tac_toe::Close>());
+        tic_tac_toe::apply_close(current_message<tic_tac_toe::Close>());
       } else if (action == N(move)) {
-        tic_tac_toe::apply_move(currentMessage<tic_tac_toe::Move>());
+        tic_tac_toe::apply_move(current_message<tic_tac_toe::Move>());
       }
     }
   }

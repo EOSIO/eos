@@ -19,8 +19,8 @@ namespace infinite {
    }
 
    void apply_currency_transfer( const infinite::Transfer& transfer ) {
-      requireNotice( transfer.to, transfer.from );
-      requireAuth( transfer.from );
+      require_notice( transfer.to, transfer.from );
+      require_auth( transfer.from );
 
       auto from = getAccount( transfer.from );
       auto to   = getAccount( transfer.to );
@@ -47,8 +47,8 @@ extern "C" {
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(currency) ) {
-          if( action == N(transfer) ) 
-             infinite::apply_currency_transfer( currentMessage< infinite::Transfer >() );
+          if( action == N(transfer) )
+             infinite::apply_currency_transfer( current_message< infinite::Transfer >() );
        }
     }
 }

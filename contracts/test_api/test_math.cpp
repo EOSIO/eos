@@ -6,7 +6,7 @@
 
 unsigned int test_math::test_multeq_i128() {
   u128_msg msg;
-  auto n = readMessage(&msg, sizeof(u128_msg));
+  auto n = read_message(&msg, sizeof(u128_msg));
   WASM_ASSERT( n == sizeof(u128_msg), "test_multeq_i128 n == sizeof(u128_msg)" );
   multeq_i128(msg.values, msg.values+1);
   WASM_ASSERT( msg.values[0] == msg.values[2], "test_multeq_i128 msg.values[0] == msg.values[2]" );
@@ -15,7 +15,7 @@ unsigned int test_math::test_multeq_i128() {
 
 unsigned int test_math::test_diveq_i128() {
   u128_msg msg;
-  auto n = readMessage(&msg, sizeof(u128_msg));
+  auto n = read_message(&msg, sizeof(u128_msg));
   WASM_ASSERT( n == sizeof(u128_msg), "test_diveq_i128 n == sizeof(u128_msg)" );
   diveq_i128(msg.values, msg.values+1);
   WASM_ASSERT( msg.values[0] == msg.values[2], "test_diveq_i128 msg.values[0] == msg.values[2]" );

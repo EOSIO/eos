@@ -68,7 +68,7 @@ struct test_print {
 
 struct test_message {
 
-  static unsigned int read_message();
+  static unsigned int read_message_normal();
   static unsigned int read_message_to_0();
   static unsigned int read_message_to_64k();
   static unsigned int require_notice();

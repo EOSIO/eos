@@ -4,7 +4,7 @@
 #include <eoslib/print.hpp>
 
 // These functions can be auto-generated using the ABI definition.
-// The specialization for currentMessage must only be defined if the 
+// The specialization for current_message must only be defined if the
 // struct has at least one variable length type (String, Bytes, etc), 
 // otherwise the default function will do ok.
 //
@@ -25,10 +25,10 @@ namespace eos {
    T bytesToValue(const Bytes& bytes) { return *reinterpret_cast<T*>(bytes.data); }
 
    template<>
-   KeyValue1 currentMessage<KeyValue1>() {
-      uint32_t msgsize = messageSize();
+   KeyValue1 current_message<KeyValue1>() {
+      uint32_t msgsize = message_size();
       char* buffer = (char *)eos::malloc(msgsize);
-      assert(readMessage(buffer, msgsize) == msgsize, "error reading KeyValue1");
+      assert(read_message(buffer, msgsize) == msgsize, "error reading KeyValue1");
       datastream<char *> ds(buffer, msgsize);
       KeyValue1 value;
       raw::unpack(ds, value.key);
@@ -62,10 +62,10 @@ namespace eos {
    }
 
    template<>
-   KeyValue2 currentMessage<KeyValue2>() {
-      uint32_t msgsize = messageSize();
+   KeyValue2 current_message<KeyValue2>() {
+      uint32_t msgsize = message_size();
       char* buffer = (char *)eos::malloc(msgsize);
-      assert(readMessage(buffer, msgsize) == msgsize, "error reading KeyValue2");
+      assert(read_message(buffer, msgsize) == msgsize, "error reading KeyValue2");
       datastream<char *> ds(buffer, msgsize);
       KeyValue2 value;
       raw::unpack(ds, value.key);

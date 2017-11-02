@@ -10,7 +10,7 @@ namespace proxy {
 
    template<typename T>
    void apply_transfer(AccountName code, const T& transfer) {
-      const auto self = currentCode();
+      const auto self = current_code();
       Config config;
       assert(Configs::get(config, self), "Attempting to use unconfigured proxy");
       if (transfer.from == self) {
@@ -31,7 +31,7 @@ namespace proxy {
    }
 
    void apply_setowner(AccountName owner) {
-      const auto self = currentCode();
+      const auto self = current_code();
       Config config;
       bool configured = Configs::get(config, self);
       config.owner = owner;
@@ -55,15 +55,15 @@ extern "C" {
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(currency) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, currentMessage<currency::Transfer>());
+             apply_transfer(code, current_message<currency::Transfer>());
           }
        } else if ( code == N(eos) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, currentMessage<eos::Transfer>());
+             apply_transfer(code, current_message<eos::Transfer>());
           }
        } else if (code == N(proxy) ) {
           if ( action == N(setowner)) {
-             apply_setowner(currentMessage<AccountName>());
+             apply_setowner(current_message<AccountName>());
           }
        }
     }

@@ -23,19 +23,19 @@ namespace eos {
    public:
       template<typename Payload, typename ...Permissions>
       Message(const AccountName& code, const FuncName& type, const Payload& payload, Permissions... permissions ) 
-         : handle(messageCreate(code, type, &payload, sizeof(Payload)))
+         : handle(message_create(code, type, &payload, sizeof(Payload)))
       {
-         addPermissions(permissions...);
+         add_permissions(permissions...);
       }
 
       template<typename Payload>
       Message(const AccountName& code, const FuncName& type, const Payload& payload ) 
-         : handle(messageCreate(code, type, &payload, sizeof(Payload)))
+         : handle(message_create(code, type, &payload, sizeof(Payload)))
       {
       }
 
       Message(const AccountName& code, const FuncName& type) 
-         : handle(messageCreate(code, type, nullptr, 0))
+         : handle(message_create(code, type, nullptr, 0))
       {
       }
 
@@ -49,29 +49,29 @@ namespace eos {
 
       ~Message() {
          if (handle != InvalidMessageHandle) {
-            messageDrop(handle);
+            message_drop(handle);
             handle = InvalidMessageHandle;
          }
       }
 
-      void addPermissions(AccountName account, PermissionName permission) {
-         messageRequirePermission(handle, account, permission);
+      void add_permissions(AccountName account, PermissionName permission) {
+         message_require_permission(handle, account, permission);
       }
 
       template<typename ...Permissions>
-      void addPermissions(AccountName account, PermissionName permission, Permissions... permissions) {
-         addPermissions(account, permission);
-         addPermissions(permissions...);
+      void add_permissions(AccountName account, PermissionName permission, Permissions... permissions) {
+         add_permissions(account, permission);
+         add_permissions(permissions...);
       }
 
       void send() {
-         assertValidHandle();
-         messageSend(handle);
+         assert_valid_handle();
+         message_send(handle);
          handle = InvalidMessageHandle;
       }
 
    private:
-      void assertValidHandle() {
+      void assert_valid_handle() {
          assert(handle != InvalidMessageHandle, "attempting to send or modify a finalized message" );
       }
 
@@ -84,7 +84,7 @@ namespace eos {
    class Transaction {
    public:
       Transaction() 
-         : handle(transactionCreate())
+         : handle(transaction_create())
       {}
 
       // no copy constructor due to opaque handle
@@ -97,26 +97,26 @@ namespace eos {
 
       ~Transaction() {
          if (handle != InvalidTransactionHandle) {
-            transactionDrop(handle);
+            transaction_drop(handle);
             handle = InvalidTransactionHandle;
          }
       }
 
       void addScope(AccountName scope, bool readOnly = false) {
-         assertValidHandle();
-         transactionRequireScope(handle, scope, readOnly ? 1 : 0);
+         assert_valid_handle();
+         transaction_require_scope(handle, scope, readOnly ? 1 : 0);
       }
 
       void addMessage(Message &message) {
-         assertValidHandle();
-         message.assertValidHandle();
-         transactionAddMessage(handle, message.handle);
+         assert_valid_handle();
+         message.assert_valid_handle();
+         transaction_add_message(handle, message.handle);
          message.handle = InvalidMessageHandle;
       }
 
       void send() {
-         assertValidHandle();
-         transactionSend(handle);
+         assert_valid_handle();
+         transaction_send(handle);
          handle = InvalidTransactionHandle;
       }
 
@@ -125,7 +125,7 @@ namespace eos {
       }
 
    private:
-      void assertValidHandle() {
+      void assert_valid_handle() {
          assert(handle != InvalidTransactionHandle, "attempting to send or modify a finalized transaction" );
       }
 
