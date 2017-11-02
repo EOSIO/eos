@@ -34,6 +34,11 @@ const static int BlockIntervalSeconds = 3;
 const static int Percent100 = 10000;
 const static int Percent1 = 100;
 
+const static int DefaultPerAuthAccountTimeFrameSeconds = 18;
+const static int DefaultPerAuthAccount = 1800;
+const static int DefaultPerCodeAccountTimeFrameSeconds = 18;
+const static int DefaultPerCodeAccount = 18000;
+
 const static UInt32 DefaultMaxBlockSize = 5 * 1024 * 1024;
 const static UInt32 DefaultTargetBlockSize = 128 * 1024;
 const static UInt64 DefaultMaxStorageSize = 10 * 1024;

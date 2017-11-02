@@ -23,8 +23,10 @@ namespace eos { namespace chain {
       OBJECT_CTOR(rate_limiting_object)
       id_type             id;
       AccountName         name;
-      uint32_t            last_update_sec                   = 0;
-      uint32_t            trans_msg_rate_per_account        = 0;
+      fc::time_point_sec  per_auth_account_last_update_sec;
+      uint32_t            per_auth_account_txn_msg_rate    = 0;
+      fc::time_point_sec  per_code_account_last_update_sec;
+      uint32_t            per_code_account_txn_msg_rate    = 0;
    };
    using rate_limiting_id_type = rate_limiting_object::id_type;
 
@@ -43,4 +45,4 @@ CHAINBASE_SET_INDEX_TYPE(eos::chain::rate_limiting_object, eos::chain::rate_limi
 
 FC_REFLECT(chainbase::oid<eos::chain::rate_limiting_object>, (_id))
 
-FC_REFLECT(eos::chain::rate_limiting_object, (id)(name)(last_update_sec)(trans_msg_rate_per_account))
+FC_REFLECT(eos::chain::rate_limiting_object, (id)(name)(per_auth_account_last_update_sec)(per_auth_account_txn_msg_rate)(per_code_account_last_update_sec)(per_code_account_txn_msg_rate))
