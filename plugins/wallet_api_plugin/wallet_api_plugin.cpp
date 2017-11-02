@@ -23,19 +23,20 @@ namespace eos {
 
 using namespace eos;
 
-
-#define CALL(api_name, api_handle, call_name, INVOKE) \
+#define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [&api_handle](string, string body, url_response_callback cb) mutable { \
           try { \
              if (body.empty()) body = "{}"; \
              INVOKE \
-             cb(200, fc::json::to_string(result)); \
-          } catch (fc::eof_exception&) { \
-             cb(400, "Invalid arguments"); \
+             cb(http_response_code, fc::json::to_string(result)); \
+          } catch (fc::eof_exception& e) { \
+             error_results results{400, "Bad Request", e.to_string()}; \
+             cb(400, fc::json::to_string(results)); \
              elog("Unable to parse arguments: ${args}", ("args", body)); \
           } catch (fc::exception& e) { \
-             cb(500, e.to_detail_string()); \
+             error_results results{500, "Internal Service Error", e.to_detail_string()}; \
+             cb(500, fc::json::to_string(results)); \
              elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
           } \
        }}
@@ -71,27 +72,27 @@ void wallet_api_plugin::plugin_startup() {
 
    app().get_plugin<http_plugin>().add_api({
        CALL(wallet, wallet_mgr, set_timeout,
-            INVOKE_V_R(wallet_mgr, set_timeout, int64_t)),
+            INVOKE_V_R(wallet_mgr, set_timeout, int64_t), 200),
        CALL(wallet, wallet_mgr, sign_transaction,
-            INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction, flat_set<public_key_type>, chain::chain_id_type)),
+            INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction, flat_set<public_key_type>, chain::chain_id_type), 201),
        CALL(wallet, wallet_mgr, create,
-            INVOKE_R_R(wallet_mgr, create, std::string)),
+            INVOKE_R_R(wallet_mgr, create, std::string), 201),
        CALL(wallet, wallet_mgr, open,
-            INVOKE_V_R(wallet_mgr, open, std::string)),
+            INVOKE_V_R(wallet_mgr, open, std::string), 200),
        CALL(wallet, wallet_mgr, lock_all,
-            INVOKE_V_V(wallet_mgr, lock_all)),
+            INVOKE_V_V(wallet_mgr, lock_all), 200),
        CALL(wallet, wallet_mgr, lock,
-            INVOKE_V_R(wallet_mgr, lock, std::string)),
+            INVOKE_V_R(wallet_mgr, lock, std::string), 200),
        CALL(wallet, wallet_mgr, unlock,
-            INVOKE_V_R_R(wallet_mgr, unlock, std::string, std::string)),
+            INVOKE_V_R_R(wallet_mgr, unlock, std::string, std::string), 200),
        CALL(wallet, wallet_mgr, import_key,
-            INVOKE_V_R_R(wallet_mgr, import_key, std::string, std::string)),
+            INVOKE_V_R_R(wallet_mgr, import_key, std::string, std::string), 201),
        CALL(wallet, wallet_mgr, list_wallets,
-            INVOKE_R_V(wallet_mgr, list_wallets)),
+            INVOKE_R_V(wallet_mgr, list_wallets), 200),
        CALL(wallet, wallet_mgr, list_keys,
-            INVOKE_R_V(wallet_mgr, list_keys)),
+            INVOKE_R_V(wallet_mgr, list_keys), 200),
        CALL(wallet, wallet_mgr, get_public_keys,
-            INVOKE_R_V(wallet_mgr, get_public_keys))
+            INVOKE_R_V(wallet_mgr, get_public_keys), 200)
    });
 }
 

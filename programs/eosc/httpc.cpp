@@ -106,11 +106,11 @@ fc::variant call( const std::string& server, uint16_t port,
          throw boost::system::system_error(error);
 
      //  std::cout << re.str() <<"\n";
-       if( status_code == 200 ) {
+       if( status_code == 200 || status_code == 201 || status_code == 202 ) {
           return fc::json::from_string(re.str());
        }
 
-       FC_ASSERT( status_code == 200, "Error\n: ${msg}\n", ("msg", re.str()) );
+       FC_ASSERT( status_code == 200, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re.str()) );
     }
 
     FC_ASSERT( !"unable to connect" );
