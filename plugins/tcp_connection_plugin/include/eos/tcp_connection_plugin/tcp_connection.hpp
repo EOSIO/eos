@@ -68,15 +68,16 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
          transaction_id_type transaction_id;
          Time expires;
       };
-      struct transaction_id{};
-      struct expires{};
-      boost::multi_index_container<
+      struct by_trx_id{};
+      struct by_expiration{};
+      using transaction_multi_index = boost::multi_index_container<
          seen_transaction,
          indexed_by<
-           ordered_unique<tag<transaction_id>, BOOST_MULTI_INDEX_MEMBER(seen_transaction,transaction_id_type,transaction_id)>,
-           ordered_non_unique<tag<expires>, BOOST_MULTI_INDEX_MEMBER(seen_transaction,Time,expires)>
+           hashed_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(seen_transaction, transaction_id_type, transaction_id), std::hash<transaction_id_type>>,
+           ordered_non_unique<tag<by_expiration>, BOOST_MULTI_INDEX_MEMBER(seen_transaction, Time, expires)>
          >
-      > seen_transactions;
+      >;
+      transaction_multi_index seen_transactions;
 
       signal<void()> on_disconnected_sig;
       bool disconnected_fired{false};    //be sure to only fire the signal once
