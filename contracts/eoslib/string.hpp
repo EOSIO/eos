@@ -12,8 +12,8 @@ namespace eosio {
    * Otherwise it will not give the right length
    * @param cstr - null terminated string
    */
-  inline uint32_t cstrlen(const char* cstr) {
-    uint32_t len = 0;
+  inline size_t cstrlen(const char* cstr) {
+    size_t len = 0;
     while(*cstr != '\0') {
       len++;
       cstr++;
@@ -24,7 +24,7 @@ namespace eosio {
   class string {
 
   private:
-    uint32_t size; // size of the string
+    size_t size; // size of the string
     char* data; // underlying data
     bool own_memory; // true if the object is responsible to clean the memory
     uint32_t* refcount; // shared reference count to the underlying data
@@ -50,7 +50,7 @@ namespace eosio {
      * Constructor to create string with reserved space
      * @param s size to be reserved (in number o)
      */
-    string(uint32_t s) : size(s), own_memory(true) {
+    string(size_t s) : size(s), own_memory(true) {
       data = (char *)malloc(s * sizeof(char));
       refcount = (uint32_t*)malloc(sizeof(uint32_t));
       *refcount = 1;
@@ -62,7 +62,7 @@ namespace eosio {
      * @param s    size of the string (in number of bytes)
      * @param copy true to have the data copied and owned by the object
      */
-    string(char* d, uint32_t s, bool copy) {
+    string(char* d, size_t s, bool copy) {
       assign(d, s, copy);
     }
 
@@ -98,7 +98,7 @@ namespace eosio {
     }
 
     // Get size of the string (in number of bytes)
-    const uint32_t get_size() const {
+    const size_t get_size() const {
       return size;
     }
 
@@ -124,7 +124,7 @@ namespace eosio {
      * @param  copy true to have the data copied and owned by the object
      * @return      the current string
      */
-    string& assign(char* d, uint32_t s, bool copy) {
+    string& assign(char* d, size_t s, bool copy) {
       release_data_if_needed();
 
       if (copy) {
@@ -150,12 +150,12 @@ namespace eosio {
      * @param  copy        true to have the data copied and owned by the object
      * @return             substring of the current string
      */
-    string substr(uint32_t offset, uint32_t substr_size, bool copy) {
+    string substr(size_t offset, size_t substr_size, bool copy) {
       assert((offset < size) && (offset + substr_size < size), "out of bound");
       return string(data + offset, substr_size, copy);
     }
 
-    char operator [] (const uint32_t index) {
+    char operator [] (const size_t index) {
       assert(index < size, "index out of bound");
       return *(data + index);
     }
@@ -194,7 +194,7 @@ namespace eosio {
       assert((size + str.size > size) && (size + str.size > str.size), "overflow");
 
       char* new_data;
-      uint32_t new_size;
+      size_t new_size;
       if (size > 0 && *(data + size - 1) == '\0') {
         // Null terminated string, remove the \0 when concatenates
         new_size = size - 1 + str.size;
