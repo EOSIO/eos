@@ -104,13 +104,6 @@ extern "C" {
    void require_auth( AccountName name );
 
    /**
-    *  Verifies that @ref name exists in the scope on a message. Throws if not found
-    *  @brief Verify specified account exists in the scope
-    *  @param name - name of the account to be verified
-    */
-   void require_scope( AccountName name );
-
-   /**
     *  Get the account which specifies the code that is being run
     *  @brief Get the account which specifies the code that is being run
     *  @return the account which specifies the code that is being run
