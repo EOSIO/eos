@@ -79,7 +79,7 @@ extern "C" {
     *  @param len - len of the current message to be copied
     *  @return the number of bytes copied to msg
     */
-   uint32_t    read_message( void* msg, uint32_t len );
+   uint32_t read_message( void* msg, uint32_t len );
 
    /**
     * Get the length of the current message's data field
@@ -87,28 +87,28 @@ extern "C" {
     * @brief Get the length of current message's data field
     * @return the length of the current message's data field
     */
-   uint32_t    message_size();
+   uint32_t message_size();
 
    /**
     *  Add the specified account to set of accounts to be notified
     *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
-   void        require_notice( AccountName name );
+   void require_notice( AccountName name );
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a message. Throws if not found
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     */
-   void        require_auth( AccountName name );
+   void require_auth( AccountName name );
 
    /**
     *  Verifies that @ref name exists in the scope on a message. Throws if not found
     *  @brief Verify specified account exists in the scope
     *  @param name - name of the account to be verified
     */
-   void        require_scope( AccountName name );
+   void require_scope( AccountName name );
 
    /**
     *  Get the account which specifies the code that is being run
