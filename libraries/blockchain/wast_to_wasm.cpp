@@ -1,0 +1,65 @@
+#include <eosio/blockchain/wast_to_wasm.hpp>
+#include <Inline/BasicTypes.h>
+#include <IR/Module.h>
+#include <IR/Validate.h>
+#include <WAST/WAST.h>
+#include <WASM/WASM.h>
+#include <Runtime/Runtime.h>
+#include <sstream>
+#include <iomanip>
+#include <fc/exception/exception.hpp>
+
+namespace eosio { namespace blockchain {
+
+   vector<uint8_t> wast_to_wasm( const string& wast ) 
+   { 
+      std::stringstream ss;
+      
+      try {
+      IR::Module module;
+      vector<WAST::Error> parseErrors;
+      WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
+      if(parseErrors.size())
+      {
+         // Print any parse errors;
+         ss << "Error parsing WebAssembly text file:" << std::endl;
+         for(auto& error : parseErrors)
+         {
+            ss << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
+            ss << error.locus.sourceLine << std::endl;
+            ss << std::setw(error.locus.column(8)) << "^" << std::endl;
+         }
+         FC_ASSERT( !"error parsing wast", "${msg}", ("msg",ss.get()) );
+      }
+
+      try
+      {
+         // Serialize the WebAssembly module.
+         Serialization::ArrayOutputStream stream;
+         WASM::serialize(stream,module);
+         return stream.getBytes();
+      }
+      catch(Serialization::FatalSerializationException exception)
+      {
+         ss << "Error serializing WebAssembly binary file:" << std::endl;
+         ss << exception.message << std::endl;
+         FC_ASSERT( !"error converting to wasm", "${msg}", ("msg",ss.get()) );
+      }
+
+   } FC_CAPTURE_AND_RETHROW( (wast) ) }  /// wast_to_wasm
+
+   string     wasm_to_wast( const vector<uint8_t>& wasm ) {
+      return wasm_to_wast( wasm.data(), wasm.size() );
+   } /// wasm_to_wast
+
+   string     wasm_to_wast( const uint8_t* data, uint64_t size ) 
+   { try {
+       IR::Module module;
+       Serialization::MemoryInputStream stream((const U8*)data,size);
+       WASM::serialize(stream,module);
+        // Print the module to WAST.
+       return WAST::print(module);
+   } FC_CAPTURE_AND_RETHROW() } /// wasm_to_wast
+
+
+} } // eosio::blockchain

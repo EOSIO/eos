@@ -36,6 +36,10 @@ namespace eosio { namespace blockchain {
       bytes                      data;
    };
 
+   struct action_notice : public action {
+      account_name receiver;
+   };
+
 
    /**
     *  The transaction header contains the fixed-sized data
@@ -103,6 +107,22 @@ namespace eosio { namespace blockchain {
       vector<signature_type> signatures;
 
       transaction_id_type id()const;
+   };
+
+
+   /**
+    *  When a transaction is generated it can be scheduled to occur
+    *  in the future. It may also fail to execute for some reason in
+    *  which case the sender needs to be notified. When the sender
+    *  sends a transaction they will assign it an ID which will be
+    *  passed back to the sender if the transaction fails for some
+    *  reason.
+    */
+   struct deferred_transaction : public signed_transaction
+   {
+      uint64_t       id;
+      account_name   sender;
+      time_point_sec execute_after;
    };
 
 

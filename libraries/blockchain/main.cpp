@@ -1,6 +1,11 @@
 #include <eosio/blockchain/controller.hpp>
 #include <eosio/blockchain/database.hpp>
+#include <eosio/blockchain/wast_to_wasm.hpp>
+#include <eosio/blockchain/wasm_interface.hpp>
+#include <eosio/blockchain/apply_context.hpp>
 #include <fc/log/logger.hpp>
+
+#include <currency/currency.wast.hpp>
 
 using namespace eosio::blockchain;
 using namespace boost::multi_index;
@@ -36,8 +41,45 @@ typedef shared_multi_index_container< key_value_object,
 
 EOSIO_SET_INDEX_TYPE( eosio::blockchain::key_value_object, eosio::blockchain::key_value_index );
 
+
+void test_wasm() {
+   try {
+     auto currency_wasm = wast_to_wasm( currency_wast );
+     ilog( "testing wasm" );
+     auto& wif = wasm_interface::get();
+
+     auto codeid = digest_type::hash( (const char*)currency_wasm.data(), currency_wasm.size() );
+     wif.load( codeid, (const char*)currency_wasm.data(), currency_wasm.size() );
+
+     for( uint32_t i = 0; i < 1000; ++i ) {
+        transaction_handle* h;
+        apply_context c( signed_transaction(), *h );
+
+        //c.scope = N(currency);
+        //c.type = N(transfer);
+        wif.apply( c );
+     }
+   } 
+   catch ( const fc::exception& e ) {
+      elog( "unexpected exception: ${e}", ("e",e.to_detail_string())  );
+   } catch ( ... ) {
+      elog( "unexpected exception" );
+   }
+}
+
 int main( int argc, char** argv ) {
    try {
+
+      std::thread a( [](){ test_wasm(); } );
+      std::thread b( [](){ test_wasm(); } );
+      std::thread c( [](){ test_wasm(); } );
+
+      a.join();
+      b.join();
+      c.join();
+      return 0;
+
+
       boost::asio::io_service ios;
       controller control;
       control.open_database( "datadir", 1024*1024 );

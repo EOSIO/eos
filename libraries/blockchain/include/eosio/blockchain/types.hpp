@@ -32,6 +32,7 @@ namespace eosio { namespace blockchain {
    using std::string;
    using std::function;
    using std::forward;
+   using std::move;
 
    using boost::signals2::signal;
    using boost::asio::io_service;
