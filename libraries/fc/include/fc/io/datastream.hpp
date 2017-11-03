@@ -1,5 +1,7 @@
 #pragma once
 #include <fc/utility.hpp>
+#include <fc/exception/exception.hpp>
+
 #include <string.h>
 #include <stdint.h>
 
@@ -74,6 +76,119 @@ class datastream {
       T _start;
       T _pos;
       T _end;
+};
+
+/**
+ * A circular_buffer specialization of a datastream accesses a circular
+ * buffer of elements in the range buffer_start+buffer_size. The buffer
+ * will begin reading at the offset of start in this buffer, and will read
+ * up to s entries.
+ * The buffer cannot be "infinite" -- i.e. s must be less than buffer_size
+ */
+
+template<typename T>
+struct circular_buffer {};
+
+template<typename T>
+class datastream<circular_buffer<T>> {
+   public:
+      datastream(T buffer_start, size_t buffer_size, size_t start, size_t s) :
+       _buffer_start(buffer_start), _buffer_end(buffer_start+buffer_size),
+       _pos(buffer_start+start), _start(_pos), _remaining(s), _orig_size(s)
+      {
+         if(start >= buffer_size)
+            FC_THROW_EXCEPTION(out_of_range_exception, "circular_buffer datastream start>buffer_size");
+         if(s > buffer_size) 
+            FC_THROW_EXCEPTION(out_of_range_exception, "circular_buffer datastream s>buffer_size");
+      }
+
+      inline bool skip(size_t s) {
+         if(s > _remaining)
+            detail::throw_datastream_range_error("circular skip", _remaining, s-_remaining);
+         _remaining -= s;
+         _pos += s;
+         if(_pos > _buffer_end)
+            _pos = _buffer_start + (_pos-_buffer_end);
+         return true;
+      }
+
+      inline bool read(char* d, size_t s) {
+         if(s > _remaining)
+            detail::throw_datastream_range_error("circular read", _remaining, s-_remaining);
+         _remaining -= s;
+         if(_pos + s > _buffer_end) {
+            size_t first_read = _buffer_end - _pos;
+            memcpy(d, _pos, first_read);
+            memcpy(d + first_read, _buffer_start, s - first_read);
+            _pos = _buffer_start + s - first_read;
+         }
+         else {
+            memcpy(d, _pos, s);
+            _pos += s;
+         }
+         return true;
+      }
+
+      inline bool write( const char* d, size_t s ) {
+         if(s > _remaining)
+            detail::throw_datastream_range_error("circular write", _remaining, s-_remaining);
+         _remaining -= s;
+         if(_pos + s > _buffer_end) {
+            size_t first_write = _buffer_end - _pos;
+            memcpy(_pos, d, first_write);
+            memcpy(_buffer_start, d + first_write, s - first_write);
+            _pos = _buffer_start + s - first_write;
+         }
+         else {
+            memcpy(_pos, d, s);
+            _pos += s;
+         }
+         return true;
+      }
+
+      inline bool put(char c) { 
+         if(!_remaining)
+            FC_THROW_EXCEPTION(out_of_range_exception, "circular_buffer put no room"); 
+         --_remaining;
+         *_pos = c; 
+         if(++_pos == _buffer_end)
+            _pos = _buffer_start; 
+         return true;
+      }
+
+      inline bool get(unsigned char& c) { return get( *(char*)&c ); }
+      inline bool get(char& c) {
+         if(!_remaining)
+            FC_THROW_EXCEPTION(out_of_range_exception, "circular_buffer get no room"); 
+         --_remaining;
+         c = *_pos;
+         if(++_pos == _buffer_end)
+            _pos = _buffer_start; 
+         return true;
+      }
+
+      inline bool seekp(size_t p) {
+         if(p >= _orig_size)
+            detail::throw_datastream_range_error("circular seekp", _orig_size, _orig_size-p);
+         _pos = _start + p;
+         if(_pos >= _buffer_end)
+            _pos = _buffer_start + (_pos - _buffer_end);
+         _remaining = _orig_size - p;
+         return true;
+       }
+
+     T               pos()const        { return _pos; }
+     inline bool     valid()const      { return true; }
+     inline size_t   tellp()const      { return _orig_size - _remaining; }
+     inline size_t   remaining()const  { return _remaining; }
+
+  private:
+     T _buffer_start;
+     T _buffer_end;
+     T _pos;
+     T _start;
+     size_t _remaining;
+     size_t _orig_size;
 };
 
 template<>
