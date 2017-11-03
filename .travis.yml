@@ -26,7 +26,7 @@ before_install:
   - cd mongo-c-driver-1.8.0 && ./configure --disable-automatic-init-and-cleanup --enable-static CC=clang-4.0 CXX=clang++-4.0 && make && sudo make install
   - cd $TRAVIS_BUILD_DIR/ext && git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
   - export CC="clang-4.0" && export CXX="clang++-4.0" && export LD_LIBRARY_PATH=/usr/local/lib
-  - cd mongo-cxx-driver/build && $TRAVIS_BUILD_DIR/ext/cmake-3.9.0-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DCMAKE_INSTALL_PREFIX=/usr/local .. && sudo make EP_mnmlstc_core && make && sudo make install
+  - cd mongo-cxx-driver/build && $TRAVIS_BUILD_DIR/ext/cmake-3.9.0-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DCMAKE_INSTALL_PREFIX=/usr/local .. && make && sudo make install
   - cd $TRAVIS_BUILD_DIR
 script:
   - mkdir build && cd build
