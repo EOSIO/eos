@@ -17,9 +17,8 @@
 
 namespace eosio {
 
-using chain::transaction_id_type;
+using blockchain::transaction_id_type;
 using namespace boost::multi_index;
-using types::Time;
 
 class tcp_connection : public connection_interface, public fc::visitor<void> {
    public:
@@ -33,40 +32,20 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
       // initialization is done and it's ready to pass transactions, block, etc.
       void set_cb_on_ready(std::function<void()> cb);
 
-   public:
+      //RX message callbacks; public due to visitor
       void operator()(const handshake2_message& handshake);
-      void operator()(const std::vector<DelimitingSignedTransaction>& transactions);
+      void operator()(const packed_transaction_list& transactions);
 
    private:
-      void finish_key_exchange(boost::system::error_code ec, size_t red, fc::ecc::private_key priv_key);
+      static const unsigned int max_message_size{16U << 20U};
+      static const unsigned int max_rx_read{4U << 20U};
+      static_assert(max_rx_read < max_message_size, "max_rx_read must be less than max_message_size");
+      static_assert(!(max_message_size & (max_message_size-1)), "max_message_size must be power of two");
 
-      void read();
-      void read_ready(boost::system::error_code ec, size_t red);
-
-      void send_complete(boost::system::error_code ec, size_t sent, std::list<std::vector<uint8_t>>::iterator it);
-
-      void handle_failure();
-
-      boost::asio::ip::tcp::socket socket;
-      boost::asio::io_service::strand strand;
-
-      static const unsigned int max_message_size{128U << 10U};
-
-      static const unsigned int max_rx_read{1U << 20U};
-      char rxbuffer[max_rx_read + 16];  //read in to this buffer, add 16 bytes for AES block size carryover
-      std::size_t rxbuffer_leftover{0};
-      char parsebuffer[max_rx_read + max_message_size]; //decrypt to this buffer, with carry over for split messages
-      size_t parsebuffer_leftover{0};
-
-
-
-      std::list<std::vector<uint8_t>> queuedOutgoing;
-
-      std::mutex transaction_mutex;
       struct seen_transaction : public boost::noncopyable {
-         seen_transaction(transaction_id_type t, Time e) : transaction_id(t), expires(e) {}
+         seen_transaction(transaction_id_type t, time_point_sec e) : transaction_id(t), expiration(e) {}
          transaction_id_type transaction_id;
-         Time expires;
+         time_point_sec expiration;
       };
       struct by_trx_id{};
       struct by_expiration{};
@@ -74,18 +53,36 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
          seen_transaction,
          indexed_by<
            hashed_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(seen_transaction, transaction_id_type, transaction_id), std::hash<transaction_id_type>>,
-           ordered_non_unique<tag<by_expiration>, BOOST_MULTI_INDEX_MEMBER(seen_transaction, Time, expires)>
+           ordered_non_unique<tag<by_expiration>, BOOST_MULTI_INDEX_MEMBER(seen_transaction, time_point_sec, expiration)>
          >
       >;
-      transaction_multi_index seen_transactions;
 
-      signal<void()> on_disconnected_sig;
-      bool disconnected_fired{false};    //be sure to only fire the signal once
+      void finish_key_exchange(boost::system::error_code ec, size_t red, fc::ecc::private_key priv_key);
 
-      fc::aes_encoder    sending_aes_enc_ctx;
-      fc::aes_decoder    receiving_aes_dec_ctx;
+      void read();
+      void read_ready(boost::system::error_code ec, size_t red);
 
       handshake2_message fill_handshake();
+
+      void handle_failure();
+      
+      char _rxbuffer[max_rx_read + 16];  //read in to this buffer, add 16 bytes for AES block size carryover
+      std::size_t _rxbuffer_leftover{0};
+
+      char _parsebuffer[max_message_size*2]; //decrypt to this buffer
+      size_t _parsebuffer_head{0};
+      size_t _parsebuffer_tail{0};
+
+      std::mutex _transaction_mutex;
+      transaction_multi_index _seen_transactions;
+
+      signal<void()> _on_disconnected_sig;
+      bool _disconnected_fired{false};    //be sure to only fire the signal once
+
+      fc::aes_encoder    _sending_aes_enc_ctx;
+      fc::aes_decoder    _receiving_aes_dec_ctx;
+      boost::asio::ip::tcp::socket _socket;
+      boost::asio::io_service::strand _strand;
 };
 
 }

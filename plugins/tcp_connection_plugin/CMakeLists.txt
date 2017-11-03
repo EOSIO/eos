@@ -5,7 +5,7 @@ add_library( tcp_connection_plugin
              tcp_connection.cpp
              ${HEADERS} )
 
-target_link_libraries( tcp_connection_plugin network_plugin appbase fc )
+target_link_libraries( tcp_connection_plugin network_plugin appbase fc eosio_blockchain )
 target_include_directories( tcp_connection_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 install( TARGETS

@@ -1,14 +1,14 @@
 #pragma once
-#include <eos/chain/block.hpp>
-#include <eos/chain/types.hpp>
+#include <eosio/blockchain/types.hpp>
+#include <eosio/blockchain/transaction.hpp>
 #include <chrono>
 
 #include <fc/reflect/reflect.hpp>
+#include <fc/io/datastream.hpp>
 
 namespace eosio {
 
-using namespace eos;
-using namespace chain;
+using namespace blockchain;
 using namespace fc;
 
 struct handshake2_message {
@@ -24,28 +24,39 @@ struct handshake2_message {
       string            agent;
 };
 
-//XXX Abuse?
-struct DelimitingSignedTransaction : public SignedTransaction {
-   const char* start;
-   const char* end;
+struct packed_transaction_list {
+   std::vector<std::reference_wrapper<meta_transaction_ptr>> outgoing_transactions;
+   std::vector<meta_transaction_ptr> incoming_transactions;
 };
 
 template<typename Stream>
-inline Stream& operator>>(Stream& s, DelimitingSignedTransaction& d) {
-   d.start = s.pos();
-   fc::raw::unpack(s, *static_cast<SignedTransaction*>(&d));
-   d.end = s.pos();
+inline Stream& operator>>(Stream& s, packed_transaction_list& d) {
+   unsigned_int size;
+   fc::raw::unpack(s, size);
+   for(unsigned int i = 0 ; i < size; ++i) {
+      std::vector<char> packed;
+      fc::raw::unpack(s, packed);
+      
+      signed_transaction incoming_transaction;
+      fc::datastream<const char*> trx_stream(packed.data(), packed.size());
+      fc::raw::unpack(trx_stream, incoming_transaction);
+      d.incoming_transactions.emplace_back(std::make_shared<meta_transaction>(incoming_transaction));
+      d.incoming_transactions.back()->packed = std::move(packed);
+   }
    return s;
 }
 template<typename Stream>
-inline Stream& operator<<(Stream& s, const DelimitingSignedTransaction& d) {
-   fc::raw::pack(s, *static_cast<const SignedTransaction*>(&d));
+inline Stream& operator<<(Stream& s, const packed_transaction_list& d) {
+   unsigned int size = d.outgoing_transactions.size();
+   fc::raw::pack(s, size);
+   for(unsigned int i = 0; i < size; ++i)
+      fc::raw::pack(s, d.outgoing_transactions[size].get()->packed);
    return s;
 }
 
 using net2_message = static_variant<
    handshake2_message,
-   std::vector<DelimitingSignedTransaction>
+   packed_transaction_list
 >;
 
 }
