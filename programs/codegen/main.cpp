@@ -96,11 +96,11 @@ struct CodeGen {
    void generate_current_message_ex(ostringstream& output) {
       output << tab << "template<typename Type>" << endl;
       output << tab << "Type current_message_ex() {" << endl;
-      output << tab << tab << "uint32_t msgsize = messageSize();" << endl;
+      output << tab << tab << "uint32_t msgsize = message_size();" << endl;
       output << tab << tab << "Bytes bytes;" << endl;
       output << tab << tab << "bytes.data = (uint8_t *)eos::malloc(msgsize);" << endl;
       output << tab << tab << "bytes.len  = msgsize;" << endl;
-      output << tab << tab << "assert(bytes.data && readMessage(bytes.data, bytes.len) == msgsize, \"error reading message\");" << endl;
+      output << tab << tab << "assert(bytes.data && read_message(bytes.data, bytes.len) == msgsize, \"error reading message\");" << endl;
       output << tab << tab << "Type value;" << endl;
       output << tab << tab << "eos::raw::from_bytes(bytes, value);" << endl;
       output << tab << tab << "eos::free(bytes.data);" << endl;
@@ -142,6 +142,7 @@ struct CodeGen {
 
    void generate() {
       ostringstream output;
+      output << "#pragma once" << endl;
       output << "#include <eoslib/types.hpp>" << endl;
       output << "#include <eoslib/datastream.hpp>" << endl;
       output << "#include <eoslib/raw.hpp>" << endl;

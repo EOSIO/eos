@@ -218,6 +218,10 @@ struct AbiGenerator {
             guessIndexType(table, *s);
           } FC_CAPTURE_AND_RETHROW( (type_name) ) }
 
+          if(params.size() >= 2) {
+            table.table = params[1];
+          }
+          
           try {
             guessKeyNames(table, *s);
           } FC_CAPTURE_AND_RETHROW( (type_name) )

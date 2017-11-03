@@ -1,3 +1,4 @@
+#pragma once
 #include <eoslib/types.hpp>
 #include <eoslib/datastream.hpp>
 #include <eoslib/raw.hpp>
@@ -131,11 +132,11 @@ namespace eos {
    }
    template<typename Type>
    Type current_message_ex() {
-      uint32_t msgsize = messageSize();
+      uint32_t msgsize = message_size();
       Bytes bytes;
       bytes.data = (uint8_t *)eos::malloc(msgsize);
       bytes.len  = msgsize;
-      assert(bytes.data && readMessage(bytes.data, bytes.len) == msgsize, "error reading message");
+      assert(bytes.data && read_message(bytes.data, bytes.len) == msgsize, "error reading message");
       Type value;
       eos::raw::from_bytes(bytes, value);
       eos::free(bytes.data);
