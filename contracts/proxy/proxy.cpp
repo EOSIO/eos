@@ -58,11 +58,7 @@ extern "C" {
           }
        } else if (code == N(proxy) ) {
           if ( action == N(setowner)) {
-<<<<<<< 77f0f32aa72d8f1bbedbf4abafcf8c8655b8c3eb
-             apply_setowner(current_message<account_name>());
-=======
-             apply_setowner(currentMessage<SetOwner>());
->>>>>>> * Change the strategy to export types/typedefs from C++ to the ABI definition
+             apply_setowner(current_message<set_owner>());
           }
        }
     }
