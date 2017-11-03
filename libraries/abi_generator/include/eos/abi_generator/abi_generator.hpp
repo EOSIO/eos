@@ -57,7 +57,7 @@ struct AbiGenerator {
   types::Abi*            output;
   clang::ASTContext*     context;
   CompilerInstance*      compiler_instance;
-  map<string, uint64_t>  type_size;
+  //map<string, uint64_t>  type_size;
   map<string, string>    full_types;
   string                 abi_context;
 
@@ -109,7 +109,9 @@ struct AbiGenerator {
 
   bool isBuiltInType(const string& type_name) {
     types::AbiSerializer serializer;
-    return serializer.isBuiltInType(resolveType(type_name));
+    auto rtype = resolveType(type_name);
+    //ilog("isBuiltInType: type_name:${type_name}, rtype:${rtype}",("type_name",type_name)("rtype",rtype));
+    return serializer.isBuiltInType(translateType(rtype));
   }
 
   string translateType(const string& type_name) {
@@ -127,6 +129,7 @@ struct AbiGenerator {
     else if (type_name == "long"               || type_name == "int32_t")  built_in_type = "Int32";
     else if (type_name == "short"              || type_name == "int16_t")  built_in_type = "Int16";
     else if (type_name == "char"               || type_name == "int8_t")   built_in_type = "Int8";
+    else if (type_name == "string" ) built_in_type = "String";
 
     return built_in_type;
   }
@@ -135,9 +138,11 @@ struct AbiGenerator {
     //ilog("AbiGenerator::handleTranslationUnit");
   }
   
-  void handleTagDeclDefinition(TagDecl* tag_decl) {
+  void handleTagDeclDefinition(TagDecl* tag_decl) { 
+    auto decl_location = tag_decl->getLocation().printToString(context->getSourceManager());
+    try {    
     handleDecl(tag_decl);
-  }
+  } FC_CAPTURE_AND_RETHROW((decl_location)) }
 
   void handleDecl(const Decl* decl) { try {
 
@@ -150,22 +155,23 @@ struct AbiGenerator {
     if(!raw_comment) return;
 
     SourceManager& source_manager = ctx.getSourceManager();
-    string rawText = raw_comment->getRawText(source_manager);
+    auto file_name = source_manager.getFilename(raw_comment->getLocStart());
+    if ( !abi_context.empty() && !file_name.startswith(abi_context) ) {
+      return;
+    }
 
-    regex r(R"(@abi ([a-zA-Z0-9]+) (action|table)((?: [a-z0-9]+)*))");
+    string rawText = raw_comment->getRawText(source_manager);
+    regex r(R"(@abi (action|table)((?: [a-z0-9]+)*))");
 
     smatch smatch;
     while(regex_search(rawText, smatch, r))
     {
-      if(smatch.size() == 4) {
+      if(smatch.size() == 3) {
 
-        auto context = smatch[1].str();
-        if(context != abi_context) return;
-
-        auto type = smatch[2].str();
+        auto type = smatch[1].str();
         
         vector<string> params;
-        auto string_params = smatch[3].str();
+        auto string_params = smatch[2].str();
         boost::trim(string_params);
         if(!string_params.empty())
           boost::split(params, string_params, boost::is_any_of(" "));
@@ -230,15 +236,19 @@ struct AbiGenerator {
   } FC_CAPTURE_AND_RETHROW() }
 
   bool is64bit(const string& type) {
-    return type_size[type] == 64;
+    types::AbiSerializer abis(*output);
+    return abis.isInteger(type) && abis.getIntegerSize(type) == 64;
+    //return type_size[type] == 64;
   }
 
   bool is128bit(const string& type) {
-    return type_size[type] == 128;
+    types::AbiSerializer abis(*output);
+    return abis.isInteger(type) && abis.getIntegerSize(type) == 128;
+    //return type_size[type] == 128;
   }
 
   bool isString(const string& type) {
-    return type == "String";
+    return type == "String" || type == "string";
   }
 
   void getAllFields(const types::Struct& s, vector<types::Field>& fields) {
@@ -427,16 +437,21 @@ struct AbiGenerator {
       const auto* typeDefDecl = typeDef->getDecl();
       auto qt = typeDefDecl->getUnderlyingType().getUnqualifiedType();
 
-      auto full_name = qt.getAsString(compiler_instance->getLangOpts());
+      auto full_name = translateType(qt.getAsString(compiler_instance->getLangOpts()));
 
       //HACK: We need to think another way to stop importing the "typedef chain"
       if( full_name.find("<") != string::npos ) {
         break;
       }
 
+      auto newTypeName = translateType(typeDefDecl->getName().str());
+      if(isBuiltInType(newTypeName)) {
+        break;
+      }
+
       //TODO: ABI_ASSERT TypeName length for typedef
       types::TypeDef abiTypeDef;
-      abiTypeDef.newTypeName = typeDefDecl->getName().str();
+      abiTypeDef.newTypeName = newTypeName;
       abiTypeDef.type = removeNamespace( full_name );
 
       const auto* td = findType(abiTypeDef.newTypeName);
@@ -463,12 +478,13 @@ struct AbiGenerator {
 
   string getNameToAdd(const clang::QualType& qualType) {
 
+    auto typeName = qualType.getAsString(compiler_instance->getLangOpts());
     const auto* typeDef = qualType->getAs<clang::TypedefType>();
-    if(typeDef != nullptr) {
+    if( !isBuiltInType(typeName) && typeDef != nullptr) {
       addTypeDef(typeDef);
     } 
 
-    return qualType.getAsString(compiler_instance->getLangOpts());
+    return typeName;
   }
 
   string addStruct(const clang::QualType& qualType) {
@@ -486,7 +502,7 @@ struct AbiGenerator {
     auto name = removeNamespace(full_name);
 
     //Only export user defined types
-    if( isBuiltInType(resolveType(name)) ) {
+    if( isBuiltInType(name) ) {
       return name;
     }
 
@@ -525,7 +541,7 @@ struct AbiGenerator {
 
       clang::QualType qt = field->getType();
 
-      auto field_type = removeNamespace(qt.getUnqualifiedType().getAsString(compiler_instance->getLangOpts()));
+      auto field_type = translateType(removeNamespace(getNameToAdd(qt.getUnqualifiedType())));
 
       ABI_ASSERT(field_type.size() <= sizeof(decltype(struct_field.type)),
         "Type name > ${maxsize}, ${type}::${name}", ("type",full_name)("name",field_type)("maxsize",sizeof(decltype(struct_field.type))));
@@ -543,11 +559,11 @@ struct AbiGenerator {
       }
       
       struct_field.name = field->getNameAsString();
-      struct_field.type = translateType(field_type);
+      struct_field.type = field_type;
 
       ABI_ASSERT(isBuiltInType(struct_field.type) || findStruct(struct_field.type), "Unknown type ${type} ${name} ${ttt} ${sss}", ("type",struct_field.type)("name",struct_field.name)("ttt", output->types)("sss",output->structs));
 
-      type_size[string(struct_field.type)] = context->getTypeSize(qt);
+      //type_size[string(struct_field.type)] = context->getTypeSize(qt);
 
       abi_struct.fields.push_back(struct_field);
     }

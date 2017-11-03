@@ -1,9 +1,11 @@
-#!/bin/bash -e
+#!/bin/bash
 
 EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
 ABIGEN=${EOSIO_INSTALL_DIR}/bin/abi_gen
+CODEGEN=${EOSIO_INSTALL_DIR}/bin/codegen
 
 function copy_skeleton {
+    set -e
     cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname
 
     for file in $(find ./$newname -name 'skeleton.*')
@@ -17,9 +19,11 @@ function copy_skeleton {
         mv ${newfile}1 ${newfile}
     done
     echo "created $newname from skeleton"
+    set +e
 }
 
 function build_contract {
+    set -e
     workdir=`mktemp -d`
 #    echo mkdir $workdir/built
     mkdir $workdir/built
@@ -41,23 +45,40 @@ function build_contract {
 
 #    echo rm -rf $workdir
     rm -rf $workdir
+    set +e
 }
 
 function generate_abi {
 
     if [[ ! -e "$1" ]]; then
-        echo "Invalid path to contract source code"
+        echo "You must specify a file"
         exit 1
     fi
-
-    if [[ "" == "$context" ]]; then
-        context=$(basename $(realpath $1))
-    fi
+    
+    context_folder=$(realpath $(dirname $1))
 
     ${ABIGEN} -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32 \
-        -extra-arg=-I${EOSIO_INSTALL_DIR}/include  -extra-arg=-I$1 \
+        -extra-arg=-I${EOSIO_INSTALL_DIR}/include  -extra-arg=-I$context_folder \
         -extra-arg=-fparse-all-comments -destination-file=${outname} -verbose=0 \
-        -context=${context} $1/*.cpp --
+        -context=$context_folder $1 --
+
+    if [ "$?" -ne 0 ]; then
+        exit 1
+    fi    
+
+    echo "Generated ${outname} ..."
+    
+    if [[ "$packfunctions" == "yes" ]]; then
+        tmp=$(basename $(realpath $1))
+        gen_name=${tmp%.*}.gen.hpp
+        ${CODEGEN} ${outname} > $context_folder/${gen_name}
+
+        if [ "$?" -ne 0 ]; then
+            exit 1
+        fi
+
+        echo "Generated ${gen_name} ..."
+    fi
 }
 
 function print_help {
@@ -74,11 +95,12 @@ function print_help {
     echo "   -o | --outname [output.wast] [input.cpp ...]"
     echo "      Generate the wast output file based on input cpp files"
     echo "   OR"
-    echo "   -g | --genabi contract.abi [ -c|--context context ] /path/to/contract/folder"
+    echo "   -g | --genabi contract.abi [-p | --pack-functions] types.hpp"
     echo "      Generate the ABI specification file [EXPERIMENTAL]"
 }
 
 command=""
+packfunctions="no"
 
 while [[ $# -gt 1 ]]
 do
@@ -101,13 +123,14 @@ case $key in
         shift 2
         break
         ;;
+    -p|--pack-functions)
+        packfunctions="yes"
+        shift 1
+        break
+        ;;
     -g|--genabi)
         outname="$2"
         command="genabi"
-        shift 2
-        ;;
-    -c|--context)
-        context="$2"
         shift 2
         ;;
     *)

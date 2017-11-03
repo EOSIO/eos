@@ -53,4 +53,4 @@ int main(int argc, const char **argv) { try {
       fc::json::save_to_file<eos::types::Abi>(abi, ABIDestination, true);
    }
    return result;
-} FC_CAPTURE_AND_LOG(()) }
+} FC_CAPTURE_AND_LOG(()); return -1; }

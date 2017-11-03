@@ -40,7 +40,7 @@ namespace TOKEN_NAME {
    /**
     *  transfer requires that the sender and receiver be the first two
     *  accounts notified and that the sender has provided authorization.
-    *  @abi currency action
+    *  @abi action
     */
    struct transfer {
       /**
@@ -59,7 +59,7 @@ namespace TOKEN_NAME {
 
    /**
     *  @brief row in Account table stored within each scope
-    *  @abi currency table
+    *  @abi table
     */
    struct account {
       /**
