@@ -1,10 +1,20 @@
 #pragma once
 #include <memory>
+#include <vector>
+
 #include <boost/signals2.hpp>
+
+#include <fc/variant.hpp>
+#include <eosio/blockchain/transaction.hpp>
 
 namespace eosio {
 
 using namespace boost::signals2;
+using namespace blockchain;
+using namespace fc;
+using namespace std;
+
+struct connection_send_context;
 
 class connection_interface {
    public:
@@ -15,16 +25,29 @@ class connection_interface {
       virtual bool disconnected() = 0;
       virtual connection on_disconnected(const signal<void()>::slot_type& slot) = 0;
 
-      //get peer identify. Always valid once connection is given to network_manager
-
-      //Send a transaction to the peer on this connection should it not already know of the transaction.
-      //NOOP on disconnected connection.
-
-      //Send a block to the peer on this connection
-      //NOOP on disconnected connection.
+      //When called, a connection_interface must (if it's not already) begin to repeatedly
+      //call network_plugin's get_work_to_send() parroting back the opaque context type.
+      //This must be a NOOP if the connection has become disconnected.
+      virtual void begin_processing_network_send_queue(connection_send_context& context) = 0;
 
       virtual ~connection_interface() {};
-
 };
+
+////The various types of work that can be asked of a connection_interface when querying for data to send///
+//There is no work to send (connection )
+struct connection_send_nowork {};
+
+//Send the trasactions between begin-end and begin2-end2
+struct connection_send_transactions {
+   vector<meta_transaction_ptr>::iterator begin;
+   vector<meta_transaction_ptr>::iterator end;
+   vector<meta_transaction_ptr>::iterator begin2;
+   vector<meta_transaction_ptr>::iterator end2;
+};
+
+using connection_send_work = static_variant<
+   connection_send_nowork,
+   connection_send_transactions
+>;
 
 }

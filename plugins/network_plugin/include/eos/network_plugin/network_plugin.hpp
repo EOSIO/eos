@@ -27,8 +27,21 @@ class network_plugin : public appbase::plugin<network_plugin> {
        */
       void new_connection(std::unique_ptr<connection_interface> new_connection);
 
+      /*
+       * Get work to send over a connection. After a connection being told to
+       * begin_processing_network_send_queue(), it should repeatedly poll for work
+       * until connection_send_nowork is returned
+       */
+      connection_send_work get_work_to_send(connection_send_context& context);
+
    private:
       std::unique_ptr<class network_plugin_impl> my;
-   };
+};
+
+struct connection_send_context {
+   connection_send_context(std::unique_ptr<connection_interface>& c) : connection(c) {}
+   size_t trx_tail;
+   std::unique_ptr<connection_interface>& connection;
+};
 
 }

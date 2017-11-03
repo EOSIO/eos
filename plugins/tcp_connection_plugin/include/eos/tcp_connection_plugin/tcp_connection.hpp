@@ -28,6 +28,8 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
       bool disconnected() override;
       connection on_disconnected(const signal<void()>::slot_type& slot) override;
 
+      void begin_processing_network_send_queue(connection_send_context& context) override;
+
       //set a callback to be fired when the connection is "open for business" -- any
       // initialization is done and it's ready to pass transactions, block, etc.
       void set_cb_on_ready(std::function<void()> cb);

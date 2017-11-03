@@ -24,13 +24,68 @@ class network_plugin_impl {
 
       struct active_connection {
          active_connection(unsigned int cid, std::unique_ptr<connection_interface> c) :
-            connection_id(cid), connection(std::move(c)) {}
+            connection_id(cid), connection(std::move(c)), send_context(connection) {}
 
          unsigned int connection_id;
          std::unique_ptr<connection_interface> connection;
+         connection_send_context send_context;
       };
       std::list<active_connection> active_connections;
       unsigned int next_active_connection_id{0};
+
+      static const size_t transaction_buffer_size{64U << 10U};
+      static_assert(!(transaction_buffer_size & (transaction_buffer_size-1)), "transaction_buffer_size must be power of two");
+      vector<meta_transaction_ptr> _transaction_buffer{transaction_buffer_size};
+      size_t _transaction_buffer_head;
+
+      //broadcast a validated transaction to everyone
+      void on_transaction_validated(meta_transaction_ptr trx) {
+         strand->dispatch([this, t=move(trx)]() {
+            _transaction_buffer[_transaction_buffer_head % transaction_buffer_size] = move(t);
+            asm volatile("" ::: "memory");
+            ++_transaction_buffer_head;
+         });
+      }
+
+      connection_send_work get_work_to_send(connection_send_context& context) {
+         //More checks here for higher priority queues; like blocks
+
+         size_t buffer_head = _transaction_buffer_head;
+         asm volatile("" ::: "memory");
+
+         if(buffer_head == context.trx_tail)
+            return connection_send_nowork();
+
+         //Warning: here be grief. We pull from tail up to head transactions. This could mean up
+         //         to transaction_buffer_size-1 transactions. But _transaction_buffer_head could
+         //         continue to move while this code here is being executed potentially clobbering
+         //         transactions that tail still points to. So... we'll actually only use up to
+         //         transaction_buffer_size/2 to give a little wiggle room in allowing the connection
+         //         to serialize the transactions before they have an opportunity to be globbered.
+         //         This is probably overkill since the serialization happens almost immediately.
+
+         if(buffer_head-context.trx_tail >= transaction_buffer_size/2) {
+            //XXX kill connection; or should there be a discreet return value?
+            return connection_send_nowork();
+         }
+
+         connection_send_transactions send_transactions;
+         if(buffer_head%transaction_buffer_size < context.trx_tail%transaction_buffer_size) {
+            send_transactions.begin = _transaction_buffer.begin() + context.trx_tail%transaction_buffer_size;
+            send_transactions.end   = send_transactions.begin + transaction_buffer_size-context.trx_tail%transaction_buffer_size;
+            send_transactions.begin2 = _transaction_buffer.begin();
+            send_transactions.end2   = send_transactions.begin2 + buffer_head%transaction_buffer_size;
+         }
+         else {
+            send_transactions.begin = _transaction_buffer.begin()+context.trx_tail%transaction_buffer_size;
+            send_transactions.end   = send_transactions.begin+(buffer_head-context.trx_tail);
+            send_transactions.begin2 = send_transactions.end2 = _transaction_buffer.begin();
+         }
+
+         context.trx_tail = buffer_head;
+
+         return send_transactions;
+      }
 };
 
 network_plugin::network_plugin()
@@ -56,6 +111,10 @@ void network_plugin::plugin_startup() {
       my->thread_pool.emplace_back([&ios=*my->network_ios]() {
          ios.run();
       });
+
+      //controller::transaction_validated.connect([this](auto a) {
+      //    my->on_transaction_validated(a);
+      //});
 }
 
 boost::asio::io_service& network_plugin::network_io_service() {
@@ -71,6 +130,9 @@ void network_plugin::new_connection(std::unique_ptr<connection_interface> connec
     my->active_connections.emplace_back(this_conn_id, std::unique_ptr<connection_interface>(bare_connection));
 
     network_plugin_impl::active_connection& added_connection = my->active_connections.back();
+
+    ///XXX when cleaning this nonsense up, add this back---
+    //added_connection.send_context.trx_tail = my->_transaction_buffer_head;
 
     //when the connection indicates failure; remove it from the list. This will implictly
     // destroy the connection. WARNING: use strand.post() here to prevent dtor getting
@@ -93,6 +155,10 @@ void network_plugin::new_connection(std::unique_ptr<connection_interface> connec
        });
      }
   });
+}
+
+connection_send_work network_plugin::get_work_to_send(connection_send_context& context) {
+   return my->get_work_to_send(context);
 }
 
 void network_plugin::indicate_about_to_shutdown() {

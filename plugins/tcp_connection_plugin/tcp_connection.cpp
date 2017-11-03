@@ -152,6 +152,10 @@ void tcp_connection::operator()(const packed_transaction_list& transactions) {
    }
 }
 
+void tcp_connection::begin_processing_network_send_queue(connection_send_context& context) {
+   
+}
+
 bool tcp_connection::disconnected() {
    return !_socket.is_open();
 }
