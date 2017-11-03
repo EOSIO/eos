@@ -604,7 +604,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
   auto  mem   = wasm.current_memory;
 
   char* buff = memoryArrayPtr<char>(mem, data, datalen);
-  std::cerr << fc::to_hex(buff, datalen) << std::endl;
+  std::cerr << fc::to_hex(buff, datalen);
 }
 
 

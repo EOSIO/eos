@@ -1,4 +1,5 @@
 #pragma once
+#include <eoslib/types.hpp>
 #include <eoslib/varint.hpp>
 #include <eoslib/datastream.hpp>
 #include <eoslib/memory.hpp>
@@ -83,8 +84,10 @@ namespace eosio {
       unsigned_int size; eosio::raw::unpack( s, size );
       //assert( size.value < MAX_ARRAY_ALLOC_SIZE, "unpack bytes" );
       value.len = size.value;
-      if( value.len )
+      if( value.len ) {
+        value.data = (uint8_t *)eos::malloc(value.len);
         s.read( (char *)value.data, value.len );
+      }
     }
 
     // String
@@ -98,6 +101,34 @@ namespace eosio {
       unsigned_int size; eosio::raw::unpack( s, size );
       v.assign(s.pos(), size.value, copy);
       s.skip(size.value);
+    }
+
+    // FixedString32
+    template<typename Stream> inline void pack( Stream& s, const FixedString32& v )  {
+      auto size = v.len;
+      eos::raw::pack( s, unsigned_int(size));
+      if( size ) s.write( v.str, size );
+    }
+
+    template<typename Stream> inline void unpack( Stream& s, FixedString32& v)  {
+      unsigned_int size; eos::raw::unpack( s, size );
+      assert(size.value <= 32, "unpack FixedString32");
+      s.read( (char *)v.str, size );
+      v.len = size;
+    }
+
+    // FixedString16
+    template<typename Stream> inline void pack( Stream& s, const FixedString16& v )  {
+      auto size = v.len;
+      eos::raw::pack( s, unsigned_int(size));
+      if( size ) s.write( v.str, size );
+    }
+
+    template<typename Stream> inline void unpack( Stream& s, FixedString16& v)  {
+      unsigned_int size; eos::raw::unpack( s, size );
+      assert(size.value <= 16, "unpack FixedString16");
+      s.read( (char *)v.str, size );
+      v.len = size;
     }
 
     // bool

@@ -1,21 +1,21 @@
 {
   "types": [],
-  "structs": [
-    {
+  "structs": [{
       "name": "record1",
+      "base": "",
       "fields": {
         "key1": "uint64"
       }
-    },
-    {
+    },{
       "name": "record2",
+      "base": "",
       "fields": {
         "key1": "uint128",
         "key2": "uint128"
       }
-    },
-    {
+    },{
       "name": "record3",
+      "base": "",
       "fields": {
         "key1": "uint64",
         "key2": "uint64",
@@ -100,6 +100,7 @@
         "key2",
         "key3"
       ],
+
       "key_types": [
         "uint64",
         "uint64",
