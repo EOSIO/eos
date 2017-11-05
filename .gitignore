@@ -72,3 +72,4 @@ build-debug/*
 
 tn_data_*
 .vscode
+.DS_Store
