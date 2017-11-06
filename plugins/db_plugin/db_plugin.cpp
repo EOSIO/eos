@@ -273,7 +273,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
          FC_ASSERT(block_num < 2, "Expected start of block, instead received block_num: ${bn}", ("bn", block_num));
          // Currently we are creating a 'fake' block in chain_controller::initialize_chain() since initial accounts
          // and producers are not written to the block log. If this is the fake block, indicate it as block_num 0.
-         if (block_num == 1 && block.producer == AccountName{}) {
+         if (block_num == 1 && block.producer == config::EosContractName) {
             block_num = 0;
          }
       } else {

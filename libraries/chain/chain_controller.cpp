@@ -1229,6 +1229,7 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 
          // create a dummy block and cycle for our dummy transactions to send to applied_irreversible_block below
          signed_block block{};
+         block.producer = config::EosContractName;
          block.cycles.emplace_back();
          block.cycles[0].emplace_back();
 
