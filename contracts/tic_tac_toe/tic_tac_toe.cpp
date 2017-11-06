@@ -35,7 +35,7 @@ namespace tic_tac_toe {
    * @param game - the game which we want to determine the winner of
    * @return winner of the game (can be either none/ draw/ account name of host/ account name of challenger)
    */
-  AccountName get_winner(const Game& game) {
+  account_name get_winner(const Game& game) {
     if((game.board[0] == game.board[4] && game.board[4] == game.board[8]) ||
        (game.board[1] == game.board[4] && game.board[4] == game.board[7]) ||
        (game.board[2] == game.board[4] && game.board[4] == game.board[6]) ||

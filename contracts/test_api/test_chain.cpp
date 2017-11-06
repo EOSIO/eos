@@ -10,7 +10,7 @@
 #pragma pack(push, 1)
 struct Producers {
    char len;
-   AccountName producers[21];
+   account_name producers[21];
 };
 #pragma pack(pop)
 
@@ -21,7 +21,7 @@ unsigned int test_chain::test_activeprods() {
   WASM_ASSERT(msg_prods.len == 21, "Producers.len != 21");
 
   Producers api_prods;
-  get_active_producers(api_prods.producers, sizeof(AccountName)*21);
+  get_active_producers(api_prods.producers, sizeof(account_name)*21);
 
   for( int i = 0; i < 21 ; ++i ) {
     WASM_ASSERT(api_prods.producers[i] == msg_prods.producers[i], "Active producer");

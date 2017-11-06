@@ -20,49 +20,49 @@ struct table_impl_obj {};
 template<>
 struct table_impl_obj<char*> {
     
-    static int32_t store( AccountName scope, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+    static int32_t store( account_name scope, table_name table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return store_str( scope, table, key, keylen, data, datalen );
     }
 
-    static int32_t update( AccountName scope, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+    static int32_t update( account_name scope, table_name table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return update_str( scope, table, key, keylen, data, datalen );
     }
 
-    static int32_t front( AccountName scope, AccountName code, TableName table, char* data, uint32_t len ) {
+    static int32_t front( account_name scope, account_name code, table_name table, char* data, uint32_t len ) {
         return front_str( scope, code, table, data, len );
     }
 
-    static int32_t back( AccountName scope, AccountName code, TableName table, char* data, uint32_t len ) {
+    static int32_t back( account_name scope, account_name code, table_name table, char* data, uint32_t len ) {
         return back_str( scope, code, table, data, len );
     }
 
-    static int32_t load( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+    static int32_t load( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return load_str( scope, code, table, key, keylen, data, datalen );
     }
 
-    static int32_t next( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+    static int32_t next( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return next_str( scope, code, table, key, keylen, data, datalen );
     }
 
-    static int32_t previous( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+    static int32_t previous( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return previous_str( scope, code, table, key, keylen, data, datalen );
     }
 
-    static int32_t lower_bound( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+    static int32_t lower_bound( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return lower_bound_str( scope, code, table, key, keylen, data, datalen );
     }
 
-    static int32_t upper_bound( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+    static int32_t upper_bound( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return upper_bound_str( scope, code, table, key, keylen, data, datalen );
     }
 
-    static int32_t remove( AccountName scope, TableName table, char* key, uint32_t keylen ) {
+    static int32_t remove( account_name scope, table_name table, char* key, uint32_t keylen ) {
         return remove_str( scope, table, key, keylen );
     }
 };
 
 
-template<AccountName scope, AccountName code, TableName table, typename PrimaryType>
+template<account_name scope, account_name code, table_name table, typename PrimaryType>
 struct VarTable {
     private:
     typedef table_impl_obj<PrimaryType> impl;
@@ -318,7 +318,7 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
     *
     *  @return 1 if store successful else -1
     */
-    static int32_t store( AccountName scope, TableName table, const void* data, uint32_t len ) {
+    static int32_t store( account_name scope, table_name table, const void* data, uint32_t len ) {
        return store_i128i128( scope, table, data, len );
     }
 
@@ -330,7 +330,7 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
     *
     *  @return 1 if update successful else -1
     */
-    static int32_t update( AccountName scope, TableName table, const void* data, uint32_t len ) {
+    static int32_t update( account_name scope, table_name table, const void* data, uint32_t len ) {
        return update_i128i128( scope, table, data, len );
     }
 };
@@ -447,7 +447,7 @@ struct table_impl<sizeof(uint64_t),0> {
     *
     *  @return 1 if successful else -1
     */
-    static int32_t store( AccountName scope, TableName table, const void* data, uint32_t len ) {
+    static int32_t store( account_name scope, table_name table, const void* data, uint32_t len ) {
        return store_i64( scope, table, data, len );
     }
 
@@ -459,7 +459,7 @@ struct table_impl<sizeof(uint64_t),0> {
     *
     *  @return 1 if successful else -1
     */
-    static int32_t update( AccountName scope, TableName table, const void* data, uint32_t len ) {
+    static int32_t update( account_name scope, table_name table, const void* data, uint32_t len ) {
        return update_i64( scope, table, data, len );
     }
 };

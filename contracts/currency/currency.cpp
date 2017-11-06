@@ -9,7 +9,7 @@ namespace TOKEN_NAME {
    using namespace eos;
 
    ///  When storing accounts, check for empty balance and remove account
-   void storeAccount( AccountName account, const Account& a ) {
+   void storeAccount( account_name account, const Account& a ) {
       if( a.isEmpty() ) {
          ///               value, scope
          Accounts::remove( a, account );

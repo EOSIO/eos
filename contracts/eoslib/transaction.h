@@ -85,10 +85,10 @@ extern "C" {
     * transaction.
     *
     * @param trx - the `TransactionHandle` of the pending transaction to modify
-    * @param scope - the `AccountName` to add  
+    * @param scope - the `account_name` to add
     * @param readOnly - whether `scope` should be added to `scope[]` or `readScope[]`
     */
-   void transaction_require_scope(TransactionHandle trx, AccountName scope, int readOnly = 0);
+   void transaction_require_scope(TransactionHandle trx, account_name scope, int readOnly = 0);
 
    /**
     * @brief finalize the pending message and add it to the transaction
@@ -135,12 +135,12 @@ extern "C" {
     * 
     * This message has no default permissions, see @ref message_require_permission
     *
-    * @param code - the `AccountName` which owns the contract code to execute
+    * @param code - the `account_name` which owns the contract code to execute
     * @param type - the type of this message
     * @param data - the payload data for this message
     * @param size - the size of `data`
     */
-   MessageHandle message_create(AccountName code, FuncName type, void const* data, int size);
+   MessageHandle message_create(account_name code, func_name type, void const* data, int size);
 
    /**
     * @brief require a permission for the pending message
@@ -148,10 +148,10 @@ extern "C" {
     * Indicates that a given pending message requires a certain permission
     *
     * @param msg - the `MessageHandle` pending message referred to
-    * @param account - the `AccountName` to of the permission
-    * @param permission - the `PermissionName` to of the permision
+    * @param account - the `account_name` to of the permission
+    * @param permission - the `permission_name` to of the permision
     */
-   void message_require_permission(MessageHandle msg, AccountName account, PermissionName permission);
+   void message_require_permission(MessageHandle msg, account_name account, permission_name permission);
 
 
    /**

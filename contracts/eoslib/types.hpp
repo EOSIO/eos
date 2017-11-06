@@ -72,7 +72,7 @@ namespace  eos {
       operator uint64_t()const { return value; }
 
       friend bool operator==( const Name& a, const Name& b ) { return a.value == b.value; }
-      AccountName value = 0;
+      account_name value = 0;
    };
 
    /// @}
