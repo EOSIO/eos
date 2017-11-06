@@ -15,8 +15,8 @@ namespace infinite {
     *  accounts notified and that the sender has provided authorization.
     */
    struct Transfer {
-      AccountName       from;
-      AccountName       to;
+      account_name       from;
+      account_name       to;
       CurrencyTokens    quantity;
    };
 
@@ -47,7 +47,7 @@ namespace infinite {
     *  the users balance. If the account doesn't exist a default constructed
     *  account will be returned.
     */
-   inline Account getAccount( AccountName owner ) {
+   inline Account getAccount( account_name owner ) {
       Account account;
       ///      scope, record
       Accounts::get( account, owner );

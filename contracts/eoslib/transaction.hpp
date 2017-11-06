@@ -22,19 +22,19 @@ namespace eos {
    class Message {
    public:
       template<typename Payload, typename ...Permissions>
-      Message(const AccountName& code, const FuncName& type, const Payload& payload, Permissions... permissions ) 
+      Message(const account_name& code, const func_name& type, const Payload& payload, Permissions... permissions )
          : handle(message_create(code, type, &payload, sizeof(Payload)))
       {
          add_permissions(permissions...);
       }
 
       template<typename Payload>
-      Message(const AccountName& code, const FuncName& type, const Payload& payload ) 
+      Message(const account_name& code, const func_name& type, const Payload& payload )
          : handle(message_create(code, type, &payload, sizeof(Payload)))
       {
       }
 
-      Message(const AccountName& code, const FuncName& type) 
+      Message(const account_name& code, const func_name& type)
          : handle(message_create(code, type, nullptr, 0))
       {
       }
@@ -54,12 +54,12 @@ namespace eos {
          }
       }
 
-      void add_permissions(AccountName account, PermissionName permission) {
+      void add_permissions(account_name account, permission_name permission) {
          message_require_permission(handle, account, permission);
       }
 
       template<typename ...Permissions>
-      void add_permissions(AccountName account, PermissionName permission, Permissions... permissions) {
+      void add_permissions(account_name account, permission_name permission, Permissions... permissions) {
          add_permissions(account, permission);
          add_permissions(permissions...);
       }
@@ -102,7 +102,7 @@ namespace eos {
          }
       }
 
-      void addScope(AccountName scope, bool readOnly = false) {
+      void addScope(account_name scope, bool readOnly = false) {
          assert_valid_handle();
          transaction_require_scope(handle, scope, readOnly ? 1 : 0);
       }

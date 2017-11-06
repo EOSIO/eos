@@ -31,7 +31,7 @@ namespace native {
        *
        *  @note the change in code does not take effect until the start of the next block
        */
-      void setcode( Bytes code,
+      void setcode( bytes code,
                     Abi   abi,
                     uint8_t vm = 0,
                     uint8_t vm_version = 0 ) final;
@@ -109,8 +109,8 @@ namespace native {
 
       */
       void transfer (
-         AccountName from,  ///< account from which EOS will be withdrawn
-         AccountName to,    ///< account to receive EOS, may not be same as `from`
+         account_name from,  ///< account from which EOS will be withdrawn
+         account_name to,    ///< account to receive EOS, may not be same as `from`
          uint64_t    amount ///< must be greater than 0 and less or equal to `from`'s balance
       );
 

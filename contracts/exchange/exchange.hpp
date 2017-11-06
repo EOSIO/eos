@@ -10,7 +10,7 @@ namespace exchange {
    using EosTokens = eos::Tokens;
 
    struct OrderID {
-      AccountName name    = 0;
+      account_name name    = 0;
       uint64_t    number  = 0;
    };
 
@@ -20,7 +20,7 @@ namespace exchange {
       OrderID            buyer;
       Price              price;
       eos::Tokens        quantity;
-      Time               expiration;
+      time               expiration;
 
       void print() {
          eos::print( "{ quantity: ", quantity, ", price: ", price, " }" );
@@ -32,7 +32,7 @@ namespace exchange {
       OrderID          seller;
       Price            price;
       CurrencyTokens   quantity;
-      Time             expiration;
+      time             expiration;
 
       void print() {
          eos::print( "{ quantity: ", quantity, ", price: ", price, " }" );
@@ -41,9 +41,9 @@ namespace exchange {
    static_assert( sizeof(Ask) == 32+12, "unexpected padding" );
 
    struct PACKED( Account ) {
-      Account( AccountName o = AccountName() ):owner(o){}
+      Account( account_name o = account_name() ):owner(o){}
 
-      AccountName        owner;
+      account_name        owner;
       EosTokens          eos_balance;
       CurrencyTokens     currency_balance;
       uint32_t           open_orders = 0;
@@ -61,7 +61,7 @@ namespace exchange {
    struct SellOrder : public Ask { uint8_t fill_or_kill = false; };
 
 
-   inline Account getAccount( AccountName owner ) {
+   inline Account getAccount( account_name owner ) {
       Account account(owner);
       Accounts::get( account );
       return account;

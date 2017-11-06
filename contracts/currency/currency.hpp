@@ -45,11 +45,11 @@ namespace TOKEN_NAME {
       /**
       * Account to transfer from
       */
-      AccountName       from;
+      account_name       from;
       /**
       * Account to transfer to
       */
-      AccountName       to;
+      account_name       to;
       /**
       *  quantity to transfer
       */
@@ -103,7 +103,7 @@ namespace TOKEN_NAME {
     *  @param owner The account owner
     *  @return Account instance
     */
-   inline Account getAccount( AccountName owner ) {
+   inline Account getAccount( account_name owner ) {
       Account account;
       ///      scope, record
       Accounts::get( account, owner );

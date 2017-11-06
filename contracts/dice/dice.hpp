@@ -7,7 +7,7 @@ namespace dice {
 
    struct OfferBet {
       eos::Tokens   amount;
-      AccountName   player;
+      account_name   player;
       uint256       commitment;
    };
 
@@ -28,7 +28,7 @@ namespace dice {
 
    struct OfferPrimaryKey {
       EosTokens          bet;
-      AccountName        owner;
+      account_name        owner;
    };
 
    /**
@@ -61,7 +61,7 @@ namespace dice {
    struct PACKED( Game ) {
       uint32_t  gameid;
       EosTokens bet;
-      Time      deadline;
+      time      deadline;
       Player    player1;
       Player    player2;
    };
@@ -72,9 +72,9 @@ namespace dice {
 
 
    struct PACKED( Account ) {
-      Account( AccountName o = AccountName() ):owner(o){}
+      Account( account_name o = account_name() ):owner(o){}
 
-      AccountName        owner;
+      account_name        owner;
       EosTokens          eos_balance;
       uint32_t           open_offers = 0;
 
@@ -85,7 +85,7 @@ namespace dice {
    using GlobalDice = Table<N(dice),N(dice),N(global),GlobalDice,uint64_t>;
    using Offers = Table<N(dice),N(dice),N(global),GlobalDice,OfferPrimaryKey,uint128_t>;
 
-   inline Account getAccount( AccountName owner ) {
+   inline Account getAccount( account_name owner ) {
       Account account(owner);
       Accounts::get( account );
       return account;

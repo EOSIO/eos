@@ -53,7 +53,7 @@ inline void save( const Account& a ) {
 }
 
 template<typename Lambda>
-inline void modifyAccount( AccountName a, Lambda&& modify ) {
+inline void modifyAccount( account_name a, Lambda&& modify ) {
    auto acnt = getAccount( a );
    modify( acnt );
    save( acnt );

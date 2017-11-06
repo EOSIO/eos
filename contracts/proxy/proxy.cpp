@@ -9,7 +9,7 @@ namespace proxy {
    using namespace eos;
 
    template<typename T>
-   void apply_transfer(AccountName code, const T& transfer) {
+   void apply_transfer(account_name code, const T& transfer) {
       const auto self = current_code();
       Config config;
       assert(Configs::get(config, self), "Attempting to use unconfigured proxy");
@@ -30,7 +30,7 @@ namespace proxy {
       }
    }
 
-   void apply_setowner(AccountName owner) {
+   void apply_setowner(account_name owner) {
       const auto self = current_code();
       Config config;
       bool configured = Configs::get(config, self);
@@ -63,7 +63,7 @@ extern "C" {
           }
        } else if (code == N(proxy) ) {
           if ( action == N(setowner)) {
-             apply_setowner(current_message<AccountName>());
+             apply_setowner(current_message<account_name>());
           }
        }
     }

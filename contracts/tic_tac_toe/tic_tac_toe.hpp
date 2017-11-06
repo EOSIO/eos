@@ -51,14 +51,14 @@ namespace tic_tac_toe {
    */
   struct PACKED(Game) {
     Game() {};
-    Game(AccountName challenger, AccountName host):challenger(challenger), host(host), turn(host) {
+    Game(account_name challenger, account_name host):challenger(challenger), host(host), turn(host) {
       // Initialize board
       initialize_board();
     };
-    AccountName     challenger; // this also acts as key of the table
-    AccountName     host;
-    AccountName     turn; // = account name of host/ challenger
-    AccountName     winner = N(none); // = none/ draw/ account name of host/ challenger
+    account_name     challenger; // this also acts as key of the table
+    account_name     host;
+    account_name     turn; // = account name of host/ challenger
+    account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
     uint8_t         board_len = 9;
     uint8_t         board[9]; // 
     
@@ -81,25 +81,25 @@ namespace tic_tac_toe {
    * @brief Action to create new game
    */ 
   struct Create {
-    AccountName   challenger;
-    AccountName   host;
+    account_name   challenger;
+    account_name   host;
   };
 
   /**
    * @brief Action to restart new game
    */ 
   struct Restart {
-    AccountName   challenger;
-    AccountName   host;
-    AccountName   by; // the account who wants to restart the game
+    account_name   challenger;
+    account_name   host;
+    account_name   by; // the account who wants to restart the game
   };
 
   /**
    * @brief Action to close new game
    */ 
   struct Close {
-    AccountName   challenger;
-    AccountName   host;
+    account_name   challenger;
+    account_name   host;
   };
 
   /**
@@ -114,9 +114,9 @@ namespace tic_tac_toe {
    * @brief Action to make movement
    */ 
   struct Move {
-    AccountName   challenger;
-    AccountName   host;
-    AccountName   by; // the account who wants to make the move
+    account_name   challenger;
+    account_name   host;
+    account_name   by; // the account who wants to make the move
     Movement      movement; 
   };
 

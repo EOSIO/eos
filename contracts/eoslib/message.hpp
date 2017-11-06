@@ -62,7 +62,7 @@ namespace eos {
     *  @endcode
     */
    template<typename... Accounts>
-   void require_notice( AccountName name, Accounts... accounts ){
+   void require_notice( account_name name, Accounts... accounts ){
       require_notice( name );
       require_notice( accounts... );
    }

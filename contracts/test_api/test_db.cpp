@@ -18,7 +18,7 @@ int tertiary_ub[11]  = {1,2,3,5,3,6,7,8,9,-1,1};
 
 #pragma pack(push, 1)
 struct TestModel {
-   AccountName   name;
+   account_name   name;
    unsigned char age;
    uint64_t      phone;
 };

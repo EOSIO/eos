@@ -7,9 +7,9 @@
 
 namespace proxy {
    struct PACKED( Config ) {
-      Config( AccountName o = AccountName() ):owner(o){}
+      Config( account_name o = account_name() ):owner(o){}
       const uint64_t     key = N(config);
-      AccountName        owner;
+      account_name        owner;
    };
 
    using Configs = Table<N(proxy),N(proxy),N(configs),Config,uint64_t>;

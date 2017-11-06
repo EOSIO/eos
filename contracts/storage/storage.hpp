@@ -44,12 +44,12 @@ namespace TOKEN_NAME {
         /**
         * Account to transfer from
         */
-        AccountName from;
+        account_name from;
 
         /**
         * Account to transfer to
         */
-        AccountName to;
+        account_name to;
 
         /**
         * quantity to transfer
@@ -108,7 +108,7 @@ namespace TOKEN_NAME {
     *  @param owner The account owner
     *  @return Account instance
     */
-   inline Account getAccount( AccountName owner ) {
+   inline Account getAccount( account_name owner ) {
       Account account;
       Accounts::get( account, owner );
       return account;
@@ -121,7 +121,7 @@ namespace TOKEN_NAME {
     * @param owner The account owner
     * @return uint64_t quota used
     */
-   inline uint64_t getQuotaUsed( AccountName owner ) {
+   inline uint64_t getQuotaUsed( account_name owner ) {
       Account account;
       Accounts::get( account, owner );
       return account.quotaused;
@@ -134,7 +134,7 @@ namespace TOKEN_NAME {
       /**
       * account owner
       **/
-      AccountName owner;
+      account_name owner;
 
       /**
       * eos path
@@ -169,6 +169,6 @@ namespace TOKEN_NAME {
       /**
       * name of producer who cached file
       **/
-      AccountName producer;
+      account_name producer;
   };
 } /// @} /// storageapi

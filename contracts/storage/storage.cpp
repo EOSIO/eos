@@ -5,7 +5,7 @@
 #include "storage.hpp"
 
 namespace TOKEN_NAME {
-   void storeAccount( AccountName name, const Account& account ) {
+   void storeAccount( account_name name, const Account& account ) {
       if ( account.isEmpty() ) {
          Accounts::remove( account, name );
       } else {

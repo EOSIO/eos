@@ -411,12 +411,12 @@ namespace eos {
     * Name of the account who sends the token
     * @brief Name of the account who sends the token
     */
-    AccountName  from;
+    account_name  from;
     /**
     * Name of the account who receives the token
     * @brief Name of the account who receives the token
     */
-    AccountName  to;
+    account_name  to;
     /**
     * Quantity of token to be transferred
     * @brief Quantity of token to be transferred

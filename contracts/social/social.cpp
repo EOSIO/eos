@@ -14,19 +14,19 @@
  */
 
 struct PostAction {
-   AccountName author;
+   account_name author;
    PostName    postid;
-   AccountName reply_to_author;
+   account_name reply_to_author;
    int32_t     reply_to_id;
    uint8_t     author; /// index in notify list
    char[]      data; /// ignored, title is embedded within
 
-   AccountName getAuthor()const { return getNotify(author); }
+   account_name getAuthor()const { return getNotify(author); }
 };
 
 struct VoteAction {
-   AccountName voter;
-   AccountName author;
+   account_name voter;
+   account_name author;
    PostName    postid;
    int32_t     vote_power;
 };
