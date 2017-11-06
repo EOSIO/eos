@@ -5,7 +5,7 @@
 #include <eos/chain/block_schedule.hpp>
 #include <eos/chain/block.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 static uint next_power_of_two(uint input) {
    if (input == 0) {
@@ -283,4 +283,4 @@ block_schedule block_schedule::in_single_thread(
    return block_schedule { { { thread } } };
 }
 
-} /* namespace chain */ } /* namespace eos */
+} /* namespace chain */ } /* namespace eosio */

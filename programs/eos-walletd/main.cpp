@@ -14,7 +14,7 @@
 #include <boost/exception/diagnostic_information.hpp>
 
 using namespace appbase;
-using namespace eos;
+using namespace eosio;
 
 int main(int argc, char** argv)
 {

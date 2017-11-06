@@ -15,7 +15,7 @@
 #include <eos/types/native.hpp>
 #include <eos/types/exceptions.hpp>
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
 using std::map;
 using std::set;
 using std::string;
@@ -67,6 +67,6 @@ public:
 
 
 
-}} // namespace eos::types
+}} // namespace eosio::types
 
-FC_REFLECT(eos::types::SimpleSymbolTable, (typedefs)(structs))
+FC_REFLECT(eosio::types::SimpleSymbolTable, (typedefs)(structs))

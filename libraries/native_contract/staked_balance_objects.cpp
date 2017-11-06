@@ -10,9 +10,9 @@
 #include <boost/range/algorithm/for_each.hpp>
 
 namespace native {
-namespace eos {
-using namespace chain;
-using namespace types;
+namespace eosio {
+using namespace eosio::chain;
+using namespace eosio::types;
 
 void StakedBalanceObject::stakeTokens(ShareType newStake, chainbase::database& db) const {
    // Update the staked balance

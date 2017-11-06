@@ -7,7 +7,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    /**
     * @brief The permission_link_object class assigns permission_objects to message types
     *
@@ -67,8 +67,8 @@ namespace eos { namespace chain {
          >
       >
    >;
-} } // eos::chain
+} } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_link_object, eos::chain::permission_link_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_index)
 
-FC_REFLECT(eos::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))
+FC_REFLECT(eosio::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))

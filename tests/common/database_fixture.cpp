@@ -37,8 +37,8 @@
 
 uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
-namespace eos { namespace chain {
-   using namespace native::eos;
+namespace eosio { namespace chain {
+   using namespace native::eosio;
    using namespace native;
 
 testing_fixture::testing_fixture() {
@@ -95,9 +95,9 @@ testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& f
                                        chain_initializer_interface& initializer, testing_fixture& fixture,
                                        const chain_controller::txn_msg_rate_limits& rate_limits)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
-                      ::eos::chain_plugin::default_transaction_execution_time * 1000,
-                      ::eos::chain_plugin::default_received_block_transaction_execution_time * 1000,
-                      ::eos::chain_plugin::default_create_block_transaction_execution_time * 1000,
+                      ::eosio::chain_plugin::default_transaction_execution_time * 1000,
+                      ::eosio::chain_plugin::default_received_block_transaction_execution_time * 1000,
+                      ::eosio::chain_plugin::default_create_block_transaction_execution_time * 1000,
                        rate_limits),
      db(db),
      fixture(fixture) {}
@@ -137,15 +137,15 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
 }
 
 types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& account) {
-   return get_database().get<BalanceObject, native::eos::byOwnerName>(account).balance;
+   return get_database().get<BalanceObject, native::eosio::byOwnerName>(account).balance;
 }
 
 types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).stakedBalance;
+   return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).stakedBalance;
 }
 
 types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).unstakingBalance;
+   return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).unstakingBalance;
 }
 
 std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
@@ -252,4 +252,4 @@ void testing_network::propagate_block(const signed_block& block, const testing_b
    }
 }
 
-} } // eos::chain
+} } // eosio::chain

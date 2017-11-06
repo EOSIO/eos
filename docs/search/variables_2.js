@@ -6,6 +6,6 @@ var searchData=
   ['column',['column',['../structtic__tac__toe_1_1_movement.html#a4eff2515499ad4d7254d35eb22a6badb',1,'tic_tac_toe::Movement']]],
   ['commitment',['commitment',['../structdice_1_1_offer_bet.html#a17dbf172fab27039df1c29906c85a06f',1,'dice::OfferBet::commitment()'],['../structdice_1_1_cancel_offer.html#a6a505f4c05b3bbbdd413416defa488f7',1,'dice::CancelOffer::commitment()'],['../structdice_1_1_reveal.html#ac731fa11505f6d162de3fbd1d788f0e9',1,'dice::Reveal::commitment()'],['../structdice_1_1_player.html#ae8e2403845fd889665e7e65f6bf4e62d',1,'dice::Player::commitment()']]],
   ['created',['created',['../struct_post_record.html#a4b0c19a41eb0d64a06d95321027fd792',1,'PostRecord']]],
-  ['currency_5ftype',['currency_type',['../structeos_1_1token.html#a185ffd9fee7a6383ef028c3a4d7c2dee',1,'eos::token']]],
+  ['currency_5ftype',['currency_type',['../structeos_1_1token.html#a185ffd9fee7a6383ef028c3a4d7c2dee',1,'eosio::token']]],
   ['currency_5fwast',['currency_wast',['../currency_8wast_8hpp.html#af81b0cff9cea75a78074db8df522e772',1,'currency.wast.hpp']]]
 ];

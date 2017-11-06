@@ -38,7 +38,7 @@
 #include <eoslib/print.hpp>
 
 using namespace exchange;
-using namespace eos;
+using namespace eosio;
 
 namespace exchange {
 inline void save( const account& a ) {
@@ -83,7 +83,7 @@ void apply_currency_transfer( const currency::transfer& transfer ) {
  *  This method is called after the "transfer" action of code
  *  "currencya" is called and "exchange" is listed in the notifiers.
  */
-void apply_eos_transfer( const eos::transfer& transfer ) {
+void apply_eos_transfer( const eosio::transfer& transfer ) {
    if( transfer.to == N(exchange) ) {
       modify_account( transfer.from, [&]( account& mod_account ){
          mod_account.eos_balance += transfer.quantity;
@@ -102,9 +102,9 @@ void apply_eos_transfer( const eos::transfer& transfer ) {
 void match( bid& bid_to_match, account& buyer, ask& ask_to_match, account& seller ) {
    print( "match bid: ", bid_to_match, "\nmatch ask: ", ask_to_match, "\n");
 
-   eos::tokens ask_eos = ask_to_match.quantity * ask_to_match.at_price;
+   eosio::tokens ask_eos = ask_to_match.quantity * ask_to_match.at_price;
 
-   eos_tokens      fill_amount_eos = min<eos::tokens>( ask_eos, bid_to_match.quantity );
+   eos_tokens      fill_amount_eos = min<eosio::tokens>( ask_eos, bid_to_match.quantity );
    currency_tokens fill_amount_currency;
 
    if( fill_amount_eos == ask_eos ) { /// complete fill of ask_to_match
@@ -132,7 +132,7 @@ void apply_exchange_buy( buy_order order ) {
    bid& exchange_bid = order;
    require_auth( exchange_bid.buyer.name );
 
-   assert( exchange_bid.quantity > eos::tokens(0), "invalid quantity" );
+   assert( exchange_bid.quantity > eosio::tokens(0), "invalid quantity" );
    assert( exchange_bid.expiration > now(), "order expired" );
 
    print( Name(exchange_bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.at_price, "\n" );
@@ -324,7 +324,7 @@ extern "C" {
       } 
       else if( code == N(eos) ) {
         if( action == N(transfer) ) 
-           apply_eos_transfer( current_message<eos::transfer>() );
+           apply_eos_transfer( current_message<eosio::transfer>() );
       } 
       else {
       }

@@ -14,7 +14,7 @@
 #include <boost/range/algorithm/find.hpp>
 #include <boost/algorithm/cxx11/all_of.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 namespace detail {
 using MetaPermission = static_variant<types::KeyPermissionWeight, types::AccountPermissionWeight>;
@@ -136,4 +136,4 @@ AuthorityChecker<F> MakeAuthorityChecker(F&& pta, UInt16 recursionDepthLimit,
    return AuthorityChecker<F>(std::forward<F>(pta), recursionDepthLimit, signingKeys);
 }
 
-}} // namespace eos::chain
+}} // namespace eosio::chain

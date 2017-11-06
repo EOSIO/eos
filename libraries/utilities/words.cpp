@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <eos/utilities/words.hpp>
 
-namespace eos { namespace words {
+namespace eosio { namespace words {
 
 const const_char_ptr word_list[] = { 
 "a",
@@ -49761,4 +49761,4 @@ void hide_unused_warning() {
   (void)word_list; 
 }
 
-} } // eos::words
+} } // eosio::words

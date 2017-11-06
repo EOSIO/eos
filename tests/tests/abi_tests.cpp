@@ -17,9 +17,9 @@
 
 #include "../common/database_fixture.hpp"
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
-using namespace eos::types;
+using namespace eosio::types;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
@@ -467,14 +467,14 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto transfer = var.as<eos::types::transfer>();
+   auto transfer = var.as<eosio::types::transfer>();
    BOOST_CHECK_EQUAL("from.acct", transfer.from);
    BOOST_CHECK_EQUAL("to.acct", transfer.to);
    BOOST_CHECK_EQUAL(18446744073709551515u, transfer.amount);
    BOOST_CHECK_EQUAL("really important transfer", transfer.memo);
 
    auto var2 = verify_round_trip_conversion( abis, "transfer", var );
-   auto transfer2 = var2.as<eos::types::transfer>();
+   auto transfer2 = var2.as<eosio::types::transfer>();
    BOOST_CHECK_EQUAL(transfer.from, transfer2.from);
    BOOST_CHECK_EQUAL(transfer.to, transfer2.to);
    BOOST_CHECK_EQUAL(transfer.amount, transfer2.amount);
@@ -498,13 +498,13 @@ BOOST_FIXTURE_TEST_CASE(lock, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto lock = var.as<eos::types::lock>();
+   auto lock = var.as<eosio::types::lock>();
    BOOST_CHECK_EQUAL("from.acct", lock.from);
    BOOST_CHECK_EQUAL("to.acct", lock.to);
    BOOST_CHECK_EQUAL(-9223372036854775807, lock.amount);
 
    auto var2 = verify_round_trip_conversion( abis, "lock", var );
-   auto lock2 = var2.as<eos::types::lock>();
+   auto lock2 = var2.as<eosio::types::lock>();
    BOOST_CHECK_EQUAL(lock.from, lock2.from);
    BOOST_CHECK_EQUAL(lock.to, lock2.to);
    BOOST_CHECK_EQUAL(lock.amount, lock2.amount);
@@ -526,12 +526,12 @@ BOOST_FIXTURE_TEST_CASE(unlock, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto unlock = var.as<eos::types::unlock>();
+   auto unlock = var.as<eosio::types::unlock>();
    BOOST_CHECK_EQUAL("an.acct", unlock.account);
    BOOST_CHECK_EQUAL(-9223372036854775807, unlock.amount);
 
    auto var2 = verify_round_trip_conversion( abis, "unlock", var );
-   auto unlock2 = var2.as<eos::types::unlock>();
+   auto unlock2 = var2.as<eosio::types::unlock>();
    BOOST_CHECK_EQUAL(unlock.account, unlock2.account);
    BOOST_CHECK_EQUAL(unlock.amount, unlock2.amount);
 
@@ -552,12 +552,12 @@ BOOST_FIXTURE_TEST_CASE(claim, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto claim = var.as<eos::types::claim>();
+   auto claim = var.as<eosio::types::claim>();
    BOOST_CHECK_EQUAL("an.acct", claim.account);
    BOOST_CHECK_EQUAL(-9223372036854775807, claim.amount);
 
    auto var2 = verify_round_trip_conversion( abis, "claim", var );
-   auto claim2 = var2.as<eos::types::claim>();
+   auto claim2 = var2.as<eosio::types::claim>();
    BOOST_CHECK_EQUAL(claim.account, claim2.account);
    BOOST_CHECK_EQUAL(claim.amount, claim2.amount);
 
@@ -579,13 +579,13 @@ BOOST_FIXTURE_TEST_CASE(okproducer, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto okproducer = var.as<eos::types::okproducer>();
+   auto okproducer = var.as<eosio::types::okproducer>();
    BOOST_CHECK_EQUAL("an.acct", okproducer.voter);
    BOOST_CHECK_EQUAL("an.acct2", okproducer.producer);
    BOOST_CHECK_EQUAL(-128, okproducer.approve);
 
    auto var2 = verify_round_trip_conversion( abis, "okproducer", var );
-   auto okproducer2 = var2.as<eos::types::okproducer>();
+   auto okproducer2 = var2.as<eosio::types::okproducer>();
    BOOST_CHECK_EQUAL(okproducer.voter, okproducer2.voter);
    BOOST_CHECK_EQUAL(okproducer.producer, okproducer2.producer);
    BOOST_CHECK_EQUAL(okproducer.approve, okproducer2.approve);
@@ -620,7 +620,7 @@ BOOST_FIXTURE_TEST_CASE(setproducer, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto setproducer = var.as<eos::types::setproducer>();
+   auto setproducer = var.as<eosio::types::setproducer>();
    BOOST_CHECK_EQUAL("acct.name", setproducer.name);
    BOOST_CHECK_EQUAL("EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az", (std::string)setproducer.key);
    BOOST_CHECK_EQUAL(2147483135u, setproducer.configuration.maxBlockSize);
@@ -637,7 +637,7 @@ BOOST_FIXTURE_TEST_CASE(setproducer, testing_fixture)
    BOOST_CHECK_EQUAL(4294966911u, setproducer.configuration.maxGenTrxSize);
 
    auto var2 = verify_round_trip_conversion( abis, "setproducer", var );
-   auto setproducer2 = var2.as<eos::types::setproducer>();
+   auto setproducer2 = var2.as<eosio::types::setproducer>();
    BOOST_CHECK_EQUAL(setproducer.configuration.maxBlockSize, setproducer2.configuration.maxBlockSize);
    BOOST_CHECK_EQUAL(setproducer.configuration.targetBlockSize, setproducer2.configuration.targetBlockSize);
    BOOST_CHECK_EQUAL(setproducer.configuration.maxStorageSize, setproducer2.configuration.maxStorageSize);
@@ -668,12 +668,12 @@ BOOST_FIXTURE_TEST_CASE(setproxy, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto setproxy = var.as<eos::types::setproxy>();
+   auto setproxy = var.as<eosio::types::setproxy>();
    BOOST_CHECK_EQUAL("stake.hldr", setproxy.stakeholder);
    BOOST_CHECK_EQUAL("stkhdr.prxy", setproxy.proxy);
 
    auto var2 = verify_round_trip_conversion( abis, "setproxy", var );
-   auto setproxy2 = var2.as<eos::types::setproxy>();
+   auto setproxy2 = var2.as<eosio::types::setproxy>();
    BOOST_CHECK_EQUAL(setproxy.stakeholder, setproxy2.stakeholder);
    BOOST_CHECK_EQUAL(setproxy.proxy, setproxy2.proxy);
 
@@ -696,14 +696,14 @@ BOOST_FIXTURE_TEST_CASE(linkauth, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto linkauth = var.as<eos::types::linkauth>();
+   auto linkauth = var.as<eosio::types::linkauth>();
    BOOST_CHECK_EQUAL("lnkauth.acct", linkauth.account);
    BOOST_CHECK_EQUAL("lnkauth.code", linkauth.code);
    BOOST_CHECK_EQUAL("lnkauth.type", linkauth.type);
    BOOST_CHECK_EQUAL("lnkauth.rqm", linkauth.requirement);
 
    auto var2 = verify_round_trip_conversion( abis, "linkauth", var );
-   auto linkauth2 = var2.as<eos::types::linkauth>();
+   auto linkauth2 = var2.as<eosio::types::linkauth>();
    BOOST_CHECK_EQUAL(linkauth.account, linkauth2.account);
    BOOST_CHECK_EQUAL(linkauth.code, linkauth2.code);
    BOOST_CHECK_EQUAL(linkauth.type, linkauth2.type);
@@ -727,13 +727,13 @@ BOOST_FIXTURE_TEST_CASE(unlinkauth, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto unlinkauth = var.as<eos::types::unlinkauth>();
+   auto unlinkauth = var.as<eosio::types::unlinkauth>();
    BOOST_CHECK_EQUAL("lnkauth.acct", unlinkauth.account);
    BOOST_CHECK_EQUAL("lnkauth.code", unlinkauth.code);
    BOOST_CHECK_EQUAL("lnkauth.type", unlinkauth.type);
 
    auto var2 = verify_round_trip_conversion( abis, "unlinkauth", var );
-   auto unlinkauth2 = var2.as<eos::types::unlinkauth>();
+   auto unlinkauth2 = var2.as<eosio::types::unlinkauth>();
    BOOST_CHECK_EQUAL(unlinkauth.account, unlinkauth2.account);
    BOOST_CHECK_EQUAL(unlinkauth.code, unlinkauth2.code);
    BOOST_CHECK_EQUAL(unlinkauth.type, unlinkauth2.type);
@@ -763,7 +763,7 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto updateauth = var.as<eos::types::updateauth>();
+   auto updateauth = var.as<eosio::types::updateauth>();
    BOOST_CHECK_EQUAL("updauth.acct", updateauth.account);
    BOOST_CHECK_EQUAL("updauth.prm", updateauth.permission);
    BOOST_CHECK_EQUAL("updauth.prnt", updateauth.parent);
@@ -784,7 +784,7 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
    BOOST_CHECK_EQUAL(53405u, updateauth.authority.accounts[1].weight);
 
    auto var2 = verify_round_trip_conversion( abis, "updateauth", var );
-   auto updateauth2 = var2.as<eos::types::updateauth>();
+   auto updateauth2 = var2.as<eosio::types::updateauth>();
    BOOST_CHECK_EQUAL(updateauth.account, updateauth2.account);
    BOOST_CHECK_EQUAL(updateauth.permission, updateauth2.permission);
    BOOST_CHECK_EQUAL(updateauth.parent, updateauth2.parent);
@@ -822,12 +822,12 @@ BOOST_FIXTURE_TEST_CASE(deleteauth, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto deleteauth = var.as<eos::types::deleteauth>();
+   auto deleteauth = var.as<eosio::types::deleteauth>();
    BOOST_CHECK_EQUAL("delauth.acct", deleteauth.account);
    BOOST_CHECK_EQUAL("delauth.prm", deleteauth.permission);
 
    auto var2 = verify_round_trip_conversion( abis, "deleteauth", var );
-   auto deleteauth2 = var2.as<eos::types::deleteauth>();
+   auto deleteauth2 = var2.as<eosio::types::deleteauth>();
    BOOST_CHECK_EQUAL(deleteauth.account, deleteauth2.account);
    BOOST_CHECK_EQUAL(deleteauth.permission, deleteauth2.permission);
 
@@ -870,7 +870,7 @@ BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto newaccount = var.as<eos::types::newaccount>();
+   auto newaccount = var.as<eosio::types::newaccount>();
    BOOST_CHECK_EQUAL("newacct.crtr", newaccount.creator);
    BOOST_CHECK_EQUAL("newacct.name", newaccount.name);
 
@@ -926,7 +926,7 @@ BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
    BOOST_CHECK_EQUAL(EOS_SYMBOL, newaccount.deposit.symbol);
 
    auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
-   auto newaccount2 = var2.as<eos::types::newaccount>();
+   auto newaccount2 = var2.as<eosio::types::newaccount>();
    BOOST_CHECK_EQUAL(newaccount.creator, newaccount2.creator);
    BOOST_CHECK_EQUAL(newaccount.name, newaccount2.name);
 

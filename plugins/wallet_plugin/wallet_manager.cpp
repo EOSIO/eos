@@ -5,7 +5,7 @@
 #include <eos/wallet_plugin/wallet_manager.hpp>
 #include <eos/utilities/key_conversion.hpp>
 
-namespace eos {
+namespace eosio {
 namespace wallet {
 
 constexpr auto file_ext = ".wallet";

@@ -9,7 +9,7 @@
 #include <eoslib/print.hpp>
 
 
-namespace eos {
+namespace eosio {
   /**
   *  @defgroup tokens Token API
   *  @brief Defines the ABI for interfacing with standard-compatible token messages and database tables.
@@ -30,7 +30,7 @@ namespace eos {
   *
   *  Example:
   *  @code
-  *  typedef eos::token<uint32_t, N(MyToken)> MyToken;
+  *  typedef eosio::token<uint32_t, N(MyToken)> MyToken;
   *  MyToken  a(128);
   *  a.print(); // Output: 128 MyToken
   *  MyToken b(64);
@@ -202,7 +202,7 @@ namespace eos {
     * @brief Print as string
     */
     inline void print() {
-      eos::print( quantity, " ", Name(CurrencyType) );
+      eosio::print( quantity, " ", Name(CurrencyType) );
     }
   };
   /// @}
@@ -220,8 +220,8 @@ namespace eos {
   *
   *  Example:
   *  @code
-  *  typedef eos::token<uint64_t, N(MyBaseToken)> MyBaseToken;
-  *  typedef eos::token<uint64_t, N(MyQuoteToken)> MyQuoteToken;
+  *  typedef eosio::token<uint64_t, N(MyBaseToken)> MyBaseToken;
+  *  typedef eosio::token<uint64_t, N(MyQuoteToken)> MyQuoteToken;
   *  typedef price<MyBaseToken, MyQuoteToken> MyBaseToQuotePrice;
   *  MyBaseToken zeroBaseToken;
   *  MyQuoteToken zeroQuoteToken;
@@ -289,7 +289,7 @@ namespace eos {
     * @return quote token
     */
     friend QuoteToken operator / ( BaseToken b, const price& q ) {
-      eos::print( "operator/ ", uint128(b.quantity), " * ", uint128( precision ), " / ", q.base_per_quote, "\n" );
+      eosio::print( "operator/ ", uint128(b.quantity), " * ", uint128( precision ), " / ", q.base_per_quote, "\n" );
       return QuoteToken( uint64_t((uint128(b.quantity) * uint128(precision)   / q.base_per_quote)) );
     }
 
@@ -301,8 +301,8 @@ namespace eos {
     * @return base token
     */
     friend BaseToken operator * ( const QuoteToken& b, const price& q ) {
-      eos::print( "b: ", b, " \n" );
-      eos::print( "operator* ", uint128(b.quantity), " * ", uint128( q.base_per_quote ), " / ", precision, "\n" );
+      eosio::print( "b: ", b, " \n" );
+      eosio::print( "operator* ", uint128(b.quantity), " * ", uint128( q.base_per_quote ), " / ", precision, "\n" );
       //return QuoteToken( uint64_t( mult_div_i128( b.quantity, q.base_per_quote, precision ) ) );
       return BaseToken( uint64_t((b.quantity * q.base_per_quote) / precision) );
     }
@@ -366,14 +366,14 @@ namespace eos {
     * @brief Prints as string.
     */
     inline void print() {
-      eos::print( base_per_quote, ".", " ", Name(base_token_type::currency_type), "/", Name(quote_token_type::currency_type)  );
+      eosio::print( base_per_quote, ".", " ", Name(base_token_type::currency_type), "/", Name(quote_token_type::currency_type)  );
     }
   private:
     /**
     * Represents as number of base tokens to purchase 1 quote token.
     * @brief Represents number of base tokens to purchase 1 quote token.
     */
-    eos::uint128 base_per_quote;
+    eosio::uint128 base_per_quote;
   };
 
   /// @}
@@ -383,10 +383,10 @@ namespace eos {
   * @brief Defines eos tokens
   * @details Defines eos tokens
   */
-  typedef eos::token<uint64_t,N(eos)>   tokens;
+  typedef eosio::token<uint64_t,N(eos)>   tokens;
 
   /**
-  *  @struct eos::transfer
+  *  @struct eosio::transfer
   *  @brief The binary structure of the `transfer` message type for the `eos` contract.
   *  @ingroup tokens
   *

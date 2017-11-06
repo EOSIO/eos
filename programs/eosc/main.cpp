@@ -12,7 +12,7 @@
   @section intro Introduction to EOSC
 
   `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
-  have a local copy of `eosd` running and configured to load the 'eos::chain_api_plugin'.
+  have a local copy of `eosd` running and configured to load the 'eosio::chain_api_plugin'.
 
    eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
 ```
@@ -97,12 +97,12 @@ Options:
 #include <config.hpp>
 
 using namespace std;
-using namespace eos;
-using namespace eos::chain;
-using namespace eos::utilities;
-using namespace eos::client::help;
-using namespace eos::client::localize;
-using namespace eos::client::config;
+using namespace eosio;
+using namespace eosio::chain;
+using namespace eosio::utilities;
+using namespace eosio::client::help;
+using namespace eosio::client::localize;
+using namespace eosio::client::config;
 using namespace boost::filesystem;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
@@ -253,8 +253,8 @@ template<typename T>
 fc::variant call( const std::string& path,
                   const T& v ) { return call( host, port, path, fc::variant(v) ); }
 
-eos::chain_apis::read_only::get_info_results get_info() {
-  return call(host, port, get_info_func ).as<eos::chain_apis::read_only::get_info_results>();
+eosio::chain_apis::read_only::get_info_results get_info() {
+  return call(host, port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 void sign_transaction(SignedTransaction& trx) {
@@ -285,9 +285,9 @@ fc::variant push_transaction( SignedTransaction& trx, bool sign ) {
 
 
 void create_account(Name creator, Name newaccount, public_key_type owner, public_key_type active, bool sign) {
-      auto owner_auth   = eos::chain::Authority{1, {{owner, 1}}, {}};
-      auto active_auth  = eos::chain::Authority{1, {{active, 1}}, {}};
-      auto recovery_auth = eos::chain::Authority{1, {}, {{{creator, "active"}, 1}}};
+      auto owner_auth   = eosio::chain::Authority{1, {{owner, 1}}, {}};
+      auto active_auth  = eosio::chain::Authority{1, {{active, 1}}, {}};
+      auto recovery_auth = eosio::chain::Authority{1, {}, {{{creator, "active"}, 1}}};
 
       uint64_t deposit = 1;
 
@@ -922,9 +922,9 @@ int main( int argc, char** argv ) {
         public_key_type owner, active;
         Name creator("inita" );
 
-        auto owner_auth   = eos::chain::Authority{1, {{owner, 1}}, {}};
-        auto active_auth  = eos::chain::Authority{1, {{active, 1}}, {}};
-        auto recovery_auth = eos::chain::Authority{1, {}, {{{creator, "active"}, 1}}};
+        auto owner_auth   = eosio::chain::Authority{1, {{owner, 1}}, {}};
+        auto active_auth  = eosio::chain::Authority{1, {{active, 1}}, {}};
+        auto recovery_auth = eosio::chain::Authority{1, {}, {{{creator, "active"}, 1}}};
         
         uint64_t deposit = 1;
         

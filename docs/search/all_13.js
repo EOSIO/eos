@@ -4,7 +4,7 @@ var searchData=
   ['u32',['u32',['../test__api_8hpp.html#a10e94b422ef0c20dcdec20d31a1f5049',1,'test_api.hpp']]],
   ['u64',['u64',['../test__api_8hpp.html#ad758b7a5c3f18ed79d2fcd23d9f16357',1,'test_api.hpp']]],
   ['uint128',['uint128',['../structeos_1_1uint128.html',1,'eos']]],
-  ['uint128',['uint128',['../structeos_1_1uint128.html#ac5b25181f69351ed0785e8a5df44b9d1',1,'eos::uint128::uint128(uint128_t i=0)'],['../structeos_1_1uint128.html#a4763a690d6102d21ad203d59213d2da1',1,'eos::uint128::uint128(uint64_t i)'],['../structeos_1_1uint128.html#a911afb9d70b5eba4f6ec331185891cbc',1,'eos::uint128::uint128(uint32_t i)']]],
+  ['uint128',['uint128',['../structeos_1_1uint128.html#ac5b25181f69351ed0785e8a5df44b9d1',1,'eosio::uint128::uint128(uint128_t i=0)'],['../structeos_1_1uint128.html#a4763a690d6102d21ad203d59213d2da1',1,'eosio::uint128::uint128(uint64_t i)'],['../structeos_1_1uint128.html#a911afb9d70b5eba4f6ec331185891cbc',1,'eosio::uint128::uint128(uint32_t i)']]],
   ['uint128_5ft',['uint128_t',['../group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d',1,'types.h']]],
   ['uint256',['uint256',['../structuint256.html',1,'']]],
   ['uint32_5ft',['uint32_t',['../group__types.html#ga06896e8c53f721507066c079052171f8',1,'types.h']]],

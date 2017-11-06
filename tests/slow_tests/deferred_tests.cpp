@@ -26,12 +26,12 @@
 
 #include <proxy/proxy.wast.hpp>
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 
 void Set_Proxy_Owner( testing_blockchain& chain, AccountName proxy, AccountName owner ) {
-   eos::chain::SignedTransaction trx;
+   eosio::chain::SignedTransaction trx;
    trx.scope = sort_names({proxy,owner});
    transaction_emplace_message(trx, "proxy", 
                       vector<types::AccountPermission>({ }),

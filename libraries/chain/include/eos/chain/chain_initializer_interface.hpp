@@ -10,7 +10,7 @@
 
 namespace chainbase { class database; }
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 class chain_controller;
 
 /**
@@ -62,4 +62,4 @@ public:
    virtual vector<Message> prepare_database(chain_controller& chain, chainbase::database& db) = 0;
 };
 
-} } // namespace eos::chain
+} } // namespace eosio::chain

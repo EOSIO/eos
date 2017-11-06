@@ -29,7 +29,7 @@
 #include <exchange/exchange.wast.hpp>
 #include <infinite/infinite.wast.hpp>
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 
@@ -274,7 +274,7 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eos::chain::SignedTransaction trx;
+         eosio::chain::SignedTransaction trx;
          trx.scope = {account};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
@@ -288,7 +288,7 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
 } FC_LOG_AND_RETHROW( ) }
 
 void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
-   eos::chain::SignedTransaction trx;
+   eosio::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "currency", 
                       vector<types::AccountPermission>{ {from,"active"} },
@@ -301,7 +301,7 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
 }
 
 void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
-   eos::chain::SignedTransaction trx;
+   eosio::chain::SignedTransaction trx;
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "currency", 
                       vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
@@ -328,7 +328,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eos::chain::SignedTransaction trx;
+         eosio::chain::SignedTransaction trx;
          trx.scope = {"currency"};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
@@ -344,7 +344,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       auto start = fc::time_point::now();
       for (uint32_t i = 0; i < 10000; ++i)
       {
-         eos::chain::SignedTransaction trx;
+         eosio::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
          transaction_emplace_message(trx, "currency", 
                             vector<types::AccountPermission>{ {"currency","active"} },
@@ -382,7 +382,7 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
             chain.head_block_time()+fc::days(3) 
          };
 
-   eos::chain::SignedTransaction trx;
+   eosio::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
    transaction_emplace_message(trx, "exchange", 
                       vector<types::AccountPermission>{ {seller,"active"} },
@@ -400,7 +400,7 @@ void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exch
             chain.head_block_time()+fc::days(3) 
          };
 
-   eos::chain::SignedTransaction trx;
+   eosio::chain::SignedTransaction trx;
    trx.scope = sort_names({"exchange"});
    transaction_emplace_message(trx, "exchange", 
                       vector<types::AccountPermission>{ {buyer,"active"} },
@@ -1093,7 +1093,7 @@ R"(
       handler.code.resize(wasm.size());
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
-      eos::chain::SignedTransaction trx;
+      eosio::chain::SignedTransaction trx;
       trx.scope = {"simplecoin"};
       trx.messages.resize(1);
       trx.messages[0].code = config::EosContractName;
@@ -1130,7 +1130,7 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eos::chain::SignedTransaction trx;
+         eosio::chain::SignedTransaction trx;
          trx.scope = {"currency"};
          trx.messages.resize(1);
          trx.messages[0].code = config::EosContractName;
@@ -1144,7 +1144,7 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
 
 
       {
-         eos::chain::SignedTransaction trx;
+         eosio::chain::SignedTransaction trx;
          trx.scope = sort_names({"currency","inita"});
          transaction_emplace_message(trx, "currency",
                             vector<types::AccountPermission>{ {"currency","active"} },
@@ -1157,7 +1157,7 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
             chain.push_transaction(trx);
             BOOST_FAIL("transaction should have failed with checktime_exceeded");
          }
-         catch (const eos::chain::checktime_exceeded& check)
+         catch (const eosio::chain::checktime_exceeded& check)
          {
             wlog("checktime_exceeded caught");
          }

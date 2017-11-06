@@ -15,7 +15,7 @@
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 void apply_context::get_active_producers(types::AccountName* producers, uint32_t datalen) {
    const auto& gpo = controller.get_global_properties();
@@ -146,4 +146,4 @@ void apply_context::release_pending_message(pending_message::handle_type handle)
    pending_messages.pop_back();
 }
 
-} } // namespace eos::chain
+} } // namespace eosio::chain

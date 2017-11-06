@@ -13,7 +13,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    /**
     * @class global_property_object
@@ -102,11 +102,11 @@ namespace eos { namespace chain {
 
 }}
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::global_property_object, eos::chain::global_property_multi_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::dynamic_global_property_object,
-                         eos::chain::dynamic_global_property_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::global_property_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
+                         eosio::chain::dynamic_global_property_multi_index)
 
-FC_REFLECT(eos::chain::dynamic_global_property_object,
+FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (head_block_number)
            (head_block_id)
            (time)
@@ -117,7 +117,7 @@ FC_REFLECT(eos::chain::dynamic_global_property_object,
            (last_irreversible_block_num)
           )
 
-FC_REFLECT(eos::chain::global_property_object,
+FC_REFLECT(eosio::chain::global_property_object,
            (configuration)
            (active_producers)
           )

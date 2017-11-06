@@ -9,7 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-namespace eos {
+namespace eosio {
 
 BOOST_AUTO_TEST_SUITE(wallet_tests)
 
@@ -17,8 +17,8 @@ BOOST_AUTO_TEST_SUITE(wallet_tests)
 /// Test creating the wallet
 BOOST_AUTO_TEST_CASE(wallet_test)
 { try {
-   using namespace eos::wallet;
-   using namespace eos::utilities;
+   using namespace eosio::wallet;
+   using namespace eosio::utilities;
 
    wallet_data d;
    wallet_api wallet(d);
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(wallet_test)
 /// Test wallet manager
 BOOST_AUTO_TEST_CASE(wallet_manager_test)
 { try {
-   using namespace eos::wallet;
+   using namespace eosio::wallet;
 
    if (fc::exists("test.wallet")) fc::remove("test.wallet");
    if (fc::exists("test2.wallet")) fc::remove("test2.wallet");

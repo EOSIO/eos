@@ -22,7 +22,7 @@
 #include <thread>
 #include <memory>
 
-namespace eos {
+namespace eosio {
    namespace asio = boost::asio;
 
    using std::map;

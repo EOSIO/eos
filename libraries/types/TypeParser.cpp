@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <iostream>
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
 namespace alg = boost::algorithm;
 
 bool AbstractSymbolTable::isValidTypeName(const TypeName& name, bool allowArray) const {
@@ -130,7 +130,7 @@ bool SimpleSymbolTable::isKnownType(const TypeName& n) const { try {
                                                   structs.find(n) != structs.end();
                                                          } FC_CAPTURE_AND_RETHROW((n)) }
 
-Struct eos::types::SimpleSymbolTable::getType(TypeName name) const {
+Struct eosio::types::SimpleSymbolTable::getType(TypeName name) const {
    name = resolveTypedef(name);
 
    auto itr = structs.find(name);
@@ -151,4 +151,4 @@ TypeName SimpleSymbolTable::resolveTypedef(TypeName name) const {
    return name;
 }
 
-}} // namespace eos::types
+}} // namespace eosio::types

@@ -23,9 +23,9 @@
 
 #include <fc/reflect/reflect.hpp>
 
-#define N(X) eos::types::string_to_name(#X)
+#define N(X) eosio::types::string_to_name(#X)
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
    using namespace boost::multiprecision;
 
    template<typename... T>
@@ -220,17 +220,17 @@ namespace eos { namespace types {
       st.write((const char*)data, sizeof(data));
    }
    
-}} // namespace eos::types
+}} // namespace eosio::types
 
 namespace fc {
-  void to_variant(const eos::types::Name& c, fc::variant& v);
-  void from_variant(const fc::variant& v, eos::types::Name& check);
-  void to_variant(const std::vector<eos::types::Field>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, std::vector<eos::types::Field>& check);
-  void to_variant(const std::map<std::string,eos::types::Struct>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, std::map<std::string,eos::types::Struct>& check);
+  void to_variant(const eosio::types::Name& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::types::Name& check);
+  void to_variant(const std::vector<eosio::types::Field>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, std::vector<eosio::types::Field>& check);
+  void to_variant(const std::map<std::string,eosio::types::Struct>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, std::map<std::string,eosio::types::Struct>& check);
 }
 
-FC_REFLECT(eos::types::Name, (value))
-FC_REFLECT(eos::types::Field, (name)(type))
-FC_REFLECT(eos::types::Struct, (name)(base)(fields))
+FC_REFLECT(eosio::types::Name, (value))
+FC_REFLECT(eosio::types::Field, (name)(type))
+FC_REFLECT(eosio::types::Struct, (name)(base)(fields))

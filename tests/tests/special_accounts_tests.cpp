@@ -25,7 +25,7 @@
 
 #include "../common/database_fixture.hpp"
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(special_account_tests)

@@ -66,12 +66,12 @@ extern "C" {
      *  This method is called once when the contract is published or updated.
      */
     void init()  {
-       eos::print( "Init World!\n" );
+       eosio::print( "Init World!\n" );
     }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       eos::print( "Hello World: ", eos::Name(code), "->", eos::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
     }
 
 } // extern "C"
@@ -383,7 +383,7 @@ extern "C" {
      *  This method is called once when the contract is published or updated.
      */
     void init()  {
-       eos::print( "Init World!\n" );
+       eosio::print( "Init World!\n" );
     }
 
     struct transfer {
@@ -394,13 +394,13 @@ extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       eos::print( "Hello World: ", eos::Name(code), "->", eos::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
           transfer message;
           static_assert( sizeof(message) == 3*sizeof(uint64_t), "unexpected padding" );
           auto read = readMessage( &message, sizeof(message) );
           assert( read == sizeof(message), "message too short" );
-          eos::print( "Transfer ", message.amount, " from ", eos::Name(message.from), " to ", eos::Name(message.to), "\n" );
+          eosio::print( "Transfer ", message.amount, " from ", eosio::Name(message.from), " to ", eosio::Name(message.to), "\n" );
        }
     }
 
@@ -474,7 +474,7 @@ removes much of the boiler plate.
 
 ```c
 /// eoslib/message.hpp
-namespace eos {
+namespace eosio {
 	 template<typename T>
 	 T currentMessage();
 }
@@ -495,21 +495,21 @@ extern "C" {
      *  This method is called once when the contract is published or updated.
      */
     void init()  {
-       eos::print( "Init World!\n" );
+       eosio::print( "Init World!\n" );
     }
 
     struct transfer {
-       eos::Name from;
-       eos::Name to;
+       eosio::Name from;
+       eosio::Name to;
        uint64_t amount;
     };
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       eos::print( "Hello World: ", eos::Name(code), "->", eos::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
-          auto message = eos::currentMessage<transfer>();
-          eos::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
+          auto message = eosio::currentMessage<transfer>();
+          eosio::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
        }
     }
 
@@ -517,7 +517,7 @@ extern "C" {
 
 ```
 
-You will notice that we updated the `transfer` struct to use the `eos::Name` type directly, and then condenced the checks around `readMessage` to a single call to `currentMessage`.
+You will notice that we updated the `transfer` struct to use the `eosio::Name` type directly, and then condenced the checks around `readMessage` to a single call to `currentMessage`.
 
 After compiling and uploading it you should get the same results as the C version.
 
@@ -530,11 +530,11 @@ The EOS.IO software will take care of enforcing and validating the signatures, a
 ```c
     ...
     void apply( uint64_t code, uint64_t action ) {
-       eos::print( "Hello World: ", eos::Name(code), "->", eos::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
-          auto message = eos::currentMessage<transfer>();
-          eos::requireAuth( message.from );
-          eos::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
+          auto message = eosio::currentMessage<transfer>();
+          eosio::requireAuth( message.from );
+          eosio::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
        }
     }
     ...
@@ -561,7 +561,7 @@ Hello World: initc->transfer
 ...
 ```
 
-This shows that it attempted to apply your transaction, printed the initial "Hello World" and then aborted when `eos::requireAuth` failed to find authorization of account `initb`.
+This shows that it attempted to apply your transaction, printed the initial "Hello World" and then aborted when `eosio::requireAuth` failed to find authorization of account `initb`.
 
 We can fix that by telling `eosc` to add the required permission:
 
@@ -581,12 +581,12 @@ the contract must abort and any changes made get automatically reverted.
 ```c
     ...
     void apply( uint64_t code, uint64_t action ) {
-       eos::print( "Hello World: ", eos::Name(code), "->", eos::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
-          auto message = eos::currentMessage<transfer>();
+          auto message = eosio::currentMessage<transfer>();
           assert( message.amount > 0, "Must transfer an amount greater than 0" );
-          eos::requireAuth( message.from );
-          eos::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
+          eosio::requireAuth( message.from );
+          eosio::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
        }
     }
     ...

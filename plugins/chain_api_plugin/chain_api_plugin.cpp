@@ -7,9 +7,9 @@
 
 #include <fc/io/json.hpp>
 
-namespace eos {
+namespace eosio {
 
-using namespace eos;
+using namespace eosio;
 
 class chain_api_plugin_impl {
 public:

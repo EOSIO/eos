@@ -5,9 +5,9 @@
 
 #include <eos/egenesis/egenesis.hpp>
 
-namespace eos { namespace egenesis {
+namespace eosio { namespace egenesis {
 
-using namespace eos::chain;
+using namespace eosio::chain;
 
 chain_id_type get_egenesis_chain_id()
 {

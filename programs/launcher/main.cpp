@@ -424,12 +424,12 @@ launcher_def::write_config_file (eosd_def &node) {
       cfg << "private-key = [\"" << kp.public_key
           << "\",\"" << kp.wif_private_key << "\"]\n";
     }
-    cfg << "plugin = eos::producer_plugin\n"
-        << "plugin = eos::chain_api_plugin\n"
-        << "plugin = eos::wallet_api_plugin\n"
-        << "plugin = eos::db_plugin\n"
-        << "plugin = eos::account_history_plugin\n"
-        << "plugin = eos::account_history_api_plugin\n";
+    cfg << "plugin = eosio::producer_plugin\n"
+        << "plugin = eosio::chain_api_plugin\n"
+        << "plugin = eosio::wallet_api_plugin\n"
+        << "plugin = eosio::db_plugin\n"
+        << "plugin = eosio::account_history_plugin\n"
+        << "plugin = eosio::account_history_api_plugin\n";
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }

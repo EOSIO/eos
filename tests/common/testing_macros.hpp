@@ -209,7 +209,7 @@
  * @brief Shorthand way to link named authority with a contract/message type
  *
  * @code{.cpp}
- * // Link alice's "money" authority with eos::transfer
+ * // Link alice's "money" authority with eosio::transfer
  * Link_Authority(chain, alice, "money", eos, "transfer");
  * // Set alice's "native" authority as default for eos contract
  * Link_Authority(chain, alice, "money", eos);
@@ -220,7 +220,7 @@
  * @brief Shorthand way to unlink named authority from a contract/message type
  *
  * @code{.cpp}
- * // Unlink alice's authority for eos::transfer
+ * // Unlink alice's authority for eosio::transfer
  * Unlink_Authority(chain, alice, eos, "transfer");
  * // Unset alice's default authority for eos contract
  * Unlink_Authority(chain, alice, eos);
@@ -298,7 +298,7 @@
  */
 #define Set_Proxy(chain, stakeholder, proxy) \
 { \
-   eos::chain::SignedTransaction trx; \
+   eosio::chain::SignedTransaction trx; \
    if (std::string(#stakeholder) != std::string(#proxy)) \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{ {#stakeholder,"active"} }, "setproxy", types::setproxy{#stakeholder, #proxy}); \

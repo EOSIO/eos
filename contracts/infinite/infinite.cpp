@@ -5,7 +5,7 @@
 #include <infinite/infinite.hpp> /// defines transfer struct (abi)
 
 namespace infinite {
-   using namespace eos;
+   using namespace eosio;
 
    ///  When storing accounts, check for empty balance and remove account
    void store_account( account_name account_to_store, const account& a ) {

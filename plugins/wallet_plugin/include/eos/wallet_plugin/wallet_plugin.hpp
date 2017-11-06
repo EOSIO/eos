@@ -11,7 +11,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
    using namespace appbase;
 
    namespace wallet {

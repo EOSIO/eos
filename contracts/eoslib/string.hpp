@@ -5,7 +5,7 @@
 #include <eoslib/memory.hpp>
 #include <eoslib/print.hpp>
 
-namespace eos {
+namespace eosio {
 
   class string {
 

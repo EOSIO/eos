@@ -7,7 +7,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    class permission_object : public chainbase::object<permission_object_type, permission_object> {
       OBJECT_CTOR(permission_object, (auth) )
 
@@ -77,9 +77,9 @@ namespace eos { namespace chain {
       >
    >;
 
-} } // eos::chain
+} } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_object, eos::chain::permission_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
 
-FC_REFLECT(chainbase::oid<eos::chain::permission_object>, (_id))
-FC_REFLECT(eos::chain::permission_object, (id)(owner)(parent)(name)(auth))
+FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
+FC_REFLECT(eosio::chain::permission_object, (id)(owner)(parent)(name)(auth))

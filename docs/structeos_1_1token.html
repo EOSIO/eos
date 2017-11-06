@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.11"/>
-<title>EOS.IO: eos::token&lt; NumberType, CurrencyType &gt; Struct Template Reference</title>
+<title>EOS.IO: eosio::token&lt; NumberType, CurrencyType &gt; Struct Template Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -98,7 +98,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a href="#friends">Friends</a> &#124;
 <a href="structeos_1_1token-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">eos::token&lt; NumberType, CurrencyType &gt; Struct Template Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__tokens.html">Token API</a></div></div>  </div>
+<div class="title">eosio::token&lt; NumberType, CurrencyType &gt; Struct Template Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__tokens.html">Token API</a></div></div>  </div>
 </div><!--header-->
 <div class="contents">
 
@@ -169,7 +169,7 @@ Friends</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><h3>template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt;<br />
-struct eos::token&lt; NumberType, CurrencyType &gt;</h3>
+struct eosio::token&lt; NumberType, CurrencyType &gt;</h3>
 
 <dl class="tparams"><dt>Template Parameters</dt><dd>
   <table class="tparams">
@@ -179,7 +179,7 @@ struct eos::token&lt; NumberType, CurrencyType &gt;</h3>
   </dd>
 </dl>
 <p>Base token structure with checks for proper types and over/underflows. It supports the following operator: +=, -=, +, -, &lt;=, &lt;, ==, !=, &gt;=, &gt;, bool and also print functionality</p>
-<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eos::token&lt;uint32_t, N(MyToken)&gt;</a> MyToken;</div><div class="line">MyToken  a(128);</div><div class="line">a.print(); <span class="comment">// Output: 128 MyToken</span></div><div class="line">MyToken b(64);</div><div class="line">a += b;</div><div class="line">a.print(); <span class="comment">// Output: 192 MyToken</span></div><div class="line">b.print(); <span class="comment">// Output:  64 MyToken</span></div><div class="line">a -= b;</div><div class="line">a.print(); <span class="comment">// Output: 128 MyToken</span></div><div class="line">b.print(); <span class="comment">// Output:  64 MyToken</span></div><div class="line">b -= a;    <span class="comment">// Throws integer underflow exception</span></div><div class="line">MyToken c = a + b;</div><div class="line">c.print(); <span class="comment">// Output: 192 MyToken</span></div><div class="line">MyToken d = a - b;</div><div class="line">d.print(); <span class="comment">// Output: 64 MyToken</span></div><div class="line">MyToken maxToken(<a class="code" href="group__mathcppapi.html#ga422f063ec99a30ab7a395f0fafeffcb2">std::numeric_limits&lt;uint32_t&gt;::max</a>());</div><div class="line">maxToken += b; <span class="comment">// Throws integer overflow exception</span></div><div class="line">std::cout &lt;&lt; (maxToken &gt; b); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (b &gt; maxToken); <span class="comment">// Output: false</span></div><div class="line">std::cout &lt;&lt; (bool)maxToken; <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (a == b);  <span class="comment">// Output: false</span></div><div class="line">std::cout &lt;&lt; (a != b);  <span class="comment">// Output: true</span></div></div><!-- fragment --> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eosio::token&lt;uint32_t, N(MyToken)&gt;</a> MyToken;</div><div class="line">MyToken  a(128);</div><div class="line">a.print(); <span class="comment">// Output: 128 MyToken</span></div><div class="line">MyToken b(64);</div><div class="line">a += b;</div><div class="line">a.print(); <span class="comment">// Output: 192 MyToken</span></div><div class="line">b.print(); <span class="comment">// Output:  64 MyToken</span></div><div class="line">a -= b;</div><div class="line">a.print(); <span class="comment">// Output: 128 MyToken</span></div><div class="line">b.print(); <span class="comment">// Output:  64 MyToken</span></div><div class="line">b -= a;    <span class="comment">// Throws integer underflow exception</span></div><div class="line">MyToken c = a + b;</div><div class="line">c.print(); <span class="comment">// Output: 192 MyToken</span></div><div class="line">MyToken d = a - b;</div><div class="line">d.print(); <span class="comment">// Output: 64 MyToken</span></div><div class="line">MyToken maxToken(<a class="code" href="group__mathcppapi.html#ga422f063ec99a30ab7a395f0fafeffcb2">std::numeric_limits&lt;uint32_t&gt;::max</a>());</div><div class="line">maxToken += b; <span class="comment">// Throws integer overflow exception</span></div><div class="line">std::cout &lt;&lt; (maxToken &gt; b); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (b &gt; maxToken); <span class="comment">// Output: false</span></div><div class="line">std::cout &lt;&lt; (bool)maxToken; <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (a == b);  <span class="comment">// Output: false</span></div><div class="line">std::cout &lt;&lt; (a != b);  <span class="comment">// Output: true</span></div></div><!-- fragment --> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a class="anchor" id="ada7226b583058a8209db2267375ff2d9"></a>
 <div class="memitem">
 <div class="memproto">
@@ -190,7 +190,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::<a class="el" href="structeos_1_1token.html">token</a> </td>
+          <td class="memname"><a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::<a class="el" href="structeos_1_1token.html">token</a> </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -216,7 +216,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::<a class="el" href="structeos_1_1token.html">token</a> </td>
+          <td class="memname"><a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::<a class="el" href="structeos_1_1token.html">token</a> </td>
           <td>(</td>
           <td class="paramtype">NumberType&#160;</td>
           <td class="paramname"><em>v</em></td><td>)</td>
@@ -249,7 +249,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::operator bool </td>
+          <td class="memname"><a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::operator bool </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -275,7 +275,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structeos_1_1token.html">token</a>&amp; <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::operator+= </td>
+          <td class="memname"><a class="el" href="structeos_1_1token.html">token</a>&amp; <a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::operator+= </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="structeos_1_1token.html">token</a>&lt; NumberType, CurrencyType &gt; &amp;&#160;</td>
           <td class="paramname"><em>a</em></td><td>)</td>
@@ -308,7 +308,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structeos_1_1token.html">token</a>&amp; <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::operator-= </td>
+          <td class="memname"><a class="el" href="structeos_1_1token.html">token</a>&amp; <a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::operator-= </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="structeos_1_1token.html">token</a>&lt; NumberType, CurrencyType &gt; &amp;&#160;</td>
           <td class="paramname"><em>a</em></td><td>)</td>
@@ -341,7 +341,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::print </td>
+          <td class="memname">void <a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::print </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -721,7 +721,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::currency_type = CurrencyType</td>
+          <td class="memname">const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::currency_type = CurrencyType</td>
         </tr>
       </table>
   </td>
@@ -741,7 +741,7 @@ template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
 template&lt;typename NumberType, uint64_t CurrencyType = N(eos)&gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">NumberType <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; NumberType, CurrencyType &gt;::quantity = 0</td>
+          <td class="memname">NumberType <a class="el" href="structeos_1_1token.html">eosio::token</a>&lt; NumberType, CurrencyType &gt;::quantity = 0</td>
         </tr>
       </table>
 </div><div class="memdoc">

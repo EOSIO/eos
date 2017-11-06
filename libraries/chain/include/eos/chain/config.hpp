@@ -5,7 +5,7 @@
 #pragma once
 #include <eos/types/types.hpp>
 
-namespace eos { namespace config {
+namespace eosio { namespace config {
 using types::UInt16;
 using types::UInt32;
 using types::UInt64;
@@ -61,9 +61,9 @@ const static int MaxProducerVotes = 30;
 const static UInt128 ProducerRaceLapLength = std::numeric_limits<UInt128>::max();
 
 const static auto StakedBalanceCooldownSeconds = fc::days(3).to_seconds();
-} } // namespace eos::config
+} } // namespace eosio::config
 
 template<typename Number>
 Number EOS_PERCENT(Number value, int percentage) {
-   return value * percentage / eos::config::Percent100;
+   return value * percentage / eosio::config::Percent100;
 }

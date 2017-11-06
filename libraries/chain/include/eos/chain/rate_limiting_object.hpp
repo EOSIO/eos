@@ -8,7 +8,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    /**
     *  @brief tracks message rates associated with an account
@@ -39,10 +39,10 @@ namespace eos { namespace chain {
       >
    >;
 
-} } // eos::chain
+} } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::rate_limiting_object, eos::chain::rate_limiting_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::rate_limiting_object, eosio::chain::rate_limiting_index)
 
-FC_REFLECT(chainbase::oid<eos::chain::rate_limiting_object>, (_id))
+FC_REFLECT(chainbase::oid<eosio::chain::rate_limiting_object>, (_id))
 
-FC_REFLECT(eos::chain::rate_limiting_object, (id)(name)(per_auth_account_last_update_sec)(per_auth_account_txn_msg_rate)(per_code_account_last_update_sec)(per_code_account_txn_msg_rate))
+FC_REFLECT(eosio::chain::rate_limiting_object, (id)(name)(per_auth_account_last_update_sec)(per_auth_account_txn_msg_rate)(per_code_account_last_update_sec)(per_code_account_txn_msg_rate))

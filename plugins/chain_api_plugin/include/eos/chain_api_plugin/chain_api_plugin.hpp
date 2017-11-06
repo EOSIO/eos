@@ -9,8 +9,8 @@
 #include <appbase/application.hpp>
 #include <eos/chain/chain_controller.hpp>
 
-namespace eos {
-   using eos::chain::chain_controller;
+namespace eosio {
+   using eosio::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
 

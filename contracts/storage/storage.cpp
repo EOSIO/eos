@@ -14,8 +14,8 @@ namespace TOKEN_NAME {
    }
 
    void apply_storage_transfer( const TOKEN_NAME::transfer& transfer_storage ) {
-      eos::require_notice( transfer_storage.to, transfer_storage.from );
-      eos::require_auth( transfer_storage.from );
+      eosio::require_notice( transfer_storage.to, transfer_storage.from );
+      eosio::require_auth( transfer_storage.from );
 
       account from = get_account( transfer_storage.from );
       account to   = get_account( transfer_storage.to );
@@ -50,8 +50,8 @@ namespace TOKEN_NAME {
       char tmp[4098];
       auto bufferlen = read_message(tmp, 4098);
       auto linklen = read_link_from_buffer( tmp, bufferlen, link_to_set, eospathlen, ipfspathlen );
-      eos::require_notice( link_to_set.owner );
-      eos::require_auth( link_to_set.owner );
+      eosio::require_notice( link_to_set.owner );
+      eosio::require_auth( link_to_set.owner );
       validate_ipfspath( link_to_set.ipfspath, ipfspathlen );
       validate_eospath( link_to_set.eospath, eospathlen );
       ::store_str( current_code(), N(storage), link_to_set.eospath, eospathlen, (char*)&link_to_set, linklen );
@@ -63,7 +63,7 @@ namespace TOKEN_NAME {
       TOKEN_NAME::link link_to_remove;
       uint32_t ipfspathlen;
       len = read_link_from_buffer( tmp, len, link_to_remove, eospathlen, ipfspathlen );
-      eos::require_auth( link_to_remove.owner );
+      eosio::require_auth( link_to_remove.owner );
       uint32_t stake = link_to_remove.stake;
       ::remove_str( current_code(), N(storage), link_to_remove.eospath, eospathlen );
       // Reduce Quota usage in account table
@@ -77,7 +77,7 @@ namespace TOKEN_NAME {
       uint32_t ipfspathlen;
       len = read_link_from_buffer( tmp, len, link_to_create, eospathlen, ipfspathlen );
       
-      // eos::require_auth( producer )
+      // eosio::require_auth( producer )
       // How do we validate the require_auth() is a producer?
       // logic goes here to reduce number of tokens and increase quote used using bancor algorithm
       link_to_create.accept = 1;
@@ -90,7 +90,7 @@ namespace TOKEN_NAME {
       TOKEN_NAME::link link_to_reject;
       uint32_t ipfspathlen;
       len = read_link_from_buffer( tmp, len, link_to_reject, eospathlen, ipfspathlen );
-      // eos::require_auth( producer )
+      // eosio::require_auth( producer )
       // How do we validate the require_auth() is a producer?
       link_to_reject.accept = 0;
       ::store_str( current_code(), N(storage), link_to_reject.eospath, eospathlen, (char*)&link_to_reject, len );
@@ -109,7 +109,7 @@ extern "C" {
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(storage) ) {
           if( action == N(transfer) ) {
-               TOKEN_NAME::apply_storage_transfer( eos::current_message< TOKEN_NAME::transfer >() );
+               TOKEN_NAME::apply_storage_transfer( eosio::current_message< TOKEN_NAME::transfer >() );
           } else if (action == N(setlink) ) {
                TOKEN_NAME::apply_storage_setlink(); 
           } else if (action == N(removelink) ) {

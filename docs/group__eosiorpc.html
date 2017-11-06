@@ -108,7 +108,7 @@ Table Of Contents</h1>
 Configuration</h1>
 <p><code>eosd</code> uses a REST RPC interface where plugins can register their own endpoints with the API server. This page will explain how to use some of the APIs to get information about the blockchain and send transactions.</p>
 <p>Before you can query <code>eosd</code> you must first enable an API plugin. To do this add the following line to your <code>config.ini</code></p>
-<div class="fragment"><div class="line">plugin = eos::chain_api_plugin</div></div><!-- fragment --><p>By default an HTTP server will start on <code>127.0.0.1:8888</code>; however, you can also change this with the following configuration line in your <code>config.ini</code>:</p>
+<div class="fragment"><div class="line">plugin = eosio::chain_api_plugin</div></div><!-- fragment --><p>By default an HTTP server will start on <code>127.0.0.1:8888</code>; however, you can also change this with the following configuration line in your <code>config.ini</code>:</p>
 <div class="fragment"><div class="line">http-server-endpoint = 127.0.0.1:8888</div></div><!-- fragment --><hr/>
 <h1><a class="anchor" id="chainrpc"></a>
 Chain API</h1>

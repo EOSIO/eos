@@ -6,9 +6,12 @@
 
 #include <eos/chain/types.hpp>
 
+
+
+
 #include <eos/types/generated.hpp>
 
-namespace eos {
+namespace eosio {
 namespace chain {
 
 /**
@@ -34,6 +37,6 @@ inline bool operator!=(const types::BlockchainConfiguration& a, const types::Blo
 }
 
 }
-} // namespace eos::chain
+} // namespace eosio::chain
 
-FC_REFLECT_DERIVED(eos::chain::BlockchainConfiguration, (eos::types::BlockchainConfiguration), )
+FC_REFLECT_DERIVED(eosio::chain::BlockchainConfiguration, (eosio::types::BlockchainConfiguration), )

@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eos { namespace utilities {
+namespace eosio { namespace utilities {
 
 template<size_t BlockSize=16, char PaddingChar=' '>
 class padding_ostream : public fc::buffered_ostream {
@@ -35,5 +35,5 @@ private:
    size_t bytes_out = 0;
 };
 
-} } //eos::utilities
+} } //eosio::utilities
 

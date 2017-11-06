@@ -45,7 +45,7 @@
     { c(*this); }
 #define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    using                               std::map;
    using                               std::vector;
    using                               std::unordered_map;
@@ -88,34 +88,34 @@ namespace eos { namespace chain {
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-   using eos::types::Name;
+   using eosio::types::Name;
    using ActionName = Name;
-   using eos::types::AccountName;
-   using eos::types::PermissionName;
-   using eos::types::Asset;
-   using eos::types::ShareType;
-   using eos::types::Authority;
-   using eos::types::PublicKey;
-   using eos::types::Transaction;
-   using eos::types::PermissionName;
-   using eos::types::TypeName;
-   using eos::types::FuncName;
-   using eos::types::Time;
-   using eos::types::Field;
-   using eos::types::String;
-   using eos::types::UInt8;
-   using eos::types::UInt16;
-   using eos::types::UInt32;
-   using eos::types::UInt64;
-   using eos::types::UInt128;
-   using eos::types::UInt256;
-   using eos::types::Int8;
-   using eos::types::Int16;
-   using eos::types::Int32;
-   using eos::types::Int64;
-   using eos::types::Int128;
-   using eos::types::Int256;
-   using eos::types::uint128_t;
+   using eosio::types::AccountName;
+   using eosio::types::PermissionName;
+   using eosio::types::Asset;
+   using eosio::types::ShareType;
+   using eosio::types::Authority;
+   using eosio::types::PublicKey;
+   using eosio::types::Transaction;
+   using eosio::types::PermissionName;
+   using eosio::types::TypeName;
+   using eosio::types::FuncName;
+   using eosio::types::Time;
+   using eosio::types::Field;
+   using eosio::types::String;
+   using eosio::types::UInt8;
+   using eosio::types::UInt16;
+   using eosio::types::UInt32;
+   using eosio::types::UInt64;
+   using eosio::types::UInt128;
+   using eosio::types::UInt256;
+   using eosio::types::Int8;
+   using eosio::types::Int16;
+   using eosio::types::Int32;
+   using eosio::types::Int64;
+   using eosio::types::Int128;
+   using eosio::types::Int256;
+   using eosio::types::uint128_t;
 
    using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
    using RoundChanges = std::map<AccountName, AccountName>;
@@ -182,18 +182,18 @@ namespace eos { namespace chain {
    using weight_type = uint16_t;
    using Bytes = types::Bytes;
 
-   using public_key_type = eos::types::PublicKey;
+   using public_key_type = eosio::types::PublicKey;
    
-} }  // eos::chain
+} }  // eosio::chain
 
 namespace fc {
-  void to_variant(const eos::chain::shared_vector<eos::types::Field>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, eos::chain::shared_vector<eos::types::Field>& fields);
-  void to_variant(const eos::chain::ProducerRound& r, fc::variant& v);
-  void from_variant(const fc::variant& v, eos::chain::ProducerRound& r);
+  void to_variant(const eosio::chain::shared_vector<eosio::types::Field>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::chain::shared_vector<eosio::types::Field>& fields);
+  void to_variant(const eosio::chain::ProducerRound& r, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::chain::ProducerRound& r);
 }
 
-FC_REFLECT_ENUM(eos::chain::object_type,
+FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)
                 (account_object_type)
                 (permission_object_type)
@@ -223,4 +223,4 @@ FC_REFLECT_ENUM(eos::chain::object_type,
                 (keystr_value_object_type)
                 (OBJECT_TYPE_COUNT)
                )
-FC_REFLECT( eos::chain::void_t, )
+FC_REFLECT( eosio::chain::void_t, )

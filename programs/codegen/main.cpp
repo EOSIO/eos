@@ -14,14 +14,14 @@
 
 
 using namespace std;
-using namespace eos;
+using namespace eosio;
 
 const string tab = "   ";
 
 void generateValueToBytes(ostringstream& output, const types::Table& table) {
    output << "Bytes valueToBytes(const " << table.type << "& kv) {" << endl;
    output << tab << "uint32_t maxsize = estimatePackedSize(kv.value);" << endl;
-   output << tab << "char* buffer = (char *)eos::malloc(maxsize);" << endl;
+   output << tab << "char* buffer = (char *)eosio::malloc(maxsize);" << endl;
    output << tab << "datastream<char *> ds(buffer, maxsize);" << endl;
    output << tab << "raw::pack(ds, kv.value);" << endl;
    output << tab << "Bytes bytes;" << endl;
@@ -39,12 +39,12 @@ void generateCurrentMessage(ostringstream& output, const types::Action& action) 
    output << tab << "template<>" << endl;
    output << tab << action.type << " current_message<" << action.type << ">() {" << endl;
    output << tab << tab << "uint32_t msgsize = message_size();" << endl;
-   output << tab << tab << "char* buffer = (char *)eos::malloc(msgsize);" << endl;
+   output << tab << tab << "char* buffer = (char *)eosio::malloc(msgsize);" << endl;
    output << tab << tab << "assert(read_message(buffer, msgsize) == msgsize, \"error reading " << action.type << "\");" << endl;
    output << tab << tab << "datastream<char *> ds(buffer, msgsize);" << endl;
    output << tab << tab << action.type << " value;" << endl;
    output << tab << tab << "raw::unpack(ds, value);" << endl;
-   output << tab << tab << "eos::free(buffer);" << endl;
+   output << tab << tab << "eosio::free(buffer);" << endl;
    output << tab << tab << "return value;" << endl;
    output << tab << "}" << endl;
 }
@@ -113,7 +113,7 @@ int main (int argc, char *argv[]) {
    }
 
    //Generate serialization/deserialization for every cotract type
-   output << "namespace eos { namespace raw {" << endl;
+   output << "namespace eosio { namespace raw {" << endl;
    for(const auto& type : abi.structs) {
       generatePack(output, type);
       generateUnpack(output, type);
@@ -121,7 +121,7 @@ int main (int argc, char *argv[]) {
    output << "} }" << endl << endl;
 
    //Generate current_message specialization for every action
-   output << "namespace eos {" << endl;
+   output << "namespace eosio {" << endl;
    vector<types::TypeName> types_seen;
    for(const auto& action : abi.actions) {
       if(find(types_seen.begin(), types_seen.end(), action.type) != types_seen.end()) continue;

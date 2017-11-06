@@ -16,12 +16,12 @@
 #include <boost/multi_index/mem_fun.hpp>
 
 namespace native {
-namespace eos {
+namespace eosio {
 
-using namespace ::eos::chain;
-namespace config = ::eos::config;
-namespace chain = ::eos::chain;
-namespace types = ::eos::types;
+using namespace ::eosio::chain;
+namespace config = ::eosio::config;
+namespace chain = ::eosio::chain;
+namespace types = ::eosio::types;
 
 FC_DECLARE_EXCEPTION(ProducerRaceOverflowException, 10000000, "Producer Virtual Race time has overflowed");
 
@@ -243,6 +243,6 @@ using ProducerScheduleMultiIndex = chainbase::shared_multi_index_container<
 
 } } // namespace native::eos
 
-CHAINBASE_SET_INDEX_TYPE(native::eos::ProducerVotesObject, native::eos::ProducerVotesMultiIndex)
-CHAINBASE_SET_INDEX_TYPE(native::eos::ProxyVoteObject, native::eos::ProxyVoteMultiIndex)
-CHAINBASE_SET_INDEX_TYPE(native::eos::ProducerScheduleObject, native::eos::ProducerScheduleMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eosio::ProducerVotesObject, native::eosio::ProducerVotesMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eosio::ProxyVoteObject, native::eosio::ProxyVoteMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eosio::ProducerScheduleObject, native::eosio::ProducerScheduleMultiIndex)

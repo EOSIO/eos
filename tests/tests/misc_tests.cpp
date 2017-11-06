@@ -13,10 +13,10 @@
 
 #include <boost/test/unit_test.hpp>
 
-using namespace eos::chain;
+using namespace eosio::chain;
 #include "../common/testing_macros.hpp"
 
-namespace eos {
+namespace eosio {
 using namespace chain;
 using namespace std;
 

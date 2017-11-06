@@ -7,7 +7,7 @@
 #include <eoslib/types.hpp>
 #include <eoslib/math.hpp>
 
-namespace eos {
+namespace eosio {
 
    static_assert( sizeof(long) == sizeof(int), "unexpected size difference" );
 

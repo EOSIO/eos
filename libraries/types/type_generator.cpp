@@ -11,7 +11,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 using std::string;
-namespace eos { using types::SimpleSymbolTable; }
+namespace eosio { using types::SimpleSymbolTable; }
 
 
 bool   isVector( const string& type ) {
@@ -68,7 +68,7 @@ string call_type_constructor( const string& type ) {
       return "Vector[" + getWrenType(type) + "]";
    return getWrenType(type) + ".new()";
 }
-string generate_wren( const eos::types::Struct& s, eos::types::SimpleSymbolTable& symbols ) {
+string generate_wren( const eosio::types::Struct& s, eosio::types::SimpleSymbolTable& symbols ) {
 
    std::stringstream ss;
    ss << "class " << s.name;
@@ -106,13 +106,13 @@ string generate_wren( const eos::types::Struct& s, eos::types::SimpleSymbolTable
    return ss.str();
 }
 
-void generate_wren( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_wren( eosio::types::SimpleSymbolTable& ss, const char* outfile ) {
   //for( const auto& s : ss.order ) 
 }
 
-void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_hpp( eosio::types::SimpleSymbolTable& ss, const char* outfile ) {
    struct FakeField { std::string type; std::string name; };
-   auto arrays_to_vectors = [](eos::types::Field f) {
+   auto arrays_to_vectors = [](eosio::types::Field f) {
       if (boost::ends_with<std::string>(f.type, "[]")) {
          std::string type = f.type;
          type.resize(type.size() - 2);
@@ -124,7 +124,7 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
    wdump((outfile));
    std::ofstream out(outfile);
    out << "#pragma once\n";
-   out << "namespace eos { namespace types {\n";
+   out << "namespace eosio { namespace types {\n";
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
          const auto& td = ss.typedefs[s];
@@ -176,7 +176,7 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
    }
 
 
-   out << "}} // namespace eos::types\n";
+   out << "}} // namespace eosio::types\n";
 
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
@@ -185,9 +185,9 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
 
       const auto& st = ss.structs[s];
       if( st.base.size() ) {
-        out << "FC_REFLECT_DERIVED( eos::types::" << s << ", (eos::types::" << st.base <<"), ";
+        out << "FC_REFLECT_DERIVED( eosio::types::" << s << ", (eosio::types::" << st.base <<"), ";
       } else  {
-        out << "FC_REFLECT( eos::types::" <<  std::setw(33) << s << ", ";
+        out << "FC_REFLECT( eosio::types::" <<  std::setw(33) << s << ", ";
       }
       for( const auto& f : st.fields ) {
          out <<"("<<f.name<<")";
@@ -197,7 +197,7 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
 
 }
 
-int  count_fields( eos::types::SimpleSymbolTable& ss, const eos::types::Struct& st ) {
+int  count_fields( eosio::types::SimpleSymbolTable& ss, const eosio::types::Struct& st ) {
    if( st.base.size() )
       return st.fields.size() + count_fields( ss, ss.getType( st.base ) );
    return st.fields.size();
@@ -208,7 +208,7 @@ int main( int argc, char** argv ) {
      FC_ASSERT( argc > 2, "Usage: ${program} input path/to/out.hpp", ("program",string(argv[0]))  );
      std::ifstream in(argv[1]);
 
-     eos::types::SimpleSymbolTable ss;
+     eosio::types::SimpleSymbolTable ss;
      ss.parse(in);
 
      auto as_json = fc::json::to_pretty_string( ss );
