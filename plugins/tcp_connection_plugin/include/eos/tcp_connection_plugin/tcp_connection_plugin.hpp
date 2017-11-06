@@ -1,6 +1,5 @@
 #pragma once
 #include <appbase/application.hpp>
-#include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/network_plugin/network_plugin.hpp>
 #include <eos/tcp_connection_plugin/tcp_connection_initiator.hpp>
 

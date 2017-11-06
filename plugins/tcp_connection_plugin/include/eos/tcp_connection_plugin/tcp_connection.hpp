@@ -1,14 +1,15 @@
 #pragma once
 
 #include <eos/network_plugin/connection_interface.hpp>
-#include <eos/chain_plugin/chain_plugin.hpp>
+#include <eosio/blockchain/types.hpp>
 #include <eos/network_plugin/protocol.hpp>
 
 #include <boost/signals2.hpp>
 #include <boost/asio.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/member.hpp>
 
 #include <fc/crypto/elliptic.hpp>
 #include <fc/crypto/aes.hpp>
@@ -19,6 +20,7 @@ namespace eosio {
 
 using blockchain::transaction_id_type;
 using namespace boost::multi_index;
+using namespace fc;
 
 class tcp_connection : public connection_interface, public fc::visitor<void> {
    public:

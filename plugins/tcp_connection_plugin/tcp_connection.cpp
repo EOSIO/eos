@@ -1,6 +1,7 @@
 #include <eos/tcp_connection_plugin/tcp_connection.hpp>
 
 #include <fc/log/logger.hpp>
+#include <fc/io/raw.hpp>
 
 #include <boost/asio.hpp>
 
