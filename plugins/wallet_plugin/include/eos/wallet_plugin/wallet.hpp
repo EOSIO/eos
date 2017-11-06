@@ -10,9 +10,9 @@
 #include <fc/crypto/base58.hpp>
 
 using namespace std;
-using namespace eos::chain;
+using namespace eosio::chain;
 
-namespace eos { namespace wallet {
+namespace eosio { namespace wallet {
 
 typedef uint16_t transaction_handle_type;
 
@@ -162,6 +162,6 @@ struct plain_keys {
 
 } }
 
-FC_REFLECT( eos::wallet::wallet_data, (cipher_keys) )
+FC_REFLECT( eosio::wallet::wallet_data, (cipher_keys) )
 
-FC_REFLECT( eos::wallet::plain_keys, (checksum)(keys) )
+FC_REFLECT( eosio::wallet::plain_keys, (checksum)(keys) )

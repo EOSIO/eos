@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eos { namespace words {
+namespace eosio { namespace words {
 
 typedef const char* const_char_ptr;
 extern const const_char_ptr word_list[];

@@ -24,7 +24,7 @@ will explain how to use some of the APIs to get information about the blockchain
 Before you can query `eosd` you must first enable an API plugin. To do this add the following line to your `config.ini`
 
 ```
-plugin = eos::chain_api_plugin
+plugin = eosio::chain_api_plugin
 ```
 
 By default an HTTP server will start on `127.0.0.1:8888`; however, you can also change this with the following configuration line in your `config.ini`:

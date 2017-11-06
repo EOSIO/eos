@@ -12,7 +12,7 @@
 #include <boost/range/algorithm_ext.hpp>
 
 namespace native {
-namespace eos {
+namespace eosio {
 using namespace chain;
 using namespace types;
 
@@ -146,4 +146,4 @@ void ProducerScheduleObject::resetProducerRace(chainbase::database& db) const {
    });
 }
 
-} } // namespace native::eos
+} } // namespace native::eosio

@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace eos { namespace native_contract {
+namespace eosio { namespace native_contract {
 using std::string;
 using std::vector;
 using chain::PublicKey;
@@ -79,13 +79,13 @@ struct genesis_state_type {
    chain::chain_id_type compute_chain_id() const;
 };
 
-} } // namespace eos::native_contract
+} } // namespace eosio::native_contract
 
-FC_REFLECT(eos::native_contract::genesis_state_type::initial_account_type,
+FC_REFLECT(eosio::native_contract::genesis_state_type::initial_account_type,
            (name)(staking_balance)(liquid_balance)(owner_key)(active_key))
 
-FC_REFLECT(eos::native_contract::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
+FC_REFLECT(eosio::native_contract::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
 
-FC_REFLECT(eos::native_contract::genesis_state_type,
+FC_REFLECT(eosio::native_contract::genesis_state_type,
            (initial_timestamp)(initial_configuration)(initial_accounts)
            (initial_producers)(initial_chain_id))

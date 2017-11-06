@@ -9,7 +9,7 @@
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 class chain_controller;
 class wasm_memory;
@@ -88,4 +88,4 @@ class wasm_interface {
 };
 
 
-} } // eos::chain
+} } // eosio::chain

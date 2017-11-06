@@ -2,7 +2,7 @@ var searchData=
 [
   ['n',['N',['../group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529',1,'types.hpp']]],
   ['name',['Name',['../structeos_1_1_name.html',1,'eos']]],
-  ['name',['Name',['../structeos_1_1_name.html#a671ad25d845f18cc43236a4557ef3ed5',1,'eos::Name::Name()'],['../structexchange_1_1_order_i_d.html#ace33e68445f307e12c36b69c55edc526',1,'exchange::OrderID::name()'],['../struct_test_model.html#ac5fefdad999c22c304761fbca4e090a1',1,'TestModel::name()']]],
+  ['name',['Name',['../structeos_1_1_name.html#a671ad25d845f18cc43236a4557ef3ed5',1,'eosio::Name::Name()'],['../structexchange_1_1_order_i_d.html#ace33e68445f307e12c36b69c55edc526',1,'exchange::OrderID::name()'],['../struct_test_model.html#ac5fefdad999c22c304761fbca4e090a1',1,'TestModel::name()']]],
   ['name_5fclass',['name_class',['../structtest__types.html#a2e521d716b6ba6d100ab782bebc8e1af',1,'test_types']]],
   ['native',['native',['../namespacenative.html',1,'']]],
   ['new_5ffield',['new_field',['../struct_test_model_v2.html#a7f8ee7b77960c6e15a653040d9d8d934',1,'TestModelV2::new_field()'],['../struct_test_model128x2___v2.html#af0e5083368419917c205dd763be5f9b7',1,'TestModel128x2_V2::new_field()'],['../struct_test_model3xi64___v2.html#a014b817a26e4fd92768f21b286d944b7',1,'TestModel3xi64_V2::new_field()']]],

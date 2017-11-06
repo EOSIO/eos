@@ -10,7 +10,7 @@
 
 #include <eos/chain/config.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
-} } // eos::chain
+} } // eosio::chain
 

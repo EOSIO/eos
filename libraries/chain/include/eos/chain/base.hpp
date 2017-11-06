@@ -6,7 +6,7 @@
 
 #include <eos/chain/types.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    /**
     *  @defgroup operations Operations
@@ -66,4 +66,4 @@ namespace eos { namespace chain {
 
    ///@}
 
-} } // eos::chain
+} } // eosio::chain

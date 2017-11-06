@@ -3,7 +3,7 @@
 #include <eos/chain/types.hpp>
 #include <chrono>
 
-namespace eos {
+namespace eosio {
    using namespace chain;
    using namespace fc;
 
@@ -133,21 +133,21 @@ namespace eos {
 
 } // namespace eos
 
-FC_REFLECT( eos::select_ids<fc::sha256>, (mode)(pending)(ids) )
-FC_REFLECT( eos::handshake_message,
+FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )
+FC_REFLECT( eosio::handshake_message,
             (network_version)(chain_id)(node_id)
             (p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
             (os)(agent)(generation) )
-FC_REFLECT( eos::go_away_message, (reason)(node_id) )
-FC_REFLECT( eos::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( eos::processed_trans_summary, (id)(outmsgs) )
-FC_REFLECT( eos::thread_ids, (gen_trx)(user_trx) )
-FC_REFLECT( eos::block_summary_message, (block_header)(trx_ids) )
-FC_REFLECT( eos::notice_message, (known_trx)(known_blocks) )
-FC_REFLECT( eos::request_message, (req_trx)(req_blocks) )
-FC_REFLECT( eos::sync_request_message, (start_block)(end_block) )
+FC_REFLECT( eosio::go_away_message, (reason)(node_id) )
+FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
+FC_REFLECT( eosio::processed_trans_summary, (id)(outmsgs) )
+FC_REFLECT( eosio::thread_ids, (gen_trx)(user_trx) )
+FC_REFLECT( eosio::block_summary_message, (block_header)(trx_ids) )
+FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
+FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
+FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
 
 /**
  *

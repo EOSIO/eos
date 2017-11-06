@@ -15,8 +15,8 @@
 
 namespace fc { class variant; }
 
-namespace eos {
-   using eos::chain::chain_controller;
+namespace eosio {
+   using eosio::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
    using chain::Name;
@@ -308,27 +308,27 @@ private:
 
 }
 
-FC_REFLECT( eos::chain_apis::permission, (name)(parent)(required_auth) )
-FC_REFLECT(eos::chain_apis::empty, )
-FC_REFLECT(eos::chain_apis::read_only::get_info_results,
+FC_REFLECT( eosio::chain_apis::permission, (name)(parent)(required_auth) )
+FC_REFLECT(eosio::chain_apis::empty, )
+FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
   (head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
   (recent_slots)(participation_rate))
-FC_REFLECT(eos::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
   
-FC_REFLECT_DERIVED( eos::chain_apis::read_only::get_block_results, (eos::chain::signed_block), (id)(block_num)(refBlockPrefix) );
-FC_REFLECT( eos::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
+FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(refBlockPrefix) );
+FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
-FC_REFLECT( eos::chain_apis::read_only::get_table_rows_params, (json)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
-FC_REFLECT( eos::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
-FC_REFLECT( eos::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
-FC_REFLECT( eos::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)(abi) )
-FC_REFLECT( eos::chain_apis::read_only::get_account_params, (name) )
-FC_REFLECT( eos::chain_apis::read_only::get_code_params, (name) )
-FC_REFLECT( eos::chain_apis::read_only::producer_info, (name) )
-FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
-FC_REFLECT( eos::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
-FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
-FC_REFLECT( eos::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
-FC_REFLECT( eos::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
-FC_REFLECT( eos::chain_apis::read_only::get_required_keys_result, (required_keys) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)(abi) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (name) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (name) )
+FC_REFLECT( eosio::chain_apis::read_only::producer_info, (name) )
+FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
+FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
+FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
+FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
+FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
+FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )

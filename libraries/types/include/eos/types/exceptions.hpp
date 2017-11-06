@@ -7,7 +7,7 @@
 #include <fc/exception/exception.hpp>
 #include <eos/utilities/exception_macros.hpp>
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
 
    FC_DECLARE_EXCEPTION(type_exception, 4000000, "type exception")
    FC_DECLARE_DERIVED_EXCEPTION(unknown_type_exception, type_exception,
@@ -21,4 +21,4 @@ namespace eos { namespace types {
    FC_DECLARE_DERIVED_EXCEPTION(invalid_schema_exception, type_exception,
                                 4050000, "Schema is invalid")
 
-} } // eos::chain
+} } // eosio::chain

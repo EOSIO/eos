@@ -11,12 +11,12 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
-namespace eos { namespace native_contract {
+namespace eosio { namespace native_contract {
 
 using administrator = native_contract_chain_administrator;
 
 ProducerRound administrator::get_next_round(chainbase::database& db) {
-   return native::eos::ProducerScheduleObject::get(db).calculateNextRound(db);
+   return native::eosio::ProducerScheduleObject::get(db).calculateNextRound(db);
 }
 
 chain::BlockchainConfiguration administrator::get_blockchain_configuration(const chainbase::database& db,

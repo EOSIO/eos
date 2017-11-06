@@ -60,7 +60,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define MKACCT_IMPL(chain, name, creator, active, owner, recovery, deposit) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names({ #creator, config::EosContractName }); \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#creator, "active"}}, \
@@ -92,11 +92,11 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define SETCODE3(chain, acct, wast) \
    { \
-      auto wasm = eos::chain::wast_to_wasm(wast); \
+      auto wasm = eosio::chain::wast_to_wasm(wast); \
       types::setcode handler; \
       handler.account = #acct; \
       handler.code.assign(wasm.begin(), wasm.end()); \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names({config::EosContractName, #acct}); \
       transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{#acct,"active"}}, \
                                   "setcode", handler); \
@@ -104,7 +104,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define SETAUTH5(chain, account, authname, parentname, auth) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
@@ -117,7 +117,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define DELAUTH3(chain, account, authname) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
@@ -130,7 +130,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define LINKAUTH5(chain, account, authname, codeacct, messagetype) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
@@ -145,7 +145,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define UNLINKAUTH4(chain, account, codeacct, messagetype) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = {#account}; \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account,"active"}}, \
@@ -159,7 +159,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define XFER5(chain, sender, recipient, Amount, memo) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names({#sender,#recipient}); \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{ {#sender,"active"} }, \
@@ -173,7 +173,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define STAKE4(chain, sender, recipient, amount) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names( { #sender, #recipient, config::EosContractName } ); \
       transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{#sender, "active"}}, \
                         "lock", types::lock{#sender, #recipient, amount}); \
@@ -186,7 +186,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define BEGIN_UNSTAKE3(chain, account, amount) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names( { config::EosContractName } ); \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#account, "active"}}, \
@@ -199,7 +199,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define FINISH_UNSTAKE3(chain, account, amount) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names( { config::EosContractName, #account } ); \
       transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{#account, "active"}}, \
                          "claim", types::claim{#account, amount}); \
@@ -211,7 +211,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define MKPDCR4(chain, owner, key, cfg) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names( {#owner, config::EosContractName} ); \
       transaction_emplace_message(trx, config::EosContractName, \
                          vector<types::AccountPermission>{{#owner, "active"}}, \
@@ -228,7 +228,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define APPDCR4(chain, voter, producer, approved) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names( {#voter, config::EosContractName} ); \
       transaction_emplace_message(trx, config::EosContractName,  \
                          vector<types::AccountPermission>{{#voter, "active"}}, \
@@ -241,7 +241,7 @@ inline std::vector<Name> sort_names( std::vector<Name>&& names ) {
 
 #define UPPDCR4(chain, owner, key, cfg) \
    { \
-      eos::chain::SignedTransaction trx; \
+      eosio::chain::SignedTransaction trx; \
       trx.scope = sort_names( {owner, config::EosContractName} ); \
       transaction_emplace_message(trx, config::EosContractName,  \
                          vector<types::AccountPermission>{{owner, "active"}}, \

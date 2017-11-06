@@ -5,7 +5,7 @@
 #include <tic_tac_toe.hpp>
 
 namespace tic_tac_toe {
-  using namespace eos;
+  using namespace eosio;
   /**
    * @brief Check if cell is empty
    * @param cell - value of the cell (should be either 0, 1, or 2)

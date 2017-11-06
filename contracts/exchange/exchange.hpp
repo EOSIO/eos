@@ -7,23 +7,23 @@
 namespace exchange {
 
    using currency::CurrencyTokens;
-   using EosTokens = eos::Tokens;
+   using EosTokens = eosio::Tokens;
 
    struct OrderID {
       AccountName name    = 0;
       uint64_t    number  = 0;
    };
 
-   typedef eos::price<EosTokens,CurrencyTokens>     Price;
+   typedef eosio::price<EosTokens,CurrencyTokens>     Price;
 
    struct PACKED( Bid ) {
       OrderID            buyer;
       Price              price;
-      eos::Tokens        quantity;
+      eosio::Tokens        quantity;
       Time               expiration;
 
       void print() {
-         eos::print( "{ quantity: ", quantity, ", price: ", price, " }" );
+         eosio::print( "{ quantity: ", quantity, ", price: ", price, " }" );
       }
    };
    static_assert( sizeof(Bid) == 32+12, "unexpected padding" );
@@ -35,7 +35,7 @@ namespace exchange {
       Time             expiration;
 
       void print() {
-         eos::print( "{ quantity: ", quantity, ", price: ", price, " }" );
+         eosio::print( "{ quantity: ", quantity, ", price: ", price, " }" );
       }
    };
    static_assert( sizeof(Ask) == 32+12, "unexpected padding" );

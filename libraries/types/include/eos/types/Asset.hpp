@@ -12,7 +12,7 @@
 /// Defined to be largest power of 10 that fits in 53 bits of precision
 #define EOS_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
 
    using AssetSymbol = uint64_t;
    using ShareType   = Int64;
@@ -111,15 +111,15 @@ namespace eos { namespace types {
    bool  operator != (const Price& a, const Price& b);
    Asset operator *  (const Asset& a, const Price& b);
 
-}} // namespace eos::types
+}} // namespace eosio::types
 
 namespace fc {
-    inline void to_variant(const eos::types::Asset& var, fc::variant& vo) { vo = var.toString(); }
-    inline void from_variant(const fc::variant& var, eos::types::Asset& vo) {
-       vo = eos::types::Asset::fromString(var.get_string());
+    inline void to_variant(const eosio::types::Asset& var, fc::variant& vo) { vo = var.toString(); }
+    inline void from_variant(const fc::variant& var, eosio::types::Asset& vo) {
+       vo = eosio::types::Asset::fromString(var.get_string());
     }
 }
 
-FC_REFLECT(eos::types::Asset, (amount)(symbol))
-FC_REFLECT(eos::types::Price, (base)(quote))
+FC_REFLECT(eosio::types::Asset, (amount)(symbol))
+FC_REFLECT(eosio::types::Price, (base)(quote))
 

@@ -46,7 +46,7 @@
 FC_REFLECT( dummy_message, (a)(b)(c) );
 FC_REFLECT( u128_msg, (values) );
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 namespace bio = boost::iostreams;
@@ -88,7 +88,7 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
 
 uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<char>& data, const vector<AccountName>& scope = {N(testapi)}) {
    static int expiration = 1;
-   eos::chain::SignedTransaction trx;
+   eosio::chain::SignedTransaction trx;
    trx.scope = scope;
    
    //msg.data.clear();
@@ -186,7 +186,7 @@ uint32_t last_fnc_err = 0;
 
 void send_set_code_message(testing_blockchain& chain, types::setcode& handler, AccountName account)
 {
-   eos::chain::SignedTransaction trx;
+   eosio::chain::SignedTransaction trx;
    handler.account = account;
    trx.scope = { account };
    trx.messages.resize(1);
@@ -475,7 +475,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );                                             \
                                                                                                            \
       {                                                                                                    \
-         eos::chain::SignedTransaction trx;                                                                \
+         eosio::chain::SignedTransaction trx;                                                                \
          trx.scope = {#account_name};                                                                      \
          trx.messages.resize(1);                                                                           \
          trx.messages[0].code = config::EosContractName;                                                   \
@@ -489,7 +489,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
                                                                                                            \
                                                                                                            \
       {                                                                                                    \
-         eos::chain::SignedTransaction trx;                                                                \
+         eosio::chain::SignedTransaction trx;                                                                \
          trx.scope = sort_names({#account_name,"inita"});                                                  \
          transaction_emplace_message(trx, #account_name,                                                   \
                             vector<types::AccountPermission>{},                                            \
@@ -578,7 +578,7 @@ BOOST_FIXTURE_TEST_CASE(test_page_memory_exceeded, testing_fixture)
       RUN_CODE_WITH_TRANSFER(testmemexc, extended_memory_test_wast);
       BOOST_FAIL("sbrk should have thrown exception");
    }
-   catch (eos::chain::page_memory_error& )
+   catch (eosio::chain::page_memory_error& )
    {
       // expected behavior
    }

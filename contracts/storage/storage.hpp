@@ -33,7 +33,7 @@ namespace TOKEN_NAME {
     /**
     * Defines a storage token
     */
-    typedef eos::token<uint64_t, N(storage)> StorageTokens;
+    typedef eosio::token<uint64_t, N(storage)> StorageTokens;
 
    /**
     * Transfer requires that the sender and receiver be the first two 

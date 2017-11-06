@@ -14,5 +14,5 @@ var searchData=
   ['require_5fauth',['require_auth',['../structtest__message.html#a16fbe2fff9c7966e24985a73ce12cbbe',1,'test_message']]],
   ['require_5fnotice',['require_notice',['../structtest__message.html#a3c6b5b304941dcc908b34d21cba4cf1a',1,'test_message']]],
   ['requireauth',['requireAuth',['../group__messagecapi.html#gaed0ef9b019ed08c7cc0241c5b4169f13',1,'message.h']]],
-  ['requirenotice',['requireNotice',['../group__messagecapi.html#gaeb32e8229c58b2b2b045080dc1d4b850',1,'requireNotice():&#160;message.h'],['../group__messagecppapi.html#ga547d525494d3cd50fecc7ce919df5b43',1,'eos::requireNotice()']]]
+  ['requirenotice',['requireNotice',['../group__messagecapi.html#gaeb32e8229c58b2b2b045080dc1d4b850',1,'requireNotice():&#160;message.h'],['../group__messagecppapi.html#ga547d525494d3cd50fecc7ce919df5b43',1,'eosio::requireNotice()']]]
 ];

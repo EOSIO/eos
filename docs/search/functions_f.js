@@ -2,7 +2,7 @@ var searchData=
 [
   ['save',['save',['../namespaceexchange.html#aa79eb8bb393de1f4f3c2f40002340a4a',1,'exchange']]],
   ['sbrk',['sbrk',['../group__memorycapi.html#ga87ed00a8f774a9d36d650b80a36ad932',1,'memory.h']]],
-  ['send',['send',['../classeos_1_1_message.html#a9caf8352a2fbfb71dbe5bc7774b18947',1,'eos::Message::send()'],['../classeos_1_1_transaction.html#a5f05f2ab68625efa54831c81d0da9d7b',1,'eos::Transaction::send()']]],
+  ['send',['send',['../classeos_1_1_message.html#a9caf8352a2fbfb71dbe5bc7774b18947',1,'eosio::Message::send()'],['../classeos_1_1_transaction.html#a5f05f2ab68625efa54831c81d0da9d7b',1,'eosio::Transaction::send()']]],
   ['send_5fmessage',['send_message',['../structtest__transaction.html#aea517a1c8103ed6a4b538661424ecb88',1,'test_transaction']]],
   ['send_5fmessage_5fempty',['send_message_empty',['../structtest__transaction.html#a8948792dbb8e304a0699c3e438254c39',1,'test_transaction']]],
   ['send_5fmessage_5finline_5ffail',['send_message_inline_fail',['../structtest__transaction.html#acafc00db8441e97cb854c0152c882293',1,'test_transaction']]],
@@ -25,9 +25,9 @@ var searchData=
   ['store_5fset_5fin_5ftable',['store_set_in_table',['../test__db_8cpp.html#a140b0e67dccb10714dd5dd9ef97ebe21',1,'store_set_in_table(uint64_t table_name):&#160;test_db.cpp'],['../test__db_8cpp.html#a7356d0aa824386b3f5f7d83e22072cd5',1,'store_set_in_table(TestModel3xi64 *records, int len, uint64_t table_name):&#160;test_db.cpp']]],
   ['store_5fstr',['store_str',['../group__dbstr.html#ga7684765e32e6b3ab806dbd4e8366320b',1,'db.h']]],
   ['storeaccount',['storeAccount',['../namespace_t_o_k_e_n___n_a_m_e.html#a9e234bedec057f2367390b88c3b73ad8',1,'TOKEN_NAME::storeAccount()'],['../namespaceinfinite.html#a1657150336ded7ff1184f8c1d74af3f0',1,'infinite::storeAccount()']]],
-  ['string',['string',['../classeos_1_1string.html#ad90c880f029de1b56f9fb811d601fe4c',1,'eos::string::string()'],['../classeos_1_1string.html#a33b404b5178e980f3adcfa5a57853d9a',1,'eos::string::string(uint32_t s)'],['../classeos_1_1string.html#ab690a6ccc27644f4bdf36e1b1fed4467',1,'eos::string::string(char *d, uint32_t s, bool copy)'],['../classeos_1_1string.html#aebd8f61db294e0b5bb812f4a1542198d',1,'eos::string::string(const string &amp;obj)']]],
+  ['string',['string',['../classeos_1_1string.html#ad90c880f029de1b56f9fb811d601fe4c',1,'eosio::string::string()'],['../classeos_1_1string.html#a33b404b5178e980f3adcfa5a57853d9a',1,'eosio::string::string(uint32_t s)'],['../classeos_1_1string.html#ab690a6ccc27644f4bdf36e1b1fed4467',1,'eosio::string::string(char *d, uint32_t s, bool copy)'],['../classeos_1_1string.html#aebd8f61db294e0b5bb812f4a1542198d',1,'eosio::string::string(const string &amp;obj)']]],
   ['string_5fto_5fname',['string_to_name',['../structtest__types.html#a6ca9437af754be8e0c6a734a2fae9a5c',1,'test_types']]],
-  ['substr',['substr',['../classeos_1_1string.html#a72630676a6de4f9e36da4207f17f1ec8',1,'eos::string']]],
+  ['substr',['substr',['../classeos_1_1string.html#a72630676a6de4f9e36da4207f17f1ec8',1,'eosio::string']]],
   ['substring',['substring',['../structtest__string.html#a174ff1e174afeec451b36f8686b34e0d',1,'test_string']]],
   ['substring_5fout_5fof_5fbound',['substring_out_of_bound',['../structtest__string.html#ae7728f80c5b30d58a4224106b879a5f8',1,'test_string']]]
 ];

@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eos { namespace test {
+namespace eosio { namespace test {
 
 template<typename Pred, typename Eval, typename T>
 struct expector {
@@ -47,8 +47,8 @@ auto expect(Eval&& eval, char const * const msg) {
 #define EXPECT(...) EXPECT_(NUM_ARGS(__VA_ARGS__),__VA_ARGS__)
 #define EXPECT_(N, ...) EXPECT__(N, __VA_ARGS__)
 #define EXPECT__(N, ...) EXPECT_##N(__VA_ARGS__)
-#define EXPECT_3(P, E, T) eos::test::expect<P>(E,T,"EXPECT<" #P ">(" #E "," #T ")")
-#define EXPECT_2(E, T) eos::test::expect(E,T,"EXPECT(" #E "," #T ")")
-#define EXPECT_1(E) eos::test::expect(E,"EXPECT(" #E ")")
+#define EXPECT_3(P, E, T) eosio::test::expect<P>(E,T,"EXPECT<" #P ">(" #E "," #T ")")
+#define EXPECT_2(E, T) eosio::test::expect(E,T,"EXPECT(" #E "," #T ")")
+#define EXPECT_1(E) eosio::test::expect(E,"EXPECT(" #E ")")
 
 }}

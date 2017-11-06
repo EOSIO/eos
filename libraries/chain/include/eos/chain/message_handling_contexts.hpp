@@ -11,7 +11,7 @@
 
 namespace chainbase { class database; }
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 class chain_controller;
 
@@ -363,4 +363,4 @@ public:
 
 using apply_handler = std::function<void(apply_context&)>;
 
-} } // namespace eos::chain
+} } // namespace eosio::chain

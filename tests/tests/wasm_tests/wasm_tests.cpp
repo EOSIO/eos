@@ -9,7 +9,7 @@
 #include <rate_limit_auth/rate_limit_auth.wast.hpp>
 #include <currency/currency.wast.hpp>
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(wasm_tests)
@@ -33,7 +33,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eos::chain::SignedTransaction txn;
+         eosio::chain::SignedTransaction txn;
          txn.scope = {"currency"};
          txn.messages.resize(1);
          txn.messages[0].code = config::EosContractName;
@@ -60,12 +60,12 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
          chain.produce_blocks(1);
       }
 
-      eos::chain::SignedTransaction txn;
+      eosio::chain::SignedTransaction txn;
       txn.scope = sort_names({"test1","inita"});
       txn.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(txn, chain.head_block_id());
 
-      eos::chain::SignedTransaction txn2;
+      eosio::chain::SignedTransaction txn2;
       txn2.scope = sort_names({"test2","inita"});
       txn2.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(txn2, chain.head_block_id());
@@ -170,7 +170,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    // setup currency code, and transfer tokens so accounts can do transfers
    if (false)
    {
-      eos::chain::SignedTransaction txn;
+      eosio::chain::SignedTransaction txn;
       txn.scope = {"currency"};
       txn.messages.resize(1);
       txn.messages[0].code = config::EosContractName;
@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
 
    // setup test1 code account, this will be used for most messages, to reach code account rate limit
    {
-      eos::chain::SignedTransaction txn;
+      eosio::chain::SignedTransaction txn;
       txn.scope = {"test1"};
       txn.messages.resize(1);
       txn.messages[0].code = config::EosContractName;
@@ -201,7 +201,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    // setup test5 code account, this will be used to verify that code account rate limit only affects individual code accounts
    {
       handler2.account = "test5";
-      eos::chain::SignedTransaction txn;
+      eosio::chain::SignedTransaction txn;
       txn.scope = {"test5"};
       txn.messages.resize(1);
       txn.messages[0].code = config::EosContractName;
@@ -215,17 +215,17 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
 
 
    // setup transactions
-   eos::chain::SignedTransaction txn;
+   eosio::chain::SignedTransaction txn;
    txn.scope = sort_names({"test1","test2"});
    txn.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn2;
+   eosio::chain::SignedTransaction txn2;
    txn2.scope = sort_names({"test2","test3"});
    txn2.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn2, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn3;
+   eosio::chain::SignedTransaction txn3;
    txn3.scope = sort_names({"test1","test4"});
    txn3.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn3, chain.head_block_id());
@@ -290,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    }
 
 
-   eos::chain::SignedTransaction txn4;
+   eosio::chain::SignedTransaction txn4;
    txn4.scope = sort_names({"test3","test4"});
    txn4.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn4, chain.head_block_id());
@@ -345,52 +345,52 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    }
 
 
-   eos::chain::SignedTransaction txn11;
+   eosio::chain::SignedTransaction txn11;
    txn11.scope = sort_names({"test11","test31"});
    txn11.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn11, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn12;
+   eosio::chain::SignedTransaction txn12;
    txn12.scope = sort_names({"test12","test32"});
    txn12.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn12, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn13;
+   eosio::chain::SignedTransaction txn13;
    txn13.scope = sort_names({"test13","test33"});
    txn13.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn13, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn14;
+   eosio::chain::SignedTransaction txn14;
    txn14.scope = sort_names({"test14","test34"});
    txn14.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn14, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn15;
+   eosio::chain::SignedTransaction txn15;
    txn15.scope = sort_names({"test15","test35"});
    txn15.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn15, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn21;
+   eosio::chain::SignedTransaction txn21;
    txn21.scope = sort_names({"test21","test41"});
    txn21.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn21, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn22;
+   eosio::chain::SignedTransaction txn22;
    txn22.scope = sort_names({"test22","test42"});
    txn22.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn22, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn23;
+   eosio::chain::SignedTransaction txn23;
    txn23.scope = sort_names({"test23","test43"});
    txn23.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn23, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn24;
+   eosio::chain::SignedTransaction txn24;
    txn24.scope = sort_names({"test24","test44"});
    txn24.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn24, chain.head_block_id());
 
-   eos::chain::SignedTransaction txn25;
+   eosio::chain::SignedTransaction txn25;
    txn25.scope = sort_names({"test25","test45"});
    txn25.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn25, chain.head_block_id());

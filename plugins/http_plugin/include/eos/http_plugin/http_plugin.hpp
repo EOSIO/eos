@@ -7,7 +7,7 @@
 
 #include <fc/reflect/reflect.hpp>
 
-namespace eos {
+namespace eosio {
    using namespace appbase;
 
    /**
@@ -86,4 +86,4 @@ namespace eos {
    };
 }
 
-FC_REFLECT(eos::error_results, (code)(message)(details))
+FC_REFLECT(eosio::error_results, (code)(message)(details))

@@ -8,7 +8,7 @@
 
 #include <numeric>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    /**
     * @defgroup transactions Transactions
@@ -40,10 +40,10 @@ namespace eos { namespace chain {
    
 
    /**
-    * @brief methods that operate on @ref eos::types::Transaction.  
+    * @brief methods that operate on @ref eosio::types::Transaction.
     *
     * These are utility methods for sharing common operations between inheriting types which define
-    * additional features and requirements based off of @ref eos::types::Transaction.
+    * additional features and requirements based off of @ref eosio::types::Transaction.
     */
    /// Calculate the digest for a transaction
    digest_type transaction_digest(const Transaction& t);
@@ -197,13 +197,13 @@ namespace eos { namespace chain {
    };
    /// @} transactions group
 
-} } // eos::chain
+} } // eosio::chain
 
-FC_REFLECT(eos::chain::GeneratedTransaction, (id))
-FC_REFLECT_DERIVED(eos::chain::SignedTransaction, (eos::types::SignedTransaction), )
-FC_REFLECT(eos::chain::MessageOutput, (notify)(inline_transaction)(deferred_transactions) )
-FC_REFLECT_DERIVED(eos::chain::ProcessedTransaction, (eos::types::SignedTransaction), (output) )
-FC_REFLECT_DERIVED(eos::chain::PendingInlineTransaction, (eos::types::Transaction), )
-FC_REFLECT_DERIVED(eos::chain::InlineTransaction, (eos::types::Transaction), (output) )
-FC_REFLECT(eos::chain::ProcessedGeneratedTransaction, (id)(output) )
-FC_REFLECT(eos::chain::NotifyOutput, (name)(output) )
+FC_REFLECT(eosio::chain::GeneratedTransaction, (id))
+FC_REFLECT_DERIVED(eosio::chain::SignedTransaction, (eosio::types::SignedTransaction), )
+FC_REFLECT(eosio::chain::MessageOutput, (notify)(inline_transaction)(deferred_transactions) )
+FC_REFLECT_DERIVED(eosio::chain::ProcessedTransaction, (eosio::types::SignedTransaction), (output) )
+FC_REFLECT_DERIVED(eosio::chain::PendingInlineTransaction, (eosio::types::Transaction), )
+FC_REFLECT_DERIVED(eosio::chain::InlineTransaction, (eosio::types::Transaction), (output) )
+FC_REFLECT(eosio::chain::ProcessedGeneratedTransaction, (id)(output) )
+FC_REFLECT(eosio::chain::NotifyOutput, (name)(output) )

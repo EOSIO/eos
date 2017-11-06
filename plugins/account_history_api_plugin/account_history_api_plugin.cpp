@@ -8,9 +8,9 @@
 
 #include <fc/io/json.hpp>
 
-namespace eos {
+namespace eosio {
 
-using namespace eos;
+using namespace eosio;
 
 account_history_api_plugin::account_history_api_plugin(){}
 account_history_api_plugin::~account_history_api_plugin(){}

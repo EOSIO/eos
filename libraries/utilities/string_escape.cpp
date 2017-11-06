@@ -6,7 +6,7 @@
 #include <eos/utilities/string_escape.hpp>
 #include <sstream>
 
-namespace eos { namespace utilities {
+namespace eosio { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input)
   {
@@ -51,5 +51,5 @@ namespace eos { namespace utilities {
     return escaped_string.str();
   }
 
-} } // end namespace eos::utilities
+} } // end namespace eosio::utilities
 

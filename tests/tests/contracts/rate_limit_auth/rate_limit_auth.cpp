@@ -24,7 +24,7 @@ extern "C" {
        {
           if( action == N(transfer) )
           {
-             test_auths( eos::current_message< currency::Transfer >() );
+             test_auths( eosio::current_message< currency::Transfer >() );
           }
        }
     }

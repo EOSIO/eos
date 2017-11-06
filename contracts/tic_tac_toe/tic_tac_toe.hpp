@@ -44,7 +44,7 @@
  *  @{
  */
 
-using namespace eos;
+using namespace eosio;
 namespace tic_tac_toe {
   /**
    * @brief Data structure to hold game information

@@ -12,15 +12,14 @@
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/algorithm/copy.hpp>
 
-namespace eos { namespace native_contract {
-using namespace chain;
-namespace chain = ::eos::chain;
+namespace eosio { namespace native_contract {
+using namespace eosio::chain;
 
 types::Time native_contract_chain_initializer::get_chain_start_time() {
    return genesis.initial_timestamp;
 }
 
-chain::BlockchainConfiguration native_contract_chain_initializer::get_chain_start_configuration() {
+BlockchainConfiguration native_contract_chain_initializer::get_chain_start_configuration() {
    return genesis.initial_configuration;
 }
 
@@ -33,29 +32,28 @@ std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_ini
 
 void native_contract_chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
    // Install the native contract's indexes; we can't do anything until our objects are recognized
-   db.add_index<native::eos::StakedBalanceMultiIndex>();
-   db.add_index<native::eos::ProducerVotesMultiIndex>();
-   db.add_index<native::eos::ProxyVoteMultiIndex>();
-   db.add_index<native::eos::ProducerScheduleMultiIndex>();
+   db.add_index<native::eosio::StakedBalanceMultiIndex>();
+   db.add_index<native::eosio::ProducerVotesMultiIndex>();
+   db.add_index<native::eosio::ProxyVoteMultiIndex>();
+   db.add_index<native::eosio::ProducerScheduleMultiIndex>();
 
-   db.add_index<native::eos::BalanceMultiIndex>();
+   db.add_index<native::eosio::BalanceMultiIndex>();
 
-#define SET_APP_HANDLER( contract, scope, action ) \
-   chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::contract::apply_, BOOST_PP_CAT(scope, BOOST_PP_CAT(_,action) ) ) )
-
-   SET_APP_HANDLER( eos, eos, newaccount );
-   SET_APP_HANDLER( eos, eos, transfer );
-   SET_APP_HANDLER( eos, eos, lock );
-   SET_APP_HANDLER( eos, eos, claim );
-   SET_APP_HANDLER( eos, eos, unlock );
-   SET_APP_HANDLER( eos, eos, okproducer );
-   SET_APP_HANDLER( eos, eos, setproducer );
-   SET_APP_HANDLER( eos, eos, setproxy );
-   SET_APP_HANDLER( eos, eos, setcode );
-   SET_APP_HANDLER( eos, eos, updateauth );
-   SET_APP_HANDLER( eos, eos, deleteauth );
-   SET_APP_HANDLER( eos, eos, linkauth );
-   SET_APP_HANDLER( eos, eos, unlinkauth );
+#define SET_APP_HANDLER( contract, scope, action, nspace ) \
+   chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::nspace::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+   SET_APP_HANDLER( eos, eos, newaccount, eosio );
+   SET_APP_HANDLER( eos, eos, transfer, eosio );
+   SET_APP_HANDLER( eos, eos, lock, eosio );
+   SET_APP_HANDLER( eos, eos, claim, eosio );
+   SET_APP_HANDLER( eos, eos, unlock, eosio );
+   SET_APP_HANDLER( eos, eos, okproducer, eosio );
+   SET_APP_HANDLER( eos, eos, setproducer, eosio );
+   SET_APP_HANDLER( eos, eos, setproxy, eosio );
+   SET_APP_HANDLER( eos, eos, setcode, eosio );
+   SET_APP_HANDLER( eos, eos, updateauth, eosio );
+   SET_APP_HANDLER( eos, eos, deleteauth, eosio );
+   SET_APP_HANDLER( eos, eos, linkauth, eosio );
+   SET_APP_HANDLER( eos, eos, unlinkauth, eosio ); 
 }
 
 types::Abi native_contract_chain_initializer::eos_contract_abi()
@@ -76,29 +74,29 @@ types::Abi native_contract_chain_initializer::eos_contract_abi()
    eos_abi.actions.push_back( types::Action{Name("updateauth"), "updateauth"} );
    eos_abi.actions.push_back( types::Action{Name("deleteauth"), "deleteauth"} );
    eos_abi.actions.push_back( types::Action{Name("newaccount"), "newaccount"} );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::transfer>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::lock>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlock>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::claim>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::okproducer>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproducer>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setproxy>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::setcode>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::updateauth>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::linkauth>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::unlinkauth>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::deleteauth>::type() );
-   eos_abi.structs.push_back( eos::types::GetStruct<eos::types::newaccount>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::transfer>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::lock>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::unlock>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::claim>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::okproducer>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::setproducer>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::setproxy>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::setcode>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::updateauth>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::linkauth>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::unlinkauth>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::deleteauth>::type() );
+   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::newaccount>::type() );
 
    return eos_abi;
 }
 
-std::vector<chain::Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
+std::vector<Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
                                                                                 chainbase::database& db) {
-   std::vector<chain::Message> messages_to_process;
+   std::vector<Message> messages_to_process;
 
    // Create the singleton object, ProducerScheduleObject
-   db.create<native::eos::ProducerScheduleObject>([](const auto&){});
+   db.create<native::eosio::ProducerScheduleObject>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto CreateNativeAccount = [this, &db](Name name, auto liquidBalance) {
@@ -121,11 +119,11 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
          p.name = "active";
          p.auth.threshold = 1;
       });
-      db.create<native::eos::BalanceObject>([&name, liquidBalance]( auto& b) {
+      db.create<native::eosio::BalanceObject>([&name, liquidBalance]( auto& b) {
          b.ownerName = name;
          b.balance = liquidBalance;
       });
-      db.create<native::eos::StakedBalanceObject>([&name](auto& sb) { sb.ownerName = name; });
+      db.create<native::eosio::StakedBalanceObject>([&name](auto& sb) { sb.ownerName = name; });
    };
    CreateNativeAccount(config::EosContractName, config::InitialTokenSupply);
 
@@ -134,7 +132,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
       return types::Authority(1, {{k, 1}}, {});
    };
    for (const auto& acct : genesis.initial_accounts) {
-      chain::Message message(config::EosContractName,
+      Message message(config::EosContractName,
                              vector<types::AccountPermission>{{config::EosContractName, "active"}},
                              "newaccount", types::newaccount(config::EosContractName, acct.name,
                                                              KeyAuthority(acct.owner_key),
@@ -143,7 +141,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
                                                              acct.staking_balance));
       messages_to_process.emplace_back(std::move(message));
       if (acct.liquid_balance > 0) {
-         message = chain::Message(config::EosContractName,
+         message = Message(config::EosContractName,
                                   vector<types::AccountPermission>{{config::EosContractName, "active"}},
                                   "transfer", types::transfer(config::EosContractName, acct.name,
                                                               acct.liquid_balance.amount, "Genesis Allocation"));
@@ -153,7 +151,7 @@ std::vector<chain::Message> native_contract_chain_initializer::prepare_database(
 
    // Create initial producers
    auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
-      return chain::Message(config::EosContractName, vector<types::AccountPermission>{{p.owner_name, "active"}},
+      return Message(config::EosContractName, vector<types::AccountPermission>{{p.owner_name, "active"}},
                             "setproducer", types::setproducer(p.owner_name, p.block_signing_key, config));
    });
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));

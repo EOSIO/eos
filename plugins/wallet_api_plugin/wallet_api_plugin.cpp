@@ -12,16 +12,16 @@
 
 #include <chrono>
 
-namespace eos { namespace detail {
+namespace eosio { namespace detail {
   struct wallet_api_plugin_empty {};
 }}
 
-FC_REFLECT(eos::detail::wallet_api_plugin_empty, );
+FC_REFLECT(eosio::detail::wallet_api_plugin_empty, );
 
-namespace eos {
+namespace eosio {
 
 
-using namespace eos;
+using namespace eosio;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -53,16 +53,16 @@ using namespace eos;
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     eos::detail::wallet_api_plugin_empty result;
+     eosio::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     eos::detail::wallet_api_plugin_empty result;
+     eosio::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
-     eos::detail::wallet_api_plugin_empty result;
+     eosio::detail::wallet_api_plugin_empty result;
 
 
 void wallet_api_plugin::plugin_startup() {

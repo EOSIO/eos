@@ -8,7 +8,7 @@
 #include <appbase/application.hpp>
 #include <memory>
 
-namespace eos {
+namespace eosio {
 
 using db_plugin_impl_ptr = std::shared_ptr<class db_plugin_impl>;
 

@@ -7,7 +7,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    struct by_scope_primary;
    struct by_scope_secondary;
@@ -192,11 +192,11 @@ namespace eos { namespace chain {
 
 
 
-} } // eos::chain
+} } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::key_value_object, eos::chain::key_value_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::keystr_value_object, eos::chain::keystr_value_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::key128x128_value_object, eos::chain::key128x128_value_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::key64x64x64_value_object, eos::chain::key64x64x64_value_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::key_value_object, eosio::chain::key_value_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::keystr_value_object, eosio::chain::keystr_value_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::key128x128_value_object, eosio::chain::key128x128_value_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::key64x64x64_value_object, eosio::chain::key64x64x64_value_index)
 
-FC_REFLECT(eos::chain::key_value_object, (id)(scope)(code)(table)(primary_key)(value) )
+FC_REFLECT(eosio::chain::key_value_object, (id)(scope)(code)(table)(primary_key)(value) )

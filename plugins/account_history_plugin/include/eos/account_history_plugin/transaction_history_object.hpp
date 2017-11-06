@@ -6,7 +6,7 @@
 
 #include <chainbase/chainbase.hpp>
 
-namespace eos {
+namespace eosio {
 using chain::block_id_type;
 using chain::transaction_id_type;
 using namespace boost::multi_index;
@@ -33,7 +33,7 @@ typedef chainbase::generic_index<transaction_history_multi_index> transaction_hi
 
 }
 
-CHAINBASE_SET_INDEX_TYPE( eos::transaction_history_object, eos::transaction_history_multi_index )
+CHAINBASE_SET_INDEX_TYPE( eosio::transaction_history_object, eosio::transaction_history_multi_index )
 
-FC_REFLECT( eos::transaction_history_object, (block_id)(transaction_id) )
+FC_REFLECT( eosio::transaction_history_object, (block_id)(transaction_id) )
 

@@ -21,7 +21,7 @@
 #include <boost/lexical_cast.hpp>
 #include <fc/utf8.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    using namespace IR;
    using namespace Runtime;
    typedef boost::multiprecision::cpp_bin_float_50 DOUBLE;
@@ -892,14 +892,14 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    {
       const U32 previous_num_bytes = _num_bytes;
       if(Runtime::getMemoryNumPages(_wasm_interface.current_memory) != _num_pages)
-         throw eos::chain::page_memory_error();
+         throw eosio::chain::page_memory_error();
 
       // Round the absolute value of num_bytes to an alignment boundary, and ensure it won't allocate too much or too little memory.
       num_bytes = (num_bytes + 7) & ~7;
       if(num_bytes > 0 && previous_num_bytes > _max_memory - num_bytes)
-         throw eos::chain::page_memory_error();
+         throw eosio::chain::page_memory_error();
       else if(num_bytes < 0 && previous_num_bytes < _min_bytes - num_bytes)
-         throw eos::chain::page_memory_error();
+         throw eosio::chain::page_memory_error();
 
       // Update the number of bytes allocated, and compute the number of pages needed for it.
       _num_bytes += num_bytes;

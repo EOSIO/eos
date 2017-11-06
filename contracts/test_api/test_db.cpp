@@ -746,29 +746,29 @@ unsigned int test_db::key_i64i64i64_general() {
   #define BS(X) ((X) ? "true" : "false")
   #define TABLE1_ASSERT(I, V, msg) \
     if(LOGME) {\
-      eos::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, "inx:", uint64_t(I), " ("); \
-      eos::print(BS(res == sizeof(V)), " ", BS(records[I].a == V.a), " ", BS(records[I].b == V.b), " ", BS(records[I].c == V.c), " => ", N(table2), ")\n"); \
+      eosio::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, "inx:", uint64_t(I), " ("); \
+      eosio::print(BS(res == sizeof(V)), " ", BS(records[I].a == V.a), " ", BS(records[I].b == V.b), " ", BS(records[I].c == V.c), " => ", N(table2), ")\n"); \
     } \
     WASM_ASSERT( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
      records[I].c == V.c /*&& records[I].table == uint64_t(N(table2))*/, msg);
 
   #define LOAD_OK(I, O, T, INX, MSG) \
-    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
     res = LOAD(I, O, T, tmp); \
     TABLE1_ASSERT(INX, tmp, MSG)}
 
   #define LOAD_ER(I, O, T, MSG) \
-    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
     res = LOAD(I, O, T, tmp); \
     WASM_ASSERT(res == -1, MSG)}
 
   #define FRONT_OK(I, O, T, INX, MSG) \
-    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
     res = FRONT(I, O, T, tmp); \
     TABLE1_ASSERT(INX, tmp, MSG)}
 
   #define BACK_OK(I, O, T, INX, MSG) \
-    {eos::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
+    {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
     res = BACK(I, O, T, tmp); \
     TABLE1_ASSERT(INX, tmp, MSG)}
 
@@ -808,7 +808,7 @@ unsigned int test_db::key_i64i64i64_general() {
     auto n = sizeof(I)/sizeof(I[0]); \
     auto j = 0; \
     do { \
-      eos::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
+      eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = NEXT(I, i64i64i64, N(table2), tmp);\
       if(j+1<n){ TABLE1_ASSERT(I[j+1], tmp, "i64x3 NEXT " #I " ok "); } \
       else { WASM_ASSERT(res == -1, "i64x3 NEXT " #I " fail "); }\
@@ -820,7 +820,7 @@ unsigned int test_db::key_i64i64i64_general() {
     auto n = sizeof(I)/sizeof(I[0]); \
     auto j = n-1; \
     do { \
-      eos::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
+      eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = PREV(I, i64i64i64, N(table2), tmp);\
       if(j>0){ TABLE1_ASSERT(I[j-1], tmp, "i64x3 PREV " #I " ok "); } \
       else { WASM_ASSERT(res == -1, "i64x3 PREV " #I " fail "); }\
@@ -848,7 +848,7 @@ unsigned int test_db::key_i64i64i64_general() {
     auto n = sizeof(I##_lb)/sizeof(I##_lb[0]); \
     auto j = 0; \
     do { \
-      eos::remove_reference<decltype(records[0])>::type tmp = records[j]; \
+      eosio::remove_reference<decltype(records[0])>::type tmp = records[j]; \
       res = LOWER(I, i64i64i64, N(table2), tmp);\
       TABLE1_ASSERT(I##_lb[j], tmp, "i64x3 LOWER " #I " ok ");\
     } while(++j<n); \
@@ -863,7 +863,7 @@ unsigned int test_db::key_i64i64i64_general() {
     auto n = sizeof(I##_ub)/sizeof(I##_ub[0]); \
     auto j = 0; \
     do { \
-      eos::remove_reference<decltype(records[0])>::type tmp = records[j]; \
+      eosio::remove_reference<decltype(records[0])>::type tmp = records[j]; \
       res = UPPER(I, i64i64i64, N(table2), tmp);\
       if(res == -1) { WASM_ASSERT(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
       else { TABLE1_ASSERT(I##_ub[j], tmp, "i64x3 UPPER " #I " ok "); } \
@@ -1081,4 +1081,4 @@ unsigned int test_db::key_i128i128_general() {
   return WASM_TEST_PASS;
 }
 
-//eos::print("xxxx ", res, " ", tmp2.name, " ", uint64_t(tmp2.age), " ", tmp2.phone, " ", tmp2.new_field, "\n");
+//eosio::print("xxxx ", res, " ", tmp2.name, " ", uint64_t(tmp2.age), " ", tmp2.phone, " ", tmp2.new_field, "\n");

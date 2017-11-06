@@ -12,7 +12,7 @@
 #include <boost/multi_index/mem_fun.hpp>
 
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
 
@@ -102,4 +102,4 @@ namespace eos { namespace chain {
          fork_multi_index_type    _index;
          shared_ptr<fork_item>    _head;
    };
-} } // eos::chain
+} } // eosio::chain

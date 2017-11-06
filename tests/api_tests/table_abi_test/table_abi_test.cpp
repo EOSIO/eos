@@ -216,7 +216,7 @@ extern "C" {
          }
       }
 
-      eos::print("don't know code=", code, " action=", action, " \n");
+      eosio::print("don't know code=", code, " action=", action, " \n");
       assert(0, "unknown code");
    }
 }

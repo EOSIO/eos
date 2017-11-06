@@ -9,7 +9,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
 
 wallet_plugin::wallet_plugin()
   : wallet_manager_ptr(new wallet_manager()) {

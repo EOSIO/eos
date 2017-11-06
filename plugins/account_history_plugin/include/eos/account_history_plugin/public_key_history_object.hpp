@@ -10,9 +10,9 @@
 namespace std {
 
    template<>
-   struct hash<eos::chain::public_key_type>
+   struct hash<eosio::chain::public_key_type>
    {
-      size_t operator()( const eos::chain::public_key_type& key ) const
+      size_t operator()( const eosio::chain::public_key_type& key ) const
       {
          std::hash<fc::ecc::public_key_data> hash;
          return hash(key.key_data);
@@ -20,7 +20,7 @@ namespace std {
    };
 }
 
-namespace eos {
+namespace eosio {
 using chain::AccountName;
 using chain::public_key_type;
 using chain::PermissionName;
@@ -60,7 +60,7 @@ typedef chainbase::generic_index<public_key_history_multi_index> public_key_hist
 
 }
 
-CHAINBASE_SET_INDEX_TYPE( eos::public_key_history_object, eos::public_key_history_multi_index )
+CHAINBASE_SET_INDEX_TYPE( eosio::public_key_history_object, eosio::public_key_history_multi_index )
 
-FC_REFLECT( eos::public_key_history_object, (public_key)(account_name)(permission) )
+FC_REFLECT( eosio::public_key_history_object, (public_key)(account_name)(permission) )
 

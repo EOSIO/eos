@@ -2,7 +2,7 @@
 #include <eoslib/system.h>
 #include <eoslib/memory.h>
 
-namespace eos {
+namespace eosio {
 
 template<typename T>
 class datastream {

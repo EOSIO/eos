@@ -8,7 +8,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 class producer_object : public chainbase::object<producer_object_type, producer_object> {
    OBJECT_CTOR(producer_object)
 
@@ -39,10 +39,10 @@ using producer_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // eos::chain
+} } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::producer_object, eos::chain::producer_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::producer_object, eosio::chain::producer_multi_index)
 
-FC_REFLECT(eos::chain::producer_object::id_type, (_id))
-FC_REFLECT(eos::chain::producer_object, (id)(owner)(last_aslot)(signing_key)(total_missed)(last_confirmed_block_num)
+FC_REFLECT(eosio::chain::producer_object::id_type, (_id))
+FC_REFLECT(eosio::chain::producer_object, (id)(owner)(last_aslot)(signing_key)(total_missed)(last_confirmed_block_num)
            (configuration))

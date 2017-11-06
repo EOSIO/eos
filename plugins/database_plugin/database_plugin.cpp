@@ -7,7 +7,7 @@
 #include <fc/filesystem.hpp>
 #include <fc/log/logger.hpp>
 
-namespace eos {
+namespace eosio {
 
 class database_plugin_impl {
 public:

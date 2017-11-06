@@ -114,8 +114,8 @@ sub write_config {
         print $cfg "required-participation = true\n";
         print $cfg "private-key = [\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]\n";
 
-        print $cfg "plugin = eos::producer_plugin\n";
-        print $cfg "plugin = eos::chain_api_plugin\n";
+        print $cfg "plugin = eosio::producer_plugin\n";
+        print $cfg "plugin = eosio::chain_api_plugin\n";
 
         my $prod_ndx = ord('a') + $producer;
         my $num_prod = $pcount[$producer];

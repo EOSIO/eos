@@ -38,7 +38,7 @@
 #include <eoslib/print.hpp>
 
 using namespace exchange;
-using namespace eos;
+using namespace eosio;
 
 namespace exchange {
 inline void save( const Account& a ) {
@@ -83,7 +83,7 @@ void apply_currency_transfer( const currency::Transfer& transfer ) {
  *  This method is called after the "transfer" action of code
  *  "currencya" is called and "exchange" is listed in the notifiers.
  */
-void apply_eos_transfer( const eos::Transfer& transfer ) {
+void apply_eos_transfer( const eosio::Transfer& transfer ) {
    if( transfer.to == N(exchange) ) {
       modifyAccount( transfer.from, [&]( Account& account ){ 
           account.eos_balance += transfer.quantity; 
@@ -102,9 +102,9 @@ void apply_eos_transfer( const eos::Transfer& transfer ) {
 void match( Bid& bid, Account& buyer, Ask& ask, Account& seller ) {
    print( "match bid: ", bid, "\nmatch ask: ", ask, "\n");
 
-   eos::Tokens ask_eos = ask.quantity * ask.price;
+   eosio::Tokens ask_eos = ask.quantity * ask.price;
 
-   EosTokens      fill_amount_eos = min<eos::Tokens>( ask_eos, bid.quantity );
+   EosTokens      fill_amount_eos = min<eosio::Tokens>( ask_eos, bid.quantity );
    CurrencyTokens fill_amount_currency;
 
    if( fill_amount_eos == ask_eos ) { /// complete fill of ask
@@ -132,7 +132,7 @@ void apply_exchange_buy( BuyOrder order ) {
    Bid& bid = order;
    require_auth( bid.buyer.name );
 
-   assert( bid.quantity > eos::Tokens(0), "invalid quantity" );
+   assert( bid.quantity > eosio::Tokens(0), "invalid quantity" );
    assert( bid.expiration > now(), "order expired" );
 
    print( Name(bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.price, "\n" );
@@ -324,7 +324,7 @@ extern "C" {
       } 
       else if( code == N(eos) ) {
         if( action == N(transfer) ) 
-           apply_eos_transfer( current_message<eos::Transfer>() );
+           apply_eos_transfer( current_message<eosio::Transfer>() );
       } 
       else {
       }

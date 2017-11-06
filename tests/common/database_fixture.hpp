@@ -23,7 +23,7 @@
 
 #include <iostream>
 
-using namespace eos::chain;
+using namespace eosio::chain;
 
 extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
 
@@ -68,9 +68,9 @@ extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
          << req_throw_info << std::endl;                  \
 }
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
-FC_DECLARE_DERIVED_EXCEPTION(missing_key_exception, eos::chain::testing_exception, 6010000, "key could not be found")
+FC_DECLARE_DERIVED_EXCEPTION(missing_key_exception, eosio::chain::testing_exception, 6010000, "key could not be found")
 
 /**
  * @brief The testing_fixture class provides various services relevant to testing the blockchain.

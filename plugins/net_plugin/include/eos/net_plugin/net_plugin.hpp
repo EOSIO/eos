@@ -6,7 +6,7 @@
 #include <appbase/application.hpp>
 #include <eos/chain_plugin/chain_plugin.hpp>
 
-namespace eos {
+namespace eosio {
    using namespace appbase;
 
    class net_plugin : public appbase::plugin<net_plugin>

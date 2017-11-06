@@ -8,7 +8,7 @@
 
 #include <eos/chain/chain_controller.hpp>
 
-namespace eos { namespace native_contract {
+namespace eosio { namespace native_contract {
 
 class native_contract_chain_initializer : public chain::chain_initializer_interface {
    genesis_state_type genesis;
@@ -27,5 +27,5 @@ public:
    static types::Abi eos_contract_abi();
 };
 
-} } // namespace eos::native_contract
+} } // namespace eosio::native_contract
 

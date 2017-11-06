@@ -7,7 +7,7 @@
 #include <eoslib/memory.h>
 #include <eoslib/print.hpp>
 
-namespace eos {
+namespace eosio {
 
    using ::memset;
    using ::memcpy;
