@@ -34,7 +34,12 @@ class connection_interface {
 };
 
 ////The various types of work that can be asked of a connection_interface when querying for data to send///
-//There is no work to send (connection )
+//Not really work -- but an indicator the connection has done something that has caused
+// it to irreversably fail. Connection should be disconnected immediately.
+struct connection_send_failure {};
+
+//There is no work to send (connection must quit asking for get_work_to_send until begin_processing_network_send_queue
+// is called again)
 struct connection_send_nowork {};
 
 //Send the trasactions between begin-end and begin2-end2
@@ -46,6 +51,7 @@ struct connection_send_transactions {
 };
 
 using connection_send_work = static_variant<
+   connection_send_failure,
    connection_send_nowork,
    connection_send_transactions
 >;

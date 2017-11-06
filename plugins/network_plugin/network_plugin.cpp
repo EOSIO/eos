@@ -64,10 +64,8 @@ class network_plugin_impl {
          //         to serialize the transactions before they have an opportunity to be globbered.
          //         This is probably overkill since the serialization happens almost immediately.
 
-         if(buffer_head-context.trx_tail >= transaction_buffer_size/2) {
-            //XXX kill connection; or should there be a discreet return value?
-            return connection_send_nowork();
-         }
+         if(buffer_head-context.trx_tail >= transaction_buffer_size/2)
+            return connection_send_failure();
 
          connection_send_transactions send_transactions;
          if(buffer_head%transaction_buffer_size < context.trx_tail%transaction_buffer_size) {

@@ -40,6 +40,11 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
       void operator()(const handshake2_message& handshake);
       void operator()(const packed_transaction_list& transactions);
 
+      //TX queue processors
+      void operator()(const connection_send_failure& failure);
+      void operator()(const connection_send_nowork& handshake);
+      void operator()(const connection_send_transactions& handshake);
+
    private:
       static const unsigned int max_message_size{16U << 20U};
       static const unsigned int max_rx_read{4U << 20U};
@@ -79,6 +84,12 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
 
       std::mutex _transaction_mutex;
       transaction_multi_index _seen_transactions;
+
+      bool _currently_processing_network_queue{false};
+      void get_next_network_work(connection_send_context& context);
+      void prepare_and_send(net2_message message);
+      char send_serialization_buffer[max_message_size+16];    //serialize in to here
+      char send_buffer[max_message_size];  //encrypt in to here (and send from here)
 
       signal<void()> _on_disconnected_sig;
       bool _disconnected_fired{false};    //be sure to only fire the signal once

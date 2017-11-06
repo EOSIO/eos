@@ -1,7 +1,9 @@
 #include <eos/tcp_connection_plugin/tcp_connection.hpp>
+#include <eos/network_plugin/network_plugin.hpp>
 
 #include <fc/log/logger.hpp>
 #include <fc/io/raw.hpp>
+#include <appbase/application.hpp>
 
 #include <boost/asio.hpp>
 
@@ -154,6 +156,63 @@ void tcp_connection::operator()(const packed_transaction_list& transactions) {
 }
 
 void tcp_connection::begin_processing_network_send_queue(connection_send_context& context) {
+   if(_currently_processing_network_queue)
+      return;
+   _currently_processing_network_queue = true;
+   get_next_network_work(context);
+}
+
+void tcp_connection::get_next_network_work(connection_send_context& context) {
+   connection_send_work work_to_send = appbase::app().get_plugin<network_plugin>().get_work_to_send(context);
+   work_to_send.visit(*this);
+}
+
+void tcp_connection::operator()(const connection_send_failure& failure) {
+   handle_failure();
+   _currently_processing_network_queue = false;
+}
+
+void tcp_connection::operator()(const connection_send_nowork& handshake) {
+   _currently_processing_network_queue = false;
+}
+
+void tcp_connection::operator()(const connection_send_transactions& handshake) {
+   packed_transaction_list sending_transactions;
+
+   {
+      std::lock_guard<std::mutex> lock(_transaction_mutex);
+
+      for(auto it = handshake.begin; it != handshake.end; ++it) {
+         auto p = _seen_transactions.emplace((*it)->id, (*it)->expiration);
+         if(!p.second) //couldn't emplace; we've seen trx in/egress recently already
+            continue;
+         sending_transactions.outgoing_transactions.emplace_back(*it);
+      }
+      for(auto it = handshake.begin2; it != handshake.end2; ++it) {
+         auto p = _seen_transactions.emplace((*it)->id, (*it)->expiration);
+         if(!p.second) //couldn't emplace; we've seen trx in/egress recently already
+            continue;
+         sending_transactions.outgoing_transactions.emplace_back(*it);
+      }
+   }
+
+   prepare_and_send(sending_transactions);
+}
+
+void tcp_connection::prepare_and_send(net2_message message) {
+   datastream<char*> ds(send_buffer, max_message_size);
+   try {
+      ds.seekp(3);
+      fc::raw::pack(ds, message);
+      unsigned_int message_blocks = (ds.tellp()+15)&~15U;
+      ds.seekp(0);
+      fc::raw::pack(ds, message_blocks);
+   }
+   catch(fc::exception e) {
+      //too large of message, probably. XXX TODO ME disconnect
+   }
+
+   //XXX
    
 }
 
