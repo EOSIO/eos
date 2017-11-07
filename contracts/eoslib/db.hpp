@@ -480,17 +480,17 @@ struct table_impl<sizeof(uint64_t),0> {
  *  The primary and secondary indices are sorted as N-bit unsigned integers from lowest to highest.
  *
  *  @code
- *  struct Model {
+ *  struct model {
  *      uint64_t primary;
  *      uint64_t secondary;
  *      uint64_t value;
  *  };
  *
- *  typedef table<N(myscope), N(mycode), N(mytable), Model, uint64_t, uint64_t> MyTable;
- *  Model a { 1, 11, N(first) };
- *  Model b { 2, 22, N(second) };
- *  Model c { 3, 33, N(third) };
- *  Model d { 4, 44, N(fourth) };
+ *  typedef table<N(myscope), N(mycode), N(mytable), model, uint64_t, uint64_t> MyTable;
+ *  model a { 1, 11, N(first) };
+ *  model b { 2, 22, N(second) };
+ *  model c { 3, 33, N(third) };
+ *  model d { 4, 44, N(fourth) };
  *
  *  bool res = MyTable::store(a);
  *  ASSERT(res, "store");
@@ -504,35 +504,35 @@ struct table_impl<sizeof(uint64_t),0> {
  *  res = MyTable::store(d);
  *  ASSERT(res, "store");
  *
- *  Model query;
- *  res = MyTable::PrimaryIndex::get(1, query);
+ *  model query;
+ *  res = MyTable::primary_index::get(1, query);
  *  ASSERT(res && query.primary == 1 && query.value == N(first), "first");
  *
- *  res = MyTable::PrimaryIndex::front(query);
+ *  res = MyTable::primary_index::front(query);
  *  ASSERT(res && query.primary == 4 && query.value == N(fourth), "front");
  *
- *  res = MyTable::PrimaryIndex::back(query);
+ *  res = MyTable::primary_index::back(query);
  *  ASSERT(res && query.primary == 1 && query.value == N(first), "back");
  *
- *  res = MyTable::PrimaryIndex::previous(query);
+ *  res = MyTable::primary_index::previous(query);
  *  ASSERT(res && query.primary == 2 && query.value == N(second), "previous");
  *
- *  res = MyTable::PrimaryIndex::next(query);
+ *  res = MyTable::primary_index::next(query);
  *  ASSERT(res && query.primary == 1 && query.value == N(first), "first");
  *
- *  res = MyTable::SecondaryIndex::get(11, query);
+ *  res = MyTable::secondary_index::get(11, query);
  *  ASSERT(res && query.primary == 11 && query.value == N(first), "first");
  *
- *  res = MyTable::SecondaryIndex::front(query);
+ *  res = MyTable::secondary_index::front(query);
  *  ASSERT(res && query.secondary == 44 && query.value == N(fourth), "front");
  *
- *  res = MyTable::SecondaryIndex::back(query);
+ *  res = MyTable::secondary_index::back(query);
  *  ASSERT(res && query.secondary == 11 && query.value == N(first), "back");
  *
- *  res = MyTable::SecondaryIndex::previous(query);
+ *  res = MyTable::secondary_index::previous(query);
  *  ASSERT(res && query.secondary == 22 && query.value == N(second), "previous");
  *
- *  res = MyTable::SecondaryIndex::next(query);
+ *  res = MyTable::secondary_index::next(query);
  *  ASSERT(res && query.secondary == 11 && query.value == N(first), "first");
  *
  *  res = MyTable::remove(query);
@@ -559,7 +559,7 @@ struct table {
      * @brief The primary Index
     */
 
-   struct PrimaryIndex {
+   struct primary_index {
       /**
       *  @param r - reference to a record to store the front record based on primary index.
       *  @param s - account scope. default is current scope of the class
@@ -650,7 +650,7 @@ struct table {
      * @brief The Secondary Index
      */
 
-   struct SecondaryIndex {
+   struct secondary_index {
        /**
        *  @param r - reference to a record to store the front record based on secondary index.
        *  @param s - account scope. default is current scope of the class
@@ -797,17 +797,17 @@ struct table {
   *  Example
   *  @code
   *
-  *  struct MyModel {
+  *  struct my_model {
   *     uint128_t number;
   *     uint64_t  name;
   *  };
   *
-  *  typedef table<N(myscope), N(mycode), N(mytable), MyModel, uint128_t> MyTable;
+  *  typedef table<N(myscope), N(mycode), N(mytable), my_model, uint128_t> MyTable;
   *
-  *  MyModel a { 1, N(one) };
-  *  MyModel b { 2, N(two) };
-  *  MyModel c { 3, N(three) };
-  *  MyModel d { 4, N(four) };
+  *  my_model a { 1, N(one) };
+  *  my_model b { 2, N(two) };
+  *  my_model c { 3, N(three) };
+  *  my_model d { 4, N(four) };
   *
   *  bool res = MyTable::store(a);
   *  ASSERT(res, "store");
@@ -821,17 +821,17 @@ struct table {
   *  res = MyTable::store(d);
   *  ASSERT(res, "store");
   *
-  *  MyModel query;
+  *  my_model query;
   *  res = MyTable::front(query);
   *  ASSERT(res && query.number == 4 && query.name == N(four), "front");
   *
   *  res = MyTable::back(query);
   *  ASSERT(res && query.number == 1 && query.name == N(one), "back");
   *
-  *  res = MyTable::PrimaryIndex::previous(query);
+  *  res = MyTable::primary_index::previous(query);
   *  ASSERT(res && query.number == 2 && query.name == N(two), "previous");
   *
-  *  res = MyTable::PrimaryIndex::next(query);
+  *  res = MyTable::primary_index::next(query);
   *  ASSERT(res && query.number == 1 && query.name == N(one), "next");
   *
   *  query.number = 4;
@@ -864,7 +864,7 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
     /**
      * @brief primary Index of table
      */
-   struct PrimaryIndex {
+   struct primary_index {
        /**
        *  @param r - reference to a record to store the front.
        *
@@ -944,14 +944,14 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
     * @param  r - reference to hold the value
     * @return true if successfully retrieved the front
     */
-    static bool front( Record& r ) { return PrimaryIndex::front(r); }
+    static bool front( Record& r ) { return primary_index::front(r); }
 
     /**
     * fetches the back of the table
     * @param  r - reference to hold the value
     * @return true if successfully retrieved the back
     */
-    static bool back( Record& r )  { return PrimaryIndex::back(r);  }
+    static bool back( Record& r )  { return primary_index::back(r);  }
 
     /**
      * retrieves the record for the specified primary key
@@ -1009,5 +1009,5 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
 
 #define TABLE2(NAME, SCOPE, CODE, TABLE, TYPE, PRIMARY_NAME, PRIMARY_TYPE, SECONDARY_NAME, SECONDARY_TYPE) \
    using NAME = table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
-   typedef NAME::PrimaryIndex PRIMARY_NAME; \
-   typedef NAME::SecondaryIndex SECONDARY_NAME;
+   typedef NAME::primary_index PRIMARY_NAME; \
+   typedef NAME::secondary_index SECONDARY_NAME;

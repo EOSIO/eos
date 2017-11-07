@@ -64,51 +64,51 @@ extern "C" {
  * Example
  * @code
  * #pragma pack(push, 1)
- * struct TestModel {
+ * struct test_model {
  *    account_name   name;
  *    unsigned char age;
  *    uint64_t      phone;
  * };
  *
- * TestModel alice{ N(alice), 20, 4234622};
- * TestModel bob  { N(bob),   15, 11932435};
- * TestModel carol{ N(carol), 30, 545342453};
- * TestModel dave { N(dave),  46, 6535354};
+ * test_model alice{ N(alice), 20, 4234622};
+ * test_model bob  { N(bob),   15, 11932435};
+ * test_model carol{ N(carol), 30, 545342453};
+ * test_model dave { N(dave),  46, 6535354};
  *
- * int32_t res = store_i64(CurrentCode(),  N(test_table), &dave,  sizeof(TestModel));
- * res = store_i64(CurrentCode(), N(test_table), &carol, sizeof(TestModel));
- * res = store_i64(CurrentCode(), N(test_table), &bob, sizeof(TestModel));
- * res = store_i64(CurrentCOde(), N(test_table), &alice, sizeof(TestModel));
- * TestModel alice;
+ * int32_t res = store_i64(CurrentCode(),  N(test_table), &dave,  sizeof(test_model));
+ * res = store_i64(CurrentCode(), N(test_table), &carol, sizeof(test_model));
+ * res = store_i64(CurrentCode(), N(test_table), &bob, sizeof(test_model));
+ * res = store_i64(CurrentCOde(), N(test_table), &alice, sizeof(test_model));
+ * test_model alice;
  * alice.name = N(alice);
- * res = load_i64( current_code(), current_code(), N(test_table), &alice, sizeof(TestModel) );
- * ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "load_i64");
+ * res = load_i64( current_code(), current_code(), N(test_table), &alice, sizeof(test_model) );
+ * ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "load_i64");
  *
- * res = front_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
- * ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
+ * res = front_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+ * ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
  *
- * res = back_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
- * ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "back_i64 2");
+ * res = back_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+ * ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "back_i64 2");
  *
- * res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
- * ASSERT(res == sizeof(TestModel) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
+ * res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+ * ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
  *
- * res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
- * ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "back_i64 2");
+ * res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+ * ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "back_i64 2");
  *
  * uint64_t key = N(alice);
  * res = remove_i64(current_code(), N(test_table), &key);
  * ASSERT(res == 1, "remove alice");
  *
- * TestModel lb;
+ * test_model lb;
  * lb.name = N(bob);
- * res = lower_bound_i64( current_code(), current_code(), N(test_table), &lb, sizeof(TestModel) );
- * ASSERT(res == sizeof(TestModel) && lb.name == N(bob), "lower_bound_i64 bob" );
+ * res = lower_bound_i64( current_code(), current_code(), N(test_table), &lb, sizeof(test_model) );
+ * ASSERT(res == sizeof(test_model) && lb.name == N(bob), "lower_bound_i64 bob" );
  *
- * TestModel ub;
+ * test_model ub;
  * ub.name = N(alice);
- * res = upper_bound_i64( current_code(), current_code(), N(test_table), &ub, sizeof(TestModel) );
- * ASSERT(res == sizeof(TestModel) && ub.age == 15 && ub.name == N(bob), "upper_bound_i64 bob" );
+ * res = upper_bound_i64( current_code(), current_code(), N(test_table), &ub, sizeof(test_model) );
+ * ASSERT(res == sizeof(test_model) && ub.age == 15 && ub.name == N(bob), "upper_bound_i64 bob" );
  * @endcode
  * @{
  */
@@ -316,7 +316,7 @@ int32_t remove_i64( account_name scope, table_name table, void* data );
  *  These methods assume a database table with records of the form:
  *
  *  ```
- *     struct Record {
+ *     struct record {
  *        uint128  primary;
  *        uint128  secondary;
  *        ... arbitrary data ...
@@ -332,54 +332,54 @@ int32_t remove_i64( account_name scope, table_name table, void* data );
  *
  *  Example
  *  @code
- *  struct TestModel128x2 {
+ *  struct test_model128x2 {
  *     uint128_t number;
  *     uint128_t price;
  *     uint64_t  extra;
  *     uint64_t  table_name;
  *  };
  *
- *  TestModel128x2 alice{0, 500, N(alice), N(table_name)};
- *  TestModel128x2 bob{1, 1000, N(bob), N(table_name)};
- *  TestModel128x2 carol{2, 1500, N(carol), N(table_name)};
- *  TestModel128x2 dave{3, 2000, N(dave), N(table_name)};
- *  int32_t res = store_i128i128(CurrentCode(), N(table_name), &alice, sizeof(TestModel128x2));
- *  res = store_i128i128(CurrentCode(), N(table_name), &bob, sizeof(TestModel128x2));
+ *  test_model128x2 alice{0, 500, N(alice), N(table_name)};
+ *  test_model128x2 bob{1, 1000, N(bob), N(table_name)};
+ *  test_model128x2 carol{2, 1500, N(carol), N(table_name)};
+ *  test_model128x2 dave{3, 2000, N(dave), N(table_name)};
+ *  int32_t res = store_i128i128(CurrentCode(), N(table_name), &alice, sizeof(test_model128x2));
+ *  res = store_i128i128(CurrentCode(), N(table_name), &bob, sizeof(test_model128x2));
  *  ASSERT(res == 1, "db store failed");
- *  res = store_i128i128(CurrentCode(), N(table_name), &carol, sizeof(TestModel128x2));
+ *  res = store_i128i128(CurrentCode(), N(table_name), &carol, sizeof(test_model128x2));
  *  ASSERT(res == 1, "db store failed");
- *  res = store_i128i128(CurrentCode(), N(table_name), &dave, sizeof(TestModel128x2));
+ *  res = store_i128i128(CurrentCode(), N(table_name), &dave, sizeof(test_model128x2));
  *  ASSERT(res == 1, "db store failed");
  *
- *  TestModel128x2 query;
+ *  test_model128x2 query;
  *  query.number = 0;
- *  res = load_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
- *  ASSERT(res == sizeof(TestModel128x2) && query.number == 0 && query.price == 500 && query.extra == N(alice), "load");
+ *  res = load_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
+ *  ASSERT(res == sizeof(test_model128x2) && query.number == 0 && query.price == 500 && query.extra == N(alice), "load");
  *
- *  res = front_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
- *  ASSERT(res == sizeof(TestModel128x2) && query.number == 3 && query.price = 2000 && query.extra == N(dave), "front");
+ *  res = front_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
+ *  ASSERT(res == sizeof(test_model128x2) && query.number == 3 && query.price = 2000 && query.extra == N(dave), "front");
  *
- *  res = next_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), & query, sizeof(TestModel128x2));
- *  ASSERT(res == sizeof(TestModel128x2) && query.number == 2 && query.price == 1500 && query.extra == N(carol), "next");
+ *  res = next_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), & query, sizeof(test_model128x2));
+ *  ASSERT(res == sizeof(test_model128x2) && query.number == 2 && query.price == 1500 && query.extra == N(carol), "next");
  *
- *  res = back_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
- *  ASSERT(res == sizeof(TestModel128x2) && query.number == 0 && query.price == 500 && query.extra == N(alice), "back");
+ *  res = back_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
+ *  ASSERT(res == sizeof(test_model128x2) && query.number == 0 && query.price == 500 && query.extra == N(alice), "back");
  *
- *  res = previous_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
- *  ASSERT(res == sizeof(TestModel128x2) && query.number == 1 && query.price == 1000 && query.extra == N(bob), "previous");
+ *  res = previous_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
+ *  ASSERT(res == sizeof(test_model128x2) && query.number == 1 && query.price == 1000 && query.extra == N(bob), "previous");
  *
  *  query.number = 0;
- *  res = lower_bound_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
- *  ASSERT(res == sizeof(TestModel128x2) && query.number == 0 && query.price == 500 && query.extra == N(alice), "lower");
+ *  res = lower_bound_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
+ *  ASSERT(res == sizeof(test_model128x2) && query.number == 0 && query.price == 500 && query.extra == N(alice), "lower");
  *
- *  res = upper_bound_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
- *  ASSERT(res == sizeof(TestModel128x2) && query.number == 1 && query.price == 1000 && query.extra == N(bob), "upper");
+ *  res = upper_bound_primary_i128i128(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
+ *  ASSERT(res == sizeof(test_model128x2) && query.number == 1 && query.price == 1000 && query.extra == N(bob), "upper");
  *
  * query.extra = N(bobby);
- * res = update_i128128(CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
- * ASSERT(res == sizeof(TestModel128x2) && query.number == 1 & query.price == 1000 && query.extra == N(bobby), "update");
+ * res = update_i128128(CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
+ * ASSERT(res == sizeof(test_model128x2) && query.number == 1 & query.price == 1000 && query.extra == N(bobby), "update");
  *
- * res = remove_i128128(CurrentCode(), N(table_name), &query, sizeof(TestModel128x2));
+ * res = remove_i128128(CurrentCode(), N(table_name), &query, sizeof(test_model128x2));
  * ASSERT(res == 1, "remove")
  *  @endcode
  *
@@ -606,7 +606,7 @@ int32_t update_i128i128( account_name scope, table_name table, const void* data,
  *  These methods assume a database table with records of the form:
  *
  *  ```
- *     struct Record {
+ *     struct record {
  *        uint64  primary;
  *        uint64  secondary;
  *        uint64  tertiary;
@@ -623,39 +623,39 @@ int32_t update_i128i128( account_name scope, table_name table, const void* data,
  *
  *  Example
  *  @code
- *  struct TestModel3xi64 {
+ *  struct test_model3xi64 {
  *         uint64_t a;
  *         uint64_t b;
  *         uint64_t c;
  *         uint64_t name;
  *  };
  *
- *  TestModel3xi64 alice{ 0, 0, 0, N(alice) };
- *  TestModel3xi64 bob{ 1, 1, 1, N(bob) };
- *  TestModel3xi64 carol{ 2, 2, 2, N(carol) };
- *  TestModel3xi64 dave{ 3, 3, 3, N(dave) };
+ *  test_model3xi64 alice{ 0, 0, 0, N(alice) };
+ *  test_model3xi64 bob{ 1, 1, 1, N(bob) };
+ *  test_model3xi64 carol{ 2, 2, 2, N(carol) };
+ *  test_model3xi64 dave{ 3, 3, 3, N(dave) };
  *
- *  int32_t res = store_i64i64i64(CurrentCode(), N(table_name), &alice, sizeof(TestModel3xi64));
- *  res = store_i64i64i64(CurrentCode(), N(table_name), &bob, sizeof(TestModel3xi64));
- *  res = store_i64i64i64(CurrentCode(), N(table_name), &carol, sizeof(TestModel3xi64));
- *  res = store_i64i64i64(CurrentCode(), N(table_name), &dave, sizeof(TestModel3xi64));
+ *  int32_t res = store_i64i64i64(CurrentCode(), N(table_name), &alice, sizeof(test_model3xi64));
+ *  res = store_i64i64i64(CurrentCode(), N(table_name), &bob, sizeof(test_model3xi64));
+ *  res = store_i64i64i64(CurrentCode(), N(table_name), &carol, sizeof(test_model3xi64));
+ *  res = store_i64i64i64(CurrentCode(), N(table_name), &dave, sizeof(test_model3xi64));
  *
- *  TestModel3xi64 query;
+ *  test_model3xi64 query;
  *  query.a = 0;
- *  res = load_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel3xi64));
- *  ASSERT(res == sizeof(TestModel3xi64) && query.name == N(alice), "load");
+ *  res = load_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model3xi64));
+ *  ASSERT(res == sizeof(test_model3xi64) && query.name == N(alice), "load");
  *
- *  res = front_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel3xi64));
- *  ASSERT(res == sizeof(TestModel3xi64) && query.name == N(dave), "front");
+ *  res = front_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model3xi64));
+ *  ASSERT(res == sizeof(test_model3xi64) && query.name == N(dave), "front");
  *
- *  res = back_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel3xi64));
- *  ASSERT(res == sizeof(TestModel3xi64) && query.name == N(alice), "back");
+ *  res = back_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model3xi64));
+ *  ASSERT(res == sizeof(test_model3xi64) && query.name == N(alice), "back");
  *
- *  res = previous_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel3xi64));
- *  ASSERT(res == sizeof(TestModel3xi64) && query.name == N(bob), "previous");
+ *  res = previous_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model3xi64));
+ *  ASSERT(res == sizeof(test_model3xi64) && query.name == N(bob), "previous");
  *
- *  res = next_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(TestModel3xi64));
- *  ASSERT(res == sizeof(TestModel3xi64) && query.name == N(alice), "next");*
+ *  res = next_primary_i64i64i64(CurrentCode(), CurrentCode(), N(table_name), &query, sizeof(test_model3xi64));
+ *  ASSERT(res == sizeof(test_model3xi64) && query.name == N(alice), "next");*
  *
  *  @endcode
  *  @{
