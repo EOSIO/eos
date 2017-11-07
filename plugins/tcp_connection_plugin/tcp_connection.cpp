@@ -164,31 +164,43 @@ void tcp_connection::begin_processing_network_send_queue(connection_send_context
 
 void tcp_connection::get_next_network_work(connection_send_context& context) {
    connection_send_work work_to_send = appbase::app().get_plugin<network_plugin>().get_work_to_send(context);
-   work_to_send.visit(*this);
+
+   //need this to forward on the connection_send_context 
+   struct ctx_fwd : public fc::visitor<void> {
+      ctx_fwd(tcp_connection* s, connection_send_context& c) : self(s), ctx(c) {}
+      tcp_connection* self;
+      connection_send_context& ctx;
+      
+      void operator()(const connection_send_failure& failure) {(*self)(failure, ctx);}
+      void operator()(const connection_send_nowork& nowork) {(*self)(nowork, ctx);}
+      void operator()(const connection_send_transactions& transactions) {(*self)(transactions, ctx);}
+   } v(this, context);
+
+   work_to_send.visit(v);
 }
 
-void tcp_connection::operator()(const connection_send_failure& failure) {
+void tcp_connection::operator()(const connection_send_failure& failure, connection_send_context& context) {
    handle_failure();
    _currently_processing_network_queue = false;
 }
 
-void tcp_connection::operator()(const connection_send_nowork& handshake) {
+void tcp_connection::operator()(const connection_send_nowork& nowork, connection_send_context& context) {
    _currently_processing_network_queue = false;
 }
 
-void tcp_connection::operator()(const connection_send_transactions& handshake) {
+void tcp_connection::operator()(const connection_send_transactions& transactions, connection_send_context& context) {
    packed_transaction_list sending_transactions;
 
    {
       std::lock_guard<std::mutex> lock(_transaction_mutex);
 
-      for(auto it = handshake.begin; it != handshake.end; ++it) {
+      for(auto it = transactions.begin; it != transactions.end; ++it) {
          auto p = _seen_transactions.emplace((*it)->id, (*it)->expiration);
          if(!p.second) //couldn't emplace; we've seen trx in/egress recently already
             continue;
          sending_transactions.outgoing_transactions.emplace_back(*it);
       }
-      for(auto it = handshake.begin2; it != handshake.end2; ++it) {
+      for(auto it = transactions.begin2; it != transactions.end2; ++it) {
          auto p = _seen_transactions.emplace((*it)->id, (*it)->expiration);
          if(!p.second) //couldn't emplace; we've seen trx in/egress recently already
             continue;
@@ -196,10 +208,10 @@ void tcp_connection::operator()(const connection_send_transactions& handshake) {
       }
    }
 
-   prepare_and_send(sending_transactions);
+   prepare_and_send(sending_transactions, context);
 }
 
-void tcp_connection::prepare_and_send(net2_message message) {
+void tcp_connection::prepare_and_send(net2_message message, connection_send_context& context) {
    datastream<char*> ds(send_buffer, max_message_size);
    try {
       ds.seekp(3);

@@ -41,9 +41,9 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
       void operator()(const packed_transaction_list& transactions);
 
       //TX queue processors
-      void operator()(const connection_send_failure& failure);
-      void operator()(const connection_send_nowork& handshake);
-      void operator()(const connection_send_transactions& handshake);
+      void operator()(const connection_send_failure& failure, connection_send_context& context);
+      void operator()(const connection_send_nowork& nowork, connection_send_context& context);
+      void operator()(const connection_send_transactions& transactions, connection_send_context& context);
 
    private:
       static const unsigned int max_message_size{16U << 20U};
@@ -87,7 +87,7 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
 
       bool _currently_processing_network_queue{false};
       void get_next_network_work(connection_send_context& context);
-      void prepare_and_send(net2_message message);
+      void prepare_and_send(net2_message message, connection_send_context& context);
       char send_serialization_buffer[max_message_size+16];    //serialize in to here
       char send_buffer[max_message_size];  //encrypt in to here (and send from here)
 
