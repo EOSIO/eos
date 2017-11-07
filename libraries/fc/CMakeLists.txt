@@ -95,6 +95,7 @@ set( fc_sources
      src/crypto/elliptic_common.cpp
      ${ECC_REST}
      src/crypto/elliptic_${ECC_IMPL}.cpp
+     src/crypto/elliptic_r1.cpp
      src/crypto/rand.cpp
      src/network/ip.cpp
      src/network/url.cpp
