@@ -53,7 +53,8 @@ const static UInt32 DefaultMaxInlineMsgSize = 4 * 1024;
 const static UInt32 DefaultMaxGenTrxSize = 64 * 1024;
 const static UInt32 ProducersAuthorityThreshold = 14;
 
-const static int BlocksPerRound = 21;
+const static int ProducerRepetitions = 4;
+const static int BlocksPerRound = 21 * ProducerRepetitions;
 const static int VotedProducersPerRound = 20;
 const static int IrreversibleThresholdPercent = 70 * Percent1;
 const static int MaxProducerVotes = 30;

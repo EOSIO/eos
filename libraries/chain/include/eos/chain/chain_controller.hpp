@@ -252,10 +252,11 @@ namespace eosio { namespace chain {
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const producer_object&                 get_producer(const AccountName& ownerName)const;
 
-         time_point_sec   head_block_time()const;
-         uint32_t         head_block_num()const;
-         block_id_type    head_block_id()const;
-         AccountName      head_block_producer()const;
+         time_point_sec       head_block_time()const;
+	 block_timestamp_type head_block_timestamp() const;
+         uint32_t             head_block_num()const;
+         block_id_type        head_block_id()const;
+         AccountName          head_block_producer()const;
 
          uint32_t block_interval()const { return config::BlockIntervalSeconds; }
 

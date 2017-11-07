@@ -7,10 +7,9 @@
 #include <fc/array.hpp>
 
 #include <eos/chain/types.hpp>
+#include <eos/chain/block_timestamp.hpp>
 #include <eos/chain/BlockchainConfiguration.hpp>
-
 #include <chainbase/chainbase.hpp>
-
 #include "multi_index_includes.hpp"
 
 namespace eosio { namespace chain {
@@ -47,12 +46,12 @@ namespace eosio { namespace chain {
    {
         OBJECT_CTOR(dynamic_global_property_object)
 
-        id_type           id;
-        uint32_t          head_block_number = 0;
-        block_id_type     head_block_id;
-        time_point_sec    time;
-        AccountName       current_producer;
-        uint32_t          accounts_registered_this_interval = 0;
+        id_type              id;
+        uint32_t             head_block_number = 0;
+        block_id_type        head_block_id;
+	fc::time_point       time;
+        AccountName          current_producer;
+        uint32_t             accounts_registered_this_interval = 0;
         
         /**
          * The current absolute slot number.  Equal to the total
