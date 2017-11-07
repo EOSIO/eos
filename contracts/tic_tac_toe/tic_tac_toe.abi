@@ -1,6 +1,6 @@
 {
   "types": [{
-      "newTypeName": "AccountName",
+      "newTypeName": "account_name",
       "type": "Name"
     }
   ],
@@ -8,33 +8,33 @@
       "name": "game",
       "base": "",
       "fields": {
-        "challenger": "AccountName",
-        "host": "AccountName",
-        "turn": "AccountName",
-        "winner": "AccountName",
+        "challenger": "account_name",
+        "host": "account_name",
+        "turn": "account_name",
+        "winner": "account_name",
         "board": "UInt8[]"      
       }
     },{
       "name": "create",
       "base": "",
       "fields": {
-        "challenger": "AccountName",
-        "host": "AccountName"
+        "challenger": "account_name",
+        "host": "account_name"
       }
     },{
       "name": "restart",
       "base": "",
       "fields": {
-        "challenger": "AccountName",
-        "host": "AccountName",
-        "by": "AccountName"
+        "challenger": "account_name",
+        "host": "account_name",
+        "by": "account_name"
       }
     },{
       "name": "close",
       "base": "",
       "fields": {
-        "challenger": "AccountName",
-        "host": "AccountName"
+        "challenger": "account_name",
+        "host": "account_name"
       }
     },{
       "name": "movement",
@@ -47,9 +47,9 @@
       "name": "move",
       "base": "",
       "fields": {
-        "challenger": "AccountName",
-        "host": "AccountName",
-        "by": "AccountName",
+        "challenger": "account_name",
+        "host": "account_name",
+        "by": "account_name",
         "movement": "movement"
       }
     }
@@ -73,7 +73,7 @@
         "type": "game",
         "indextype": "i64",
         "keynames" : ["challenger"],
-        "keytypes" : ["AccountName"]
+        "keytypes" : ["account_name"]
       }
   ]
 }

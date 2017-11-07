@@ -33,38 +33,38 @@ namespace TOKEN_NAME {
     /**
     * Defines a storage token
     */
-    typedef eos::token<uint64_t, N(storage)> StorageTokens;
+    typedef eos::token<uint64_t, N(storage)> storage_tokens;
 
    /**
-    * Transfer requires that the sender and receiver be the first two 
+    * transfer requires that the sender and receiver be the first two
     * accounts notified and that the sender has provided authorization.
     */
 
-   struct Transfer {
+   struct transfer {
         /**
-        * Account to transfer from
+        * account to transfer from
         */
-        AccountName from;
+        account_name from;
 
         /**
-        * Account to transfer to
+        * account to transfer to
         */
-        AccountName to;
+        account_name to;
 
         /**
         * quantity to transfer
         */
-        StorageTokens quantity; 
+        storage_tokens quantity;
    };
 
    /**
-    *  @brief row in Account table stored within each scope
+    *  @brief row in account table stored within each scope
     */
-   struct PACKED(Account) {
+   struct PACKED(account) {
       /**
       Constructor with default zero quantity (balance).
       */
-      Account( StorageTokens b = StorageTokens() ):balance(b),quotaused(0){}
+      account( storage_tokens b = storage_tokens() ):balance(b),quotaused(0){}
 
       /**
        *  The key is constant because there is only one record per scope/currency/accounts
@@ -74,7 +74,7 @@ namespace TOKEN_NAME {
       /**
       * Balance number of tokens in account
       **/
-      StorageTokens balance;
+      storage_tokens balance;
 
       /**
       * Quota of storage Used
@@ -84,34 +84,34 @@ namespace TOKEN_NAME {
       Method to check if accoutn is empty.
       @return true if account balance is zero and there is quota used.
       **/
-      bool  isEmpty()const  { return balance.quantity == 0 && quotaused == 0; }
+      bool  is_empty()const  { return balance.quantity == 0 && quotaused == 0; }
    };
 
    /**
-   Assert statement to verify structure packing for Account
+   Assert statement to verify structure packing for account
    **/ 
-   static_assert( sizeof(Account) == sizeof(uint64_t)+sizeof(StorageTokens)+sizeof(uint64_t), "unexpected packing" ); 
+   static_assert( sizeof(account) == sizeof(uint64_t)+sizeof(storage_tokens)+sizeof(uint64_t), "unexpected packing" );
 
    /**
-   Defines the database table for Account information
+   Defines the database table for account information
    **/
-   using Accounts = Table<N(storage),N(storage),N(account),Account,uint64_t>;
+   using accounts = table<N(storage),N(storage),N(account),account,uint64_t>;
 
    /**
-    *  Accounts information for owner is stored:
+    *  accounts information for owner is stored:
     *
-    *  owner/TOKEN_NAME/account/account -> Account
+    *  owner/TOKEN_NAME/account/account -> account
     *
     *  This API is made available for 3rd parties wanting read access to
     *  the users balance. If the account doesn't exist a default constructed
     *  account will be returned.
     *  @param owner The account owner
-    *  @return Account instance
+    *  @return account instance
     */
-   inline Account getAccount( AccountName owner ) {
-      Account account;
-      Accounts::get( account, owner );
-      return account;
+   inline account get_account( account_name owner ) {
+      account owned_account;
+      accounts::get( owned_account, owner );
+      return owned_account;
    }
 
    /**
@@ -121,20 +121,20 @@ namespace TOKEN_NAME {
     * @param owner The account owner
     * @return uint64_t quota used
     */
-   inline uint64_t getQuotaUsed( AccountName owner ) {
-      Account account;
-      Accounts::get( account, owner );
-      return account.quotaused;
+   inline uint64_t get_quota_used( account_name owner ) {
+      account owned_account;
+      accounts::get( owned_account, owner );
+      return owned_account.quotaused;
    }
 
   /**
    Used to set a link to a file
   **/
-  struct PACKED( Link ) {
+  struct PACKED( link ) {
       /**
       * account owner
       **/
-      AccountName owner;
+      account_name owner;
 
       /**
       * eos path
@@ -169,6 +169,6 @@ namespace TOKEN_NAME {
       /**
       * name of producer who cached file
       **/
-      AccountName producer;
+      account_name producer;
   };
 } /// @} /// storageapi

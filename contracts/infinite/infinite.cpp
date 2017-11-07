@@ -8,31 +8,31 @@ namespace infinite {
    using namespace eos;
 
    ///  When storing accounts, check for empty balance and remove account
-   void storeAccount( AccountName account, const Account& a ) {
-      if( a.isEmpty() ) {
+   void store_account( account_name account_to_store, const account& a ) {
+      if( a.is_empty() ) {
          ///               value, scope
-         Accounts::remove( a, account );
+         accounts::remove( a, account_to_store );
       } else {
          ///              value, scope
-         Accounts::store( a, account );
+         accounts::store( a, account_to_store );
       }
    }
 
-   void apply_currency_transfer( const infinite::Transfer& transfer ) {
+   void apply_currency_transfer( const infinite::transfer& transfer ) {
       require_notice( transfer.to, transfer.from );
       require_auth( transfer.from );
 
-      auto from = getAccount( transfer.from );
-      auto to   = getAccount( transfer.to );
+      auto from = get_account( transfer.from );
+      auto to   = get_account( transfer.to );
 
-      while (from.balance > infinite::CurrencyTokens())
+      while (from.balance > infinite::currency_tokens())
       {
          from.balance -= transfer.quantity; /// token subtraction has underflow assertion
          to.balance   += transfer.quantity; /// token addition has overflow assertion
       }
 
-      storeAccount( transfer.from, from );
-      storeAccount( transfer.to, to );
+      store_account( transfer.from, from );
+      store_account( transfer.to, to );
    }
 
 }  // namespace infinite
@@ -41,14 +41,14 @@ using namespace infinite;
 
 extern "C" {
     void init()  {
-       storeAccount( N(currency), Account( CurrencyTokens(1000ll*1000ll*1000ll) ) );
+       store_account( N(currency), account( currency_tokens(1000ll*1000ll*1000ll) ) );
     }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(currency) ) {
           if( action == N(transfer) )
-             infinite::apply_currency_transfer( current_message< infinite::Transfer >() );
+             infinite::apply_currency_transfer( current_message< infinite::transfer >() );
        }
     }
 }

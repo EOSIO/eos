@@ -109,9 +109,9 @@ namespace native {
 
       */
       void transfer (
-         AccountName from,  ///< account from which EOS will be withdrawn
-         AccountName to,    ///< account to receive EOS, may not be same as `from`
-         uint64_t    amount ///< must be greater than 0 and less or equal to `from`'s balance
+         account_name from,  ///< account from which EOS will be withdrawn
+         account_name to,    ///< account to receive EOS, may not be same as `from`
+         uint64_t     amount ///< must be greater than 0 and less or equal to `from`'s balance
       );
 
  }; /// class EOS

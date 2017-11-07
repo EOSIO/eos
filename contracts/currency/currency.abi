@@ -1,6 +1,6 @@
 {
   "types": [{
-      "newTypeName": "AccountName",
+      "newTypeName": "account_name",
       "type": "Name"
     }
   ],
@@ -8,8 +8,8 @@
       "name": "transfer",
       "base": "",
       "fields": {
-        "from": "AccountName",
-        "to": "AccountName",
+        "from": "account_name",
+        "to": "account_name",
         "amount": "UInt64"
       }
     },{

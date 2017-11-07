@@ -7,17 +7,17 @@
 
 extern "C" {
    /**
-    * @defgroup transactionapi Transaction API
+    * @defgroup transactionapi transaction API
     * @ingroup contractdev
     * @brief Define API for sending transactions and inline messages
     *
     * A EOS.IO transaction has the following abstract structure:
     *
     * ```
-    *   struct Transaction {
+    *   struct transaction {
     *     Name scope[]; ///< accounts whose data may be read or written
     *     Name readScope[]; ///< accounts whose data may be read
-    *     Message messages[]; ///< accounts that have approved this message
+    *     message messages[]; ///< accounts that have approved this message
     *   };
     * ```
     * 
@@ -52,18 +52,18 @@ extern "C" {
     */
 
    /** 
-    * @defgroup transactioncapi Transaction C API
+    * @defgroup transactioncapi transaction C API
     * @ingroup transactionapi
     * @brief Define API for sending transactions 
     *
     * @{
     */
 
-   typedef uint32_t TransactionHandle;
-   #define InvalidTransactionHandle (0xFFFFFFFFUL)
+   typedef uint32_t transaction_handle;
+   #define invalid_transaction_handle (0xFFFFFFFFUL)
    
-   typedef uint32_t MessageHandle;
-   #define InvalidMessageHandle (0xFFFFFFFFUL)
+   typedef uint32_t message_handle;
+   #define invalid_message_handle (0xFFFFFFFFUL)
 
    /**
     * @brief create a pending transaction
@@ -76,7 +76,7 @@ extern "C" {
     * 
     * @return handle used to refer to this transaction in future API calls
     */
-   TransactionHandle transaction_create();
+   transaction_handle transaction_create();
 
    /**
     * @brief require a scope to process a pending transaction
@@ -84,21 +84,21 @@ extern "C" {
     * This function adds either a `scope` or `readScope` to the given pending
     * transaction.
     *
-    * @param trx - the `TransactionHandle` of the pending transaction to modify
-    * @param scope - the `AccountName` to add  
+    * @param trx - the `transaction_handle` of the pending transaction to modify
+    * @param scope - the `account_name` to add
     * @param readOnly - whether `scope` should be added to `scope[]` or `readScope[]`
     */
-   void transaction_require_scope(TransactionHandle trx, AccountName scope, int readOnly = 0);
+   void transaction_require_scope(transaction_handle trx, account_name scope, int readOnly = 0);
 
    /**
     * @brief finalize the pending message and add it to the transaction
     *
     * The message handle should be considered invalid after the call
     *
-    * @param trx - the `TransactionHandle` of the pending transaction to modify
-    * @param msg - the `MessageHandle` of the pending message to add
+    * @param trx - the `transaction_handle` of the pending transaction to modify
+    * @param msg - the `message_handle` of the pending message to add
     */
-   void transaction_add_message(TransactionHandle trx, MessageHandle msg);
+   void transaction_add_message(transaction_handle trx, message_handle msg);
 
 
    /**
@@ -110,9 +110,9 @@ extern "C" {
     * 
     * This handle should be considered invalid after the call
     *
-    * @param trx - the `TransactionHandle` of the pending transaction to send
+    * @param trx - the `transaction_handle` of the pending transaction to send
     */
-   void transaction_send(TransactionHandle trx);
+   void transaction_send(transaction_handle trx);
 
    /**
     * @brief drop a pending transaction
@@ -122,9 +122,9 @@ extern "C" {
     * 
     * This handle should be considered invalid after the call
     *
-    * @param trx - the `TransactionHandle` of the pending transaction to send
+    * @param trx - the `transaction_handle` of the pending transaction to send
     */
-   void transaction_drop(TransactionHandle trx);
+   void transaction_drop(transaction_handle trx);
    
 
    /**
@@ -135,23 +135,23 @@ extern "C" {
     * 
     * This message has no default permissions, see @ref message_require_permission
     *
-    * @param code - the `AccountName` which owns the contract code to execute
+    * @param code - the `account_name` which owns the contract code to execute
     * @param type - the type of this message
     * @param data - the payload data for this message
     * @param size - the size of `data`
     */
-   MessageHandle message_create(AccountName code, FuncName type, void const* data, int size);
+   message_handle message_create(account_name code, func_name type, void const* data, int size);
 
    /**
     * @brief require a permission for the pending message
     *
     * Indicates that a given pending message requires a certain permission
     *
-    * @param msg - the `MessageHandle` pending message referred to
-    * @param account - the `AccountName` to of the permission
-    * @param permission - the `PermissionName` to of the permision
+    * @param msg - the `message_handle` pending message referred to
+    * @param account - the `account_name` to of the permission
+    * @param permission - the `permission_name` to of the permision
     */
-   void message_require_permission(MessageHandle msg, AccountName account, PermissionName permission);
+   void message_require_permission(message_handle msg, account_name account, permission_name permission);
 
 
    /**
@@ -159,9 +159,9 @@ extern "C" {
     *
     * This handle should be considered invalid after the call
     *
-    * @param msg - the `MessageHandle` of the pending message to send inline
+    * @param msg - the `message_handle` of the pending message to send inline
     */
-   void message_send(MessageHandle msg);
+   void message_send(message_handle msg);
 
 
    /**
@@ -169,9 +169,9 @@ extern "C" {
     *
     * This handle should be considered invalid after the call
     *
-    * @param trx - the `MessageHandle` of the pending message to discard
+    * @param trx - the `message_handle` of the pending message to discard
     */
-   void message_drop(MessageHandle msg);
+   void message_drop(message_handle msg);
 
 
    ///@ } transactioncapi

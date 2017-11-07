@@ -49,18 +49,18 @@ namespace tic_tac_toe {
   /**
    * @brief Data structure to hold game information
    */
-  struct PACKED(Game) {
-    Game() {};
-    Game(AccountName challenger, AccountName host):challenger(challenger), host(host), turn(host) {
+  struct PACKED(game) {
+    game() {};
+    game(account_name challenger, account_name host):challenger(challenger), host(host), turn(host) {
       // Initialize board
       initialize_board();
     };
-    AccountName     challenger; // this also acts as key of the table
-    AccountName     host;
-    AccountName     turn; // = account name of host/ challenger
-    AccountName     winner = N(none); // = none/ draw/ account name of host/ challenger
-    uint8_t         board_len = 9;
-    uint8_t         board[9]; // 
+    account_name     challenger; // this also acts as key of the table
+    account_name     host;
+    account_name     turn; // = account name of host/ challenger
+    account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
+    uint8_t          board_len = 9;
+    uint8_t          board[9]; //
     
     // Initialize board with empty cell
     void initialize_board() {
@@ -81,25 +81,25 @@ namespace tic_tac_toe {
    * @brief Action to create new game
    */ 
   struct Create {
-    AccountName   challenger;
-    AccountName   host;
+    account_name   challenger;
+    account_name   host;
   };
 
   /**
    * @brief Action to restart new game
    */ 
   struct Restart {
-    AccountName   challenger;
-    AccountName   host;
-    AccountName   by; // the account who wants to restart the game
+    account_name   challenger;
+    account_name   host;
+    account_name   by; // the account who wants to restart the game
   };
 
   /**
    * @brief Action to close new game
    */ 
   struct Close {
-    AccountName   challenger;
-    AccountName   host;
+    account_name   challenger;
+    account_name   host;
   };
 
   /**
@@ -114,15 +114,15 @@ namespace tic_tac_toe {
    * @brief Action to make movement
    */ 
   struct Move {
-    AccountName   challenger;
-    AccountName   host;
-    AccountName   by; // the account who wants to make the move
-    Movement      movement; 
+    account_name   challenger;
+    account_name   host;
+    account_name   by; // the account who wants to make the move
+    Movement       movement;
   };
 
   /**
-   * @brief Table to store list of games
+   * @brief table to store list of games
    */ 
-  using Games = Table<N(tic.tac.toe),N(tic.tac.toe),N(games),Game,uint64_t>;
+  using Games = table<N(tic.tac.toe),N(tic.tac.toe),N(games),game,uint64_t>;
 }
 /// @}

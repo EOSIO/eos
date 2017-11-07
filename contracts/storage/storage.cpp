@@ -5,26 +5,26 @@
 #include "storage.hpp"
 
 namespace TOKEN_NAME {
-   void storeAccount( AccountName name, const Account& account ) {
-      if ( account.isEmpty() ) {
-         Accounts::remove( account, name );
+   void store_account( account_name name, const account& account_to_store ) {
+      if ( account_to_store.is_empty() ) {
+         accounts::remove( account_to_store, name );
       } else {
-         Accounts::store(account, name );
+         accounts::store(account_to_store, name );
       } 
    }
 
-   void apply_storage_transfer( const TOKEN_NAME::Transfer& transfer ) {
-      eos::require_notice( transfer.to, transfer.from );
-      eos::require_auth( transfer.from );
+   void apply_storage_transfer( const TOKEN_NAME::transfer& transfer_storage ) {
+      eos::require_notice( transfer_storage.to, transfer_storage.from );
+      eos::require_auth( transfer_storage.from );
 
-      Account from = getAccount( transfer.from );
-      Account to   = getAccount( transfer.to );
+      account from = get_account( transfer_storage.from );
+      account to   = get_account( transfer_storage.to );
 
-      from.balance -= transfer.quantity; /// token subtraction has underflow assertion
-      to.balance   += transfer.quantity; /// token addition has overflow assertion
+      from.balance -= transfer_storage.quantity; /// token subtraction has underflow assertion
+      to.balance   += transfer_storage.quantity; /// token addition has overflow assertion
 
-      storeAccount( transfer.from, from );
-      storeAccount( transfer.to, to );
+      store_account( transfer_storage.from, from );
+      store_account( transfer_storage.to, to );
    }
 
    bool validate_ipfspath( const char* ipfspath, uint32_t len ) {
@@ -37,63 +37,63 @@ namespace TOKEN_NAME {
       return true;
    }
 
-   uint32_t readLinkFromBuffer( const char* buffer, uint32_t bufferlen, 
-                                TOKEN_NAME::Link& link, uint32_t& eospathlen, uint32_t ipfspathlen ) {
+   uint32_t read_link_from_buffer( const char* buffer, uint32_t bufferlen,
+                                TOKEN_NAME::link& link_to_read, uint32_t& eospathlen, uint32_t ipfspathlen ) {
       // To be implemented
       return 0;
    }
  
    void apply_storage_setlink() {
-      TOKEN_NAME::Link link;
+      TOKEN_NAME::link link_to_set;
       uint32_t eospathlen;
       uint32_t ipfspathlen;
       char tmp[4098];
       auto bufferlen = read_message(tmp, 4098);
-      auto linklen = readLinkFromBuffer( tmp, bufferlen, link, eospathlen, ipfspathlen );
-      eos::require_notice( link.owner );
-      eos::require_auth( link.owner );
-      validate_ipfspath( link.ipfspath, ipfspathlen );
-      validate_eospath( link.eospath, eospathlen );
-      ::store_str( current_code(), N(storage), link.eospath, eospathlen, (char*)&link, linklen );
+      auto linklen = read_link_from_buffer( tmp, bufferlen, link_to_set, eospathlen, ipfspathlen );
+      eos::require_notice( link_to_set.owner );
+      eos::require_auth( link_to_set.owner );
+      validate_ipfspath( link_to_set.ipfspath, ipfspathlen );
+      validate_eospath( link_to_set.eospath, eospathlen );
+      ::store_str( current_code(), N(storage), link_to_set.eospath, eospathlen, (char*)&link_to_set, linklen );
    }
    
    void apply_storage_removelink( char* eospath, uint32_t eospathlen ) {
       char tmp[4098];
       auto len = ::load_str( current_code(), current_code(), N(storage), eospath, eospathlen, tmp, 4098 );
-      TOKEN_NAME::Link link;
+      TOKEN_NAME::link link_to_remove;
       uint32_t ipfspathlen;
-      len = readLinkFromBuffer( tmp, len, link, eospathlen, ipfspathlen );
-      eos::require_auth( link.owner );
-      uint32_t stake = link.stake;
-      ::remove_str( current_code(), N(storage), link.eospath, eospathlen );
-      // Reduce Quota usage in Account table
+      len = read_link_from_buffer( tmp, len, link_to_remove, eospathlen, ipfspathlen );
+      eos::require_auth( link_to_remove.owner );
+      uint32_t stake = link_to_remove.stake;
+      ::remove_str( current_code(), N(storage), link_to_remove.eospath, eospathlen );
+      // Reduce Quota usage in account table
       // How does producer know to free cached file?
    }
    
    void apply_storage_createstore( char* eospath, uint32_t eospathlen ) {
       char tmp[4098];
       auto len = ::load_str( current_code(), current_code(), N(storage), eospath, eospathlen, tmp, 4098 );
-      TOKEN_NAME::Link link;
+      TOKEN_NAME::link link_to_create;
       uint32_t ipfspathlen;
-      len = readLinkFromBuffer( tmp, len, link, eospathlen, ipfspathlen );
+      len = read_link_from_buffer( tmp, len, link_to_create, eospathlen, ipfspathlen );
       
       // eos::require_auth( producer )
       // How do we validate the require_auth() is a producer?
       // logic goes here to reduce number of tokens and increase quote used using bancor algorithm
-      link.accept = 1;
-      ::store_str( current_code(), N(storage), link.eospath, eospathlen, (char*)&link, len );
+      link_to_create.accept = 1;
+      ::store_str( current_code(), N(storage), link_to_create.eospath, eospathlen, (char*)&link_to_create, len );
    }
    
    void apply_storage_rejectstore( char* eospath, uint32_t eospathlen ) {
       char tmp[4098];
       auto len = ::load_str( current_code(), current_code(), N(storage), eospath, eospathlen, tmp, 4098 );
-      TOKEN_NAME::Link link;
+      TOKEN_NAME::link link_to_reject;
       uint32_t ipfspathlen;
-      len = readLinkFromBuffer( tmp, len, link, eospathlen, ipfspathlen );
+      len = read_link_from_buffer( tmp, len, link_to_reject, eospathlen, ipfspathlen );
       // eos::require_auth( producer )
       // How do we validate the require_auth() is a producer?
-      link.accept = 0;
-      ::store_str( current_code(), N(storage), link.eospath, eospathlen, (char*)&link, len );
+      link_to_reject.accept = 0;
+      ::store_str( current_code(), N(storage), link_to_reject.eospath, eospathlen, (char*)&link_to_reject, len );
    }
 }  // namespace TOKEN_NAME
 
@@ -102,14 +102,14 @@ using namespace TOKEN_NAME;
 extern "C" {
     void init()  {
        // How do we initialize the storage capacity? By how much here?
-       Accounts::store( Account( StorageTokens(1000ll*1000ll*1000ll) ), N(storage) );
+       accounts::store( account( storage_tokens(1000ll*1000ll*1000ll) ), N(storage) );
     }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(storage) ) {
           if( action == N(transfer) ) {
-               TOKEN_NAME::apply_storage_transfer( eos::current_message< TOKEN_NAME::Transfer >() );
+               TOKEN_NAME::apply_storage_transfer( eos::current_message< TOKEN_NAME::transfer >() );
           } else if (action == N(setlink) ) {
                TOKEN_NAME::apply_storage_setlink(); 
           } else if (action == N(removelink) ) {

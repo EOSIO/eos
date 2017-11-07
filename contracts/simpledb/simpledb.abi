@@ -23,24 +23,24 @@
       }
     },
     {
-      "name": "KeyValue1",
+      "name": "key_value1",
       "fields": {
         "key": "String",
         "value": "String"
       }
     },
     {
-      "name": "ComplexType",
+      "name": "complex_type",
       "fields": {
         "name": "String",
         "age": "UInt64"
       }
     },
     {
-      "name": "KeyValue2",
+      "name": "key_value2",
       "fields": {
         "key": "String",
-        "value": "ComplexType"
+        "value": "complex_type"
       }
     }
   ],
@@ -51,7 +51,7 @@
     },
     {
       "action": "insertkv1",
-      "type": "KeyValue1"
+      "type": "key_value1"
     },
     {
       "action": "insert2",
@@ -63,7 +63,7 @@
     },
     {
       "action": "insertkv2",
-      "type": "KeyValue2"
+      "type": "key_value2"
     }
   ],
   "tables": [
@@ -108,7 +108,7 @@
     },
     {
       "table": "keyvalue1",
-      "type": "KeyValue1",
+      "type": "key_value1",
       "indextype": "str",
       "keynames": [
         "key"
@@ -119,7 +119,7 @@
     },
     {
       "table": "keyvalue2",
-      "type": "KeyValue2",
+      "type": "key_value2",
       "indextype": "str",
       "keynames": [
         "key"

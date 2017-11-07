@@ -20,12 +20,12 @@ extern "C" {
     *
     *  Example:
     *  @code
-    *  AccountName producers[21];
-    *  get_active_producers(producers, sizeof(AccountName)*21);
+    *  account_name producers[21];
+    *  get_active_producers(producers, sizeof(account_name)*21);
     *  @endcode
     */
 
-   void get_active_producers( AccountName* producers, uint32_t datalen );
+   void get_active_producers( account_name* producers, uint32_t datalen );
 
    ///@ } chaincapi
 }

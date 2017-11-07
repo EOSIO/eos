@@ -379,28 +379,28 @@ namespace eos {
   /// @}
 
   /**
-  * @typedef Tokens
+  * @typedef tokens
   * @brief Defines eos tokens
   * @details Defines eos tokens
   */
-  typedef eos::token<uint64_t,N(eos)>   Tokens;
+  typedef eos::token<uint64_t,N(eos)>   tokens;
 
   /**
-  *  @struct eos::Transfer
+  *  @struct eos::transfer
   *  @brief The binary structure of the `transfer` message type for the `eos` contract.
   *  @ingroup tokens
   *
   *  @details
   *  Example:
   *  @code
-  *  Transfer MeToYou;
+  *  transfer MeToYou;
   *  MeToYou.from = N(Me);
   *  MeToYou.to = N(You);
-  *  MeToYou.quantity = Tokens(100);
+  *  MeToYou.quantity = tokens(100);
   *  @endcode
   *  @{
   */
-  struct PACKED (Transfer) {
+  struct PACKED (transfer) {
     /**
     * Defines transfer action type
     * @brief Defines transfer action type
@@ -411,17 +411,17 @@ namespace eos {
     * Name of the account who sends the token
     * @brief Name of the account who sends the token
     */
-    AccountName  from;
+    account_name  from;
     /**
     * Name of the account who receives the token
     * @brief Name of the account who receives the token
     */
-    AccountName  to;
+    account_name  to;
     /**
     * Quantity of token to be transferred
     * @brief Quantity of token to be transferred
     */
-    Tokens       quantity;
+    tokens        quantity;
 
     /**
     * Length of the memo field, included for binary compatibility

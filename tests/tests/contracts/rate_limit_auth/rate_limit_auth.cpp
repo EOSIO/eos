@@ -11,7 +11,7 @@ extern "C" {
     {
     }
 
-    void test_auths(const currency::Transfer& auth)
+    void test_auths(const currency::transfer& auth)
     {
        require_auth( auth.from );
        require_auth( auth.to );
@@ -24,7 +24,7 @@ extern "C" {
        {
           if( action == N(transfer) )
           {
-             test_auths( eos::current_message< currency::Transfer >() );
+             test_auths( eos::current_message< currency::transfer >() );
           }
        }
     }

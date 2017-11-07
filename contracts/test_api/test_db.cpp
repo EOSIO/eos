@@ -17,18 +17,18 @@ int secondary_ub[11] = {10,10,8,10,8,8,10,0,-1,10,8};
 int tertiary_ub[11]  = {1,2,3,5,3,6,7,8,9,-1,1};
 
 #pragma pack(push, 1)
-struct TestModel {
-   AccountName   name;
+struct test_model {
+   account_name  name;
    unsigned char age;
    uint64_t      phone;
 };
 
-struct TestModelV2 : TestModel {
-  TestModelV2() : new_field(0) {}
+struct test_model_v2 : test_model {
+  test_model_v2() : new_field(0) {}
   uint64_t new_field;
 };
 
-struct TestModelV3 : TestModelV2 {
+struct test_model_v3 : test_model_v2 {
   uint64_t another_field;
 };
 
@@ -75,9 +75,9 @@ unsigned int test_db::key_str_table() {
     const char* atr[]  = { "atr", "atr", "atr", "atr" };
     const char* ztr[]  = { "ztr", "ztr", "ztr", "ztr" };
     
-    VarTable<N(tester), N(tester), N(atr), char*> StringTableAtr;
-    VarTable<N(tester), N(tester), N(ztr), char*> StringTableZtr;
-    VarTable<N(tester), N(tester), N(str), char*> StringTableStr;
+    var_table<N(tester), N(tester), N(atr), char*> StringTableAtr;
+    var_table<N(tester), N(tester), N(ztr), char*> StringTableZtr;
+    var_table<N(tester), N(tester), N(str), char*> StringTableStr;
 
     uint32_t res = 0;
 
@@ -261,174 +261,174 @@ unsigned int test_db::key_i64_general() {
 
   uint32_t res = 0;
 
-  TestModel alice{ N(alice), 20, 4234622};
-  TestModel bob  { N(bob),   15, 11932435};
-  TestModel carol{ N(carol), 30, 545342453};
-  TestModel dave { N(dave),  46, 6535354};
+  test_model alice{ N(alice), 20, 4234622};
+  test_model bob  { N(bob),   15, 11932435};
+  test_model carol{ N(carol), 30, 545342453};
+  test_model dave { N(dave),  46, 6535354};
 
-  res = store_i64(current_code(),  N(test_table), &dave,  sizeof(TestModel));
+  res = store_i64(current_code(),  N(test_table), &dave,  sizeof(test_model));
   WASM_ASSERT(res != 0, "store dave" );
 
-  res = store_i64(current_code(), N(test_table), &carol, sizeof(TestModel));
+  res = store_i64(current_code(), N(test_table), &carol, sizeof(test_model));
   WASM_ASSERT(res != 0, "store carol" );
 
-  res = store_i64(current_code(),   N(test_table), &bob,   sizeof(TestModel));
+  res = store_i64(current_code(),   N(test_table), &bob,   sizeof(test_model));
   WASM_ASSERT(res != 0, "store bob" );
 
-  res = store_i64(current_code(), N(test_table), &alice, sizeof(TestModel));
+  res = store_i64(current_code(), N(test_table), &alice, sizeof(test_model));
   WASM_ASSERT(res != 0, "store alice" );
 
   //fill with different ages in adjacent tables
-  dave.age=123;  store_i64(current_code(), N(test_tabld), &dave,  sizeof(TestModel));
-  dave.age=124;  store_i64(current_code(), N(test_tablf), &dave,  sizeof(TestModel));
-  carol.age=125; store_i64(current_code(), N(test_tabld), &carol, sizeof(TestModel));
-  carol.age=126; store_i64(current_code(), N(test_tablf), &carol, sizeof(TestModel));
-  bob.age=127;   store_i64(current_code(), N(test_tabld), &bob,   sizeof(TestModel));
-  bob.age=128;   store_i64(current_code(), N(test_tablf), &bob,   sizeof(TestModel));
-  alice.age=129; store_i64(current_code(), N(test_tabld), &alice, sizeof(TestModel));
-  alice.age=130; store_i64(current_code(), N(test_tablf), &alice, sizeof(TestModel));
+  dave.age=123;  store_i64(current_code(), N(test_tabld), &dave,  sizeof(test_model));
+  dave.age=124;  store_i64(current_code(), N(test_tablf), &dave,  sizeof(test_model));
+  carol.age=125; store_i64(current_code(), N(test_tabld), &carol, sizeof(test_model));
+  carol.age=126; store_i64(current_code(), N(test_tablf), &carol, sizeof(test_model));
+  bob.age=127;   store_i64(current_code(), N(test_tabld), &bob,   sizeof(test_model));
+  bob.age=128;   store_i64(current_code(), N(test_tablf), &bob,   sizeof(test_model));
+  alice.age=129; store_i64(current_code(), N(test_tabld), &alice, sizeof(test_model));
+  alice.age=130; store_i64(current_code(), N(test_tablf), &alice, sizeof(test_model));
 
-  TestModel tmp;
+  test_model tmp;
 
-  res = front_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
-  my_memset(&tmp, 0, sizeof(TestModel));
+  res = front_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
+  my_memset(&tmp, 0, sizeof(test_model));
 
-  res = back_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
+  res = back_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
 
-  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
+  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
   
-  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
+  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
 
-  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
+  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
 
-  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
+  res = previous_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "previous null");
 
-  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
+  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
 
-  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
+  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
 
-  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
+  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
 
-  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
+  res = next_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "next null");
 
-  my_memset(&alice, 0, sizeof(TestModel));
+  my_memset(&alice, 0, sizeof(test_model));
 
   WASM_ASSERT(alice.name == 0 && alice.age == 0 && alice.phone == 0, "my_memset");
 
   alice.name = N(alice);
 
-  res = load_i64(current_code(), current_code(), N(test_table), &alice, sizeof(TestModel));
-  WASM_ASSERT(res == sizeof(TestModel) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
+  res = load_i64(current_code(), current_code(), N(test_table), &alice, sizeof(test_model));
+  WASM_ASSERT(res == sizeof(test_model) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
 
   alice.age = 21;
   alice.phone = 1234;
   
-  res = store_i64(current_code(), N(test_table), &alice, sizeof(TestModel));
+  res = store_i64(current_code(), N(test_table), &alice, sizeof(test_model));
   WASM_ASSERT(res == 0, "store alice 2" );
 
-  my_memset(&alice, 0, sizeof(TestModel));
+  my_memset(&alice, 0, sizeof(test_model));
   alice.name = N(alice);
   
-  res = load_i64(current_code(), current_code(), N(test_table), &alice, sizeof(TestModel));
-  WASM_ASSERT(res == sizeof(TestModel) && alice.age == 21 && alice.phone == 1234, "alice error 2");
+  res = load_i64(current_code(), current_code(), N(test_table), &alice, sizeof(test_model));
+  WASM_ASSERT(res == sizeof(test_model) && alice.age == 21 && alice.phone == 1234, "alice error 2");
 
-  my_memset(&bob, 0, sizeof(TestModel));
+  my_memset(&bob, 0, sizeof(test_model));
   bob.name = N(bob);
 
-  my_memset(&carol, 0, sizeof(TestModel));
+  my_memset(&carol, 0, sizeof(test_model));
   carol.name = N(carol);
 
-  my_memset(&dave, 0, sizeof(TestModel));
+  my_memset(&dave, 0, sizeof(test_model));
   dave.name = N(dave);
 
-  res = load_i64(current_code(), current_code(), N(test_table), &bob, sizeof(TestModel));
-  WASM_ASSERT(res == sizeof(TestModel) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
+  res = load_i64(current_code(), current_code(), N(test_table), &bob, sizeof(test_model));
+  WASM_ASSERT(res == sizeof(test_model) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
 
-  res = load_i64(current_code(), current_code(), N(test_table), &carol, sizeof(TestModel));
-  WASM_ASSERT(res == sizeof(TestModel) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
+  res = load_i64(current_code(), current_code(), N(test_table), &carol, sizeof(test_model));
+  WASM_ASSERT(res == sizeof(test_model) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
 
-  res = load_i64(current_code(), current_code(), N(test_table), &dave, sizeof(TestModel));
-  WASM_ASSERT(res == sizeof(TestModel) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
+  res = load_i64(current_code(), current_code(), N(test_table), &dave, sizeof(test_model));
+  WASM_ASSERT(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
 
-  res = load_i64(current_code(), N(other_code), N(test_table), &alice, sizeof(TestModel));
+  res = load_i64(current_code(), N(other_code), N(test_table), &alice, sizeof(test_model));
   WASM_ASSERT(res == -1, "other_code");
 
-  res = load_i64(current_code(), current_code(), N(other_table), &alice, sizeof(TestModel));
+  res = load_i64(current_code(), current_code(), N(other_table), &alice, sizeof(test_model));
   WASM_ASSERT(res == -1, "other_table");
 
 
-  TestModelV2 alicev2;
+  test_model_v2 alicev2;
   alicev2.name = N(alice);
 
-  res = load_i64(current_code(), current_code(), N(test_table), &alicev2, sizeof(TestModelV2));
-  WASM_ASSERT(res == sizeof(TestModel) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
+  res = load_i64(current_code(), current_code(), N(test_table), &alicev2, sizeof(test_model_v2));
+  WASM_ASSERT(res == sizeof(test_model) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
 
   alicev2.new_field = 66655444;
-  res = store_i64(current_code(), N(test_table), &alicev2, sizeof(TestModelV2));
+  res = store_i64(current_code(), N(test_table), &alicev2, sizeof(test_model_v2));
   WASM_ASSERT(res == 0, "store alice 3" );
 
-  my_memset(&alicev2, 0, sizeof(TestModelV2));
+  my_memset(&alicev2, 0, sizeof(test_model_v2));
   alicev2.name = N(alice);
 
-  res = load_i64(current_code(), current_code(), N(test_table), &alicev2, sizeof(TestModelV2));
-  WASM_ASSERT(res == sizeof(TestModelV2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
+  res = load_i64(current_code(), current_code(), N(test_table), &alicev2, sizeof(test_model_v2));
+  WASM_ASSERT(res == sizeof(test_model_v2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
+  my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(bob);
-  res = lower_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(bob), "lower_bound_i64 bob" );
+  res = lower_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob), "lower_bound_i64 bob" );
 
-  my_memset(&tmp, 0, sizeof(TestModel));
+  my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(boc);
-  res = lower_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(carol), "lower_bound_i64 carol" );
+  res = lower_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol), "lower_bound_i64 carol" );
 
-  my_memset(&tmp, 0, sizeof(TestModel));
+  my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   res = lower_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(uint64_t) );
   WASM_ASSERT(res == sizeof(uint64_t) && tmp.name == N(dave), "lower_bound_i64 dave" );
 
-  my_memset(&tmp, 0, sizeof(TestModel));
+  my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(davf);
   res = lower_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(uint64_t) );
   WASM_ASSERT(res == -1, "lower_bound_i64 fail" );
 
-  my_memset(&tmp, 0, sizeof(TestModel));
+  my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(alice);
-  res = upper_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
+  res = upper_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
 
-  my_memset(&tmp, 0, sizeof(TestModel));
+  my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
-  res = upper_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
+  res = upper_bound_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "upper_bound_i64 dave" );
 
-  TestModelV3 tmp2;
+  test_model_v3 tmp2;
   tmp2.name = N(alice);
 
-  res = load_i64(current_code(), current_code(), N(test_table), &tmp2, sizeof(TestModelV3));
-  WASM_ASSERT(res == sizeof(TestModelV2) && 
+  res = load_i64(current_code(), current_code(), N(test_table), &tmp2, sizeof(test_model_v3));
+  WASM_ASSERT(res == sizeof(test_model_v2) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444,
               "load4update");
 
   tmp2.another_field = 221122;
-  res = update_i64(current_code(), N(test_table), &tmp2, sizeof(TestModelV3));
+  res = update_i64(current_code(), N(test_table), &tmp2, sizeof(test_model_v3));
   WASM_ASSERT(res == 1, "update_i64");
 
-  res = load_i64(current_code(), current_code(), N(test_table), &tmp2, sizeof(TestModelV3));
-  WASM_ASSERT(res == sizeof(TestModelV3) && 
+  res = load_i64(current_code(), current_code(), N(test_table), &tmp2, sizeof(test_model_v3));
+  WASM_ASSERT(res == sizeof(test_model_v3) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -439,8 +439,8 @@ unsigned int test_db::key_i64_general() {
   res = update_i64(current_code(), N(test_table), &tmp2,  sizeof(uint64_t)+1 );
   WASM_ASSERT(res == 1, "update_i64 small");
 
-  res = load_i64(current_code(), current_code(), N(test_table), &tmp2, sizeof(TestModelV3));
-  WASM_ASSERT(res == sizeof(TestModelV3) && 
+  res = load_i64(current_code(), current_code(), N(test_table), &tmp2, sizeof(test_model_v3));
+  WASM_ASSERT(res == sizeof(test_model_v3) &&
               tmp2.age == 11 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -451,7 +451,7 @@ unsigned int test_db::key_i64_general() {
   //Remove dummy records
   uint64_t tables[] { N(test_tabld), N(test_tablf) };
   for(auto& t : tables) {
-    while( front_i64( current_code(), current_code(), t, &tmp, sizeof(TestModel) ) != -1 ) {
+    while( front_i64( current_code(), current_code(), t, &tmp, sizeof(test_model) ) != -1 ) {
       remove_i64(current_code(), t, &tmp);
     }
   }
@@ -480,11 +480,11 @@ unsigned int test_db::key_i64_remove_all() {
   res = remove_i64(current_code(),  N(test_table), &key);
   WASM_ASSERT(res == 1, "remove dave");
 
-  TestModel tmp;
-  res = front_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
+  test_model tmp;
+  res = front_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "front_i64 remove");
 
-  res = back_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(TestModel) );
+  res = back_i64( current_code(), current_code(), N(test_table), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "back_i64_i64 remove");
   
   key = N(alice);
@@ -546,78 +546,78 @@ unsigned int test_db::key_i64_front_back() {
   
   uint32_t res = 0;
 
-  TestModel dave { N(dave),  46, 6535354};
-  TestModel carol{ N(carol), 30, 545342453};
-  store_i64(current_code(), N(b), &dave,  sizeof(TestModel));
-  store_i64(current_code(), N(b), &carol, sizeof(TestModel));
+  test_model dave { N(dave),  46, 6535354};
+  test_model carol{ N(carol), 30, 545342453};
+  store_i64(current_code(), N(b), &dave,  sizeof(test_model));
+  store_i64(current_code(), N(b), &carol, sizeof(test_model));
 
-  TestModel bob  { N(bob),   15, 11932435};
-  TestModel alice{ N(alice), 20, 4234622};
-  store_i64(current_code(), N(a), &bob, sizeof(TestModel));
-  store_i64(current_code(), N(a), &alice,  sizeof(TestModel));
+  test_model bob  { N(bob),   15, 11932435};
+  test_model alice{ N(alice), 20, 4234622};
+  store_i64(current_code(), N(a), &bob, sizeof(test_model));
+  store_i64(current_code(), N(a), &alice,  sizeof(test_model));
 
-  TestModel tmp;
+  test_model tmp;
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = front_i64( current_code(), current_code(), N(b), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = front_i64( current_code(), current_code(), N(b), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = back_i64( current_code(), current_code(), N(b), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = back_i64( current_code(), current_code(), N(b), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
 
   uint64_t key = N(carol);
   remove_i64(current_code(), N(b), &key);
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = front_i64( current_code(), current_code(), N(b), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = front_i64( current_code(), current_code(), N(b), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = back_i64( current_code(), current_code(), N(b), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = back_i64( current_code(), current_code(), N(b), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
 
   key = N(dave);
   remove_i64(current_code(), N(b), &key);
   
-  res = front_i64( current_code(), current_code(), N(b), &tmp, sizeof(TestModel) );
+  res = front_i64( current_code(), current_code(), N(b), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "key_i64_front 9");
-  res = back_i64( current_code(), current_code(), N(b), &tmp, sizeof(TestModel) );
+  res = back_i64( current_code(), current_code(), N(b), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "key_i64_front 10");
 
   key = N(bob);
   remove_i64(current_code(), N(a), &key);
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
 
-  my_memset(&tmp, 0, sizeof(TestModel));
-  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
-  WASM_ASSERT(res == sizeof(TestModel) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
+  my_memset(&tmp, 0, sizeof(test_model));
+  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
+  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
 
   key = N(alice);
   remove_i64(current_code(), N(a), &key);
 
-  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
+  res = front_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "key_i64_front 13");
-  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(TestModel) );
+  res = back_i64( current_code(), current_code(), N(a), &tmp, sizeof(test_model) );
   WASM_ASSERT(res == -1, "key_i64_front 14");
 
   return WASM_TEST_PASS;
