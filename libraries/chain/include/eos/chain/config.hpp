@@ -34,10 +34,10 @@ const static int block_interval_seconds = 3;
 const static int percent100 = 10000;
 const static int percent1 = 100;
 
-const static int default_per_auth_account_time_frame_seconds = 18;
-const static int default_per_auth_account = 1800;
-const static int default_per_code_account_time_frame_seconds = 18;
-const static int default_per_code_account = 18000;
+const static int default_per_auth_account_rate_time_frame_seconds = 18;
+const static int default_per_auth_account_rate = 1800;
+const static int default_per_code_account_rate_time_frame_seconds = 18;
+const static int default_per_code_account_rate = 18000;
 
 const static uint32 required_producer_participation = 33 * config::percent1;
 

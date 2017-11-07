@@ -93,7 +93,7 @@ flat_set<public_key_type> testing_fixture::available_keys() const {
 
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                                        chain_initializer_interface& initializer, testing_fixture& fixture,
-                                       const chain_controller::txn_msg_rate_limits& rate_limits)
+                                       const chain_controller::txn_msg_limits& rate_limits)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
                       ::eosio::chain_plugin::default_transaction_execution_time * 1000,
                       ::eosio::chain_plugin::default_received_block_transaction_execution_time * 1000,
