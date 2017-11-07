@@ -12,6 +12,7 @@
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/log/appender.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/crypto/rand.hpp>
@@ -196,9 +197,13 @@ namespace eos {
      */
     void ticker();
     /** @} */
+    static const fc::string logger_name;
+    static fc::logger logger;
   };
 
   static net_plugin_impl *my_impl;
+  const fc::string net_plugin_impl::logger_name("net_plugin_impl");
+  fc::logger net_plugin_impl::logger(net_plugin_impl::logger_name);
 
   /**
    * default value initializers
@@ -422,7 +427,13 @@ namespace eos {
      * encountered unpacking or processing the message.
      */
     bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
+
+    static const fc::string logger_name;
+    static fc::logger logger;
   };
+
+  const fc::string connection::logger_name("connection");
+  fc::logger connection::logger(connection::logger_name);
 
   struct precache : public fc::visitor<void> {
     connection_ptr c;
@@ -477,7 +488,13 @@ namespace eos {
     void set_blocks_to_fetch (vector<block_id_type>);
     void assign_fectch (connection_ptr c);
     void reassign_fetch (connection_ptr c);
+
+    static const fc::string logger_name;
+    static fc::logger logger;
   };
+
+  const fc::string sync_manager::logger_name("sync_manager");
+  fc::logger sync_manager::logger(sync_manager::logger_name);
 
   //---------------------------------------------------------------------------
 
@@ -554,11 +571,11 @@ namespace eos {
 
   bool connection::current () {
     if( syncing ) {
-      // dlog( "skipping connection ${n} due to syncing", ("n",peer_name()));
+      fc_dlog(logger, "skipping connection ${n} due to syncing", ("n",peer_name()));
     } else if (!connected()) {
-      // dlog( "skipping connection ${n} due to not connected", ("n",peer_name()));
+      fc_dlog(logger, "skipping connection ${n} due to not connected", ("n",peer_name()));
     } else {
-      // dlog( "connection ${n} is current", ("n",peer_name()));
+      fc_dlog(logger, "connection ${n} is current", ("n",peer_name()));
     }
     return (connected() && !syncing);
   }
@@ -627,15 +644,15 @@ namespace eos {
             optional<signed_block> pb = cc.fetch_block_by_id (prev);
             block_id_type pprev;
             if (!pb ) {
-              // dlog( "no block for prev");
+              fc_dlog(logger, "no block for prev");
             } else {
               pprev = pb->previous;
             }
-            // dlog( "irr = ${irr} lib_nim = ${ln} pnum = ${pn}", ("irr",irr)("ln",lib_num)("pn",pnum));
-            // dlog( "prev = ${p}", ("p",prev));
-            // dlog( "lib  = ${p}", ("p",lib_id));
-            // dlog( "bid  = ${p}", ("p",bid));
-            // dlog( "ppre = ${p}", ("p",pprev));
+            fc_dlog(logger, "irr = ${irr} lib_nim = ${ln} pnum = ${pn}", ("irr",irr)("ln",lib_num)("pn",pnum));
+            fc_dlog(logger, "prev = ${p}", ("p",prev));
+            fc_dlog(logger, "lib  = ${p}", ("p",lib_id));
+            fc_dlog(logger, "bid  = ${p}", ("p",bid));
+            fc_dlog(logger, "ppre = ${p}", ("p",pprev));
           }
           else {
             ++dbg_depth;
@@ -661,7 +678,7 @@ namespace eos {
     notice_message note;
     note.known_blocks.mode = normal;
     note.known_blocks.pending = 0;
-    // dlog ("head_num = ${h}",("h",head_num));
+    fc_dlog(logger, "head_num = ${h}",("h",head_num));
     if (head_num == 0) {
       enqueue (note);
       return;
@@ -675,7 +692,7 @@ namespace eos {
       head_id = cc.get_block_id_for_num (head_num);
     }
     catch (const assert_exception &ex) {
-      // dlog ("caught assert ${x}",("x",ex.what()));
+      fc_dlog(logger, "caught assert ${x}",("x",ex.what()));
       enqueue (note);
       return;
     }
@@ -688,7 +705,7 @@ namespace eos {
     }
 #endif
     uint32_t count = send_branch (cc, head_id, lib_num, lib_id);
-    // dlog( "Sent ${n} blocks on my fork",("n",count));
+    fc_dlog(logger, "Sent ${n} blocks on my fork",("n",count));
     syncing = false;
   }
 
@@ -725,7 +742,7 @@ namespace eos {
       handshake_message hello;
       handshake_initializer::populate(hello);
       hello.generation = ++sent_handshake_count;
-      // dlog( "Sending handshake to ${ep}", ("ep", peer_addr));
+      fc_dlog(logger, "Sending handshake to ${ep}", ("ep", peer_addr));
       enqueue (hello);
     }
 
@@ -907,7 +924,7 @@ namespace eos {
     }
     else if( ec == boost::asio::error::operation_aborted ) {
       if( !connected( ) ) {
-        // dlog ("fetch timeout was cancelled due to dead connection");
+        fc_dlog(logger, "fetch timeout was cancelled due to dead connection");
         my_impl->sync_master->reassign_fetch( shared_from_this( ) );
       }
     }
@@ -974,7 +991,7 @@ namespace eos {
   }
 
   bool sync_manager::syncing( ) {
-    // dlog( "ours = ${ours} known = ${known} head = ${head}",("ours",sync_last_requested_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).head_block_num( )));
+    fc_dlog(logger, "ours = ${ours} known = ${known} head = ${head}",("ours",sync_last_requested_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).head_block_num( )));
     return( sync_last_requested_num != sync_known_lib_num ||
             chain_plug->chain( ).head_block_num( ) < sync_last_requested_num );
   }
@@ -995,12 +1012,12 @@ namespace eos {
       if( end > sync_known_lib_num )
         end = sync_known_lib_num;
       if( end > 0 && end >= start ) {
-        // dlog( "conn ${n} recv blks ${s} to ${e}",("n",c->peer_name() )("s",start)("e",end));
+        fc_dlog(logger, "conn ${n} recv blks ${s} to ${e}",("n",c->peer_name() )("s",start)("e",end));
         c->sync_receiving.reset(new sync_state( start, end, sync_last_requested_num ) );
       }
     }
     else {
-      // dlog( "conn ${n} resetting sync recv",("n",c->peer_name() ));
+      fc_dlog(logger, "conn ${n} resetting sync recv",("n",c->peer_name() ));
       c->sync_receiving.reset ( );
     }
     if( end > 0 && end >= start ) {
@@ -1046,7 +1063,7 @@ namespace eos {
       }
       sync_state_ptr ss;
       c->sync_receiving.swap(ss);
-      // dlog( "conn ${n} losing recv blks ${s} to ${e}",("n",c->peer_name() )("s",ss->start_block)("e",ss->end_block));
+      fc_dlog(logger, "conn ${n} losing recv blks ${s} to ${e}",("n",c->peer_name() )("s",ss->start_block)("e",ss->end_block));
 
       if( !ss->block_cache.empty()) {
         if( ss->last < ss->end_block) {
@@ -1089,11 +1106,11 @@ namespace eos {
       if( chain_plug->chain().head_block_num() == sync_known_lib_num ) {
         handshake_message hello;
         handshake_initializer::populate(hello);
-        // dlog( "All caught up with last known last irreversible block resending handshake");
+        fc_dlog(logger, "All caught up with last known last irreversible block resending handshake");
         for( auto &ci : my_impl->connections) {
           if( ci->current()) {
             hello.generation = ++ci->sent_handshake_count;
-            // dlog( "send to ${p}", ("p",ci->peer_name()));
+            fc_dlog(logger, "send to ${p}", ("p",ci->peer_name()));
             ci->enqueue( hello );
           }
         }
@@ -1126,7 +1143,7 @@ namespace eos {
 
   void net_plugin_impl::connect( connection_ptr c ) {
     if( c->no_retry != go_away_reason::no_reason) {
-      // dlog( "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
+      fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
       return;
     }
       auto host = c->peer_addr.substr( 0, c->peer_addr.find(':') );
@@ -1262,7 +1279,7 @@ namespace eos {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
-      // dlog ("got a handshake_message from ${p}", ("p",c->peer_name()));
+      fc_dlog(logger, "got a handshake_message from ${p}", ("p",c->peer_name()));
       if( c->connecting ) {
         c->connecting = false;
 
@@ -1273,13 +1290,13 @@ namespace eos {
         }
 
         if ( c->peer_addr.empty() || c->last_handshake.node_id == fc::sha256()) {
-          // dlog( "checking for duplicate" );
+          fc_dlog(logger, "checking for duplicate" );
           for (const auto &check : connections) {
             if (check == c)
               continue;
             if (check->connected() &&
                 check->peer_name() == msg.p2p_address) {
-              // dlog( "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
+              fc_dlog(logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
               go_away_message gam (go_away_reason::duplicate);
               gam.node_id = node_id;
               c->enqueue (gam);
@@ -1289,7 +1306,7 @@ namespace eos {
           }
         }
         else {
-          // dlog ("skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake.node_id));
+          fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake.node_id));
         }
 
         if( msg.chain_id != chain_id) {
@@ -1313,7 +1330,7 @@ namespace eos {
       uint32_t lib_num = cc.last_irreversible_block_num( );
       uint32_t peer_lib = msg.last_irreversible_block_num;
       bool on_fork = false;
-      // dlog( "lib_num = ${ln} peer_lib = ${pl}",("ln",lib_num)("pl",peer_lib));
+      fc_dlog(logger, "lib_num = ${ln} peer_lib = ${pl}",("ln",lib_num)("pl",peer_lib));
 
       if( peer_lib <= lib_num && peer_lib > 0) {
         try {
@@ -1341,10 +1358,10 @@ namespace eos {
         sync_master->start_sync( c, peer_lib );
       }
       else if( msg.head_id != head_id && msg.head_id != block_id_type( )) {
-        // dlog ("msg.head_id = ${m} our head = ${h}",("m",msg.head_id)("h",head_id));
+        fc_dlog(logger, "msg.head_id = ${m} our head = ${h}",("m",msg.head_id)("h",head_id));
 
         notice_message note;
-        // dlog( "msg head = ${mh} msg lib = ${ml} my head = ${h} my lib = ${l}",("mh",msg.head_num)("ml",msg.last_irreversible_block_num)("h",head)("l",lib_num));
+        fc_dlog(logger, "msg head = ${mh} msg lib = ${ml} my head = ${h} my lib = ${l}",("mh",msg.head_num)("ml",msg.last_irreversible_block_num)("h",head)("l",lib_num));
         if( msg.head_num >= lib_num ) {
           note.known_blocks.mode = id_list_modes::catch_up;
           note.known_blocks.pending = head - lib_num;
@@ -1352,7 +1369,7 @@ namespace eos {
         note.known_trx.mode = id_list_modes::catch_up;
         note.known_trx.pending = local_txns.size(); // cc.pending().size();
         if( note.known_trx.pending > 0 || note.known_blocks.pending > 0) {
-          // dlog( "sending catchup notice to ${n} about ${t} txns and ${b} blocks",("n",c->peer_name())("t",note.known_trx.pending)("b",note.known_blocks.pending));
+          fc_dlog(logger, "sending catchup notice to ${n} about ${t} txns and ${b} blocks",("n",c->peer_name())("t",note.known_trx.pending)("b",note.known_blocks.pending));
           c->enqueue( note );
           c->syncing = true;
         }
@@ -1392,9 +1409,10 @@ namespace eos {
       }
 
       c->offset = (double(c->rec - c->org) + double(msg.xmt - c->dst)) / 2;
-      //  double NsecPerUsec{1000};
-      //
-      //  // dlog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
+      double NsecPerUsec{1000};
+
+      if(logger.is_enabled(fc::log_level::all))
+        logger.log(FC_LOG_MESSAGE(all, "Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec)));
       c->org = 0;
       c->rec = 0;
     }
@@ -1403,7 +1421,7 @@ namespace eos {
       // peer tells us about one or more blocks or txns. When done syncing, forward on
       // notices of previously unknown blocks or txns,
       //
-      // dlog ("got a notice_message from ${p}", ("p",c->peer_name()));
+      fc_dlog(logger, "got a notice_message from ${p}", ("p",c->peer_name()));
       notice_message fwd;
       request_message req;
       bool send_req = false;
@@ -1469,14 +1487,14 @@ namespace eos {
             return cptr != c;
           });
       }
-      // dlog ("send req = ${sr}", ("sr",send_req));
+      fc_dlog(logger, "send req = ${sr}", ("sr",send_req));
       if ( send_req) {
         c->enqueue(req);
       }
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
-      // dlog ("got a request_message from ${p}", ("p",c->peer_name()));
+      fc_dlog(logger, "got a request_message from ${p}", ("p",c->peer_name()));
       switch (msg.req_blocks.mode) {
       case id_list_modes::catch_up :
         c->blk_send_branch( msg.req_trx.ids );
@@ -1505,7 +1523,7 @@ namespace eos {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const sync_request_message &msg) {
-      // dlog ("got a sync_request_message from ${p}", ("p",c->peer_name()));
+      fc_dlog(logger, "got a sync_request_message from ${p}", ("p",c->peer_name()));
       if( msg.end_block == 0) {
         c->sync_requested.reset();
       } else {
@@ -1515,9 +1533,9 @@ namespace eos {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const block_summary_message &msg) {
-      // dlog ("got a block_summary_message from ${p}", ("p",c->peer_name()));
-      // dlog( "bsm header = ${h}",("h",msg.block_header));
-      // dlog( "txn count = ${c}", ("c",msg.trx_ids.size()));
+      fc_dlog(logger, "got a block_summary_message from ${p}", ("p",c->peer_name()));
+      fc_dlog(logger, "bsm header = ${h}",("h",msg.block_header));
+      fc_dlog(logger, "txn count = ${c}", ("c",msg.trx_ids.size()));
 
       const auto& itr = c->block_state.get<by_id>();
       auto bs = itr.find(msg.block_header.id());
@@ -1547,14 +1565,14 @@ namespace eos {
         sb.producer_signature = msg.block_header.producer_signature;
 
         for( auto &cyc : msg.trx_ids ) {
-          // dlog( "cycle count = ${c}", ("c",cyc.size()));
+          fc_dlog(logger, "cycle count = ${c}", ("c",cyc.size()));
           if( cyc.size() == 0 ) {
             continue;
           }
           sb.cycles.emplace_back( eos::chain::cycle( ) );
           eos::chain::cycle &sbcycle = sb.cycles.back( );
           for( auto &cyc_thr_id : cyc ) {
-            // dlog( "cycle user theads count = ${c}", ("c",cyc_thr_id.user_trx.size()));
+            fc_dlog(logger, "cycle user theads count = ${c}", ("c",cyc_thr_id.user_trx.size()));
             if (cyc_thr_id.user_trx.size() == 0) {
               continue;
             }
@@ -1584,7 +1602,7 @@ namespace eos {
                 pt.output = ut.outmsgs;
                 cyc_thr.user_input.emplace_back(pt);
 
-                // dlog ("Found the transaction");
+                fc_dlog(logger, "Found the transaction");
               } catch ( const exception &ex) {
                 fetch_error = true;
                 elog( "unable to retieve user transaction, caught {ex}", ("ex",ex) );
@@ -1605,7 +1623,7 @@ namespace eos {
         }
 
         try {
-          // dlog( "calling accept block, fetcherror = ${fe}",("fe",fetch_error));
+          fc_dlog(logger, "calling accept block, fetcherror = ${fe}",("fe",fetch_error));
           if( !fetch_error )
             chain_plug->accept_block( sb, false );
         } catch( const unlinkable_block_exception &ex) {
@@ -1622,12 +1640,12 @@ namespace eos {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const SignedTransaction &msg) {
-      // dlog ("got a signed transaction from ${p}", ("p",c->peer_name()));
+      fc_dlog(logger, "got a signed transaction from ${p}", ("p",c->peer_name()));
       transaction_id_type txnid = msg.id();
       auto entry = local_txns.get<by_id>().find( txnid );
       if (entry != local_txns.end( ) ) {
         if( entry->validated ) {
-          // dlog( "the txnid is known and validated, so short circuit" );
+          fc_dlog(logger, "the txnid is known and validated, so short circuit" );
           return;
         }
       }
@@ -1666,7 +1684,7 @@ namespace eos {
 
       try {
         chain_plug->accept_transaction( msg );
-        // dlog(  "chain accepted transaction" );
+        fc_dlog(logger, "chain accepted transaction" );
       } catch( const fc::exception &ex) {
         // received a block due to out of sequence
         elog( "accept txn threw  ${m}",("m",ex.what()));
@@ -1678,7 +1696,7 @@ namespace eos {
     }
 
   void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
-    // dlog ("got signed_block #${n} from ${p}", ("n",msg.block_num())("p",c->peer_name()));
+    fc_dlog(logger, "got signed_block #${n} from ${p}", ("n",msg.block_num())("p",c->peer_name()));
     chain_controller &cc = chain_plug->chain();
     block_id_type blk_id = msg.id();
     try {
@@ -1691,7 +1709,7 @@ namespace eos {
       elog( "received forking block #${n}",( "n",msg.block_num()));
     }
     fc::microseconds age( fc::time_point::now() - msg.timestamp);
-    // dlog( "got signed_block #${n} from ${p} block age in secs = ${age}",("n",msg.block_num())("p",c->peer_name())("age",age.to_seconds()));
+    fc_dlog(logger, "got signed_block #${n} from ${p} block age in secs = ${age}",("n",msg.block_num())("p",c->peer_name())("age",age.to_seconds()));
 
     bool has_chunk = false;
     uint32_t num = msg.block_num();
@@ -1715,7 +1733,7 @@ namespace eos {
       }
     }
     bool accepted = false;
-    // dlog ("last irrevesible block = ${lib}", ("lib", cc.last_irreversible_block_num()));
+    fc_dlog(logger, "last irreversible block = ${lib}", ("lib", cc.last_irreversible_block_num()));
     if( !syncing || num == cc.head_block_num()+1 ){ //  || num > cc.last_irreversible_block_num()) {
       try {
         chain_plug->accept_block(msg, syncing);
@@ -1744,7 +1762,7 @@ namespace eos {
       }
     }
     else {
-      // dlog ("forwarding the signed block");
+      fc_dlog(logger, "forwarding the signed block");
       if (age < fc::seconds(3) && fc::raw::pack_size(msg) < just_send_it_max && !c->syncing) {
         send_all( msg, [c, blk_id, num](connection_ptr conn) -> bool {
             bool sendit = false;
@@ -1758,7 +1776,7 @@ namespace eos {
                 sendit = true;
               }
             }
-            // dlog( "${action} block ${num} to ${c}",("action", sendit ? "sending " : "skipping ")("num",num)("c", conn->peer_name() ));
+            fc_dlog(logger, "${action} block ${num} to ${c}",("action", sendit ? "sending " : "skipping ")("num",num)("c", conn->peer_name() ));
             return sendit;
           });
       }
@@ -1885,12 +1903,12 @@ namespace eos {
     void net_plugin_impl::send_all_txn( const SignedTransaction& txn) {
       transaction_id_type txnid = txn.id();
       if( local_txns.get<by_id>().find( txnid ) != local_txns.end( ) ) { //found
-        // dlog( "found txnid in local_txns" );
+        fc_dlog(logger, "found txnid in local_txns" );
         return;
       }
 
       size_t bufsiz = cache_txn (txnid, txn);
-      // dlog( "bufsiz = ${bs} max = ${max}",("bs", (uint32_t)bufsiz)("max", just_send_it_max));
+      fc_dlog(logger, "bufsiz = ${bs} max = ${max}",("bs", (uint32_t)bufsiz)("max", just_send_it_max));
 
       if( bufsiz <= just_send_it_max) {
         send_all( txn, [txn, txnid](connection_ptr c) -> bool {
@@ -1899,20 +1917,20 @@ namespace eos {
             if( unknown) {
               c->trx_state.insert(transaction_state({txnid,true,true,(uint32_t)-1,
                       fc::time_point(),fc::time_point() }));
-              // dlog( "sending whole txn to ${n}", ("n",c->peer_name() ) );
+              fc_dlog(logger, "sending whole txn to ${n}", ("n",c->peer_name() ) );
             }
             return unknown;
           });
       }
       else {
-        // dlog ("pending_notify, mode = ${m}, pending count = ${p}",("m",modes_str(pending_notify.mode))("p",pending_notify.pending));
+        fc_dlog(logger, "pending_notify, mode = ${m}, pending count = ${p}",("m",modes_str(pending_notify.mode))("p",pending_notify.pending));
         pending_notify.ids.push_back( txnid );
         notice_message nm = { pending_notify, ordered_blk_ids( ) };
         send_all( nm, [txn, txnid](connection_ptr c) -> bool {
             const auto& bs = c->trx_state.find(txnid);
             bool unknown = bs == c->trx_state.end();
             if( unknown) {
-              // dlog( "sending notice to ${n}", ("n",c->peer_name() ) );
+              fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
               c->trx_state.insert(transaction_state({txnid,false,true,(uint32_t)-1,
                       fc::time_point(),fc::time_point() }));
             }
@@ -1939,15 +1957,15 @@ namespace eos {
       vector<cycle_ids> &trxs = bsm.trx_ids;
       if( !sb.cycles.empty()) {
         for( const auto& cyc : sb.cycles) {
-          // dlog( "cyc.size = ${cs}",( "cs", cyc.size()));
+          fc_dlog(logger, "cyc.size = ${cs}",( "cs", cyc.size()));
           if( cyc.empty() ) {
             continue;
           }
           trxs.emplace_back (cycle_ids());
           cycle_ids &cycs = trxs.back();
-          // dlog( "trxs.size = ${ts} cycles.size = ${cs}",("ts", trxs.size())("cs", cycs.size()));
+          fc_dlog(logger, "trxs.size = ${ts} cycles.size = ${cs}",("ts", trxs.size())("cs", cycs.size()));
           for( const auto& thr : cyc) {
-            // dlog( "user txns = ${ui} generated = ${gi}",("ui",thr.user_input.size( ))("gi",thr.generated_input.size( )));
+            fc_dlog(logger, "user txns = ${ui} generated = ${gi}",("ui",thr.user_input.size( ))("gi",thr.generated_input.size( )));
             if( thr.user_input.size( ) == 0 ) {
               continue;
             }
@@ -1961,16 +1979,16 @@ namespace eos {
             for( auto &ui : thr.user_input) {
               processed_trans_summary pts ({ui.id( ),ui.output });
               thd_ids.user_trx.emplace_back( pts );
-              // dlog ("user txn has ${m} messages, summary has ${ms}", ("m",ui.output.size())("ms",pts.outmsgs.size()));
+              fc_dlog(logger, "user txn has ${m} messages, summary has ${ms}", ("m",ui.output.size())("ms",pts.outmsgs.size()));
             }
           }
         }
       }
 
-      // dlog ("sending bsm with ${c} transactions",("c",trxs.size()));
-      // dlog( "bsm header = ${h} txns = ${t}",("h",bsm.block_header)("t",bsm.trx_ids.size()));
+      fc_dlog(logger, "sending bsm with ${c} transactions",("c",trxs.size()));
+      fc_dlog(logger, "bsm header = ${h} txns = ${t}",("h",bsm.block_header)("t",bsm.trx_ids.size()));
       if (bsm.trx_ids.size() > 0) {
-        // dlog( "cycles.size = ${cs}",("cs", bsm.trx_ids[0].size()));
+        fc_dlog(logger, "cycles.size = ${cs}",("cs", bsm.trx_ids[0].size()));
         if (bsm.trx_ids[0].size()) {
         }
       }
@@ -2042,11 +2060,31 @@ namespace eos {
      ( "public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
      ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
       ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
+     ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
       ;
   }
 
   void net_plugin::plugin_initialize( const variables_map& options ) {
     ilog("Initialize net plugin");
+
+    // Setting a parent would in theory get us the default appenders for free but
+    // a) the parent's log level overrides our own in that case; and
+    // b) fc library's logger was never finished - the _additivity flag tested is never true.
+    for(fc::shared_ptr<fc::appender>& appender : fc::logger::get().get_appenders()) {
+      connection::logger.add_appender(appender);
+      net_plugin_impl::logger.add_appender(appender);
+      sync_manager::logger.add_appender(appender);
+    }
+
+    if( options.count( "log-level-net-plugin" ) ) {
+      fc::log_level logl;
+
+      fc::from_variant(options.at("log-level-net-plugin").as<string>(), logl);
+      ilog("Setting net_plugin logging level to ${level}", ("level", logl));
+      connection::logger.set_log_level(logl);
+      net_plugin_impl::logger.set_log_level(logl);
+      sync_manager::logger.set_log_level(logl);
+    }
 
     my->network_version = def_network_version;
     my->send_whole_blocks = def_send_whole_blocks;
@@ -2153,7 +2191,7 @@ namespace eos {
     } FC_CAPTURE_AND_RETHROW() }
 
     void net_plugin::broadcast_block( const chain::signed_block &sb) {
-      // dlog( "broadcasting block #${num}",("num",sb.block_num()) );
+      fc_dlog(my->logger, "broadcasting block #${num}",("num",sb.block_num()) );
       my->broadcast_block_impl( sb);
     }
 }
