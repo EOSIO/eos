@@ -8,7 +8,7 @@ extern "C" {
 /**
  *  This method is implemented as:
  *
- *  Checksum calc_hash;
+ *  checksum calc_hash;
  *  sha256( data, length, &calc_hash );
  *  assert( calc_hash == hash, "invalid hash" );
  *
