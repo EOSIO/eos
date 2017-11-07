@@ -23,7 +23,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
 
-namespace eos {
+namespace eosio {
   using std::vector;
 
   using boost::asio::ip::tcp;
@@ -33,7 +33,7 @@ namespace eos {
 
   using fc::time_point;
   using fc::time_point_sec;
-  using eos::chain::transaction_id_type;
+  using eosio::chain::transaction_id_type;
   namespace bip = boost::interprocess;
 
   class connection;
@@ -1569,15 +1569,15 @@ namespace eos {
           if( cyc.size() == 0 ) {
             continue;
           }
-          sb.cycles.emplace_back( eos::chain::cycle( ) );
-          eos::chain::cycle &sbcycle = sb.cycles.back( );
+          sb.cycles.emplace_back( eosio::chain::cycle( ) );
+          eosio::chain::cycle &sbcycle = sb.cycles.back( );
           for( auto &cyc_thr_id : cyc ) {
             fc_dlog(logger, "cycle user theads count = ${c}", ("c",cyc_thr_id.user_trx.size()));
             if (cyc_thr_id.user_trx.size() == 0) {
               continue;
             }
-            sbcycle.emplace_back( eos::chain::thread( ) );
-            eos::chain::thread &cyc_thr = sbcycle.back();
+            sbcycle.emplace_back( eosio::chain::thread( ) );
+            eosio::chain::thread &cyc_thr = sbcycle.back();
             /*
             for( auto &gt : cyc_thr_id.gen_trx ) {
               try {

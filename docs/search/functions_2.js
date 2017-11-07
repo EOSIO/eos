@@ -1,7 +1,7 @@
 var searchData=
 [
   ['char_5fto_5fsymbol',['char_to_symbol',['../structtest__types.html#aadadf55567c37c9be3130f97eadd0e34',1,'test_types']]],
-  ['compare',['compare',['../classeos_1_1string.html#a6a0949ef543b02f88c39645f32a63ab6',1,'eos::string']]],
+  ['compare',['compare',['../classeos_1_1string.html#a6a0949ef543b02f88c39645f32a63ab6',1,'eosio::string']]],
   ['comparison_5foperator',['comparison_operator',['../structtest__string.html#ad72004a2d2e38edcfe1c862cd8c58fc6',1,'test_string']]],
   ['concatenation_5fnon_5fnull_5fterminated',['concatenation_non_null_terminated',['../structtest__string.html#a6534729848a08f83ffb8b9e5e8791741',1,'test_string']]],
   ['concatenation_5fnull_5fterminated',['concatenation_null_terminated',['../structtest__string.html#a00308c91df8f590c0ca7f976918547c3',1,'test_string']]],

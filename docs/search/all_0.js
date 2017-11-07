@@ -6,9 +6,9 @@ var searchData=
   ['account',['Account',['../struct_account.html',1,'Account'],['../group__currencyapi.html#gacc96b530db9c63a37c07de6b062c2e9d',1,'TOKEN_NAME::Account::Account()'],['../structinfinite_1_1_account.html#a8551ff19a516a724e6a18b393bbd7fd5',1,'infinite::Account::Account()']]],
   ['accountname',['AccountName',['../group__types.html#gad67b43dc23285b01176f4c181c59fc23',1,'types.h']]],
   ['accounts',['Accounts',['../group__currencyapi.html#gae8a6922db493041a75e8de97c672eab5',1,'TOKEN_NAME::Accounts()'],['../namespacedice.html#a9cd405289e076229c908b10f3777a442',1,'dice::Accounts()'],['../namespaceexchange.html#a3e8714151a75109ae4a632aca1f17f4f',1,'exchange::Accounts()'],['../namespaceinfinite.html#a131577f948cd080aa51959041b19f7df',1,'infinite::Accounts()']]],
-  ['addmessage',['addMessage',['../classeos_1_1_transaction.html#a223c31ce9b4395d81a7ba8d882202d09',1,'eos::Transaction']]],
-  ['addpermissions',['addPermissions',['../classeos_1_1_message.html#a0e68f632ec8aee71f4a8a909c8ed7c40',1,'eos::Message::addPermissions(AccountName account, PermissionName permission)'],['../classeos_1_1_message.html#a102ea7cbb3f25b19be6d26d35b883446',1,'eos::Message::addPermissions(AccountName account, PermissionName permission, Permissions...permissions)']]],
-  ['addscope',['addScope',['../classeos_1_1_transaction.html#a635d3c6c6c6dd64855c5ccc5daecb93c',1,'eos::Transaction']]],
+  ['addmessage',['addMessage',['../classeos_1_1_transaction.html#a223c31ce9b4395d81a7ba8d882202d09',1,'eosio::Transaction']]],
+  ['addpermissions',['addPermissions',['../classeos_1_1_message.html#a0e68f632ec8aee71f4a8a909c8ed7c40',1,'eosio::Message::addPermissions(AccountName account, PermissionName permission)'],['../classeos_1_1_message.html#a102ea7cbb3f25b19be6d26d35b883446',1,'eosio::Message::addPermissions(AccountName account, PermissionName permission, Permissions...permissions)']]],
+  ['addscope',['addScope',['../classeos_1_1_transaction.html#a635d3c6c6c6dd64855c5ccc5daecb93c',1,'eosio::Transaction']]],
   ['age',['age',['../struct_test_model.html#abc50651849938a8bf97e986a210fc503',1,'TestModel']]],
   ['amount',['amount',['../structdice_1_1_offer_bet.html#a9b71a51ccf5e241fcb09d82757aaf02a',1,'dice::OfferBet']]],
   ['another_5ffield',['another_field',['../struct_test_model_v3.html#adc2999f2f7be3054cf7f29236312c789',1,'TestModelV3']]],
@@ -43,7 +43,7 @@ var searchData=
   ['assert_5ffalse',['assert_false',['../structtest__message.html#a7f37d26b636b9f29f6056defa4b00c9d',1,'test_message']]],
   ['assert_5fsha256',['assert_sha256',['../crypto_8h.html#a9cb6f46f0e4193e72b9ad63107dce8b8',1,'crypto.h']]],
   ['assert_5ftrue',['assert_true',['../structtest__message.html#a320d2a806fd9602395b25f5361eb10ad',1,'test_message']]],
-  ['assign',['assign',['../classeos_1_1string.html#afe41799f953ad70eeba8da3ce05310a2',1,'eos::string::assign()'],['../structtest__string.html#a4f529b030a8f30a315dbdb3181937327',1,'test_string::assign()']]],
+  ['assign',['assign',['../classeos_1_1string.html#afe41799f953ad70eeba8da3ce05310a2',1,'eosio::string::assign()'],['../structtest__string.html#a4f529b030a8f30a315dbdb3181937327',1,'test_string::assign()']]],
   ['assignment_5foperator',['assignment_operator',['../structtest__string.html#ad757ea5ecb3cee2f3aa83799e81f7d16',1,'test_string']]],
   ['author',['author',['../struct_post_action.html#a879f044eec05c117c2c2eb787abd2cc6',1,'PostAction::author()'],['../struct_post_action.html#ac702eb88957dae296d6ddc67ba43359c',1,'PostAction::author()'],['../struct_vote_action.html#a29eee9d6f8fc9cc7d67600facf12f8d6',1,'VoteAction::author()']]]
 ];

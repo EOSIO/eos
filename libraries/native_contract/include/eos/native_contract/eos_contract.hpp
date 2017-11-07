@@ -9,9 +9,9 @@
 #include <eos/types/types.hpp>
 
 namespace native {
-namespace eos { ///< eos native currency contract
-namespace chain = ::eos::chain;
-namespace types = ::eos::types;
+namespace eosio { ///< eos native currency contract
+namespace chain = ::eosio::chain;
+namespace types = ::eosio::types;
 
 void apply_eos_newaccount(chain::apply_context& context);
 void apply_eos_transfer(chain::apply_context& context);

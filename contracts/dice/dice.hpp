@@ -6,7 +6,7 @@
 namespace dice {
 
    struct offer_bet {
-      eos::tokens   amount;
+      eosio::tokens   amount;
       account_name  player;
       uint256       commitment;
    };
@@ -24,7 +24,7 @@ namespace dice {
       uint64_t gameid = 0;
    };
 
-   using eos_tokens = eos::tokens;
+   using eos_tokens = eosio::tokens;
 
    struct offer_primary_key {
       eos_tokens          bet;

@@ -26,7 +26,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
 
 using chain::AccountName;
 using chain::block_id_type;
@@ -64,7 +64,7 @@ private:
 
    optional<block_id_type> find_block_id(const chainbase::database& db, const transaction_id_type& transaction_id) const;
    ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
-   bool is_scope_relevant(const eos::types::Vector<AccountName>& scope);
+   bool is_scope_relevant(const eosio::types::Vector<AccountName>& scope);
    get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
    static void add(chainbase::database& db, const vector<types::KeyPermissionWeight>& keys, const AccountName& account_name, const PermissionName& permission);
    template<typename MultiIndex, typename LookupType>
@@ -376,7 +376,7 @@ void account_history_plugin_impl::add(chainbase::database& db, const vector<type
    }
 }
 
-bool account_history_plugin_impl::is_scope_relevant(const eos::types::Vector<AccountName>& scope)
+bool account_history_plugin_impl::is_scope_relevant(const eosio::types::Vector<AccountName>& scope)
 {
    for (const AccountName& account_name : scope)
       if (filter_on.count(account_name))

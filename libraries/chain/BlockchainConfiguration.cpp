@@ -8,7 +8,7 @@
 
 #include <fc/io/json.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 template <typename T>
 struct assign_visitor {
@@ -86,4 +86,4 @@ bool operator==(const types::BlockchainConfiguration& a, const types::Blockchain
    return true;
 }
 
-} } // namespace eos::chain
+} } // namespace eosio::chain

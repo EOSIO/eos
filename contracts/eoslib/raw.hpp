@@ -3,7 +3,7 @@
 #include <eoslib/datastream.hpp>
 #include <eoslib/memory.hpp>
 
-namespace eos {
+namespace eosio {
     namespace raw {
 
     template<typename Stream, typename Arg0, typename... Args>
@@ -69,18 +69,18 @@ namespace eos {
     // template<typename Stream, typename T> inline void unpack( Stream& s, const T& vi )
     // {
     //    T tmp;
-    //    eos::raw::unpack( s, tmp );
+    //    eosio::raw::unpack( s, tmp );
     //    FC_ASSERT( vi == tmp );
     // }
 
     // bytes
     template<typename Stream> inline void pack( Stream& s, const bytes& value ) {
-      eos::raw::pack( s, unsigned_int((uint32_t)value.len) );
+      eosio::raw::pack( s, unsigned_int((uint32_t)value.len) );
       if( value.len )
         s.write( (char *)value.data, (uint32_t)value.len );
     }
     template<typename Stream> inline void unpack( Stream& s, bytes& value ) {
-      unsigned_int size; eos::raw::unpack( s, size );
+      unsigned_int size; eosio::raw::unpack( s, size );
       //assert( size.value < MAX_ARRAY_ALLOC_SIZE, "unpack bytes" );
       value.len = size.value;
       if( value.len )
@@ -90,22 +90,22 @@ namespace eos {
     // String
     template<typename Stream> inline void pack( Stream& s, const string& v )  {
       auto size = v.get_size();
-      eos::raw::pack( s, unsigned_int(size));
+      eosio::raw::pack( s, unsigned_int(size));
       if( size ) s.write( v.get_data(), size );
     }
 
     template<typename Stream> inline void unpack( Stream& s, string& v, bool copy=true )  {
-      unsigned_int size; eos::raw::unpack( s, size );
+      unsigned_int size; eosio::raw::unpack( s, size );
       v.assign(s.pos(), size.value, copy);
       s.skip(size.value);
     }
 
     // bool
-    template<typename Stream> inline void pack( Stream& s, const bool& v ) { eos::raw::pack( s, uint8_t(v) );             }
+    template<typename Stream> inline void pack( Stream& s, const bool& v ) { eosio::raw::pack( s, uint8_t(v) );             }
     template<typename Stream> inline void unpack( Stream& s, bool& v )
     {
        uint8_t b;
-       eos::raw::unpack( s, b );
+       eosio::raw::unpack( s, b );
        assert( (b & ~1) == 0, "unpack bool" );
        v=(b!=0);
     }
@@ -114,14 +114,14 @@ namespace eos {
     inline size_t pack_size( const T& v )
     {
       datastream<size_t> ps;
-      eos::raw::pack(ps,v );
+      eosio::raw::pack(ps,v );
       return ps.tellp();
     }
 
     template<typename T>
     inline void pack( char* d, uint32_t s, const T& v ) {
       datastream<char*> ds(d,s);
-      eos::raw::pack(ds,v );
+      eosio::raw::pack(ds,v );
     }
 
     template<typename T>
@@ -129,7 +129,7 @@ namespace eos {
     {
       T v;
       datastream<const char*>  ds( d, s );
-      eos::raw::unpack(ds,v);
+      eosio::raw::unpack(ds,v);
       return v;
     }
 
@@ -137,9 +137,9 @@ namespace eos {
     inline void unpack( const char* d, uint32_t s, T& v )
     {
       datastream<const char*>  ds( d, s );
-      eos::raw::unpack(ds,v);
+      eosio::raw::unpack(ds,v);
       return v;
     }
 
-} } // namespace eos::raw
+} } // namespace eosio::raw
 

@@ -6,7 +6,7 @@
 #include <currency/currency.hpp>
 
 namespace proxy {
-   using namespace eos;
+   using namespace eosio;
 
    template<typename T>
    void apply_transfer(account_name code, const T& transfer) {
@@ -45,7 +45,7 @@ namespace proxy {
 }
 
 using namespace proxy;
-using namespace eos;
+using namespace eosio;
 
 extern "C" {
     void init()  {
@@ -59,7 +59,7 @@ extern "C" {
           }
        } else if ( code == N(eos) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, current_message<eos::transfer>());
+             apply_transfer(code, current_message<eosio::transfer>());
           }
        } else if (code == N(proxy) ) {
           if ( action == N(setowner)) {

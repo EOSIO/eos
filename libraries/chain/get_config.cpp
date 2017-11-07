@@ -7,7 +7,7 @@
 #include <eos/chain/config.hpp>
 #include <eos/chain/types.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 fc::variant_object get_config()
 {
@@ -22,4 +22,4 @@ fc::variant_object get_config()
    return result;
 }
 
-} } // eos::chain
+} } // eosio::chain

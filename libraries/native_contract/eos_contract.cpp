@@ -22,11 +22,11 @@
 #include <eos/types/AbiSerializer.hpp>
 
 namespace native {
-namespace eos {
-using namespace ::eos::chain;
-namespace config = ::eos::config;
-namespace chain = ::eos::chain;
-using namespace ::eos::types;
+namespace eosio {
+using namespace chain;
+namespace config = ::eosio::config;
+namespace chain = ::eosio::chain;
+using namespace ::eosio::types;
 
 void validate_authority_precondition( const apply_context& context, const Authority& auth ) {
    for(const auto& a : auth.accounts) {
@@ -102,7 +102,7 @@ void apply_eos_newaccount(apply_context& context) {
 /**
  *
  * @ingroup native_eos
- * @defgroup eos_eos_transfer eos::eos_transfer
+ * @defgroup eos_eos_transfer eosio::eos_transfer
  */
 ///@{
 

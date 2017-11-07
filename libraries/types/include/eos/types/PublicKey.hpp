@@ -7,7 +7,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/reflect/variant.hpp>
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
    struct PublicKey
    {
        struct BinaryKey
@@ -31,13 +31,13 @@ namespace eos { namespace types {
        friend std::ostream& operator<< (std::ostream& s, const PublicKey& k);
        bool is_valid_v1(const std::string& base58str);
    };
-}} // namespace eos::types
+}} // namespace eosio::types
 
 namespace fc
 {
-    void to_variant(const eos::types::PublicKey& var,  fc::variant& vo);
-    void from_variant(const fc::variant& var,  eos::types::PublicKey& vo);
+    void to_variant(const eosio::types::PublicKey& var,  fc::variant& vo);
+    void from_variant(const fc::variant& var,  eosio::types::PublicKey& vo);
 }
 
-FC_REFLECT(eos::types::PublicKey, (key_data))
-FC_REFLECT(eos::types::PublicKey::BinaryKey, (data)(check))
+FC_REFLECT(eosio::types::PublicKey, (key_data))
+FC_REFLECT(eosio::types::PublicKey::BinaryKey, (data)(check))

@@ -16,7 +16,7 @@ var searchData=
   ['invalidtransactionhandle',['InvalidTransactionHandle',['../group__transactioncapi.html#ga58df052e13ad2a3d54a2b1c99a2a8925',1,'transaction.h']]],
   ['iostream',['iostream',['../classeos_1_1iostream.html',1,'eos']]],
   ['is_5fempty_5fcell',['is_empty_cell',['../namespacetic__tac__toe.html#a6f32b76cb96a584daeacd2fd81de47d2',1,'tic_tac_toe']]],
-  ['is_5fown_5fmemory',['is_own_memory',['../classeos_1_1string.html#ae7016991f9aa5d06eb8d638bec96a8b8',1,'eos::string']]],
+  ['is_5fown_5fmemory',['is_own_memory',['../classeos_1_1string.html#ae7016991f9aa5d06eb8d638bec96a8b8',1,'eosio::string']]],
   ['is_5fvalid_5fmovement',['is_valid_movement',['../namespacetic__tac__toe.html#aba689bbd2f10a5bf4fc47223b3d095d0',1,'tic_tac_toe']]],
   ['isempty',['isEmpty',['../group__currencyapi.html#ga1ed0c70916c15371f3d77adf8e73c173',1,'TOKEN_NAME::Account::isEmpty()'],['../structinfinite_1_1_account.html#ab4a8ceaef79aa6f68bdf829d9b5a2f1d',1,'infinite::Account::isEmpty()']]]
 ];

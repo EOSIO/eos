@@ -7,7 +7,7 @@
 
 #include <chainbase/chainbase.hpp>
 
-namespace eos {
+namespace eosio {
 using namespace appbase;
 
 /**

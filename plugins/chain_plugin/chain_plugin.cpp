@@ -24,9 +24,9 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-namespace eos {
+namespace eosio {
 
-using namespace eos;
+using namespace eosio;
 using fc::flat_map;
 using chain::block_id_type;
 using chain::fork_database;
@@ -195,7 +195,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup() 
 { try {
    auto& db = app().get_plugin<database_plugin>().db();
-   eos::chain::applied_irreverisable_block_func applied_func;
+   eosio::chain::applied_irreverisable_block_func applied_func;
    if (db_plugin* plugin = app().find_plugin<db_plugin>()) {
       if (plugin->get_state() != registered) {
          ilog("Blockchain configured with external database.");
@@ -302,7 +302,7 @@ types::Abi getAbi( const chain_controller& db, const Name& account ) {
    const auto& d = db.get_database();
    const auto& code_accnt  = d.get<account_object,by_name>( account );
 
-   eos::types::Abi abi;
+   eosio::types::Abi abi;
    types::AbiSerializer::to_abi(code_accnt.abi, abi);
    return abi;
 }
@@ -393,7 +393,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
       result.wast = chain::wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
-   eos::types::Abi abi;
+   eosio::types::Abi abi;
    if( types::AbiSerializer::to_abi(accnt.abi, abi) ) {
       result.abi = std::move(abi);
    }
@@ -401,7 +401,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-   using namespace native::eos;
+   using namespace native::eosio;
 
    get_account_results result;
    result.name = params.name;

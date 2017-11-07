@@ -10,7 +10,7 @@
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/combine.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 RoundChanges operator-(ProducerRound a, ProducerRound b) {
    boost::sort(a);
@@ -31,29 +31,29 @@ RoundChanges operator-(ProducerRound a, ProducerRound b) {
    return RoundChanges(changes.begin(), changes.end());
 }
 
-} } // namespace eos::chain
+} } // namespace eosio::chain
 
 namespace fc {
-using eos::chain::shared_vector;
-void to_variant(const shared_vector<eos::types::Field>& c, fc::variant& v) {
+using eosio::chain::shared_vector;
+void to_variant(const shared_vector<eosio::types::Field>& c, fc::variant& v) {
    fc::mutable_variant_object mvo; mvo.reserve(c.size());
    for(const auto& f : c) {
-      mvo.set(f.name, eos::types::String(f.type));
+      mvo.set(f.name, eosio::types::String(f.type));
    }
    v = std::move(mvo);
 }
-void from_variant(const fc::variant& v, shared_vector<eos::types::Field>& fields) {
+void from_variant(const fc::variant& v, shared_vector<eosio::types::Field>& fields) {
    const auto& obj = v.get_object();
    fields.reserve(obj.size());
    for(const auto& f : obj)
-      fields.emplace_back(eos::types::Field{ f.key(), f.value().get_string() });
+      fields.emplace_back(eosio::types::Field{ f.key(), f.value().get_string() });
 }
 
-void to_variant(const eos::chain::ProducerRound& r, variant& v) {
-   v = std::vector<eos::chain::AccountName>(r.begin(), r.end());
+void to_variant(const eosio::chain::ProducerRound& r, variant& v) {
+   v = std::vector<eosio::chain::AccountName>(r.begin(), r.end());
 }
-void from_variant(const variant& v, eos::chain::ProducerRound& r) {
-   auto vector = v.as<std::vector<eos::chain::AccountName>>();
+void from_variant(const variant& v, eosio::chain::ProducerRound& r) {
+   auto vector = v.as<std::vector<eosio::chain::AccountName>>();
    FC_ASSERT(vector.size() == r.size(), "Cannot extract ProducerRound from variant `${v}`: sizes do not match",
              ("v", v)("Round Size", r.size()));
    boost::copy(vector, r.begin());

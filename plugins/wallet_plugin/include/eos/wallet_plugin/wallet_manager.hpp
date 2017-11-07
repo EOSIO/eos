@@ -10,7 +10,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
 namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.

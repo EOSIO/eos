@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.11"/>
-<title>EOS.IO: eos::price&lt; BaseToken, QuoteToken &gt; Struct Template Reference</title>
+<title>EOS.IO: eosio::price&lt; BaseToken, QuoteToken &gt; Struct Template Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -98,7 +98,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a href="#friends">Friends</a> &#124;
 <a href="structeos_1_1price-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">eos::price&lt; BaseToken, QuoteToken &gt; Struct Template Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__tokens.html">Token API</a></div></div>  </div>
+<div class="title">eosio::price&lt; BaseToken, QuoteToken &gt; Struct Template Reference<div class="ingroups"><a class="el" href="group__contractdev.html">How To Write Contracts</a> &raquo; <a class="el" href="group__tokens.html">Token API</a></div></div>  </div>
 </div><!--header-->
 <div class="contents">
 
@@ -161,7 +161,7 @@ Friends</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><h3>template&lt;typename BaseToken, typename QuoteToken&gt;<br />
-struct eos::price&lt; BaseToken, QuoteToken &gt;</h3>
+struct eosio::price&lt; BaseToken, QuoteToken &gt;</h3>
 
 <dl class="tparams"><dt>Template Parameters</dt><dd>
   <table class="tparams">
@@ -171,7 +171,7 @@ struct eos::price&lt; BaseToken, QuoteToken &gt;</h3>
   </dd>
 </dl>
 <p>Defines a fixed precision price between two tokens. A price is written as X Base/Quote. Where X is a power of 10 which makes it simpler to just shift the decimal. It supports the following operator: /, \, &lt;=, &lt;, ==, !=, &gt;=, &gt; and also print functionality</p>
-<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eos::token&lt;uint64_t, N(MyBaseToken)&gt;</a> MyBaseToken;</div><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eos::token&lt;uint64_t, N(MyQuoteToken)&gt;</a> MyQuoteToken;</div><div class="line"><span class="keyword">typedef</span> price&lt;MyBaseToken, MyQuoteToken&gt; MyBaseToQuotePrice;</div><div class="line">MyBaseToken zeroBaseToken;</div><div class="line">MyQuoteToken zeroQuoteToken;</div><div class="line">MyBaseToQuotePrice zeroBaseToQuote(zeroBaseToken, zeroQuoteToken); <span class="comment">// throws invalid price exception</span></div><div class="line">MyBaseToken baseToken(128);</div><div class="line">MyQuoteToken quoteToken(128);</div><div class="line">MyBaseToQuotePrice aPrice(baseToken, quoteToken);</div><div class="line">aPrice.print(); <span class="comment">// Output: 1e+15. MyBaseToken / MyQuoteToken</span></div><div class="line">MyQuoteToken anotherQuote = baseToken / <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherQuote == quoteToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToken anotherBase = quoteToken * <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherBase == baseToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToQuotePrice anotherPrice(baseToken, quoteToken);</div><div class="line">std::cout &lt;&lt; (aPrice == anotherPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice != anotherPrice); <span class="comment">// Output: false</span></div><div class="line">MyBaseToken base256(256);</div><div class="line">MyBaseToQuotePrice price2(base256, quoteToken);</div><div class="line">std::cout &lt;&lt; (price2 &gt; aPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice &lt; price2); <span class="comment">// Output: true</span></div></div><!-- fragment --> </div><h2 class="groupheader">Member Typedef Documentation</h2>
+<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eosio::token&lt;uint64_t, N(MyBaseToken)&gt;</a> MyBaseToken;</div><div class="line"><span class="keyword">typedef</span> <a class="code" href="structeos_1_1token.html">eosio::token&lt;uint64_t, N(MyQuoteToken)&gt;</a> MyQuoteToken;</div><div class="line"><span class="keyword">typedef</span> price&lt;MyBaseToken, MyQuoteToken&gt; MyBaseToQuotePrice;</div><div class="line">MyBaseToken zeroBaseToken;</div><div class="line">MyQuoteToken zeroQuoteToken;</div><div class="line">MyBaseToQuotePrice zeroBaseToQuote(zeroBaseToken, zeroQuoteToken); <span class="comment">// throws invalid price exception</span></div><div class="line">MyBaseToken baseToken(128);</div><div class="line">MyQuoteToken quoteToken(128);</div><div class="line">MyBaseToQuotePrice aPrice(baseToken, quoteToken);</div><div class="line">aPrice.print(); <span class="comment">// Output: 1e+15. MyBaseToken / MyQuoteToken</span></div><div class="line">MyQuoteToken anotherQuote = baseToken / <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherQuote == quoteToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToken anotherBase = quoteToken * <a class="code" href="structeos_1_1price.html#ae065041d8a85bab01681306d194f9e2b">price</a>;</div><div class="line">std::cout &lt;&lt; (anotherBase == baseToken); <span class="comment">// Output: true</span></div><div class="line">MyBaseToQuotePrice anotherPrice(baseToken, quoteToken);</div><div class="line">std::cout &lt;&lt; (aPrice == anotherPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice != anotherPrice); <span class="comment">// Output: false</span></div><div class="line">MyBaseToken base256(256);</div><div class="line">MyBaseToQuotePrice price2(base256, quoteToken);</div><div class="line">std::cout &lt;&lt; (price2 &gt; aPrice); <span class="comment">// Output: true</span></div><div class="line">std::cout &lt;&lt; (aPrice &lt; price2); <span class="comment">// Output: true</span></div></div><!-- fragment --> </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a class="anchor" id="a05476d75e3da2435489d4360ae0aa9c8"></a>
 <div class="memitem">
 <div class="memproto">
@@ -179,7 +179,7 @@ struct eos::price&lt; BaseToken, QuoteToken &gt;</h3>
 template&lt;typename BaseToken , typename QuoteToken &gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">typedef BaseToken <a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html#a05476d75e3da2435489d4360ae0aa9c8">base_token_type</a></td>
+          <td class="memname">typedef BaseToken <a class="el" href="structeos_1_1price.html">eosio::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html#a05476d75e3da2435489d4360ae0aa9c8">base_token_type</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -193,7 +193,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
 template&lt;typename BaseToken , typename QuoteToken &gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">typedef QuoteToken <a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html#a60368826b12afaaf30f7690c32ee2e39">quote_token_type</a></td>
+          <td class="memname">typedef QuoteToken <a class="el" href="structeos_1_1price.html">eosio::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html#a60368826b12afaaf30f7690c32ee2e39">quote_token_type</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -211,7 +211,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html">price</a> </td>
+          <td class="memname"><a class="el" href="structeos_1_1price.html">eosio::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html">price</a> </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -237,7 +237,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html">price</a> </td>
+          <td class="memname"><a class="el" href="structeos_1_1price.html">eosio::price</a>&lt; BaseToken, QuoteToken &gt;::<a class="el" href="structeos_1_1price.html">price</a> </td>
           <td>(</td>
           <td class="paramtype">BaseToken&#160;</td>
           <td class="paramname"><em>base</em>, </td>
@@ -281,7 +281,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void <a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::print </td>
+          <td class="memname">void <a class="el" href="structeos_1_1price.html">eosio::price</a>&lt; BaseToken, QuoteToken &gt;::print </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -661,7 +661,7 @@ template&lt;typename BaseToken , typename QuoteToken &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeos_1_1price.html">eos::price</a>&lt; BaseToken, QuoteToken &gt;::precision = 1000ll*1000ll*1000ll*1000ll*1000ll</td>
+          <td class="memname">const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeos_1_1price.html">eosio::price</a>&lt; BaseToken, QuoteToken &gt;::precision = 1000ll*1000ll*1000ll*1000ll*1000ll</td>
         </tr>
       </table>
   </td>

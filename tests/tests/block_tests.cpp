@@ -24,7 +24,7 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 
@@ -125,7 +125,7 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
    Name from("from"), to("to");
    uint64_t amount = 10;
 
-   eos::chain::ProcessedTransaction trx;
+   eosio::chain::ProcessedTransaction trx;
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "eos", 
                       vector<types::AccountPermission>{ {from,"active"} },
@@ -175,7 +175,7 @@ BOOST_FIXTURE_TEST_CASE(irrelevant_auth, testing_fixture) {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(name_test) {
-   using eos::types::Name;
+   using eosio::types::Name;
    Name temp;
    temp = "temp";
    BOOST_CHECK_EQUAL( String("temp"), String(temp) );

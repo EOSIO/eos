@@ -8,7 +8,7 @@
 
 using namespace boost;
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
 
    using boost::algorithm::ends_with;
    using std::vector;

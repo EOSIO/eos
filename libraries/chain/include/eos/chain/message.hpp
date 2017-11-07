@@ -6,7 +6,7 @@
 
 #include <eos/chain/types.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 /**
  * @brief The message struct defines a blockchain message
@@ -56,6 +56,6 @@ struct Message : public types::Message {
 
 
 
-} } // namespace eos::chain
+} } // namespace eosio::chain
 
-FC_REFLECT_DERIVED(eos::chain::Message, (eos::types::Message), )
+FC_REFLECT_DERIVED(eosio::chain::Message, (eosio::types::Message), )

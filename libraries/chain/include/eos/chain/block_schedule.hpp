@@ -9,7 +9,7 @@
 #include <random>
 #include <set>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    using pending_transaction = static_variant<std::reference_wrapper<const SignedTransaction>, std::reference_wrapper<const GeneratedTransaction>>;
 
    struct thread_schedule {
@@ -59,7 +59,7 @@ namespace eos { namespace chain {
       }
    };
 
-} } // eos::chain
+} } // eosio::chain
 
-FC_REFLECT(eos::chain::thread_schedule, (transactions))
-FC_REFLECT(eos::chain::block_schedule, (cycles))
+FC_REFLECT(eosio::chain::thread_schedule, (transactions))
+FC_REFLECT(eosio::chain::block_schedule, (cycles))

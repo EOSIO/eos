@@ -23,13 +23,13 @@ extern "C" {
     void print(const void* const ptr, const uint32_t size)
     {
        const char* char_ptr = (const char*)ptr;
-       eos::print("\n{ ");
+       eosio::print("\n{ ");
        for (uint32_t i = 0; i < size; ++i)
        {
           const char* delim = (i % 8 == 7) ? ", " : " ";
-          eos::print("", static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])), delim);
+          eosio::print("", static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])), delim);
        }
-       eos::print("}\n");
+       eosio::print("}\n");
     }
 
     /*
@@ -39,23 +39,23 @@ extern "C" {
      */
     void test_memory()
     {
-       char* ptr1 = (char*)eos::malloc(0);
+       char* ptr1 = (char*)eosio::malloc(0);
        assert(ptr1 == nullptr, "should not have allocated a 0 char buf");
 
        // 20 chars - 20 + 4(header) which is divisible by 8
-       ptr1 = (char*)eos::malloc(20);
+       ptr1 = (char*)eosio::malloc(20);
        assert(ptr1 != nullptr, "should have allocated a 20 char buf");
        verify(ptr1, 0, 20);
        // existing memory layout -> |24|
 
        // 36 chars allocated - 30 + 4 plus an extra 6 to be divisible by 8
-       char* ptr1_realloc = (char*)eos::realloc(ptr1, 30);
+       char* ptr1_realloc = (char*)eosio::realloc(ptr1, 30);
        assert(ptr1_realloc != nullptr, "should have returned a 30 char buf");
        assert(ptr1_realloc == ptr1, "should have enlarged the 20 char buf");
        // existing memory layout -> |40|
 
        // 20 chars allocated
-       char* ptr2 = (char*)eos::malloc(20);
+       char* ptr2 = (char*)eosio::malloc(20);
        assert(ptr2 != nullptr, "should have allocated another 20 char buf");
        assert(ptr1 + 36 < ptr2, "20 char buf should have been created after ptr1"); // test specific to implementation (can remove for refactor)
        verify(ptr1, 0, 36);
@@ -65,7 +65,7 @@ extern "C" {
        //shrink the buffer
        ptr1[14] = 0x7e;
        // 20 chars allocated (still)
-       ptr1_realloc = (char*)eos::realloc(ptr1, 15);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 15);
        assert(ptr1_realloc != nullptr, "should have returned a 15 char buf");
        assert(ptr1_realloc == ptr1, "should have shrunk the reallocated 30 char buf");
        verify(ptr1, 0, 14); // test specific to implementation (can remove for refactor)
@@ -74,27 +74,27 @@ extern "C" {
 
        //same size the buffer (verify corner case)
        // 20 chars allocated (still)
-       ptr1_realloc = (char*)eos::realloc(ptr1, 15);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 15);
        assert(ptr1_realloc != nullptr, "should have returned a reallocated 15 char buf");
        assert(ptr1_realloc == ptr1, "should have reallocated 15 char buf as the same buf");
        assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched for unchanged buf");
 
        //same size as max allocated buffer -- test specific to implementation (can remove for refactor)
-       ptr1_realloc = (char*)eos::realloc(ptr1, 30);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 30);
        assert(ptr1_realloc != nullptr, "should have returned a 30 char buf");
        assert(ptr1_realloc == ptr1, "should have increased the buf back to orig max"); //test specific to implementation (can remove for refactor)
        assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched for expanded buf");
 
        //increase buffer beyond (indicated) allocated space
        // 36 chars allocated (still)
-       ptr1_realloc = (char*)eos::realloc(ptr1, 36);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 36);
        assert(ptr1_realloc != nullptr, "should have returned a 36 char buf");
        assert(ptr1_realloc == ptr1, "should have increased char buf to actual size"); // test specific to implementation (can remove for refactor)
 
        //increase buffer beyond allocated space
        ptr1[35] = 0x7f;
        // 44 chars allocated - 37 + 4 plus an extra 7 to be divisible by 8
-       ptr1_realloc = (char*)eos::realloc(ptr1, 37);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 37);
        assert(ptr1_realloc != nullptr, "should have returned a 37 char buf");
        assert(ptr1_realloc != ptr1, "should have had to create new 37 char buf from 36 char buf");
        assert(ptr2 < ptr1_realloc, "should have been created after ptr2"); // test specific to implementation (can remove for refactor)
@@ -102,12 +102,12 @@ extern "C" {
        assert(ptr1_realloc[35] == 0x7f, "orig 36 char buf's content should be copied");
 
        //realloc with nullptr
-       char* nullptr_realloc = (char*)eos::realloc(nullptr, 50);
+       char* nullptr_realloc = (char*)eosio::realloc(nullptr, 50);
        assert(nullptr_realloc != nullptr, "should have returned a 50 char buf and ignored nullptr");
        assert(ptr1_realloc < nullptr_realloc, "should have created after ptr1_realloc"); // test specific to implementation (can remove for refactor)
 
        //realloc with invalid ptr
-       char* invalid_ptr_realloc = (char*)eos::realloc(nullptr_realloc + 4, 10);
+       char* invalid_ptr_realloc = (char*)eosio::realloc(nullptr_realloc + 4, 10);
        assert(invalid_ptr_realloc != nullptr, "should have returned a 10 char buf and ignored invalid ptr");
        assert(nullptr_realloc < invalid_ptr_realloc, "should have created invalid_ptr_realloc after nullptr_realloc"); // test specific to implementation (can remove for refactor)
     }
@@ -116,7 +116,7 @@ extern "C" {
     void test_memory_hunk()
     {
        // try to allocate the largest buffer we can, which is 15 contiguous 64K pages (with the 4 char space for the ptr header)
-       char* ptr1 = (char*)eos::malloc(15 * 64 * 1024 - 4);
+       char* ptr1 = (char*)eosio::malloc(15 * 64 * 1024 - 4);
        assert(ptr1 != nullptr, "should have allocated a ~983K char buf");
     }
 
@@ -124,14 +124,14 @@ extern "C" {
     {
        // leave 784 bytes of initial buffer to allocate later (rounds up to nearest 8 byte boundary,
        // 16 bytes bigger than remainder left below in 15 64K page heap))
-       char* ptr1 = (char*)eos::malloc(7404);
+       char* ptr1 = (char*)eosio::malloc(7404);
        assert(ptr1 != nullptr, "should have allocated a 7404 char buf");
 
        char* last_ptr = nullptr;
        // 96 * (10 * 1024 - 15) => 15 ~64K pages with 768 byte buffer left to allocate
        for (int i = 0; i < 96; ++i)
        {
-          char* ptr2 =  (char*)eos::malloc(10 * 1024 - 15);
+          char* ptr2 =  (char*)eosio::malloc(10 * 1024 - 15);
           assert(ptr2 != nullptr, "should have allocated a ~10K char buf");
           if (last_ptr != nullptr)
           {
@@ -143,29 +143,29 @@ extern "C" {
        }
 
        // try to allocate a buffer slightly larger than the remaining buffer| 765 + 4 rounds to 776
-       char* ptr3 =  (char*)eos::malloc(765);
+       char* ptr3 =  (char*)eosio::malloc(765);
        assert(ptr3 != nullptr, "should have allocated a 772 char buf");
        assert(ptr1 + 7408 == ptr3, "should allocate the very next ptr after ptr1 in initial heap"); // test specific to implementation (can remove for refactor)
 
        // use all but 8 chars
-       char* ptr4 = (char*)eos::malloc(764);
+       char* ptr4 = (char*)eosio::malloc(764);
        assert(ptr4 != nullptr, "should have allocated a 764 char buf");
        assert(last_ptr + 10 * 1024 - 8 == ptr4, "should allocate the very next ptr after last_ptr at end of contiguous heap"); // test specific to implementation (can remove for refactor)
 
        // use up remaining 8 chars
-       char* ptr5 = (char*)eos::malloc(4);
+       char* ptr5 = (char*)eosio::malloc(4);
        assert(ptr5 != nullptr, "should have allocated a 4 char buf");
        assert(ptr3 + 776 == ptr5, "should allocate the very next ptr after ptr3 in initial heap"); // test specific to implementation (can remove for refactor)
 
        // nothing left to allocate
-       char* ptr6 = (char*)eos::malloc(4);
+       char* ptr6 = (char*)eosio::malloc(4);
        assert(ptr6 == nullptr, "should not have allocated a char buf");
     }
 
     void test_memory_hunks_disjoint()
     {
        // leave 8 bytes of initial buffer to allocate later
-       char* ptr1 = (char*)eos::malloc(8 * 1024 - 12);
+       char* ptr1 = (char*)eosio::malloc(8 * 1024 - 12);
        assert(ptr1 != nullptr, "should have allocated a 8184 char buf");
 
        // can only make 14 extra (64K) heaps for malloc, since calls to sbrk will eat up part
@@ -174,7 +174,7 @@ extern "C" {
        for (int i = 0; i < 14; ++i)
        {
           // allocates a new heap for each request, since sbrk call doesn't allow contiguous heaps to grow
-          loop_ptr1[i] = (char*)eos::malloc(64 * 1024 - 28);
+          loop_ptr1[i] = (char*)eosio::malloc(64 * 1024 - 28);
           assert(loop_ptr1[i] != nullptr, "should have allocated a 64K char buf");
 
           assert(sbrk(4) != nullptr, "should be able to allocate 8 bytes");
@@ -182,28 +182,28 @@ extern "C" {
 
        // the 15th extra heap is reduced in size because of the 14 * 8 bytes allocated by sbrk calls
        // will leave 8 bytes to allocate later (verifying that we circle back in the list
-       char* ptr2 = (char*)eos::malloc(65412);
+       char* ptr2 = (char*)eosio::malloc(65412);
        assert(ptr2 != nullptr, "should have allocated a 65412 char buf");
 
        char* loop_ptr2[14];
        for (int i = 0; i < 14; ++i)
        {
           // 12 char buffer to leave 8 bytes for another pass
-          loop_ptr2[i] = (char*)eos::malloc(12);
+          loop_ptr2[i] = (char*)eosio::malloc(12);
           assert(loop_ptr2[i] != nullptr, "should have allocated a 12 char buf");
           assert(loop_ptr1[i] + 64 * 1024 - 24 == loop_ptr2[i], "loop_ptr2[i] should be very next pointer after loop_ptr1[i]");
        }
 
        // this shows that searching for free ptrs starts at the last loop to find free memory, not at the begining
-       char* ptr3 = (char*)eos::malloc(4);
+       char* ptr3 = (char*)eosio::malloc(4);
        assert(ptr3 != nullptr, "should have allocated a 4 char buf");
        assert(loop_ptr2[13] + 16 == ptr3, "should allocate the very next ptr after loop_ptr2[13]"); // test specific to implementation (can remove for refactor)
 
-       char* ptr4 = (char*)eos::malloc(4);
+       char* ptr4 = (char*)eosio::malloc(4);
        assert(ptr4 != nullptr, "should have allocated a 4 char buf");
        assert(ptr2 + 65416 == ptr4, "should allocate the very next ptr after ptr2 in last heap"); // test specific to implementation (can remove for refactor)
 
-       char* ptr5 = (char*)eos::malloc(4);
+       char* ptr5 = (char*)eosio::malloc(4);
        assert(ptr5 != nullptr, "should have allocated a 4 char buf");
        assert(ptr1 + 8184 == ptr5, "should allocate the very next ptr after ptr1 in last heap"); // test specific to implementation (can remove for refactor)
 
@@ -212,22 +212,22 @@ extern "C" {
        for (int i = 0; i < 13; ++i)
        {
           // 4 char buffer to use up buffer
-          loop_ptr3[i] = (char*)eos::malloc(4);
+          loop_ptr3[i] = (char*)eosio::malloc(4);
           assert(loop_ptr3[i] != nullptr, "should have allocated a 4 char buf");
           assert(loop_ptr2[i] + 16 == loop_ptr3[i], "loop_ptr3[i] should be very next pointer after loop_ptr2[i]");
        }
 
-       char* ptr6 = (char*)eos::malloc(4);
+       char* ptr6 = (char*)eosio::malloc(4);
        assert(ptr6 == nullptr, "should not have allocated a char buf");
 
-       eos::free(loop_ptr1[3]);
-       eos::free(loop_ptr2[3]);
-       eos::free(loop_ptr3[3]);
+       eosio::free(loop_ptr1[3]);
+       eosio::free(loop_ptr2[3]);
+       eosio::free(loop_ptr3[3]);
 
        char* slot3_ptr[64];
        for (int i = 0; i < 64; ++i)
        {
-          slot3_ptr[i] = (char*)eos::malloc(1020);
+          slot3_ptr[i] = (char*)eosio::malloc(1020);
           assert(slot3_ptr[i] != nullptr, "should have allocated a 1020 char buf");
           if (i == 0)
              assert(loop_ptr1[3] == slot3_ptr[0], "loop_ptr1[3] should be very next pointer after slot3_ptr[0]");
@@ -235,7 +235,7 @@ extern "C" {
              assert(slot3_ptr[i - 1] + 1024 == slot3_ptr[i], "slot3_ptr[i] should be very next pointer after slot3_ptr[i-1]");
        }
 
-       char* ptr7 = (char*)eos::malloc(4);
+       char* ptr7 = (char*)eosio::malloc(4);
        assert(ptr7 == nullptr, "should not have allocated a char buf");
     }
 

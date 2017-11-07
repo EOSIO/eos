@@ -20,20 +20,20 @@
 //
 // and inside the store/load functions (table_impl_obj) we need to call value_to_bytes/bytes_to_value accordingly
 
-namespace eos {
+namespace eosio {
    template<typename T>
    T bytes_to_value(const bytes& bytes_val) { return *reinterpret_cast<T*>(bytes_val.data); }
 
    template<>
    key_value1 current_message<key_value1>() {
       uint32_t msgsize = message_size();
-      char* buffer = (char *)eos::malloc(msgsize);
+      char* buffer = (char *)eosio::malloc(msgsize);
       assert(read_message(buffer, msgsize) == msgsize, "error reading key_value1");
       datastream<char *> ds(buffer, msgsize);
       key_value1 value;
       raw::unpack(ds, value.key);
       raw::unpack(ds, value.value);
-      eos::free(buffer);
+      eosio::free(buffer);
       return value;
    }
 
@@ -41,7 +41,7 @@ namespace eos {
       uint32_t maxsize=0;
       maxsize += s.value.get_size() + 4;
       
-      char* buffer = (char *)eos::malloc(maxsize);
+      char* buffer = (char *)eosio::malloc(maxsize);
       datastream<char *> ds(buffer, maxsize);     
 
       raw::pack(ds, s.value);
@@ -64,14 +64,14 @@ namespace eos {
    template<>
    key_value2 current_message<key_value2>() {
       uint32_t msgsize = message_size();
-      char* buffer = (char *)eos::malloc(msgsize);
+      char* buffer = (char *)eosio::malloc(msgsize);
       assert(read_message(buffer, msgsize) == msgsize, "error reading key_value2");
       datastream<char *> ds(buffer, msgsize);
       key_value2 value;
       raw::unpack(ds, value.key);
       raw::unpack(ds, value.value.name);
       raw::unpack(ds, value.value.age);
-      eos::free(buffer);
+      eosio::free(buffer);
       return value;
    }
 
@@ -80,7 +80,7 @@ namespace eos {
       maxsize += s.value.name.get_size() + 4;
       maxsize += sizeof(s.value.age);
       
-      char* buffer = (char *)eos::malloc(maxsize);
+      char* buffer = (char *)eosio::malloc(maxsize);
       datastream<char *> ds(buffer, maxsize);     
 
       raw::pack(ds, s.value.name);

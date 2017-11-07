@@ -4,7 +4,7 @@
  */
 #include <eos/chain/key_value_object.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 /// find_tuple helper
 template <typename T>
@@ -338,4 +338,4 @@ struct upper_bound_tuple<key64x64x64_value_object, by_scope_tertiary> {
    }
 };
 
-} } // eos::chain
+} } // eosio::chain

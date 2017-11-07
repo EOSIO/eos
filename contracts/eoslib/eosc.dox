@@ -24,18 +24,18 @@
   @section intro Introduction to EOSC
 
   `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
-  have a local copy of `eosd` running and configured to load the 'eos::chain_api_plugin'.
+  have a local copy of `eosd` running and configured to load the 'eosio::chain_api_plugin'.
 
-  In order to sign transaction and push it to the blockchain, you will need to have the 'eos::wallet_api_plugin'
+  In order to sign transaction and push it to the blockchain, you will need to have the 'eosio::wallet_api_plugin'
   loaded.
 
-  And in order to query account history and transaction, you will need to have the 'eos::account_history_api_plugin' loaded.
+  And in order to query account history and transaction, you will need to have the 'eosio::account_history_api_plugin' loaded.
   ```
   # Plugin(s) to enable, may be specified multiple times
-   plugin = eos::producer_plugin
-   plugin = eos::chain_api_plugin
-   plugin = eos::wallet_api_plugin
-   plugin = eos::account_history_api_plugin
+   plugin = eosio::producer_plugin
+   plugin = eosio::chain_api_plugin
+   plugin = eosio::wallet_api_plugin
+   plugin = eosio::account_history_api_plugin
   ```
 
   After starting `eosd` you should be able to query the current blockchain state like so:

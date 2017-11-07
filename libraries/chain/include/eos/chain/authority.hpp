@@ -6,7 +6,7 @@
 #include <eos/chain/types.hpp>
 #include <eos/types/generated.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 struct shared_authority {
    shared_authority( chainbase::allocator<char> alloc )
       :accounts(alloc),keys(alloc)
@@ -70,6 +70,6 @@ inline bool validate(const types::Authority& auth) {
    return totalWeight >= auth.threshold;
 }
 
-} } // namespace eos::chain
+} } // namespace eosio::chain
 
-FC_REFLECT(eos::chain::shared_authority, (threshold)(accounts)(keys))
+FC_REFLECT(eosio::chain::shared_authority, (threshold)(accounts)(keys))

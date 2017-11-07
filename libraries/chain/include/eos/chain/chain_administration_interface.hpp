@@ -11,7 +11,7 @@
 
 namespace chainbase { class database; }
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 class chain_controller;
 
 /**
@@ -33,4 +33,4 @@ public:
                                                                 const ProducerRound& round) = 0;
 };
 
-} } // namespace eos::chain
+} } // namespace eosio::chain

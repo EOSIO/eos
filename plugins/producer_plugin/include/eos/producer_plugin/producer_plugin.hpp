@@ -9,7 +9,7 @@
 
 #include <appbase/application.hpp>
 
-namespace eos {
+namespace eosio {
 
 namespace block_production_condition {
    enum block_production_condition_enum

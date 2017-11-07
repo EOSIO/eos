@@ -17,8 +17,8 @@
 #include <fc/io/json.hpp>
 #include <eos/native_contract/genesis_state.hpp>
 
-using namespace eos::chain;
-using eos::native_contract::genesis_state_type;
+using namespace eosio::chain;
+using eosio::native_contract::genesis_state_type;
 
 static const char generated_file_banner[] =
 "//                                   _           _    __ _ _        //\n"
@@ -41,9 +41,9 @@ static const char generated_file_banner[] =
 
 // hack:  import create_example_genesis() even though it's a way, way
 // specific internal detail
-namespace eos { namespace app { namespace detail {
+namespace eosio { namespace app { namespace detail {
 genesis_state_type create_example_genesis();
-} } } // eos::app::detail
+} } } // eosio::app::detail
 
 fc::path get_path(
    const boost::program_options::variables_map& options,

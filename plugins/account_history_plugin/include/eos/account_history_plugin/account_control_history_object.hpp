@@ -7,7 +7,7 @@
 #include <chainbase/chainbase.hpp>
 #include <eos/chain/types.hpp>
 
-namespace eos {
+namespace eosio {
 using chain::AccountName;
 using chain::PermissionName;
 using chain::shared_vector;
@@ -45,7 +45,7 @@ typedef chainbase::generic_index<account_control_history_multi_index> account_co
 
 }
 
-CHAINBASE_SET_INDEX_TYPE( eos::account_control_history_object, eos::account_control_history_multi_index )
+CHAINBASE_SET_INDEX_TYPE( eosio::account_control_history_object, eosio::account_control_history_multi_index )
 
-FC_REFLECT( eos::account_control_history_object, (controlled_account)(controlled_permission)(controlling_account) )
+FC_REFLECT( eosio::account_control_history_object, (controlled_account)(controlled_permission)(controlling_account) )
 

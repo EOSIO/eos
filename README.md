@@ -180,12 +180,12 @@ producer-name = inits
 producer-name = initt
 producer-name = initu
 # Load the block producer plugin, so you can produce blocks
-plugin = eos::producer_plugin
+plugin = eosio::producer_plugin
 # Wallet plugin
-plugin = eos::wallet_api_plugin
+plugin = eosio::wallet_api_plugin
 # As well as API and HTTP plugins
-plugin = eos::chain_api_plugin
-plugin = eos::http_plugin
+plugin = eosio::chain_api_plugin
+plugin = eosio::http_plugin
 ```
 
 Now it should be possible to run `eosd` and see it begin producing blocks.
@@ -218,7 +218,7 @@ cd ~/eos/build/programs/eosd/
 <a name="walletimport"></a>
 ### Setting up a wallet and importing account key 
 
-As you've previously added `plugin = eos::wallet_api_plugin` into `config.ini`, EOS wallet will be running as a part of `eosd` process. Every contract requires an associated account, so first, create a wallet.
+As you've previously added `plugin = eosio::wallet_api_plugin` into `config.ini`, EOS wallet will be running as a part of `eosd` process. Every contract requires an associated account, so first, create a wallet.
 
 ```bash
 cd ~/eos/build/programs/eosc/

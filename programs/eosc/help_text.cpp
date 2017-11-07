@@ -6,7 +6,7 @@
 #include "localize.hpp"
 #include <regex>
 
-using namespace eos::client::localize;
+using namespace eosio::client::localize;
 
 const char* transaction_help_text_header = _("An error occurred while submitting the transaction for this command!");
 
@@ -96,7 +96,7 @@ auto smatch_to_variant(const std::smatch& smatch) {
    return result;
 };
 
-namespace eos { namespace client { namespace help {
+namespace eosio { namespace client { namespace help {
 
 bool print_help_text(const fc::exception& e) {
    bool result = false;

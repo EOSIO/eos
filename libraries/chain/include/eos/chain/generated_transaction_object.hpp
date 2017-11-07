@@ -13,7 +13,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
    /**
@@ -57,6 +57,6 @@ namespace eos { namespace chain {
    typedef chainbase::generic_index<generated_transaction_multi_index> generated_transaction_index;
 } }
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::generated_transaction_object, eos::chain::generated_transaction_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
 
-FC_REFLECT( eos::chain::generated_transaction_object, (trx) )
+FC_REFLECT( eosio::chain::generated_transaction_object, (trx) )

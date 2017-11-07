@@ -47,9 +47,9 @@ unsigned int test_message::read_message_to_64k() {
 
 unsigned int test_message::require_notice() {
    if( current_code() == N(testapi) ) {
-      eos::require_notice( N(acc1) );
-      eos::require_notice( N(acc2) );
-      eos::require_notice( N(acc1), N(acc2) );
+      eosio::require_notice( N(acc1) );
+      eosio::require_notice( N(acc2) );
+      eosio::require_notice( N(acc1), N(acc2) );
       return WASM_TEST_FAIL;
    } else if ( current_code() == N(acc1) || current_code() == N(acc2) ) {
       return WASM_TEST_PASS;
@@ -58,8 +58,8 @@ unsigned int test_message::require_notice() {
 }
 
 unsigned int test_message::require_auth() {
-   eos::require_auth( N(acc3) );
-   eos::require_auth( N(acc4) );
+   eosio::require_auth( N(acc3) );
+   eosio::require_auth( N(acc4) );
    return WASM_TEST_PASS;
 }
 

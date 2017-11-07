@@ -6,7 +6,7 @@
 #include <eos/chain/exceptions.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 fork_database::fork_database()
 {
 }
@@ -230,4 +230,4 @@ void fork_database::remove(block_id_type id)
    _index.get<block_id>().erase(id);
 }
 
-} } // eos::chain
+} } // eosio::chain

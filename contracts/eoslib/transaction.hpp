@@ -6,7 +6,7 @@
 #include <eoslib/transaction.h>
 #include <eoslib/print.hpp>
 
-namespace eos {
+namespace eosio {
 
    /**
     * @defgroup transactioncppapi transaction C++ API

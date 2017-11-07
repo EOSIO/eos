@@ -35,55 +35,55 @@ extern "C" {
        // initial buffer will be exhausted at 8192
 
        // 8176 left (12 + ptr header)
-       char* ptr1 = (char*)eos::malloc(12);
+       char* ptr1 = (char*)eosio::malloc(12);
        assert(ptr1 != nullptr, "should have allocated 12 char buf");
        // leave a little space at end of 1st buffer
-       char* ptr2 = (char*)eos::malloc(8159);
+       char* ptr2 = (char*)eosio::malloc(8159);
        assert(ptr2 != nullptr, "should have allocated 8159 char buf");
 
        // allocated in 2nd memory heap
-       char* ptr3 = (char*)eos::malloc(20);
+       char* ptr3 = (char*)eosio::malloc(20);
        assert(ptr3 != nullptr, "should have allocated a 20 char buf");
        verify(ptr3, 0, 20);
        // re-sized in 1st memory heap
-       char* ptr2_realloc = (char*)eos::realloc(ptr2, 8172);
+       char* ptr2_realloc = (char*)eosio::realloc(ptr2, 8172);
        assert(ptr2_realloc != nullptr, "should have returned a 8172 char buf");
        assert(ptr2_realloc == ptr2, "should have enlarged the 8159 char buf");
 
        // re-sized in 1st memory heap
-       char* ptr1_realloc = (char*)eos::realloc(ptr1, 5);
+       char* ptr1_realloc = (char*)eosio::realloc(ptr1, 5);
        assert(ptr1_realloc != nullptr, "should have returned a 5 char buf");
        assert(ptr1_realloc == ptr1, "should have shrunk the 10 char buf");
 
        // allocated in 2nd memory heap
-       char* ptr4 = (char*)eos::malloc(20);
+       char* ptr4 = (char*)eosio::malloc(20);
        assert(ptr4 != nullptr, "should have allocated another 20 char buf");
        assert(ptr3 + 20 < ptr4, "20 char buf should have been created after ptr3"); // test specific to implementation (can remove for refactor)
 
        // re-size back to original
-       ptr1_realloc = (char*)eos::realloc(ptr1, 10);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 10);
        assert(ptr1_realloc != nullptr, "should have returned a 10 char buf");
        assert(ptr1_realloc == ptr1, "should have enlarged the 5 char buf");
 
        // re-size into 2nd memory heap
-       ptr1_realloc = (char*)eos::realloc(ptr1, 13);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 13);
        assert(ptr1_realloc != nullptr, "should have returned a 13 char buf");
        assert(ptr1_realloc != ptr1, "should have reallocated the 12 char buf");
        assert(ptr4 + 20 < ptr1_realloc, "11 char buf should have been created after ptr4"); // test specific to implementation (can remove for refactor)
 
        // allocate rest of 2nd memory heap (1024 chars total)
        ptr1 = ptr1_realloc;
-       ptr1_realloc = (char*)eos::realloc(ptr1, 972);
+       ptr1_realloc = (char*)eosio::realloc(ptr1, 972);
        assert(ptr1_realloc != nullptr, "should have returned a 972 char buf");
        assert(ptr1_realloc == ptr1, "should have resized the 11 char buf");
 
        // allocated in 3rd memory heap (all of 1024 chars)
-       char* ptr5 = (char*)eos::malloc(1020);
+       char* ptr5 = (char*)eosio::malloc(1020);
        assert(ptr5 != nullptr, "should have allocated a 1020 char buf");
        assert(ptr1_realloc + 972 < ptr5, "972 char buf should have been created after ptr1_realloc"); // test specific to implementation (can remove for refactor)
 
        // allocated in 4th memory heap
-       char* ptr6 = (char*)eos::malloc(996);
+       char* ptr6 = (char*)eosio::malloc(996);
        assert(ptr6 != nullptr, "should have allocated a 996 char buf");
        assert(ptr5 + 1020 < ptr6, "1020 char buf should have been created after ptr5"); // test specific to implementation (can remove for refactor)
     }

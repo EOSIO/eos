@@ -35,7 +35,7 @@ namespace TOKEN_NAME {
    /**
    * Defines a currency token
    */
-   typedef eos::token<uint64_t,N(currency)> currency_tokens;
+   typedef eosio::token<uint64_t,N(currency)> currency_tokens;
 
    /**
     *  transfer requires that the sender and receiver be the first two

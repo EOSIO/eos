@@ -7,7 +7,7 @@
 
 #include <cstdlib>
 
-namespace eos { namespace utilities {
+namespace eosio { namespace utilities {
 
 fc::path temp_directory_path()
 {
@@ -17,4 +17,4 @@ fc::path temp_directory_path()
    return fc::temp_directory_path() / "eos-tmp";
 }
 
-} } // eos::utilities
+} } // eosio::utilities

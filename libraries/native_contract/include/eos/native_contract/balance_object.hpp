@@ -12,10 +12,10 @@
 #include <chainbase/chainbase.hpp>
 
 namespace native {
-namespace eos {
-namespace chain = ::eos::chain;
-namespace types = ::eos::types;
-namespace config = ::eos::config;
+namespace eosio {
+namespace chain = ::eosio::chain;
+namespace types = ::eosio::types;
+namespace config = ::eosio::config;
 
 /**
  * @brief The BalanceObject class tracks the EOS balance for accounts
@@ -44,4 +44,4 @@ using BalanceMultiIndex = chainbase::shared_multi_index_container<
 
 } } // namespace native::eos
 
-CHAINBASE_SET_INDEX_TYPE(native::eos::BalanceObject, native::eos::BalanceMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eosio::BalanceObject, native::eosio::BalanceMultiIndex)

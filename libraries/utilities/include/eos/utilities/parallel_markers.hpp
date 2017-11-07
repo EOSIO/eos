@@ -8,7 +8,7 @@
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
-namespace eos { namespace utilities {
+namespace eosio { namespace utilities {
 
 /**
  * @brief Return values in DataRange corresponding to matching Markers
@@ -39,5 +39,5 @@ DataRange FilterDataByMarker(DataRange data, MarkerRange markers, const Marker& 
    return {range.begin(), range.end()};
 }
 
-}} // namespace eos::utilities
+}} // namespace eosio::utilities
 

@@ -17,9 +17,9 @@
 
 #include "../common/database_fixture.hpp"
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
-using rate_limiting_type = eos::chain::testing_blockchain::rate_limit_type;
+using rate_limiting_type = eosio::chain::testing_blockchain::rate_limit_type;
 
 BOOST_AUTO_TEST_SUITE(chain_tests)
 
@@ -63,60 +63,60 @@ void transaction_msg_rate_calculation(rate_limiting_type account_type)
    fc::time_point_sec rate_limit_time_frame_sec(10);
    uint32_t rate_limit = 10;
    uint32_t previous_rate = 9;
-   auto rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   auto rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                        rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(10, rate);
 
    previous_rate = 10;
-   BOOST_CHECK_EXCEPTION(eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   BOOST_CHECK_EXCEPTION(eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                                  rate_limit, previous_rate, account_type, N(my.name)),\
                          tx_msgs_exceeded,
                          [](tx_msgs_exceeded const & e) -> bool { return true; } );
 
    last_update_sec = fc::time_point_sec(10);
    now = fc::time_point_sec(11);
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(10, rate);
 
    now = fc::time_point_sec(12);
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(9, rate);
 
    now = fc::time_point_sec(13);
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(8, rate);
 
    now = fc::time_point_sec(19);
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(2, rate);
 
    now = fc::time_point_sec(19);
    // our scenario will never have a previous_rate higher than max (since it was limited) but just checking algorithm
    previous_rate = 90;
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(10, rate);
 
    now = fc::time_point_sec(20);
    // our scenario will never have a previous_rate higher than max (since it was limited) but just checking algorithm
    previous_rate = 10000;
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(1, rate);
 
    now = fc::time_point_sec(2000);
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(1, rate);
 
    rate_limit_time_frame_sec = fc::time_point_sec(10000);
    now = fc::time_point_sec(2010);
    previous_rate = 10;
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(9, rate);
 
@@ -124,12 +124,12 @@ void transaction_msg_rate_calculation(rate_limiting_type account_type)
    now = fc::time_point_sec(10000);
    last_update_sec = fc::time_point_sec(9999);
    previous_rate = 10000;
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                   rate_limit, previous_rate, account_type, N(my.name));
    BOOST_CHECK_EQUAL(10000, rate);
 
    last_update_sec = fc::time_point_sec(10000);
-   BOOST_CHECK_EXCEPTION(eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   BOOST_CHECK_EXCEPTION(eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                                  rate_limit, previous_rate, account_type, N(my.name)),\
                          tx_msgs_exceeded,
                          [](tx_msgs_exceeded const & e) -> bool { return true; } );
@@ -147,39 +147,39 @@ void transaction_msg_rate_running_calculation(rate_limiting_type account_type)
    uint32_t rate = 0;
    for (uint32_t i = 0; i < 1000; ++i)
    {
-      rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+      rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                           rate_limit, rate, account_type, N(my.name));
    }
    BOOST_REQUIRE_EQUAL(1000, rate);
 
-   BOOST_REQUIRE_EXCEPTION(eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   BOOST_REQUIRE_EXCEPTION(eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                                    rate_limit, rate, account_type, N(my.name)),\
                            tx_msgs_exceeded,
                            [](tx_msgs_exceeded const & e) -> bool { return true; } );
 
    now += 1;
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                        rate_limit, rate, account_type, N(my.name));
    BOOST_REQUIRE_EQUAL(1000, rate);
 
    last_update_sec = now;
-   BOOST_REQUIRE_EXCEPTION(eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   BOOST_REQUIRE_EXCEPTION(eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                                    rate_limit, rate, account_type, N(my.name)),\
                            tx_msgs_exceeded,
                            [](tx_msgs_exceeded const & e) -> bool { return true; } );
 
    now += 10;
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                        rate_limit, rate, account_type, N(my.name));
    last_update_sec = now;
    for (uint32_t i = 0; i < 9; ++i)
    {
-      rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+      rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                           rate_limit, rate, account_type, N(my.name));
    }
    BOOST_REQUIRE_EQUAL(1000, rate);
 
-   BOOST_REQUIRE_EXCEPTION(eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   BOOST_REQUIRE_EXCEPTION(eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                                    rate_limit, rate, account_type, N(my.name)),\
                            tx_msgs_exceeded,
                            [](tx_msgs_exceeded const & e) -> bool { return true; } );
@@ -188,24 +188,24 @@ void transaction_msg_rate_running_calculation(rate_limiting_type account_type)
    {
 
       now += 10;
-      rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+      rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                           rate_limit, rate, account_type, N(my.name));
       last_update_sec = now;
       for (uint32_t i = 0; i < 9; ++i)
       {
-         rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+         rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                              rate_limit, rate, account_type, N(my.name));
       }
       BOOST_REQUIRE_EQUAL(1000, rate);
 
-      BOOST_REQUIRE_EXCEPTION(eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+      BOOST_REQUIRE_EXCEPTION(eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                                       rate_limit, rate, account_type, N(my.name)),\
                               tx_msgs_exceeded,
                               [](tx_msgs_exceeded const & e) -> bool { return true; } );
    }
 
    now += 100;
-   rate = eos::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
+   rate = eosio::chain::chain_controller::_transaction_message_rate(now, last_update_sec, rate_limit_time_frame_sec,
                                                                        rate_limit, rate, account_type, N(my.name));
    BOOST_REQUIRE_EQUAL(901, rate);
 } FC_LOG_AND_RETHROW() }

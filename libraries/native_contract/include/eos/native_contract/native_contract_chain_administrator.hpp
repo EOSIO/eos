@@ -6,7 +6,7 @@
 
 #include <eos/chain/chain_administration_interface.hpp>
 
-namespace eos { namespace native_contract {
+namespace eosio { namespace native_contract {
 using chain::ProducerRound;
 
 class native_contract_chain_administrator : public chain::chain_administration_interface {
@@ -19,4 +19,4 @@ inline std::unique_ptr<chain::chain_administration_interface> make_administrator
    return std::unique_ptr<chain::chain_administration_interface>(new native_contract_chain_administrator());
 }
 
-} } // namespace eos::native_contract
+} } // namespace eosio::native_contract

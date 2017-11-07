@@ -30,7 +30,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
 
 using chain::AccountName;
 using chain::FuncName;
@@ -82,7 +82,7 @@ public:
 
    void consum_blocks();
 
-   bool is_scope_relevant(const eos::types::Vector<AccountName>& scope);
+   bool is_scope_relevant(const eosio::types::Vector<AccountName>& scope);
    void update_account(const chain::Message& msg);
 
    static const FuncName newaccount;
@@ -429,8 +429,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
 
       Asset from_balance = Asset::fromString(from_account.view()["eos_balance"].get_utf8().value.to_string());
       Asset to_balance = Asset::fromString(to_account.view()["eos_balance"].get_utf8().value.to_string());
-      from_balance -= eos::types::ShareType(transfer.amount);
-      to_balance += eos::types::ShareType(transfer.amount);
+      from_balance -= eosio::types::ShareType(transfer.amount);
+      to_balance += eosio::types::ShareType(transfer.amount);
 
       document update_from{};
       update_from << "$set" << open_document << "eos_balance" << from_balance.toString()
@@ -560,7 +560,7 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
    }
 }
 
-bool db_plugin_impl::is_scope_relevant(const eos::types::Vector<AccountName>& scope)
+bool db_plugin_impl::is_scope_relevant(const eosio::types::Vector<AccountName>& scope)
 {
    for (const AccountName& account_name : scope)
       if (filter_on.count(account_name))
@@ -717,7 +717,7 @@ void db_plugin::plugin_initialize(const variables_map& options)
       }
       my->init();
    } else {
-      wlog("eos::db_plugin configured, but no --mongodb-uri specified.");
+      wlog("eosio::db_plugin configured, but no --mongodb-uri specified.");
       wlog("db_plugin disabled.");
    }
 #endif

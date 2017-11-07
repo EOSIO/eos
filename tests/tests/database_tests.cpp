@@ -14,7 +14,7 @@
 
 #include "../common/database_fixture.hpp"
 
-namespace eos {
+namespace eosio {
 using namespace chain;
 namespace bfs = boost::filesystem;
 
@@ -60,7 +60,7 @@ BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
       // Check the last irreversible block number is set correctly
       BOOST_CHECK_EQUAL(chain.last_irreversible_block_num(), 6);
       // Check that block 21 cannot be found (only 20 blocks exist)
-      BOOST_CHECK_THROW(chain.get_block_id_for_num(21), eos::chain::unknown_block_exception);
+      BOOST_CHECK_THROW(chain.get_block_id_for_num(21), eosio::chain::unknown_block_exception);
 
         chain.produce_blocks();
       // Check the last irreversible block number is updated correctly

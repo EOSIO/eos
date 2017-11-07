@@ -5,7 +5,7 @@
 #pragma once
 #include <eos/types/types.hpp>
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
 
 using std::map;
 using std::string;
@@ -75,4 +75,4 @@ struct AbiSerializer {
    void binaryToVariant(const TypeName& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj )const;
 };
 
-} } // eos::types
+} } // eosio::types
