@@ -27,7 +27,7 @@ extern "C" {
  *  cause your transaction to fail.
  *
  *
- *  @section tabletypes Table Types
+ *  @section tabletypes table Types
  *  There are several supported table types identified by the number and
  *  size of the index.  
  *
@@ -55,17 +55,17 @@ extern "C" {
  */
 
 /**
- * @defgroup dbi64  Single 64 bit Index Table
+ * @defgroup dbi64  Single 64 bit Index table
  * @brief These methods interface with a simple table with 64 bit unique primary key and arbitrary binary data value.
  * @ingroup databaseC
  *
- * @see Table class in C++ API
+ * @see table class in C++ API
  *
  * Example
  * @code
  * #pragma pack(push, 1)
  * struct TestModel {
- *    AccountName   name;
+ *    account_name   name;
  *    unsigned char age;
  *    uint64_t      phone;
  * };
@@ -130,7 +130,7 @@ extern "C" {
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
-int32_t store_i64( AccountName scope, TableName table, const void* data, uint32_t datalen );
+int32_t store_i64( account_name scope, table_name table, const void* data, uint32_t datalen );
 
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -149,7 +149,7 @@ int32_t store_i64( AccountName scope, TableName table, const void* data, uint32_
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
-int32_t update_i64( AccountName scope, TableName table, const void* data, uint32_t datalen );
+int32_t update_i64( account_name scope, table_name table, const void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -160,7 +160,7 @@ int32_t update_i64( AccountName scope, TableName table, const void* data, uint32
  *
  *  @return the number of bytes read or -1 if key was not found
  */
-int32_t load_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t load_i64( account_name scope, account_name code, table_name table, void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -171,7 +171,7 @@ int32_t load_i64( AccountName scope, AccountName code, TableName table, void* da
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t front_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t front_i64( account_name scope, account_name code, table_name table, void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -182,7 +182,7 @@ int32_t front_i64( AccountName scope, AccountName code, TableName table, void* d
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t back_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t back_i64( account_name scope, account_name code, table_name table, void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -193,7 +193,7 @@ int32_t back_i64( AccountName scope, AccountName code, TableName table, void* da
  *
  *  @return the number of bytes read or -1 if key was not found
  */
-int32_t next_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t next_i64( account_name scope, account_name code, table_name table, void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -204,7 +204,7 @@ int32_t next_i64( AccountName scope, AccountName code, TableName table, void* da
  *
  *  @return the number of bytes read or -1 if key was not found
  */
-int32_t previous_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t previous_i64( account_name scope, account_name code, table_name table, void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -215,7 +215,7 @@ int32_t previous_i64( AccountName scope, AccountName code, TableName table, void
  *
  *  @return the number of bytes read or -1 if key was not found
  */
-int32_t lower_bound_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t lower_bound_i64( account_name scope, account_name code, table_name table, void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -226,7 +226,7 @@ int32_t lower_bound_i64( AccountName scope, AccountName code, TableName table, v
  *
  *  @return the number of bytes read or -1 if key was not found
  */
-int32_t upper_bound_i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t datalen );
+int32_t upper_bound_i64( account_name scope, account_name code, table_name table, void* data, uint32_t datalen );
 
 /**
  *  @param scope - the account socpe that will be read, must exist in the transaction scopes list
@@ -235,16 +235,16 @@ int32_t upper_bound_i64( AccountName scope, AccountName code, TableName table, v
  *
  *  @return 1 if a record was removed, and 0 if no record with key was found
  */
-int32_t remove_i64( AccountName scope, TableName table, void* data );
+int32_t remove_i64( account_name scope, table_name table, void* data );
 
 ///@} db_i64
 
 /**
- * @defgroup dbstr  Single String Index Table
+ * @defgroup dbstr  Single String Index table
  * @brief These methods interface with a simple table with String unique primary key and arbitrary binary data value.
  * @ingroup databaseC
  *
- * @see Table class in C++ API
+ * @see table class in C++ API
  *
  * @{
  */
@@ -266,12 +266,12 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
- int32_t store_str( AccountName scope, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t store_str( account_name scope, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
   * @return 1 if the record was updated, 0 if no record with key was found
   */
- int32_t update_str( AccountName scope, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t update_str( account_name scope, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -282,25 +282,25 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
   *
   *  @return the number of bytes read or -1 if key was not found
   */
- int32_t load_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- int32_t front_str( AccountName scope, AccountName code, TableName table, char* value, uint32_t valuelen );
- int32_t back_str( AccountName scope, AccountName code, TableName table, char* value, uint32_t valuelen );
- int32_t next_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- int32_t previous_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- int32_t lower_bound_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- int32_t upper_bound_str( AccountName scope, AccountName code, TableName table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t load_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t front_str( account_name scope, account_name code, table_name table, char* value, uint32_t valuelen );
+ int32_t back_str( account_name scope, account_name code, table_name table, char* value, uint32_t valuelen );
+ int32_t next_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t previous_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t lower_bound_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+ int32_t upper_bound_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
   *  @param data - must point to at lest 8 bytes containing primary key
   *
   *  @return 1 if a record was removed, and 0 if no record with key was found
   */
- int32_t remove_str( AccountName scope, TableName table, char* key, uint32_t keylen );
+ int32_t remove_str( account_name scope, table_name table, char* key, uint32_t keylen );
  
  ///@} dbstr
 
 /**
- *  @defgroup dbi128i128  Dual 128 bit Index Table
+ *  @defgroup dbi128i128  Dual 128 bit Index table
  *  @brief Interface to a database table with 128 bit primary and secondary keys and arbitary binary data value.
  *  @ingroup databaseC 
  *
@@ -328,7 +328,7 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
  *  the secondary index sorting records by { secondary, primary }.  This means that duplicates of the primary or
  *  secondary values are allowed so long as there are no duplicates of the combination {primary, secondary}.
  *
- *  @see Table class in C++ API
+ *  @see table class in C++ API
  *
  *  Example
  *  @code
@@ -405,7 +405,7 @@ int32_t remove_i64( AccountName scope, TableName table, void* data );
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
-int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t load_primary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -416,7 +416,7 @@ int32_t load_primary_i128i128( AccountName scope, AccountName code, TableName ta
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t front_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_primary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -427,7 +427,7 @@ int32_t front_primary_i128i128( AccountName scope, AccountName code, TableName t
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t back_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_primary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -438,7 +438,7 @@ int32_t back_primary_i128i128( AccountName scope, AccountName code, TableName ta
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t next_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_primary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -449,7 +449,7 @@ int32_t next_primary_i128i128( AccountName scope, AccountName code, TableName ta
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t previous_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_primary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -460,7 +460,7 @@ int32_t previous_primary_i128i128( AccountName scope, AccountName code, TableNam
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_primary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -471,7 +471,7 @@ int32_t upper_bound_primary_i128i128( AccountName scope, AccountName code, Table
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t lower_bound_primary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_primary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -492,7 +492,7 @@ int32_t lower_bound_primary_i128i128( AccountName scope, AccountName code, Table
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
-int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t load_secondary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -503,7 +503,7 @@ int32_t load_secondary_i128i128( AccountName scope, AccountName code, TableName 
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t front_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_secondary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -514,7 +514,7 @@ int32_t front_secondary_i128i128( AccountName scope, AccountName code, TableName
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t back_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_secondary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -525,7 +525,7 @@ int32_t back_secondary_i128i128( AccountName scope, AccountName code, TableName 
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t next_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_secondary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -536,7 +536,7 @@ int32_t next_secondary_i128i128( AccountName scope, AccountName code, TableName 
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t previous_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_secondary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -547,7 +547,7 @@ int32_t previous_secondary_i128i128( AccountName scope, AccountName code, TableN
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_secondary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -558,7 +558,7 @@ int32_t upper_bound_secondary_i128i128( AccountName scope, AccountName code, Tab
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_secondary_i128i128( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 
 /**
@@ -568,7 +568,7 @@ int32_t lower_bound_secondary_i128i128( AccountName scope, AccountName code, Tab
  *
  * @return 1 if a record was removed, and 0 if no record with key was found
  */
-int32_t remove_i128i128( AccountName scope, TableName table, const void* data );
+int32_t remove_i128i128( account_name scope, table_name table, const void* data );
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
  * @param table - the ID/name of the table within the scope/code context to query
@@ -576,7 +576,7 @@ int32_t remove_i128i128( AccountName scope, TableName table, const void* data );
  * @param len - the length of the data
  * @return 1 if a new record was created, 0 if an existing record was updated
  */
-int32_t store_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
+int32_t store_i128i128( account_name scope, table_name table, const void* data, uint32_t len );
 
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -585,12 +585,12 @@ int32_t store_i128i128( AccountName scope, TableName table, const void* data, ui
  * @param len - the length of the data
  * @return 1 if the record was updated, 0 if no record with key was found
  */
-int32_t update_i128i128( AccountName scope, TableName table, const void* data, uint32_t len );
+int32_t update_i128i128( account_name scope, table_name table, const void* data, uint32_t len );
 
 ///@}  dbi128i128
 
 /**
- *  @defgroup dbi64i64i64 Triple 64 bit Index Table
+ *  @defgroup dbi64i64i64 Triple 64 bit Index table
  *  @brief Interface to a database table with 64 bit primary, secondary and tertiary keys and arbitrary binary data value.
  *  @ingroup databaseC 
  *
@@ -619,7 +619,7 @@ int32_t update_i128i128( AccountName scope, TableName table, const void* data, u
  *  the secondary index sorting records by { secondary, tertiary } and the tertiary index sorting records by
  *  { tertiary }.
  *
- *  @see Table class in C++ API
+ *  @see table class in C++ API
  *
  *  Example
  *  @code
@@ -679,7 +679,7 @@ int32_t update_i128i128( AccountName scope, TableName table, const void* data, u
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
-int32_t load_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t load_primary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -690,7 +690,7 @@ int32_t load_primary_i64i64i64( AccountName scope, AccountName code, TableName t
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t front_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_primary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -701,7 +701,7 @@ int32_t front_primary_i64i64i64( AccountName scope, AccountName code, TableName 
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t back_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_primary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -712,7 +712,7 @@ int32_t back_primary_i64i64i64( AccountName scope, AccountName code, TableName t
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t next_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_primary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -723,7 +723,7 @@ int32_t next_primary_i64i64i64( AccountName scope, AccountName code, TableName t
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t previous_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_primary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -734,7 +734,7 @@ int32_t previous_primary_i64i64i64( AccountName scope, AccountName code, TableNa
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t upper_bound_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_primary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -745,7 +745,7 @@ int32_t upper_bound_primary_i64i64i64( AccountName scope, AccountName code, Tabl
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t lower_bound_primary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_primary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -765,7 +765,7 @@ int32_t lower_bound_primary_i64i64i64( AccountName scope, AccountName code, Tabl
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
-int32_t load_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t load_secondary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -776,7 +776,7 @@ int32_t load_secondary_i64i64i64( AccountName scope, AccountName code, TableName
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t front_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_secondary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -787,7 +787,7 @@ int32_t front_secondary_i64i64i64( AccountName scope, AccountName code, TableNam
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t back_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_secondary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -798,7 +798,7 @@ int32_t back_secondary_i64i64i64( AccountName scope, AccountName code, TableName
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t next_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_secondary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -809,7 +809,7 @@ int32_t next_secondary_i64i64i64( AccountName scope, AccountName code, TableName
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t previous_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_secondary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -820,7 +820,7 @@ int32_t previous_secondary_i64i64i64( AccountName scope, AccountName code, Table
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t upper_bound_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_secondary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -831,7 +831,7 @@ int32_t upper_bound_secondary_i64i64i64( AccountName scope, AccountName code, Ta
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t lower_bound_secondary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_secondary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -851,7 +851,7 @@ int32_t lower_bound_secondary_i64i64i64( AccountName scope, AccountName code, Ta
  * @throw if called with an invalid precondition execution will be aborted
  *
  */
-int32_t load_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t load_tertiary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -862,7 +862,7 @@ int32_t load_tertiary_i64i64i64( AccountName scope, AccountName code, TableName 
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t front_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t front_tertiary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -873,7 +873,7 @@ int32_t front_tertiary_i64i64i64( AccountName scope, AccountName code, TableName
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t back_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t back_tertiary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -884,7 +884,7 @@ int32_t back_tertiary_i64i64i64( AccountName scope, AccountName code, TableName 
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t next_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t next_tertiary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -895,7 +895,7 @@ int32_t next_tertiary_i64i64i64( AccountName scope, AccountName code, TableName 
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t previous_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t previous_tertiary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -906,7 +906,7 @@ int32_t previous_tertiary_i64i64i64( AccountName scope, AccountName code, TableN
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t upper_bound_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t upper_bound_tertiary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -917,7 +917,7 @@ int32_t upper_bound_tertiary_i64i64i64( AccountName scope, AccountName code, Tab
  *
  *  @return the number of bytes read or -1 if no record found
  */
-int32_t lower_bound_tertiary_i64i64i64( AccountName scope, AccountName code, TableName table, void* data, uint32_t len );
+int32_t lower_bound_tertiary_i64i64i64( account_name scope, account_name code, table_name table, void* data, uint32_t len );
 
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -926,7 +926,7 @@ int32_t lower_bound_tertiary_i64i64i64( AccountName scope, AccountName code, Tab
  *
  * @return 1 if a record was removed, and 0 if no record with key was found
  */
-int32_t remove_i64i64i64( AccountName scope, TableName table, const void* data );
+int32_t remove_i64i64i64( account_name scope, table_name table, const void* data );
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
  * @param table - the name of table where record is stored
@@ -934,7 +934,7 @@ int32_t remove_i64i64i64( AccountName scope, TableName table, const void* data )
  * @param len - length of the data
  * @return 1 if a new record was created, 0 if an existing record was updated
  */
-int32_t store_i64i64i64( AccountName scope, TableName table, const void* data, uint32_t len );
+int32_t store_i64i64i64( account_name scope, table_name table, const void* data, uint32_t len );
 
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -943,7 +943,7 @@ int32_t store_i64i64i64( AccountName scope, TableName table, const void* data, u
  * @param len - length of the data
  * @return 1 if the record was updated, 0 if no record with key was found
  */
-int32_t update_i64i64i64( AccountName scope, TableName table, const void* data, uint32_t len );
+int32_t update_i64i64i64( account_name scope, table_name table, const void* data, uint32_t len );
 
 ///@}  dbi64i64i64
 }

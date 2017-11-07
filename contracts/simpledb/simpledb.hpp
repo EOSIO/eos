@@ -20,17 +20,17 @@ struct PACKED(record3) {
    uint64_t key3;
 };
 
-struct KeyValue1 {
+struct key_value1 {
    eos::string key;
    eos::string value;
 };
 
-struct ComplexType {
+struct complex_type {
    eos::string name;
    uint64_t age;
 };
 
-struct KeyValue2 {
+struct key_value2 {
    eos::string key;
-   ComplexType value;
+   complex_type value;
 };

@@ -53,7 +53,7 @@ namespace eos {
             return nullptr;
          }
 
-         const uint32_t new_heap_size = remaining > NEW_HEAP_SIZE ? NEW_HEAP_SIZE : remaining;
+         const uint32_t new_heap_size = remaining > _new_heap_size ? _new_heap_size : remaining;
          char* new_memory_start = static_cast<char*>(sbrk(new_heap_size));
          // if we can expand the current memory, keep working with it
          if (current_memory->expand_memory(new_memory_start, new_heap_size))
@@ -76,7 +76,7 @@ namespace eos {
 
          // see Note on ctor
          if (_heaps_actual_size == 0)
-            _heaps_actual_size = HEAPS_SIZE;
+            _heaps_actual_size = _heaps_size;
 
          adjust_to_mem_block(size);
 
@@ -91,7 +91,7 @@ namespace eos {
             // only heap 0 won't be initialized already
             if(_active_heap == 0 && !start_heap->is_init())
             {
-               start_heap->init(_initial_heap, INITIAL_HEAP_SIZE);
+               start_heap->init(_initial_heap, _initial_heap_size);
             }
 
             current = start_heap;
@@ -189,10 +189,10 @@ namespace eos {
 
       void adjust_to_mem_block(uint32_t& size)
       {
-         const uint32_t remainder = (size + SIZE_MARKER) & REM_MEM_BLOCK_MASK;
+         const uint32_t remainder = (size + _size_marker) & _rem_mem_block_mask;
          if (remainder > 0)
          {
-            size += MEM_BLOCK - remainder;
+            size += _mem_block - remainder;
          }
       }
 
@@ -220,26 +220,26 @@ namespace eos {
 
          uint32_t is_in_heap(const char* const ptr) const
          {
-            const char* const END_OF_BUFFER = _heap + _heap_size;
-            const char* const FIRST_PTR_OF_BUFFER = _heap + SIZE_MARKER;
-            return ptr >= FIRST_PTR_OF_BUFFER && ptr < END_OF_BUFFER;
+            const char* const end_of_buffer = _heap + _heap_size;
+            const char* const first_ptr_of_buffer = _heap + _size_marker;
+            return ptr >= first_ptr_of_buffer && ptr < end_of_buffer;
          }
 
          uint32_t is_capacity_remaining() const
          {
-            return _offset + SIZE_MARKER < _heap_size;
+            return _offset + _size_marker < _heap_size;
          }
 
          char* malloc(uint32_t size)
          {
-            uint32_t used_up_size = _offset + size + SIZE_MARKER;
+            uint32_t used_up_size = _offset + size + _size_marker;
             if (used_up_size > _heap_size)
             {
                return nullptr;
             }
 
-            buffer_ptr new_buff(&_heap[_offset + SIZE_MARKER], size, _heap + _heap_size);
-            _offset += size + SIZE_MARKER;
+            buffer_ptr new_buff(&_heap[_offset + _size_marker], size, _heap + _heap_size);
+            _offset += size + _size_marker;
             new_buff.mark_alloc();
             return new_buff.ptr();
          }
@@ -248,7 +248,7 @@ namespace eos {
          {
             assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
 
-            char* current = _heap + SIZE_MARKER;
+            char* current = _heap + _size_marker;
             while (current != nullptr)
             {
                buffer_ptr current_buffer(current, _heap + _heap_size);
@@ -271,19 +271,19 @@ namespace eos {
 
          char* realloc_in_place(char* const ptr, uint32_t size, uint32_t* orig_ptr_size)
          {
-            const char* const END_OF_BUFFER = _heap + _heap_size;
+            const char* const end_of_buffer = _heap + _heap_size;
 
-            buffer_ptr orig_buffer(ptr, END_OF_BUFFER);
+            buffer_ptr orig_buffer(ptr, end_of_buffer);
             *orig_ptr_size = orig_buffer.size();
             // is the passed in pointer valid
             char* const orig_buffer_end = orig_buffer.end();
-            if (orig_buffer_end > END_OF_BUFFER)
+            if (orig_buffer_end > end_of_buffer)
             {
                *orig_ptr_size = 0;
                return nullptr;
             }
 
-            if (ptr > END_OF_BUFFER - size)
+            if (ptr > end_of_buffer - size)
             {
                // cannot resize in place
                return nullptr;
@@ -293,7 +293,7 @@ namespace eos {
             if (diff < 0)
             {
                // use a buffer_ptr to allocate the memory to free
-               char* const new_ptr = ptr + size + SIZE_MARKER;
+               char* const new_ptr = ptr + size + _size_marker;
                buffer_ptr excess_to_free(new_ptr, -diff, _heap + _heap_size);
                excess_to_free.mark_free();
 
@@ -330,8 +330,8 @@ namespace eos {
                return;
 
             // take the remaining memory and act like it was allocated
-            const uint32_t size = _heap_size - _offset - SIZE_MARKER;
-            buffer_ptr new_buff(&_heap[_offset + SIZE_MARKER], size, _heap + _heap_size);
+            const uint32_t size = _heap_size - _offset - _size_marker;
+            buffer_ptr new_buff(&_heap[_offset + _size_marker], size, _heap + _heap_size);
             _offset = _heap_size;
             new_buff.mark_free();
          }
@@ -352,7 +352,7 @@ namespace eos {
          public:
             buffer_ptr(void* ptr, const char* const heap_end)
             : _ptr(static_cast<char*>(ptr))
-            , _size(*reinterpret_cast<uint32_t*>(static_cast<char*>(ptr) - SIZE_MARKER) & ~ALLOC_MEMORY_MASK)
+            , _size(*reinterpret_cast<uint32_t*>(static_cast<char*>(ptr) - _size_marker) & ~_alloc_memory_mask)
             , _heap_end(heap_end)
             {
             }
@@ -371,7 +371,7 @@ namespace eos {
 
             char* next_ptr() const
             {
-               char* const next = end() + SIZE_MARKER;
+               char* const next = end() + _size_marker;
                if (next >= _heap_end)
                   return nullptr;
 
@@ -381,8 +381,8 @@ namespace eos {
             void size(uint32_t val)
             {
                // keep the same state (allocated or free) as was set before
-               const uint32_t memory_state = *reinterpret_cast<uint32_t*>(_ptr - SIZE_MARKER) & ALLOC_MEMORY_MASK;
-               *reinterpret_cast<uint32_t*>(_ptr - SIZE_MARKER) = val | memory_state;
+               const uint32_t memory_state = *reinterpret_cast<uint32_t*>(_ptr - _size_marker) & _alloc_memory_mask;
+               *reinterpret_cast<uint32_t*>(_ptr - _size_marker) = val | memory_state;
                _size = val;
             }
 
@@ -398,17 +398,17 @@ namespace eos {
 
             void mark_alloc()
             {
-               *reinterpret_cast<uint32_t*>(_ptr - SIZE_MARKER) |= ALLOC_MEMORY_MASK;
+               *reinterpret_cast<uint32_t*>(_ptr - _size_marker) |= _alloc_memory_mask;
             }
 
             void mark_free()
             {
-               *reinterpret_cast<uint32_t*>(_ptr - SIZE_MARKER) &= ~ALLOC_MEMORY_MASK;
+               *reinterpret_cast<uint32_t*>(_ptr - _size_marker) &= ~_alloc_memory_mask;
             }
 
             bool is_alloc() const
             {
-               return *reinterpret_cast<const uint32_t*>(_ptr - SIZE_MARKER) & ALLOC_MEMORY_MASK;
+               return *reinterpret_cast<const uint32_t*>(_ptr - _size_marker) & _alloc_memory_mask;
             }
 
             bool merge_contiguous_if_available(uint32_t needed_size)
@@ -432,10 +432,10 @@ namespace eos {
                {
                   const uint32_t next_mem_flag_size = *reinterpret_cast<const uint32_t*>(_ptr + possible_size);
                   // if ALLOCed then done with contiguous free memory
-                  if (next_mem_flag_size & ALLOC_MEMORY_MASK)
+                  if (next_mem_flag_size & _alloc_memory_mask)
                      break;
 
-                  possible_size += (next_mem_flag_size & ~ALLOC_MEMORY_MASK) + SIZE_MARKER;
+                  possible_size += (next_mem_flag_size & ~_alloc_memory_mask) + _size_marker;
                }
 
                if (all_or_nothing && possible_size < needed_size)
@@ -447,8 +447,8 @@ namespace eos {
 
                if (possible_size > needed_size)
                {
-                  const uint32_t freed_size = possible_size - needed_size - SIZE_MARKER;
-                  buffer_ptr freed_remainder(_ptr + needed_size + SIZE_MARKER, freed_size, _heap_end);
+                  const uint32_t freed_size = possible_size - needed_size - _size_marker;
+                  buffer_ptr freed_remainder(_ptr + needed_size + _size_marker, freed_size, _heap_end);
                   freed_remainder.mark_free();
                }
 
@@ -465,20 +465,20 @@ namespace eos {
          uint32_t _offset;
       };
 
-      static const uint32_t SIZE_MARKER = sizeof(uint32_t);
+      static const uint32_t _size_marker = sizeof(uint32_t);
       // allocate memory in 8 char blocks
-      static const uint32_t MEM_BLOCK = 8;
-      static const uint32_t REM_MEM_BLOCK_MASK = MEM_BLOCK - 1;
-      static const uint32_t INITIAL_HEAP_SIZE = 8192;//32768;
-      static const uint32_t NEW_HEAP_SIZE = 65536;
+      static const uint32_t _mem_block = 8;
+      static const uint32_t _rem_mem_block_mask = _mem_block - 1;
+      static const uint32_t _initial_heap_size = 8192;//32768;
+      static const uint32_t _new_heap_size = 65536;
       // if sbrk is not called outside of this file, then this is the max times we can call it
-      static const uint32_t HEAPS_SIZE = 16;
-      char _initial_heap[INITIAL_HEAP_SIZE];
-      memory _available_heaps[HEAPS_SIZE];
+      static const uint32_t _heaps_size = 16;
+      char _initial_heap[_initial_heap_size];
+      memory _available_heaps[_heaps_size];
       uint32_t _heaps_actual_size;
       uint32_t _active_heap;
       uint32_t _active_free_heap;
-      static const uint32_t ALLOC_MEMORY_MASK = 1 << 31;
+      static const uint32_t _alloc_memory_mask = 1 << 31;
    } memory_heap;
 
   /**

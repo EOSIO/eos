@@ -7,14 +7,14 @@
 
 extern "C" {
    /**
-    * @defgroup messageapi Message API
+    * @defgroup messageapi message API
     * @ingroup contractdev
     * @brief Define API for querying message properties
     *
     */
 
    /**
-    * @defgroup messagecapi Message C API
+    * @defgroup messagecapi message C API
     * @ingroup messageapi
     * @brief Define API for querying message properties
     *
@@ -22,11 +22,11 @@ extern "C" {
     * A EOS.IO message has the following abstract structure:
     *
     * ```
-    *   struct Message {
-    *     AccountName code; // the contract defining the primary code to execute for code/type
-    *     FuncName type; // the action to be taken
+    *   struct message {
+    *     account_name code; // the contract defining the primary code to execute for code/type
+    *     func_name type; // the action to be taken
     *     AccountPermission[] authorization; // the accounts and permission levels provided
-    *     Bytes data; // opaque data processed by code
+    *     bytes data; // opaque data processed by code
     *   };
     * ```
     *
@@ -58,7 +58,7 @@ extern "C" {
     * require_auth(N(inita)); // Do nothing since inita exists in the auth list
     * require_auth(N(initb)); // Throws an exception
     *
-    * AccountName code = current_code();
+    * account_name code = current_code();
     * print(Name(code)); // Output: eos
     *
     * assert(Name(current_code()) === "eos", "This message expects to be received by eos"); // Do nothing
@@ -94,21 +94,21 @@ extern "C" {
     *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
-   void require_notice( AccountName name );
+   void require_notice( account_name name );
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a message. Throws if not found
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     */
-   void require_auth( AccountName name );
+   void require_auth( account_name name );
 
    /**
     *  Get the account which specifies the code that is being run
     *  @brief Get the account which specifies the code that is being run
     *  @return the account which specifies the code that is being run
     */
-   AccountName current_code();
+   account_name current_code();
 
    ///@ } messagecapi
 }

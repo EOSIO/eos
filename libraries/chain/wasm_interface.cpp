@@ -425,7 +425,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,sbrk,sbrk,i32,i32,num_bytes) {
 
 
 /**
- * Transaction C API implementation
+ * transaction C API implementation
  * @{
  */ 
 
@@ -524,7 +524,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,message_drop,message_drop,none,i32,handle) {
 }
 
 /**
- * @} Transaction C API implementation
+ * @} transaction C API implementation
  */ 
 
 

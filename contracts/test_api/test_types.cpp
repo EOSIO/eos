@@ -16,10 +16,10 @@ unsigned int test_types::types_size() {
    WASM_ASSERT( sizeof(int128_t) == 16, "int128_t size != 16");
    WASM_ASSERT( sizeof(uint8_t) ==  1, "uint8_t size != 1");
    
-   WASM_ASSERT( sizeof(AccountName) ==  8, "AccountName size !=  8");
-   WASM_ASSERT( sizeof(TokenName) ==  8, "TokenName size !=  8");
-   WASM_ASSERT( sizeof(TableName) ==  8, "TableName size !=  8");
-   WASM_ASSERT( sizeof(Time) ==  4, "Time size !=  4");
+   WASM_ASSERT( sizeof(account_name) ==  8, "account_name size !=  8");
+   WASM_ASSERT( sizeof(token_name) ==  8, "token_name size !=  8");
+   WASM_ASSERT( sizeof(table_name) ==  8, "table_name size !=  8");
+   WASM_ASSERT( sizeof(time) ==  4, "time size !=  4");
    WASM_ASSERT( sizeof(uint256) == 32, "uint256 != 32" );
 
    return WASM_TEST_PASS;

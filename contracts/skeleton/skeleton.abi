@@ -1,22 +1,22 @@
 {
   "types": [{
-      "newTypeName": "AccountName",
-      "type": "Name"
+      "newTypeName": "account_name",
+      "type": "name"
     }
   ],
   "structs": [{
       "name": "transfer",
       "base": "",
       "fields": {
-        "from": "AccountName",
-        "to": "AccountName",
+        "from": "account_name",
+        "to": "account_name",
         "amount": "UInt64"
       }
     },{
       "name": "account",
       "base": "",
       "fields": {
-        "account": "Name",
+        "account": "name",
         "balance": "UInt64"
       }
     }
@@ -31,7 +31,7 @@
       "type": "account",
       "indextype": "i64",
       "keynames" : ["account"],
-      "keytypes" : ["Name"]
+      "keytypes" : ["name"]
     }
   ]
 }

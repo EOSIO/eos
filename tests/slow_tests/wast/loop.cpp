@@ -41,14 +41,14 @@ void read_message( Message& m ) { read_message( &m, sizeof(Message) ); }
 
 
 extern "C" {
-struct Transfer {
+struct transfer {
   uint64_t    from;
   uint64_t    to;
   uint64_t    amount;
   char        memo[];
 };
 
-static_assert( sizeof(Transfer) == 3*sizeof(uint64_t), "unexpected padding" );
+static_assert( sizeof(transfer) == 3*sizeof(uint64_t), "unexpected padding" );
 
 struct Balance {
   uint64_t    balance;
@@ -63,7 +63,7 @@ void init() {
 }
 
 void apply_simplecoin_transfer() {
-   static Transfer message;
+   static transfer message;
    static Balance from_balance;
    static Balance to_balance;
    to_balance.balance = 0;

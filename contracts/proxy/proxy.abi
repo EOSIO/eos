@@ -1,6 +1,6 @@
 {
   "types": [{
-      "newTypeName": "AccountName",
+      "newTypeName": "account_name",
       "type": "Name"
     }
   ],

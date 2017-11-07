@@ -33,28 +33,28 @@ using namespace eos;
 using namespace chain;
 
 
-   struct OrderID {
+   struct order_id {
       AccountName name;
       uint64_t    number  = 0;
    };
 
-   struct __attribute((packed)) Bid {
-      OrderID            buyer;
+   struct __attribute((packed)) bid {
+      order_id           buyer;
       unsigned __int128  price;
       uint64_t           quantity;
       Time               expiration;
       uint8_t            fill_or_kill = false;
    };
-   struct __attribute((packed)) Ask {
-      OrderID            seller;
+   struct __attribute((packed)) ask {
+      order_id           seller;
       unsigned __int128  price;
       uint64_t           quantity;
       Time               expiration;
       uint8_t            fill_or_kill = false;
    };
-FC_REFLECT( OrderID, (name)(number) );
-FC_REFLECT( Bid, (buyer)(price)(quantity)(expiration)(fill_or_kill) );
-FC_REFLECT( Ask, (seller)(price)(quantity)(expiration)(fill_or_kill) );
+FC_REFLECT( order_id, (name)(number) );
+FC_REFLECT( bid, (buyer)(price)(quantity)(expiration)(fill_or_kill) );
+FC_REFLECT( ask, (seller)(price)(quantity)(expiration)(fill_or_kill) );
 
    struct record {
       uint64_t a = 0;
@@ -376,7 +376,7 @@ unsigned __int128 to_price( double p ) {
 
 void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
 
-   Ask b {  OrderID{seller,ordernum}, 
+   ask b {  order_id{seller,ordernum},
             to_price(price),
             cur_quantity, 
             chain.head_block_time()+fc::days(3) 
@@ -394,7 +394,7 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
 
 }
 void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
-   Bid b {  OrderID{buyer,ordernum}, 
+   bid b {  order_id{buyer,ordernum},
             to_price(price),
             cur_quantity, 
             chain.head_block_time()+fc::days(3) 

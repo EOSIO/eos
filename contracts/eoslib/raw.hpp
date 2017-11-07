@@ -73,15 +73,15 @@ namespace eos {
     //    FC_ASSERT( vi == tmp );
     // }
 
-    // Bytes
-    template<typename Stream> inline void pack( Stream& s, const Bytes& value ) {
+    // bytes
+    template<typename Stream> inline void pack( Stream& s, const bytes& value ) {
       eos::raw::pack( s, unsigned_int((uint32_t)value.len) );
       if( value.len )
         s.write( (char *)value.data, (uint32_t)value.len );
     }
-    template<typename Stream> inline void unpack( Stream& s, Bytes& value ) {
+    template<typename Stream> inline void unpack( Stream& s, bytes& value ) {
       unsigned_int size; eos::raw::unpack( s, size );
-      //assert( size.value < MAX_ARRAY_ALLOC_SIZE, "unpack Bytes" );
+      //assert( size.value < MAX_ARRAY_ALLOC_SIZE, "unpack bytes" );
       value.len = size.value;
       if( value.len )
         s.read( (char *)value.data, value.len );
