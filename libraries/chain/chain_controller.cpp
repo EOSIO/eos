@@ -1079,7 +1079,7 @@ void chain_controller::require_account(const types::AccountName& name) const {
 const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
    EOS_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
-   EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
+   EOS_ASSERT(head_block_time() < (fc::time_point_sec)next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
    if (next_block.block_num() % config::BlocksPerRound != 0) {
       EOS_ASSERT(next_block.producer_changes.empty(), block_validate_exception,
@@ -1091,7 +1091,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  block_validate_exception, "Producer changes are not sorted correctly",
                  ("changes", next_block.producer_changes));
    }
-   const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
+   const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time((fc::time_point)next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
       EOS_ASSERT(next_block.validate_signee(producer.signing_key), block_validate_exception,
@@ -1157,6 +1157,10 @@ const dynamic_global_property_object&chain_controller::get_dynamic_global_proper
 }
 
 time_point_sec chain_controller::head_block_time()const {
+   return (time_point)head_block_timestamp();
+}
+
+block_timestamp_type chain_controller::head_block_timestamp()const {
    return get_dynamic_global_properties().time;
 }
 
@@ -1355,8 +1359,9 @@ ProducerRound chain_controller::calculate_next_round(const signed_block& next_bl
    EOS_ASSERT(boost::range::equal(next_block.producer_changes, changes), block_validate_exception,
               "Unexpected round changes in new block header",
               ("expected changes", changes)("block changes", next_block.producer_changes));
-
-   utilities::rand::random rng(next_block.timestamp.sec_since_epoch());
+   
+   fc::time_point tp = (fc::time_point)next_block.timestamp;
+   utilities::rand::random rng(tp.sec_since_epoch());
    rng.shuffle(schedule);
    return schedule;
 }
@@ -1364,7 +1369,7 @@ ProducerRound chain_controller::calculate_next_round(const signed_block& next_bl
 void chain_controller::update_global_dynamic_data(const signed_block& b) {
    const dynamic_global_property_object& _dgp = _db.get<dynamic_global_property_object>();
 
-   uint32_t missed_blocks = head_block_num() == 0? 1 : get_slot_at_time(b.timestamp);
+   uint32_t missed_blocks = head_block_num() == 0? 1 : get_slot_at_time((fc::time_point)b.timestamp);
    assert(missed_blocks != 0);
    missed_blocks--;
 
@@ -1409,7 +1414,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
 void chain_controller::update_signing_producer(const producer_object& signing_producer, const signed_block& new_block)
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
-   uint64_t new_block_aslot = dpo.current_absolute_slot + get_slot_at_time( new_block.timestamp );
+   uint64_t new_block_aslot = dpo.current_absolute_slot + get_slot_at_time( (fc::time_point)new_block.timestamp );
 
    _db.modify( signing_producer, [&]( producer_object& _wit )
    {
@@ -1490,36 +1495,38 @@ types::AccountName chain_controller::get_scheduled_producer(uint32_t slot_num)co
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = _db.get<global_property_object>();
-   return gpo.active_producers[current_aslot % gpo.active_producers.size()];
+   auto number_of_active_producers = gpo.active_producers.size();
+   auto index = current_aslot % (number_of_active_producers * 4); //TODO configure number of repetitions by producer
+   index /= 4;
+   return gpo.active_producers[index];
 }
 
 fc::time_point_sec chain_controller::get_slot_time(uint32_t slot_num)const
 {
-   if( slot_num == 0 )
-      return fc::time_point_sec();
+   if( slot_num == 0)
+      return (fc::time_point)block_timestamp_type();
 
-   auto interval = block_interval();
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
    if( head_block_num() == 0 )
    {
       // n.b. first block is at genesis_time plus one block interval
-      fc::time_point_sec genesis_time = dpo.time;
-      return genesis_time + slot_num * interval;
+      auto genesis_time = block_timestamp_type(dpo.time);
+      genesis_time.slot += slot_num;
+      return (fc::time_point)genesis_time;
    }
 
-   int64_t head_block_abs_slot = head_block_time().sec_since_epoch() / interval;
-   fc::time_point_sec head_slot_time(head_block_abs_slot * interval);
-
-   return head_slot_time + (slot_num * interval);
+   auto head_block_abs_slot = head_block_timestamp();
+   head_block_abs_slot.slot += slot_num;
+   return (fc::time_point)head_block_abs_slot;
 }
 
 uint32_t chain_controller::get_slot_at_time(fc::time_point_sec when)const
 {
-   fc::time_point_sec first_slot_time = get_slot_time( 1 );
+   fc::time_point_sec first_slot_time = get_slot_time(1);
    if( when < first_slot_time )
       return 0;
-   return (when - first_slot_time).to_seconds() / block_interval() + 1;
+   return block_timestamp_type(when).slot - block_timestamp_type(first_slot_time).slot + 1;
 }
 
 uint32_t chain_controller::producer_participation_rate()const
