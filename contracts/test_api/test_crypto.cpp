@@ -70,36 +70,36 @@ extern "C" {
 
 unsigned int test_crypto::test_sha256() {
 
-  Checksum tmp;
+  checksum tmp;
 
   sha256( (char *)test1, my_strlen(test1), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test1_ok, &tmp, sizeof(Checksum)), "sha256 test1" );
+  WASM_ASSERT( my_memcmp((void *)test1_ok, &tmp, sizeof(checksum)), "sha256 test1" );
 
   sha256( (char *)test3, my_strlen(test3), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test3_ok, &tmp, sizeof(Checksum)), "sha256 test3" );
+  WASM_ASSERT( my_memcmp((void *)test3_ok, &tmp, sizeof(checksum)), "sha256 test3" );
 
   sha256( (char *)test4, my_strlen(test4), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test4_ok, &tmp, sizeof(Checksum)), "sha256 test4" );
+  WASM_ASSERT( my_memcmp((void *)test4_ok, &tmp, sizeof(checksum)), "sha256 test4" );
 
   sha256( (char *)test5, my_strlen(test5), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test5_ok, &tmp, sizeof(Checksum)), "sha256 test5" );
+  WASM_ASSERT( my_memcmp((void *)test5_ok, &tmp, sizeof(checksum)), "sha256 test5" );
 
   return WASM_TEST_PASS;
 }
 
 unsigned int test_crypto::sha256_no_data() {
 
-  Checksum tmp;
+  checksum tmp;
 
   sha256( (char *)test2, my_strlen(test2), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test2_ok, &tmp, sizeof(Checksum)), "sha256 test2" );
+  WASM_ASSERT( my_memcmp((void *)test2_ok, &tmp, sizeof(checksum)), "sha256 test2" );
 
   return WASM_TEST_PASS;
 }
 
 unsigned int test_crypto::asert_sha256_false() {
   
-  Checksum tmp;
+  checksum tmp;
 
   sha256( (char *)test1, my_strlen(test1), &tmp );
   tmp.hash[0] ^= (uint64_t)(-1);
@@ -110,7 +110,7 @@ unsigned int test_crypto::asert_sha256_false() {
 
 unsigned int test_crypto::asert_sha256_true() {
   
-  Checksum tmp;
+  checksum tmp;
 
   sha256( (char *)test1, my_strlen(test1), &tmp );
   assert_sha256( (char *)test1, my_strlen(test1), &tmp);
@@ -129,7 +129,7 @@ unsigned int test_crypto::asert_sha256_true() {
 
 unsigned int test_crypto::asert_no_data() {
   
-  Checksum *tmp = (Checksum*)test2_ok;
+  checksum *tmp = (checksum*)test2_ok;
   assert_sha256( (char *)test2, my_strlen(test2), tmp);
 
   return WASM_TEST_FAIL;
