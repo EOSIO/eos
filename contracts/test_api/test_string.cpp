@@ -12,7 +12,7 @@ unsigned int test_string::construct_with_size() {
    WASM_ASSERT( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
 
    size_t size2 = 0;
-   eos::string str2(size2);
+   eosio::string str2(size2);
 
    WASM_ASSERT( str2.get_size() == size2,  "str2.get_size() == size2" );
    WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
@@ -32,7 +32,7 @@ unsigned int test_string::construct_with_data() {
   WASM_ASSERT( str1.get_data() == data,  "str1.get_data() == data" );
   WASM_ASSERT( str1.is_own_memory() == false,  "str1.is_own_memory() == false" );
 
-  eos::string str2(data, 0, false);
+  eosio::string str2(data, 0, false);
 
   WASM_ASSERT( str2.get_size() == 0,  "str2.get_size() == 0" );
   WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
@@ -71,7 +71,7 @@ unsigned int test_string::construct_with_data_copied() {
   }
   WASM_ASSERT( str1.is_own_memory() == true,  "str.is_own_memory() == true" );
 
-  eos::string str2(data, 0, true);
+  eosio::string str2(data, 0, true);
   
   WASM_ASSERT( str2.get_size() == 0,  "str2.get_size() == 0" );
   WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
@@ -367,7 +367,7 @@ unsigned int test_string::string_literal() {
   char data1[] = "abcdefghij";
   char data2[] = "klmnopqrstuvwxyz";
 
-  eos::string str = "abcdefghij";
+  eosio::string str = "abcdefghij";
 
   WASM_ASSERT( str.get_size() == 11,  "data1 str.get_size() == 11" );
   for (uint8_t i = 0; i < 11; i++) {
