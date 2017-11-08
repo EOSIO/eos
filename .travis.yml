@@ -37,4 +37,5 @@ script:
   - tests/slow_test
   - tests/api_test
   - tests/p2p_tests/sync/test.sh
+  - tests/p2p_tests/sync/test.sh -p 2 -d 10
   - tests/eosd_run_mongodb_test.sh
