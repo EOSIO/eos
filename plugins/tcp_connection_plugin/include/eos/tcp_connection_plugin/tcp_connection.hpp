@@ -50,7 +50,8 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
       static const unsigned int max_rx_read{4U << 20U};
       static_assert(max_rx_read < max_message_size, "max_rx_read must be less than max_message_size");
       static_assert(!(max_message_size & (max_message_size-1)), "max_message_size must be power of two");
-
+      static_assert(max_message_size < 1<<28, "max_message_size");
+      
       struct seen_transaction : public boost::noncopyable {
          seen_transaction(transaction_id_type t, time_point_sec e) : transaction_id(t), expiration(e) {}
          transaction_id_type transaction_id;
@@ -88,8 +89,9 @@ class tcp_connection : public connection_interface, public fc::visitor<void> {
       bool _currently_processing_network_queue{false};
       void get_next_network_work(connection_send_context& context);
       void prepare_and_send(net2_message message, connection_send_context& context);
-      char send_serialization_buffer[max_message_size+16];    //serialize in to here
-      char send_buffer[max_message_size];  //encrypt in to here (and send from here)
+      char _send_serialization_buffer[max_message_size+16];    //serialize in to here
+      char _send_buffer[max_message_size];  //encrypt in to here (and send from here)
+      void send_complete(const boost::system::error_code& ec, size_t wrote, connection_send_context& context);
 
       signal<void()> _on_disconnected_sig;
       bool _disconnected_fired{false};    //be sure to only fire the signal once

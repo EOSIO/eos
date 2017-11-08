@@ -212,20 +212,54 @@ void tcp_connection::operator()(const connection_send_transactions& transactions
 }
 
 void tcp_connection::prepare_and_send(net2_message message, connection_send_context& context) {
-   datastream<char*> ds(send_buffer, max_message_size);
+   datastream<char*> ds(_send_serialization_buffer, max_message_size);
    try {
-      ds.seekp(3);
+      ds.seekp(4);
       fc::raw::pack(ds, message);
-      unsigned_int message_blocks = (ds.tellp()+15)&~15U;
-      ds.seekp(0);
-      fc::raw::pack(ds, message_blocks);
+      unsigned int payload_bytes = ds.tellp()-4;
+
+      if(payload_bytes <= ((1<<7)-1)*16-1) {
+         payload_bytes += 1;
+         ds.seekp(3);
+      }
+      else if(payload_bytes <= ((1<<14)-1)*16-2) {
+         payload_bytes += 2;
+         ds.seekp(2);
+      }
+      else if(payload_bytes <= ((1<<21)-1)*16-3) {
+         payload_bytes += 3;
+         ds.seekp(1);
+      }
+      else {
+         payload_bytes += 4;
+         ds.seekp(0);
+      }
+
+      unsigned_int blocks_used = (payload_bytes+15)/16;
+      fc::raw::pack(ds, blocks_used);
+      unsigned int blocks_used_ = blocks_used;
+
+      _sending_aes_enc_ctx.encode(_send_serialization_buffer, blocks_used_*16, _send_buffer);
+
+      _strand.dispatch([this, blocks_used_, &context] {
+         boost::asio::async_write(_socket, boost::asio::buffer(_send_buffer, blocks_used_*16), [this,&context](auto ec, auto w) {
+            send_complete(ec, w, context);
+         });
+      });
    }
    catch(fc::exception e) {
-      //too large of message, probably. XXX TODO ME disconnect
+      handle_failure();
+      return;
+   }
+}
+
+void tcp_connection::send_complete(const boost::system::error_code& ec, size_t wrote, connection_send_context& context) {
+   if(ec) {
+      handle_failure();
+      return;
    }
 
-   //XXX
-   
+   get_next_network_work(context);
 }
 
 bool tcp_connection::disconnected() {
