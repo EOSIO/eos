@@ -3,20 +3,43 @@
 pnodes=10
 npnodes=0
 topo=star
-if [ -n "$1" ]; then
-    pnodes=$1
-    if [ -n "$2" ]; then
-        topo=$2
-        if [ -n "$3" ]; then
-            npnodes=$3
+delay=0
+
+args=`getopt p:n:t:d: $*`
+if [ $? == 0 ]; then
+
+    set -- $args
+    for i; do
+        case "$i"
+        in
+            -p) pnodes=$2;
+                shift; shift;;
+            -n) nodes=$2;
+                shift; shift;;
+            -d) delay=$2;
+                shift; shift;;
+            -s) shape="$2";
+                shift; shift;;
+            --) shift;
+                break;;
+        esac
+    done
+else
+    echo "huh we got err $?"
+    if [ -n "$1" ]; then
+        pnodes=$1
+        if [ -n "$2" ]; then
+            topo=$2
+            if [ -n "$3" ]; then
+                npnodes=$3
+            fi
         fi
     fi
 fi
-
 total_nodes=`expr $pnodes + $npnodes`
 
 rm -rf tn_data_*
-programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo
+programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo -d $delay
 sleep 7
 echo "start" > test.out
 port=8888
@@ -62,4 +85,5 @@ if [ $lines -eq $total_nodes -a $prodsfound -eq 1 ]; then
     exit
 fi
 echo ERROR: $lines reports out of $total_nodes and prods = $prodsfound
+programs/launcher/launcher -k 15
 exit 1

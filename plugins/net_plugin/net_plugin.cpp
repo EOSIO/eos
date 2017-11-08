@@ -411,7 +411,7 @@ namespace eosio {
      *
      * This method is called to adjust the size of the
      * pending_message_buffer when there is a partial message
-     * in the buffer of message_length. There may be 
+     * in the buffer of message_length. There may be
      * additional messages earlier in the buffer that
      * can be removed
      */
@@ -423,7 +423,7 @@ namespace eosio {
      * message_length is the already determined length of the data
      * part of the message and impl in the net plugin implementation
      * that will handle the message.
-     * Returns true is successful. Returns false if an error was 
+     * Returns true is successful. Returns false if an error was
      * encountered unpacking or processing the message.
      */
     bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
@@ -688,7 +688,8 @@ namespace eosio {
     uint32_t lib_num;
     try {
       lib_num = cc.last_irreversible_block_num();
-      lib_id = cc.get_block_id_for_num(lib_num);
+      if( lib_num != 0 )
+        lib_id = cc.get_block_id_for_num(lib_num);
       head_id = cc.get_block_id_for_num (head_num);
     }
     catch (const assert_exception &ex) {
@@ -935,9 +936,9 @@ namespace eosio {
 
   void connection::adjust_buffer_size(uint32_t message_length) {
     uint32_t current_buffer_size = pending_message_buffer.size();
-    if (current_buffer_size - pending_message_read_index + 1 < message_length) 
+    if (current_buffer_size - pending_message_read_index + 1 < message_length)
 
-      // Not enough room in the buffer, grow the buffer, first move remaining 
+      // Not enough room in the buffer, grow the buffer, first move remaining
       // unprocessed data to the beginning of the buffer
       if (pending_message_read_index != 0) {
         memmove(&pending_message_buffer[0],
@@ -1235,7 +1236,7 @@ namespace eosio {
             connection_ptr conn = c.lock();
             if (!conn) {
               return;
-            } 
+            }
             conn->pending_message_write_index += bytes_transferred;
             while (conn->pending_message_read_index < conn->pending_message_write_index) {
               uint32_t bytes_in_buffer = conn->pending_message_write_index - conn->pending_message_read_index;
@@ -1357,7 +1358,7 @@ namespace eosio {
       if( msg.last_irreversible_block_num  > head || sync_master->syncing() ) {
         sync_master->start_sync( c, peer_lib );
       }
-      else if( msg.head_id != head_id && msg.head_id != block_id_type( )) {
+      else if( msg.head_id != head_id ) {
         fc_dlog(logger, "msg.head_id = ${m} our head = ${h}",("m",msg.head_id)("h",head_id));
 
         notice_message note;
@@ -1494,12 +1495,13 @@ namespace eosio {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
-      fc_dlog(logger, "got a request_message from ${p}", ("p",c->peer_name()));
       switch (msg.req_blocks.mode) {
       case id_list_modes::catch_up :
+        fc_dlog(logger, "got a catch_up request_message from ${p}", ("p",c->peer_name()));
         c->blk_send_branch( msg.req_trx.ids );
         break;
       case id_list_modes::normal :
+        fc_dlog(logger, "got a normal request_message from ${p}", ("p",c->peer_name()));
         c->blk_send(msg.req_blocks.ids);
         break;
       default:;
