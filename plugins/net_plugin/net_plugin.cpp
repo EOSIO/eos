@@ -1597,7 +1597,7 @@ namespace eos {
     }
     bool accepted = false;
     // dlog ("last irrevesible block = ${lib}", ("lib", cc.last_irreversible_block_num()));
-    if( !syncing || num == cc.head_block_num()+1 ){ //  || num > cc.last_irreversible_block_num()) {
+    if( !syncing || num == cc.head_block_num()+1 ) {
       try {
         chain_plug->accept_block(msg, syncing);
         accepted = true;

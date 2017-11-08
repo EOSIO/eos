@@ -3,7 +3,7 @@
 pnodes=10
 npnodes=0
 topo=star
-delay=1
+delay=0
 
 args=`getopt p:n:t:d: $*`
 if [ $? == 0 ]; then
