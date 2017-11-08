@@ -1,5 +1,5 @@
 #include <eos/network_plugin/network_plugin.hpp>
-
+#include <boost/asio/steady_timer.hpp>
 #include <thread>
 #include <algorithm>
 
@@ -10,6 +10,7 @@ class network_plugin_impl {
       std::unique_ptr<boost::asio::io_service> network_ios;
       std::unique_ptr<boost::asio::strand> strand;
       std::unique_ptr<boost::asio::io_service::work> network_work;
+      std::unique_ptr<boost::asio::steady_timer> connection_work_timer;
       std::vector<std::thread> thread_pool;
       unsigned int num_threads;
 
@@ -36,7 +37,7 @@ class network_plugin_impl {
       static const size_t transaction_buffer_size{64U << 10U};
       static_assert(!(transaction_buffer_size & (transaction_buffer_size-1)), "transaction_buffer_size must be power of two");
       vector<meta_transaction_ptr> _transaction_buffer{transaction_buffer_size};
-      size_t _transaction_buffer_head;
+      size_t _transaction_buffer_head{0};
 
       //broadcast a validated transaction to everyone
       void on_transaction_validated(meta_transaction_ptr trx) {
@@ -84,6 +85,18 @@ class network_plugin_impl {
 
          return send_transactions;
       }
+
+      void work() {
+         ///XXX from now or from exired?
+         connection_work_timer->expires_from_now(std::chrono::milliseconds(10));
+         connection_work_timer->async_wait(strand->wrap([this](auto ec){
+            if(ec)
+               throw std::runtime_error("Unexpected timer wait failure");
+            for(network_plugin_impl::active_connection& c : active_connections)
+               c.connection->begin_processing_network_send_queue(c.send_context);
+            work();
+         }));
+      }
 };
 
 network_plugin::network_plugin()
@@ -113,6 +126,8 @@ void network_plugin::plugin_startup() {
       //controller::transaction_validated.connect([this](auto a) {
       //    my->on_transaction_validated(a);
       //});
+   my->connection_work_timer = std::make_unique<boost::asio::steady_timer>(*my->network_ios);
+   my->work();
 }
 
 boost::asio::io_service& network_plugin::network_io_service() {
@@ -130,7 +145,7 @@ void network_plugin::new_connection(std::unique_ptr<connection_interface> connec
     network_plugin_impl::active_connection& added_connection = my->active_connections.back();
 
     ///XXX when cleaning this nonsense up, add this back---
-    //added_connection.send_context.trx_tail = my->_transaction_buffer_head;
+    added_connection.send_context.trx_tail = my->_transaction_buffer_head;
 
     //when the connection indicates failure; remove it from the list. This will implictly
     // destroy the connection. WARNING: use strand.post() here to prevent dtor getting
