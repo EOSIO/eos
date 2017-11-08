@@ -273,7 +273,7 @@ signed_block chain_controller::generate_block(
    uint32_t skip /* = 0 */
    )
 { try {
-   return with_skip_flags( skip, [&](){
+   return with_skip_flags( skip | created_block, [&](){
       auto b = _db.with_write_lock( [&](){
          return _generate_block( when, producer, block_signing_private_key, scheduler );
       });
