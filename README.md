@@ -180,12 +180,12 @@ producer-name = inits
 producer-name = initt
 producer-name = initu
 # Load the block producer plugin, so you can produce blocks
-plugin = eosio::producer_plugin
+plugin = eos::producer_plugin
 # Wallet plugin
-plugin = eosio::wallet_api_plugin
+plugin = eos::wallet_api_plugin
 # As well as API and HTTP plugins
-plugin = eosio::chain_api_plugin
-plugin = eosio::http_plugin
+plugin = eos::chain_api_plugin
+plugin = eos::http_plugin
 ```
 
 Now it should be possible to run `eosd` and see it begin producing blocks.
