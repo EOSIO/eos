@@ -97,6 +97,9 @@ set( fc_sources
      src/crypto/elliptic_${ECC_IMPL}.cpp
      src/crypto/elliptic_r1.cpp
      src/crypto/rand.cpp
+     src/crypto/public_key.cpp
+     src/crypto/private_key.cpp
+     src/crypto/signature.cpp
      src/network/ip.cpp
      src/network/url.cpp
      src/compress/smaz.cpp
@@ -177,3 +180,5 @@ IF(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 ELSE()
   SET (OPENSSL_CONF_TARGET ${CMAKE_CURRENT_BINARY_DIR})
 ENDIF()
+
+add_subdirectory( test )
