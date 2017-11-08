@@ -1,22 +1,23 @@
 #pragma once
 #include <fc/static_variant.hpp>
 #include <fc/crypto/elliptic.hpp>
+#include <fc/crypto/elliptic_r1.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/reflect/variant.hpp>
 
 namespace fc { namespace crypto {
    namespace config {
-      static const char*  public_key_base_prefix = "EOS";
-      static const char* const public_key_prefix[] = {
+      constexpr const char* signature_base_prefix = "EOS";
+      constexpr const char* signature_prefix[] = {
          "K1",
-         "H1"
+         "R1"
       };
    };
 
    class signature
    {
       public:
-         using storage_type = static_variant<ecc::compact_signature, sha256>;
+         using storage_type = static_variant<ecc::signature_shim, r1::signature_shim>;
 
          signature() = default;
          signature( signature&& ) = default;

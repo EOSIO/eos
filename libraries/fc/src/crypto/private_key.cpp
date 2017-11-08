@@ -1,32 +1,33 @@
 #include <fc/crypto/private_key.hpp>
-#include <fc/crypto/base58.hpp>
-#include <fc/io/raw.hpp>
 #include <fc/utility.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace fc { namespace crypto {
-   struct public_key_visitor : visitor<public_key> {
+   using namespace std;
+
+   struct public_key_visitor : visitor<public_key::storage_type> {
       template<typename KeyType>
-      public_key apply(const KeyType& key)
+      public_key::storage_type operator()(const KeyType& key) const
       {
-         return public_key(public_key::storage_type(key.get_public_key()));
+         return public_key::storage_type(key.get_public_key());
       }
    };
 
    public_key private_key::get_public_key() const
    {
-      return _storage.visit(public_key_visitor());
+      return public_key(_storage.visit(public_key_visitor()));
    }
 
-   struct sign_visitor : visitor<signature> {
+   struct sign_visitor : visitor<signature::storage_type> {
       sign_visitor( const sha256& digest, bool require_canonical )
       :_digest(digest)
       ,_require_canonical(require_canonical)
       {}
 
       template<typename KeyType>
-      signature apply(const KeyType& key)
+      signature::storage_type operator()(const KeyType& key) const
       {
-         return signature(signature::storage_type(key.sign(_digest, _require_canonical)));
+         return signature::storage_type(key.sign(_digest, _require_canonical));
       }
 
       const sha256&  _digest;
@@ -35,36 +36,37 @@ namespace fc { namespace crypto {
 
    signature private_key::sign( const sha256& digest, bool require_canonical ) const
    {
-      return _storage.visit(sign_visitor(digest, require_canonical));
+      return signature(_storage.visit(sign_visitor(digest, require_canonical)));
    }
 
    struct generate_shared_secret_visitor : visitor<sha512> {
-      sign_visitor( const public_key& pub )
-         :_pub(pub)
+      generate_shared_secret_visitor( const public_key::storage_type& pub_storage )
+      :_pub_storage(pub_storage)
       {}
 
       template<typename KeyType>
-      signature apply(const KeyType& key)
+      sha512 operator()(const KeyType& key) const
       {
-         return key.sign(_digest, _require_canonical);
+         using PublicKeyType = typename KeyType::public_key_type;
+         return key.generate_shared_secret(_pub_storage.template get<PublicKeyType>());
       }
 
-      const public_key&  _pub;
+      const public_key::storage_type&  _pub_storage;
    };
 
    sha512 private_key::generate_shared_secret( const public_key& pub ) const
    {
-      return _storage.visit(generate_shared_secret_visitor(pub));
+      return _storage.visit(generate_shared_secret_visitor(pub._storage));
    }
 
    template<typename Data>
    string to_wif( const Data& secret )
    {
-      const size_t size_of_data_to_hash = sizeof(secret) + 1;
+      const size_t size_of_data_to_hash = sizeof(typename Data::data_type) + 1;
       const size_t size_of_hash_bytes = 4;
       char data[size_of_data_to_hash + size_of_hash_bytes];
       data[0] = (char)0x80; // this is the Bitcoin MainNet code
-      memcpy(&data[1], (char*)&secret, sizeof(secret));
+      memcpy(&data[1], (const char*)&secret.serialize(), sizeof(typename Data::data_type));
       sha256 digest = sha256::hash(data, size_of_data_to_hash);
       digest = sha256::hash(digest);
       memcpy(data + size_of_data_to_hash, (char*)&digest, size_of_hash_bytes);
@@ -83,22 +85,22 @@ namespace fc { namespace crypto {
       FC_ASSERT(memcmp( (char*)&check, wif_bytes.data() + wif_bytes.size() - 4, 4 ) == 0 ||
                 memcmp( (char*)&check2, wif_bytes.data() + wif_bytes.size() - 4, 4 ) == 0 );
 
-      return fc::variant(key_bytes).as<Data>();
+      return Data(fc::variant(key_bytes).as<typename Data::data_type>());
    }
 
    static private_key::storage_type parse_base58(const string& base58str)
    {
       try {
          // wif import
-         using default_type = storage_type::template type_at<0>;
-         return storage_type(from_wif<default_type>(base58str));
+         using default_type = private_key::storage_type::template type_at<0>;
+         return private_key::storage_type(from_wif<default_type>(base58str));
       } catch (...) {
          // wif import failed
       }
 
-      constexpr prefix = config::private_key_base_prefix;
+      constexpr auto prefix = config::private_key_base_prefix;
       FC_ASSERT(prefix_matches(prefix, base58str), "Private Key has invalid prefix: ${str}", ("str", base58str));
-      auto sub_str = base58str.substr(c_strlen(prefix));
+      auto sub_str = base58str.substr(const_strlen(prefix));
       return base58_str_parser<private_key::storage_type, config::private_key_prefix>::apply(sub_str);
    }
 

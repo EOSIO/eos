@@ -1,7 +1,10 @@
 #pragma once
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/reflect/reflect.hpp>
+#include <fc/crypto/base58.hpp>
+#include <fc/io/raw.hpp>
 #include <fc/utility.hpp>
+#include <fc/static_variant.hpp>
 
 namespace fc { namespace crypto {
    template<typename DataType>
@@ -12,17 +15,17 @@ namespace fc { namespace crypto {
 
       static auto calculate_checksum(const DataType& data, const char *prefix = nullptr) {
          auto encoder = ripemd160::encoder();
-         encoder.write((const char *)&data, sizeof(Data));
+         encoder.write((const char *)&data, sizeof(DataType));
 
          if (prefix != nullptr) {
-            encoder.write(prefix, c_strlen(prefix));
+            encoder.write(prefix, const_strlen(prefix));
          }
-         return data.check = encoder.result()._hash[0];
+         return encoder.result()._hash[0];
       }
    };
 
    inline bool prefix_matches(const char* prefix, const std::string& str) {
-      auto prefix_len = c_strlen(prefix);
+      auto prefix_len = const_strlen(prefix);
       return str.size() > prefix_len && str.substr(0, prefix_len).compare(prefix) == 0;
    }
 
@@ -33,26 +36,26 @@ namespace fc { namespace crypto {
    struct base58_str_parser_impl<Result, Prefixes, Position, KeyType, Rem...> {
       static Result apply(const std::string& base58str)
       {
-         using data_type = KeyType::data_type;
+         using data_type = typename KeyType::data_type;
          using wrapper = checksummed_data<data_type>;
-         constexpr prefix = Prefixes[Position];
+         constexpr auto prefix = Prefixes[Position];
 
          if (prefix_matches(prefix, base58str)) {
-            auto bin = fc::from_base58(base58str.substr(c_strlen(prefix)));
-            if (bin.size() == sizeof(wrapper)) {
+            auto bin = fc::from_base58(base58str.substr(const_strlen(prefix)));
+            if (bin.size() == sizeof(data_type) + sizeof(uint32_t)) {
                auto wrapped = fc::raw::unpack<wrapper>(bin);
-               FC_ASSERT(wrapper::calculate_checksum(wrapped.data) == wrapped.check);
+               FC_ASSERT(wrapper::calculate_checksum(wrapped.data, prefix) == wrapped.check);
                return Result(KeyType(wrapped.data));
             }
          }
 
-         return base58_str_parser<Result, Prefixes, Position + 1, Rem...>::apply(base58str);
+         return base58_str_parser_impl<Result, Prefixes, Position + 1, Rem...>::apply(base58str);
       }
    };
 
    template<typename Result, const char * const * Prefixes, int Position>
    struct base58_str_parser_impl<Result, Prefixes, Position> {
-      static Result_type apply(const std::string& base58str) {
+      static Result apply(const std::string& base58str) {
          FC_ASSERT(false, "No matching prefix for ${str}", ("str", base58str));
       }
    };
@@ -68,7 +71,7 @@ namespace fc { namespace crypto {
     */
    template<const char * const * Prefixes, typename ...Ts>
    struct base58_str_parser<fc::static_variant<Ts...>, Prefixes> {
-      static Result apply(const std::string& base58str) {
+      static fc::static_variant<Ts...> apply(const std::string& base58str) {
          return base58_str_parser_impl<fc::static_variant<Ts...>, Prefixes, 0, Ts...>::apply(base58str);
       }
    };
@@ -77,14 +80,14 @@ namespace fc { namespace crypto {
    struct base58str_visitor : public fc::visitor<std::string> {
       template< typename KeyType >
       std::string operator()( const KeyType& key ) const {
-         using data_type = KeyType::data_type;
-         constexpr int position = Storage::position<KeyType>;
+         using data_type = typename KeyType::data_type;
+         constexpr int position = Storage::template position<KeyType>;
          constexpr bool is_default = position == DefaultPosition;
 
          checksummed_data<data_type> wrapper;
          wrapper.data = key.serialize();
          wrapper.check = checksummed_data<data_type>::calculate_checksum(wrapper.data, !is_default ? Prefixes[position] : nullptr);
-         auto packed = raw::pack( data );
+         auto packed = raw::pack( wrapper );
          auto data_str = to_base58( packed.data(), packed.size() );
          if (!is_default) {
             data_str = string(Prefixes[position]) + data_str;
@@ -134,6 +137,29 @@ namespace fc { namespace crypto {
       }
    };
 
+   template<typename Data>
+   struct shim {
+      using data_type = Data;
+
+      shim()
+      {}
+
+      shim(data_type &&data)
+      :_data(forward<data_type>(data))
+      {}
+
+      shim(data_type &data)
+      :_data(data)
+      {}
+
+      const data_type &serialize() const {
+         return _data;
+      }
+
+      data_type _data;
+   };
+
 } }
 
 FC_REFLECT_TEMPLATE((typename T), fc::crypto::checksummed_data<T>, (data)(check) )
+FC_REFLECT_TEMPLATE((typename T), fc::crypto::shim<T>, (_data) )
