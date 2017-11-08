@@ -160,19 +160,8 @@ struct type_at<0, T, Ts...> {
 
 template<int Pos, typename T, typename... Ts>
 struct type_at<Pos, T, Ts...> {
-   using type = type_at<Pos - 1, Ts...>::type;
+   using type = typename type_at<Pos - 1, Ts...>::type;
 };
-
-template<typename X, typename... Ts>
-struct position<X, X, Ts...> {
-   static const int pos = 0;
-};
-
-template<typename X, typename T, typename... Ts>
-struct position<X, T, Ts...> {
-   static const int pos = position<X, Ts...>::pos != -1 ? position<X, Ts...>::pos + 1 : -1;
-};
-
 
 template<typename T, typename... Ts>
 struct type_info<T&, Ts...> {
@@ -365,8 +354,8 @@ public:
     template<typename X>
     static constexpr int position = impl::position<X, Types...>::pos;
 
-    template<int Pos, std::enable_if<Pos < impl::type_info<Types...>::size,int> = 1>
-    using type = impl::type_at<Pos, Types...>::type;
+    template<int Pos, std::enable_if_t<Pos < impl::type_info<Types...>::size,int> = 1>
+    using type_at = typename impl::type_at<Pos, Types...>::type;
 };
 
 template<typename Result>

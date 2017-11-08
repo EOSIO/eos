@@ -1,40 +1,50 @@
 #include <fc/crypto/public_key.hpp>
-#include <fc/crypto/base58.hpp>
 #include <fc/crypto/common.hpp>
 #include <fc/exception/exception.hpp>
-#include <fc/io/raw.hpp>
-#include <fc/utility.hpp>
 
 namespace fc { namespace crypto {
 
+   struct recovery_visitor : fc::visitor<public_key::storage_type> {
+      recovery_visitor(const sha256& digest, bool check_canonical)
+      :_digest(digest)
+      ,_check_canonical(check_canonical)
+      {}
+
+      template<typename SignatureType>
+      public_key::storage_type operator()(const SignatureType& s) const {
+         return public_key::storage_type(s.recover(_digest, _check_canonical));
+      }
+
+      const sha256& _digest;
+      bool _check_canonical;
+   };
+
    public_key::public_key( const signature& c, const sha256& digest, bool check_canonical )
+   :_storage(c._storage.visit(recovery_visitor(digest, check_canonical)))
    {
-      constexpr signature_which = signature._storage.which();
-      using KeyType = storage_type::template type_at(signature_which);
-      _storage = storage_type(KeyType(c, digest, check_canonical));
    }
 
    static public_key::storage_type parse_base58(const std::string& base58str)
    {
-      constexpr prefix = config::public_key_base_prefix;
+      constexpr auto prefix = config::public_key_base_prefix;
       FC_ASSERT(prefix_matches(prefix, base58str), "Public Key has invalid prefix: ${str}", ("str", base58str));
 
-      auto sub_str = base58str.substr(c_strlen(prefix));
+      auto sub_str = base58str.substr(const_strlen(prefix));
       try {
-         using default_type = storage_type::template type_at<0>;
+         using default_type = typename public_key::storage_type::template type_at<0>;
          using data_type = default_type::data_type;
          using wrapper = checksummed_data<data_type>;
          auto bin = fc::from_base58(sub_str);
-         if (bin.size() == sizeof(wrapper)) {
+         if (bin.size() == sizeof(data_type) + sizeof(uint32_t)) {
             auto wrapped = fc::raw::unpack<wrapper>(bin);
-            FC_ASSERT(wrapper::calculate_checksum(bin_key.data) == bin_key.check);
-            return storage_type(default_type(bin_key.data));
+            FC_ASSERT(wrapper::calculate_checksum(wrapped.data) == wrapped.check);
+            return public_key::storage_type(default_type(wrapped.data));
          }
       } catch (...) {
          // default import failed
       }
 
-      return base58_str_parser<storage_type, config::public_key_prefix>::apply(sub_str);
+      return base58_str_parser<public_key::storage_type, config::public_key_prefix>::apply(sub_str);
    }
 
    public_key::public_key(const std::string& base58str)

@@ -1,5 +1,6 @@
 #pragma once
 #include <fc/crypto/elliptic.hpp>
+#include <fc/crypto/elliptic_r1.hpp>
 #include <fc/crypto/public_key.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/reflect/variant.hpp>
@@ -8,17 +9,17 @@
 namespace fc { namespace crypto {
 
    namespace config {
-      static const char*  private_key_base_prefix = "EOS";
-      static const char* const private_key_prefix[] = {
+      constexpr const char* private_key_base_prefix = "EOS";
+      constexpr const char* private_key_prefix[] = {
          "K1",
-         "H1"
+         "R1"
       };
    };
 
    class private_key
    {
       public:
-         using storage_type = static_variant<ecc::private_key, sha256>;
+         using storage_type = static_variant<ecc::private_key_shim, r1::private_key_shim>;
 
          private_key() = default;
          private_key( private_key&& ) = default;

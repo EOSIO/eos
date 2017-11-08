@@ -1,32 +1,29 @@
 #include <fc/crypto/signature.hpp>
-#include <fc/crypto/base58.hpp>
 #include <fc/crypto/common.hpp>
 #include <fc/exception/exception.hpp>
-#include <fc/io/raw.hpp>
-#include <fc/utility.hpp>
 
 namespace fc { namespace crypto {
    static signature::storage_type parse_base58(const std::string& base58str)
    {
-      constexpr prefix = config::signature_base_prefix;
+      constexpr auto prefix = config::signature_base_prefix;
       FC_ASSERT(prefix_matches(prefix, base58str), "Signature has invalid prefix: ${str}", ("str", base58str));
 
-      auto sub_str = base58str.substr(c_strlen(prefix));
+      auto sub_str = base58str.substr(const_strlen(prefix));
       try {
-         using default_type = storage_type::template type_at<0>;
+         using default_type = signature::storage_type::template type_at<0>;
          using data_type = default_type::data_type;
          using wrapper = checksummed_data<data_type>;
          auto bin = fc::from_base58(sub_str);
-         if (bin.size() == sizeof(wrapper)) {
+         if (bin.size() == sizeof(data_type) + sizeof(uint32_t)) {
             auto wrapped = fc::raw::unpack<wrapper>(bin);
-            FC_ASSERT(wrapper::calculate_checksum(bin_key.data) == bin_key.check);
-            return storage_type(default_type(bin_key.data));
+            FC_ASSERT(wrapper::calculate_checksum(wrapped.data) == wrapped.check);
+            return signature::storage_type(default_type(wrapped.data));
          }
       } catch (...) {
          // default import failed
       }
 
-      return base58_str_parser<storage_type, config::signature_prefix>::apply(sub_str);
+      return base58_str_parser<signature::storage_type, config::signature_prefix>::apply(sub_str);
    }
 
    signature::signature(const std::string& base58str)
