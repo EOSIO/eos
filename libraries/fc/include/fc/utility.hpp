@@ -51,6 +51,13 @@ namespace fc {
   template<typename T>
   const T& min( const T& a, const T& b ) { return a < b ? a: b; }
 
+  constexpr size_t const_strlen(const char* str) {
+    if (*str = '\0') {
+      return 0;
+    }
+
+    return 1 + const_strlen(str+1);
+  }
 }
   // outside of namespace fc becuase of VC++ conflict with std::swap
   template<typename T>
