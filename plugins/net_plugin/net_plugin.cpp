@@ -616,7 +616,8 @@ namespace eos {
     uint32_t lib_num;
     try {
       lib_num = cc.last_irreversible_block_num();
-      lib_id = cc.get_block_id_for_num(lib_num);
+      if (lib_num > 0)
+        lib_id = cc.get_block_id_for_num(lib_num);
       head_id = cc.get_block_id_for_num (head_num);
     }
     catch (const assert_exception &ex) {
@@ -1219,7 +1220,7 @@ namespace eos {
       if( msg.last_irreversible_block_num  > head || sync_master->syncing() ) {
         sync_master->start_sync( c, peer_lib );
       }
-      else if( msg.head_id != head_id && msg.head_id != block_id_type( )) {
+      else if( msg.head_id != head_id ) { // && msg.head_id != block_id_type( )) {
         // dlog ("msg.head_id = ${m} our head = ${h}",("m",msg.head_id)("h",head_id));
 
         notice_message note;
@@ -1355,12 +1356,13 @@ namespace eos {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
-      // dlog ("got a request_message from ${p}", ("p",c->peer_name()));
       switch (msg.req_blocks.mode) {
       case id_list_modes::catch_up :
+        // dlog ("got a catch up request_message from ${p}", ("p",c->peer_name()));
         c->blk_send_branch( msg.req_trx.ids );
         break;
       case id_list_modes::normal :
+        // dlog ("got a normal request_message from ${p}", ("p",c->peer_name()));
         c->blk_send(msg.req_blocks.ids);
         break;
       default:;
