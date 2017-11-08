@@ -41,12 +41,13 @@ namespace fc { namespace crypto {
          constexpr auto prefix = Prefixes[Position];
 
          if (prefix_matches(prefix, base58str)) {
-            auto bin = fc::from_base58(base58str.substr(const_strlen(prefix)));
-            if (bin.size() == sizeof(data_type) + sizeof(uint32_t)) {
-               auto wrapped = fc::raw::unpack<wrapper>(bin);
-               FC_ASSERT(wrapper::calculate_checksum(wrapped.data, prefix) == wrapped.check);
-               return Result(KeyType(wrapped.data));
-            }
+            auto str = base58str.substr(const_strlen(prefix));
+            auto bin = fc::from_base58(str);
+            FC_ASSERT(bin.size() >= sizeof(data_type) + sizeof(uint32_t));
+            auto wrapped = fc::raw::unpack<wrapper>(bin);
+            auto checksum = wrapper::calculate_checksum(wrapped.data, prefix);
+            FC_ASSERT(checksum == wrapped.check);
+            return Result(KeyType(wrapped.data));
          }
 
          return base58_str_parser_impl<Result, Prefixes, Position + 1, Rem...>::apply(base58str);
