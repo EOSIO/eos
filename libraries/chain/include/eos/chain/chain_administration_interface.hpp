@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/blockchain_configuration.hpp>
 #include <eos/chain/types.hpp>
 #include <eos/chain/message.hpp>
 #include <eos/chain/config.hpp>
@@ -28,9 +28,9 @@ public:
     * @param db The current blockchain database state. Private state or block producer scheduling may be modiied.
     * @return The next round of block producers, sorted by owner name
     */
-   virtual ProducerRound get_next_round(chainbase::database& db) = 0;
-   virtual BlockchainConfiguration get_blockchain_configuration(const chainbase::database& db,
-                                                                const ProducerRound& round) = 0;
+   virtual producer_round get_next_round(chainbase::database& db) = 0;
+   virtual blockchain_configuration get_blockchain_configuration(const chainbase::database& db,
+                                                                const producer_round& round) = 0;
 };
 
 } } // namespace eosio::chain

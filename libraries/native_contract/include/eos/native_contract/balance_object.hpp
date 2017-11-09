@@ -24,8 +24,8 @@ class BalanceObject : public chainbase::object<chain::balance_object_type, Balan
    OBJECT_CTOR(BalanceObject)
 
    id_type id;
-   types::AccountName ownerName;
-   types::ShareType balance = 0;
+   types::account_name ownerName;
+   types::share_type balance = 0;
 };
 
 struct byOwnerName;
@@ -37,7 +37,7 @@ using BalanceMultiIndex = chainbase::shared_multi_index_container<
          member<BalanceObject, BalanceObject::id_type, &BalanceObject::id>
       >,
       ordered_unique<tag<byOwnerName>,
-         member<BalanceObject, types::AccountName, &BalanceObject::ownerName>
+         member<BalanceObject, types::account_name, &BalanceObject::ownerName>
       >
    >
 >;

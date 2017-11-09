@@ -16,7 +16,7 @@
 #include "IR/Validate.h"
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/account_object.hpp>
-#include <eos/types/AbiSerializer.hpp>
+#include <eos/types/abi_serializer.hpp>
 #include <chrono>
 #include <boost/lexical_cast.hpp>
 #include <fc/utf8.hpp>
@@ -47,7 +47,7 @@ namespace eosio { namespace chain {
    wasm_interface::wasm_interface() {
    }
 
-   wasm_interface::key_type wasm_interface::to_key_type(const types::TypeName& type_name)
+   wasm_interface::key_type wasm_interface::to_key_type(const types::type_name& type_name)
    {
       if ("str" == type_name)
          return str;
@@ -131,7 +131,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 
 
 #define VERIFY_TABLE(TYPE) \
-   const auto table_name = Name(table); \
+   const auto table_name = name(table); \
    auto& wasm  = wasm_interface::get(); \
    if (wasm.table_key_types) \
    { \
@@ -149,7 +149,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 
 #define READ_RECORD(READFUNC, INDEX, SCOPE) \
    auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      auto res = ctx->READFUNC<INDEX, SCOPE>( Name(scope), Name(code), table_name, keys, data, datalen); \
+      auto res = ctx->READFUNC<INDEX, SCOPE>( name(scope), name(code), table_name, keys, data, datalen); \
       if (res >= 0) res += INDEX::value_type::number_of_keys*sizeof(INDEX::value_type::key_type); \
       return res; \
    }; \
@@ -157,7 +157,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 
 #define UPDATE_RECORD(UPDATEFUNC, INDEX, DATASIZE) \
    auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      return ctx->UPDATEFUNC<INDEX::value_type>( Name(scope), Name(ctx->code.value), table_name, keys, data, datalen); \
+      return ctx->UPDATEFUNC<INDEX::value_type>( name(scope), name(ctx->code.value), table_name, keys, data, datalen); \
    }; \
    return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
 
@@ -206,14 +206,14 @@ DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, tertiary_,  key64x64x64_value_index, by_
 #define UPDATE_RECORD_STR(FUNCTION) \
   VERIFY_TABLE(str) \
   auto lambda = [&](apply_context* ctx, std::string* keys, char *data, uint32_t datalen) -> int32_t { \
-    return ctx->FUNCTION<keystr_value_object>( Name(scope), Name(ctx->code.value), table_name, keys, data, datalen); \
+    return ctx->FUNCTION<keystr_value_object>( name(scope), name(ctx->code.value), table_name, keys, data, datalen); \
   }; \
   return validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
 
 #define READ_RECORD_STR(FUNCTION) \
   VERIFY_TABLE(str) \
   auto lambda = [&](apply_context* ctx, std::string* keys, char *data, uint32_t datalen) -> int32_t { \
-    auto res = ctx->FUNCTION<keystr_value_index, by_scope_primary>( Name(scope), Name(code), table_name, keys, data, datalen); \
+    auto res = ctx->FUNCTION<keystr_value_index, by_scope_primary>( name(scope), name(code), table_name, keys, data, datalen); \
     return res; \
   }; \
   return validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
@@ -355,7 +355,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
 DEFINE_INTRINSIC_FUNCTION2(env,get_active_producers,get_active_producers,none,i32,producers,i32,datalen) {
    auto& wasm    = wasm_interface::get();
    auto  mem     = wasm.current_memory;
-   types::AccountName* dst = memoryArrayPtr<types::AccountName>( mem, producers, datalen );
+   types::account_name* dst = memoryArrayPtr<types::account_name>( mem, producers, datalen );
    return wasm_interface::get().current_validate_context->get_active_producers(dst, datalen);
 }
 
@@ -369,7 +369,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,current_code,current_code,i64) {
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,require_auth,require_auth,none,i64,account) {
-   wasm_interface::get().current_validate_context->require_authorization( Name(account) );
+   wasm_interface::get().current_validate_context->require_authorization( name(account) );
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,require_notice,require_notice,none,i64,account) {
@@ -434,7 +434,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,transaction_create,transaction_create,i32) {
    return ptrx.handle;
 }
 
-static void emplace_scope(const Name& scope, std::vector<Name>& scopes) {
+static void emplace_scope(const name& scope, std::vector<name>& scopes) {
    auto i = std::upper_bound( scopes.begin(), scopes.end(), scope);
    if (i == scopes.begin() || *(i - 1) != scope ) {
      scopes.insert(i, scope);
@@ -446,7 +446,7 @@ DEFINE_INTRINSIC_FUNCTION3(env,transaction_require_scope,transaction_require_sco
    if(readOnly == 0) {
       emplace_scope(scope, ptrx.scope);
    } else {
-      emplace_scope(scope, ptrx.readscope);
+      emplace_scope(scope, ptrx.read_scope);
    }
 
    ptrx.check_size();
@@ -483,7 +483,7 @@ DEFINE_INTRINSIC_FUNCTION4(env,message_create,message_create,i32,i64,code,i64,ty
    EOS_ASSERT( length >= 0, tx_unknown_argument,
       "Pushing a message with a negative length" );
 
-   Bytes payload;
+   bytes payload;
    if (length > 0) {
       try {
          // memoryArrayPtr checks that the entire array of bytes is valid and
@@ -496,7 +496,7 @@ DEFINE_INTRINSIC_FUNCTION4(env,message_create,message_create,i32,i64,code,i64,ty
       }
    }
 
-   auto& pmsg = wasm.current_apply_context->create_pending_message(Name(code), Name(type), payload);
+   auto& pmsg = wasm.current_apply_context->create_pending_message(name(code), name(type), payload);
    return pmsg.handle;
 }
 
@@ -504,11 +504,11 @@ DEFINE_INTRINSIC_FUNCTION3(env,message_require_permission,message_require_permis
    auto apply_context  = wasm_interface::get().current_apply_context;
    // if this is not sent from the code account with the permission of "code" then we must
    // presently have the permission to add it, otherwise its a failure
-   if (!(account == apply_context->code.value && Name(permission) == Name("code"))) {
-      apply_context->require_authorization(Name(account), Name(permission));
+   if (!(account == apply_context->code.value && name(permission) == name("code"))) {
+      apply_context->require_authorization(name(account), name(permission));
    }
    auto& pmsg = apply_context->get_pending_message(handle);
-   pmsg.authorization.emplace_back(Name(account), Name(permission));
+   pmsg.authorization.emplace_back(name(account), name(permission));
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,message_send,message_send,none,i32,handle) {
@@ -578,7 +578,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
   std::cerr << fc::variant(v).get_string();
 }
 DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-  std::cerr << Name(val).toString();
+  std::cerr << name(val).to_string();
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
@@ -781,9 +781,9 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
 
 
 
-   void wasm_interface::load( const AccountName& name, const chainbase::database& db ) {
+   void wasm_interface::load( const account_name& name, const chainbase::database& db ) {
       const auto& recipient = db.get<account_object,by_name>( name );
-  //    idump(("recipient")(Name(name))(recipient.code_version));
+  //    idump(("recipient")(name(name))(recipient.code_version));
 
       auto& state = instances[name];
       if( state.code_version != recipient.code_version ) {
@@ -831,18 +831,18 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
           state.code_version = recipient.code_version;
 //          idump((state.code_version));
 
-          types::Abi abi;
-          if( types::AbiSerializer::to_abi(recipient.abi, abi) )
+          types::abi abi;
+          if( types::abi_serializer::to_abi(recipient.abi, abi) )
           {
              state.tables_fixed = true;
              for(auto& table : abi.tables)
              {
-                const auto key_type = to_key_type(table.indextype);
+                const auto key_type = to_key_type(table.index_type);
                 if (key_type == invalid_key_type)
-                   throw Serialization::FatalSerializationException("For code \"" + (std::string)name + "\" indextype of \"" +
-                                                                    table.indextype + "\" referenced but not supported");
+                   throw Serialization::FatalSerializationException("For code \"" + (std::string)name + "\" index_type of \"" +
+                                                                    table.index_type + "\" referenced but not supported");
 
-                state.table_key_types.emplace(std::make_pair(table.table, key_type));
+                state.table_key_types.emplace(std::make_pair(table.table_name, key_type));
              }
           }
         }

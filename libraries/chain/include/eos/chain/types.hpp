@@ -88,37 +88,37 @@ namespace eosio { namespace chain {
    using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-   using eosio::types::Name;
-   using ActionName = Name;
-   using eosio::types::AccountName;
-   using eosio::types::PermissionName;
-   using eosio::types::Asset;
-   using eosio::types::ShareType;
-   using eosio::types::Authority;
-   using eosio::types::PublicKey;
-   using eosio::types::Transaction;
-   using eosio::types::PermissionName;
-   using eosio::types::TypeName;
-   using eosio::types::FuncName;
-   using eosio::types::Time;
-   using eosio::types::Field;
-   using eosio::types::String;
-   using eosio::types::UInt8;
-   using eosio::types::UInt16;
-   using eosio::types::UInt32;
-   using eosio::types::UInt64;
-   using eosio::types::UInt128;
-   using eosio::types::UInt256;
-   using eosio::types::Int8;
-   using eosio::types::Int16;
-   using eosio::types::Int32;
-   using eosio::types::Int64;
-   using eosio::types::Int128;
-   using eosio::types::Int256;
+   using eosio::types::name;
+   using action_name = name;
+   using eosio::types::account_name;
+   using eosio::types::permission_name;
+   using eosio::types::asset;
+   using eosio::types::share_type;
+   using eosio::types::authority;
+   using eosio::types::public_key;
+   using eosio::types::transaction;
+   using eosio::types::permission_name;
+   using eosio::types::type_name;
+   using eosio::types::func_name;
+   using eosio::types::time;
+   using eosio::types::field;
+   using eosio::types::string;
+   using eosio::types::uint8;
+   using eosio::types::uint16;
+   using eosio::types::uint32;
+   using eosio::types::uint64;
+   using eosio::types::uint128;
+   using eosio::types::uint256;
+   using eosio::types::int8;
+   using eosio::types::int16;
+   using eosio::types::int32;
+   using eosio::types::int64;
+   using eosio::types::int128;
+   using eosio::types::int256;
    using eosio::types::uint128_t;
 
-   using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
-   using RoundChanges = std::map<AccountName, AccountName>;
+   using producer_round = std::array<account_name, config::blocks_per_round>;
+   using round_changes = std::map<account_name, account_name>;
 
    /**
     * @brief Calculates the difference between two @ref ProducerRound objects
@@ -129,7 +129,7 @@ namespace eosio { namespace chain {
     * Calculates the difference between two rounds of producers, returning a @ref RoundChanges object. The returned
     * changes are sorted in the order defined by @ref block_header
     */
-   RoundChanges operator-(ProducerRound a, ProducerRound b);
+   round_changes operator-(producer_round a, producer_round b);
 
    /**
     * List all object types from all namespaces here so they can
@@ -180,17 +180,17 @@ namespace eosio { namespace chain {
    using generated_transaction_id_type = fc::sha256;
    using signature_type = fc::ecc::compact_signature;
    using weight_type = uint16_t;
-   using Bytes = types::Bytes;
+   using bytes = types::bytes;
 
-   using public_key_type = eosio::types::PublicKey;
+   using public_key_type = eosio::types::public_key;
    
 } }  // eosio::chain
 
 namespace fc {
-  void to_variant(const eosio::chain::shared_vector<eosio::types::Field>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::shared_vector<eosio::types::Field>& fields);
-  void to_variant(const eosio::chain::ProducerRound& r, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::ProducerRound& r);
+  void to_variant(const eosio::chain::shared_vector<eosio::types::field>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::chain::shared_vector<eosio::types::field>& fields);
+  void to_variant(const eosio::chain::producer_round& r, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::chain::producer_round& r);
 }
 
 FC_REFLECT_ENUM(eosio::chain::object_type,

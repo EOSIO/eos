@@ -46,7 +46,7 @@ class chain_plugin_impl {
 public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
-   chain::Time                      genesis_timestamp;
+   chain::time                      genesis_timestamp;
    uint32_t                         skip_flags = chain_controller::skip_nothing;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
@@ -92,13 +92,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
          ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_create_block_transaction_execution_time),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
-         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::DefaultPerAuthAccountTimeFrameSeconds),
+         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
-         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::DefaultPerAuthAccount),
+         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_auth_account),
           "Limits the maximum rate of transaction messages that an account is allowed each per-authorized-account-transaction-msg-rate-limit-time-frame-sec.")
-          ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::DefaultPerCodeAccountTimeFrameSeconds),
+          ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_code_account_time_frame_seconds),
            "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
-          ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::DefaultPerCodeAccount),
+          ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_code_account),
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
          ;
    cli.add_options()
@@ -107,7 +107,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
          ("skip-transaction-signatures", bpo::bool_switch()->default_value(false),
-          "Disable Transaction signature verification. ONLY for TESTING.")
+          "Disable transaction signature verification. ONLY for TESTING.")
          ;
 }
 
@@ -121,15 +121,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
      string tstr = options.at("genesis-timestamp").as<string>();
      if (strcasecmp (tstr.c_str(), "now") == 0) {
        my->genesis_timestamp = fc::time_point::now();
-       auto diff = my->genesis_timestamp.sec_since_epoch() % config::BlockIntervalSeconds;
+       auto diff = my->genesis_timestamp.sec_since_epoch() % config::block_interval_seconds;
        if (diff > 0) {
-         auto delay =  (config::BlockIntervalSeconds - diff);
+         auto delay =  (config::block_interval_seconds - diff);
          my->genesis_timestamp += delay;
          dlog ("pausing ${s} seconds to the next interval",("s",delay));
        }
      }
      else {
-       my->genesis_timestamp = chain::Time::from_iso_string (tstr);
+       my->genesis_timestamp = chain::time::from_iso_string (tstr);
      }
    }
    if (options.count("block-log-dir")) {
@@ -253,7 +253,7 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
    return chain().push_block(block, my->skip_flags);
 }
 
-void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
+void chain_plugin::accept_transaction(const chain::signed_transaction& trx) {
    chain().push_transaction(trx, my->skip_flags);
 }
 
@@ -298,26 +298,26 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-types::Abi getAbi( const chain_controller& db, const Name& account ) {
+types::abi getAbi( const chain_controller& db, const name& account ) {
    const auto& d = db.get_database();
    const auto& code_accnt  = d.get<account_object,by_name>( account );
 
-   eosio::types::Abi abi;
-   types::AbiSerializer::to_abi(code_accnt.abi, abi);
+   eosio::types::abi abi;
+   types::abi_serializer::to_abi(code_accnt.abi, abi);
    return abi;
 }
 
-string getTableType( const types::Abi& abi, const Name& tablename ) {
+string getTableType( const types::abi& abi, const name& tablename ) {
    for( const auto& t : abi.tables ) {
-      if( t.table == tablename ){
-         return t.indextype;
+      if( t.table_name == tablename ){
+         return t.index_type;
       }
    }
-   FC_ASSERT( !"Abi does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
+   FC_ASSERT( !"ABI does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   const types::Abi abi = getAbi( db, p.code );
+   const types::abi abi = getAbi( db, p.code );
    auto table_type = getTableType( abi, p.table );
    auto table_key = PRIMARY;
 
@@ -393,8 +393,8 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
       result.wast = chain::wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
-   eosio::types::Abi abi;
-   if( types::AbiSerializer::to_abi(accnt.abi, abi) ) {
+   eosio::types::abi abi;
+   if( types::abi_serializer::to_abi(accnt.abi, abi) ) {
       result.abi = std::move(abi);
    }
    return result;
@@ -410,16 +410,16 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
    const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
 
-   result.eos_balance          = Asset(balance.balance, EOS_SYMBOL);
-   result.staked_balance       = Asset(staked_balance.stakedBalance);
-   result.unstaking_balance    = Asset(staked_balance.unstakingBalance);
+   result.eos_balance          = asset(balance.balance, EOS_SYMBOL);
+   result.staked_balance       = asset(staked_balance.stakedBalance);
+   result.unstaking_balance    = asset(staked_balance.unstakingBalance);
    result.last_unstaking_time  = staked_balance.lastUnstakingTime;
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.name ) );
    while( perm != permissions.end() && perm->owner == params.name ) {
       /// TODO: lookup perm->parent name 
-      Name parent;
+      name parent;
 
       // Don't lookup parent if null
       if( perm->parent._id ) {

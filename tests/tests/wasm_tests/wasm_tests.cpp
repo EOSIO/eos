@@ -33,11 +33,11 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eosio::chain::SignedTransaction txn;
+         eosio::chain::signed_transaction txn;
          txn.scope = {"currency"};
          txn.messages.resize(1);
-         txn.messages[0].code = config::EosContractName;
-         txn.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+         txn.messages[0].code = config::eos_contract_name;
+         txn.messages[0].authorization.emplace_back(types::account_permission{"currency","active"});
          transaction_set_message(txn, 0, "setcode", handler);
          txn.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(txn, chain.head_block_id());
@@ -47,25 +47,25 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
          txn.scope = sort_names({"test1","currency"});
          txn.messages.clear();
          transaction_emplace_message(txn, "currency",
-                            vector<types::AccountPermission>{ {"currency","active"} },
+                            vector<types::account_permission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "test1", 10000000,""});
          chain.push_transaction(txn);
 
          txn.scope = sort_names({"test2","currency"});
          txn.messages.clear();
          transaction_emplace_message(txn, "currency",
-                            vector<types::AccountPermission>{ {"currency","active"} },
+                            vector<types::account_permission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "test2", 10000000,""});
          chain.push_transaction(txn);
          chain.produce_blocks(1);
       }
 
-      eosio::chain::SignedTransaction txn;
+      eosio::chain::signed_transaction txn;
       txn.scope = sort_names({"test1","inita"});
       txn.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(txn, chain.head_block_id());
 
-      eosio::chain::SignedTransaction txn2;
+      eosio::chain::signed_transaction txn2;
       txn2.scope = sort_names({"test2","inita"});
       txn2.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(txn2, chain.head_block_id());
@@ -77,13 +77,13 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
       {
          txn.messages.clear();
          transaction_emplace_message(txn, "currency",
-                            vector<types::AccountPermission>{ {"test1","active"} },
+                            vector<types::account_permission>{ {"test1","active"} },
                             "transfer", types::transfer{"test1", "inita", 1+i,""});
          chain.push_transaction(txn);
 
          txn2.messages.clear();
          transaction_emplace_message(txn2, "currency",
-                            vector<types::AccountPermission>{ {"test2","active"} },
+                            vector<types::account_permission>{ {"test2","active"} },
                             "transfer", types::transfer{"test2", "inita", 1+i,""});
          chain.push_transaction(txn2);
       }
@@ -93,7 +93,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
       {
          txn.messages.clear();
          transaction_emplace_message(txn, "currency",
-                            vector<types::AccountPermission>{ {"test1","active"} },
+                            vector<types::account_permission>{ {"test1","active"} },
                             "transfer", types::transfer{"test1", "inita", i+1,""});
          chain.push_transaction(txn);
          BOOST_FAIL("Should have gotten tx_msgs_auth_exceeded exception.");
@@ -107,7 +107,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
       {
          txn.messages.clear();
          transaction_emplace_message(txn2, "currency",
-                            vector<types::AccountPermission>{ {"test2","active"} },
+                            vector<types::account_permission>{ {"test2","active"} },
                             "transfer", types::transfer{"test2", "inita", i+1,""});
          chain.push_transaction(txn2);
          BOOST_FAIL("Should have gotten tx_msgs_auth_exceeded exception.");
@@ -170,11 +170,11 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    // setup currency code, and transfer tokens so accounts can do transfers
    if (false)
    {
-      eosio::chain::SignedTransaction txn;
+      eosio::chain::signed_transaction txn;
       txn.scope = {"currency"};
       txn.messages.resize(1);
-      txn.messages[0].code = config::EosContractName;
-      txn.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+      txn.messages[0].code = config::eos_contract_name;
+      txn.messages[0].authorization.emplace_back(types::account_permission{"currency","active"});
       transaction_set_message(txn, 0, "setcode", handler);
       txn.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(txn, chain.head_block_id());
@@ -185,11 +185,11 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
 
    // setup test1 code account, this will be used for most messages, to reach code account rate limit
    {
-      eosio::chain::SignedTransaction txn;
+      eosio::chain::signed_transaction txn;
       txn.scope = {"test1"};
       txn.messages.resize(1);
-      txn.messages[0].code = config::EosContractName;
-      txn.messages[0].authorization.emplace_back(types::AccountPermission{"test1","active"});
+      txn.messages[0].code = config::eos_contract_name;
+      txn.messages[0].authorization.emplace_back(types::account_permission{"test1","active"});
       transaction_set_message(txn, 0, "setcode", handler2);
       txn.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(txn, chain.head_block_id());
@@ -201,11 +201,11 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    // setup test5 code account, this will be used to verify that code account rate limit only affects individual code accounts
    {
       handler2.account = "test5";
-      eosio::chain::SignedTransaction txn;
+      eosio::chain::signed_transaction txn;
       txn.scope = {"test5"};
       txn.messages.resize(1);
-      txn.messages[0].code = config::EosContractName;
-      txn.messages[0].authorization.emplace_back(types::AccountPermission{"test5","active"});
+      txn.messages[0].code = config::eos_contract_name;
+      txn.messages[0].authorization.emplace_back(types::account_permission{"test5","active"});
       transaction_set_message(txn, 0, "setcode", handler2);
       txn.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(txn, chain.head_block_id());
@@ -215,17 +215,17 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
 
 
    // setup transactions
-   eosio::chain::SignedTransaction txn;
+   eosio::chain::signed_transaction txn;
    txn.scope = sort_names({"test1","test2"});
    txn.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn2;
+   eosio::chain::signed_transaction txn2;
    txn2.scope = sort_names({"test2","test3"});
    txn2.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn2, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn3;
+   eosio::chain::signed_transaction txn3;
    txn3.scope = sort_names({"test1","test4"});
    txn3.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn3, chain.head_block_id());
@@ -235,19 +235,19 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    {
       txn.messages.clear();
       transaction_emplace_message(txn, "test1",
-                         vector<types::AccountPermission>{ {"test1","active"},{"test2","active"} },
+                         vector<types::account_permission>{ {"test1","active"},{"test2","active"} },
                          "transfer", types::transfer{"test1", "test2", i+1, ""});
       chain.push_transaction(txn);
 
       txn2.messages.clear();
       transaction_emplace_message(txn2, "test1",
-                         vector<types::AccountPermission>{ {"test2","active"},{"test3","active"} },
+                         vector<types::account_permission>{ {"test2","active"},{"test3","active"} },
                          "transfer", types::transfer{"test2", "test3", i+1, ""});
       chain.push_transaction(txn2);
 
       txn3.messages.clear();
       transaction_emplace_message(txn3, "test1",
-                         vector<types::AccountPermission>{ {"test1","active"},{"test4","active"} },
+                         vector<types::account_permission>{ {"test1","active"},{"test4","active"} },
                          "transfer", types::transfer{"test1", "test4", i+1, ""});
       chain.push_transaction(txn3);
 
@@ -264,7 +264,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
       txn.scope = sort_names({"test1"});
       txn.messages.clear();
       transaction_emplace_message(txn, "currency",
-                         vector<types::AccountPermission>{ {"test1","active"} },
+                         vector<types::account_permission>{ {"test1","active"} },
                          "transfer", types::transfer{"test1", "test4", 1000,""});
       chain.push_transaction(txn);
       BOOST_FAIL("Should have gotten tx_msgs_auth_exceeded exception.");
@@ -280,7 +280,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
       txn2.scope = sort_names({"test2"});
       txn2.messages.clear();
       transaction_emplace_message(txn2, "currency",
-                         vector<types::AccountPermission>{ {"test2","active"} },
+                         vector<types::account_permission>{ {"test2","active"} },
                          "transfer", types::transfer{"test2", "test3", 1000,""});
       chain.push_transaction(txn2);
       BOOST_FAIL("Should have gotten tx_msgs_auth_exceeded exception.");
@@ -290,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    }
 
 
-   eosio::chain::SignedTransaction txn4;
+   eosio::chain::signed_transaction txn4;
    txn4.scope = sort_names({"test3","test4"});
    txn4.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn4, chain.head_block_id());
@@ -301,7 +301,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    {
       txn4.messages.clear();
       transaction_emplace_message(txn4, "test1",
-                         vector<types::AccountPermission>{ {"test3","active"},{"test4","active"} },
+                         vector<types::account_permission>{ {"test3","active"},{"test4","active"} },
                          "transfer", types::transfer{"test3", "test4", i+1, ""});
       chain.push_transaction(txn4);
 
@@ -319,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
       txn.scope = sort_names({"test3"});
       txn.messages.clear();
       transaction_emplace_message(txn, "currency",
-                         vector<types::AccountPermission>{ {"test3","active"} },
+                         vector<types::account_permission>{ {"test3","active"} },
                          "transfer", types::transfer{"test3", "test5", 1000,""});
       chain.push_transaction(txn);
       BOOST_FAIL("Should have gotten tx_msgs_auth_exceeded exception.");
@@ -335,7 +335,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
       txn2.scope = sort_names({"test4"});
       txn2.messages.clear();
       transaction_emplace_message(txn2, "currency",
-                         vector<types::AccountPermission>{ {"test4","active"} },
+                         vector<types::account_permission>{ {"test4","active"} },
                          "transfer", types::transfer{"test4", "test5", 1000,""});
       chain.push_transaction(txn2);
       BOOST_FAIL("Should have gotten tx_msgs_auth_exceeded exception.");
@@ -345,52 +345,52 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    }
 
 
-   eosio::chain::SignedTransaction txn11;
+   eosio::chain::signed_transaction txn11;
    txn11.scope = sort_names({"test11","test31"});
    txn11.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn11, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn12;
+   eosio::chain::signed_transaction txn12;
    txn12.scope = sort_names({"test12","test32"});
    txn12.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn12, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn13;
+   eosio::chain::signed_transaction txn13;
    txn13.scope = sort_names({"test13","test33"});
    txn13.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn13, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn14;
+   eosio::chain::signed_transaction txn14;
    txn14.scope = sort_names({"test14","test34"});
    txn14.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn14, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn15;
+   eosio::chain::signed_transaction txn15;
    txn15.scope = sort_names({"test15","test35"});
    txn15.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn15, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn21;
+   eosio::chain::signed_transaction txn21;
    txn21.scope = sort_names({"test21","test41"});
    txn21.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn21, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn22;
+   eosio::chain::signed_transaction txn22;
    txn22.scope = sort_names({"test22","test42"});
    txn22.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn22, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn23;
+   eosio::chain::signed_transaction txn23;
    txn23.scope = sort_names({"test23","test43"});
    txn23.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn23, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn24;
+   eosio::chain::signed_transaction txn24;
    txn24.scope = sort_names({"test24","test44"});
    txn24.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn24, chain.head_block_id());
 
-   eosio::chain::SignedTransaction txn25;
+   eosio::chain::signed_transaction txn25;
    txn25.scope = sort_names({"test25","test45"});
    txn25.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(txn25, chain.head_block_id());
@@ -401,61 +401,61 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    {
       txn11.messages.clear();
       transaction_emplace_message(txn11, "test1",
-                         vector<types::AccountPermission>{ {"test11","active"},{"test31","active"} },
+                         vector<types::account_permission>{ {"test11","active"},{"test31","active"} },
                          "transfer", types::transfer{"test11", "test31", i+1, ""});
       chain.push_transaction(txn11);
 
       txn12.messages.clear();
       transaction_emplace_message(txn12, "test1",
-                         vector<types::AccountPermission>{ {"test12","active"},{"test32","active"} },
+                         vector<types::account_permission>{ {"test12","active"},{"test32","active"} },
                          "transfer", types::transfer{"test12", "test32", i+1, ""});
       chain.push_transaction(txn12);
 
       txn13.messages.clear();
       transaction_emplace_message(txn13, "test1",
-                         vector<types::AccountPermission>{ {"test13","active"},{"test33","active"} },
+                         vector<types::account_permission>{ {"test13","active"},{"test33","active"} },
                          "transfer", types::transfer{"test13", "test33", i+1, ""});
       chain.push_transaction(txn13);
 
       txn14.messages.clear();
       transaction_emplace_message(txn14, "test1",
-                         vector<types::AccountPermission>{ {"test14","active"},{"test34","active"} },
+                         vector<types::account_permission>{ {"test14","active"},{"test34","active"} },
                          "transfer", types::transfer{"test14", "test34", i+1, ""});
       chain.push_transaction(txn14);
 
       txn15.messages.clear();
       transaction_emplace_message(txn15, "test1",
-                         vector<types::AccountPermission>{ {"test15","active"},{"test35","active"} },
+                         vector<types::account_permission>{ {"test15","active"},{"test35","active"} },
                          "transfer", types::transfer{"test15", "test35", i+1, ""});
       chain.push_transaction(txn15);
 
       txn21.messages.clear();
       transaction_emplace_message(txn21, "test1",
-                         vector<types::AccountPermission>{ {"test21","active"},{"test41","active"} },
+                         vector<types::account_permission>{ {"test21","active"},{"test41","active"} },
                          "transfer", types::transfer{"test21", "test41", i+1, ""});
       chain.push_transaction(txn21);
 
       txn22.messages.clear();
       transaction_emplace_message(txn22, "test1",
-                         vector<types::AccountPermission>{ {"test22","active"},{"test42","active"} },
+                         vector<types::account_permission>{ {"test22","active"},{"test42","active"} },
                          "transfer", types::transfer{"test22", "test42", i+1, ""});
       chain.push_transaction(txn22);
 
       txn23.messages.clear();
       transaction_emplace_message(txn23, "test1",
-                         vector<types::AccountPermission>{ {"test23","active"},{"test43","active"} },
+                         vector<types::account_permission>{ {"test23","active"},{"test43","active"} },
                          "transfer", types::transfer{"test23", "test43", i+1, ""});
       chain.push_transaction(txn23);
 
       txn24.messages.clear();
       transaction_emplace_message(txn24, "test1",
-                         vector<types::AccountPermission>{ {"test24","active"},{"test44","active"} },
+                         vector<types::account_permission>{ {"test24","active"},{"test44","active"} },
                          "transfer", types::transfer{"test24", "test44", i+1, ""});
       chain.push_transaction(txn24);
 
       txn25.messages.clear();
       transaction_emplace_message(txn25, "test1",
-                         vector<types::AccountPermission>{ {"test25","active"},{"test45","active"} },
+                         vector<types::account_permission>{ {"test25","active"},{"test45","active"} },
                          "transfer", types::transfer{"test25", "test45", i+1, ""});
       chain.push_transaction(txn25);
 
@@ -468,7 +468,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    {
       txn11.messages.clear();
       transaction_emplace_message(txn11, "test1",
-                         vector<types::AccountPermission>{ {"test11","active"},{"test21","active"} },
+                         vector<types::account_permission>{ {"test11","active"},{"test21","active"} },
                          "transfer", types::transfer{"test11", "test21", i+1, ""});
       chain.push_transaction(txn11);
       BOOST_FAIL("Should have gotten tx_msgs_code_exceeded exception.");
@@ -480,7 +480,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    // verify that only test1 is blocked
    txn11.messages.clear();
    transaction_emplace_message(txn11, "test5",
-                      vector<types::AccountPermission>{ {"test11","active"},{"test31","active"} },
+                      vector<types::account_permission>{ {"test11","active"},{"test31","active"} },
                       "transfer", types::transfer{"test11", "test31", i+1, ""});
    chain.push_transaction(txn11);
 
@@ -490,7 +490,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    {
       txn11.messages.clear();
       transaction_emplace_message(txn11, "test1",
-                         vector<types::AccountPermission>{ {"test11","active"},{"test21","active"} },
+                         vector<types::account_permission>{ {"test11","active"},{"test21","active"} },
                          "transfer", types::transfer{"test11", "test21", i+1, ""});
       chain.push_transaction(txn11);
       BOOST_FAIL("Should have gotten tx_msgs_code_exceeded exception.");
@@ -504,7 +504,7 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
    // rate limit calculation will now be at least at a new second, so will always be able to handle a new transaction message
    txn11.messages.clear();
    transaction_emplace_message(txn11, "test1",
-                      vector<types::AccountPermission>{ {"test11","active"},{"test21","active"} },
+                      vector<types::account_permission>{ {"test11","active"},{"test21","active"} },
                       "transfer", types::transfer{"test11", "test21", i+1, ""});
    chain.push_transaction(txn11);
 

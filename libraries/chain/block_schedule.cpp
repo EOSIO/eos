@@ -23,7 +23,7 @@ static uint next_power_of_two(uint input) {
    return result;
 };
 
-typedef std::hash<decltype(AccountName::value)> account_hash;
+typedef std::hash<decltype(account_name::value)> account_hash;
 static account_hash account_hasher;
 
 struct schedule_entry {
@@ -115,7 +115,7 @@ struct block_size_skipper {
 
 auto make_skipper(const global_property_object& properties) {
    static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = properties.configuration.maxBlockSize;
+   auto maximum_block_size = properties.configuration.max_blk_size;
    return block_size_skipper { max_block_header_size, (size_t)maximum_block_size };
 }
 

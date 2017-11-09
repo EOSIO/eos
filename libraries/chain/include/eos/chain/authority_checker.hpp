@@ -17,13 +17,13 @@
 namespace eosio { namespace chain {
 
 namespace detail {
-using MetaPermission = static_variant<types::KeyPermissionWeight, types::AccountPermissionWeight>;
+using MetaPermission = static_variant<types::key_permission_weight, types::account_permission_weight>;
 
 struct GetWeightVisitor {
-   using result_type = UInt32;
+   using result_type = uint32;
 
    template<typename Permission>
-   UInt32 operator()(const Permission& permission) { return permission.weight; }
+   uint32 operator()(const Permission& permission) { return permission.weight; }
 };
 
 // Orders permissions descending by weight, and breaks ties with Key permissions being less than Account permissions
@@ -31,7 +31,7 @@ struct MetaPermissionComparator {
    bool operator()(const MetaPermission& a, const MetaPermission& b) const {
       GetWeightVisitor scale;
       if (a.visit(scale) > b.visit(scale)) return true;
-      return a.contains<types::KeyPermissionWeight>() && !b.contains<types::KeyPermissionWeight>();
+      return a.contains<types::key_permission_weight>() && !b.contains<types::key_permission_weight>();
    }
 };
 
@@ -51,21 +51,21 @@ using MetaPermissionSet = boost::container::flat_multiset<MetaPermission, MetaPe
 template<typename F>
 class AuthorityChecker {
    F PermissionToAuthority;
-   UInt16 recursionDepthLimit;
+   uint16 recursionDepthLimit;
    vector<public_key_type> signingKeys;
    vector<bool> usedKeys;
 
    struct WeightTallyVisitor {
-      using result_type = UInt32;
+      using result_type = uint32;
 
       AuthorityChecker& checker;
-      UInt16 recursionDepth;
-      UInt32 totalWeight = 0;
+      uint16 recursionDepth;
+      uint32 totalWeight = 0;
 
-      WeightTallyVisitor(AuthorityChecker& checker, UInt16 recursionDepth)
+      WeightTallyVisitor(AuthorityChecker& checker, uint16 recursionDepth)
          : checker(checker), recursionDepth(recursionDepth) {}
 
-      UInt32 operator()(const types::KeyPermissionWeight& permission) {
+      uint32 operator()(const types::key_permission_weight& permission) {
          auto itr = boost::find(checker.signingKeys, permission.key);
          if (itr != checker.signingKeys.end()) {
             checker.usedKeys[itr - checker.signingKeys.begin()] = true;
@@ -73,7 +73,7 @@ class AuthorityChecker {
          }
          return totalWeight;
       }
-      UInt32 operator()(const types::AccountPermissionWeight& permission) {
+      uint32 operator()(const types::account_permission_weight& permission) {
          if (recursionDepth < checker.recursionDepthLimit
              && checker.satisfied(permission.permission, recursionDepth + 1))
             totalWeight += permission.weight;
@@ -82,18 +82,18 @@ class AuthorityChecker {
    };
 
 public:
-   AuthorityChecker(F PermissionToAuthority, UInt16 recursionDepthLimit, const flat_set<public_key_type>& signingKeys)
+   AuthorityChecker(F PermissionToAuthority, uint16 recursionDepthLimit, const flat_set<public_key_type>& signingKeys)
       : PermissionToAuthority(PermissionToAuthority),
         recursionDepthLimit(recursionDepthLimit),
         signingKeys(signingKeys.begin(), signingKeys.end()),
         usedKeys(signingKeys.size(), false)
    {}
 
-   bool satisfied(const types::AccountPermission& permission, UInt16 depth = 0) {
+   bool satisfied(const types::account_permission& permission, uint16 depth = 0) {
       return satisfied(PermissionToAuthority(permission), depth);
    }
    template<typename AuthorityType>
-   bool satisfied(const AuthorityType& authority, UInt16 depth = 0) {
+   bool satisfied(const AuthorityType& authority, uint16 depth = 0) {
       // This check is redundant, since WeightTallyVisitor did it too, but I'll leave it here for future-proofing
       if (depth > recursionDepthLimit)
          return false;
@@ -131,7 +131,7 @@ public:
 };
 
 template<typename F>
-AuthorityChecker<F> MakeAuthorityChecker(F&& pta, UInt16 recursionDepthLimit,
+AuthorityChecker<F> MakeAuthorityChecker(F&& pta, uint16 recursionDepthLimit,
                                          const flat_set<public_key_type>& signingKeys) {
    return AuthorityChecker<F>(std::forward<F>(pta), recursionDepthLimit, signingKeys);
 }

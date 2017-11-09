@@ -32,14 +32,14 @@ namespace eosio { namespace chain {
 
       id_type        id;
       /// The account which is defining its permission requirements
-      AccountName    account;
+      account_name   account;
       /// The contract which account requires @ref required_permission to invoke
-      AccountName    code;
+      account_name   code;
       /// The message type which account requires @ref required_permission to invoke
       /// May be empty; if so, it sets a default @ref required_permission for all messages to @ref code
-      FuncName       message_type;
+      func_name      message_type;
       /// The permission level which @ref account requires for the specified message types
-      PermissionName required_permission;
+      permission_name required_permission;
    };
 
    struct by_message_type;
@@ -52,17 +52,17 @@ namespace eosio { namespace chain {
          >,
          ordered_unique<tag<by_message_type>,
             composite_key<permission_link_object,
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, account),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, code),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, FuncName, message_type)
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, func_name, message_type)
             >
          >,
          ordered_unique<tag<by_permission_name>,
             composite_key<permission_link_object,
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, account),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, PermissionName, required_permission),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, code),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, FuncName, message_type)
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_name, required_permission),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, func_name, message_type)
             >
          >
       >

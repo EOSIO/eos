@@ -16,7 +16,7 @@ namespace eosio {
 using namespace chain;
 using namespace types;
 
-void ProducerVotesObject::updateVotes(ShareType deltaVotes, UInt128 currentRaceTime) {
+void ProducerVotesObject::updateVotes(share_type deltaVotes, uint128 currentRaceTime) {
    auto timeSinceLastUpdate = currentRaceTime - race.positionUpdateTime;
    auto newPosition = race.position + race.speed * timeSinceLastUpdate;
    auto newSpeed = race.speed + deltaVotes;
@@ -24,7 +24,7 @@ void ProducerVotesObject::updateVotes(ShareType deltaVotes, UInt128 currentRaceT
    race.update(newSpeed, newPosition, currentRaceTime);
 }
 
-void ProxyVoteObject::addProxySource(const AccountName& source, ShareType sourceStake, chainbase::database& db) const {
+void ProxyVoteObject::addProxySource(const account_name& source, share_type sourceStake, chainbase::database& db) const {
    db.modify(*this, [&source, sourceStake](ProxyVoteObject& pvo) {
       pvo.proxySources.insert(source);
       pvo.proxiedStake += sourceStake;
@@ -32,7 +32,7 @@ void ProxyVoteObject::addProxySource(const AccountName& source, ShareType source
    db.get<StakedBalanceObject, byOwnerName>(proxyTarget).propagateVotes(sourceStake, db);
 }
 
-void ProxyVoteObject::removeProxySource(const AccountName& source, ShareType sourceStake,
+void ProxyVoteObject::removeProxySource(const account_name& source, share_type sourceStake,
                                         chainbase::database& db) const {
    db.modify(*this, [&source, sourceStake](ProxyVoteObject& pvo) {
       pvo.proxySources.erase(source);
@@ -41,7 +41,7 @@ void ProxyVoteObject::removeProxySource(const AccountName& source, ShareType sou
    db.get<StakedBalanceObject, byOwnerName>(proxyTarget).propagateVotes(sourceStake, db);
 }
 
-void ProxyVoteObject::updateProxiedStake(ShareType stakeDelta, chainbase::database& db) const {
+void ProxyVoteObject::updateProxiedStake(share_type stakeDelta, chainbase::database& db) const {
    db.modify(*this, [stakeDelta](ProxyVoteObject& pvo) {
       pvo.proxiedStake += stakeDelta;
    });
@@ -49,7 +49,7 @@ void ProxyVoteObject::updateProxiedStake(ShareType stakeDelta, chainbase::databa
 }
 
 void ProxyVoteObject::cancelProxies(chainbase::database& db) const {
-   boost::for_each(proxySources, [&db](const AccountName& source) {
+   boost::for_each(proxySources, [&db](const account_name& source) {
       const auto& balance = db.get<StakedBalanceObject, byOwnerName>(source);
       db.modify(balance, [](StakedBalanceObject& sbo) {
          sbo.producerVotes = ProducerSlate{};
@@ -57,24 +57,24 @@ void ProxyVoteObject::cancelProxies(chainbase::database& db) const {
    });
 }
 
-ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db) const {
+producer_round ProducerScheduleObject::calculateNextRound(chainbase::database& db) const {
    // Create storage and machinery with nice names, for choosing the top-voted producers
-   ProducerRound round;
+   producer_round round;
    auto FilterRetiredProducers = boost::adaptors::filtered([&db](const ProducerVotesObject& pvo) {
-      return db.get<producer_object, by_owner>(pvo.ownerName).signing_key != PublicKey();
+      return db.get<producer_object, by_owner>(pvo.ownerName).signing_key != public_key();
    });
    auto ProducerObjectToName = boost::adaptors::transformed([](const ProducerVotesObject& p) { return p.ownerName; });
    const auto& AllProducersByVotes = db.get_index<ProducerVotesMultiIndex, byVotes>();
    auto ActiveProducersByVotes = AllProducersByVotes | FilterRetiredProducers;
 
-   FC_ASSERT(boost::distance(ActiveProducersByVotes) >= config::BlocksPerRound,
+   FC_ASSERT(boost::distance(ActiveProducersByVotes) >= config::blocks_per_round,
              "Not enough active producers registered to schedule a round!",
              ("ActiveProducers", (int64_t)boost::distance(ActiveProducersByVotes))
              ("AllProducers", (int64_t)AllProducersByVotes.size()));
 
    // Copy the top voted active producer's names into the round
    auto runnerUpStorage =
-         boost::copy_n(ActiveProducersByVotes | ProducerObjectToName, config::VotedProducersPerRound, round.begin());
+         boost::copy_n(ActiveProducersByVotes | ProducerObjectToName, config::voted_producers_per_round, round.begin());
 
    // More machinery with nice names, this time for choosing runner-up producers
    auto VotedProducerRange = boost::make_iterator_range(round.begin(), runnerUpStorage);
@@ -86,7 +86,7 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
    const auto& AllProducersByFinishTime = db.get_index<ProducerVotesMultiIndex, byProjectedRaceFinishTime>();
    auto EligibleProducersByFinishTime = AllProducersByFinishTime | FilterRetiredProducers | FilterVotedProducers;
 
-   auto runnerUpProducerCount = config::BlocksPerRound - config::VotedProducersPerRound;
+   auto runnerUpProducerCount = config::blocks_per_round - config::voted_producers_per_round;
 
    // Copy the front producers in the race into the round
    auto roundEnd =
@@ -112,7 +112,7 @@ ProducerRound ProducerScheduleObject::calculateNextRound(chainbase::database& db
    // Start each producer that finished his lap on the next one, and update the global race time.
    try {
       if (boost::distance(LapCompleters) < AllProducersByFinishTime.size()
-             && newRaceTime < std::numeric_limits<UInt128>::max()) {
+             && newRaceTime < std::numeric_limits<uint128>::max()) {
          //ilog("Processed producer race. ${count} producers completed a lap at virtual time ${time}",
          //     ("count", (int64_t)boost::distance(LapCompleters))("time", newRaceTime));
          boost::for_each(LapCompleters, StartNewLap);

@@ -11,7 +11,7 @@
 namespace eosio { namespace chain {
 
    /**
-    * @defgroup transactions Transactions
+    * @defgroup transactions transactions
     *
     * All transactions are sets of messages that must be applied atomically (all succeed or all fail). Transactions
     * must refer to a recent block that defines the context of the operation so that they assert a known
@@ -33,11 +33,10 @@ namespace eosio { namespace chain {
     * @{
     */
 
-   struct ProcessedTransaction;
-   struct InlineTransaction;
-   struct ProcessedGeneratedTransaction;
+   struct processed_transaction;
+   struct inline_transaction;
+   struct processed_generated_transaction;
 
-   
 
    /**
     * @brief methods that operate on @ref eosio::types::Transaction.
@@ -46,39 +45,39 @@ namespace eosio { namespace chain {
     * additional features and requirements based off of @ref eosio::types::Transaction.
     */
    /// Calculate the digest for a transaction
-   digest_type transaction_digest(const Transaction& t);
+   digest_type transaction_digest(const transaction& t);
 
-   void transaction_set_reference_block(Transaction& t, const block_id_type& reference_block);
+   void transaction_set_reference_block(transaction& t, const block_id_type& reference_block);
 
-   bool transaction_verify_reference_block(const Transaction& t, const block_id_type& reference_block);
+   bool transaction_verify_reference_block(const transaction& t, const block_id_type& reference_block);
 
    template <typename T>
-   void transaction_set_message(Transaction& t, int index, const types::FuncName& type, T&& value) {
-      Message m(t.messages[index]);
+   void transaction_set_message(transaction& t, int index, const types::func_name& type, T&& value) {
+      message m(t.messages[index]);
       m.set(type, std::forward<T>(value));
       t.messages[index] = m;
    }
 
    template <typename T>
-   T transaction_message_as(Transaction& t, int index) {
-      Message m(t.messages[index]);
+   T transaction_message_as(transaction& t, int index) {
+      message m(t.messages[index]);
       return m.as<T>();
    }
 
    template <typename... Args>
-   void transaction_emplace_message(Transaction& t, Args&&... a) {
-      t.messages.emplace_back(Message(std::forward<Args>(a)...));
+   void transaction_emplace_message(transaction& t, Args&&... a) {
+      t.messages.emplace_back(message(std::forward<Args>(a)...));
    }
 
    template <typename... Args>
-   void transaction_emplace_serialized_message(Transaction& t, Args&&... a) {
-      t.messages.emplace_back(types::Message(std::forward<Args>(a)...));
+   void transaction_emplace_serialized_message(transaction& t, Args&&... a) {
+      t.messages.emplace_back(types::message(std::forward<Args>(a)...));
    }
 
    /**
       * clear all common data
       */
-   inline void transaction_clear(Transaction& t) {
+   inline void transaction_clear(transaction& t) {
       t.messages.clear();
    }
 
@@ -95,21 +94,21 @@ namespace eosio { namespace chain {
     * sequential ID, then stored in the block that generated them. These generated transactions can then be included in
     * subsequent blocks by referencing this ID.
     */
-   struct GeneratedTransaction : public types::Transaction {
-      GeneratedTransaction() = default;
-      GeneratedTransaction(generated_transaction_id_type _id, const Transaction& trx)
-         : types::Transaction(trx)
+   struct generated_transaction : public types::transaction {
+      generated_transaction() = default;
+      generated_transaction(generated_transaction_id_type _id, const transaction& trx)
+         : types::transaction(trx)
          , id(_id) {}
 
-      GeneratedTransaction(generated_transaction_id_type _id, const Transaction&& trx)
-         : types::Transaction(trx)
+      generated_transaction(generated_transaction_id_type _id, const transaction&& trx)
+         : types::transaction(trx)
          , id(_id) {}
       
       generated_transaction_id_type id;
 
       digest_type merkle_digest() const;
 
-      typedef ProcessedGeneratedTransaction Processed;
+      typedef processed_generated_transaction processed;
    };
 
    /**
@@ -118,8 +117,8 @@ namespace eosio { namespace chain {
     * signed_transaction is a transaction with an additional manifest of authorizations included with the transaction,
     * and the signatures backing those authorizations.
     */
-   struct SignedTransaction : public types::SignedTransaction {
-      typedef types::SignedTransaction super;
+   struct signed_transaction : public types::signed_transaction {
+      typedef types::signed_transaction super;
       using super::super;
 
       /// Calculate the id of the transaction
@@ -143,67 +142,67 @@ namespace eosio { namespace chain {
 
       digest_type merkle_digest() const;
 
-      typedef ProcessedTransaction Processed;
+      typedef processed_transaction processed;
    };
 
-   struct PendingInlineTransaction : public types::Transaction {
-      typedef types::Transaction super;
+   struct pending_inline_transaction : public types::transaction {
+      typedef types::transaction super;
       using super::super;
 
-      explicit PendingInlineTransaction( const types::Transaction& t ):types::Transaction((const types::Transaction& )t){}
+      explicit pending_inline_transaction( const types::transaction& t ):types::transaction((const types::transaction& )t){}
       
-      typedef InlineTransaction Processed;
+      typedef inline_transaction processed;
    };
 
-   struct MessageOutput;
-   struct InlineTransaction : public types::Transaction {
-      explicit InlineTransaction( const types::Transaction& t ):types::Transaction((const types::Transaction& )t){}
-      explicit InlineTransaction( const PendingInlineTransaction& t ):types::Transaction((const types::Transaction& )t){}
-      InlineTransaction(){}
+   struct message_output;
+   struct inline_transaction : public types::transaction {
+      explicit inline_transaction( const types::transaction& t ):types::transaction((const types::transaction& )t){}
+      explicit inline_transaction( const pending_inline_transaction& t ):types::transaction((const types::transaction& )t){}
+      inline_transaction(){}
 
-      vector<MessageOutput> output;
+      vector<message_output> output;
    };
 
-   struct NotifyOutput;
+   struct notify_output;
    
    /**
     *  Output generated by applying a particular message.
     */
-   struct MessageOutput {
-      vector<NotifyOutput>             notify; ///< accounts to notify, may only be notified once
-      fc::optional<InlineTransaction>  inline_transaction; ///< transactions generated and applied after notify
-      vector<GeneratedTransaction>     deferred_transactions; ///< transactions generated but not applied
+   struct message_output {
+      vector<notify_output>             notify; ///< accounts to notify, may only be notified once
+      fc::optional<inline_transaction>  inline_transaction; ///< transactions generated and applied after notify
+      vector<generated_transaction>     deferred_transactions; ///< transactions generated but not applied
    };
 
-   struct NotifyOutput {
-      AccountName   name;
-      MessageOutput output;
+   struct notify_output {
+      account_name  name;
+      message_output output;
    };
 
-   struct ProcessedTransaction : public SignedTransaction {
-      explicit ProcessedTransaction( const SignedTransaction& t ):SignedTransaction(t){}
-      ProcessedTransaction(){}
+   struct processed_transaction : public signed_transaction {
+      explicit processed_transaction( const signed_transaction& t ):signed_transaction(t){}
+      processed_transaction(){}
 
-      vector<MessageOutput> output;
+      vector<message_output> output;
    };
 
-   struct ProcessedGeneratedTransaction {
-      explicit ProcessedGeneratedTransaction( const generated_transaction_id_type& _id ):id(_id){}
-      explicit ProcessedGeneratedTransaction( const GeneratedTransaction& t ):id(t.id){}
-      ProcessedGeneratedTransaction(){}
+   struct processed_generated_transaction {
+      explicit processed_generated_transaction( const generated_transaction_id_type& _id ):id(_id){}
+      explicit processed_generated_transaction( const generated_transaction& t ):id(t.id){}
+      processed_generated_transaction(){}
 
       generated_transaction_id_type   id;
-      vector<MessageOutput> output;
+      vector<message_output> output;
    };
    /// @} transactions group
 
 } } // eosio::chain
 
-FC_REFLECT(eosio::chain::GeneratedTransaction, (id))
-FC_REFLECT_DERIVED(eosio::chain::SignedTransaction, (eosio::types::SignedTransaction), )
-FC_REFLECT(eosio::chain::MessageOutput, (notify)(inline_transaction)(deferred_transactions) )
-FC_REFLECT_DERIVED(eosio::chain::ProcessedTransaction, (eosio::types::SignedTransaction), (output) )
-FC_REFLECT_DERIVED(eosio::chain::PendingInlineTransaction, (eosio::types::Transaction), )
-FC_REFLECT_DERIVED(eosio::chain::InlineTransaction, (eosio::types::Transaction), (output) )
-FC_REFLECT(eosio::chain::ProcessedGeneratedTransaction, (id)(output) )
-FC_REFLECT(eosio::chain::NotifyOutput, (name)(output) )
+FC_REFLECT(eosio::chain::generated_transaction, (id))
+FC_REFLECT_DERIVED(eosio::chain::signed_transaction, (eosio::types::signed_transaction), )
+FC_REFLECT(eosio::chain::message_output, (notify)(inline_transaction)(deferred_transactions) )
+FC_REFLECT_DERIVED(eosio::chain::processed_transaction, (eosio::types::signed_transaction), (output) )
+FC_REFLECT_DERIVED(eosio::chain::pending_inline_transaction, (eosio::types::transaction), )
+FC_REFLECT_DERIVED(eosio::chain::inline_transaction, (eosio::types::transaction), (output) )
+FC_REFLECT(eosio::chain::processed_generated_transaction, (id)(output) )
+FC_REFLECT(eosio::chain::notify_output, (name)(output) )

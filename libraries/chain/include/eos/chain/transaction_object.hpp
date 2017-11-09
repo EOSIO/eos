@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
          OBJECT_CTOR(transaction_object)
 
          id_type             id;
-         SignedTransaction  trx;
+         signed_transaction  trx;
          transaction_id_type trx_id;
 
          time_point_sec get_expiration()const { return trx.expiration; }

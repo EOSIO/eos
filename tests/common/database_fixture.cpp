@@ -43,7 +43,7 @@ namespace eosio { namespace chain {
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-   for (int i = 0; i < config::BlocksPerRound; ++i) {
+   for (int i = 0; i < config::blocks_per_round; ++i) {
       auto name = std::string("inita"); name.back()+=i;
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
@@ -136,19 +136,19 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
    sync_dbs(other, *this);
 }
 
-types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& account) {
+types::asset testing_blockchain::get_liquid_balance(const types::account_name& account) {
    return get_database().get<BalanceObject, native::eosio::byOwnerName>(account).balance;
 }
 
-types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
+types::asset testing_blockchain::get_staked_balance(const types::account_name& account) {
    return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).stakedBalance;
 }
 
-types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
+types::asset testing_blockchain::get_unstaking_balance(const types::account_name& account) {
    return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).unstakingBalance;
 }
 
-std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
+std::set<types::account_name> testing_blockchain::get_approved_producers(const types::account_name& account) {
    const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
    if (sbo.producerVotes.contains<ProducerSlate>()) {
       auto range = sbo.producerVotes.get<ProducerSlate>().range();
@@ -157,11 +157,11 @@ std::set<types::AccountName> testing_blockchain::get_approved_producers(const ty
    return {};
 }
 
-types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountName& producerName) {
+types::public_key testing_blockchain::get_block_signing_key(const types::account_name& producerName) {
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
-void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
+void testing_blockchain::sign_transaction(signed_transaction& trx) const {
    auto keys = get_required_keys(trx, fixture.available_keys());
    for (const auto& k : keys) {
       // TODO: Use a real chain_id here
@@ -169,7 +169,7 @@ void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
    }
 }
 
-fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
+fc::optional<processed_transaction> testing_blockchain::push_transaction(signed_transaction trx, uint32_t skip_flags) {
    if (skip_trx_sigs)
       skip_flags |= chain_controller::skip_transaction_signatures;
 

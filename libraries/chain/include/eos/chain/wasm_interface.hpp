@@ -31,7 +31,7 @@ class wasm_interface {
          i64i64i64,
          invalid_key_type
       };
-      typedef map<Name, key_type> TableMap;
+      typedef map<name, key_type> TableMap;
       struct ModuleState {
          Runtime::ModuleInstance* instance     = nullptr;
          IR::Module*              module       = nullptr;
@@ -52,7 +52,7 @@ class wasm_interface {
 
       int64_t current_execution_time();
 
-      static key_type to_key_type(const types::TypeName& type_name);
+      static key_type to_key_type(const types::type_name& type_name);
       static std::string to_type_name(key_type key_type);
 
       apply_context*       current_apply_context        = nullptr;
@@ -69,7 +69,7 @@ class wasm_interface {
       uint32_t                   checktime_limit = 0;
 
    private:
-      void load( const AccountName& name, const chainbase::database& db );
+      void load( const account_name& name, const chainbase::database& db );
 
       char* vm_allocate( int bytes );   
       void  vm_call( const char* name );
@@ -81,7 +81,7 @@ class wasm_interface {
 
 
 
-      map<AccountName, ModuleState> instances;
+      map<account_name, ModuleState> instances;
       fc::time_point checktimeStart;
 
       wasm_interface();

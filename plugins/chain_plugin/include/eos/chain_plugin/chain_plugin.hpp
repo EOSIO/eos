@@ -7,7 +7,7 @@
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/account_object.hpp>
-#include <eos/types/AbiSerializer.hpp>
+#include <eos/types/abi_serializer.hpp>
 
 #include <eos/database_plugin/database_plugin.hpp>
 
@@ -19,20 +19,20 @@ namespace eosio {
    using eosio::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
-   using chain::Name;
+   using chain::name;
    using chain::uint128_t;
    using chain::public_key_type;
    using fc::optional;
    using boost::container::flat_set;
-   using chain::Asset;
+   using chain::asset;
 
 namespace chain_apis {
 struct empty{};
 
 struct permission {
-   Name             name;
-   Name             parent;
-   types::Authority required_auth;
+   name             perm_name;
+   name             parent;
+   types::authority required_auth;
 };
 
 class read_only {
@@ -57,69 +57,69 @@ public:
       uint32_t              last_irreversible_block_num = 0;
       chain::block_id_type  head_block_id;
       fc::time_point_sec    head_block_time;
-      types::AccountName    head_block_producer;
+      types::account_name   head_block_producer;
       string                recent_slots;
       double                participation_rate = 0;
    };
    get_info_results get_info(const get_info_params&) const;
 
    struct producer_info {
-      Name                       name;
+      name                       name;
    };
 
 
    struct get_account_results {
-      Name                       name;
-      Asset                      eos_balance = Asset(0,EOS_SYMBOL);
-      Asset                      staked_balance;
-      Asset                      unstaking_balance;
+      name                       name;
+      asset                      eos_balance = asset(0,EOS_SYMBOL);
+      asset                      staked_balance;
+      asset                      unstaking_balance;
       fc::time_point_sec         last_unstaking_time;
       vector<permission>         permissions;
       optional<producer_info>    producer;
    };
    struct get_account_params {
-      Name name;
+      name name;
    };
    get_account_results get_account( const get_account_params& params )const;
 
 
    struct get_code_results {
-      Name                   name;
+      name                   name;
       string                 wast;
       fc::sha256             code_hash;
-      optional<types::Abi>   abi;
+      optional<types::abi>   abi;
    };
 
    struct get_code_params {
-      Name name;
+      name name;
    };
    get_code_results get_code( const get_code_params& params )const;
 
 
 
    struct abi_json_to_bin_params {
-      Name         code;
-      Name         action;
+      name         code;
+      name         action;
       fc::variant  args;
    };
    struct abi_json_to_bin_result {
       vector<char>   binargs;
-      vector<Name>   required_scope;
-      vector<Name>   required_auth;
+      vector<name>   required_scope;
+      vector<name>   required_auth;
    };
       
    abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
 
 
    struct abi_bin_to_json_params {
-      Name         code;
-      Name         action;
+      name         code;
+      name         action;
       vector<char> binargs;
    };
    struct abi_bin_to_json_result {
       fc::variant    args;
-      vector<Name>   required_scope;
-      vector<Name>   required_auth;
+      vector<name>   required_scope;
+      vector<name>   required_auth;
    };
       
    abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
@@ -157,9 +157,9 @@ public:
 
    struct get_table_rows_params {
       bool        json = false;
-      Name        scope;
-      Name        code;
-      Name        table;
+      name        scope;
+      name        code;
+      name        table;
 //      string      table_type;
       string      table_key;
       string      lower_bound;
@@ -204,16 +204,16 @@ public:
    }
  
    template <typename IndexType, typename Scope>
-   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const types::Abi& abi )const {
+   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const types::abi& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.get_database();
    
-      types::AbiSerializer abis;
+      types::abi_serializer abis;
       abis.setAbi(abi);
    
       const auto& idx = d.get_index<IndexType, Scope>();
       auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table   ) );
-      auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, Name(uint64_t(p.table)+1) ) );
+      auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, name(uint64_t(p.table)+1) ) );
 
       if( p.lower_bound.size() )
          lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.lower_bound).as<typename IndexType::value_type::key_type>() ) );
@@ -230,7 +230,7 @@ public:
          copy_row(*itr, data);
    
          if( p.json ) 
-            result.rows.emplace_back( abis.binaryToVariant( abis.getTableType(p.table), data ) );
+            result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data) );
          else
             result.rows.emplace_back( fc::variant(data) );
          if( ++count == p.limit || fc::time_point::now() > end )
@@ -284,7 +284,7 @@ public:
    chain_apis::read_write get_read_write_api();
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
-   void accept_transaction(const chain::SignedTransaction& trx);
+   void accept_transaction(const chain::signed_transaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
@@ -308,7 +308,7 @@ private:
 
 }
 
-FC_REFLECT( eosio::chain_apis::permission, (name)(parent)(required_auth) )
+FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
   (head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)

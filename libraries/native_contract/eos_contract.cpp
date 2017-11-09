@@ -19,7 +19,7 @@
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
-#include <eos/types/AbiSerializer.hpp>
+#include <eos/types/abi_serializer.hpp>
 
 namespace native {
 namespace eosio {
@@ -28,7 +28,7 @@ namespace config = ::eosio::config;
 namespace chain = ::eosio::chain;
 using namespace ::eosio::types;
 
-void validate_authority_precondition( const apply_context& context, const Authority& auth ) {
+void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
       context.db.get<account_object, by_name>(a.permission.account);
       context.db.find<permission_object, by_owner>(boost::make_tuple(a.permission.account, a.permission.permission));
@@ -131,10 +131,10 @@ void apply_eos_transfer(apply_context& context) {
 
       const auto& to = db.get<BalanceObject, byOwnerName>(transfer.to);
       db.modify(from, [&](BalanceObject& a) {
-         a.balance -= ShareType(transfer.amount);
+         a.balance -= share_type(transfer.amount);
       });
       db.modify(to, [&](BalanceObject& a) {
-         a.balance += ShareType(transfer.amount);
+         a.balance += share_type(transfer.amount);
       });
    } FC_CAPTURE_AND_RETHROW( (transfer) ) 
 }
@@ -150,7 +150,7 @@ void apply_eos_lock(apply_context& context) {
 
    context.require_scope(lock.to);
    context.require_scope(lock.from);
-   context.require_scope(config::EosContractName);
+   context.require_scope(config::eos_contract_name);
 
    context.require_authorization(lock.from);
 
@@ -197,7 +197,7 @@ void apply_eos_setcode(apply_context& context) {
 
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
-   AbiSerializer( msg.abi ).validate();
+   abi_serializer( msg.abi ).validate();
 
 
    const auto& account = db.get<account_object,by_name>(msg.account);
@@ -226,7 +226,7 @@ void apply_eos_claim(apply_context& context) {
    auto balance = context.db.find<StakedBalanceObject, byOwnerName>(claim.account);
    EOS_ASSERT(balance != nullptr, message_precondition_exception,
               "Could not find staked balance for ${name}", ("name", claim.account));
-   auto balanceReleaseTime = balance->lastUnstakingTime + config::StakedBalanceCooldownSeconds;
+   auto balanceReleaseTime = balance->lastUnstakingTime + config::staked_balance_cooldown_seconds;
    auto now = context.controller.head_block_time();
    EOS_ASSERT(now >= balanceReleaseTime, message_precondition_exception,
               "Cannot claim balance until ${releaseDate}", ("releaseDate", balanceReleaseTime));
@@ -282,7 +282,7 @@ void apply_eos_okproducer(apply_context& context) {
    context.require_recipient(approve.voter);
    context.require_recipient(approve.producer);
 
-   context.require_scope(config::EosContractName);
+   context.require_scope(config::eos_contract_name);
    context.require_scope(approve.voter);
    context.require_authorization(approve.voter);
 
@@ -294,12 +294,12 @@ void apply_eos_okproducer(apply_context& context) {
 
    EOS_ASSERT(voter.producerVotes.contains<ProducerSlate>(), message_precondition_exception,
               "Cannot approve producer; approving account '${name}' proxies its votes to '${proxy}'",
-              ("name", voter.ownerName)("proxy", voter.producerVotes.get<AccountName>()));
+              ("name", voter.ownerName)("proxy", voter.producerVotes.get<account_name>()));
 
 
    const auto& slate = voter.producerVotes.get<ProducerSlate>();
 
-   EOS_ASSERT(slate.size < config::MaxProducerVotes, message_precondition_exception,
+   EOS_ASSERT(slate.size < config::max_producer_votes, message_precondition_exception,
               "Cannot approve producer; approved producer count is already at maximum");
    if (approve.approve)
       EOS_ASSERT(!slate.contains(producer.ownerName), message_precondition_exception,
@@ -358,7 +358,7 @@ void apply_eos_setproxy(apply_context& context) {
       proxy.addProxySource(context.msg.recipient(svp.stakeholder), balance.stakedBalance, db);
       db.modify(balance, [target = proxy.proxyTarget](StakedBalanceObject& sbo) { sbo.producerVotes = target; });
    } else {
-      // We are disabling proxying to balance.producerVotes.get<AccountName>()
+      // We are disabling proxying to balance.producerVotes.get<account_name>()
       proxy.removeProxySource(context.msg.recipient(svp.stakeholder), balance.stakedBalance, db);
       db.modify(balance, [](StakedBalanceObject& sbo) { sbo.producerVotes = ProducerSlate{}; });
    }
