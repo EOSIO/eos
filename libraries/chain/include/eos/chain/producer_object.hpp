@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eos/chain/types.hpp>
-#include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/blockchain_configuration.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -13,14 +13,14 @@ class producer_object : public chainbase::object<producer_object_type, producer_
    OBJECT_CTOR(producer_object)
 
    id_type          id;
-   AccountName      owner;
+   account_name     owner;
    uint64_t         last_aslot = 0;
    public_key_type  signing_key;
    int64_t          total_missed = 0;
    uint32_t         last_confirmed_block_num = 0;
 
    /// The blockchain configuration values this producer recommends
-   BlockchainConfiguration configuration;
+   blockchain_configuration configuration;
 };
 
 struct by_key;
@@ -29,7 +29,7 @@ using producer_multi_index = chainbase::shared_multi_index_container<
    producer_object,
    indexed_by<
       ordered_unique<tag<by_id>, member<producer_object, producer_object::id_type, &producer_object::id>>,
-      ordered_unique<tag<by_owner>, member<producer_object, AccountName, &producer_object::owner>>,
+      ordered_unique<tag<by_owner>, member<producer_object, account_name, &producer_object::owner>>,
       ordered_unique<tag<by_key>,
          composite_key<producer_object,
             member<producer_object, public_key_type, &producer_object::signing_key>,

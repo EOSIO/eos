@@ -10,7 +10,7 @@
 #include <set>
 
 namespace eosio { namespace chain {
-   using pending_transaction = static_variant<std::reference_wrapper<const SignedTransaction>, std::reference_wrapper<const GeneratedTransaction>>;
+   using pending_transaction = static_variant<std::reference_wrapper<const signed_transaction>, std::reference_wrapper<const generated_transaction>>;
 
    struct thread_schedule {
       vector<pending_transaction> transactions;
@@ -50,11 +50,11 @@ namespace eosio { namespace chain {
      
    };
 
-   struct scope_extracting_visitor : public fc::visitor<std::set<AccountName>> {
+   struct scope_extracting_visitor : public fc::visitor<std::set<account_name>> {
       template <typename T>
-      std::set<AccountName> operator()(std::reference_wrapper<const T> trx) const {
+      std::set<account_name> operator()(std::reference_wrapper<const T> trx) const {
          const auto& t = trx.get();
-         std::set<AccountName> unique_names(t.scope.begin(), t.scope.end());
+         std::set<account_name> unique_names(t.scope.begin(), t.scope.end());
          return unique_names;
       }
    };

@@ -74,12 +74,12 @@ waitForNextTransaction()
 {
   getTransactionCount
   NEXT_TRANS_COUNT=$((TRANS_COUNT+1))
-  echo "Waiting for next Transaction $NEXT_TRANS_COUNT"
+  echo "Waiting for next transaction $NEXT_TRANS_COUNT"
   while [ "$TRANS_COUNT" -lt "$NEXT_TRANS_COUNT" ]; do
     sleep 0.50
     getTransactionCount
   done
-  echo "Done waiting for Transaction $NEXT_TRANS_COUNT"
+  echo "Done waiting for transaction $NEXT_TRANS_COUNT"
 }
 
 # cleanup from last run

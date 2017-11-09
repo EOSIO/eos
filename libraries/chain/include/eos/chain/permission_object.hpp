@@ -12,9 +12,9 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(permission_object, (auth) )
 
       id_type           id;
-      AccountName       owner; ///< the account this permission belongs to
+      account_name      owner; ///< the account this permission belongs to
       id_type           parent; ///< parent permission 
-      PermissionName    name; ///< human-readable name for the permission
+      permission_name    name; ///< human-readable name for the permission
       shared_authority  auth; ///< authority required to execute this permission
 
       /**
@@ -64,13 +64,13 @@ namespace eosio { namespace chain {
          >,
          ordered_unique<tag<by_owner>,
             composite_key<permission_object,
-               member<permission_object, AccountName, &permission_object::owner>,
-               member<permission_object, PermissionName, &permission_object::name>
+               member<permission_object, account_name, &permission_object::owner>,
+               member<permission_object, permission_name, &permission_object::name>
             >
          >,
          ordered_unique<tag<by_name>,
             composite_key<permission_object,
-               member<permission_object, PermissionName, &permission_object::name>,
+               member<permission_object, permission_name, &permission_object::name>,
                member<permission_object, permission_object::id_type, &permission_object::id>
             >
          >

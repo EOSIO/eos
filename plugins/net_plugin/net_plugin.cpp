@@ -57,16 +57,16 @@ namespace eosio {
   };
 
   struct update_block_num {
-    UInt16 new_bnum;
-    update_block_num (UInt16 bnum) : new_bnum(bnum) {}
+    uint16 new_bnum;
+    update_block_num (uint16 bnum) : new_bnum(bnum) {}
     void operator() (node_transaction_state& nts) {
         nts.block_num = static_cast<uint32_t>(new_bnum);
     }
   };
 
   struct update_entry {
-    const SignedTransaction &txn;
-    update_entry (const SignedTransaction &msg) : txn(msg) {}
+    const signed_transaction &txn;
+    update_entry (const signed_transaction &msg) : txn(msg) {}
 
     void operator() (node_transaction_state& nts) {
       nts.received = fc::time_point::now();
@@ -153,11 +153,11 @@ namespace eosio {
     void send_all (const net_message &msg, VerifierFunc verify);
     //    template<typename VerifierFunc>
     //    void send_all (net_message_ptr msg, VerifierFunc verify);
-    void send_all_txn (const SignedTransaction& txn);
-    static void transaction_ready( const SignedTransaction& txn);
+    void send_all_txn (const signed_transaction& txn);
+    static void transaction_ready( const signed_transaction& txn);
     void broadcast_block_impl( const signed_block &sb);
 
-    size_t cache_txn ( const transaction_id_type, const SignedTransaction &txn);
+    size_t cache_txn ( const transaction_id_type, const signed_transaction &txn);
 
     void handle_message( connection_ptr c, const handshake_message &msg);
     void handle_message( connection_ptr c, const go_away_message &msg );
@@ -180,7 +180,7 @@ namespace eosio {
     void handle_message( connection_ptr c, const request_message &msg);
     void handle_message( connection_ptr c, const sync_request_message &msg);
     void handle_message( connection_ptr c, const block_summary_message &msg);
-    void handle_message( connection_ptr c, const SignedTransaction &msg);
+    void handle_message( connection_ptr c, const signed_transaction &msg);
     void handle_message( connection_ptr c, const signed_block &msg);
 
     void start_conn_timer( );
@@ -1584,7 +1584,7 @@ namespace eosio {
             for( auto &gt : cyc_thr_id.gen_trx ) {
               try {
                 auto gen = cc.get_generated_transaction( gt );
-                cyc_thr.generated_input.push_back( ProcessedGeneratedTransaction( gen ) );
+                cyc_thr.generated_input.push_back( processed_generated_transaction( gen ) );
               } catch ( const exception &ex) {
                 fetch_error = true;
                 elog( "unable to retieve generated transaction, caught {ex}", ("ex",ex) );
@@ -1600,7 +1600,7 @@ namespace eosio {
               // auto ltxn = local_txns.get<by_id>().find(ut);
 
               try {
-                ProcessedTransaction pt(cc.get_recent_transaction(ut.id));
+                processed_transaction pt(cc.get_recent_transaction(ut.id));
                 pt.output = ut.outmsgs;
                 cyc_thr.user_input.emplace_back(pt);
 
@@ -1641,7 +1641,7 @@ namespace eosio {
       }
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const SignedTransaction &msg) {
+    void net_plugin_impl::handle_message( connection_ptr c, const signed_transaction &msg) {
       fc_dlog(logger, "got a signed transaction from ${p}", ("p",c->peer_name()));
       transaction_id_type txnid = msg.id();
       auto entry = local_txns.get<by_id>().find( txnid );
@@ -1670,18 +1670,18 @@ namespace eosio {
 
       auto tx = c->trx_state.find(txnid);
       if( tx == c->trx_state.end()) {
-        c->trx_state.insert((transaction_state){txnid,true,true,(uint32_t)msg.refBlockNum,
+        c->trx_state.insert((transaction_state){txnid,true,true,(uint32_t)msg.ref_block_num,
               fc::time_point(),fc::time_point()});
       } else {
         struct trx_mod {
-          UInt16 block;
-          trx_mod( UInt16 bn) : block(bn) {}
+          uint16 block;
+          trx_mod( uint16 bn) : block(bn) {}
           void operator( )( transaction_state &t) {
             t.is_known_by_peer = true;
             t.block_num = static_cast<uint32_t>(block);
           }
         };
-        c->trx_state.modify(tx,trx_mod(msg.refBlockNum));
+        c->trx_state.modify(tx,trx_mod(msg.ref_block_num));
       }
 
       try {
@@ -1884,7 +1884,7 @@ namespace eosio {
 
 
   size_t net_plugin_impl::cache_txn (const transaction_id_type txnid,
-                                     const SignedTransaction& txn ) {
+                                     const signed_transaction& txn ) {
       size_t packsiz = fc::raw::pack_size(txn);
       size_t bufsiz = packsiz + sizeof(packsiz);
       vector<char> buff(bufsiz);
@@ -1893,7 +1893,7 @@ namespace eosio {
 
       fc::raw::pack( ds, txn );
 
-      uint16_t bn = static_cast<uint16_t>(txn.refBlockNum);
+      uint16_t bn = static_cast<uint16_t>(txn.ref_block_num);
       node_transaction_state nts = {txnid,time_point::now(),
                                     txn.expiration,
                                     buff,
@@ -1902,7 +1902,7 @@ namespace eosio {
       return bufsiz;
     }
 
-    void net_plugin_impl::send_all_txn( const SignedTransaction& txn) {
+    void net_plugin_impl::send_all_txn( const signed_transaction& txn) {
       transaction_id_type txnid = txn.id();
       if( local_txns.get<by_id>().find( txnid ) != local_txns.end( ) ) { //found
         fc_dlog(logger, "found txnid in local_txns" );
@@ -1945,7 +1945,7 @@ namespace eosio {
     /**
      * This one is necessary to hook into the boost notifier api
      **/
-    void net_plugin_impl::transaction_ready( const SignedTransaction& txn) {
+    void net_plugin_impl::transaction_ready( const signed_transaction& txn) {
       my_impl->send_all_txn( txn );
     }
 
