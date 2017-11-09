@@ -274,7 +274,7 @@ msgstr ""
 msgid "Retrieve all transactions with specific account name referenced in their scope"
 msgstr ""
 
-msgid "Name of account to query on"
+msgid "name of account to query on"
 msgstr ""
 
 msgid "Number of most recent transactions to skip (0 would start at most recent transaction)"

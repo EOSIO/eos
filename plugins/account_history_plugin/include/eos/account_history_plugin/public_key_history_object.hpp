@@ -21,9 +21,9 @@ namespace std {
 }
 
 namespace eosio {
-using chain::AccountName;
+using chain::account_name;
 using chain::public_key_type;
-using chain::PermissionName;
+using chain::permission_name;
 using namespace boost::multi_index;
 
 class public_key_history_object : public chainbase::object<chain::public_key_history_object_type, public_key_history_object> {
@@ -31,8 +31,8 @@ class public_key_history_object : public chainbase::object<chain::public_key_his
 
    id_type           id;
    public_key_type   public_key;
-   AccountName       account_name;
-   PermissionName    permission;
+   account_name      account_name;
+   permission_name    permission;
 };
 
 struct by_id;
@@ -45,12 +45,12 @@ using public_key_history_multi_index = chainbase::shared_multi_index_container<
       hashed_non_unique<tag<by_pub_key>, BOOST_MULTI_INDEX_MEMBER(public_key_history_object, public_key_type, public_key), std::hash<public_key_type> >,
       hashed_non_unique<tag<by_account_permission>,
          composite_key< public_key_history_object,
-            member<public_key_history_object, AccountName,     &public_key_history_object::account_name>,
-            member<public_key_history_object, PermissionName,  &public_key_history_object::permission>
+            member<public_key_history_object, account_name,     &public_key_history_object::account_name>,
+            member<public_key_history_object, permission_name,  &public_key_history_object::permission>
          >,
          composite_key_hash<
-            std::hash<AccountName>,
-            std::hash<PermissionName>
+            std::hash<account_name>,
+            std::hash<permission_name>
          >
       >
    >
