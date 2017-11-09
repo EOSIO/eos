@@ -149,4 +149,5 @@ struct test_string {
   static unsigned int print_unicode();
   static unsigned int valid_utf8();
   static unsigned int invalid_utf8();
+  static unsigned int string_literal();
 };
