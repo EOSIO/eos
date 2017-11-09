@@ -151,3 +151,18 @@ struct test_string {
   static unsigned int invalid_utf8();
   static unsigned int string_literal();
 };
+
+struct test_fixedpoint {
+    static unsigned int create_instances();
+    static unsigned int test_addition();
+    static unsigned int test_subtraction();
+    static unsigned int test_multiplication();
+    static unsigned int test_division();
+};
+
+struct test_real {
+    static unsigned int create_instances();
+    static unsigned int test_addition();
+    static unsigned int test_multiplication();
+    static unsigned int test_division();
+};
