@@ -38,11 +38,11 @@ namespace eosio { namespace types {
    }
 
    abi_serializer::abi_serializer( const abi& abi ) {
-      configureBuiltInTypes();
+      configure_built_in_types();
       setAbi(abi);
    }
 
-   void abi_serializer::configureBuiltInTypes() {
+   void abi_serializer::configure_built_in_types() {
       //public_key.hpp
       built_in_types.emplace("public_key",     packUnpack<public_key>());
 

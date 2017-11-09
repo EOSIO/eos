@@ -22,7 +22,7 @@ namespace eosio {
   *
   *  @brief a uint64_t wrapper with checks for proper types and over/underflows.
   *  @tparam NumberType - numeric type of the token
-  *  @tparam CurrencyType - type of the currency (e.g. eos) represented as an unsigned 64 bit integer
+  *  @tparam currency - type of the currency (e.g. eos) represented as an unsigned 64 bit integer
   *  @ingroup tokens
   *
   *  @details Base token structure with checks for proper types and over/underflows.
@@ -56,13 +56,13 @@ namespace eosio {
   *
   *  @{
   */
-  template<typename NumberType, uint64_t CurrencyType = N(eos) >
+  template<typename NumberType, uint64_t currency = N(eos) >
   struct token {
     /**
     * Type of the currency (e.g. eos) represented as an unsigned 64 bit integer
     * @brief  Type of the currency
     */
-    static const uint64_t currency_type = CurrencyType;
+    static const uint64_t currency_type = currency;
 
     /**
     * Default constructor
@@ -202,7 +202,7 @@ namespace eosio {
     * @brief Print as string
     */
     inline void print() {
-      eosio::print( quantity, " ", Name(CurrencyType) );
+      eosio::print( quantity, " ", name(currency_type) );
     }
   };
   /// @}
@@ -366,7 +366,7 @@ namespace eosio {
     * @brief Prints as string.
     */
     inline void print() {
-      eosio::print( base_per_quote, ".", " ", Name(base_token_type::currency_type), "/", Name(quote_token_type::currency_type)  );
+      eosio::print( base_per_quote, ".", " ", name(base_token_type::currency_type), "/", name(quote_token_type::currency_type)  );
     }
   private:
     /**

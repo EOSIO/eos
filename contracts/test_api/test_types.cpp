@@ -94,14 +94,14 @@ unsigned int test_types::string_to_name() {
 
 unsigned int test_types::name_class() {
 
-   WASM_ASSERT ( eosio::Name(eosio::string_to_name("azAA34")).value == N(azAA34), "eosio::Name != N(azAA34)" );
-   WASM_ASSERT ( eosio::Name(eosio::string_to_name("AABBCC")).value == 0, "eosio::Name != N(0)" );
-   WASM_ASSERT ( eosio::Name(eosio::string_to_name("AA11")).value == N(AA11), "eosio::Name != N(AA11)" );
-   WASM_ASSERT ( eosio::Name(eosio::string_to_name("11AA")).value == N(11), "eosio::Name != N(11)" );
-   WASM_ASSERT ( eosio::Name(eosio::string_to_name("22BBCCXXAA")).value == N(22), "eosio::Name != N(22)" );
-   WASM_ASSERT ( eosio::Name(eosio::string_to_name("AAAbbcccdd")) == eosio::Name(eosio::string_to_name("AAAbbcccdd")), "eosio::Name == eosio::Name" );
+   WASM_ASSERT ( eosio::name(eosio::string_to_name("azAA34")).value == N(azAA34), "eosio::name != N(azAA34)" );
+   WASM_ASSERT ( eosio::name(eosio::string_to_name("AABBCC")).value == 0, "eosio::name != N(0)" );
+   WASM_ASSERT ( eosio::name(eosio::string_to_name("AA11")).value == N(AA11), "eosio::name != N(AA11)" );
+   WASM_ASSERT ( eosio::name(eosio::string_to_name("11AA")).value == N(11), "eosio::name != N(11)" );
+   WASM_ASSERT ( eosio::name(eosio::string_to_name("22BBCCXXAA")).value == N(22), "eosio::name != N(22)" );
+   WASM_ASSERT ( eosio::name(eosio::string_to_name("AAAbbcccdd")) == eosio::name(eosio::string_to_name("AAAbbcccdd")), "eosio::name == eosio::name" );
 
-   uint64_t tmp = eosio::Name(eosio::string_to_name("11bbcccdd"));
+   uint64_t tmp = eosio::name(eosio::string_to_name("11bbcccdd"));
    WASM_ASSERT(N(11bbcccdd) == tmp, "N(11bbcccdd) == tmp");
 
    return WASM_TEST_PASS;  

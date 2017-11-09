@@ -16,7 +16,7 @@ namespace eosio { namespace native_contract {
 using administrator = native_contract_chain_administrator;
 
 producer_round administrator::get_next_round(chainbase::database& db) {
-   return native::eosio::ProducerScheduleObject::get(db).calculateNextRound(db);
+   return native::eosio::producer_schedule_object::get(db).calculate_next_round(db);
 }
 
 chain::blockchain_configuration administrator::get_blockchain_configuration(const chainbase::database& db,

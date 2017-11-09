@@ -113,8 +113,8 @@ void match( bid& bid_to_match, account& buyer, ask& ask_to_match, account& selle
       fill_amount_currency = fill_amount_eos / ask_to_match.at_price;
    }
 
-   print( "\n\nmatch bid: ", Name(bid_to_match.buyer.name), ":", bid_to_match.buyer.number,
-          "match ask: ", Name(ask_to_match.seller.name), ":", ask_to_match.seller.number, "\n\n" );
+   print( "\n\nmatch bid: ", name(bid_to_match.buyer.name), ":", bid_to_match.buyer.number,
+          "match ask: ", name(ask_to_match.seller.name), ":", ask_to_match.seller.number, "\n\n" );
 
 
    bid_to_match.quantity -= fill_amount_eos;
@@ -135,7 +135,7 @@ void apply_exchange_buy( buy_order order ) {
    assert( exchange_bid.quantity > eosio::tokens(0), "invalid quantity" );
    assert( exchange_bid.expiration > now(), "order expired" );
 
-   print( Name(exchange_bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.at_price, "\n" );
+   print( name(exchange_bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.at_price, "\n" );
 
    bid existing_bid;
    assert( !bids_by_id::get( exchange_bid.buyer, existing_bid ), "order with this id already exists" );
@@ -198,7 +198,7 @@ void apply_exchange_sell( sell_order order ) {
    assert( exchange_ask.quantity > currency_tokens(0), "invalid quantity" );
    assert( exchange_ask.expiration > now(), "order expired" );
 
-   print( "\n\n", Name(exchange_ask.seller.name), " created sell for ", order.quantity,
+   print( "\n\n", name(exchange_ask.seller.name), " created sell for ", order.quantity,
           " currency at price: ", order.at_price, "\n");
 
    ask existing_ask;

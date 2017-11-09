@@ -104,8 +104,8 @@ struct newaccount
 
 struct setcode
    account         account_name # the account that is handling the message
-   vmtype          uint8        # the virtual machine type
-   vmversion       uint8        # the virtual machine version
+   vm_type          uint8        # the virtual machine type
+   vm_version       uint8        # the virtual machine version
    code            bytes        # the apply
    abi             abi          # the interface description of the code
 

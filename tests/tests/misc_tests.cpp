@@ -98,21 +98,21 @@ BOOST_AUTO_TEST_CASE(authority_checker)
 
    auto A = Complex_Authority(2, ((a,1))((b,1)),);
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a, b});
+      auto checker = make_authority_checker(GetNullAuthority, 2, {a, b});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 0);
    }
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a, c});
+      auto checker = make_authority_checker(GetNullAuthority, 2, {a, c});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 2);
    }
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a, b, c});
+      auto checker = make_authority_checker(GetNullAuthority, 2, {a, b, c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -122,52 +122,52 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {b, c});
+      auto checker = make_authority_checker(GetNullAuthority, 2, {b, c});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
    }
 
    A = Complex_Authority(3, ((a,1))((b,1))((c,1)),);
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {c, b, a}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {a, b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {a, c}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {b, c}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetNullAuthority, 2, {c, b, a}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetNullAuthority, 2, {a, b}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetNullAuthority, 2, {a, c}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetNullAuthority, 2, {b, c}).satisfied(A));
 
    A = Complex_Authority(1, ((a, 1))((b, 1)),);
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {a}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {c}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetNullAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetNullAuthority, 2, {b}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetNullAuthority, 2, {c}).satisfied(A));
 
    A = Complex_Authority(1, ((a, 2))((b, 1)),);
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {a}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetNullAuthority, 2, {b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetNullAuthority, 2, {c}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetNullAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetNullAuthority, 2, {b}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetNullAuthority, 2, {c}).satisfied(A));
 
    auto GetCAuthority = [c_public_key](auto){return Complex_Authority(1, ((c, 1)),);};
 
    A = Complex_Authority(2, ((a, 2))((b, 1)), (("hello", "world", 1)));
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {a});
+      auto checker = make_authority_checker(GetCAuthority, 2, {a});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {b});
+      auto checker = make_authority_checker(GetCAuthority, 2, {b});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
       BOOST_CHECK_EQUAL(checker.unused_keys().count(b), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {c});
+      auto checker = make_authority_checker(GetCAuthority, 2, {c});
       BOOST_CHECK(!checker.satisfied(A));
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 0);
       BOOST_CHECK_EQUAL(checker.unused_keys().size(), 1);
       BOOST_CHECK_EQUAL(checker.unused_keys().count(c), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {b,c});
+      auto checker = make_authority_checker(GetCAuthority, 2, {b, c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {b,c,a});
+      auto checker = make_authority_checker(GetCAuthority, 2, {b, c, a});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 1);
@@ -187,14 +187,14 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    }
 
    A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 1)));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {a}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {b}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {c}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {a,b}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {b,c}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {a,c}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetCAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetCAuthority, 2, {b}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetCAuthority, 2, {c}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetCAuthority, 2, {a, b}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetCAuthority, 2, {b, c}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetCAuthority, 2, {a, c}).satisfied(A));
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {a,b,c});
+      auto checker = make_authority_checker(GetCAuthority, 2, {a, b, c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -203,12 +203,12 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    }
 
    A = Complex_Authority(2, ((a, 1))((b, 1)), (("hello", "world", 2)));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {a,b}).satisfied(A));
-   BOOST_CHECK(MakeAuthorityChecker(GetCAuthority, 2, {c}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {a}).satisfied(A));
-   BOOST_CHECK(!MakeAuthorityChecker(GetCAuthority, 2, {b}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetCAuthority, 2, {a, b}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetCAuthority, 2, {c}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetCAuthority, 2, {a}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetCAuthority, 2, {b}).satisfied(A));
    {
-      auto checker = MakeAuthorityChecker(GetCAuthority, 2, {a,b,c});
+      auto checker = make_authority_checker(GetCAuthority, 2, {a, b, c});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 1);
@@ -229,12 +229,12 @@ BOOST_AUTO_TEST_CASE(authority_checker)
 
    A = Complex_Authority(5, ((a, 2))((b, 2))((c, 2)), (("top", "top", 5)));
    {
-      auto checker = MakeAuthorityChecker(GetAuthority, 2, {d, e});
+      auto checker = make_authority_checker(GetAuthority, 2, {d, e});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(checker.all_keys_used());
    }
    {
-      auto checker = MakeAuthorityChecker(GetAuthority, 2, {a,b,c,d,e});
+      auto checker = make_authority_checker(GetAuthority, 2, {a, b, c, d, e});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 2);
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.used_keys().count(e), 1);
    }
    {
-      auto checker = MakeAuthorityChecker(GetAuthority, 2, {a,b,c,e});
+      auto checker = make_authority_checker(GetAuthority, 2, {a, b, c, e});
       BOOST_CHECK(checker.satisfied(A));
       BOOST_CHECK(!checker.all_keys_used());
       BOOST_CHECK_EQUAL(checker.used_keys().size(), 3);
@@ -252,14 +252,14 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_CHECK_EQUAL(checker.used_keys().count(b), 1);
       BOOST_CHECK_EQUAL(checker.used_keys().count(c), 1);
    }
-   BOOST_CHECK(MakeAuthorityChecker(GetAuthority, 1, {a,b,c}).satisfied(A));
+   BOOST_CHECK(make_authority_checker(GetAuthority, 1, {a, b, c}).satisfied(A));
    // Fails due to short recursion depth limit
-   BOOST_CHECK(!MakeAuthorityChecker(GetAuthority, 1, {d,e}).satisfied(A));
+   BOOST_CHECK(!make_authority_checker(GetAuthority, 1, {d, e}).satisfied(A));
 
    A = Complex_Authority(2, ((a, 1))((b, 1))((c, 1)),);
    auto B = Complex_Authority(1, ((b, 1))((c, 1)),);
    {
-      auto checker = MakeAuthorityChecker(GetNullAuthority, 2, {a,b,c});
+      auto checker = make_authority_checker(GetNullAuthority, 2, {a, b, c});
       BOOST_CHECK(validate(A));
       BOOST_CHECK(validate(B));
       BOOST_CHECK(checker.satisfied(A));

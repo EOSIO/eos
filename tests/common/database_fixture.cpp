@@ -137,21 +137,21 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
 }
 
 types::asset testing_blockchain::get_liquid_balance(const types::account_name& account) {
-   return get_database().get<BalanceObject, native::eosio::byOwnerName>(account).balance;
+   return get_database().get<balance_object, native::eosio::by_owner_name>(account).balance;
 }
 
 types::asset testing_blockchain::get_staked_balance(const types::account_name& account) {
-   return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).stakedBalance;
+   return get_database().get<staked_balance_object, native::eosio::by_owner_name>(account).staked_balance;
 }
 
 types::asset testing_blockchain::get_unstaking_balance(const types::account_name& account) {
-   return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).unstakingBalance;
+   return get_database().get<staked_balance_object, native::eosio::by_owner_name>(account).unstaking_balance;
 }
 
 std::set<types::account_name> testing_blockchain::get_approved_producers(const types::account_name& account) {
-   const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
-   if (sbo.producerVotes.contains<ProducerSlate>()) {
-      auto range = sbo.producerVotes.get<ProducerSlate>().range();
+   const auto& sbo = get_database().get<staked_balance_object, by_owner_name>(account);
+   if (sbo.producer_votes.contains<producer_slate>()) {
+      auto range = sbo.producer_votes.get<producer_slate>().range();
       return {range.begin(), range.end()};
    }
    return {};

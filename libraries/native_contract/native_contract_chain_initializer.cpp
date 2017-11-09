@@ -32,12 +32,12 @@ std::array<types::account_name, config::blocks_per_round> native_contract_chain_
 
 void native_contract_chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
    // Install the native contract's indexes; we can't do anything until our objects are recognized
-   db.add_index<native::eosio::StakedBalanceMultiIndex>();
-   db.add_index<native::eosio::ProducerVotesMultiIndex>();
-   db.add_index<native::eosio::ProxyVoteMultiIndex>();
-   db.add_index<native::eosio::ProducerScheduleMultiIndex>();
+   db.add_index<native::eosio::staked_balance_multi_index>();
+   db.add_index<native::eosio::producer_votes_multi_index>();
+   db.add_index<native::eosio::proxy_vote_multi_index>();
+   db.add_index<native::eosio::producer_schedule_multi_index>();
 
-   db.add_index<native::eosio::BalanceMultiIndex>();
+   db.add_index<native::eosio::balance_multi_index>();
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::nspace::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
@@ -95,8 +95,8 @@ std::vector<message> native_contract_chain_initializer::prepare_database(chain_c
                                                                                 chainbase::database& db) {
    std::vector<message> messages_to_process;
 
-   // Create the singleton object, ProducerScheduleObject
-   db.create<native::eosio::ProducerScheduleObject>([](const auto&){});
+   // Create the singleton object, producer_schedule_object
+   db.create<native::eosio::producer_schedule_object>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto CreateNativeAccount = [this, &db](name name, auto liquidBalance) {
@@ -119,11 +119,11 @@ std::vector<message> native_contract_chain_initializer::prepare_database(chain_c
          p.name = "active";
          p.auth.threshold = 1;
       });
-      db.create<native::eosio::BalanceObject>([&name, liquidBalance]( auto& b) {
-         b.ownerName = name;
+      db.create<native::eosio::balance_object>([&name, liquidBalance]( auto& b) {
+         b.owner_name = name;
          b.balance = liquidBalance;
       });
-      db.create<native::eosio::StakedBalanceObject>([&name](auto& sb) { sb.ownerName = name; });
+      db.create<native::eosio::staked_balance_object>([&name](auto& sb) { sb.ownerName = name; });
    };
    CreateNativeAccount(config::eos_contract_name, config::initial_token_supply);
 

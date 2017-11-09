@@ -259,8 +259,8 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), asset(100));
-         const auto& joeVotes = chain_db.get<native::eosio::ProducerVotesObject, native::eosio::byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
+         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.get_votes(), chain.get_staked_balance("bob"));
       }
 
       // OK, let's go to the next round
@@ -274,8 +274,8 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = chain_db.get<native::eosio::ProducerVotesObject, native::eosio::byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
+         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.get_votes(), 0);
       }
    } FC_LOG_AND_RETHROW()
 }
@@ -295,8 +295,8 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), asset(100));
-         const auto& joeVotes = chain_db.get<native::eosio::ProducerVotesObject, native::eosio::byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
+         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.get_votes(), chain.get_staked_balance("bob"));
       }
 
       // Produce blocks up to, but not including, the last block in the round
@@ -305,8 +305,8 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), asset(100));
-         const auto& joeVotes = chain_db.get<native::eosio::ProducerVotesObject, native::eosio::byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), chain.get_staked_balance("bob"));
+         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.get_votes(), chain.get_staked_balance("bob"));
       }
 
       // OK, let's go to the next round
@@ -320,8 +320,8 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = chain_db.get<native::eosio::ProducerVotesObject, native::eosio::byOwnerName>("joe");
-         BOOST_CHECK_EQUAL(joeVotes.getVotes(), 0);
+         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         BOOST_CHECK_EQUAL(joeVotes.get_votes(), 0);
       }
    } FC_LOG_AND_RETHROW()
 }
@@ -358,8 +358,8 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
          {
             BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 1);
             BOOST_CHECK_EQUAL(chain.get_staked_balance("stakeholder"), asset(100));
-            const auto& producerVotes = chain_db.get<native::eosio::ProducerVotesObject, native::eosio::byOwnerName>("producer");
-            BOOST_CHECK_EQUAL(producerVotes.getVotes(), chain.get_staked_balance("stakeholder"));
+            const auto& producerVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("producer");
+            BOOST_CHECK_EQUAL(producerVotes.get_votes(), chain.get_staked_balance("stakeholder"));
          }
 
          // OK, let's go to the next round
@@ -373,8 +373,8 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
 
          {
             BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 0);
-            const auto& producerVotes = chain_db.get<native::eosio::ProducerVotesObject, native::eosio::byOwnerName>("producer");
-            BOOST_CHECK_EQUAL(producerVotes.getVotes(), 0);
+            const auto& producerVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("producer");
+            BOOST_CHECK_EQUAL(producerVotes.get_votes(), 0);
          }
       };
 
@@ -496,8 +496,8 @@ BOOST_FIXTURE_TEST_CASE(auth_tests, testing_fixture) {
       // Abort if this gets run; it shouldn't get run in this test
       auto PermissionToAuthority = [](auto)->authority{abort();};
 
-      auto tradingChecker = MakeAuthorityChecker(PermissionToAuthority, 2, {k1_public_key});
-      auto spendingChecker = MakeAuthorityChecker(PermissionToAuthority, 2, {k2_public_key});
+      auto tradingChecker = make_authority_checker(PermissionToAuthority, 2, {k1_public_key});
+      auto spendingChecker = make_authority_checker(PermissionToAuthority, 2, {k2_public_key});
 
       BOOST_CHECK(tradingChecker.satisfied(trading->auth));
       BOOST_CHECK(spendingChecker.satisfied(spending->auth));

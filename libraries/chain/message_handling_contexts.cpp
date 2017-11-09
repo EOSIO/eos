@@ -65,7 +65,7 @@ bool apply_context::all_authorizations_used() const {
 }
 
 vector<types::account_permission> apply_context::unused_authorizations() const {
-   auto range = utilities::FilterDataByMarker(msg.authorization, used_authorizations, false);
+   auto range = utilities::filter_data_by_marker(msg.authorization, used_authorizations, false);
    return {range.begin(), range.end()};
 }
 

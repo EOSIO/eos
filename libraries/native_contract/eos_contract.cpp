@@ -78,24 +78,24 @@ void apply_eos_newaccount(apply_context& context) {
       });
    }
 
-   const auto& creatorBalance = context.mutable_db.get<BalanceObject, byOwnerName>(create.creator);
+   const auto& creatorBalance = context.mutable_db.get<balance_object, by_owner_name>(create.creator);
 
    EOS_ASSERT(creatorBalance.balance >= create.deposit.amount, message_validate_exception,
               "Creator '${c}' has insufficient funds to make account creation deposit of ${a}",
               ("c", create.creator)("a", create.deposit));
 
-   context.mutable_db.modify(creatorBalance, [&create](BalanceObject& b) {
+   context.mutable_db.modify(creatorBalance, [&create](balance_object& b) {
       b.balance -= create.deposit.amount;
    });
 
-   context.mutable_db.create<BalanceObject>([&create](BalanceObject& b) {
-      b.ownerName = create.name;
+   context.mutable_db.create<balance_object>([&create](balance_object& b) {
+      b.owner_name = create.name;
       b.balance = 0; //create.deposit.amount; TODO: make sure we credit this in @staked
    });
 
-   context.mutable_db.create<StakedBalanceObject>([&create](StakedBalanceObject& sbo) {
+   context.mutable_db.create<staked_balance_object>([&create](staked_balance_object& sbo) {
       sbo.ownerName = create.name;
-      sbo.stakedBalance = create.deposit.amount;
+      sbo.staked_balance = create.deposit.amount;
    });
 }
 
@@ -124,16 +124,16 @@ void apply_eos_transfer(apply_context& context) {
 
    try {
       auto& db = context.mutable_db;
-      const auto& from = db.get<BalanceObject, byOwnerName>(transfer.from);
+      const auto& from = db.get<balance_object, by_owner_name>(transfer.from);
 
       EOS_ASSERT(from.balance >= transfer.amount, message_precondition_exception, "Insufficient Funds",
                  ("from.balance",from.balance)("transfer.amount",transfer.amount));
 
-      const auto& to = db.get<BalanceObject, byOwnerName>(transfer.to);
-      db.modify(from, [&](BalanceObject& a) {
+      const auto& to = db.get<balance_object, by_owner_name>(transfer.to);
+      db.modify(from, [&](balance_object& a) {
          a.balance -= share_type(transfer.amount);
       });
-      db.modify(to, [&](BalanceObject& a) {
+      db.modify(to, [&](balance_object& a) {
          a.balance += share_type(transfer.amount);
       });
    } FC_CAPTURE_AND_RETHROW( (transfer) ) 
@@ -157,17 +157,17 @@ void apply_eos_lock(apply_context& context) {
    context.require_recipient(lock.to);
    context.require_recipient(lock.from);
 
-   const auto& locker = context.db.get<BalanceObject, byOwnerName>(lock.from);
+   const auto& locker = context.db.get<balance_object, by_owner_name>(lock.from);
 
    EOS_ASSERT( locker.balance >= lock.amount, message_precondition_exception, 
               "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount)("available",locker.balance) );
 
-   context.mutable_db.modify(locker, [&lock](BalanceObject& a) {
+   context.mutable_db.modify(locker, [&lock](balance_object& a) {
       a.balance -= lock.amount;
    });
 
-   const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(lock.to);
-   balance.stakeTokens(lock.amount, context.mutable_db);
+   const auto& balance = context.db.get<staked_balance_object, by_owner_name>(lock.to);
+   balance.stake_tokens(lock.amount, context.mutable_db);
 }
 
 void apply_eos_unlock(apply_context& context) {
@@ -177,12 +177,12 @@ void apply_eos_unlock(apply_context& context) {
 
    EOS_ASSERT(unlock.amount >= 0, message_validate_exception, "Unlock amount cannot be negative");
 
-   const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(unlock.account);
+   const auto& balance = context.db.get<staked_balance_object, by_owner_name>(unlock.account);
 
-   EOS_ASSERT(balance.stakedBalance  >= unlock.amount, message_precondition_exception,
+   EOS_ASSERT(balance.staked_balance  >= unlock.amount, message_precondition_exception,
               "Insufficient locked funds to unlock ${a}", ("a", unlock.amount));
 
-   balance.beginUnstakingTokens(unlock.amount, context.mutable_db);
+   balance.begin_unstaking_tokens(unlock.amount, context.mutable_db);
 }
 
 
@@ -192,8 +192,8 @@ void apply_eos_setcode(apply_context& context) {
 
    context.require_authorization(msg.account);
 
-   FC_ASSERT( msg.vmtype == 0 );
-   FC_ASSERT( msg.vmversion == 0 );
+   FC_ASSERT( msg.vm_type == 0 );
+   FC_ASSERT( msg.vm_version == 0 );
 
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
@@ -223,22 +223,22 @@ void apply_eos_claim(apply_context& context) {
 
    context.require_authorization(claim.account);
 
-   auto balance = context.db.find<StakedBalanceObject, byOwnerName>(claim.account);
+   auto balance = context.db.find<staked_balance_object, by_owner_name>(claim.account);
    EOS_ASSERT(balance != nullptr, message_precondition_exception,
               "Could not find staked balance for ${name}", ("name", claim.account));
-   auto balanceReleaseTime = balance->lastUnstakingTime + config::staked_balance_cooldown_seconds;
+   auto balanceReleaseTime = balance->last_unstaking_time + config::staked_balance_cooldown_seconds;
    auto now = context.controller.head_block_time();
    EOS_ASSERT(now >= balanceReleaseTime, message_precondition_exception,
               "Cannot claim balance until ${releaseDate}", ("releaseDate", balanceReleaseTime));
-   EOS_ASSERT(balance->unstakingBalance >= claim.amount, message_precondition_exception,
+   EOS_ASSERT(balance->unstaking_balance >= claim.amount, message_precondition_exception,
               "Cannot claim ${claimAmount} as only ${available} is available for claim",
-              ("claimAmount", claim.amount)("available", balance->unstakingBalance));
+              ("claimAmount", claim.amount)("available", balance->unstaking_balance));
 
-   const auto& stakedBalance = context.db.get<StakedBalanceObject, byOwnerName>(claim.account);
-   stakedBalance.finishUnstakingTokens(claim.amount, context.mutable_db);
+   const auto& stakedBalance = context.db.get<staked_balance_object, by_owner_name>(claim.account);
+   stakedBalance.finish_unstaking_tokens(claim.amount, context.mutable_db);
 
-   const auto& liquidBalance = context.db.get<BalanceObject, byOwnerName>(claim.account);
-   context.mutable_db.modify(liquidBalance, [&claim](BalanceObject& a) {
+   const auto& liquidBalance = context.db.get<balance_object, by_owner_name>(claim.account);
+   context.mutable_db.modify(liquidBalance, [&claim](balance_object& a) {
       a.balance += claim.amount;
    });
 }
@@ -266,10 +266,10 @@ void apply_eos_setproducer(apply_context& context) {
          p.signing_key = update.key;
          p.configuration = update.configuration;
       });
-      auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
-      db.create<ProducerVotesObject>([&](ProducerVotesObject& pvo) {
+      auto raceTime = producer_schedule_object::get(db).currentRaceTime;
+      db.create<producer_votes_object>([&](producer_votes_object& pvo) {
          pvo.ownerName = update.name;
-         pvo.startNewRaceLap(raceTime);
+         pvo.start_new_race_lap(raceTime);
       });
    }
 }
@@ -288,16 +288,16 @@ void apply_eos_okproducer(apply_context& context) {
 
 
    auto& db = context.mutable_db;
-   const auto& producer = db.get<ProducerVotesObject, byOwnerName>(approve.producer);
-   const auto& voter = db.get<StakedBalanceObject, byOwnerName>(approve.voter);
+   const auto& producer = db.get<producer_votes_object, by_owner_name>(approve.producer);
+   const auto& voter = db.get<staked_balance_object, by_owner_name>(approve.voter);
 
 
-   EOS_ASSERT(voter.producerVotes.contains<ProducerSlate>(), message_precondition_exception,
+   EOS_ASSERT(voter.producer_votes.contains<producer_slate>(), message_precondition_exception,
               "Cannot approve producer; approving account '${name}' proxies its votes to '${proxy}'",
-              ("name", voter.ownerName)("proxy", voter.producerVotes.get<account_name>()));
+              ("name", voter.ownerName)("proxy", voter.producer_votes.get<account_name>()));
 
 
-   const auto& slate = voter.producerVotes.get<ProducerSlate>();
+   const auto& slate = voter.producer_votes.get<producer_slate>();
 
    EOS_ASSERT(slate.size < config::max_producer_votes, message_precondition_exception,
               "Cannot approve producer; approved producer count is already at maximum");
@@ -311,23 +311,23 @@ void apply_eos_okproducer(apply_context& context) {
                  ("name", producer.ownerName));
 
 
-   auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
-   auto totalVotingStake = voter.stakedBalance;
+   auto raceTime = producer_schedule_object::get(db).currentRaceTime;
+   auto totalVotingStake = voter.staked_balance;
 
    // Check if voter is proxied to; if so, we need to add in the proxied stake
-   if (auto proxy = db.find<ProxyVoteObject, byTargetName>(voter.ownerName))
-      totalVotingStake += proxy->proxiedStake;
+   if (auto proxy = db.find<proxy_vote_object, by_target_name>(voter.ownerName))
+      totalVotingStake += proxy->proxied_stake;
 
    // Add/remove votes from producer
-   db.modify(producer, [approve = approve.approve, totalVotingStake, &raceTime](ProducerVotesObject& pvo) {
+   db.modify(producer, [approve = approve.approve, totalVotingStake, &raceTime](producer_votes_object& pvo) {
       if (approve)
-         pvo.updateVotes(totalVotingStake, raceTime);
+         pvo.update_votes(totalVotingStake, raceTime);
       else
-         pvo.updateVotes(-totalVotingStake, raceTime);
+         pvo.update_votes(-totalVotingStake, raceTime);
    });
    // Add/remove producer from voter's approved producer list
-   db.modify(voter, [&approve, producer = producer.ownerName](StakedBalanceObject& sbo) {
-      auto& slate = sbo.producerVotes.get<ProducerSlate>();
+   db.modify(voter, [&approve, producer = producer.ownerName](staked_balance_object& sbo) {
+      auto& slate = sbo.producer_votes.get<producer_slate>();
       if (approve.approve)
          slate.add(producer);
       else
@@ -346,21 +346,21 @@ void apply_eos_setproxy(apply_context& context) {
    context.require_recipient(svp.proxy);
 
    auto& db = context.mutable_db;
-   const auto& proxy = db.get<ProxyVoteObject, byTargetName>(context.msg.recipient(svp.proxy));
-   const auto& balance = db.get<StakedBalanceObject, byOwnerName>(context.msg.recipient(svp.stakeholder));
+   const auto& proxy = db.get<proxy_vote_object, by_target_name>(context.msg.recipient(svp.proxy));
+   const auto& balance = db.get<staked_balance_object, by_owner_name>(context.msg.recipient(svp.stakeholder));
 
 
-   auto proxy = db.find<ProxyVoteObject, byTargetName>(context.msg.recipient(svp.proxy));
+   auto proxy = db.find<proxy_vote_object, by_target_name>(context.msg.recipient(svp.proxy));
 
 
    if (svp.proxy != svp.stakeholder) {
       // We are enabling proxying to svp.proxy
-      proxy.addProxySource(context.msg.recipient(svp.stakeholder), balance.stakedBalance, db);
-      db.modify(balance, [target = proxy.proxyTarget](StakedBalanceObject& sbo) { sbo.producerVotes = target; });
+      proxy.add_proxy_source(context.msg.recipient(svp.stakeholder), balance.staked_balance, db);
+      db.modify(balance, [target = proxy.proxy_target](staked_balance_object& sbo) { sbo.producer_votes = target; });
    } else {
-      // We are disabling proxying to balance.producerVotes.get<account_name>()
-      proxy.removeProxySource(context.msg.recipient(svp.stakeholder), balance.stakedBalance, db);
-      db.modify(balance, [](StakedBalanceObject& sbo) { sbo.producerVotes = ProducerSlate{}; });
+      // We are disabling proxying to balance.producer_votes.get<account_name>()
+      proxy.removeProxySource(context.msg.recipient(svp.stakeholder), balance.staked_balance, db);
+      db.modify(balance, [](staked_balance_object& sbo) { sbo.producer_votes = producer_slate{}; });
    }
    */
 }

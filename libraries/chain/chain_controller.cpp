@@ -718,19 +718,19 @@ namespace {
      };
   }
 
-  auto make_authority_checker(const chainbase::database& db, const flat_set<public_key_type>& signingKeys) {
+  auto make_auth_checker(const chainbase::database& db, const flat_set<public_key_type>& signingKeys) {
      auto getPermission = make_get_permission(db);
      auto getAuthority = [getPermission](const types::account_permission& permission) {
         return getPermission(permission).auth;
      };
      auto depthLimit = db.get<global_property_object>().configuration.auth_depth_limit;
-     return MakeAuthorityChecker(std::move(getAuthority), depthLimit, signingKeys);
+     return make_authority_checker(std::move(getAuthority), depthLimit, signingKeys);
   }
 
 }
 
 flat_set<public_key_type> chain_controller::get_required_keys(const signed_transaction& trx, const flat_set<public_key_type>& candidateKeys)const {
-   auto checker = make_authority_checker(_db, candidateKeys);
+   auto checker = make_auth_checker(_db, candidateKeys);
 
    for (const auto& message : trx.messages) {
       for (const auto& declaredAuthority : message.authorization) {
@@ -753,7 +753,7 @@ void chain_controller::check_transaction_authorization(const signed_transaction&
 
    auto getPermission = make_get_permission(_db);
 #warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
-   auto checker = make_authority_checker(_db, trx.get_signature_keys(chain_id_type{}));
+   auto checker = make_auth_checker(_db, trx.get_signature_keys(chain_id_type{}));
 
    for (const auto& message : trx.messages)
       for (const auto& declaredAuthority : message.authorization) {

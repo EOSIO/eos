@@ -17,7 +17,7 @@ using std::pair;
  *  be converted to and from JSON.
  */
 struct abi_serializer {
-   abi_serializer(){ configureBuiltInTypes(); }
+   abi_serializer(){ configure_built_in_types(); }
    abi_serializer( const abi& abi );
    void setAbi( const abi& abi );
 
@@ -30,7 +30,7 @@ struct abi_serializer {
    typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool)>  pack_function;
    
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
-   void configureBuiltInTypes();
+   void configure_built_in_types();
 
    bool has_cycle(const vector<pair<string, string>>& sedges)const;
    void validate()const;
@@ -71,7 +71,7 @@ struct abi_serializer {
    }
 
    private:
-     void binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj)const;
+   void binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj)const;
 };
 
 } } // eosio::types

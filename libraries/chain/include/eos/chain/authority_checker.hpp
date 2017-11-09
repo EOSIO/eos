@@ -17,9 +17,9 @@
 namespace eosio { namespace chain {
 
 namespace detail {
-using MetaPermission = static_variant<types::key_permission_weight, types::account_permission_weight>;
+using meta_permission = static_variant<types::key_permission_weight, types::account_permission_weight>;
 
-struct GetWeightVisitor {
+struct get_weight_visitor {
    using result_type = uint32;
 
    template<typename Permission>
@@ -27,15 +27,15 @@ struct GetWeightVisitor {
 };
 
 // Orders permissions descending by weight, and breaks ties with Key permissions being less than Account permissions
-struct MetaPermissionComparator {
-   bool operator()(const MetaPermission& a, const MetaPermission& b) const {
-      GetWeightVisitor scale;
+struct meta_permission_comparator {
+   bool operator()(const meta_permission& a, const meta_permission& b) const {
+      get_weight_visitor scale;
       if (a.visit(scale) > b.visit(scale)) return true;
       return a.contains<types::key_permission_weight>() && !b.contains<types::key_permission_weight>();
    }
 };
 
-using MetaPermissionSet = boost::container::flat_multiset<MetaPermission, MetaPermissionComparator>;
+using meta_permission_set = boost::container::flat_multiset<meta_permission, meta_permission_comparator>;
 }
 
 /**
@@ -45,24 +45,24 @@ using MetaPermissionSet = boost::container::flat_multiset<MetaPermission, MetaPe
  * then determine whether that list of keys is sufficient to satisfy the authority. This class takes a list of keys and
  * provides the @ref satisfied method to determine whether that list of keys satisfies a provided authority.
  *
- * @tparam F A callable which takes a single argument of type @ref AccountPermission and returns the corresponding
+ * @tparam F A callable which takes a single argument of type @ref account_permission and returns the corresponding
  * authority
  */
 template<typename F>
-class AuthorityChecker {
+class authority_checker {
    F PermissionToAuthority;
    uint16 recursionDepthLimit;
    vector<public_key_type> signingKeys;
    vector<bool> usedKeys;
 
-   struct WeightTallyVisitor {
+   struct weight_tally_visitor {
       using result_type = uint32;
 
-      AuthorityChecker& checker;
+      authority_checker& checker;
       uint16 recursionDepth;
       uint32 totalWeight = 0;
 
-      WeightTallyVisitor(AuthorityChecker& checker, uint16 recursionDepth)
+      weight_tally_visitor(authority_checker& checker, uint16 recursionDepth)
          : checker(checker), recursionDepth(recursionDepth) {}
 
       uint32 operator()(const types::key_permission_weight& permission) {
@@ -82,7 +82,7 @@ class AuthorityChecker {
    };
 
 public:
-   AuthorityChecker(F PermissionToAuthority, uint16 recursionDepthLimit, const flat_set<public_key_type>& signingKeys)
+   authority_checker(F PermissionToAuthority, uint16 recursionDepthLimit, const flat_set<public_key_type>& signingKeys)
       : PermissionToAuthority(PermissionToAuthority),
         recursionDepthLimit(recursionDepthLimit),
         signingKeys(signingKeys.begin(), signingKeys.end()),
@@ -94,7 +94,7 @@ public:
    }
    template<typename AuthorityType>
    bool satisfied(const AuthorityType& authority, uint16 depth = 0) {
-      // This check is redundant, since WeightTallyVisitor did it too, but I'll leave it here for future-proofing
+      // This check is redundant, since weight_tally_visitor did it too, but I'll leave it here for future-proofing
       if (depth > recursionDepthLimit)
          return false;
 
@@ -104,12 +104,12 @@ public:
       });
 
       // Sort key permissions and account permissions together into a single set of MetaPermissions
-      detail::MetaPermissionSet permissions;
+      detail::meta_permission_set permissions;
       permissions.insert(authority.keys.begin(), authority.keys.end());
       permissions.insert(authority.accounts.begin(), authority.accounts.end());
 
       // Check all permissions, from highest weight to lowest, seeing if signingKeys satisfies them or not
-      WeightTallyVisitor visitor(*this, depth);
+      weight_tally_visitor visitor(*this, depth);
       for (const auto& permission : permissions)
          // If we've got enough weight, to satisfy the authority, return!
          if (permission.visit(visitor) >= authority.threshold) {
@@ -121,19 +121,19 @@ public:
 
    bool all_keys_used() const { return boost::algorithm::all_of_equal(usedKeys, true); }
    flat_set<public_key_type> used_keys() const {
-      auto range = utilities::FilterDataByMarker(signingKeys, usedKeys, true);
+      auto range = utilities::filter_data_by_marker(signingKeys, usedKeys, true);
       return {range.begin(), range.end()};
    }
    flat_set<public_key_type> unused_keys() const {
-      auto range = utilities::FilterDataByMarker(signingKeys, usedKeys, false);
+      auto range = utilities::filter_data_by_marker(signingKeys, usedKeys, false);
       return {range.begin(), range.end()};
    }
 };
 
 template<typename F>
-AuthorityChecker<F> MakeAuthorityChecker(F&& pta, uint16 recursionDepthLimit,
-                                         const flat_set<public_key_type>& signingKeys) {
-   return AuthorityChecker<F>(std::forward<F>(pta), recursionDepthLimit, signingKeys);
+authority_checker<F> make_authority_checker(F&& pta, uint16 recursionDepthLimit,
+                                            const flat_set <public_key_type>& signingKeys) {
+   return authority_checker<F>(std::forward<F>(pta), recursionDepthLimit, signingKeys);
 }
 
 }} // namespace eosio::chain

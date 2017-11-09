@@ -18,30 +18,30 @@ namespace types = ::eosio::types;
 namespace config = ::eosio::config;
 
 /**
- * @brief The BalanceObject class tracks the EOS balance for accounts
+ * @brief The balance_object class tracks the EOS balance for accounts
  */
-class BalanceObject : public chainbase::object<chain::balance_object_type, BalanceObject> {
-   OBJECT_CTOR(BalanceObject)
+class balance_object : public chainbase::object<chain::balance_object_type, balance_object> {
+   OBJECT_CTOR(balance_object)
 
    id_type id;
-   types::account_name ownerName;
+   types::account_name owner_name;
    types::share_type balance = 0;
 };
 
-struct byOwnerName;
+struct by_owner_name;
 
-using BalanceMultiIndex = chainbase::shared_multi_index_container<
-   BalanceObject,
+using balance_multi_index = chainbase::shared_multi_index_container<
+      balance_object,
    indexed_by<
       ordered_unique<tag<by_id>,
-         member<BalanceObject, BalanceObject::id_type, &BalanceObject::id>
+         member<balance_object, balance_object::id_type, &balance_object::id>
       >,
-      ordered_unique<tag<byOwnerName>,
-         member<BalanceObject, types::account_name, &BalanceObject::ownerName>
+      ordered_unique<tag<by_owner_name>,
+         member<balance_object, types::account_name, &balance_object::owner_name>
       >
    >
 >;
 
-} } // namespace native::eos
+} } // namespace native::eosio
 
-CHAINBASE_SET_INDEX_TYPE(native::eosio::BalanceObject, native::eosio::BalanceMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(native::eosio::balance_object, native::eosio::balance_multi_index)
