@@ -18,7 +18,7 @@ namespace eosio {
       block_id_type   head_id;
       string          os;
       string          agent;
-    int16_t           generation;
+      int16_t           generation;
    };
 
   enum go_away_reason {
@@ -131,7 +131,7 @@ namespace eosio {
                                       SignedTransaction,
                                       signed_block>;
 
-} // namespace eos
+} // namespace eosio
 
 FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )
 FC_REFLECT( eosio::handshake_message,
