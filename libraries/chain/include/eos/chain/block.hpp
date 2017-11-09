@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+#include <eos/chain/block_timestamp.hpp>
 #include <eos/chain/transaction.hpp>
 
 namespace eosio { namespace chain {
@@ -15,7 +16,7 @@ namespace eosio { namespace chain {
 
 
       block_id_type                 previous;
-      fc::time_point_sec            timestamp;
+      block_timestamp_type          timestamp;
       checksum_type                 transaction_merkle_root;
       AccountName                   producer;
       /**
