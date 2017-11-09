@@ -407,13 +407,13 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.name = params.name;
 
    const auto& d = db.get_database();
-   const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
-   const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
+   const auto& balance        = d.get<balance_object,by_owner_name>( params.name );
+   const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.name );
 
    result.eos_balance          = asset(balance.balance, EOS_SYMBOL);
-   result.staked_balance       = asset(staked_balance.stakedBalance);
-   result.unstaking_balance    = asset(staked_balance.unstakingBalance);
-   result.last_unstaking_time  = staked_balance.lastUnstakingTime;
+   result.staked_balance       = asset(staked_balance.staked_balance);
+   result.unstaking_balance    = asset(staked_balance.unstaking_balance);
+   result.last_unstaking_time  = staked_balance.last_unstaking_time;
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.name ) );
