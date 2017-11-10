@@ -2,33 +2,29 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/native_contract/eos_contract.hpp>
+#include <eos/chain/contracts/eos_contract.hpp>
 
 #include <eos/chain/chain_controller.hpp>
-#include <eos/chain/message_handling_contexts.hpp>
-#include <eos/chain/message.hpp>
+#include <eos/chain/apply_context.hpp>
+#include <eos/chain/transaction.hpp>
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/account_object.hpp>
-#include <eos/native_contract/balance_object.hpp>
+#include <eos/chain/contracts/balance_object.hpp>
 #include <eos/chain/permission_object.hpp>
 #include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/global_property_object.hpp>
-#include <eos/native_contract/staked_balance_objects.hpp>
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/contracts/staked_balance_objects.hpp>
+#include <eos/chain/contracts/producer_objects.hpp>
+#include <eos/chain/contracts/types.hpp>
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
-#include <eos/types/AbiSerializer.hpp>
+//#include <eos/types/abiSerializer.hpp>
 
-namespace native {
-namespace eosio {
-using namespace chain;
-namespace config = ::eosio::config;
-namespace chain = ::eosio::chain;
-using namespace ::eosio::types;
+namespace eosio { namespace chain { namespace contracts {
 
-void validate_authority_precondition( const apply_context& context, const Authority& auth ) {
+void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
       context.db.get<account_object, by_name>(a.permission.account);
       context.db.find<permission_object, by_owner>(boost::make_tuple(a.permission.account, a.permission.permission));
@@ -41,7 +37,7 @@ void validate_authority_precondition( const apply_context& context, const Author
  *  credited to the staked balance the new account in the @staked contract.
  */
 void apply_eos_newaccount(apply_context& context) {
-   auto create = context.msg.as<types::newaccount>();
+   auto create = context.act.as<newaccount>();
    context.require_authorization(create.creator);
 
    EOS_ASSERT( validate(create.owner), message_validate_exception, "Invalid owner authority");
@@ -78,24 +74,24 @@ void apply_eos_newaccount(apply_context& context) {
       });
    }
 
-   const auto& creatorBalance = context.mutable_db.get<BalanceObject, byOwnerName>(create.creator);
+   const auto& creatorBalance = context.mutable_db.get<balance_object, by_owner_name>(create.creator);
 
    EOS_ASSERT(creatorBalance.balance >= create.deposit.amount, message_validate_exception,
               "Creator '${c}' has insufficient funds to make account creation deposit of ${a}",
               ("c", create.creator)("a", create.deposit));
 
-   context.mutable_db.modify(creatorBalance, [&create](BalanceObject& b) {
+   context.mutable_db.modify(creatorBalance, [&create](balance_object& b) {
       b.balance -= create.deposit.amount;
    });
 
-   context.mutable_db.create<BalanceObject>([&create](BalanceObject& b) {
-      b.ownerName = create.name;
+   context.mutable_db.create<balance_object>([&create](balance_object& b) {
+      b.owner_name = create.name;
       b.balance = 0; //create.deposit.amount; TODO: make sure we credit this in @staked
    });
 
-   context.mutable_db.create<StakedBalanceObject>([&create](StakedBalanceObject& sbo) {
-      sbo.ownerName = create.name;
-      sbo.stakedBalance = create.deposit.amount;
+   context.mutable_db.create<staked_balance_object>([&create](staked_balance_object& sbo) {
+      sbo.owner_name = create.name;
+      sbo.staked_balance = create.deposit.amount;
    });
 }
 
@@ -108,7 +104,7 @@ void apply_eos_newaccount(apply_context& context) {
 
 
 void apply_eos_transfer(apply_context& context) {
-   auto transfer = context.msg.as<types::transfer>();
+   auto transfer = context.act.as<transfer>();
 
    try {
       EOS_ASSERT(transfer.amount > 0, message_validate_exception, "Must transfer a positive amount");
@@ -124,17 +120,17 @@ void apply_eos_transfer(apply_context& context) {
 
    try {
       auto& db = context.mutable_db;
-      const auto& from = db.get<BalanceObject, byOwnerName>(transfer.from);
+      const auto& from = db.get<balance_object, by_owner_name>(transfer.from);
 
       EOS_ASSERT(from.balance >= transfer.amount, message_precondition_exception, "Insufficient Funds",
                  ("from.balance",from.balance)("transfer.amount",transfer.amount));
 
-      const auto& to = db.get<BalanceObject, byOwnerName>(transfer.to);
-      db.modify(from, [&](BalanceObject& a) {
-         a.balance -= ShareType(transfer.amount);
+      const auto& to = db.get<balance_object, by_owner_name>(transfer.to);
+      db.modify(from, [&](balance_object& a) {
+         a.balance -= share_type(transfer.amount);
       });
-      db.modify(to, [&](BalanceObject& a) {
-         a.balance += ShareType(transfer.amount);
+      db.modify(to, [&](balance_object& a) {
+         a.balance += share_type(transfer.amount);
       });
    } FC_CAPTURE_AND_RETHROW( (transfer) ) 
 }
@@ -144,108 +140,109 @@ void apply_eos_transfer(apply_context& context) {
  *  Deduct the balance from the from account.
  */
 void apply_eos_lock(apply_context& context) {
-   auto lock = context.msg.as<types::lock>();
+   auto lock = context.act.as<lock>();
 
    EOS_ASSERT(lock.amount > 0, message_validate_exception, "Locked amount must be positive");
 
    context.require_scope(lock.to);
    context.require_scope(lock.from);
-   context.require_scope(config::EosContractName);
+   context.require_scope(config::system_account_name);
 
    context.require_authorization(lock.from);
 
    context.require_recipient(lock.to);
    context.require_recipient(lock.from);
 
-   const auto& locker = context.db.get<BalanceObject, byOwnerName>(lock.from);
+   const auto& locker = context.db.get<balance_object, by_owner_name>(lock.from);
 
    EOS_ASSERT( locker.balance >= lock.amount, message_precondition_exception, 
               "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount)("available",locker.balance) );
 
-   context.mutable_db.modify(locker, [&lock](BalanceObject& a) {
+   context.mutable_db.modify(locker, [&lock](balance_object& a) {
       a.balance -= lock.amount;
    });
 
-   const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(lock.to);
-   balance.stakeTokens(lock.amount, context.mutable_db);
+   const auto& balance = context.db.get<staked_balance_object, by_owner_name>(lock.to);
+   balance.stake_tokens(lock.amount, context.mutable_db);
 }
 
 void apply_eos_unlock(apply_context& context) {
-   auto unlock = context.msg.as<types::unlock>();
+   auto unlock = context.act.as<unlock>();
 
    context.require_authorization(unlock.account);
 
    EOS_ASSERT(unlock.amount >= 0, message_validate_exception, "Unlock amount cannot be negative");
 
-   const auto& balance = context.db.get<StakedBalanceObject, byOwnerName>(unlock.account);
+   const auto& balance = context.db.get<staked_balance_object, by_owner_name>(unlock.account);
 
-   EOS_ASSERT(balance.stakedBalance  >= unlock.amount, message_precondition_exception,
+   EOS_ASSERT(balance.staked_balance  >= unlock.amount, message_precondition_exception,
               "Insufficient locked funds to unlock ${a}", ("a", unlock.amount));
 
-   balance.beginUnstakingTokens(unlock.amount, context.mutable_db);
+   balance.begin_unstaking_tokens(unlock.amount, context.mutable_db);
 }
 
 
 void apply_eos_setcode(apply_context& context) {
    auto& db = context.mutable_db;
-   auto  msg = context.msg.as<types::setcode>();
+   auto  act = context.act.as<setcode>();
 
-   context.require_authorization(msg.account);
+   context.require_authorization(act.account);
 
-   FC_ASSERT( msg.vmtype == 0 );
-   FC_ASSERT( msg.vmversion == 0 );
+   FC_ASSERT( act.vmtype == 0 );
+   FC_ASSERT( act.vmversion == 0 );
 
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
-   AbiSerializer( msg.abi ).validate();
+   // abiSerializer( act.abi ).validate();
+   // todo: figure out abi serilization location
 
 
-   const auto& account = db.get<account_object,by_name>(msg.account);
-//   wlog( "set code: ${size}", ("size",msg.code.size()));
+   const auto& account = db.get<account_object,by_name>(act.account);
+//   wlog( "set code: ${size}", ("size",act.code.size()));
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate 
-      a.code_version = fc::sha256::hash( msg.code.data(), msg.code.size() );
-      a.code.resize( msg.code.size() );
-      memcpy( a.code.data(), msg.code.data(), msg.code.size() );
+      a.code_version = fc::sha256::hash( act.code.data(), act.code.size() );
+      a.code.resize( act.code.size() );
+      memcpy( a.code.data(), act.code.data(), act.code.size() );
 
-      a.set_abi( msg.abi );
+      a.set_abi( act.abi );
    });
 
-   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account );
+   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.act, act.account );
    wasm_interface::get().init( init_context );
 }
 
 void apply_eos_claim(apply_context& context) {
-   auto claim = context.msg.as<types::claim>();
+   auto claim = context.act.as<claim>();
 
    EOS_ASSERT(claim.amount > 0, message_validate_exception, "Claim amount must be positive");
 
    context.require_authorization(claim.account);
 
-   auto balance = context.db.find<StakedBalanceObject, byOwnerName>(claim.account);
+   auto balance = context.db.find<staked_balance_object, by_owner_name>(claim.account);
    EOS_ASSERT(balance != nullptr, message_precondition_exception,
               "Could not find staked balance for ${name}", ("name", claim.account));
-   auto balanceReleaseTime = balance->lastUnstakingTime + config::StakedBalanceCooldownSeconds;
+   auto balanceReleaseTime = balance->last_unstaking_time + config::staked_balance_cooldown_seconds;
    auto now = context.controller.head_block_time();
    EOS_ASSERT(now >= balanceReleaseTime, message_precondition_exception,
               "Cannot claim balance until ${releaseDate}", ("releaseDate", balanceReleaseTime));
-   EOS_ASSERT(balance->unstakingBalance >= claim.amount, message_precondition_exception,
+   EOS_ASSERT(balance->unstaking_balance >= claim.amount, message_precondition_exception,
               "Cannot claim ${claimAmount} as only ${available} is available for claim",
-              ("claimAmount", claim.amount)("available", balance->unstakingBalance));
+              ("claimAmount", claim.amount)("available", balance->unstaking_balance));
 
-   const auto& stakedBalance = context.db.get<StakedBalanceObject, byOwnerName>(claim.account);
-   stakedBalance.finishUnstakingTokens(claim.amount, context.mutable_db);
+   const auto& staked_balance = context.db.get<staked_balance_object, by_owner_name>(claim.account);
+   staked_balance.finish_unstaking_tokens(claim.amount, context.mutable_db);
 
-   const auto& liquidBalance = context.db.get<BalanceObject, byOwnerName>(claim.account);
-   context.mutable_db.modify(liquidBalance, [&claim](BalanceObject& a) {
+   const auto& liquidBalance = context.db.get<balance_object, by_owner_name>(claim.account);
+   context.mutable_db.modify(liquidBalance, [&claim](balance_object& a) {
       a.balance += claim.amount;
    });
 }
 
 
 void apply_eos_setproducer(apply_context& context) {
-   auto update = context.msg.as<types::setproducer>();
+   auto update = context.act.as<setproducer>();
    context.require_authorization(update.name);
    EOS_ASSERT(update.name.good(), message_validate_exception, "Producer owner name cannot be empty");
 
@@ -266,68 +263,68 @@ void apply_eos_setproducer(apply_context& context) {
          p.signing_key = update.key;
          p.configuration = update.configuration;
       });
-      auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
-      db.create<ProducerVotesObject>([&](ProducerVotesObject& pvo) {
-         pvo.ownerName = update.name;
-         pvo.startNewRaceLap(raceTime);
+      auto raceTime = producer_schedule_object::get(db).current_race_time;
+      db.create<producer_votes_object>([&](producer_votes_object& pvo) {
+         pvo.owner_name = update.name;
+         pvo.start_new_race_lap(raceTime);
       });
    }
 }
 
 
 void apply_eos_okproducer(apply_context& context) {
-   auto approve = context.msg.as<types::okproducer>();
+   auto approve = context.act.as<okproducer>();
    EOS_ASSERT(approve.approve == 0 || approve.approve == 1, message_validate_exception,
               "Unknown approval value: ${val}; must be either 0 or 1", ("val", approve.approve));
    context.require_recipient(approve.voter);
    context.require_recipient(approve.producer);
 
-   context.require_scope(config::EosContractName);
+   context.require_scope(config::system_account_name);
    context.require_scope(approve.voter);
    context.require_authorization(approve.voter);
 
 
    auto& db = context.mutable_db;
-   const auto& producer = db.get<ProducerVotesObject, byOwnerName>(approve.producer);
-   const auto& voter = db.get<StakedBalanceObject, byOwnerName>(approve.voter);
+   const auto& producer = db.get<producer_votes_object, by_owner_name>(approve.producer);
+   const auto& voter = db.get<staked_balance_object, by_owner_name>(approve.voter);
 
 
-   EOS_ASSERT(voter.producerVotes.contains<ProducerSlate>(), message_precondition_exception,
+   EOS_ASSERT(voter.producer_votes.contains<producer_slate>(), message_precondition_exception,
               "Cannot approve producer; approving account '${name}' proxies its votes to '${proxy}'",
-              ("name", voter.ownerName)("proxy", voter.producerVotes.get<AccountName>()));
+              ("name", voter.owner_name)("proxy", voter.producer_votes.get<account_name>()));
 
 
-   const auto& slate = voter.producerVotes.get<ProducerSlate>();
+   const auto& slate = voter.producer_votes.get<producer_slate>();
 
-   EOS_ASSERT(slate.size < config::MaxProducerVotes, message_precondition_exception,
+   EOS_ASSERT(slate.size < config::max_producer_votes, message_precondition_exception,
               "Cannot approve producer; approved producer count is already at maximum");
    if (approve.approve)
-      EOS_ASSERT(!slate.contains(producer.ownerName), message_precondition_exception,
+      EOS_ASSERT(!slate.contains(producer.owner_name), message_precondition_exception,
                  "Cannot add approval to producer '${name}'; producer is already approved",
-                 ("name", producer.ownerName));
+                 ("name", producer.owner_name));
    else
-      EOS_ASSERT(slate.contains(producer.ownerName), message_precondition_exception,
+      EOS_ASSERT(slate.contains(producer.owner_name), message_precondition_exception,
                  "Cannot remove approval from producer '${name}'; producer is not approved",
-                 ("name", producer.ownerName));
+                 ("name", producer.owner_name));
 
 
-   auto raceTime = ProducerScheduleObject::get(db).currentRaceTime;
-   auto totalVotingStake = voter.stakedBalance;
+   auto raceTime = producer_schedule_object::get(db).current_race_time;
+   auto total_voting_stake = voter.staked_balance;
 
    // Check if voter is proxied to; if so, we need to add in the proxied stake
-   if (auto proxy = db.find<ProxyVoteObject, byTargetName>(voter.ownerName))
-      totalVotingStake += proxy->proxiedStake;
+   if (auto proxy = db.find<proxy_vote_object, by_target_name>(voter.owner_name))
+      total_voting_stake += proxy->proxied_stake;
 
    // Add/remove votes from producer
-   db.modify(producer, [approve = approve.approve, totalVotingStake, &raceTime](ProducerVotesObject& pvo) {
+   db.modify(producer, [approve = approve.approve, total_voting_stake, &raceTime](producer_votes_object& pvo) {
       if (approve)
-         pvo.updateVotes(totalVotingStake, raceTime);
+         pvo.update_votes(total_voting_stake, raceTime);
       else
-         pvo.updateVotes(-totalVotingStake, raceTime);
+         pvo.update_votes(-total_voting_stake, raceTime);
    });
    // Add/remove producer from voter's approved producer list
-   db.modify(voter, [&approve, producer = producer.ownerName](StakedBalanceObject& sbo) {
-      auto& slate = sbo.producerVotes.get<ProducerSlate>();
+   db.modify(voter, [&approve, producer = producer.owner_name](staked_balance_object& sbo) {
+      auto& slate = sbo.producer_votes.get<producer_slate>();
       if (approve.approve)
          slate.add(producer);
       else
@@ -336,7 +333,7 @@ void apply_eos_okproducer(apply_context& context) {
 }
 
 void apply_eos_setproxy(apply_context& context) {
-   auto svp = context.msg.as<types::setproxy>();
+   auto svp = context.act.as<setproxy>();
    FC_ASSERT( !"Not Implemented Yet" );
 
    /*
@@ -346,27 +343,27 @@ void apply_eos_setproxy(apply_context& context) {
    context.require_recipient(svp.proxy);
 
    auto& db = context.mutable_db;
-   const auto& proxy = db.get<ProxyVoteObject, byTargetName>(context.msg.recipient(svp.proxy));
-   const auto& balance = db.get<StakedBalanceObject, byOwnerName>(context.msg.recipient(svp.stakeholder));
+   const auto& proxy = db.get<proxy_vote_object, by_target_name>(context.act.recipient(svp.proxy));
+   const auto& balance = db.get<staked_balance_object, by_owner_name>(context.act.recipient(svp.stakeholder));
 
 
-   auto proxy = db.find<ProxyVoteObject, byTargetName>(context.msg.recipient(svp.proxy));
+   auto proxy = db.find<proxy_vote_object, by_target_name>(context.act.recipient(svp.proxy));
 
 
    if (svp.proxy != svp.stakeholder) {
       // We are enabling proxying to svp.proxy
-      proxy.addProxySource(context.msg.recipient(svp.stakeholder), balance.stakedBalance, db);
-      db.modify(balance, [target = proxy.proxyTarget](StakedBalanceObject& sbo) { sbo.producerVotes = target; });
+      proxy.add_proxy_source(context.act.recipient(svp.stakeholder), balance.staked_balance, db);
+      db.modify(balance, [target = proxy.proxy_target](staked_balance_object& sbo) { sbo.producer_votes = target; });
    } else {
-      // We are disabling proxying to balance.producerVotes.get<AccountName>()
-      proxy.removeProxySource(context.msg.recipient(svp.stakeholder), balance.stakedBalance, db);
-      db.modify(balance, [](StakedBalanceObject& sbo) { sbo.producerVotes = ProducerSlate{}; });
+      // We are disabling proxying to balance.producer_votes.get<account_name>()
+      proxy.remove_proxy_source(context.act.recipient(svp.stakeholder), balance.staked_balance, db);
+      db.modify(balance, [](staked_balance_object& sbo) { sbo.producer_votes = producer_slate{}; });
    }
    */
 }
 
 void apply_eos_updateauth(apply_context& context) {
-   auto update = context.msg.as<types::updateauth>();
+   auto update = context.act.as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), message_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT(update.permission != update.parent, message_validate_exception,
               "Cannot set an authority as its own parent");
@@ -414,23 +411,13 @@ void apply_eos_updateauth(apply_context& context) {
 }
 
 void apply_eos_deleteauth(apply_context& context) {
-   auto remove = context.msg.as<types::deleteauth>();
+   auto remove = context.act.as<deleteauth>();
    EOS_ASSERT(remove.permission != "active", message_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != "owner", message_validate_exception, "Cannot delete owner authority");
 
    auto& db = context.mutable_db;
    context.require_authorization(remove.account);
    const auto& permission = db.get<permission_object, by_owner>(boost::make_tuple(remove.account, remove.permission));
-
-   // TODO/QUESTION: If we are deleting a permission, should we check if the message declared
-   // permission satisfies the permission we want to delete?
-
-   // const auto& declaredAuthority = context.msg.authorization[0];
-   // const auto& declaredPermission = db.get<permission_object, by_owner>(boost::make_tuple(declaredAuthority.account, declaredAuthority.permission));
-   // const auto& index = _db.get_index<permission_index>().indices();
-   // EOS_ASSERT(declaredPermission.satisfies(permission, index), unsatisfied_permission,
-   //   "Unable to delete '${todelete}' with declared authority '${declared}'",
-   //   ("declared", declaredAuthority)("todelete", permission.name));
 
    { // Check for children
       const auto& index = db.get_index<permission_index, by_parent>();
@@ -451,7 +438,7 @@ void apply_eos_deleteauth(apply_context& context) {
 }
 
 void apply_eos_linkauth(apply_context& context) {
-   auto requirement = context.msg.as<types::linkauth>();
+   auto requirement = context.act.as<linkauth>();
    EOS_ASSERT(!requirement.requirement.empty(), message_validate_exception, "Required permission cannot be empty");
 
    context.require_authorization(requirement.account);
@@ -483,7 +470,7 @@ void apply_eos_linkauth(apply_context& context) {
 
 void apply_eos_unlinkauth(apply_context& context) {
    auto& db = context.mutable_db;
-   auto unlink = context.msg.as<types::unlinkauth>();
+   auto unlink = context.act.as<unlinkauth>();
 
    context.require_authorization(unlink.account);
 
@@ -494,5 +481,4 @@ void apply_eos_unlinkauth(apply_context& context) {
       db.remove(*link);
 }
 
-} // namespace eos
-} // namespace native
+} } } // namespace eosio::chain::contracts
