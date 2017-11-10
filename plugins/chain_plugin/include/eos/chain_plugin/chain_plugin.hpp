@@ -157,9 +157,9 @@ public:
 
    struct get_table_rows_params {
       bool        json = false;
-      Name        scope;
-      Name        code;
-      Name        table;
+      name        scope;
+      name        code;
+      name        table;
 
       string      table_key;
       string      lower_bound;
