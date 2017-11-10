@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chainblock_schedule.hpp>
-#include <eosio/chainblock.hpp>
+#include <eosio/chain/block_schedule.hpp>
+#include <eosio/chain/block.hpp>
 
 namespace eosio { namespace chain {
 

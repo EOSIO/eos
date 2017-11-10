@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chainwast_to_wasm.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>

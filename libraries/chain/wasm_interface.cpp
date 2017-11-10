@@ -1,5 +1,5 @@
-#include <eosio/chainwasm_interface.hpp>
-#include <eosio/chainapply_context.hpp>
+#include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/apply_context.hpp>
 #include <boost/core/ignore_unused.hpp>
 
 #include <Runtime/Runtime.h>

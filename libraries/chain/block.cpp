@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chainblock.hpp>
+#include <eosio/chain/block.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <algorithm>

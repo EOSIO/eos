@@ -2,10 +2,10 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chaincontracts/staked_balance_objects.hpp>
-#include <eosio/chaincontracts/producer_objects.hpp>
+#include <eosio/chain/contracts/staked_balance_objects.hpp>
+#include <eosio/chain/contracts/producer_objects.hpp>
 
-#include <eosio/chainglobal_property_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <boost/range/algorithm/for_each.hpp>
 

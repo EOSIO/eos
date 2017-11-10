@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chainchain_config.hpp>
+#include <eosio/chain/chain_config.hpp>
 
 #include <boost/range/algorithm/nth_element.hpp>
 
