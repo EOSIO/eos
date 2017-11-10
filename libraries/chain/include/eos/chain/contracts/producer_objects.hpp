@@ -39,10 +39,10 @@ class producer_votes_object : public chainbase::object<producer_votes_object_typ
     * @param delta_votes The change in votes since the last update
     * @param current_race_time The current "race time"
     */
-   void update_votes(types::share_type delta_votes, types::UInt128 current_race_time);
+   void update_votes(share_type delta_votes, uint128_t current_race_time);
    /// @brief Get the number of votes this producer has received
-   types::share_type get_votes() const { return race.speed; }
-   pair<types::share_id,id_type> get_vote_order()const { return { race.speed, id }; }
+   share_type get_votes() const { return race.speed; }
+   pair<share_id,id_type> get_vote_order()const { return { race.speed, id }; }
 
    /**
     * These fields are used for the producer scheduling algorithm which uses a virtual race to ensure that runner-up
@@ -68,37 +68,37 @@ class producer_votes_object : public chainbase::object<producer_votes_object_typ
     * projected finishing time based on his new position and speed are updated so we know where he shakes out in the
     * new projected finish times.
     *
-    * @warning Do not update these values directly; use @ref updateVotes instead!
+    * @warning Do not update these values directly; use @ref update_votes instead!
     */
    struct {
       /// The current speed for this producer (which is actually the total votes for the producer)
-      types::share_type speed = 0;
+      share_type speed = 0;
       /// The position of this producer when we last updated the records
-      types::UInt128 position = 0;
+      uint128_t position = 0;
       /// The "race time" when we last updated the records
-      types::UInt128 position_update_time = 0;
+      uint128_t position_update_time = 0;
       /// The projected "race time" at which this producer will finish the race
-      types::UInt128 projected_finish_time = std::numeric_limits<types::UInt128>::max();
+      uint128_t projected_finish_time = std::numeric_limits<uint128_t>::max();
 
       /// Set all fields on race, given the current speed, position, and time
-      void update(types::share_type current_speed, types::UInt128 current_position, types::UInt128 current_race_time) {
+      void update(share_type current_speed, uint128_t current_position, uint128_t current_race_time) {
          speed = current_speed;
          position = current_position;
-         positionUpdateTime = current_race_time;
+         position_update_time = current_race_time;
          auto distanceRemaining = config::ProducerRaceLapLength - position;
          auto projectedTimeToFinish = speed > 0? distanceRemaining / speed
-                                               : std::numeric_limits<types::UInt128>::max();
-         EOS_ASSERT(current_race_time <= std::numeric_limits<types::UInt128>::max() - projectedTimeToFinish,
+                                               : std::numeric_limits<uint128_t>::max();
+         EOS_ASSERT(current_race_time <= std::numeric_limits<uint128_t>::max() - projectedTimeToFinish,
                     producer_race_overflow_exception, "Producer race time has overflowed",
-                    ("currentTime", current_race_time)("timeToFinish", projectedTimeToFinish)("limit", std::numeric_limits<types::UInt128>::max()));
+                    ("currentTime", current_race_time)("timeToFinish", projectedTimeToFinish)("limit", std::numeric_limits<uint128_t>::max()));
          projected_finish_time = current_race_time + projectedTimeToFinish;
       }
    } race;
 
-   void start_new_race_lap(types::UInt128 current_race_time) { race.update(race.speed, 0, current_race_time); }
-   types::UInt128 projected_race_finish_time() const { return race.projected_finish_time; }
+   void start_new_race_lap(uint128_t current_race_time) { race.update(race.speed, 0, current_race_time); }
+   uint128_t projected_race_finish_time() const { return race.projected_finish_time; }
 
-   typedef std::pair<types::UInt128,id_type> rft_order_type;
+   typedef std::pair<uint128_t,id_type> rft_order_type;
    rft_order_type projected_race_finish_timeOrder() const { return {race.projected_finish_time,id}; }
 };
 
@@ -126,15 +126,15 @@ class proxy_vote_object : public chainbase::object<proxy_vote_object_type, proxy
 
    id_type id;
    /// The account receiving the proxied voting power
-   types::account_name proxy_target;
+   account_name proxy_target;
    /// The list of accounts proxying their voting power to @ref proxy_target
-   shared_set<types::account_name> proxy_sources;
+   shared_set<account_name> proxy_sources;
    /// The total stake proxied to @ref proxy_target. At all times, this should be equal to the sum of stake over all 
    /// accounts in @ref proxy_sources
-   types::share_type proxied_stake = 0;
+   share_type proxied_stake = 0;
    
-   void add_proxy_source(const types::account_name& source, share_type sourceStake, chainbase::database& db) const;
-   void remove_proxy_source(const types::account_name& source, share_type sourceStake,
+   void add_proxy_source(const account_name& source, share_type source_stake, chainbase::database& db) const;
+   void remove_proxy_source(const account_name& source, share_type source_stake,
                           chainbase::database& db) const;
    void update_proxied_state(share_type staked_delta, chainbase::database& db) const;
 
@@ -154,7 +154,7 @@ class producer_schedule_object : public chainbase::object<producer_schedule_obje
    OBJECT_CTOR(producer_schedule_object)
 
    id_type id;
-   types::UInt128 current_race_time = 0;
+   uint128_t current_race_time = 0;
 
    /// Retrieve a reference to the producer_schedule_object stored in the provided database
    static const producer_schedule_object& get(const chainbase::database& db) { return db.get(id_type()); }
@@ -191,14 +191,14 @@ using producer_votes_multi_index = chainbase::shared_multi_index_container<
          member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
       >,
       ordered_unique<tag<by_owner_name>,
-         member<producer_votes_object, types::account_name, &producer_votes_object::owner_name>
+         member<producer_votes_object, account_name, &producer_votes_object::owner_name>
       >,
       ordered_unique<tag<by_votes>,
       composite_key<permission_object,
-         const_mem_fun<producer_votes_object, std::pair<types::share_type,producer_votes_object::id_type>, &producer_votes_object::get_vote_order>,
+         const_mem_fun<producer_votes_object, std::pair<share_type,producer_votes_object::id_type>, &producer_votes_object::get_vote_order>,
          member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
          >,
-         composite_key_compare<std::greater< std::pair<types::share_type, producer_votes_object::id_type> >, std::less<producer_votes_object::id_type> >
+         composite_key_compare<std::greater< std::pair<share_type, producer_votes_object::id_type> >, std::less<producer_votes_object::id_type> >
       >
       ordered_unique<tag<by_projected_race_finish_time>,
          const_mem_fun<producer_votes_object, producer_votes_object::rft_order_type, &producer_votes_object::projected_race_finish_time_order>
@@ -207,10 +207,10 @@ using producer_votes_multi_index = chainbase::shared_multi_index_container<
    For some reason this does not compile, so I simulate it by adding a new method
       ordered_unique<tag<by_votes>,
          composite_key<
-            const_mem_fun<producer_votes_object, types::share_type, &producer_votes_object::getVotes>,
+            const_mem_fun<producer_votes_object, share_type, &producer_votes_object::getVotes>,
             member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
          >,
-         composite_key_compare< std::greater<types::share_type>, std::less<producer_votes_object::id_type> >
+         composite_key_compare< std::greater<share_type>, std::less<producer_votes_object::id_type> >
       >*//*,
       */
    >
@@ -223,7 +223,7 @@ using proxy_vote_multi_index = chainbase::shared_multi_index_container<
    proxy_vote_object,
    indexed_by<
       ordered_unique<tag<by_id>, member<proxy_vote_object, proxy_vote_object::id_type, &proxy_vote_object::id>>,
-      ordered_unique<tag<by_target_name>, member<proxy_vote_object, types::account_name, &proxy_vote_object::proxy_target>>
+      ordered_unique<tag<by_target_name>, member<proxy_vote_object, account_name, &proxy_vote_object::proxy_target>>
    >
 >;
 
