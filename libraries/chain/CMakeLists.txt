@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/chain/*.hpp" "include/eos/chain/contrats/*.hpp")
+file(GLOB HEADERS "include/eos/chain/*.hpp" "include/eos/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
