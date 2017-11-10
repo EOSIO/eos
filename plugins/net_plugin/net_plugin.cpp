@@ -209,8 +209,8 @@ namespace eosio {
   /**
    * default value initializers
    */
-  constexpr auto     def_buffer_size_mb = 4;
-  constexpr auto     def_buffer_size = 1024*1024*def_buffer_size_mb;
+  constexpr auto     def_send_buffer_size_mb = 4;
+  constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
   constexpr auto     def_max_clients = 20; // 0 for unlimited clients
   constexpr auto     def_conn_retry_wait = std::chrono::seconds (30);
   constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
@@ -293,10 +293,10 @@ namespace eosio {
   class connection : public std::enable_shared_from_this<connection> {
   public:
     connection( string endpoint,
-                size_t send_buf_size = def_buffer_size );
+                size_t send_buf_size = def_send_buffer_size );
 
     connection( socket_ptr s,
-                size_t send_buf_size = def_buffer_size );
+                size_t send_buf_size = def_send_buffer_size );
     ~connection();
     void initialize ();
 
@@ -306,7 +306,7 @@ namespace eosio {
     sync_state_ptr          sync_requested;  // this peer is requesting info from us
     socket_ptr              socket;
 
-    message_buffer<def_buffer_size>  pending_message_buffer;
+    message_buffer<4096>    pending_message_buffer;
     vector<char>            send_buffer;
     vector<char>            blk_buffer;
 

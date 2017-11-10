@@ -1,8 +1,11 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/pool/object_pool.hpp>
 #include <fc/io/raw.hpp>
-#include <iostream>
 #include <deque>
 #include <array>
 
@@ -138,17 +141,6 @@ namespace eosio {
      */
     void advance_write_ptr(uint32_t bytes) {
       advance_index(write_ind, bytes);
-    }
-
-    /*
-     *  Debug function that will print the state of the message buffer
-     *  to standard out.
-     */
-    void show_state() const {
-      std::cout << "Number of buffers = " << buffers.size() << "\n"
-                << "Size of buffers   = " << buffer_len << "\n"
-                << "Write Index       = " << write_ind.first << ", " << write_ind.second << "\n"
-                << "Read Index        = " << read_ind.first << ", " << read_ind.second << std::endl;
     }
 
     /*

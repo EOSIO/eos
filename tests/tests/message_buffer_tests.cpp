@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 
 #include <eos/net_plugin/message_buffer.hpp>
 #include <boost/test/unit_test.hpp>
