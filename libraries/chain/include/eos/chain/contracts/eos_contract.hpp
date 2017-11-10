@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eos/chain/message_handling_contexts.hpp>
+#include <eos/chain/apply_context.hpp>
 
 #include <eos/chain/types.hpp>
 

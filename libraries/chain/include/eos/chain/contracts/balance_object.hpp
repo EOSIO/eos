@@ -17,9 +17,9 @@ namespace eosio { namespace chain { namespace contracts {
 class balance_object : public chainbase::object<balance_object_type, balance_object> {
    OBJECT_CTOR(balance_object)
 
-   id_type id;
-   account_name owner_name;
-   share_type balance = 0;
+   id_type        id;
+   account_name   owner_name;
+   share_type     balance = 0;
 };
 
 struct by_owner_name;
@@ -36,6 +36,6 @@ using balance_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // namespace eosio::chain::contracts
+} } }  // namespace eosio::chain::contracts
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::balance_object, eosio::chain::contracts::balance_multi_index)

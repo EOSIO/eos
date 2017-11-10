@@ -11,7 +11,7 @@
 
 #include <fc/static_variant.hpp>
 
-namespace eos { namespace chain { namespace contracts {
+namespace eosio { namespace chain { namespace contracts {
 
 /**
  * @brief The producer_slate struct stores a list of producers voted on by an account
@@ -47,7 +47,7 @@ class staked_balance_object : public chainbase::object<staked_balance_object_typ
 
    share_type staked_balance = 0;
    share_type unstaking_balance = 0;
-   time       last_unstaking_time = time::maximum();
+   time_point last_unstaking_time = time_point::maximum();
 
    /// The account's vote on producers. This may either be a list of approved producers, or an account to proxy vote to
    fc::static_variant<producer_slate, account_name> producer_votes = producer_slate{};
@@ -107,6 +107,6 @@ using staked_balance_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } } // namespace eosio::contracts
+} } } // namespace eosio::chain::contracts
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::staked_balance_object, eosio::chain::contracts::staked_balance_multi_index)
