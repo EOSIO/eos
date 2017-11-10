@@ -10,16 +10,11 @@ add_library( eos_chain
              wasm_interface.cpp
 
              fork_database.cpp
-             block_schedule.cpp
-             chain_controller.cpp
-
-
              get_config.cpp
-
              block_log.cpp
 
-             chain_administration_interface.cpp
-             message_handling_contexts.cpp
+
+             chain_controller.cpp
 
              ${HEADERS}
            )

@@ -26,8 +26,8 @@ const static int      block_interval_ms = 500;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
 
 /** Percentages are fixed point with a denominator of 10,000 */
-const static int Percent100 = 10000;
-const static int Percent1 = 100;
+const static int percent_100 = 10000;
+const static int percent_1   = 100;
 
 const static int DefaultPerAuthAccountTimeFrameSeconds = 18;
 const static int DefaultPerAuthAccount = 1800;
@@ -48,15 +48,15 @@ const static uint32_t ProducersAuthorityThreshold = 14;
 /**
  *  The number of sequential blocks produced by a single producer
  */
-const static int producer_repeitions = 4;
+const static int producer_repititions = 4;
 
 /**
  * The number of blocks produced per round is based upon all producers having a chance
  * to produce all of their consecutive blocks.
  */
-const static int blocks_per_round = producer_count * producer_repeitions;
+const static int blocks_per_round = producer_count * producer_repititions;
 
-const static int irreversible_threshold_percent= 70 * Percent1;
+const static int irreversible_threshold_percent= 70 * percent_1;
 const static int max_producer_votes = 30;
 
 const static auto staked_balance_cooldown_sec  = fc::days(3).to_seconds();
@@ -64,5 +64,5 @@ const static auto staked_balance_cooldown_sec  = fc::days(3).to_seconds();
 
 template<typename Number>
 Number EOS_PERCENT(Number value, int percentage) {
-   return value * percentage / eosio::config::Percent100;
+   return value * percentage / eosio::config::percent_100;
 }

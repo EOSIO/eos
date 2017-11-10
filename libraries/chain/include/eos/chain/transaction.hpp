@@ -109,7 +109,7 @@ namespace eosio { namespace chain {
          return ((head_blocknum/0xffff)*0xffff) + head_blocknum%0xffff;
       }
       void set_reference_block( const block_id_type& reference_block );
-      bool verify_reference_block( const block_id_type& reference_block );
+      bool verify_reference_block( const block_id_type& reference_block )const;
    };
 
    /**

@@ -17,7 +17,7 @@ void transaction_header::set_reference_block( const block_id_type& reference_blo
    ref_block_prefix = reference_block._hash[1];
 }
 
-bool transaction_header::verify_reference_block( const block_id_type& reference_block ) {
+bool transaction_header::verify_reference_block( const block_id_type& reference_block )const {
    return ref_block_num    == (decltype(ref_block_num))fc::endian_reverse_u32(reference_block._hash[0]) &&
           ref_block_prefix == (decltype(ref_block_prefix))reference_block._hash[1];
 }

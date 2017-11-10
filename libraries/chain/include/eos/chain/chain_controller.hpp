@@ -177,7 +177,7 @@ namespace eosio { namespace chain {
          {
             /* TODO: figure out pending trx
             auto old_pending = std::move( _pending_transactions );
-            _pending_tx_session.reset();
+            _pending_block_session.reset();
             auto on_exit = fc::make_scoped_exit( [&](){ 
                for( const auto& t : old_pending ) {
                   try {
@@ -233,7 +233,7 @@ namespace eosio { namespace chain {
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const producer_object&                 get_producer(const account_name& ownername)const;
 
-       	 time_point           head_block_timestamp() const;
+       	 time_point           head_block_time()const;
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
@@ -347,7 +347,7 @@ namespace eosio { namespace chain {
          fork_database&                   _fork_db;
          block_log&                       _block_log;
 
-         optional<database::session>      _pending_tx_session;
+         optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block; 
          deque<signed_transaction>        _pending_transactions; ///< transactions that are waiting to get added to pending block
          uint32_t                         _pending_transaction_count = 0; 

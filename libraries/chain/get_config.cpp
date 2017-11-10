@@ -13,12 +13,9 @@ fc::variant_object get_config()
 {
    fc::mutable_variant_object result;
 
-   result["KeyPrefix"] = config::KeyPrefix;
-   result["BlockIntervalSeconds"] = config::BlockIntervalSeconds;
-   result["MaxBlockSize"] = config::DefaultMaxBlockSize;
-   result["MaxSecondsUntilExpiration"] = config::DefaultMaxTrxLifetime;
-   result["ProducerCount"] = config::BlocksPerRound;
-   result["IrreversibleThresholdPercent"] = config::IrreversibleThresholdPercent;
+   result["block_interval_ms"] = config::block_interval_ms;
+   result["producer_count"] = config::producer_count;
+   /// TODO: add extra config parms
    return result;
 }
 

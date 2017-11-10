@@ -25,7 +25,8 @@ public:
    /// Retrieve the chain_config to use at blockchain start
    virtual chain_config get_chain_start_configuration() = 0;
    /// Retrieve the first round of block producers
-   virtual std::array<account_name, config::producer_count> get_chain_start_producers() = 0;
+   //virtual std::array<account_name, config::producer_count> get_chain_start_producers() = 0;
+   virtual producer_schedule_type get_chain_start_producers() = 0;
 
    /**
     * @brief Install necessary indices and message handlers that chain_controller doesn't know about

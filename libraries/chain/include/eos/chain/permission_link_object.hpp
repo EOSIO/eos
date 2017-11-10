@@ -34,7 +34,7 @@ namespace eosio { namespace chain {
       /// The account which is defining its permission requirements
       account_name    account;
       /// The contract which account requires @ref required_permission to invoke
-      account_name    code;
+      account_name    code; /// TODO: rename to scope
       /// The message type which account requires @ref required_permission to invoke
       /// May be empty; if so, it sets a default @ref required_permission for all messages to @ref code
       action_name       message_type;
@@ -42,7 +42,7 @@ namespace eosio { namespace chain {
       permission_name required_permission;
    };
 
-   struct by_message_type;
+   struct by_action_name;
    struct by_permission_name;
    using permission_link_index = chainbase::shared_multi_index_container<
       permission_link_object,
@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
          ordered_unique<tag<by_id>,
             BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_link_object::id_type, id)
          >,
-         ordered_unique<tag<by_message_type>,
+         ordered_unique<tag<by_action_name>,
             composite_key<permission_link_object,
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
