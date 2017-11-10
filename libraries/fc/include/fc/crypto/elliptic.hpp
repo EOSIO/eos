@@ -149,73 +149,7 @@ namespace fc {
            static fc::sha256 get_secret( const EC_KEY * const k );
            fc::fwd<detail::private_key_impl,32> my;
     };
-
-    class extended_public_key : public public_key
-    {
-        public:
-            extended_public_key( const public_key& k, const sha256& c,
-                                 int child = 0, int parent_fp = 0, uint8_t depth = 0 );
-
-            extended_public_key derive_child( int i ) const;
-            extended_public_key derive_normal_child( int i ) const;
-
-            extended_key_data serialize_extended() const;
-            static extended_public_key deserialize( const extended_key_data& data );
-            fc::string str() const;
-            fc::string to_base58() const { return str(); }
-            static extended_public_key from_base58( const fc::string& base58 );
-
-            public_key generate_p( int i ) const;
-            public_key generate_q( int i ) const;
-        private:
-            sha256 c;
-            int child_num, parent_fp;
-            uint8_t depth;
-    };
-
-    class extended_private_key : public private_key
-    {
-        public:
-            extended_private_key( const private_key& k, const sha256& c,
-                                  int child = 0, int parent_fp = 0, uint8_t depth = 0 );
-
-            extended_public_key get_extended_public_key()const;
-
-            extended_private_key derive_child( int i ) const;
-            extended_private_key derive_normal_child( int i ) const;
-            extended_private_key derive_hardened_child( int i ) const;
-
-            extended_key_data serialize_extended() const;
-            static extended_private_key deserialize( const extended_key_data& data );
-            fc::string str() const;
-            fc::string to_base58() const { return str(); }
-            static extended_private_key from_base58( const fc::string& base58 );
-            static extended_private_key generate_master( const fc::string& seed );
-            static extended_private_key generate_master( const char* seed, uint32_t seed_len );
-
-            // Oleg Andreev's blind signature scheme,
-            // see http://blog.oleganza.com/post/77474860538/blind-signatures
-            public_key blind_public_key( const extended_public_key& bob, int i ) const;
-            blinded_hash blind_hash( const fc::sha256& hash, int i ) const;
-            blind_signature blind_sign( const blinded_hash& hash, int i ) const;
-            // WARNING! This may produce non-canonical signatures!
-            compact_signature unblind_signature( const extended_public_key& bob,
-                                                 const blind_signature& sig,
-                                                 const fc::sha256& hash, int i ) const;
-
-        private:
-            extended_private_key private_derive_rest( const fc::sha512& hash,
-                                                      int num ) const;
-            private_key generate_a( int i ) const;
-            private_key generate_b( int i ) const;
-            private_key generate_c( int i ) const;
-            private_key generate_d( int i ) const;
-            private_key_secret compute_p( int i ) const;
-            private_key_secret compute_q( int i, const private_key_secret& p ) const;
-            sha256 c;
-            int child_num, parent_fp;
-            uint8_t depth;
-    };
+    ;
 
      struct range_proof_info
      {

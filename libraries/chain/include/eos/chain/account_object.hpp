@@ -13,19 +13,20 @@ namespace eosio { namespace chain {
    class account_object : public chainbase::object<account_object_type, account_object> {
       OBJECT_CTOR(account_object,(code)(abi))
 
-      id_type             id;
-      AccountName         name;
-      uint8_t             vm_type      = 0;
-      uint8_t             vm_version   = 0;
-      fc::sha256          code_version;
-      Time                creation_date;
-      shared_vector<char> code;
-      shared_vector<char> abi;
+      id_type              id;
+      account_name         name;
+      uint8_t              vm_type      = 0;
+      uint8_t              vm_version   = 0;
+      digest_type          code_version;
+      block_timestamp_type creation_date;
 
-      void set_abi( const eosio::types::Abi& _abi ) {
-         abi.resize( fc::raw::pack_size( _abi ) );
+      shared_vector<char>  code;
+      shared_vector<char>  abi;
+
+      void set_abi( const eosio::types::Abi& a ) {
+         abi.resize( fc::raw::pack_size( a ) );
          fc::datastream<char*> ds( abi.data(), abi.size() );
-         fc::raw::pack( ds, _abi );
+         fc::raw::pack( ds, a );
       }
    };
    using account_id_type = account_object::id_type;
@@ -35,7 +36,7 @@ namespace eosio { namespace chain {
       account_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<account_object, account_object::id_type, &account_object::id>>,
-         ordered_unique<tag<by_name>, member<account_object, AccountName, &account_object::name>>
+         ordered_unique<tag<by_name>, member<account_object, account_name, &account_object::name>>
       >
    >;
 

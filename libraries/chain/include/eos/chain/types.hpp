@@ -3,9 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-
-#include <eos/chain/config.hpp>
-#include <eos/types/types.hpp>
+#include <eos/chain/name.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -23,6 +21,7 @@
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/fixed_string.hpp>
+#include <fc/crypto/private_key.hpp>
 
 #include <memory>
 #include <vector>
@@ -76,6 +75,11 @@ namespace eosio { namespace chain {
    using                               fc::ecc::range_proof_type;
    using                               fc::ecc::range_proof_info;
    using                               fc::ecc::commitment_type;
+
+   using public_key_type  = fc::crypto::public_key;
+   using private_key_type = fc::crypto::private_key;
+   using signature_type   = fc::crypto::signature;
+
    struct void_t{};
 
    using chainbase::allocator;
@@ -85,51 +89,12 @@ namespace eosio { namespace chain {
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
-   using private_key_type = fc::ecc::private_key;
    using chain_id_type = fc::sha256;
 
-   using eosio::types::Name;
-   using ActionName = Name;
-   using eosio::types::AccountName;
-   using eosio::types::PermissionName;
-   using eosio::types::Asset;
-   using eosio::types::ShareType;
-   using eosio::types::Authority;
-   using eosio::types::PublicKey;
-   using eosio::types::Transaction;
-   using eosio::types::PermissionName;
-   using eosio::types::TypeName;
-   using eosio::types::FuncName;
-   using eosio::types::Time;
-   using eosio::types::Field;
-   using eosio::types::String;
-   using eosio::types::UInt8;
-   using eosio::types::UInt16;
-   using eosio::types::UInt32;
-   using eosio::types::UInt64;
-   using eosio::types::UInt128;
-   using eosio::types::UInt256;
-   using eosio::types::Int8;
-   using eosio::types::Int16;
-   using eosio::types::Int32;
-   using eosio::types::Int64;
-   using eosio::types::Int128;
-   using eosio::types::Int256;
-   using eosio::types::uint128_t;
+   using action_name   = name;
+   using scope_name    = name;
+   using account_name  = name;
 
-   using ProducerRound = std::array<AccountName, config::BlocksPerRound>;
-   using RoundChanges = std::map<AccountName, AccountName>;
-
-   /**
-    * @brief Calculates the difference between two @ref ProducerRound objects
-    * @param a The first round of producers
-    * @param b The second round of producers
-    * @return The properly sorted RoundChanges expressing the difference between a and b
-    *
-    * Calculates the difference between two rounds of producers, returning a @ref RoundChanges object. The returned
-    * changes are sorted in the order defined by @ref block_header
-    */
-   RoundChanges operator-(ProducerRound a, ProducerRound b);
 
    /**
     * List all object types from all namespaces here so they can
@@ -173,25 +138,17 @@ namespace eosio { namespace chain {
    class account_object;
    class producer_object;
 
-   using block_id_type = fc::sha256;
-   using checksum_type = fc::sha256;
-   using transaction_id_type = fc::sha256;
-   using digest_type = fc::sha256;
-   using generated_transaction_id_type = fc::sha256;
-   using signature_type = fc::ecc::compact_signature;
-   using weight_type = uint16_t;
-   using Bytes = types::Bytes;
+   using block_id_type       = fc::sha256;
+   using checksum_type       = fc::sha256;
+   using transaction_id_type = checksum_type;
+   using digest_type         = checksum_type;
+   using weight_type         = uint16_t;
 
-   using public_key_type = eosio::types::PublicKey;
+   using share_type          = uint64_t;
+
    
 } }  // eosio::chain
 
-namespace fc {
-  void to_variant(const eosio::chain::shared_vector<eosio::types::Field>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::shared_vector<eosio::types::Field>& fields);
-  void to_variant(const eosio::chain::ProducerRound& r, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::ProducerRound& r);
-}
 
 FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)

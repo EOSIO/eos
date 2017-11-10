@@ -71,7 +71,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         signal<void(const SignedTransaction&)> on_pending_transaction;
+         signal<void(const signed_transaction&)> on_pending_transaction;
 
          /**
           * @brief Check whether the controller is currently applying a block or not
@@ -83,7 +83,7 @@ namespace eosio { namespace chain {
           *  The controller can override any script endpoint with native code.
           */
          ///@{
-         void set_apply_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, apply_handler v );
+         void set_apply_handler( const account_name& contract, const account_name& scope, const ActionName& action, apply_handler v );
          //@}
 
          enum validation_steps
@@ -117,22 +117,22 @@ namespace eosio { namespace chain {
          block_id_type               get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>      fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>      fetch_block_by_number( uint32_t num )const;
-         const SignedTransaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
+         const signed_transaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type>  get_block_ids_on_fork(block_id_type head_of_fork)const;
-         const GeneratedTransaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
+         const Generatedtransaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
 
 
          /**
-          *  This method will convert a variant to a SignedTransaction using a contract's ABI to
+          *  This method will convert a variant to a signed_transaction using a contract's ABI to
           *  interpret the message types.
           */
-         ProcessedTransaction transaction_from_variant( const fc::variant& v )const;
+         signed_transaction transaction_from_variant( const fc::variant& v )const;
 
          /**
           * This method will convert a signed transaction into a human-friendly variant that can be
           * converted to JSON.  
           */
-         fc::variant       transaction_to_variant( const ProcessedTransaction& trx )const;
+         fc::variant       transaction_to_variant( const signed_transaction& trx )const;
 
          /**
           *  Usees the ABI for code::type to convert a JSON object (variant) into hex
@@ -154,31 +154,31 @@ namespace eosio { namespace chain {
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
 
 
-         ProcessedTransaction push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
-         ProcessedTransaction _push_transaction( const SignedTransaction& trx );
+         Processedtransaction push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+
+
 
          /**
           * Determine which public keys are needed to sign the given transaction.
-          * @param trx Transaction that requires signature
+          * @param trx transaction that requires signature
           * @param candidateKeys Set of public keys to examine for applicability
           * @return Subset of candidateKeys whose private keys should be used to sign transaction
           * @throws fc::exception if candidateKeys does not contain all required keys
           */
-         flat_set<public_key_type> get_required_keys(const SignedTransaction& trx, const flat_set<public_key_type>& candidateKeys)const;
+         flat_set<public_key_type> get_required_keys(const signed_transaction& trx, const flat_set<public_key_type>& candidateKeys)const;
 
 
          bool _push_block( const signed_block& b );
 
          signed_block generate_block(
             fc::time_point_sec when,
-            const AccountName& producer,
-            const fc::ecc::private_key& block_signing_private_key,
-            block_schedule::factory scheduler = block_schedule::in_single_thread,
+            const & producer,
+            const private_key_type& block_signing_private_key,
             uint32_t skip = skip_nothing
             );
          signed_block _generate_block(
             fc::time_point_sec when,
-            const AccountName& producer,
+            const account_name& producer,
             const fc::ecc::private_key& block_signing_private_key,
             block_schedule::factory scheduler
             );
@@ -226,7 +226,7 @@ namespace eosio { namespace chain {
           *
           * Passing slot_num == 0 returns EOS_NULL_PRODUCER
           */
-         AccountName get_scheduled_producer(uint32_t slot_num)const;
+         account_name get_scheduled_producer(uint32_t slot_num)const;
 
          /**
           * Get the time at which the given slot occurs.
@@ -250,13 +250,12 @@ namespace eosio { namespace chain {
 
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
-         const producer_object&                 get_producer(const AccountName& ownerName)const;
+         const producer_object&                 get_producer(const account_name& ownerName)const;
 
-         time_point_sec       head_block_time()const;
-	 block_timestamp_type head_block_timestamp() const;
+       	 time_point           head_block_timestamp() const;
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
-         AccountName          head_block_producer()const;
+         account_name         head_block_producer()const;
 
          uint32_t block_interval()const { return config::BlockIntervalSeconds; }
 
@@ -269,7 +268,7 @@ namespace eosio { namespace chain {
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
 
 
-         const deque<SignedTransaction>&  pending()const { return _pending_transactions; }
+         const deque<signed_transaction>&  pending()const { return _pending_transactions; }
 
          /**
           * Enum to indicate what type of rate limiting is being performed.
@@ -294,7 +293,7 @@ namespace eosio { namespace chain {
           * @throws tx_msgs_code_exceeded if current message rate exceeds the passed in rate_limit, and type is code_account
           */
          static uint32_t _transaction_message_rate(const fc::time_point_sec& now, const fc::time_point_sec& last_update_sec, const fc::time_point_sec& rate_limit_time_frame_sec,
-                                                   uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const AccountName& name);
+                                                   uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const account_name& name);
 
          struct txn_msg_rate_limits {
             fc::time_point_sec per_auth_account_time_frame_sec = fc::time_point_sec(config::DefaultPerAuthAccountTimeFrameSeconds);
@@ -304,6 +303,7 @@ namespace eosio { namespace chain {
          };
 
    private:
+         void _push_transaction( const signed_transaction& trx );
 
          /// Reset the object graph in-memory
          void initialize_indexes();
@@ -323,18 +323,11 @@ namespace eosio { namespace chain {
             return f();
          }
 
-         void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
+         void check_transaction_authorization(const signed_transaction& trx, 
+                                              bool allow_unused_signatures = false)const;
 
-         template<typename T>
-         void check_transaction_output(const T& expected, const T& actual, const path_cons_list& path)const;
 
-         template<typename T>
-         typename T::Processed apply_transaction(const T& trx);
-         
-         template<typename T>
-         typename T::Processed process_transaction(const T& trx, int depth, const fc::time_point& start_time);
-
-         void require_account(const AccountName& name) const;
+         void require_account(const account_name& name) const;
 
          /**
           * This method performs some consistency checks on a transaction.
@@ -353,15 +346,12 @@ namespace eosio { namespace chain {
          } FC_CAPTURE_AND_RETHROW( (trx) ) }
          
          /// Validate transaction helpers @{
-         void validate_uniqueness(const SignedTransaction& trx)const;
-         void validate_uniqueness(const GeneratedTransaction& trx)const;
-         void validate_tapos(const Transaction& trx)const;
-         void validate_referenced_accounts(const Transaction& trx)const;
-         void validate_expiration(const Transaction& trx) const;
-         void validate_scope(const Transaction& trx) const;
-
-         void record_transaction(const SignedTransaction& trx);
-         void record_transaction(const GeneratedTransaction& trx);         
+         void validate_uniqueness(const signed_transaction& trx)const;
+         void validate_tapos(const transaction& trx)const;
+         void validate_referenced_accounts(const transaction& trx)const;
+         void validate_expiration(const transaction& trx) const;
+         void validate_scope(const transaction& trx) const;
+         void record_transaction(const signed_transaction& trx);
          /// @}
 
          /**
@@ -372,20 +362,14 @@ namespace eosio { namespace chain {
           * @param type The type of message
           * @return
           */
-         const permission_object& lookup_minimum_permission(types::AccountName authorizer_account,
-                                                            types::AccountName code_account,
-                                                            types::FuncName type) const;
+         const permission_object& lookup_minimum_permission( account_name authorizer_account,
+                                                             scope_name code_account,
+                                                             action_name type) const;
 
-         /**
-          * Calculate all rates associated with the given message and enforce rate limiting.
-          * @param message  The message to calculate
-          * @throws tx_msgs_auth_exceeded if any of the calculated message rates exceed the configured authorization account rate limit
-          * @throws tx_msgs_code_exceeded if the calculated message rate exceed the configured code account rate limit
-          */
-         void rate_limit_message(const Message& message);
 
-         void process_message(const Transaction& trx, AccountName code, const Message& message,
-                              MessageOutput& output, apply_context* parent_context = nullptr);
+         void deliver_message( const transaction& trx, account_name receiving_code, 
+                               const action& act, actionOutput& output, apply_context* parent_context = nullptr);
+
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
@@ -407,7 +391,7 @@ namespace eosio { namespace chain {
          void spinup_db();
          void spinup_fork_db();
 
-         ProducerRound calculate_next_round(const signed_block& next_block);
+ //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
          database&                        _db;
          fork_database&                   _fork_db;
@@ -416,7 +400,8 @@ namespace eosio { namespace chain {
          unique_ptr<chain_administration_interface> _admin;
 
          optional<database::session>      _pending_tx_session;
-         deque<SignedTransaction>         _pending_transactions;
+         optional<signed_block>           _pending_block; 
+         uint32_t                         _pending_transaction_count = 0; 
 
          bool                             _currently_applying_block = false;
          bool                             _currently_replaying_blocks = false;
@@ -432,9 +417,8 @@ namespace eosio { namespace chain {
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 
-         typedef pair<AccountName,types::Name> handler_key;
-
-         map< AccountName, map<handler_key, apply_handler> >                   apply_handlers;
+         typedef pair<scope_name,action_name>                   handler_key;
+         map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
    };
 
 } }

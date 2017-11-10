@@ -2,7 +2,6 @@ file(GLOB HEADERS "include/eos/types/*.hpp")
 
 add_library( eos_types
              Asset.cpp
-             PublicKey.cpp
              TypeParser.cpp
              AbiSerializer.cpp
              native.cpp
