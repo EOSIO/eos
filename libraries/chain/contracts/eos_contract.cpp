@@ -2,24 +2,24 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/contracts/eos_contract.hpp>
+#include <eosio/chaincontracts/eos_contract.hpp>
 
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/apply_context.hpp>
-#include <eos/chain/transaction.hpp>
-#include <eos/chain/exceptions.hpp>
+#include <eosio/chainchain_controller.hpp>
+#include <eosio/chainapply_context.hpp>
+#include <eosio/chaintransaction.hpp>
+#include <eosio/chainexceptions.hpp>
 
-#include <eos/chain/account_object.hpp>
-#include <eos/chain/contracts/balance_object.hpp>
-#include <eos/chain/permission_object.hpp>
-#include <eos/chain/permission_link_object.hpp>
-#include <eos/chain/global_property_object.hpp>
-#include <eos/chain/contracts/staked_balance_objects.hpp>
-#include <eos/chain/contracts/producer_objects.hpp>
-#include <eos/chain/contracts/types.hpp>
-#include <eos/chain/producer_object.hpp>
+#include <eosio/chainaccount_object.hpp>
+#include <eosio/chaincontracts/balance_object.hpp>
+#include <eosio/chainpermission_object.hpp>
+#include <eosio/chainpermission_link_object.hpp>
+#include <eosio/chainglobal_property_object.hpp>
+#include <eosio/chaincontracts/staked_balance_objects.hpp>
+#include <eosio/chaincontracts/producer_objects.hpp>
+#include <eosio/chaincontracts/types.hpp>
+#include <eosio/chainproducer_object.hpp>
 
-#include <eos/chain/wasm_interface.hpp>
+#include <eosio/chainwasm_interface.hpp>
 //#include <eos/types/abiSerializer.hpp>
 
 namespace eosio { namespace chain { namespace contracts {

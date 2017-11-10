@@ -7,8 +7,8 @@
 #include <eos/chain/contracts/eos_contract.hpp>
 #include <eos/chain/contracts/types.hpp>
 
-#include <eos/chain/producer_object.hpp>
-#include <eos/chain/permission_object.hpp>
+#include <eosio/chain/producer_object.hpp>
+#include <eosio/chain/permission_object.hpp>
 
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/algorithm/copy.hpp>

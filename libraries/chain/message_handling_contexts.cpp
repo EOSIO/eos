@@ -2,11 +2,11 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/message_handling_contexts.hpp>
-#include <eos/chain/permission_object.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/key_value_object.hpp>
-#include <eos/chain/chain_controller.hpp>
+#include <eosio/chainmessage_handling_contexts.hpp>
+#include <eosio/chainpermission_object.hpp>
+#include <eosio/chainexceptions.hpp>
+#include <eosio/chainkey_value_object.hpp>
+#include <eosio/chainchain_controller.hpp>
 
 #include <eos/utilities/parallel_markers.hpp>
 
