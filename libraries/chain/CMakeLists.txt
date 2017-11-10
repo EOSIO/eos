@@ -19,8 +19,7 @@ add_library( eos_chain
              contracts/eos_contract.cpp
              contracts/producer_objects.cpp
              contracts/staked_balance_objects.cpp
-             contracts/native_contract_chain_initializer.cpp
-             contracts/native_contract_chain_administrator.cpp
+             contracts/chain_initializer.cpp
              contracts/genesis_state.cpp
 
 

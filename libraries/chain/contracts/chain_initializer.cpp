@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/contracts/native_contract_chain_initializer.hpp>
+#include <eos/chain/contracts/chain_initializer.hpp>
 #include <eos/chain/contracts/objects.hpp>
 #include <eos/chain/contracts/eos_contract.hpp>
 #include <eos/chain/contracts/types.hpp>
@@ -15,22 +15,22 @@
 
 namespace eosio { namespace chain { namespace contracts {
 
-Time native_contract_chain_initializer::get_chain_start_time() {
+time_point chain_initializer::get_chain_start_time() {
    return genesis.initial_timestamp;
 }
 
-blockchain_configuration native_contract_chain_initializer::get_chain_start_configuration() {
+blockchain_configuration chain_initializer::get_chain_start_configuration() {
    return genesis.initial_configuration;
 }
 
-std::array<account_name, config::blocks_per_round> native_contract_chain_initializer::get_chain_start_producers() {
+producer_schedule_type chain_initializer::get_chain_start_producers() {
    std::array<account_name, config::blocks_per_round> result;
    std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
                   [](const auto& p) { return p.owner_name; });
    return result;
 }
 
-void native_contract_chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
+void chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
    // Install the native contract's indexes; we can't do anything until our objects are recognized
    db.add_index<staked_balance_multi_index>();
    db.add_index<producer_votes_multi_index>();
@@ -56,7 +56,7 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_APP_HANDLER( eos, eos, unlinkauth, eosio ); 
 }
 
-abi native_contract_chain_initializer::eos_contract_abi()
+abi chain_initializer::eos_contract_abi()
 {
    abi eos_abi;
    eos_abi.types.push_back( type_def{"account_name","Name"} );
@@ -91,8 +91,8 @@ abi native_contract_chain_initializer::eos_contract_abi()
    return eos_abi;
 }
 
-std::vector<action> native_contract_chain_initializer::prepare_database(chain_controller& chain,
-                                                                                chainbase::database& db) {
+std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
+                                                         chainbase::database& db) {
    std::vector<action> messages_to_process;
 
    // Create the singleton object, producer_schedule_object
