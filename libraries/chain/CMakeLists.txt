@@ -2,23 +2,22 @@ file(GLOB HEADERS "include/eos/chain/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
+             chain_config.cpp
              name.cpp
-             wast_to_wasm.cpp
-             chain_controller.cpp
-             wasm_interface.cpp
-             block_schedule.cpp
-
-             fork_database.cpp
-
              transaction.cpp
              block.cpp
+             wast_to_wasm.cpp
+             wasm_interface.cpp
+
+             fork_database.cpp
+             block_schedule.cpp
+             chain_controller.cpp
+
 
              get_config.cpp
 
              block_log.cpp
-             chain_config.cpp
 
-             types.cpp
              chain_administration_interface.cpp
              message_handling_contexts.cpp
 

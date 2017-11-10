@@ -4,7 +4,6 @@
  */
 #pragma once
 #include <eos/chain/types.hpp>
-#include <eos/chain/message.hpp>
 
 #include <numeric>
 
@@ -35,10 +34,27 @@ namespace eosio { namespace chain {
     *  were properly declared when it executes.
     */
    struct action {
-      account_name               scope;
-      function_name              name;
+      scope_name                scope;
+      action_name                name;
       vector<permission_level>   permissions;
       bytes                      data;
+
+      action(){}
+
+      template<typename T>
+      action( vector<permission_level> auth, T&& value ) {
+        scope       = T::get_action_scope;
+        name        = T::get_action_name;
+        permissions = move(auth);
+        data        = fc::raw::pack(value);
+      }
+
+      template<typename T>
+      T as()const {
+         FC_ASSERT( scope == T::get_scope );
+         FC_ASSERT( name  == T::get_name  );
+         return fc::raw::unpack<T>(data);
+      }
    };
 
    struct action_notice : public action {
@@ -74,7 +90,7 @@ namespace eosio { namespace chain {
     *  deemed irreversible, then a user can safely trust the transaction
     *  will never be included. 
     *
-    *  Transactions are divided into memory regions, the default region is 0.
+    
     *  Each region is an independent blockchain, it is included as routing
     *  information for inter-blockchain communication. A contract in this
     *  region might generate or authorize a transaction intended for a foreign
@@ -92,6 +108,7 @@ namespace eosio { namespace chain {
       block_num_type get_ref_blocknum( block_num_type head_blocknum )const {
          return ((head_blocknum/0xffff)*0xffff) + head_blocknum%0xffff;
       }
+      void set_reference_block(transaction& t, const block_id_type& reference_block);
    };
 
    /**
@@ -104,13 +121,12 @@ namespace eosio { namespace chain {
       vector<account_name>   write_scope;
       vector<action>         actions;
 
-      digest_type  digest()const;
+      transaction_id_type id()const;
    };
 
    struct signed_transaction : public transaction {
       vector<signature_type> signatures;
 
-      transaction_id_type id()const;
    };
 
    /**

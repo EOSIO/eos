@@ -3,38 +3,48 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+#include <chainbase/chainbase.hpp>
 #include <eos/chain/types.hpp>
-#include <eos/types/generated.hpp>
+#include <eos/chain/types.hpp>
 
 namespace eosio { namespace chain {
+
+
+struct permission_level_weight {
+   permission_level  permission;
+   uint16_t            weight;
+};
+
+struct key_weight {
+   public_key_type key;
+   uint16_t        weight;
+};
+
+struct authority {
+  uint32_t threshold = 0;
+  vector<permission_level_weight> accounts;
+  vector<key_weight>                keys;
+};
+
+
 struct shared_authority {
    shared_authority( chainbase::allocator<char> alloc )
-      :accounts(alloc),keys(alloc)
-   {}
+   :accounts(alloc),keys(alloc){}
 
-   shared_authority& operator=(const Authority& a) {
+   shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
       return *this;
    }
-   shared_authority& operator=(Authority&& a) {
-      threshold = a.threshold;
-      accounts.reserve(a.accounts.size());
-      for (auto& p : a.accounts)
-         accounts.emplace_back(std::move(p));
-      keys.reserve(a.keys.size());
-      for (auto& p : a.keys)
-         keys.emplace_back(std::move(p));
-      return *this;
-   }
 
-   UInt32                                        threshold = 0;
-   shared_vector<types::AccountPermissionWeight> accounts;
-   shared_vector<types::KeyPermissionWeight>     keys;
+   uint32_t                                   threshold = 0;
+   shared_vector<permission_level_weight>   accounts;
+   shared_vector<key_weight>                  keys;
 
-   Authority to_authority()const {
-      Authority auth;
+   operator authority()const { return to_authority(); }
+   authority to_authority()const {
+      authority auth;
       auth.threshold = threshold;
       auth.keys.reserve(keys.size());
       auth.accounts.reserve(accounts.size());
@@ -44,7 +54,7 @@ struct shared_authority {
    }
 };
 
-inline bool operator< (const types::AccountPermission& a, const types::AccountPermission& b) {
+inline bool operator< (const permission_level& a, const permission_level& b) {
    return std::tie(a.account, a.permission) < std::tie(b.account, b.permission);
 }
 
@@ -52,24 +62,30 @@ inline bool operator< (const types::AccountPermission& a, const types::AccountPe
  * Makes sure all keys are unique and sorted and all account permissions are unique and sorted and that authority can
  * be satisfied
  */
-inline bool validate(const types::Authority& auth) {
-   const types::KeyPermissionWeight* prev = nullptr;
-   decltype(auth.threshold) totalWeight = 0;
+template<typename Authority>
+inline bool validate( const Authority& auth ) {
+   const key_weight* prev = nullptr;
+   decltype(auth.threshold) total_weight = 0;
 
    for( const auto& k : auth.keys ) {
       if( !prev ) prev = &k;
       else if( prev->key < k.key ) return false;
-      totalWeight += k.weight;
+      total_weight += k.weight;
    }
-   const types::AccountPermissionWeight* pa = nullptr;
+   const permission_level_weight* pa = nullptr;
    for( const auto& a : auth.accounts ) {
       if( !pa ) pa = &a;
       else if( pa->permission < a.permission ) return false;
-      totalWeight += a.weight;
+      total_weight += a.weight;
    }
-   return totalWeight >= auth.threshold;
+   return total_weight >= auth.threshold;
 }
 
 } } // namespace eosio::chain
 
+
+FC_REFLECT(eosio::chain::permission_level, (account)(permission) )
+FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
+FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
+FC_REFLECT(eosio::chain::authority, (threshold)(accounts)(keys))
 FC_REFLECT(eosio::chain::shared_authority, (threshold)(accounts)(keys))

@@ -91,9 +91,10 @@ namespace eosio { namespace chain {
 
    using chain_id_type = fc::sha256;
 
-   using action_name   = name;
-   using scope_name    = name;
-   using account_name  = name;
+   using action_name      = name;
+   using scope_name       = name;
+   using account_name     = name;
+   using permission_name  = name;
 
 
    /**

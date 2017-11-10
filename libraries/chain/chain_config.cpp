@@ -57,6 +57,9 @@ bool operator==(const chain_config& a, const chain_config& b) {
    // Yes, it's gross, I'm using a boolean exception to direct normal control flow... that's why it's buried deep in an
    // implementation detail file. I think it's worth it for the generalization, though: this code keeps working no
    // matter what updates happen to chain_config
+   //
+   // TODO: this hack gives us short circuit evaluation when we could just use &= on a mutable variable and check at the
+   // end, but that would require visiting all members rather than aborting on first fail.
    if (&a != &b) {
       try {
          fc::reflector<chain_config>::visit(comparison_visitor<chain_config>{a, b});
