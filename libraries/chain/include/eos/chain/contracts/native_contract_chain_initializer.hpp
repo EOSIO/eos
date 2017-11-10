@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eos/native_contract/genesis_state.hpp>
+#include <eos/chain/contract/genesis_state.hpp>
 
 #include <eos/chain/chain_controller.hpp>
 
@@ -17,15 +17,15 @@ public:
    virtual ~native_contract_chain_initializer() {}
 
    virtual types::Time get_chain_start_time() override;
-   virtual chain::BlockchainConfiguration get_chain_start_configuration() override;
-   virtual std::array<types::AccountName, config::BlocksPerRound> get_chain_start_producers() override;
+   virtual chain::blockchain_configuration get_chain_start_configuration() override;
+   virtual std::array<types::account_name, config::BlocksPerRound> get_chain_start_producers() override;
 
    virtual void register_types(chain::chain_controller& chain, chainbase::database& db) override;
    virtual std::vector<chain::Message> prepare_database(chain::chain_controller& chain,
                                                         chainbase::database& db) override;
 
-   static types::Abi eos_contract_abi();
+   static types::abi eos_contract_abi();
 };
 
-} } // namespace eosio::native_contract
+} } // namespace eosio::chain::contracts
 

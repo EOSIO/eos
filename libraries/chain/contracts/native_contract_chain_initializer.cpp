@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/native_contract/native_contract_chain_initializer.hpp>
-#include <eos/native_contract/objects.hpp>
-#include <eos/native_contract/eos_contract.hpp>
+#include <eos/chain/contract/native_contract_chain_initializer.hpp>
+#include <eos/chain/contract/objects.hpp>
+#include <eos/chain/contract/eos_contract.hpp>
 
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/permission_object.hpp>
@@ -19,12 +19,12 @@ types::Time native_contract_chain_initializer::get_chain_start_time() {
    return genesis.initial_timestamp;
 }
 
-BlockchainConfiguration native_contract_chain_initializer::get_chain_start_configuration() {
+blockchain_configuration native_contract_chain_initializer::get_chain_start_configuration() {
    return genesis.initial_configuration;
 }
 
-std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_initializer::get_chain_start_producers() {
-   std::array<types::AccountName, config::BlocksPerRound> result;
+std::array<types::account_name, config::BlocksPerRound> native_contract_chain_initializer::get_chain_start_producers() {
+   std::array<types::account_name, config::BlocksPerRound> result;
    std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
                   [](const auto& p) { return p.owner_name; });
    return result;
@@ -32,12 +32,12 @@ std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_ini
 
 void native_contract_chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
    // Install the native contract's indexes; we can't do anything until our objects are recognized
-   db.add_index<native::eosio::StakedBalanceMultiIndex>();
-   db.add_index<native::eosio::ProducerVotesMultiIndex>();
-   db.add_index<native::eosio::ProxyVoteMultiIndex>();
-   db.add_index<native::eosio::ProducerScheduleMultiIndex>();
+   db.add_index<eosio::chain::contracts::staked_balance_multi_index>();
+   db.add_index<eosio::chain::contracts::producer_votes_multi_index>();
+   db.add_index<eosio::chain::contracts::proxy_vote_multi_index>();
+   db.add_index<eosio::chain::contracts::producer_schedule_multi_index>();
 
-   db.add_index<native::eosio::BalanceMultiIndex>();
+   db.add_index<eosio::chain::contracts::balance_multi_index>();
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::nspace::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
@@ -56,9 +56,9 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_APP_HANDLER( eos, eos, unlinkauth, eosio ); 
 }
 
-types::Abi native_contract_chain_initializer::eos_contract_abi()
+types::abi native_contract_chain_initializer::eos_contract_abi()
 {
-   types::Abi eos_abi;
+   types::abi eos_abi;
    eos_abi.types.push_back( types::TypeDef{"AccountName","Name"} );
    eos_abi.types.push_back( types::TypeDef{"ShareType","Int64"} );
    eos_abi.actions.push_back( types::Action{Name("transfer"), "transfer"} );
@@ -95,8 +95,8 @@ std::vector<Message> native_contract_chain_initializer::prepare_database(chain_c
                                                                                 chainbase::database& db) {
    std::vector<Message> messages_to_process;
 
-   // Create the singleton object, ProducerScheduleObject
-   db.create<native::eosio::ProducerScheduleObject>([](const auto&){});
+   // Create the singleton object, producer_schedule_object
+   db.create<eosio::chain::contracts::producer_schedule_object>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto CreateNativeAccount = [this, &db](Name name, auto liquidBalance) {
@@ -119,16 +119,16 @@ std::vector<Message> native_contract_chain_initializer::prepare_database(chain_c
          p.name = "active";
          p.auth.threshold = 1;
       });
-      db.create<native::eosio::BalanceObject>([&name, liquidBalance]( auto& b) {
-         b.ownerName = name;
+      db.create<eosio::chain::contracts::balance_object>([&name, liquidBalance]( auto& b) {
+         b.owner_name = name;
          b.balance = liquidBalance;
       });
-      db.create<native::eosio::StakedBalanceObject>([&name](auto& sb) { sb.ownerName = name; });
+      db.create<eosio::chain::contracts::staked_balance_object>([&name](auto& sb) { sb.owner_name = name; });
    };
    CreateNativeAccount(config::EosContractName, config::InitialTokenSupply);
 
    // Queue up messages which will run contracts to create the initial accounts
-   auto KeyAuthority = [](PublicKey k) {
+   auto KeyAuthority = [](public_key k) {
       return types::Authority(1, {{k, 1}}, {});
    };
    for (const auto& acct : genesis.initial_accounts) {

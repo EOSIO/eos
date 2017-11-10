@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/chain/*.hpp")
+file(GLOB HEADERS "include/eos/chain/*.hpp" "include/eos/chain/contrats/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
@@ -16,8 +16,16 @@ add_library( eos_chain
 
              chain_controller.cpp
 
+             contracts/eos_contract.cpp
+             contracts/producer_objects.cpp
+             contracts/staked_balance_objects.cpp
+             contracts/native_contract_chain_initializer.cpp
+             contracts/native_contract_chain_administrator.cpp
+             contracts/genesis_state.cpp
+
+
              ${HEADERS}
-           )
+        )
 
 target_link_libraries( eos_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
 target_include_directories( eos_chain

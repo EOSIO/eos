@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/native_contract/native_contract_chain_administrator.hpp>
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/contract/native_contract_chain_administrator.hpp>
+#include <eos/chain/contract/producer_objects.hpp>
 
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/producer_object.hpp>
@@ -15,14 +15,14 @@ namespace eosio { namespace native_contract {
 
 using administrator = native_contract_chain_administrator;
 
-ProducerRound administrator::get_next_round(chainbase::database& db) {
-   return native::eosio::ProducerScheduleObject::get(db).calculateNextRound(db);
+producer_round administrator::get_next_round(chainbase::database& db) {
+   return eosio::chain::contracts::producer_schedule_object::get(db).calculate_next_round(db);
 }
 
-chain::BlockchainConfiguration administrator::get_blockchain_configuration(const chainbase::database& db,
-                                                                           const ProducerRound& round) {
+chain::blockchain_configuration administrator::get_blockchain_configuration(const chainbase::database& db,
+                                                                           const producer_round& round) {
    using boost::adaptors::transformed;
-   using types::AccountName;
+   using types::account_name;
    using chain::producer_object;
 
    auto ProducerNameToConfiguration = transformed([&db](const AccountName& owner) {
@@ -31,7 +31,7 @@ chain::BlockchainConfiguration administrator::get_blockchain_configuration(const
 
    auto votes_range = round | ProducerNameToConfiguration;
 
-   return chain::BlockchainConfiguration::get_median_values({votes_range.begin(), votes_range.end()});
+   return chain::blockchain_configuration::get_median_values({votes_range.begin(), votes_range.end()});
 }
 
 } } //namespace eos::native_contract

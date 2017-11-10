@@ -7,36 +7,28 @@
 #include <eos/chain/types.hpp>
 #include <eos/chain/multi_index_includes.hpp>
 
-#include <eos/types/types.hpp>
-
 #include <chainbase/chainbase.hpp>
 
 #include <fc/static_variant.hpp>
 
-namespace native {
-namespace eosio {
-
-using namespace ::eosio::chain;
-namespace config = ::eosio::config;
-namespace chain = ::eosio::chain;
-namespace types = ::eosio::types;
+namespace eos { namespace chain { namespace contracts {
 
 /**
- * @brief The ProducerSlate struct stores a list of producers voted on by an account
+ * @brief The producer_slate struct stores a list of producers voted on by an account
  */
-struct ProducerSlate {
-   std::array<types::AccountName, config::MaxProducerVotes> votes;
+struct producer_slate {
+   std::array<types::account_name, config::max_producer_votes> votes;
    size_t size = 0;
 
-   void add(types::AccountName producer) {
+   void add(types::account_name producer) {
       votes[size++] = producer;
       std::inplace_merge(votes.begin(), votes.begin() + size - 1, votes.begin() + size);
    }
-   void remove(types::AccountName producer) {
+   void remove(types::account_name producer) {
       auto itr = std::remove(votes.begin(), votes.begin() + size, producer);
       size = std::distance(votes.begin(), itr);
    }
-   bool contains(types::AccountName producer) const {
+   bool contains(types::account_name producer) const {
       return std::binary_search(votes.begin(), votes.begin() + size, producer);
    }
 
@@ -45,20 +37,20 @@ struct ProducerSlate {
 };
 
 /**
- * @brief The StakedBalanceObject class tracks the staked balance (voting balance) for accounts
+ * @brief The staked_balance_object class tracks the staked balance (voting balance) for accounts
  */
-class StakedBalanceObject : public chainbase::object<chain::staked_balance_object_type, StakedBalanceObject> {
-   OBJECT_CTOR(StakedBalanceObject)
+class staked_balance_object : public chainbase::object<staked_balance_object_type, staked_balance_object> {
+   OBJECT_CTOR(staked_balance_object)
 
    id_type id;
-   types::AccountName ownerName;
+   types::account_name owner_name;
 
-   types::ShareType stakedBalance = 0;
-   types::ShareType unstakingBalance = 0;
-   types::Time      lastUnstakingTime = types::Time::maximum();
+   types::share_type staked_balance = 0;
+   types::share_type unstaking_balance = 0;
+   types::time       last_unstaking_time = types::time::maximum();
 
    /// The account's vote on producers. This may either be a list of approved producers, or an account to proxy vote to
-   fc::static_variant<ProducerSlate, types::AccountName> producerVotes = ProducerSlate{};
+   fc::static_variant<producer_slate, types::account_name> producer_votes = producer_slate{};
 
    /**
     * @brief Add the provided stake to this balance, maintaining invariants
@@ -68,7 +60,7 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
     * This method will update this object with the new stake, while maintaining invariants around the stake balance,
     * such as by updating vote tallies
     */
-   void stakeTokens(types::ShareType newStake, chainbase::database& db) const;
+   void stake_tokens(types::share_type newStake, chainbase::database& db) const;
    /**
     * @brief Begin unstaking the specified amount of stake, maintaining invariants
     * @param amount The amount of stake to begin unstaking
@@ -77,7 +69,7 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
     * This method will update this object's balances while maintaining invariants around the stake balances, such as by
     * updating vote tallies
     */
-   void beginUnstakingTokens(types::ShareType amount, chainbase::database& db) const;
+   void begin_unstaking_tokens(types::share_type amount, chainbase::database& db) const;
    /**
     * @brief Finish unstaking the specified amount of stake
     * @param amount The amount of stake to finish unstaking
@@ -86,35 +78,35 @@ class StakedBalanceObject : public chainbase::object<chain::staked_balance_objec
     * This method will update this object's balances. There aren't really any invariants to maintain on this call, as
     * the tokens are already unstaked and removed from vote tallies, but it is provided for completeness' sake.
     */
-   void finishUnstakingTokens(types::ShareType amount, chainbase::database& db) const;
+   void finish_unstaking_tokens(types::share_type amount, chainbase::database& db) const;
 
    /**
     * @brief Propagate the specified change in stake to the producer votes or the proxy
-    * @param stakeDelta The change in stake
+    * @param staked_delta The change in stake
     * @param db Read-write reference to the database
     *
     * This method will apply the provided delta in voting stake to the next stage in the producer voting pipeline,
     * whether that be the producers in the slate, or the account the votes are proxied to.
     *
-    * This method will *not* update this object in any way. It will not adjust @ref stakedBalance, etc
+    * This method will *not* update this object in any way. It will not adjust @ref staked_balance, etc
     */
-   void propagateVotes(types::ShareType stakeDelta, chainbase::database& db) const;
+   void propagate_votes(types::share_type staked_delta, chainbase::database& db) const;
 };
 
-struct byOwnerName;
+struct by_owner_name;
 
-using StakedBalanceMultiIndex = chainbase::shared_multi_index_container<
-   StakedBalanceObject,
+using staked_balance_multi_index = chainbase::shared_multi_index_container<
+   staked_balance_object,
    indexed_by<
       ordered_unique<tag<by_id>,
-         member<StakedBalanceObject, StakedBalanceObject::id_type, &StakedBalanceObject::id>
+         member<staked_balance_object, staked_balance_object::id_type, &staked_balance_object::id>
       >,
-      ordered_unique<tag<byOwnerName>,
-         member<StakedBalanceObject, types::AccountName, &StakedBalanceObject::ownerName>
+      ordered_unique<tag<by_owner_name>,
+         member<staked_balance_object, types::account_name, &staked_balance_object::owner_name>
       >
    >
 >;
 
-} } // namespace native::eos
+} } } // namespace eosio::contracts
 
-CHAINBASE_SET_INDEX_TYPE(native::eosio::StakedBalanceObject, native::eosio::StakedBalanceMultiIndex)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::staked_balance_object, eosio::chain::contracts::staked_balance_multi_index)
