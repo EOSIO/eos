@@ -11,7 +11,7 @@ namespace eosio { namespace chain {
 
    struct permission_level {
       account_name    actor;
-      permission_name level;
+      permission_name permission;
    };
 
    /**
@@ -30,13 +30,13 @@ namespace eosio { namespace chain {
     *  Each action may require the permission of specific actors. Actors can define
     *  any number of permission levels. The actors and their respective permission
     *  levels are declared on the action and validated independently of the executing
-    *  application code. An application code will check to see if the required permissions
+    *  application code. An application code will check to see if the required authorization
     *  were properly declared when it executes.
     */
    struct action {
       scope_name                 scope;
       action_name                name;
-      vector<permission_level>   permissions;
+      vector<permission_level>   authorization;
       vector<char>               data;
 
       action(){}
@@ -45,7 +45,7 @@ namespace eosio { namespace chain {
       action( vector<permission_level> auth, T&& value ) {
          scope       = T::get_scope;
          name        = T::get_name;
-         permissions = move(auth);
+         authorization = move(auth);
          data        = fc::raw::pack(value);
       }
 
@@ -152,8 +152,8 @@ namespace eosio { namespace chain {
 
 } } // eosio::chain
 
-FC_REFLECT( eosio::chain::permission_level, (actor)(level) )
-FC_REFLECT( eosio::chain::action, (scope)(name)(permissions)(data) )
+FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
+FC_REFLECT( eosio::chain::action, (scope)(name)(authorization)(data) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (read_scope)(write_scope)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )

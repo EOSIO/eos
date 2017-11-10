@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eos/chain/exceptions.hpp>
-#include <eos/chain/message.hpp>
+#include <eos/chain/transaction.hpp>
 #include <eos/chain/message_handling_contexts.hpp>
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
@@ -31,15 +31,16 @@ class wasm_interface {
          i64i64i64,
          invalid_key_type
       };
-      typedef map<Name, key_type> TableMap;
-      struct ModuleState {
+      typedef map<name, key_type> table_map;
+
+      struct module_state {
          Runtime::ModuleInstance* instance     = nullptr;
          IR::Module*              module       = nullptr;
          int                      mem_start    = 0;
          int                      mem_end      = 1<<16;
          vector<char>             init_memory;
          fc::sha256               code_version;
-         TableMap                 table_key_types;
+         table_map                 table_key_types;
          bool                     tables_fixed = false;
       };
 
@@ -52,8 +53,10 @@ class wasm_interface {
 
       int64_t current_execution_time();
 
-      static key_type to_key_type(const types::TypeName& type_name);
+      /*
+      static key_type    to_key_type(const table_type_name& type_name);
       static std::string to_type_name(key_type key_type);
+      */
 
       apply_context*       current_apply_context        = nullptr;
       apply_context*       current_validate_context     = nullptr;
@@ -61,15 +64,15 @@ class wasm_interface {
 
       Runtime::MemoryInstance*   current_memory  = nullptr;
       Runtime::ModuleInstance*   current_module  = nullptr;
-      ModuleState*               current_state   = nullptr;
+      module_state*               current_state   = nullptr;
       wasm_memory*               current_memory_management = nullptr;
-      TableMap*                  table_key_types = nullptr;
+      table_map*                  table_key_types = nullptr;
       bool                       tables_fixed    = false;
 
       uint32_t                   checktime_limit = 0;
 
    private:
-      void load( const AccountName& name, const chainbase::database& db );
+      void load( const account_name& name, const chainbase::database& db );
 
       char* vm_allocate( int bytes );   
       void  vm_call( const char* name );
@@ -81,7 +84,7 @@ class wasm_interface {
 
 
 
-      map<AccountName, ModuleState> instances;
+      map<account_name, module_state> instances;
       fc::time_point checktimeStart;
 
       wasm_interface();

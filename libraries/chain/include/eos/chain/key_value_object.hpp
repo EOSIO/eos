@@ -20,9 +20,9 @@ namespace eosio { namespace chain {
       static const int number_of_keys = 1;
 
       id_type               id;
-      AccountName           scope; 
-      AccountName           code;
-      AccountName           table;
+      account_name           scope; 
+      account_name           code;
+      account_name           table;
       uint64_t              primary_key;
       shared_string         value;
    };
@@ -33,12 +33,12 @@ namespace eosio { namespace chain {
          ordered_unique<tag<by_id>, member<key_value_object, key_value_object::id_type, &key_value_object::id>>,
          ordered_unique<tag<by_scope_primary>, 
             composite_key< key_value_object,
-               member<key_value_object, AccountName, &key_value_object::scope>,
-               member<key_value_object, AccountName, &key_value_object::code>,
-               member<key_value_object, AccountName, &key_value_object::table>,
+               member<key_value_object, account_name, &key_value_object::scope>,
+               member<key_value_object, account_name, &key_value_object::code>,
+               member<key_value_object, account_name, &key_value_object::table>,
                member<key_value_object, uint64_t, &key_value_object::primary_key>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t> >
+            composite_key_compare< std::less<account_name>,std::less<account_name>,std::less<account_name>,std::less<uint64_t> >
          >
       >
    >;
@@ -70,9 +70,9 @@ namespace eosio { namespace chain {
       const char* data() const { return primary_key.data(); }
 
       id_type               id;
-      AccountName           scope; 
-      AccountName           code;
-      AccountName           table;
+      account_name           scope; 
+      account_name           code;
+      account_name           table;
       shared_string         primary_key;
       shared_string         value;
    };
@@ -83,12 +83,12 @@ namespace eosio { namespace chain {
          ordered_unique<tag<by_id>, member<keystr_value_object, keystr_value_object::id_type, &keystr_value_object::id>>,
          ordered_unique<tag<by_scope_primary>, 
             composite_key< keystr_value_object,
-               member<keystr_value_object, AccountName, &keystr_value_object::scope>,
-               member<keystr_value_object, AccountName, &keystr_value_object::code>,
-               member<keystr_value_object, AccountName, &keystr_value_object::table>,
+               member<keystr_value_object, account_name, &keystr_value_object::scope>,
+               member<keystr_value_object, account_name, &keystr_value_object::code>,
+               member<keystr_value_object, account_name, &keystr_value_object::table>,
                const_mem_fun<keystr_value_object, const char*, &keystr_value_object::data>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,shared_string_less>
+            composite_key_compare< std::less<account_name>,std::less<account_name>,std::less<account_name>,shared_string_less>
          >
       >
    >;
@@ -100,9 +100,9 @@ namespace eosio { namespace chain {
       static const int number_of_keys = 2;
 
       id_type               id;
-      AccountName           scope; 
-      AccountName           code;
-      AccountName           table;
+      account_name           scope; 
+      account_name           code;
+      account_name           table;
       uint128_t             primary_key;
       uint128_t             secondary_key;
       shared_string         value;
@@ -114,23 +114,23 @@ namespace eosio { namespace chain {
          ordered_unique<tag<by_id>, member<key128x128_value_object, key128x128_value_object::id_type, &key128x128_value_object::id>>,
          ordered_unique<tag<by_scope_primary>, 
             composite_key< key128x128_value_object,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::scope>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::code>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::table>,
+               member<key128x128_value_object, account_name, &key128x128_value_object::scope>,
+               member<key128x128_value_object, account_name, &key128x128_value_object::code>,
+               member<key128x128_value_object, account_name, &key128x128_value_object::table>,
                member<key128x128_value_object, uint128_t, &key128x128_value_object::primary_key>,
                member<key128x128_value_object, uint128_t, &key128x128_value_object::secondary_key>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint128_t>,std::less<uint128_t> >
+            composite_key_compare< std::less<account_name>,std::less<account_name>,std::less<account_name>,std::less<uint128_t>,std::less<uint128_t> >
          >,
          ordered_unique<tag<by_scope_secondary>, 
             composite_key< key128x128_value_object,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::scope>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::code>,
-               member<key128x128_value_object, AccountName, &key128x128_value_object::table>,
+               member<key128x128_value_object, account_name, &key128x128_value_object::scope>,
+               member<key128x128_value_object, account_name, &key128x128_value_object::code>,
+               member<key128x128_value_object, account_name, &key128x128_value_object::table>,
                member<key128x128_value_object, uint128_t, &key128x128_value_object::secondary_key>,
                member<key128x128_value_object, uint128_t, &key128x128_value_object::primary_key>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint128_t>,std::less<uint128_t> >
+            composite_key_compare< std::less<account_name>,std::less<account_name>,std::less<account_name>,std::less<uint128_t>,std::less<uint128_t> >
          >
       >
    >;
@@ -142,9 +142,9 @@ namespace eosio { namespace chain {
       static const int number_of_keys = 3;
 
       id_type               id;
-      AccountName           scope;
-      AccountName           code;
-      AccountName           table;
+      account_name           scope;
+      account_name           code;
+      account_name           table;
       uint64_t              primary_key;
       uint64_t              secondary_key;
       uint64_t              tertiary_key;
@@ -157,20 +157,20 @@ namespace eosio { namespace chain {
          ordered_unique<tag<by_id>, member<key64x64x64_value_object, key64x64x64_value_object::id_type, &key64x64x64_value_object::id>>,
          ordered_unique<tag<by_scope_primary>,
             composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::scope>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::scope>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::code>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::table>,
                member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::primary_key>,
                member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::secondary_key>,
                member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t>,std::less<uint64_t>,std::less<uint64_t> >
+            composite_key_compare< std::less<account_name>,std::less<account_name>,std::less<account_name>,std::less<uint64_t>,std::less<uint64_t>,std::less<uint64_t> >
          >,
          ordered_unique<tag<by_scope_secondary>,
             composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::scope>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::scope>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::code>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::table>,
                member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::secondary_key>,
                member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
                member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
@@ -178,13 +178,13 @@ namespace eosio { namespace chain {
          >,
          ordered_unique<tag<by_scope_tertiary>,
             composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::scope>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::code>,
-               member<key64x64x64_value_object, AccountName, &key64x64x64_value_object::table>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::scope>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::code>,
+               member<key64x64x64_value_object, account_name, &key64x64x64_value_object::table>,
                member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
                member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
             >,
-            composite_key_compare< std::less<AccountName>,std::less<AccountName>,std::less<AccountName>,std::less<uint64_t>,std::less<typename key64x64x64_value_object::id_type> >
+            composite_key_compare< std::less<account_name>,std::less<account_name>,std::less<account_name>,std::less<uint64_t>,std::less<typename key64x64x64_value_object::id_type> >
          >         
       >
    >;

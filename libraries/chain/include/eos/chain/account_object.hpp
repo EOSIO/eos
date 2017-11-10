@@ -11,7 +11,7 @@
 namespace eosio { namespace chain {
 
    class account_object : public chainbase::object<account_object_type, account_object> {
-      OBJECT_CTOR(account_object,(code)(abi))
+      OBJECT_CTOR(account_object,(code))
 
       id_type              id;
       account_name         name;
@@ -21,6 +21,7 @@ namespace eosio { namespace chain {
       block_timestamp_type creation_date;
 
       shared_vector<char>  code;
+      /*
       shared_vector<char>  abi;
 
       void set_abi( const eosio::types::Abi& a ) {
@@ -28,6 +29,7 @@ namespace eosio { namespace chain {
          fc::datastream<char*> ds( abi.data(), abi.size() );
          fc::raw::pack( ds, a );
       }
+      */
    };
    using account_id_type = account_object::id_type;
 

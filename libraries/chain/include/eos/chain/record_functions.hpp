@@ -11,29 +11,29 @@ template <typename T>
 struct find_tuple {};
 template <>
 struct find_tuple<key_value_object> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *keys);
    }
 };
 template <>
 struct find_tuple<keystr_value_object> {
-   inline static auto get(Name scope, Name code, Name table, std::string* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, std::string* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          keys->data());
    }
 };
 template <>
 struct find_tuple<key128x128_value_object> {
-   inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint128_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *keys, *(keys+1) );
    }
 };
 template <>
 struct find_tuple<key64x64x64_value_object> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *keys, *(keys+1), *(keys+2) );
    }
 };
@@ -106,44 +106,44 @@ struct load_record_tuple {};
 
 template <>
 struct load_record_tuple<key_value_object, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), *keys);
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), *keys);
    }
 };
 template <>
 struct load_record_tuple<keystr_value_object, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, std::string* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), keys->data());
+   inline static auto get(name scope, name code, name table, std::string* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), keys->data());
    }
 };
 template <>
 struct load_record_tuple<key128x128_value_object, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), *keys, uint128_t(0));
+   inline static auto get(name scope, name code, name table, uint128_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), *keys, uint128_t(0));
    }
 };
 template <>
 struct load_record_tuple<key128x128_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), *(keys+1), uint128_t(0));
+   inline static auto get(name scope, name code, name table, uint128_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), *(keys+1), uint128_t(0));
    }
 };
 template <>
 struct load_record_tuple<key64x64x64_value_object, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), *keys, uint64_t(0), uint64_t(0));
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), *keys, uint64_t(0), uint64_t(0));
    }
 };
 template <>
 struct load_record_tuple<key64x64x64_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), *(keys+1), uint64_t(0));
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), *(keys+1), uint64_t(0));
    }
 };
 template <>
 struct load_record_tuple<key64x64x64_value_object, by_scope_tertiary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), *(keys+2));
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), *(keys+2));
    }
 };
 
@@ -191,30 +191,30 @@ struct load_record_compare<key64x64x64_value_object, by_scope_tertiary> {
 //front_record_tuple
 template <typename ObjectType>
 struct front_record_tuple {
-   inline static auto get(Name scope, Name code, Name table) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          typename ObjectType::key_type(0), typename ObjectType::key_type(0), typename ObjectType::key_type(0));
    }
 };
 
 template <>
 struct front_record_tuple<key_value_object> {
-   inline static auto get(Name scope, Name code, Name table) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), uint64_t(0));
+   inline static auto get(name scope, name code, name table) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), uint64_t(0));
    }
 };
 template <>
 struct front_record_tuple<keystr_value_object> {
-   inline static auto get(Name scope, Name code, Name table) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table));
+   inline static auto get(name scope, name code, name table) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table));
    }
 };
 
 // //back_record_tuple
 // template <typename ObjectType>
 // struct back_record_tuple {
-//    inline static auto get(Name scope, Name code, Name table) {
-//       return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+//    inline static auto get(name scope, name code, name table) {
+//       return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
 //          typename ObjectType::key_type(-1), typename ObjectType::key_type(-1), typename ObjectType::key_type(-1));
 //    }   
 // };
@@ -225,28 +225,28 @@ struct next_record_tuple {};
 
 template <>
 struct next_record_tuple<key_value_object> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *keys);
    }
 };
 template <>
 struct next_record_tuple<keystr_value_object> {
-   inline static auto get(Name scope, Name code, Name table, std::string* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table),
+   inline static auto get(name scope, name code, name table, std::string* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table),
          keys->data());
    }
 };
 template <>
 struct next_record_tuple<key128x128_value_object> {
-   inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
+   inline static auto get(name scope, name code, name table, uint128_t* keys) {
       return boost::make_tuple( uint64_t(scope), uint64_t(code), uint64_t(table),
           *keys, *(keys+1));
    }
 };
 template <>
 struct next_record_tuple<key64x64x64_value_object> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
       return boost::make_tuple( uint64_t(scope), uint64_t(code), uint64_t(table),
           *keys, *(keys+1), *(keys+2));
    }
@@ -259,41 +259,41 @@ struct lower_bound_tuple{};
 
 template <typename ObjectType>
 struct lower_bound_tuple<ObjectType, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, typename ObjectType::key_type* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, typename ObjectType::key_type* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *keys, typename ObjectType::key_type(0), typename ObjectType::key_type(0) );
    }
 };
 template <>
 struct lower_bound_tuple<key_value_object, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), *keys);
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), *keys);
    }
 };
 template <>
 struct lower_bound_tuple<keystr_value_object, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, std::string* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), keys->data());
+   inline static auto get(name scope, name code, name table, std::string* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), keys->data());
    }
 };
 template <>
 struct lower_bound_tuple<key128x128_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint128_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *(keys+1), uint128_t(0));
    }
 };
 template <>
 struct lower_bound_tuple<key64x64x64_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *(keys+1), uint64_t(0));
    }
 };
 template <>
 struct lower_bound_tuple<key64x64x64_value_object, by_scope_tertiary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *(keys+2));
    }
 };
@@ -304,36 +304,36 @@ struct upper_bound_tuple{};
 
 template <typename ObjectType>
 struct upper_bound_tuple<ObjectType, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, typename ObjectType::key_type* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, typename ObjectType::key_type* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *keys, typename ObjectType::key_type(-1), typename ObjectType::key_type(-1) );
    }
 };
 template <>
 struct upper_bound_tuple<keystr_value_object, by_scope_primary> {
-   inline static auto get(Name scope, Name code, Name table, std::string* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, std::string* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          keys->data());
    }
 };
 template <>
 struct upper_bound_tuple<key128x128_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint128_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint128_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *(keys+1), uint128_t(-1) );
    }
 };
 template <>
 struct upper_bound_tuple<key64x64x64_value_object, by_scope_secondary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *(keys+1), uint64_t(-1) );
    }
 };
 template <>
 struct upper_bound_tuple<key64x64x64_value_object, by_scope_tertiary> {
-   inline static auto get(Name scope, Name code, Name table, uint64_t* keys) {
-      return boost::make_tuple( AccountName(scope), AccountName(code), AccountName(table), 
+   inline static auto get(name scope, name code, name table, uint64_t* keys) {
+      return boost::make_tuple( account_name(scope), account_name(code), account_name(table), 
          *(keys+2));
    }
 };

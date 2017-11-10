@@ -55,7 +55,7 @@ struct shared_authority {
 };
 
 inline bool operator< (const permission_level& a, const permission_level& b) {
-   return std::tie(a.account, a.permission) < std::tie(b.account, b.permission);
+   return std::tie(a.actor, a.permission) < std::tie(b.actor, b.permission);
 }
 
 /**
@@ -84,7 +84,6 @@ inline bool validate( const Authority& auth ) {
 } } // namespace eosio::chain
 
 
-FC_REFLECT(eosio::chain::permission_level, (account)(permission) )
 FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::authority, (threshold)(accounts)(keys))
