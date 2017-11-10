@@ -19,38 +19,18 @@ using namespace eosio;
 
 const string tab = "   ";
 
-struct CodeGen {
+struct codegen {
 
    types::Abi abi;
    types::AbiSerializer abis;
-   CodeGen(const types::Abi& abi) : abi(abi) {
+   codegen(const types::Abi& abi) : abi(abi) {
       abis.setAbi(abi);
    }
 
    void generate_ident(ostringstream& output) {
-      output << tab << "inline void print_ident(int n){while(n-->0){print(\"  \");}};" << endl;      
+      output << tab << "void print_ident(int n){while(n-->0){print(\"  \");}};" << endl;      
    }
    
-   void generate_from_bytes(ostringstream& output) {
-      output << tab << "template<typename Type> void from_bytes(const Bytes& bytes, Type& value) {" << endl;
-      output << tab << tab << "datastream<char *> ds((char*)bytes.data, bytes.len);" << endl;
-      output << tab << tab << "raw::unpack(ds, value);" << endl;
-      output << tab << "}" << endl;
-   }
-
-   void generate_to_bytes(ostringstream& output) {
-      output << tab << "template<typename Type> Bytes to_bytes(const Type& value) {" << endl;
-      output << tab << tab << "uint32_t maxsize = packed_size(value);" << endl;
-      output << tab << tab << "char* buffer = (char *)eos::malloc(maxsize);" << endl;
-      output << tab << tab << "datastream<char *> ds(buffer, maxsize);" << endl;
-      output << tab << tab << "pack(ds, value);" << endl;
-      output << tab << tab << "Bytes bytes;" << endl;
-      output << tab << tab << "bytes.len = ds.tellp();" << endl;
-      output << tab << tab << "bytes.data = (uint8_t*)buffer;" << endl;
-      output << tab << tab << "return bytes;" << endl;
-      output << tab << "}" << endl;
-   }
-
    void generate_dump(ostringstream& output, const types::Struct& type) {
       output << tab << "void dump(const " << type.name << "& value, int tab=0) {" << endl;
       for(const auto& field : type.fields ) {
@@ -73,7 +53,7 @@ struct CodeGen {
             } else if (size == 128) {
                output << "printi128(&value."<< field.name <<");";
             } else if (size == 256) {
-               output << "printhex(&value."<< field.name <<", sizeof(value."<< field.name <<"));";
+               output << "printhex((void*)&value."<< field.name <<", sizeof(value."<< field.name <<"));";
             }
             
          } else if( field_type == "Bytes" ) {
@@ -85,6 +65,8 @@ struct CodeGen {
             output << "printhex((void*)value."<< field.name <<".data, 33);";
          } else if( field_type == "Time" ) {
             output << "printi(value."<< field.name <<");";
+         } else if( field_type == "Price" ) {
+            output << "printi(value."<< field.name <<".base.amount);print(\"/\");printi(value."<< field.name <<".quote.amount);";
          } else {
             
          }
@@ -96,15 +78,20 @@ struct CodeGen {
    void generate_current_message_ex(ostringstream& output) {
       output << tab << "template<typename Type>" << endl;
       output << tab << "Type current_message_ex() {" << endl;
-      output << tab << tab << "uint32_t msgsize = message_size();" << endl;
-      output << tab << tab << "Bytes bytes;" << endl;
-      output << tab << tab << "bytes.data = (uint8_t *)eos::malloc(msgsize);" << endl;
-      output << tab << tab << "bytes.len  = msgsize;" << endl;
-      output << tab << tab << "assert(bytes.data && read_message(bytes.data, bytes.len) == msgsize, \"error reading message\");" << endl;
+      output << tab << tab << "uint32_t size = message_size();" << endl;
+      output << tab << tab << "char* data = (char *)eos::malloc(size);" << endl;
+      output << tab << tab << "assert(data && read_message(data, size) == size, \"error reading message\");" << endl;
       output << tab << tab << "Type value;" << endl;
-      output << tab << tab << "eos::raw::from_bytes(bytes, value);" << endl;
-      output << tab << tab << "eos::free(bytes.data);" << endl;
+      output << tab << tab << "eos::raw::unpack(data, size, value);" << endl;
+      output << tab << tab << "eos::free(data);" << endl;
       output << tab << tab << "return value;" << endl;
+      output << tab << "}" << endl;
+   }
+
+   void generate_current_message(ostringstream& output, const types::Struct& type) {
+      output << tab << "template<>" << endl;
+      output << tab << type.name << " current_message<" << type.name << ">() {" << endl;
+      output << tab << tab << "return current_message_ex<" << type.name << ">();" << endl;
       output << tab << "}" << endl;
    }
 
@@ -128,48 +115,34 @@ struct CodeGen {
       output << tab << "}" << endl;
    }
 
-   void generate_packed_size(ostringstream& output, const types::Struct& type) {
-      output << tab << "inline uint32_t packed_size(const " << type.name << "& c) {" << endl;
-      output << tab << tab << "uint32_t size = 0;" << endl;
-      for(const auto& field : type.fields ) {
-         output << tab << tab << "size += packed_size(c."<<field.name<<");" << endl;
-      }
-      if( type.base != types::TypeName() )
-         output << tab << tab << "size += packed_size(static_cast<" << type.base << "&>(c));" << endl;
-      output << tab << tab << "return size;" << endl;
-      output << tab << "}" << endl;
-   }
-
    void generate() {
       ostringstream output;
       output << "#pragma once" << endl;
       output << "#include <eoslib/types.hpp>" << endl;
       output << "#include <eoslib/datastream.hpp>" << endl;
-      output << "#include <eoslib/raw.hpp>" << endl;
+      output << "#include <eoslib/raw_fwd.hpp>" << endl;
+      
       output << endl;
 
       //Generate serialization/deserialization for every cotract type
-      
       output << "namespace eos { namespace raw {" << endl;
       for(const auto& type : abi.structs) {
-         generate_packed_size(output, type);
          generate_pack(output, type);
          generate_unpack(output, type);
       }
-      
-      generate_from_bytes(output);
-      generate_to_bytes(output);
       output << "} }" << endl << endl;
+
+      output << "#include <eoslib/raw.hpp>" << endl;
 
       output << "namespace eos {" << endl;
       
       generate_ident(output);
+      generate_current_message_ex(output);
 
       for(const auto& type : abi.structs) {
          generate_dump(output, type);
+         generate_current_message(output, type);
       }
-
-      generate_current_message_ex(output);
 
       output << "} //eos" << endl;
 
@@ -187,8 +160,8 @@ int main (int argc, char *argv[]) {
       return 1;
 
    auto abi = fc::json::from_file<types::Abi>(argv[1]);
-   CodeGen codegen(abi);
-   codegen.generate();
+   codegen generator(abi);
+   generator.generate();
 
    return 0;
 }
