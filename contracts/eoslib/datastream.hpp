@@ -68,5 +68,125 @@ class datastream<size_t> {
      size_t _size;
 };
 
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint256 d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint256& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint128_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint128_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const int128_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, int128_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const int32_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, int32_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint32_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint32_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const int64_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, int64_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint64_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const int16_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, int16_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint16_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint16_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const int8_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, int8_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint8_t d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
 
 }

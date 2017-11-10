@@ -4,7 +4,18 @@
       "name": "record1",
       "base": "",
       "fields": {
-        "key1": "uint64"
+        "key": "uint64",
+        "u256": "uint256",
+        "u128": "uint128",
+        "u64": "uint64",
+        "u32": "uint32",
+        "u16": "uint16",
+        "u8": "uint8",
+        "i64": "int64",
+        "i32": "int32",
+        "i16": "int16",
+        "i8": "int8",
+        "price": "price"
       }
     },{
       "name": "record2",

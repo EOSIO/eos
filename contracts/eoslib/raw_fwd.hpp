@@ -21,6 +21,10 @@ namespace eos { namespace raw {
    template<typename Stream> inline void unpack( Stream& s, FixedString32& v);
    template<typename Stream> inline void pack( Stream& s, const FixedString16& v );
    template<typename Stream> inline void unpack( Stream& s, FixedString16& v);
+   template<typename Stream> inline void pack( Stream& s, const Price& v );
+   template<typename Stream> inline void unpack( Stream& s, Price& v);
+   template<typename Stream> inline void pack( Stream& s, const Asset& v );
+   template<typename Stream> inline void unpack( Stream& s, Asset& v);
    template<typename Stream> inline void pack( Stream& s, const bool& v );
    template<typename Stream> inline void unpack( Stream& s, bool& v );
    template<typename T> inline size_t pack_size( const T& v );
