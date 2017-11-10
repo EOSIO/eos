@@ -232,6 +232,7 @@ struct launcher_def {
   string alias_base;
   vector <string> aliases;
   last_run_def last_run;
+  int start_delay;
 
   void set_options (bpo::options_description &cli);
   void initialize (const variables_map &vmap);
@@ -261,6 +262,7 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("output,o",bpo::value<bf::path>(),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.")
     ("eosd", bpo::value<string>(), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
+    ("delay,d",bpo::value<int>()->default_value(0),"seconds delay before starting each node after the first")
         ;
 }
 
@@ -280,6 +282,8 @@ launcher_def::initialize (const variables_map &vmap) {
     skip_transaction_signatures = vmap["skip-signature"].as<bool>();
   if (vmap.count("eosd"))
     eosd_extra_args = vmap["eosd"].as<string>();
+  if (vmap.count("delay"))
+    start_delay = vmap["delay"].as<int>();
 
   producers = 21;
   data_dir_base = "tn_data_";
@@ -708,6 +712,7 @@ launcher_def::start_all (string &gts, launch_modes mode) {
       }
     }
     launch (node.second, gts);
+    sleep (start_delay);
   }
   bf::path savefile = "last_run.json";
   bf::ofstream sf (savefile);

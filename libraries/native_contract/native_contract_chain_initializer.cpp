@@ -15,16 +15,16 @@
 namespace eosio { namespace native_contract {
 using namespace eosio::chain;
 
-types::Time native_contract_chain_initializer::get_chain_start_time() {
+types::time native_contract_chain_initializer::get_chain_start_time() {
    return genesis.initial_timestamp;
 }
 
-BlockchainConfiguration native_contract_chain_initializer::get_chain_start_configuration() {
+blockchain_configuration native_contract_chain_initializer::get_chain_start_configuration() {
    return genesis.initial_configuration;
 }
 
-std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_initializer::get_chain_start_producers() {
-   std::array<types::AccountName, config::BlocksPerRound> result;
+std::array<types::account_name, config::blocks_per_round> native_contract_chain_initializer::get_chain_start_producers() {
+   std::array<types::account_name, config::blocks_per_round> result;
    std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
                   [](const auto& p) { return p.owner_name; });
    return result;
@@ -32,12 +32,12 @@ std::array<types::AccountName, config::BlocksPerRound> native_contract_chain_ini
 
 void native_contract_chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
    // Install the native contract's indexes; we can't do anything until our objects are recognized
-   db.add_index<native::eosio::StakedBalanceMultiIndex>();
-   db.add_index<native::eosio::ProducerVotesMultiIndex>();
-   db.add_index<native::eosio::ProxyVoteMultiIndex>();
-   db.add_index<native::eosio::ProducerScheduleMultiIndex>();
+   db.add_index<native::eosio::staked_balance_multi_index>();
+   db.add_index<native::eosio::producer_votes_multi_index>();
+   db.add_index<native::eosio::proxy_vote_multi_index>();
+   db.add_index<native::eosio::producer_schedule_multi_index>();
 
-   db.add_index<native::eosio::BalanceMultiIndex>();
+   db.add_index<native::eosio::balance_multi_index>();
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::nspace::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
@@ -56,55 +56,55 @@ void native_contract_chain_initializer::register_types(chain_controller& chain, 
    SET_APP_HANDLER( eos, eos, unlinkauth, eosio ); 
 }
 
-types::Abi native_contract_chain_initializer::eos_contract_abi()
+types::abi native_contract_chain_initializer::eos_contract_abi()
 {
-   types::Abi eos_abi;
-   eos_abi.types.push_back( types::TypeDef{"AccountName","Name"} );
-   eos_abi.types.push_back( types::TypeDef{"ShareType","Int64"} );
-   eos_abi.actions.push_back( types::Action{Name("transfer"), "transfer"} );
-   eos_abi.actions.push_back( types::Action{Name("lock"), "lock"} );
-   eos_abi.actions.push_back( types::Action{Name("unlock"), "unlock"} );
-   eos_abi.actions.push_back( types::Action{Name("claim"), "claim"} );
-   eos_abi.actions.push_back( types::Action{Name("okproducer"), "okproducer"} );
-   eos_abi.actions.push_back( types::Action{Name("setproducer"), "setproducer"} );
-   eos_abi.actions.push_back( types::Action{Name("setproxy"), "setproxy"} );
-   eos_abi.actions.push_back( types::Action{Name("setcode"), "setcode"} );
-   eos_abi.actions.push_back( types::Action{Name("linkauth"), "linkauth"} );
-   eos_abi.actions.push_back( types::Action{Name("unlinkauth"), "unlinkauth"} );
-   eos_abi.actions.push_back( types::Action{Name("updateauth"), "updateauth"} );
-   eos_abi.actions.push_back( types::Action{Name("deleteauth"), "deleteauth"} );
-   eos_abi.actions.push_back( types::Action{Name("newaccount"), "newaccount"} );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::transfer>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::lock>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::unlock>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::claim>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::okproducer>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::setproducer>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::setproxy>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::setcode>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::updateauth>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::linkauth>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::unlinkauth>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::deleteauth>::type() );
-   eos_abi.structs.push_back( eosio::types::GetStruct<eosio::types::newaccount>::type() );
+   types::abi eos_abi;
+//   eos_abi.types.push_back( types::type_def{"account_name","name"} );
+   eos_abi.types.push_back( types::type_def{"share_type","int64"} );
+   eos_abi.actions.push_back( types::action{name("transfer"), "transfer"} );
+   eos_abi.actions.push_back( types::action{name("lock"), "lock"} );
+   eos_abi.actions.push_back( types::action{name("unlock"), "unlock"} );
+   eos_abi.actions.push_back( types::action{name("claim"), "claim"} );
+   eos_abi.actions.push_back( types::action{name("okproducer"), "okproducer"} );
+   eos_abi.actions.push_back( types::action{name("setproducer"), "setproducer"} );
+   eos_abi.actions.push_back( types::action{name("setproxy"), "setproxy"} );
+   eos_abi.actions.push_back( types::action{name("setcode"), "setcode"} );
+   eos_abi.actions.push_back( types::action{name("linkauth"), "linkauth"} );
+   eos_abi.actions.push_back( types::action{name("unlinkauth"), "unlinkauth"} );
+   eos_abi.actions.push_back( types::action{name("updateauth"), "updateauth"} );
+   eos_abi.actions.push_back( types::action{name("deleteauth"), "deleteauth"} );
+   eos_abi.actions.push_back( types::action{name("newaccount"), "newaccount"} );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::transfer>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::lock>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::unlock>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::claim>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::okproducer>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::setproducer>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::setproxy>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::setcode>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::updateauth>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::linkauth>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::unlinkauth>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::deleteauth>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::newaccount>::type() );
 
    return eos_abi;
 }
 
-std::vector<Message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
+std::vector<message> native_contract_chain_initializer::prepare_database(chain_controller& chain,
                                                                                 chainbase::database& db) {
-   std::vector<Message> messages_to_process;
+   std::vector<message> messages_to_process;
 
-   // Create the singleton object, ProducerScheduleObject
-   db.create<native::eosio::ProducerScheduleObject>([](const auto&){});
+   // Create the singleton object, producer_schedule_object
+   db.create<native::eosio::producer_schedule_object>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto CreateNativeAccount = [this, &db](Name name, auto liquidBalance) {
+   auto CreateNativeAccount = [this, &db](name name, auto liquidBalance) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
 
-         if( name == config::EosContractName ) {
+         if( name == config::eos_contract_name ) {
             a.set_abi(eos_contract_abi());
          }
       });
@@ -119,72 +119,72 @@ std::vector<Message> native_contract_chain_initializer::prepare_database(chain_c
          p.name = "active";
          p.auth.threshold = 1;
       });
-      db.create<native::eosio::BalanceObject>([&name, liquidBalance]( auto& b) {
-         b.ownerName = name;
+      db.create<native::eosio::balance_object>([&name, liquidBalance]( auto& b) {
+         b.owner_name = name;
          b.balance = liquidBalance;
       });
-      db.create<native::eosio::StakedBalanceObject>([&name](auto& sb) { sb.ownerName = name; });
+      db.create<native::eosio::staked_balance_object>([&name](auto& sb) { sb.ownerName = name; });
    };
-   CreateNativeAccount(config::EosContractName, config::InitialTokenSupply);
+   CreateNativeAccount(config::eos_contract_name, config::initial_token_supply);
 
    // Queue up messages which will run contracts to create the initial accounts
-   auto KeyAuthority = [](PublicKey k) {
-      return types::Authority(1, {{k, 1}}, {});
+   auto KeyAuthority = [](public_key k) {
+      return types::authority(1, {{k, 1}}, {});
    };
    for (const auto& acct : genesis.initial_accounts) {
-      Message message(config::EosContractName,
-                             vector<types::AccountPermission>{{config::EosContractName, "active"}},
-                             "newaccount", types::newaccount(config::EosContractName, acct.name,
+      message msg(config::eos_contract_name,
+                             vector<types::account_permission>{{config::eos_contract_name, "active"}},
+                             "newaccount", types::newaccount(config::eos_contract_name, acct.name,
                                                              KeyAuthority(acct.owner_key),
                                                              KeyAuthority(acct.active_key),
                                                              KeyAuthority(acct.owner_key),
                                                              acct.staking_balance));
-      messages_to_process.emplace_back(std::move(message));
+      messages_to_process.emplace_back(std::move(msg));
       if (acct.liquid_balance > 0) {
-         message = Message(config::EosContractName,
-                                  vector<types::AccountPermission>{{config::EosContractName, "active"}},
-                                  "transfer", types::transfer(config::EosContractName, acct.name,
+         msg = message(config::eos_contract_name,
+                                  vector<types::account_permission>{{config::eos_contract_name, "active"}},
+                                  "transfer", types::transfer(config::eos_contract_name, acct.name,
                                                               acct.liquid_balance.amount, "Genesis Allocation"));
-         messages_to_process.emplace_back(std::move(message));
+         messages_to_process.emplace_back(std::move(msg));
       }
    }
 
    // Create initial producers
    auto CreateProducer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
-      return Message(config::EosContractName, vector<types::AccountPermission>{{p.owner_name, "active"}},
+      return message(config::eos_contract_name, vector<types::account_permission>{{p.owner_name, "active"}},
                             "setproducer", types::setproducer(p.owner_name, p.block_signing_key, config));
    });
    boost::copy(genesis.initial_producers | CreateProducer, std::back_inserter(messages_to_process));
 
    // Create special accounts
-   auto create_special_account = [this, &db](Name name, const auto& owner, const auto& active) {
+   auto create_special_account = [this, &db](name name, const auto& owner, const auto& active) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
       });
       const auto& owner_permission = db.create<permission_object>([&owner, &name](permission_object& p) {
-         p.name = config::OwnerName;
+         p.name = config::owner_name;
          p.parent = 0;
          p.owner = name;
          p.auth = std::move(owner);
       });
       db.create<permission_object>([&active, &owner_permission](permission_object& p) {
-         p.name = config::ActiveName;
+         p.name = config::active_name;
          p.parent = owner_permission.id;
          p.owner = owner_permission.owner;
          p.auth = std::move(active);
       });
    };
 
-   auto empty_authority = types::Authority(0, {}, {});
-   auto active_producers_authority = types::Authority(config::ProducersAuthorityThreshold, {}, {});
+   auto empty_authority = types::authority(0, {}, {});
+   auto active_producers_authority = types::authority(config::producers_authority_threshold, {}, {});
    for(auto& p : genesis.initial_producers) {
-      active_producers_authority.accounts.push_back({{p.owner_name, config::ActiveName}, 1});
+      active_producers_authority.accounts.push_back({{p.owner_name, config::active_name}, 1});
    }
 
-   //CreateNativeAccount(config::AnybodyAccountName, 0);
-   create_special_account(config::NobodyAccountName, empty_authority, empty_authority);
-   create_special_account(config::ProducersAccountName, empty_authority, active_producers_authority);
+   //CreateNativeAccount(config::anybody_account_name, 0);
+   create_special_account(config::nobody_account_name, empty_authority, empty_authority);
+   create_special_account(config::producers_account_name, empty_authority, active_producers_authority);
 
    return messages_to_process;
 }

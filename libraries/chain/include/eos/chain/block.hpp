@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
       block_id_type                 previous;
       fc::time_point_sec            timestamp;
       checksum_type                 transaction_merkle_root;
-      AccountName                   producer;
+      account_name                  producer;
       /**
        * The changes in the round of producers after this block
        *
@@ -30,7 +30,7 @@ namespace eosio { namespace chain {
        * Even though the above examples are semantically equivalent (replace A and B with X and Y), only the first is
        * legal.
        */
-      RoundChanges                  producer_changes;
+      round_changes                  producer_changes;
    };
 
    struct signed_block_header : public block_header
@@ -44,8 +44,8 @@ namespace eosio { namespace chain {
    };
 
    struct thread {
-      vector<ProcessedGeneratedTransaction> generated_input;
-      vector<ProcessedTransaction>          user_input;
+      vector<processed_generated_transaction> generated_input;
+      vector<processed_transaction>          user_input;
 
       digest_type merkle_digest() const;
    };

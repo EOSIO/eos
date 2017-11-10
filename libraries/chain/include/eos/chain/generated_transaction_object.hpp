@@ -33,7 +33,7 @@ namespace eosio { namespace chain {
 
 
          id_type                       id;
-         GeneratedTransaction          trx;
+         generated_transaction          trx;
          status_type                   status;
          
          time_point_sec get_expiration()const { return trx.expiration; }

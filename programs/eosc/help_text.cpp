@@ -79,7 +79,7 @@ const std::vector<std::pair<const char*, std::vector<const char *>>> error_help_
    {"AES error[^\\x00]*wallet/unlock.*postdata\":\\[\"([^\"]*)\"", {bad_wallet_password_help_text}},
    {"Wallet is locked: ([\\S]*)", {locked_wallet_help_text}},
    {"Key already in wallet[^\\x00]*wallet/import_key.*postdata\":\\[\"([^\"]*)\"", {duplicate_key_import_help_text}},
-   {"Abi does not define table[^\\x00]*get_table_rows.*code\":\"([^\"]*)\",\"table\":\"([^\"]*)\"", {unknown_abi_table_help_text}}
+   {"ABI does not define table[^\\x00]*get_table_rows.*code\":\"([^\"]*)\",\"table\":\"([^\"]*)\"", {unknown_abi_table_help_text}}
 };
 
 auto smatch_to_variant(const std::smatch& smatch) {

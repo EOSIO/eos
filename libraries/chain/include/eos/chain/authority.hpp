@@ -12,13 +12,13 @@ struct shared_authority {
       :accounts(alloc),keys(alloc)
    {}
 
-   shared_authority& operator=(const Authority& a) {
+   shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
       return *this;
    }
-   shared_authority& operator=(Authority&& a) {
+   shared_authority& operator=(authority&& a) {
       threshold = a.threshold;
       accounts.reserve(a.accounts.size());
       for (auto& p : a.accounts)
@@ -29,12 +29,12 @@ struct shared_authority {
       return *this;
    }
 
-   UInt32                                        threshold = 0;
-   shared_vector<types::AccountPermissionWeight> accounts;
-   shared_vector<types::KeyPermissionWeight>     keys;
+   uint32                                        threshold = 0;
+   shared_vector<types::account_permission_weight> accounts;
+   shared_vector<types::key_permission_weight>     keys;
 
-   Authority to_authority()const {
-      Authority auth;
+   authority to_authority()const {
+      authority auth;
       auth.threshold = threshold;
       auth.keys.reserve(keys.size());
       auth.accounts.reserve(accounts.size());
@@ -44,7 +44,7 @@ struct shared_authority {
    }
 };
 
-inline bool operator< (const types::AccountPermission& a, const types::AccountPermission& b) {
+inline bool operator< (const types::account_permission& a, const types::account_permission& b) {
    return std::tie(a.account, a.permission) < std::tie(b.account, b.permission);
 }
 
@@ -52,8 +52,8 @@ inline bool operator< (const types::AccountPermission& a, const types::AccountPe
  * Makes sure all keys are unique and sorted and all account permissions are unique and sorted and that authority can
  * be satisfied
  */
-inline bool validate(const types::Authority& auth) {
-   const types::KeyPermissionWeight* prev = nullptr;
+inline bool validate(const types::authority& auth) {
+   const types::key_permission_weight* prev = nullptr;
    decltype(auth.threshold) totalWeight = 0;
 
    for( const auto& k : auth.keys ) {
@@ -61,7 +61,7 @@ inline bool validate(const types::Authority& auth) {
       else if( prev->key < k.key ) return false;
       totalWeight += k.weight;
    }
-   const types::AccountPermissionWeight* pa = nullptr;
+   const types::account_permission_weight* pa = nullptr;
    for( const auto& a : auth.accounts ) {
       if( !pa ) pa = &a;
       else if( pa->permission < a.permission ) return false;

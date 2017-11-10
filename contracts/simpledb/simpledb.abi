@@ -4,128 +4,128 @@
     {
       "name": "record1",
       "fields": {
-        "key1": "UInt64"
+        "key1": "uint64"
       }
     },
     {
       "name": "record2",
       "fields": {
-        "key1": "UInt128",
-        "key2": "UInt128"
+        "key1": "uint128",
+        "key2": "uint128"
       }
     },
     {
       "name": "record3",
       "fields": {
-        "key1": "UInt64",
-        "key2": "UInt64",
-        "key3": "UInt64"
+        "key1": "uint64",
+        "key2": "uint64",
+        "key3": "uint64"
       }
     },
     {
       "name": "key_value1",
       "fields": {
-        "key": "String",
-        "value": "String"
+        "key": "string",
+        "value": "string"
       }
     },
     {
       "name": "complex_type",
       "fields": {
-        "name": "String",
-        "age": "UInt64"
+        "name": "string",
+        "age": "uint64"
       }
     },
     {
       "name": "key_value2",
       "fields": {
-        "key": "String",
+        "key": "string",
         "value": "complex_type"
       }
     }
   ],
   "actions": [
     {
-      "action": "insert1",
+      "action_name": "insert1",
       "type": "record1"
     },
     {
-      "action": "insertkv1",
+      "action_name": "insertkv1",
       "type": "key_value1"
     },
     {
-      "action": "insert2",
+      "action_name": "insert2",
       "type": "record2"
     },
     {
-      "action": "insert3",
+      "action_name": "insert3",
       "type": "record3"
     },
     {
-      "action": "insertkv2",
+      "action_name": "insertkv2",
       "type": "key_value2"
     }
   ],
   "tables": [
     {
-      "table": "record1",
+      "table_name": "record1",
       "type": "record1",
-      "indextype": "i64",
-      "keynames": [
+      "index_type": "i64",
+      "key_names": [
         "key1"
       ],
-      "keytypes": [
-        "UInt64"
+      "key_types": [
+        "uint64"
       ]
     },
     {
-      "table": "record2",
+      "table_name": "record2",
       "type": "record2",
-      "indextype": "i128i128",
-      "keynames": [
+      "index_type": "i128i128",
+      "key_names": [
         "key1",
         "key2"
       ],
-      "keytypes": [
-        "UInt128",
-        "UInt128"
+      "key_types": [
+        "uint128",
+        "uint128"
       ]
     },
     {
-      "table": "record3",
+      "table_name": "record3",
       "type": "record3",
-      "indextype": "i64i64i64",
-      "keynames": [
+      "index_type": "i64i64i64",
+      "key_names": [
         "key1",
         "key2",
         "key3"
       ],
-      "keytypes": [
-        "UInt64",
-        "UInt64",
-        "UInt64"
+      "key_types": [
+        "uint64",
+        "uint64",
+        "uint64"
       ]
     },
     {
-      "table": "keyvalue1",
+      "table_name": "keyvalue1",
       "type": "key_value1",
-      "indextype": "str",
-      "keynames": [
+      "index_type": "str",
+      "key_names": [
         "key"
       ],
-      "keytypes": [
-        "String"
+      "key_types": [
+        "string"
       ]
     },
     {
-      "table": "keyvalue2",
+      "table_name": "keyvalue2",
       "type": "key_value2",
-      "indextype": "str",
-      "keynames": [
+      "index_type": "str",
+      "key_names": [
         "key"
       ],
-      "keytypes": [
-        "String"
+      "key_types": [
+        "string"
       ]
     }
   ]

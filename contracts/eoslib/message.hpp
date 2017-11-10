@@ -61,8 +61,8 @@ namespace eosio {
     *  require_notice(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
     *  @endcode
     */
-   template<typename... accounts>
-   void require_notice( account_name name, accounts... remaining_accounts ){
+   template<typename... Accounts>
+   void require_notice( account_name name, Accounts... remaining_accounts ){
       require_notice( name );
       require_notice( remaining_accounts... );
    }

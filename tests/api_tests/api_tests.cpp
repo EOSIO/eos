@@ -86,9 +86,9 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
    }
 }
 
-uint32_t CallFunction( testing_blockchain& chain, const types::Message& msg, const vector<char>& data, const vector<AccountName>& scope = {N(testapi)}) {
+uint32_t CallFunction( testing_blockchain& chain, const types::message& msg, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
    static int expiration = 1;
-   eosio::chain::SignedTransaction trx;
+   eosio::chain::signed_transaction trx;
    trx.scope = scope;
    
    //msg.data.clear();
@@ -135,8 +135,8 @@ uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) ); 
 } 
 
-#define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, Message{"testapi", AUTH, TYPE}, DATA)
-#define CALL_TEST_FUNCTION_SCOPE(TYPE, AUTH, DATA, SCOPE) CallFunction(chain, Message{"testapi", AUTH, TYPE}, DATA, SCOPE)
+#define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, message{"testapi", AUTH, TYPE}, DATA)
+#define CALL_TEST_FUNCTION_SCOPE(TYPE, AUTH, DATA, SCOPE) CallFunction(chain, message{"testapi", AUTH, TYPE}, DATA, SCOPE)
 
 bool is_access_violation(fc::unhandled_exception const & e) {
    try {
@@ -184,14 +184,14 @@ uint32_t last_fnc_err = 0;
       std::STREAM.rdbuf(oldbuf); \
    }
 
-void send_set_code_message(testing_blockchain& chain, types::setcode& handler, AccountName account)
+void send_set_code_message(testing_blockchain& chain, types::setcode& handler, account_name account)
 {
-   eosio::chain::SignedTransaction trx;
+   eosio::chain::signed_transaction trx;
    handler.account = account;
    trx.scope = { account };
    trx.messages.resize(1);
    trx.messages[0].authorization = {{account,"active"}};
-   trx.messages[0].code = config::EosContractName;
+   trx.messages[0].code = config::eos_contract_name;
    transaction_set_message(trx, 0, "setcode", handler);
    trx.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(trx, chain.head_block_id());
@@ -252,15 +252,15 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), {}, {}), 
          tx_missing_auth, is_tx_missing_auth );
       
-      auto a3only = vector<types::AccountPermission>{{"acc3","active"}};
+      auto a3only = vector<types::account_permission>{{"acc3","active"}};
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), a3only, {}), 
          tx_missing_auth, is_tx_missing_auth );
 
-      auto a4only = vector<types::AccountPermission>{{"acc4","active"}};
+      auto a4only = vector<types::account_permission>{{"acc4","active"}};
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), a4only, {}),
          tx_missing_auth, is_tx_missing_auth );
 
-      auto a3a4 = vector<types::AccountPermission>{{"acc3","active"}, {"acc4","active"}};
+      auto a3a4 = vector<types::account_permission>{{"acc3","active"}, {"acc4","active"}};
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "require_auth"), a3a4, {}) == WASM_TEST_PASS, "test_message::require_auth()");
 
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_message", "assert_false"), {}, {}),
@@ -428,7 +428,7 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          tx_resource_exhausted, is_tx_resource_exhausted );
 
       auto& gpo = chain_db.get<global_property_object>();
-      std::vector<AccountName> prods(gpo.active_producers.size());
+      std::vector<account_name> prods(gpo.active_producers.size());
       std::copy(gpo.active_producers.begin(), gpo.active_producers.end(), prods.begin());
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_chain", "test_activeprods"), {}, fc::raw::pack(prods) ) == WASM_TEST_PASS, "test_chain::test_activeprods()" );
 
@@ -447,7 +447,20 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "concatenation_non_null_terminated"), {}, {} ) == WASM_TEST_PASS, "test_string::concatenation_non_null_terminated()" );
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "assign"), {}, {} ) == WASM_TEST_PASS, "test_string::assign()" );
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "comparison_operator"), {}, {} ) == WASM_TEST_PASS, "test_string::comparison_operator()" );
+
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "create_instances"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::create_instances()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_addition"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_addition()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_subtraction"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_subtraction()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_multiplication"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_multiplication()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_fixedpoint", "test_division"), {}, {} ) == WASM_TEST_PASS, "test_fixedpoint::test_division()" );
+
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "create_instances"), {}, {} ) == WASM_TEST_PASS, "test_real::create_instances()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "test_addition"), {}, {} ) == WASM_TEST_PASS, "test_real::test_addition()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "test_multiplication"), {}, {} ) == WASM_TEST_PASS, "test_real::test_multiplication()" );
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_real", "test_division"), {}, {} ) == WASM_TEST_PASS, "test_real::test_division()" );
+      CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_real", "create_instances"), {}, {}) );
       CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_null_terminated"), {}, {}) );
+
       BOOST_CHECK_EQUAL( capture.size() , 1);
       BOOST_CHECK_EQUAL( capture[0], "Hello World!");
       CAPTURE(cerr, CALL_TEST_FUNCTION( TEST_METHOD("test_string", "print_non_null_terminated"), {}, {}) );
@@ -458,7 +471,8 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       BOOST_CHECK_EQUAL( capture[0], "你好，世界！");
       BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "valid_utf8"), {}, {} ) == WASM_TEST_PASS, "test_string::valid_utf8()" );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "invalid_utf8"), {}, {} ), fc::assert_exception, is_assert_exception );
-      
+      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_string", "string_literal"), {}, {} ) == WASM_TEST_PASS, "test_string::string_literal()" );
+
 } FC_LOG_AND_RETHROW() }
 
 #define RUN_CODE_HANDLER_WITH_TRANSFER(account_name, test_wast)                                            \
@@ -475,11 +489,11 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );                                             \
                                                                                                            \
       {                                                                                                    \
-         eosio::chain::SignedTransaction trx;                                                                \
+         eosio::chain::signed_transaction trx;                                                             \
          trx.scope = {#account_name};                                                                      \
          trx.messages.resize(1);                                                                           \
-         trx.messages[0].code = config::EosContractName;                                                   \
-         trx.messages[0].authorization.emplace_back(types::AccountPermission{#account_name,"active"});     \
+         trx.messages[0].code = config::eos_contract_name;                                                 \
+         trx.messages[0].authorization.emplace_back(types::account_permission{#account_name,"active"});    \
          transaction_set_message(trx, 0, "setcode", handler);                                              \
          trx.expiration = chain.head_block_time() + 100;                                                   \
          transaction_set_reference_block(trx, chain.head_block_id());                                      \
@@ -489,10 +503,10 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
                                                                                                            \
                                                                                                            \
       {                                                                                                    \
-         eosio::chain::SignedTransaction trx;                                                                \
+         eosio::chain::signed_transaction trx;                                                             \
          trx.scope = sort_names({#account_name,"inita"});                                                  \
          transaction_emplace_message(trx, #account_name,                                                   \
-                            vector<types::AccountPermission>{},                                            \
+                            vector<types::account_permission>{},                                           \
                             "transfer", types::transfer{#account_name, "inita", 1,""});                    \
          trx.expiration = chain.head_block_time() + 100;                                                   \
          transaction_set_reference_block(trx, chain.head_block_id());                                      \
@@ -512,7 +526,7 @@ BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                        
 
 #define RUN_CODE_ABI_WITH_TRANSFER(account_name, test_wast, test_abi)                                      \
       types::setcode handler;                                                                              \
-      handler.abi = fc::json::from_string(test_abi).as<types::Abi>();                                      \
+      handler.abi = fc::json::from_string(test_abi).as<types::abi>();                                      \
       RUN_CODE_HANDLER_WITH_TRANSFER(account_name, test_wast)
 
 #define TEST_CASE_RUN_CODE_ABI_W_XFER(test_case_name, account_name, test_wast, test_abi)                   \

@@ -1,50 +1,50 @@
 {
   "types": [{
-      "newTypeName": "account_name",
-      "type": "Name"
+      "new_type_name": "account_name",
+      "type": "name"
     }
   ],
   "structs": [{
       "name": "order_id",
       "fields": {
         "name" : "account_name",
-        "id"   : "UInt64"
+        "id"   : "uint64"
       }
     },{
       "name" : "bid",
       "fields" : {
          "buyer" : "order_id",
-         "at_price" : "UInt128",
-         "quantity" : "UInt64",
+         "at_price" : "uint128",
+         "quantity" : "uint64",
          "expiration" : "time"
        }
     },{
       "name" : "ask",
       "fields" : {
          "seller" : "order_id",
-         "at_price" : "UInt128",
-         "quantity" : "UInt64",
+         "at_price" : "uint128",
+         "quantity" : "uint64",
          "expiration" : "time"
        }
     },{
       "name" : "account",
       "fields" : {
          "owner" : "account_name",
-         "eos_balance" : "UInt64",
-         "currency_balance" : "UInt64",
-         "open_orders" : "UInt32"
+         "eos_balance" : "uint64",
+         "currency_balance" : "uint64",
+         "open_orders" : "uint32"
        }
     },{
       "name" : "buy_order",
       "base" : "bid",
       "fields" : {
-         "fill_or_kill" : "UInt8"
+         "fill_or_kill" : "uint8"
        }
     },{
       "name" : "sell_order",
       "base" : "ask",
       "fields" : {
-         "fill_or_kill" : "UInt8"
+         "fill_or_kill" : "uint8"
        }
     }
   ],

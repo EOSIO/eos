@@ -6,64 +6,64 @@
 #include <eos/types/types.hpp>
 
 namespace eosio { namespace config {
-using types::UInt16;
-using types::UInt32;
-using types::UInt64;
-using types::UInt128;
-using types::ShareType;
-using types::Asset;
-using types::AccountName;
-using types::PermissionName;
+using types::uint16;
+using types::uint32;
+using types::uint64;
+using types::uint128;
+using types::share_type;
+using types::asset;
+using types::account_name;
+using types::permission_name;
 
-const static char KeyPrefix[] = "EOS";
+const static char key_prefix[] = "EOS";
 
-const static AccountName EosContractName = N(eos);
+const static account_name eos_contract_name = N(eos);
 
-const static AccountName NobodyAccountName = N(nobody);
-const static AccountName AnybodyAccountName = N(anybody);
-const static AccountName ProducersAccountName = N(producers);
+const static account_name nobody_account_name = N(nobody);
+const static account_name anybody_account_name = N(anybody);
+const static account_name producers_account_name = N(producers);
 
-const static PermissionName ActiveName = N(active);
-const static PermissionName OwnerName = N(owner);
+const static permission_name active_name = N(active);
+const static permission_name owner_name = N(owner);
 
-const static ShareType InitialTokenSupply = Asset::fromString("90000000.0000 EOS").amount;
+const static share_type initial_token_supply = asset::from_string("90000000.0000 EOS").amount;
 
-const static int BlockIntervalSeconds = 3;
+const static int block_interval_seconds = 3;
 
 /** Percentages are fixed point with a denominator of 10,000 */
-const static int Percent100 = 10000;
-const static int Percent1 = 100;
+const static int percent100 = 10000;
+const static int percent1 = 100;
 
-const static int DefaultPerAuthAccountTimeFrameSeconds = 18;
-const static int DefaultPerAuthAccount = 1800;
-const static int DefaultPerCodeAccountTimeFrameSeconds = 18;
-const static int DefaultPerCodeAccount = 18000;
+const static int default_per_auth_account_time_frame_seconds = 18;
+const static int default_per_auth_account = 1800;
+const static int default_per_code_account_time_frame_seconds = 18;
+const static int default_per_code_account = 18000;
 
-const static UInt32 DefaultMaxBlockSize = 5 * 1024 * 1024;
-const static UInt32 DefaultTargetBlockSize = 128 * 1024;
-const static UInt64 DefaultMaxStorageSize = 10 * 1024;
-const static ShareType DefaultElectedPay = Asset(100).amount;
-const static ShareType DefaultRunnerUpPay = Asset(75).amount;
-const static ShareType DefaultMinEosBalance = Asset(100).amount;
-const static UInt32 DefaultMaxTrxLifetime = 60*60;
-const static UInt16 DefaultAuthDepthLimit = 6;
-const static UInt32 DefaultMaxTrxRuntime = 10*1000;
-const static UInt16 DefaultInlineDepthLimit = 4;
-const static UInt32 DefaultMaxInlineMsgSize = 4 * 1024;
-const static UInt32 DefaultMaxGenTrxSize = 64 * 1024;
-const static UInt32 ProducersAuthorityThreshold = 14;
+const static uint32 default_max_block_size = 5 * 1024 * 1024;
+const static uint32 default_target_block_size = 128 * 1024;
+const static uint64 default_max_storage_size = 10 * 1024;
+const static share_type default_elected_pay = asset(100).amount;
+const static share_type default_runner_up_pay = asset(75).amount;
+const static share_type default_min_eos_balance = asset(100).amount;
+const static uint32 default_max_trx_lifetime = 60*60;
+const static uint16 default_auth_depth_limit = 6;
+const static uint32 default_max_trx_runtime = 10*1000;
+const static uint16 default_inline_depth_limit = 4;
+const static uint32 default_max_inline_msg_size = 4 * 1024;
+const static uint32 default_max_gen_trx_size = 64 * 1024;
+const static uint32 producers_authority_threshold = 14;
 
-const static int BlocksPerRound = 21;
-const static int VotedProducersPerRound = 20;
-const static int IrreversibleThresholdPercent = 70 * Percent1;
-const static int MaxProducerVotes = 30;
+const static int blocks_per_round = 21;
+const static int voted_producers_per_round = 20;
+const static int irreversible_threshold_percent = 70 * percent1;
+const static int max_producer_votes = 30;
 
-const static UInt128 ProducerRaceLapLength = std::numeric_limits<UInt128>::max();
+const static uint128 producer_race_lap_length = std::numeric_limits<uint128>::max();
 
-const static auto StakedBalanceCooldownSeconds = fc::days(3).to_seconds();
+const static auto staked_balance_cooldown_seconds = fc::days(3).to_seconds();
 } } // namespace eosio::config
 
 template<typename Number>
-Number EOS_PERCENT(Number value, int percentage) {
-   return value * percentage / eosio::config::Percent100;
+Number eos_percent(Number value, int percentage) {
+   return value * percentage / eosio::config::percent100;
 }
