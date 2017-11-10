@@ -1,5 +1,8 @@
 #pragma once
 
+#include <eos/chain/config.hpp>
+#include <eos/chain/types.hpp>
+
 namespace eosio { namespace chain { namespace contracts {
 
 struct transfer {
@@ -12,6 +15,14 @@ struct transfer {
    account_name   to;
    uint64_t       amount;
    string         memo;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(transfer);
+   }
 };
 
 template<> struct get_struct<transfer> {
@@ -36,6 +47,14 @@ struct lock {
    account_name                      from;
    account_name                      to;
    share_type                        amount;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(lock);
+   }
 };
 
 template<> struct get_struct<lock> {
@@ -58,6 +77,14 @@ struct unlock {
 
    account_name                      account;
    share_type                        amount;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(unlock);
+   }
 };
 
 template<> struct get_struct<unlock> {
@@ -79,6 +106,14 @@ struct claim {
 
    account_name                      account;
    share_type                        amount;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(claim);
+   }
 };
 
 template<> struct get_struct<claim> {
@@ -104,6 +139,14 @@ struct newaccount {
    authority                        active;
    authority                        recovery;
    asset                            deposit;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(newaccount);
+   }
 };
 
 template<> struct get_struct<newaccount> {
@@ -132,6 +175,14 @@ struct setcode {
    uint8_t                          vmversion;
    bytes                            code;
    abi                              abi;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(setcode);
+   }
 };
 
 template<> struct get_struct<setcode> {
@@ -157,6 +208,14 @@ struct setproducer {
    account_name                      name;
    public_key                        key;
    blockchain_configuration          configuration;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(setproducer);
+   }
 };
 
 template<> struct get_struct<setproducer> {
@@ -180,6 +239,14 @@ struct okproducer {
    account_name                      voter;
    account_name                      producer;
    int8_t                            approve;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(okproducer);
+   }
 };
 
 template<> struct get_struct<okproducer> {
@@ -202,6 +269,14 @@ struct setproxy {
 
    account_name                      stakeholder;
    account_name                      proxy;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(setproxy);
+   }
 };
 
 template<> struct get_struct<setproxy> {
@@ -225,6 +300,14 @@ struct updateauth {
    permission_name                   permission;
    permission_name                   parent;
    authority                        authority;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(updateauth);
+   }
 };
 
 template<> struct get_struct<updateauth> {
@@ -248,6 +331,14 @@ struct deleteauth {
 
    account_name                      account;
    permission_name                   permission;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(deleteauth);
+   }
 };
 
 template<> struct get_struct<deleteauth> {
@@ -271,6 +362,14 @@ struct linkauth {
    account_name                      code;
    action_name                        type;
    permission_name                   requirement;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(linkauth);
+   }
 };
 
 template<> struct get_struct<linkauth> {
@@ -295,6 +394,14 @@ struct unlinkauth {
    account_name                      account;
    account_name                      code;
    action_name                       type;
+
+   static constexpr scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static constexpr action_name get_name() {
+      return N(unlinkauth);
+   }
 };
 
 template<> struct get_struct<unlinkauth> {
@@ -310,3 +417,17 @@ template<> struct get_struct<unlinkauth> {
 };
 
 } } } /// namespace eosio::chain::contracts
+
+FC_REFLECT( eosio::chain::contracts::transfer                         , (from)(to)(amount)(memo) )
+FC_REFLECT( eosio::chain::contracts::lock                             , (from)(to)(amount) )
+FC_REFLECT( eosio::chain::contracts::unlock                           , (account)(amount) )
+FC_REFLECT( eosio::chain::contracts::claim                            , (account)(amount) )
+FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery)(deposit) )
+FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code)(abi) )
+FC_REFLECT( eosio::chain::contracts::setproducer                      , (name)(key)(configuration) )
+FC_REFLECT( eosio::chain::contracts::okproducer                       , (voter)(producer)(approve) )
+FC_REFLECT( eosio::chain::contracts::setproxy                         , (stakeholder)(proxy) )
+FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(authority) )
+FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
+FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
+FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account)(code)(type) )

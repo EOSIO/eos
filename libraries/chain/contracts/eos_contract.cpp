@@ -146,7 +146,7 @@ void apply_eos_lock(apply_context& context) {
 
    context.require_scope(lock.to);
    context.require_scope(lock.from);
-   context.require_scope(config::eos_contract_name);
+   context.require_scope(config::system_account_name);
 
    context.require_authorization(lock.from);
 
@@ -279,7 +279,7 @@ void apply_eos_okproducer(apply_context& context) {
    context.require_recipient(approve.voter);
    context.require_recipient(approve.producer);
 
-   context.require_scope(config::eos_contract_name);
+   context.require_scope(config::system_account_name);
    context.require_scope(approve.voter);
    context.require_authorization(approve.voter);
 
