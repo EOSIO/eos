@@ -144,7 +144,7 @@ namespace eosio { namespace chain {
    using transaction_id_type = checksum_type;
    using digest_type         = checksum_type;
    using weight_type         = uint16_t;
-
+   using block_num_type      = uint32_t;
    using share_type          = uint64_t;
 
    

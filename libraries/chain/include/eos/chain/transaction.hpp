@@ -34,19 +34,19 @@ namespace eosio { namespace chain {
     *  were properly declared when it executes.
     */
    struct action {
-      scope_name                scope;
+      scope_name                 scope;
       action_name                name;
       vector<permission_level>   permissions;
-      bytes                      data;
+      vector<char>               data;
 
       action(){}
 
       template<typename T>
       action( vector<permission_level> auth, T&& value ) {
-        scope       = T::get_action_scope;
-        name        = T::get_action_name;
-        permissions = move(auth);
-        data        = fc::raw::pack(value);
+         scope       = T::get_scope;
+         name        = T::get_name;
+         permissions = move(auth);
+         data        = fc::raw::pack(value);
       }
 
       template<typename T>
@@ -108,7 +108,8 @@ namespace eosio { namespace chain {
       block_num_type get_ref_blocknum( block_num_type head_blocknum )const {
          return ((head_blocknum/0xffff)*0xffff) + head_blocknum%0xffff;
       }
-      void set_reference_block(transaction& t, const block_id_type& reference_block);
+      void set_reference_block( const block_id_type& reference_block );
+      bool verify_reference_block( const block_id_type& reference_block );
    };
 
    /**
@@ -122,12 +123,17 @@ namespace eosio { namespace chain {
       vector<action>         actions;
 
       transaction_id_type id()const;
+      digest_type         sig_digest( const chain_id_type& chain_id )const;
    };
 
    struct signed_transaction : public transaction {
       vector<signature_type> signatures;
 
+      const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
+      signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
+      flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;
    };
+
 
    /**
     *  When a transaction is generated it can be scheduled to occur
@@ -145,4 +151,10 @@ namespace eosio { namespace chain {
    };
 
 } } // eosio::chain
+
+FC_REFLECT( eosio::chain::permission_level, (actor)(level) )
+FC_REFLECT( eosio::chain::action, (scope)(name)(permissions)(data) )
+FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
+FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (read_scope)(write_scope)(actions) )
+FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 

@@ -1,5 +1,5 @@
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/types.hpp>
+#include <eos/chain/config.hpp>
+#include <eos/chain/types.hpp>
 
 namespace eosio { namespace chain {
 

@@ -5,6 +5,7 @@
 #pragma once
 #include <eos/chain/block_timestamp.hpp>
 #include <eos/chain/transaction.hpp>
+#include <eos/chain/producer_schedule.hpp>
 
 namespace eosio { namespace chain {
 
@@ -73,7 +74,7 @@ namespace eosio { namespace chain {
     *  tree of a block should be generated over a set of message IDs rather than a set of
     *  transaction ids. 
     */
-   struct block_summary : public signed_block_header {
+   struct signed_block_summary : public signed_block_header {
       typedef vector<transaction_receipt>   shard; /// new or generated transactions 
       typedef vector<shard>                 cycle;
 
@@ -88,14 +89,17 @@ namespace eosio { namespace chain {
     * The transactions are grouped to mirror the cycles in block_summary, generated
     * transactions are not included.  
     */
-   struct signed_block : public block_summary {
+   struct signed_block : public signed_block_summary {
       vector<signed_transaction>   input_transactions; /// this is loaded and indexed into map<id,trx> that is referenced by summary
    };
 
 
 } } // eosio::chain
 
-FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)(transaction_merkle_root)(producer)(producer_changes))
+FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
+           (transaction_mroot)(message_mroot)(block_mroot)
+           (producer)(new_producers))
+
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
-FC_REFLECT(eosio::chain::thread, (generated_input)(user_input) )
-FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (cycles))
+FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (cycles_summary))
+FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (input_transactions))

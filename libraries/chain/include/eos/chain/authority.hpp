@@ -12,17 +12,17 @@ namespace eosio { namespace chain {
 
 struct permission_level_weight {
    permission_level  permission;
-   uint16_t            weight;
+   weight_type       weight;
 };
 
 struct key_weight {
    public_key_type key;
-   uint16_t        weight;
+   weight_type     weight;
 };
 
 struct authority {
-  uint32_t threshold = 0;
-  vector<permission_level_weight> accounts;
+  uint32_t                          threshold = 0;
+  vector<permission_level_weight>   accounts;
   vector<key_weight>                keys;
 };
 
