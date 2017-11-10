@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/chain_config.hpp>
 
 #include <boost/range/algorithm/nth_element.hpp>
 
@@ -10,22 +10,6 @@
 
 namespace eosio { namespace chain {
 
-template <typename T>
-struct assign_visitor {
-   T& a;
-   const T& b;
-
-   template <typename Member, class Class, Member (Class::*member)>
-   void operator() (const char*) const {
-      a.*member = b.*member;
-   }
-};
-
-BlockchainConfiguration& BlockchainConfiguration::operator=(const types::BlockchainConfiguration& other) {
-   if (&other != this)
-      fc::reflector<BlockchainConfiguration>::visit(assign_visitor<types::BlockchainConfiguration>{*this, other});
-   return *this;
-}
 
 template <typename T, typename Range>
 struct properties_median_calculator_visitor {
@@ -43,20 +27,17 @@ struct properties_median_calculator_visitor {
    T& medians;
    mutable Range votes;
 };
+
+
 template <typename T, typename Range>
 properties_median_calculator_visitor<T, Range> get_median_properties_calculator(T& medians, Range&& votes) {
    return properties_median_calculator_visitor<T, Range>(medians, std::move(votes));
 }
 
-BlockchainConfiguration BlockchainConfiguration::get_median_values(
-      std::vector<BlockchainConfiguration> votes) {
-   BlockchainConfiguration results;
-   fc::reflector<BlockchainConfiguration>::visit(get_median_properties_calculator(results, std::move(votes)));
+chain_config chain_config::get_median_values( vector<chain_config> votes) {
+   chain_config results;
+   fc::reflector<chain_config>::visit(get_median_properties_calculator(results, std::move(votes)));
    return results;
-}
-
-std::ostream& operator<< (std::ostream& s, const BlockchainConfiguration& p) {
-   return s << fc::json::to_string(p);
 }
 
 template <typename T>
@@ -72,13 +53,13 @@ struct comparison_visitor {
    }
 };
 
-bool operator==(const types::BlockchainConfiguration& a, const types::BlockchainConfiguration& b) {
+bool operator==(const chain_config& a, const chain_config& b) {
    // Yes, it's gross, I'm using a boolean exception to direct normal control flow... that's why it's buried deep in an
    // implementation detail file. I think it's worth it for the generalization, though: this code keeps working no
-   // matter what updates happen to BlockchainConfiguration
+   // matter what updates happen to chain_config
    if (&a != &b) {
       try {
-         fc::reflector<BlockchainConfiguration>::visit(comparison_visitor<types::BlockchainConfiguration>{a, b});
+         fc::reflector<chain_config>::visit(comparison_visitor<chain_config>{a, b});
       } catch (bool) {
          return false;
       }

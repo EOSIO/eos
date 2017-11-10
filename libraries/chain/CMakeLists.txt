@@ -16,7 +16,7 @@ add_library( eos_chain
              get_config.cpp
 
              block_log.cpp
-             BlockchainConfiguration.cpp
+             chain_config.cpp
 
              types.cpp
              chain_administration_interface.cpp

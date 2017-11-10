@@ -28,7 +28,7 @@ struct chain_config {
    uint32_t   max_inline_message_size;
    uint32_t   max_generated_transaction_size;
 
-   static chain_config get_median_values( const vector<chain_config>& votes );
+   static chain_config get_median_values( vector<chain_config> votes );
 };
 
        bool operator==(const chain_config& a, const chain_config& b);
