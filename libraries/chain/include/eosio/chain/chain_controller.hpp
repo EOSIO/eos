@@ -27,7 +27,6 @@ namespace eosio { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
    using applied_irreverisable_block_func = fc::optional<signal<void(const signed_block&)>::slot_type>;
-   struct path_cons_list;
 
    /**
     *   @class database
