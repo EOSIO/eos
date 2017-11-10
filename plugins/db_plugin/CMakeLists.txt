@@ -19,16 +19,16 @@ if (libmongoc-1.0_FOUND)
     # mongo-cxx-driver libraries libmongocxx and libbsoncxx.
 
     find_package(libbsoncxx REQUIRED)
-    message("Found bsoncxx headers: ${LIBBSONCXX_INCLUDE_DIRS}")
+    message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_INCLUDE_DIRS}")
     find_library(EOS_LIBBSONCXX ${LIBBSONCXX_LIBRARIES}
                  PATHS ${LIBBSONCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    message("Found bsoncxx library: ${EOS_LIBBSONCXX}")
+    message(STATUS "Found bsoncxx library: ${EOS_LIBBSONCXX}")
 
     find_package(libmongocxx REQUIRED)
-    message("Found mongocxx headers: ${LIBMONGOCXX_INCLUDE_DIRS}")
+    message(STATUS "Found mongocxx headers: ${LIBMONGOCXX_INCLUDE_DIRS}")
     find_library(EOS_LIBMONGOCXX ${LIBMONGOCXX_LIBRARIES}
                  PATHS ${LIBMONGOCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    message("Found mongocxx library: ${EOS_LIBMONGOCXX}")
+    message(STATUS "Found mongocxx library: ${EOS_LIBMONGOCXX}")
 
     add_definitions(-DMONGODB)
 else()
