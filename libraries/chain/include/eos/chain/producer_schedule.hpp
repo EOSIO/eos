@@ -1,3 +1,4 @@
+#pragma once
 #include <eos/chain/config.hpp>
 #include <eos/chain/types.hpp>
 

@@ -45,13 +45,19 @@ const static uint32_t DefaultMaxInlineMsgSize = 4 * 1024;
 const static uint32_t DefaultMaxGenTrxSize = 64 * 1024;
 const static uint32_t ProducersAuthorityThreshold = 14;
 
-const static int ProducerRepetitions = 4;
-const static int BlocksPerRound = 21 * ProducerRepetitions;
-const static int VotedProducersPerRound = 20;
-const static int IrreversibleThresholdPercent = 70 * Percent1;
-const static int MaxProducerVotes = 30;
+/**
+ *  The number of sequential blocks produced by a single producer
+ */
+const static int producer_repeitions = 4;
 
-const static uint128_t ProducerRaceLapLength = std::numeric_limits<uint128_t>::max();
+/**
+ * The number of blocks produced per round is based upon all producers having a chance
+ * to produce all of their consecutive blocks.
+ */
+const static int blocks_per_round = producer_count * producer_repeitions;
+
+const static int irreversible_threshold_percent= 70 * Percent1;
+const static int max_producer_votes = 30;
 
 const static auto staked_balance_cooldown_sec  = fc::days(3).to_seconds();
 } } // namespace eosio::config

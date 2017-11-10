@@ -26,10 +26,8 @@ namespace eosio { namespace chain {
          OBJECT_CTOR(transaction_object)
 
          id_type             id;
-         SignedTransaction  trx;
+         time_point_sec      expiration;
          transaction_id_type trx_id;
-
-         time_point_sec get_expiration()const { return trx.expiration; }
    };
 
    struct by_expiration;
@@ -37,9 +35,14 @@ namespace eosio { namespace chain {
    using transaction_multi_index = chainbase::shared_multi_index_container<
       transaction_object,
       indexed_by<
-         ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_object::id_type, id)>,
-         hashed_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id), std::hash<transaction_id_type>>,
-         ordered_non_unique<tag<by_expiration>, const_mem_fun<transaction_object, time_point_sec, &transaction_object::get_expiration>>
+         ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_object::id_type, id)>,
+         ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id)>,
+         ordered_unique< tag<by_expiration>,
+            composite_key< transaction_object,
+               BOOST_MULTI_INDEX_MEMBER( transaction_object, time_point_sec, expiration ),
+               BOOST_MULTI_INDEX_MEMBER( transaction_object, transaction_object::id_type, id)
+            >
+         >
       >
    >;
 
@@ -48,4 +51,3 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
 
-FC_REFLECT( eosio::chain::transaction_object, (trx)(trx_id) )

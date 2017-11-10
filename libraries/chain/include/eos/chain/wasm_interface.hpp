@@ -1,94 +1,64 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #pragma once
 #include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
-#include <eos/chain/message_handling_contexts.hpp>
-#include <Runtime/Runtime.h>
-#include "IR/Module.h"
+#include <eos/chain/types.hpp>
+
+namespace Runtime {
+   struct MemoryInstance;
+}
 
 namespace eosio { namespace chain {
 
-class chain_controller;
-class wasm_memory;
+   class apply_context;
 
-/**
- * @class wasm_interface
- *
- * EOS uses the wasm-jit library to evaluate web assembly code. This library relies
- * upon a singlton interface which means there can be only one instance. This interface
- * is designed to wrap that singlton interface and potentially make it thread-local state
- * in the future.
- */
-class wasm_interface {
-   public:
-      enum key_type {
-         str,
-         i64,
-         i128i128,
-         i64i64i64,
-         invalid_key_type
-      };
-      typedef map<name, key_type> table_map;
+   /**
+    * @class wasm_interface
+    *
+    * EOS.IO uses the wasm-jit library to evaluate web assembly code. This library relies
+    * upon a singlton thread-local interface which means there can be only one instance 
+    * per thread. 
+    *
+    */
+   class wasm_interface {
+      public:
+         static wasm_interface& get();
 
-      struct module_state {
-         Runtime::ModuleInstance* instance     = nullptr;
-         IR::Module*              module       = nullptr;
-         int                      mem_start    = 0;
-         int                      mem_end      = 1<<16;
-         vector<char>             init_memory;
-         fc::sha256               code_version;
-         table_map                 table_key_types;
-         bool                     tables_fixed = false;
-      };
+         Runtime::MemoryInstance* memory()const;
+         uint32_t                 memory_size()const;
 
-      static wasm_interface& get();
+         /**
+          * Will initalize the given code or used a cached version if one exists for
+          * the given codeid.  
+          *
+          * @param wasmcode - code in wasm format 
+          */
+         void load( digest_type codeid, const char* wasmcode, size_t codesize );
 
-      void init( apply_context& c );
-      void apply( apply_context& c, uint32_t execution_time, bool received_block );
-      void validate( apply_context& c );
-      void precondition( apply_context& c );
-
-      int64_t current_execution_time();
-
-      /*
-      static key_type    to_key_type(const table_type_name& type_name);
-      static std::string to_type_name(key_type key_type);
-      */
-
-      apply_context*       current_apply_context        = nullptr;
-      apply_context*       current_validate_context     = nullptr;
-      apply_context*       current_precondition_context = nullptr;
-
-      Runtime::MemoryInstance*   current_memory  = nullptr;
-      Runtime::ModuleInstance*   current_module  = nullptr;
-      module_state*               current_state   = nullptr;
-      wasm_memory*               current_memory_management = nullptr;
-      table_map*                  table_key_types = nullptr;
-      bool                       tables_fixed    = false;
-
-      uint32_t                   checktime_limit = 0;
-
-   private:
-      void load( const account_name& name, const chainbase::database& db );
-
-      char* vm_allocate( int bytes );   
-      void  vm_call( const char* name );
-      void  vm_validate();
-      void  vm_precondition();
-      void  vm_apply();
-      void  vm_onInit();
-      U32   vm_pointer_to_offset( char* );
+         /**
+          * If there exists a cached version of the code for codeid then it is released
+          */
+         void unload( digest_type codeid );
 
 
+         /**
+          * Calls the init() method on the currently loaded code
+          *
+          * @param context - the interface by which the contract can interact
+          * with blockchain state.
+          */
+         void init( apply_context& context );
 
-      map<account_name, module_state> instances;
-      fc::time_point checktimeStart;
+         /**
+          * Calls the apply() method on the currently loaded code
+          *
+          * @param context - the interface by which the contract can interact
+          * with blockchain state.
+          */
+         void apply( apply_context& context );
 
-      wasm_interface();
-};
+      private:
+         wasm_interface();
+         unique_ptr<struct wasm_interface_impl> my;
+   };
 
 
 } } // eosio::chain

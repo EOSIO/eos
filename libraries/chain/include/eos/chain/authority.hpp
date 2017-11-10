@@ -4,8 +4,7 @@
  */
 #pragma once
 #include <chainbase/chainbase.hpp>
-#include <eos/chain/types.hpp>
-#include <eos/chain/types.hpp>
+#include <eos/chain/transaction.hpp>
 
 namespace eosio { namespace chain {
 

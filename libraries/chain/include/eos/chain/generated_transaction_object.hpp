@@ -24,33 +24,39 @@ namespace eosio { namespace chain {
     */
    class generated_transaction_object : public chainbase::object<generated_transaction_object_type, generated_transaction_object>
    {
-         OBJECT_CTOR(generated_transaction_object)
-
-         enum status_type {
-            PENDING = 0,
-            PROCESSED
-         };
-
+         OBJECT_CTOR(generated_transaction_object, (packed_trx) )
 
          id_type                       id;
-         GeneratedTransaction          trx;
-         status_type                   status;
-         
-         time_point_sec get_expiration()const { return trx.expiration; }
-         generated_transaction_id_type get_id() const { return trx.id; }
-
-         struct by_trx_id;
-         struct by_expiration;
-         struct by_status;
+         transaction_id_type           trx_id;
+         account_name                  sender;
+         uint64_t                      sender_id = 0; /// ID given this transaction by the sender
+         time_point                    delay_until; /// this generated transaction will not be applied until the specified time
+         time_point                    expiration; /// this generated transaction will not be applied after this time
+         shared_vector<char>           packed_trx;
    };
+
+   struct by_trx_id;
+   struct by_expiration;
+   struct by_delay;
+   struct by_status;
 
    using generated_transaction_multi_index = chainbase::shared_multi_index_container<
       generated_transaction_object,
       indexed_by<
-         ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
-         hashed_unique<tag<generated_transaction_object::by_trx_id>, const_mem_fun<generated_transaction_object, generated_transaction_id_type, &generated_transaction_object::get_id>>,
-         ordered_non_unique<tag<generated_transaction_object::by_expiration>, const_mem_fun<generated_transaction_object, time_point_sec, &generated_transaction_object::get_expiration>>,
-         ordered_non_unique<tag<generated_transaction_object::by_status>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::status_type, status)>
+         ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
+         ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, transaction_id_type, trx_id)>,
+         ordered_unique< tag<by_expiration>, 
+            composite_key< generated_transaction_object,
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, expiration),
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
+            >
+         >,
+         ordered_unique< tag<by_delay>, 
+            composite_key< generated_transaction_object,
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, expiration),
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
+            >
+         >
       >
    >;
 
@@ -59,4 +65,3 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
 
-FC_REFLECT( eosio::chain::generated_transaction_object, (trx) )

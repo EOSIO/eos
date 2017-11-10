@@ -4,9 +4,8 @@
  */
 #pragma once
 
-#include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/chain_config.hpp>
 #include <eos/chain/types.hpp>
-#include <eos/chain/message.hpp>
 
 namespace chainbase { class database; }
 
@@ -22,11 +21,11 @@ public:
    virtual ~chain_initializer_interface();
 
    /// Retrieve the timestamp to use as the blockchain start time
-   virtual types::Time get_chain_start_time() = 0;
-   /// Retrieve the BlockchainConfiguration to use at blockchain start
-   virtual BlockchainConfiguration get_chain_start_configuration() = 0;
+   virtual time_point get_chain_start_time() = 0;
+   /// Retrieve the chain_config to use at blockchain start
+   virtual chain_config get_chain_start_configuration() = 0;
    /// Retrieve the first round of block producers
-   virtual std::array<AccountName, config::BlocksPerRound> get_chain_start_producers() = 0;
+   virtual std::array<account_name, config::producer_count> get_chain_start_producers() = 0;
 
    /**
     * @brief Install necessary indices and message handlers that chain_controller doesn't know about
@@ -39,6 +38,7 @@ public:
     * for the list of messages returned by @ref initialize_database to be processed successfully.
     */
    virtual void register_types(chain_controller& chain, chainbase::database& db) = 0;
+
    /**
     * @brief Prepare the database, creating objects and defining state which should exist before the first block
     * @param chain A reference to the @ref chain_controller
@@ -57,9 +57,9 @@ public:
     *
     * The other methods on @ref chain_initializer_interface are called to retrieve the data necessary to initialize
     * chain state the controller does understand, including the initial round of block producers, the initial chain
-    * time, and the initial @ref BlockchainConfiguration.
+    * time, and the initial @ref chain_config.
     */
-   virtual vector<Message> prepare_database(chain_controller& chain, chainbase::database& db) = 0;
+   virtual vector<action> prepare_database(chain_controller& chain, chainbase::database& db) = 0;
 };
 
 } } // namespace eosio::chain

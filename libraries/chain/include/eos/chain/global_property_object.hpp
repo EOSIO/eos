@@ -9,6 +9,7 @@
 #include <eos/chain/types.hpp>
 #include <eos/chain/block_timestamp.hpp>
 #include <eos/chain/chain_config.hpp>
+#include <eos/chain/producer_schedule.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -26,9 +27,9 @@ namespace eosio { namespace chain {
    {
       OBJECT_CTOR(global_property_object)
 
-      id_type                                         id;
-      chain_config                                    configuration;
-      std::array<account_name, config::BlocksPerRound> active_producers;
+      id_type                                          id;
+      chain_config                                     configuration;
+      producer_schedule_type                           active_producers;
    };
 
 
@@ -49,7 +50,7 @@ namespace eosio { namespace chain {
         id_type              id;
         uint32_t             head_block_number = 0;
         block_id_type        head_block_id;
-        fc::time_point       time;
+        time_point           time;
         account_name         current_producer;
         uint32_t             accounts_registered_this_interval = 0;
         
