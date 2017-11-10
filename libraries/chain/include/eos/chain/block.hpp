@@ -41,9 +41,9 @@ namespace eosio { namespace chain {
    struct signed_block_header : public block_header
    {
       block_id_type              id() const;
-      fc::ecc::public_key        signee() const;
-      void                       sign(const fc::ecc::private_key& signer);
-      bool                       validate_signee(const fc::ecc::public_key& expected_signee) const;
+      public_key_type            signee() const;
+      void                       sign(const private_key_type& signer);
+      bool                       validate_signee(const public_key_type& expected_signee) const;
 
       signature_type             producer_signature;
    };
@@ -79,6 +79,8 @@ namespace eosio { namespace chain {
       typedef vector<shard>                 cycle;
 
       vector<cycle>    cycles_summary;
+
+      checksum_type calculate_transaction_mroot()const;
    };
 
    /**

@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eos/chain/name.hpp>
+#include <fc/time.hpp>
 
 namespace eosio { namespace config {
 
@@ -52,7 +53,7 @@ const static int MaxProducerVotes = 30;
 
 const static uint128_t ProducerRaceLapLength = std::numeric_limits<uint128_t>::max();
 
-const static auto StakedBalanceCooldownSeconds = fc::days(3).to_seconds();
+const static auto staked_balance_cooldown_sec  = fc::days(3).to_seconds();
 } } // namespace eosio::config
 
 template<typename Number>

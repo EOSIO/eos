@@ -26,17 +26,17 @@ namespace eosio { namespace chain {
       return result;
    }
 
-   fc::ecc::public_key signed_block_header::signee()const
+   public_key_type signed_block_header::signee()const
    {
-      return fc::ecc::public_key(producer_signature, digest(), true/*enforce canonical*/);
+      return fc::crypto::public_key(producer_signature, digest(), true/*enforce canonical*/);
    }
 
-   void signed_block_header::sign(const fc::ecc::private_key& signer)
+   void signed_block_header::sign(const private_key_type& signer)
    {
-      producer_signature = signer.sign_compact(digest());
+      producer_signature = signer.sign(digest());
    }
 
-   bool signed_block_header::validate_signee(const fc::ecc::public_key& expected_signee)const
+   bool signed_block_header::validate_signee(const public_key_type& expected_signee)const
    {
       return signee() == expected_signee;
    }
@@ -53,43 +53,9 @@ namespace eosio { namespace chain {
       return ids.front();
    }
 
-   checksum_type signed_block::calculate_merkle_root()const
+   checksum_type signed_block_summary::calculate_transaction_mroot()const
    {
-      if(cycles.empty())
-         return checksum_type();
-
-      vector<digest_type> ids;
-      for (const auto& cycle : cycles)
-         for (const auto& thread : cycle)
-            ids.emplace_back(thread.merkle_digest());
-
-/**
- *  Suggest moving thread::merkle_digest code to return vector of ids which get added to ids above and then calculating root over all
- */
-#warning TODO  The merkle root needs to be over all transactions, but this is currently hashing all threads merkle roots which will make proofs O(N) rather than O( LOG(N) )
-
-      /**
-       *  This may require passing 
-       */
-#warning TODO  Add global incremental block header merkle   https://github.com/EOSIO/eos/issues/8
-
-      return checksum_type::hash(merkle(ids));
-   }
-
-   digest_type thread::merkle_digest() const {
-      vector<digest_type> ids;// = generated_input;
-      /*
-      ids.reserve( ids.size() + user_input.size() + output_transactions.size() );
-      */
-
-      for( const auto& trx : user_input )
-         ids.push_back( transaction_digest(trx) );
-
-      for( const auto& trx : generated_input )
-         ids.push_back( trx.id );
-
-
-      return merkle(ids);
+      return checksum_type();// TODO ::hash(merkle(ids));
    }
 
 } }
