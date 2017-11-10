@@ -238,7 +238,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
     std::string include_param = std::string("-I") + eoslib_path;
     
     eos::types::Abi output;
-    bool res = runToolOnCodeWithArgs(new GenerateAbiAction(false, opt_sfs, "", output), source, 
+    bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source, 
       {"-fparse-all-comments", "--std=c++14", "--target=wasm32", include_param});
     
     FC_ASSERT(res == true);
