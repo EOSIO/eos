@@ -2,13 +2,13 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/contracts/native_contract_chain_initializer.hpp>
-#include <eos/chain/contracts/objects.hpp>
-#include <eos/chain/contracts/eos_contract.hpp>
-#include <eos/chain/contracts/types.hpp>
+#include <eosio/chaincontracts/native_contract_chain_initializer.hpp>
+#include <eosio/chaincontracts/objects.hpp>
+#include <eosio/chaincontracts/eos_contract.hpp>
+#include <eosio/chaincontracts/types.hpp>
 
-#include <eos/chain/producer_object.hpp>
-#include <eos/chain/permission_object.hpp>
+#include <eosio/chainproducer_object.hpp>
+#include <eosio/chainpermission_object.hpp>
 
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/algorithm/copy.hpp>

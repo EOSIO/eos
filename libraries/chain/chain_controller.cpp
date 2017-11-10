@@ -3,19 +3,19 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eos/chain/chain_controller.hpp>
+#include <eosio/chainchain_controller.hpp>
 
-#include <eos/chain/block_summary_object.hpp>
-#include <eos/chain/global_property_object.hpp>
-#include <eos/chain/key_value_object.hpp>
-#include <eos/chain/action_objects.hpp>
-#include <eos/chain/generated_transaction_object.hpp>
-#include <eos/chain/transaction_object.hpp>
-#include <eos/chain/producer_object.hpp>
-#include <eos/chain/permission_link_object.hpp>
-#include <eos/chain/authority_checker.hpp>
+#include <eosio/chainblock_summary_object.hpp>
+#include <eosio/chainglobal_property_object.hpp>
+#include <eosio/chainkey_value_object.hpp>
+#include <eosio/chainaction_objects.hpp>
+#include <eosio/chaingenerated_transaction_object.hpp>
+#include <eosio/chaintransaction_object.hpp>
+#include <eosio/chainproducer_object.hpp>
+#include <eosio/chainpermission_link_object.hpp>
+#include <eosio/chainauthority_checker.hpp>
 
-#include <eos/chain/wasm_interface.hpp>
+#include <eosio/chainwasm_interface.hpp>
 
 #include <eos/utilities/rand.hpp>
 

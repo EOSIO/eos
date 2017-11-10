@@ -1,4 +1,4 @@
-#include <eos/chain/name.hpp>
+#include <eosio/chainname.hpp>
 #include <fc/variant.hpp>
 #include <boost/algorithm/string.hpp>
 #include <fc/exception/exception.hpp>
