@@ -7,7 +7,7 @@
 #include <fc/array.hpp>
 
 #include <eos/chain/types.hpp>
-#include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/blockchain_configuration.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -28,8 +28,8 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(global_property_object)
 
       id_type id;
-      BlockchainConfiguration configuration;
-      std::array<AccountName, config::BlocksPerRound> active_producers;
+      blockchain_configuration configuration;
+      std::array<account_name, config::blocks_per_round> active_producers;
    };
 
 
@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
         uint32_t          head_block_number = 0;
         block_id_type     head_block_id;
         time_point_sec    time;
-        AccountName       current_producer;
+        account_name      current_producer;
         uint32_t          accounts_registered_this_interval = 0;
         
         /**

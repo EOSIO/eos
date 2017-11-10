@@ -18,7 +18,7 @@ namespace eosio {
       block_id_type   head_id;
       string          os;
       string          agent;
-      int16_t           generation;
+      int16_t         generation;
    };
 
   enum go_away_reason {
@@ -102,7 +102,7 @@ namespace eosio {
 
   struct processed_trans_summary {
     transaction_id_type id;
-    vector<MessageOutput> outmsgs;
+    vector<message_output> outmsgs;
   };
 
   struct thread_ids {
@@ -128,7 +128,7 @@ namespace eosio {
                                       request_message,
                                       sync_request_message,
                                       block_summary_message,
-                                      SignedTransaction,
+                                      signed_transaction,
                                       signed_block>;
 
 } // namespace eosio

@@ -13,7 +13,7 @@
 #include <fc/exception/exception.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
-#include <eos/types/AbiSerializer.hpp>
+#include <eos/types/abi_serializer.hpp>
 
 #include "../common/database_fixture.hpp"
 
@@ -23,17 +23,17 @@ using namespace eosio::types;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
-fc::variant verify_round_trip_conversion( const AbiSerializer& abis, const TypeName& type, const fc::variant& var )
+fc::variant verify_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 {
-   auto bytes = abis.variantToBinary(type, var);
+   auto bytes = abis.variant_to_binary(type, var);
 
-   auto var2 = abis.binaryToVariant(type, bytes);
+   auto var2 = abis.binary_to_variant(type, bytes);
 
    std::string r = fc::json::to_string(var2);
 
    //std::cout << r << std::endl;
 
-   auto bytes2 = abis.variantToBinary(type, var2);
+   auto bytes2 = abis.variant_to_binary(type, var2);
 
    BOOST_CHECK_EQUAL( fc::to_hex(bytes), fc::to_hex(bytes2) );
 
@@ -52,105 +52,105 @@ const char* my_abi = R"=====(
       "name": "PublicKeyTypes",
       "base" : "AssetTypes",
       "fields": {
-        "publickey"      : "PublicKey",
-        "publickey_arr"  : "PublicKey[]",
+        "publickey"      : "public_key",
+        "publickey_arr"  : "public_key[]",
       }
     },{
       "name": "AssetTypes",
       "base" : "NativeTypes",
       "fields": {
-        "asset"       : "Asset",
-        "asset_arr"   : "Asset[]",
-        "price"       : "Price",
-        "price_arr"   : "Price[]",
+        "asset"       : "asset",
+        "asset_arr"   : "asset[]",
+        "price"       : "price",
+        "price_arr"   : "price[]",
       }
     },{
       "name": "NativeTypes",
       "base" : "GeneratedTypes",
       "fields" : {
-        "string"            : "String",
-        "string_arr"        : "String[]",
-        "time"              : "Time",
-        "time_arr"          : "Time[]",
-        "signature"         : "Signature",
-        "signature_arr"     : "Signature[]",
-        "checksum"          : "Checksum",
-        "checksum_arr"      : "Checksum[]",
-        "fieldname"         : "FieldName",
-        "fieldname_arr"     : "FieldName[]",
-        "fixedstring32"     : "FixedString32",
-        "fixedstring32_ar"  : "FixedString32[]",
-        "fixedstring16"     : "FixedString16",
-        "fixedstring16_ar"  : "FixedString16[]",
-        "typename"          : "TypeName",
-        "typename_arr"      : "TypeName[]",
-        "bytes"             : "Bytes",
-        "bytes_arr"         : "Bytes[]",
-        "uint8"             : "UInt8",
-        "uint8_arr"         : "UInt8[]",
-        "uint16"            : "UInt16",
-        "uint16_arr"        : "UInt16[]",
-        "uint32"            : "UInt32",
-        "uint32_arr"        : "UInt32[]",
-        "uint64"            : "UInt64",
-        "uint64_arr"        : "UInt64[]",
-        "uint128"           : "UInt128",
-        "uint128_arr"       : "UInt128[]",
-        "uint256"           : "UInt256",
-        "uint256_arr"       : "UInt256[]",
-        "int8"              : "Int8",
-        "int8_arr"          : "Int8[]",
-        "int16"             : "Int16",
-        "int16_arr"         : "Int16[]",
-        "int32"             : "Int32",
-        "int32_arr"         : "Int32[]",
-        "int64"             : "Int64",
-        "int64_arr"         : "Int64[]",
-        "name"              : "Name",
-        "name_arr"          : "Name[]",
-        "field"             : "Field",
-        "field_arr"         : "Field[]",
-        "struct"            : "Struct",
-        "struct_arr"        : "Struct[]",
-        "fields"            : "Fields",
-        "fields_arr"        : "Fields[]"
+        "string"            : "string",
+        "string_arr"        : "string[]",
+        "time"              : "time",
+        "time_arr"          : "time[]",
+        "signature"         : "signature",
+        "signature_arr"     : "signature[]",
+        "checksum"          : "checksum",
+        "checksum_arr"      : "checksum[]",
+        "fieldname"         : "field_name",
+        "fieldname_arr"     : "field_name[]",
+        "fixedstring32"     : "fixed_string32",
+        "fixedstring32_ar"  : "fixed_string32[]",
+        "fixedstring16"     : "fixed_string16",
+        "fixedstring16_ar"  : "fixed_string16[]",
+        "typename"          : "type_name",
+        "typename_arr"      : "type_name[]",
+        "bytes"             : "bytes",
+        "bytes_arr"         : "bytes[]",
+        "uint8"             : "uint8",
+        "uint8_arr"         : "uint8[]",
+        "uint16"            : "uint16",
+        "uint16_arr"        : "uint16[]",
+        "uint32"            : "uint32",
+        "uint32_arr"        : "uint32[]",
+        "uint64"            : "uint64",
+        "uint64_arr"        : "uint64[]",
+        "uint128"           : "uint128",
+        "uint128_arr"       : "uint128[]",
+        "uint256"           : "uint256",
+        "uint256_arr"       : "uint256[]",
+        "int8"              : "int8",
+        "int8_arr"          : "int8[]",
+        "int16"             : "int16",
+        "int16_arr"         : "int16[]",
+        "int32"             : "int32",
+        "int32_arr"         : "int32[]",
+        "int64"             : "int64",
+        "int64_arr"         : "int64[]",
+        "name"              : "name",
+        "name_arr"          : "name[]",
+        "field"             : "field",
+        "field_arr"         : "field[]",
+        "struct"            : "struct_t",
+        "struct_arr"        : "struct_t[]",
+        "fields"            : "fields",
+        "fields_arr"        : "fields[]"
 
       }
     },{
       "name"   : "GeneratedTypes",
       "fields" : {
-        "accountname":"AccountName",
-        "accountname_arr":"AccountName[]",
-        "permname":"PermissionName",
-        "permname_arr":"PermissionName[]",
-        "funcname":"FuncName",
-        "funcname_arr":"FuncName[]",
-        "messagename":"MessageName",
-        "messagename_arr":"MessageName[]",
-        "apermission":"AccountPermission",
-        "apermission_arr":"AccountPermission[]",
-        "message":"Message",
-        "message_arr":"Message[]",
-        "apweight":"AccountPermissionWeight",
-        "apweight_arr":"AccountPermissionWeight[]",
-        "transaction":"Transaction",
-        "transaction_arr":"Transaction[]",
-        "strx":"SignedTransaction",
-        "strx_arr":"SignedTransaction[]",
-        "kpweight":"KeyPermissionWeight",
-        "kpweight_arr":"KeyPermissionWeight[]",
-        "authority":"Authority",
-        "authority_arr":"Authority[]",
-        "blkcconfig":"BlockchainConfiguration",
-        "blkcconfig_arr":"BlockchainConfiguration[]",
-        "typedef":"TypeDef",
-        "typedef_arr":"TypeDef[]",
-        "action":"Action",
-        "action_arr":"Action[]",
-        "table":"Table",
-        "table_arr":"Table[]",
-        "abi":"Abi",
-        "abi_arr":"Abi[]"
+        "accountname":"account_name",
+        "accountname_arr":"account_name[]",
+        "permname":"permission_name",
+        "permname_arr":"permission_name[]",
+        "funcname":"func_name",
+        "funcname_arr":"func_name[]",
+        "messagename":"message_name",
+        "messagename_arr":"message_name[]",
+        "apermission":"account_permission",
+        "apermission_arr":"account_permission[]",
+        "message":"message",
+        "message_arr":"message[]",
+        "apweight":"account_permission_weight",
+        "apweight_arr":"account_permission_weight[]",
+        "transaction":"transaction",
+        "transaction_arr":"transaction[]",
+        "strx":"signed_transaction",
+        "strx_arr":"signed_transaction[]",
+        "kpweight":"key_permission_weight",
+        "kpweight_arr":"key_permission_weight[]",
+        "authority":"authority",
+        "authority_arr":"authority[]",
+        "blkcconfig":"blockchain_configuration",
+        "blkcconfig_arr":"blockchain_configuration[]",
+        "typedef":"type_def",
+        "typedef_arr":"type_def[]",
+        "action":"action",
+        "action_arr":"action[]",
+        "table":"table",
+        "table_arr":"table[]",
+        "abi":"abi",
+        "abi_arr":"abi[]"
       }
     }
   ],
@@ -169,10 +169,10 @@ BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
        "name": "transfer",
            "base": "",
            "fields": {
-             "amount64": "UInt64",
-             "amount32": "UInt32",
-             "amount16": "UInt16",
-             "amount8" : "UInt8"
+             "amount64": "uint64",
+             "amount32": "uint32",
+             "amount16": "uint16",
+             "amount8" : "uint8"
            }
          }
        ],
@@ -181,9 +181,9 @@ BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
    }
    )=====";
 
-   auto abi = fc::json::from_string(currency_abi).as<Abi>();
+   auto abi = fc::json::from_string(currency_abi).as<types::abi>();
 
-   AbiSerializer abis(abi);
+   abi_serializer abis(abi);
    abis.validate();
 
    const char* test_data = R"=====(
@@ -199,15 +199,15 @@ BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
 
    //std::cout << "var type =>" << var.get_type() << std::endl;
    
-   auto bytes = abis.variantToBinary("transfer", var);
+   auto bytes = abis.variant_to_binary("transfer", var);
 
-   auto var2 = abis.binaryToVariant("transfer", bytes);
+   auto var2 = abis.binary_to_variant("transfer", bytes);
    
    std::string r = fc::json::to_string(var2);
 
    //std::cout << r << std::endl;
    
-   auto bytes2 = abis.variantToBinary("transfer", var2);
+   auto bytes2 = abis.variant_to_binary("transfer", var2);
 
    BOOST_CHECK_EQUAL( fc::to_hex(bytes), fc::to_hex(bytes2) );
 
@@ -217,9 +217,9 @@ BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
 { try {
 
-   auto abi = fc::json::from_string(my_abi).as<Abi>();
+   auto abi = fc::json::from_string(my_abi).as<types::abi>();
 
-   AbiSerializer abis(abi);
+   abi_serializer abis(abi);
    abis.validate();
 
    const char *my_other = R"=====(
@@ -292,30 +292,30 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
       "apweight": {"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},
       "apweight_arr": [{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}],
       "transaction"       : { 
-        "refBlockNum":"1",
-        "refBlockPrefix":"2",
+        "ref_block_num":"1",
+        "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
         "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}]
       },
       "transaction_arr": [
       { 
-        "refBlockNum":"1",
-        "refBlockPrefix":"2",
+        "ref_block_num":"1",
+        "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
         "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}]
       },
       { 
-        "refBlockNum":"2",
-        "refBlockPrefix":"3",
+        "ref_block_num":"2",
+        "ref_block_prefix":"3",
         "expiration":"2021-12-20T15:40",
         "scope":["acc3","acc4"],
         "messages":[{"code":"3344", "type":"type2", "data":"778899"}]
       }],
       "strx": {
-        "refBlockNum":"1",
-        "refBlockPrefix":"2",
+        "ref_block_num":"1",
+        "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
         "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
@@ -323,16 +323,16 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
         "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
       },
       "strx_arr": [{
-        "refBlockNum":"1",
-        "refBlockPrefix":"2",
+        "ref_block_num":"1",
+        "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
         "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
         "signatures" : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
         "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
       },{
-        "refBlockNum":"1",
-        "refBlockPrefix":"2",
+        "ref_block_num":"1",
+        "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "scope":["acc1","acc2"],
         "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
@@ -355,46 +355,46 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
          "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
          "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
        }],
-      "blkcconfig": {"maxBlockSize": "100","targetBlockSize" : "200", "maxStorageSize":"300","electedPay" : "400", "runnerUpPay" : "500", "minEosBalance" : "600", "maxTrxLifetime"  : "700"},
+      "blkcconfig": {"max_blk_size": "100","target_blk_size" : "200", "max_storage_size":"300","elected_pay" : "400", "runner_up_pay" : "500", "min_eos_balance" : "600", "max_trx_lifetime"  : "700"},
       "blkcconfig_arr": [
-        {"maxBlockSize": "100","targetBlockSize" : "200", "maxStorageSize":"300","electedPay" : "400", "runnerUpPay" : "500", "minEosBalance" : "600", "maxTrxLifetime"  : "700"},
-        {"maxBlockSize": "100","targetBlockSize" : "200", "maxStorageSize":"300","electedPay" : "400", "runnerUpPay" : "500", "minEosBalance" : "600", "maxTrxLifetime"  : "700"}
+        {"max_blk_size": "100","target_blk_size" : "200", "max_storage_size":"300","elected_pay" : "400", "runner_up_pay" : "500", "min_eos_balance" : "600", "max_trx_lifetime"  : "700"},
+        {"max_blk_size": "100","target_blk_size" : "200", "max_storage_size":"300","elected_pay" : "400", "runner_up_pay" : "500", "min_eos_balance" : "600", "max_trx_lifetime"  : "700"}
       ],
-      "typedef" : {"newTypeName":"new", "type":"old"},
-      "typedef_arr": [{"newTypeName":"new", "type":"old"},{"newTypeName":"new", "type":"old"}],
-      "action": {"action":"action1","type":"type1"},
-      "action_arr": [{"action":"action1","type":"type1"},{"action":"action2","type":"type2"}],
-      "table": {"table":"table1","type":"type1"},
-      "table_arr": [{"table":"table1","type":"type1"},{"table":"table1","type":"type1"}],
+      "typedef" : {"new_type_name":"new", "type":"old"},
+      "typedef_arr": [{"new_type_name":"new", "type":"old"},{"new_type_name":"new", "type":"old"}],
+      "action": {"action_name":"action1","type":"type1"},
+      "action_arr": [{"action_name":"action1","type":"type1"},{"action_name":"action2","type":"type2"}],
+      "table": {"table_name":"table1","type":"type1"},
+      "table_arr": [{"table_name":"table1","type":"type1"},{"table_name":"table1","type":"type1"}],
       "abi":{
-        "types" : [{"newTypeName":"new", "type":"old"}],
+        "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-        "actions" : [{"action":"action1","type":"type1"}],
-        "tables" : [{"table":"table1","type":"type1"}]
+        "actions" : [{"action_name":"action1","type":"type1"}],
+        "tables" : [{"table_name":"table1","type":"type1"}]
       },
       "abi_arr": [{
-        "types" : [{"newTypeName":"new", "type":"old"}],
+        "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-        "actions" : [{"action":"action1","type":"type1"}],
-        "tables" : [{"table":"table1","type":"type1"}]
+        "actions" : [{"action_name":"action1","type":"type1"}],
+        "tables" : [{"table_name":"table1","type":"type1"}]
       },{
-        "types" : [{"newTypeName":"new", "type":"old"}],
+        "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-        "actions" : [{"action":"action1","type":"type1"}],
-        "tables" : [{"table":"table1","type":"type1"}]
+        "actions" : [{"action_name":"action1","type":"type1"}],
+        "tables" : [{"table_name":"table1","type":"type1"}]
       }]
     }
    )=====";
 
    auto var = fc::json::from_string(my_other);
 
-   auto bytes = abis.variantToBinary("A", var);
-   auto var2 = abis.binaryToVariant("A", bytes);
+   auto bytes = abis.variant_to_binary("A", var);
+   auto var2 = abis.binary_to_variant("A", bytes);
    std::string r = fc::json::to_string(var2);
 
    std::cout << r << std::endl;
    
-   auto bytes2 = abis.variantToBinary("A", var2);
+   auto bytes2 = abis.variant_to_binary("A", var2);
 
    BOOST_CHECK_EQUAL( fc::to_hex(bytes), fc::to_hex(bytes2) );
 
@@ -406,10 +406,10 @@ BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
    const char* typedef_cycle_abi = R"=====(
    {
        "types": [{
-          "newTypeName": "A",
-          "type": "Name"
+          "new_type_name": "A",
+          "type": "name"
         },{
-          "newTypeName": "Name",
+          "new_type_name": "name",
           "type": "A"
         }],
        "structs": [],
@@ -439,13 +439,13 @@ BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
    }
    )=====";
 
-   auto abi = fc::json::from_string(typedef_cycle_abi).as<Abi>();
-   AbiSerializer abis(abi);
+   auto abi = fc::json::from_string(typedef_cycle_abi).as<types::abi>();
+   abi_serializer abis(abi);
    
    auto is_assert_exception = [](fc::assert_exception const & e) -> bool { std::cout << e.to_string() << std::endl; return true; };
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
-   abi = fc::json::from_string(struct_cycle_abi).as<Abi>();
+   abi = fc::json::from_string(struct_cycle_abi).as<types::abi>();
    abis.setAbi(abi);
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
@@ -454,7 +454,7 @@ BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    const char* test_data = R"=====(
    {
@@ -485,7 +485,7 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(lock, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -514,7 +514,7 @@ BOOST_FIXTURE_TEST_CASE(lock, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(unlock, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -540,7 +540,7 @@ BOOST_FIXTURE_TEST_CASE(unlock, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(claim, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -566,7 +566,7 @@ BOOST_FIXTURE_TEST_CASE(claim, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(okproducer, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -595,25 +595,25 @@ BOOST_FIXTURE_TEST_CASE(okproducer, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(setproducer, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    const char* test_data = R"=====(
    {
      "name" : "acct.name",
      "key" : "EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az",
      "configuration" : {
-        "maxBlockSize" : 2147483135,
-        "targetBlockSize" : 2147483145,
-        "maxStorageSize" : 9223372036854775805,
-        "electedPay" : -9223372036854775807,
-        "runnerUpPay" : -9223372036854775717,
-        "minEosBalance" : -9223372036854775707,
-        "maxTrxLifetime" : 4294967071,
-        "authDepthLimit" : 32777,
-        "maxTrxRuntime" : 4294967007,
-        "inlineDepthLimit" : 32770,
-        "maxInlineMsgSize" : 4294966943,
-        "maxGenTrxSize" : 4294966911
+        "max_blk_size" : 2147483135,
+        "target_blk_size" : 2147483145,
+        "max_storage_size" : 9223372036854775805,
+        "elected_pay" : -9223372036854775807,
+        "runner_up_pay" : -9223372036854775717,
+        "min_eos_balance" : -9223372036854775707,
+        "max_trx_lifetime" : 4294967071,
+        "auth_depth_limit" : 32777,
+        "max_trx_runtime" : 4294967007,
+        "in_depth_limit" : 32770,
+        "max_in_msg_size" : 4294966943,
+        "max_gen_trx_size" : 4294966911
      }
    }
    )=====";
@@ -623,40 +623,40 @@ BOOST_FIXTURE_TEST_CASE(setproducer, testing_fixture)
    auto setproducer = var.as<eosio::types::setproducer>();
    BOOST_CHECK_EQUAL("acct.name", setproducer.name);
    BOOST_CHECK_EQUAL("EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az", (std::string)setproducer.key);
-   BOOST_CHECK_EQUAL(2147483135u, setproducer.configuration.maxBlockSize);
-   BOOST_CHECK_EQUAL(2147483145u, setproducer.configuration.targetBlockSize);
-   BOOST_CHECK_EQUAL(9223372036854775805u, setproducer.configuration.maxStorageSize);
-   BOOST_CHECK_EQUAL(-9223372036854775807, setproducer.configuration.electedPay);
-   BOOST_CHECK_EQUAL(-9223372036854775717, setproducer.configuration.runnerUpPay);
-   BOOST_CHECK_EQUAL(-9223372036854775707, setproducer.configuration.minEosBalance);
-   BOOST_CHECK_EQUAL(4294967071u, setproducer.configuration.maxTrxLifetime);
-   BOOST_CHECK_EQUAL(32777u, setproducer.configuration.authDepthLimit);
-   BOOST_CHECK_EQUAL(4294967007u, setproducer.configuration.maxTrxRuntime);
-   BOOST_CHECK_EQUAL(32770u, setproducer.configuration.inlineDepthLimit);
-   BOOST_CHECK_EQUAL(4294966943u, setproducer.configuration.maxInlineMsgSize);
-   BOOST_CHECK_EQUAL(4294966911u, setproducer.configuration.maxGenTrxSize);
+   BOOST_CHECK_EQUAL(2147483135u, setproducer.configuration.max_blk_size);
+   BOOST_CHECK_EQUAL(2147483145u, setproducer.configuration.target_blk_size);
+   BOOST_CHECK_EQUAL(9223372036854775805u, setproducer.configuration.max_storage_size);
+   BOOST_CHECK_EQUAL(-9223372036854775807, setproducer.configuration.elected_pay);
+   BOOST_CHECK_EQUAL(-9223372036854775717, setproducer.configuration.runner_up_pay);
+   BOOST_CHECK_EQUAL(-9223372036854775707, setproducer.configuration.min_eos_balance);
+   BOOST_CHECK_EQUAL(4294967071u, setproducer.configuration.max_trx_lifetime);
+   BOOST_CHECK_EQUAL(32777u, setproducer.configuration.auth_depth_limit);
+   BOOST_CHECK_EQUAL(4294967007u, setproducer.configuration.max_trx_runtime);
+   BOOST_CHECK_EQUAL(32770u, setproducer.configuration.in_depth_limit);
+   BOOST_CHECK_EQUAL(4294966943u, setproducer.configuration.max_in_msg_size);
+   BOOST_CHECK_EQUAL(4294966911u, setproducer.configuration.max_gen_trx_size);
 
    auto var2 = verify_round_trip_conversion( abis, "setproducer", var );
    auto setproducer2 = var2.as<eosio::types::setproducer>();
-   BOOST_CHECK_EQUAL(setproducer.configuration.maxBlockSize, setproducer2.configuration.maxBlockSize);
-   BOOST_CHECK_EQUAL(setproducer.configuration.targetBlockSize, setproducer2.configuration.targetBlockSize);
-   BOOST_CHECK_EQUAL(setproducer.configuration.maxStorageSize, setproducer2.configuration.maxStorageSize);
-   BOOST_CHECK_EQUAL(setproducer.configuration.electedPay, setproducer2.configuration.electedPay);
-   BOOST_CHECK_EQUAL(setproducer.configuration.runnerUpPay, setproducer2.configuration.runnerUpPay);
-   BOOST_CHECK_EQUAL(setproducer.configuration.minEosBalance, setproducer2.configuration.minEosBalance);
-   BOOST_CHECK_EQUAL(setproducer.configuration.maxTrxLifetime, setproducer2.configuration.maxTrxLifetime);
-   BOOST_CHECK_EQUAL(setproducer.configuration.authDepthLimit, setproducer2.configuration.authDepthLimit);
-   BOOST_CHECK_EQUAL(setproducer.configuration.maxTrxRuntime, setproducer2.configuration.maxTrxRuntime);
-   BOOST_CHECK_EQUAL(setproducer.configuration.inlineDepthLimit, setproducer2.configuration.inlineDepthLimit);
-   BOOST_CHECK_EQUAL(setproducer.configuration.maxInlineMsgSize, setproducer2.configuration.maxInlineMsgSize);
-   BOOST_CHECK_EQUAL(setproducer.configuration.maxGenTrxSize, setproducer2.configuration.maxGenTrxSize);
+   BOOST_CHECK_EQUAL(setproducer.configuration.max_blk_size, setproducer2.configuration.max_blk_size);
+   BOOST_CHECK_EQUAL(setproducer.configuration.target_blk_size, setproducer2.configuration.target_blk_size);
+   BOOST_CHECK_EQUAL(setproducer.configuration.max_storage_size, setproducer2.configuration.max_storage_size);
+   BOOST_CHECK_EQUAL(setproducer.configuration.elected_pay, setproducer2.configuration.elected_pay);
+   BOOST_CHECK_EQUAL(setproducer.configuration.runner_up_pay, setproducer2.configuration.runner_up_pay);
+   BOOST_CHECK_EQUAL(setproducer.configuration.min_eos_balance, setproducer2.configuration.min_eos_balance);
+   BOOST_CHECK_EQUAL(setproducer.configuration.max_trx_lifetime, setproducer2.configuration.max_trx_lifetime);
+   BOOST_CHECK_EQUAL(setproducer.configuration.auth_depth_limit, setproducer2.configuration.auth_depth_limit);
+   BOOST_CHECK_EQUAL(setproducer.configuration.max_trx_runtime, setproducer2.configuration.max_trx_runtime);
+   BOOST_CHECK_EQUAL(setproducer.configuration.in_depth_limit, setproducer2.configuration.in_depth_limit);
+   BOOST_CHECK_EQUAL(setproducer.configuration.max_in_msg_size, setproducer2.configuration.max_in_msg_size);
+   BOOST_CHECK_EQUAL(setproducer.configuration.max_gen_trx_size, setproducer2.configuration.max_gen_trx_size);
 
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(setproxy, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -682,7 +682,7 @@ BOOST_FIXTURE_TEST_CASE(setproxy, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(linkauth, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -714,7 +714,7 @@ BOOST_FIXTURE_TEST_CASE(linkauth, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(unlinkauth, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -743,7 +743,7 @@ BOOST_FIXTURE_TEST_CASE(unlinkauth, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -810,7 +810,7 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(deleteauth, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -836,7 +836,7 @@ BOOST_FIXTURE_TEST_CASE(deleteauth, testing_fixture)
 BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
 { try {
 
-   AbiSerializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -989,27 +989,27 @@ BOOST_FIXTURE_TEST_CASE(abi_type_repeat, testing_fixture)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "newTypeName": "AccountName",
-         "type": "Name"
+         "new_type_name": "account_name",
+         "type": "name"
        },{
-         "newTypeName": "AccountName",
-         "type": "Name"
+         "new_type_name": "account_name",
+         "type": "name"
        }
      ],
      "structs": [{
          "name": "transfer",
          "base": "",
          "fields": {
-           "from": "AccountName",
-           "to": "AccountName",
-           "amount": "UInt64"
+           "from": "account_name",
+           "to": "account_name",
+           "amount": "uint64"
          }
        },{
          "name": "account",
          "base": "",
          "fields": {
-           "account": "Name",
-           "balance": "UInt64"
+           "account": "name",
+           "balance": "uint64"
          }
        }
      ],
@@ -1021,17 +1021,17 @@ BOOST_FIXTURE_TEST_CASE(abi_type_repeat, testing_fixture)
      "tables": [{
          "table": "account",
          "type": "account",
-         "indextype": "i64",
-         "keynames" : ["account"],
-         "keytypes" : ["Name"]
+         "index_type": "i64",
+         "key_names" : ["account"],
+         "key_types" : ["name"]
        }
      ]
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("types.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
@@ -1040,24 +1040,24 @@ BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "newTypeName": "AccountName",
-         "type": "Name"
+         "new_type_name": "account_name",
+         "type": "name"
        }
      ],
      "structs": [{
          "name": "transfer",
          "base": "",
          "fields": {
-           "from": "AccountName",
-           "to": "AccountName",
-           "amount": "UInt64"
+           "from": "account_name",
+           "to": "account_name",
+           "amount": "uint64"
          }
        },{
          "name": "transfer",
          "base": "",
          "fields": {
-           "account": "Name",
-           "balance": "UInt64"
+           "account": "name",
+           "balance": "uint64"
          }
        }
      ],
@@ -1069,17 +1069,17 @@ BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
      "tables": [{
          "table": "account",
          "type": "account",
-         "indextype": "i64",
-         "keynames" : ["account"],
-         "keytypes" : ["Name"]
+         "index_type": "i64",
+         "key_names" : ["account"],
+         "key_types" : ["name"]
        }
      ]
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("structs.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
@@ -1088,24 +1088,24 @@ BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "newTypeName": "AccountName",
-         "type": "Name"
+         "new_type_name": "account_name",
+         "type": "name"
        }
      ],
      "structs": [{
          "name": "transfer",
          "base": "",
          "fields": {
-           "from": "AccountName",
-           "to": "AccountName",
-           "amount": "UInt64"
+           "from": "account_name",
+           "to": "account_name",
+           "amount": "uint64"
          }
        },{
          "name": "account",
          "base": "",
          "fields": {
-           "account": "Name",
-           "balance": "UInt64"
+           "account": "name",
+           "balance": "uint64"
          }
        }
      ],
@@ -1120,17 +1120,17 @@ BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
      "tables": [{
          "table": "account",
          "type": "account",
-         "indextype": "i64",
-         "keynames" : ["account"],
-         "keytypes" : ["Name"]
+         "index_type": "i64",
+         "key_names" : ["account"],
+         "key_types" : ["name"]
        }
      ]
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("actions.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
@@ -1139,24 +1139,24 @@ BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "newTypeName": "AccountName",
-         "type": "Name"
+         "new_type_name": "account_name",
+         "type": "name"
        }
      ],
      "structs": [{
          "name": "transfer",
          "base": "",
          "fields": {
-           "from": "AccountName",
-           "to": "AccountName",
-           "amount": "UInt64"
+           "from": "account_name",
+           "to": "account_name",
+           "amount": "uint64"
          }
        },{
          "name": "account",
          "base": "",
          "fields": {
-           "account": "Name",
-           "balance": "UInt64"
+           "account": "name",
+           "balance": "uint64"
          }
        }
      ],
@@ -1168,23 +1168,23 @@ BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
      "tables": [{
          "table": "account",
          "type": "account",
-         "indextype": "i64",
-         "keynames" : ["account"],
-         "keytypes" : ["Name"]
+         "index_type": "i64",
+         "key_names" : ["account"],
+         "key_types" : ["name"]
        },{
          "table": "account",
          "type": "account",
-         "indextype": "i64",
-         "keynames" : ["account"],
-         "keytypes" : ["Name"]
+         "index_type": "i64",
+         "key_names" : ["account"],
+         "key_types" : ["name"]
        }
      ]
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<Abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( AbiSerializer abis(abi), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

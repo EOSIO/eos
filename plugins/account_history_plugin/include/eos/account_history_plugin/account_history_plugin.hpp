@@ -13,7 +13,7 @@ namespace eosio {
    using chain::transaction_id_type;
    using std::shared_ptr;
    using namespace appbase;
-   using chain::Name;
+   using chain::name;
    using fc::optional;
    using chain::uint128_t;
 
@@ -42,7 +42,7 @@ public:
 
 
    struct get_transactions_params {
-      chain::AccountName  account_name;
+      chain::account_name account_name;
       optional<uint32_t>  skip_seq;
       optional<uint32_t>  num_seq;
    };
@@ -63,16 +63,16 @@ public:
       chain::public_key_type     public_key;
    };
    struct get_key_accounts_results {
-      vector<chain::AccountName> account_names;
+      vector<chain::account_name> account_names;
    };
    get_key_accounts_results get_key_accounts(const get_key_accounts_params& params) const;
 
 
    struct get_controlled_accounts_params {
-      chain::AccountName     controlling_account;
+      chain::account_name     controlling_account;
    };
    struct get_controlled_accounts_results {
-      vector<chain::AccountName> controlled_accounts;
+      vector<chain::account_name> controlled_accounts;
    };
    get_controlled_accounts_results get_controlled_accounts(const get_controlled_accounts_params& params) const;
 };

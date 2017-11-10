@@ -5,10 +5,18 @@
 
 unsigned int test_string::construct_with_size() {
 
-   uint32_t size = 100;
-   eosio::string str(size);
+   size_t size1 = 100;
+   eosio::string str1(size1);
 
-   WASM_ASSERT( str.get_size() == size,  "str.get_size() == size" );
+   WASM_ASSERT( str1.get_size() == size1,  "str1.get_size() == size1" );
+   WASM_ASSERT( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
+
+   size_t size2 = 0;
+   eosio::string str2(size2);
+
+   WASM_ASSERT( str2.get_size() == size2,  "str2.get_size() == size2" );
+   WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+   WASM_ASSERT( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 
    return WASM_TEST_PASS;
 }
@@ -16,21 +24,27 @@ unsigned int test_string::construct_with_size() {
 
 unsigned int test_string::construct_with_data() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
-  eosio::string str(data, size, false);
+  eosio::string str1(data, size, false);
 
-  WASM_ASSERT( str.get_size() == size,  "str.get_size() == size" );
-  WASM_ASSERT( str.get_data() == data,  "str.get_data() == data" );
-  WASM_ASSERT( str.is_own_memory() == false,  "str.is_own_memory() == false" );
+  WASM_ASSERT( str1.get_size() == size,  "str1.get_size() == size" );
+  WASM_ASSERT( str1.get_data() == data,  "str1.get_data() == data" );
+  WASM_ASSERT( str1.is_own_memory() == false,  "str1.is_own_memory() == false" );
+
+  eosio::string str2(data, 0, false);
+
+  WASM_ASSERT( str2.get_size() == 0,  "str2.get_size() == 0" );
+  WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+  WASM_ASSERT( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 
   return WASM_TEST_PASS;
 }
 
 unsigned int test_string::construct_with_data_partially() {
   char data[] = "abcdefghij";
-  uint32_t substr_size = 5;
-  uint32_t offset = 2;
+  size_t substr_size = 5;
+  size_t offset = 2;
 
   eosio::string str(data + offset, substr_size, false);
 
@@ -46,23 +60,29 @@ unsigned int test_string::construct_with_data_partially() {
 
 unsigned int test_string::construct_with_data_copied() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
-  eosio::string str(data, size, true);
+  eosio::string str1(data, size, true);
 
-  WASM_ASSERT( str.get_size() == size,  "str.get_size() == size" );
-  WASM_ASSERT( str.get_data() != data,  "str.get_data() != data" );
+  WASM_ASSERT( str1.get_size() == size,  "str1.get_size() == size" );
+  WASM_ASSERT( str1.get_data() != data,  "str1.get_data() != data" );
   for (uint8_t i = 0; i < size; i++) {
-    WASM_ASSERT( str[i] == data[i],  "str[i] == data[i]" );
+    WASM_ASSERT( str1[i] == data[i],  "str1[i] == data[i]" );
   }
-  WASM_ASSERT( str.is_own_memory() == true,  "str.is_own_memory() == true" );
+  WASM_ASSERT( str1.is_own_memory() == true,  "str.is_own_memory() == true" );
+
+  eosio::string str2(data, 0, true);
+  
+  WASM_ASSERT( str2.get_size() == 0,  "str2.get_size() == 0" );
+  WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+  WASM_ASSERT( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 
   return WASM_TEST_PASS;
 }
 
 unsigned int test_string::copy_constructor() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str1(data, size, true);
 
@@ -79,7 +99,7 @@ unsigned int test_string::copy_constructor() {
 
 unsigned int test_string::assignment_operator() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str1(data, size, true);
 
@@ -97,7 +117,7 @@ unsigned int test_string::assignment_operator() {
 
 unsigned int test_string::index_operator() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str(data, size, false);
 
@@ -110,7 +130,7 @@ unsigned int test_string::index_operator() {
 
 unsigned int test_string::index_out_of_bound() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str(data, size, false);
   char c = str[size];
@@ -120,12 +140,12 @@ unsigned int test_string::index_out_of_bound() {
 
 unsigned int test_string::substring() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str(data, size, false);
 
-  uint32_t substr_size = 5;
-  uint32_t offset = 2;
+  size_t substr_size = 5;
+  size_t offset = 2;
   eosio::string substr = str.substr(offset, substr_size, false);
 
   WASM_ASSERT( substr.get_size() == substr_size,  "str.get_size() == substr_size" );
@@ -140,12 +160,12 @@ unsigned int test_string::substring() {
 
 unsigned int test_string::substring_out_of_bound() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str(data, size, false);
 
-  uint32_t substr_size = size;
-  uint32_t offset = 1;
+  size_t substr_size = size;
+  size_t offset = 1;
   eosio::string substr = str.substr(offset, substr_size, false);
 
   return WASM_TEST_PASS;
@@ -153,11 +173,12 @@ unsigned int test_string::substring_out_of_bound() {
 
 unsigned int test_string::concatenation_null_terminated() {
   char data1[] = "abcdefghij";
-  uint32_t size1 = sizeof(data1)/sizeof(char);
+
+  size_t size1 = sizeof(data1)/sizeof(char);
   eosio::string str1(data1, size1, false);
 
   char data2[] = "klmnoppqrst";
-  uint32_t size2 = sizeof(data2)/sizeof(char);
+  size_t size2 = sizeof(data2)/sizeof(char);
   eosio::string str2(data2, size2, false);
 
   str1 += str2;
@@ -176,11 +197,12 @@ unsigned int test_string::concatenation_null_terminated() {
 
 unsigned int test_string::concatenation_non_null_terminated() {
   char data1[] = {'a','b','c','d','e','f','g','h','i','j'};
-  uint32_t size1 = sizeof(data1)/sizeof(char);
+
+  size_t size1 = sizeof(data1)/sizeof(char);
   eosio::string str1(data1, size1, false);
 
   char data2[] = {'k','l','m','n','o','p','q','r','s','t'};
-  uint32_t size2 = sizeof(data2)/sizeof(char);
+  size_t size2 = sizeof(data2)/sizeof(char);
   eosio::string str2(data2, size2, false);
 
   str1 += str2;
@@ -199,7 +221,7 @@ unsigned int test_string::concatenation_non_null_terminated() {
 
 unsigned int test_string::assign() {
   char data[] = "abcdefghij";
-  uint32_t size = sizeof(data)/sizeof(char);
+  size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str(100);
   str.assign(data, size, true);
@@ -211,41 +233,47 @@ unsigned int test_string::assign() {
   }
   WASM_ASSERT( str.is_own_memory() == true,  "str.is_own_memory() == true" );
 
+  str.assign(data, 0, true);
+
+  WASM_ASSERT( str.get_size() == 0,  "str.get_size() == 0" );
+  WASM_ASSERT( str.get_data() == nullptr,  "str.get_data() == nullptr" );
+  WASM_ASSERT( str.is_own_memory() == false,  "str.is_own_memory() == false" );
+
   return WASM_TEST_PASS;
 }
 
 
 unsigned int test_string::comparison_operator() {
   char data1[] = "abcdefghij";
-  uint32_t size1 = sizeof(data1)/sizeof(char);
+  size_t size1 = sizeof(data1)/sizeof(char);
   eosio::string str1(data1, size1, false);
 
   char data2[] = "abcdefghij";
-  uint32_t size2 = sizeof(data2)/sizeof(char);
+  size_t size2 = sizeof(data2)/sizeof(char);
   eosio::string str2(data2, size2, false);
 
   char data3[] = "klmno";
-  uint32_t size3 = sizeof(data3)/sizeof(char);
+  size_t size3 = sizeof(data3)/sizeof(char);
   eosio::string str3(data3, size3, false);
 
   char data4[] = "aaaaaaaaaaaaaaa";
-  uint32_t size4 = sizeof(data4)/sizeof(char);
+  size_t size4 = sizeof(data4)/sizeof(char);
   eosio::string str4(data4, size4, false);
 
   char data5[] = "你好";
-  uint32_t size5 = sizeof(data5)/sizeof(char);
+  size_t size5 = sizeof(data5)/sizeof(char);
   eosio::string str5(data5, size5, false);
 
   char data6[] = "你好嗎？";
-  uint32_t size6 = sizeof(data6)/sizeof(char);
+  size_t size6 = sizeof(data6)/sizeof(char);
   eosio::string str6(data6, size6, false);
 
   char data7[] = {'a', 'b', 'c', 'd', 'e'};
-  uint32_t size7 = sizeof(data7)/sizeof(char);
+  size_t size7 = sizeof(data7)/sizeof(char);
   eosio::string str7(data7, size7, false);
 
   char data8[] = {'a', 'b', 'c'};
-  uint32_t size8 = sizeof(data8)/sizeof(char);
+  size_t size8 = sizeof(data8)/sizeof(char);
   eosio::string str8(data8, size8, false);
 
   WASM_ASSERT( str1 == str2,  "str1 == str2" );
@@ -263,7 +291,8 @@ unsigned int test_string::comparison_operator() {
 
 unsigned int test_string::print_null_terminated() {
   char data[] = "Hello World!";
-  uint32_t size = sizeof(data)/sizeof(char);
+
+  size_t size = sizeof(data)/sizeof(char);
   eosio::string str(data, size, false);
 
   eosio::print(str);
@@ -273,7 +302,8 @@ unsigned int test_string::print_null_terminated() {
 
 unsigned int test_string::print_non_null_terminated() {
   char data[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!'};
-  uint32_t size = sizeof(data)/sizeof(char);
+
+  size_t size = sizeof(data)/sizeof(char);
   eosio::string str(data, size, false);
 
   eosio::print(str);
@@ -283,14 +313,14 @@ unsigned int test_string::print_non_null_terminated() {
 
 unsigned int test_string::print_unicode() {
   char data[] = "你好，世界！";
-  uint32_t size = sizeof(data)/sizeof(char);
+
+  size_t size = sizeof(data)/sizeof(char);
   eosio::string str(data, size, false);
 
   eosio::print(str);
 
   return WASM_TEST_PASS;
 }
-
 
 unsigned int test_string::valid_utf8() {
   // Roman alphabet is 1 byte UTF-8
@@ -327,6 +357,31 @@ unsigned int test_string::invalid_utf8() {
   // If it is not multiple of 3, then it is invalid
   eosio::string invalid_chinese_str(chinese_str_data, 5, false);
   assert_is_utf8(invalid_chinese_str.get_data(), invalid_chinese_str.get_size(), "the string should be a valid utf8 string");
+
+  return WASM_TEST_PASS;
+}
+
+
+unsigned int test_string::string_literal() {
+  // Construct
+  char data1[] = "abcdefghij";
+  char data2[] = "klmnopqrstuvwxyz";
+
+  eosio::string str = "abcdefghij";
+
+  WASM_ASSERT( str.get_size() == 11,  "data1 str.get_size() == 11" );
+  for (uint8_t i = 0; i < 11; i++) {
+    WASM_ASSERT( str[i] == data1[i],  "data1 str[i] == data1[i]" );
+  }
+  WASM_ASSERT( str.is_own_memory() == true,  "data1 str.is_own_memory() == true" );
+
+  str = "klmnopqrstuvwxyz";
+  
+  WASM_ASSERT( str.get_size() == 17,  "data2 str.get_size() == 17" );
+  for (uint8_t i = 0; i < 17; i++) {
+    WASM_ASSERT( str[i] == data2[i],  "data2 str[i] == data2[i]" );
+  }
+  WASM_ASSERT( str.is_own_memory() == true,  "data2 str.is_own_memory() == true" );
 
   return WASM_TEST_PASS;
 }

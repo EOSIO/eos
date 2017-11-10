@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
    class rate_limiting_object : public chainbase::object<rate_limiting_object_type, rate_limiting_object> {
       OBJECT_CTOR(rate_limiting_object)
       id_type             id;
-      AccountName         name;
+      account_name        name;
       fc::time_point_sec  per_auth_account_last_update_sec;
       uint32_t            per_auth_account_txn_msg_rate    = 0;
       fc::time_point_sec  per_code_account_last_update_sec;
@@ -35,7 +35,7 @@ namespace eosio { namespace chain {
       rate_limiting_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<rate_limiting_object, rate_limiting_object::id_type, &rate_limiting_object::id>>,
-         ordered_unique<tag<by_name>, member<rate_limiting_object, AccountName, &rate_limiting_object::name>>
+         ordered_unique<tag<by_name>, member<rate_limiting_object, account_name, &rate_limiting_object::name>>
       >
    >;
 

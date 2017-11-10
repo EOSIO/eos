@@ -10,9 +10,9 @@
 namespace std {
 
    template<>
-   struct hash<eosio::chain::AccountName>
+   struct hash<eosio::chain::account_name>
    {
-    size_t operator()( const eosio::chain::AccountName& name )const
+    size_t operator()( const eosio::chain::account_name& name )const
     {
         return (uint64_t)name;
     }
@@ -20,7 +20,7 @@ namespace std {
 }
 
 namespace eosio {
-using chain::AccountName;
+using chain::account_name;
 using chain::shared_vector;
 using chain::transaction_id_type;
 using namespace boost::multi_index;
@@ -29,7 +29,7 @@ class account_transaction_history_object : public chainbase::object<chain::accou
    OBJECT_CTOR(account_transaction_history_object)
 
    id_type                            id;
-   AccountName                        account_name;
+   account_name                       account_name;
    transaction_id_type                transaction_id;
 };
 
@@ -40,13 +40,13 @@ using account_transaction_history_multi_index = chainbase::shared_multi_index_co
    account_transaction_history_object,
    indexed_by<
       ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_transaction_history_object, account_transaction_history_object::id_type, id)>,
-      hashed_non_unique<tag<by_account_name>, BOOST_MULTI_INDEX_MEMBER(account_transaction_history_object, AccountName, account_name), std::hash<AccountName>>,
+      hashed_non_unique<tag<by_account_name>, BOOST_MULTI_INDEX_MEMBER(account_transaction_history_object, account_name, account_name), std::hash<account_name>>,
       hashed_unique<tag<by_account_name_trx_id>,
          composite_key< account_transaction_history_object,
-            member<account_transaction_history_object, AccountName, &account_transaction_history_object::account_name>,
+            member<account_transaction_history_object, account_name, &account_transaction_history_object::account_name>,
             member<account_transaction_history_object, transaction_id_type, &account_transaction_history_object::transaction_id>
          >,
-         composite_key_hash< std::hash<AccountName>, std::hash<transaction_id_type> >
+         composite_key_hash< std::hash<account_name>, std::hash<transaction_id_type> >
       >
    >
 >;
