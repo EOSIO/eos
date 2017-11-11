@@ -12,6 +12,7 @@ add_library( eos_chain
              fork_database.cpp
              get_config.cpp
              block_log.cpp
+             asset.cpp
 
 
              chain_controller.cpp

@@ -3,10 +3,10 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/name.hpp>
+#include <eosio/chain/asset.hpp>
 #include <fc/time.hpp>
 
-namespace eosio { namespace config {
+namespace eosio { namespace chain { namespace config {
 
 typedef __uint128_t uint128_t;
 
@@ -28,22 +28,22 @@ const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2
 /** Percentages are fixed point with a denominator of 10,000 */
 const static int percent_100 = 10000;
 const static int percent_1   = 100;
+const static uint32_t default_max_block_size = 5 * 1024 * 1024;
+const static uint32_t default_target_block_size = 128 * 1024;
+const static uint64_t default_max_storage_size = 10 * 1024;
+const static share_type default_elected_pay = asset(100).amount;
+const static share_type default_runner_up_pay = asset(75).amount;
+const static share_type default_min_eos_balance = asset(100).amount;
+const static uint32_t default_max_trx_lifetime = 60*60;
+const static uint16_t default_auth_depth_limit = 6;
+const static uint32_t default_max_trx_runtime = 10*1000;
+const static uint16_t default_inline_depth_limit = 4;
+const static uint32_t default_max_inline_msg_size = 4 * 1024;
+const static uint32_t default_max_gen_trx_size = 64 * 1024;
+const static uint32_t producers_authority_threshold = 14;
+const static int voted_producers_per_round = 20;
+const static uint128_t producer_race_lap_length = std::numeric_limits<uint128_t>::max();
 
-const static int DefaultPerAuthAccountTimeFrameSeconds = 18;
-const static int DefaultPerAuthAccount = 1800;
-const static int DefaultPerCodeAccountTimeFrameSeconds = 18;
-const static int DefaultPerCodeAccount = 18000;
-
-const static uint32_t DefaultMaxBlockSize = 5 * 1024 * 1024;
-const static uint32_t DefaultTargetBlockSize = 128 * 1024;
-const static uint64_t DefaultMaxStorageSize = 10 * 1024;
-const static uint32_t DefaultMaxTrxLifetime = 60*60;
-const static uint16_t DefaultAuthDepthLimit = 6;
-const static uint32_t DefaultMaxTrxRuntime = 10*1000;
-const static uint16_t DefaultInlineDepthLimit = 4;
-const static uint32_t DefaultMaxInlineMsgSize = 4 * 1024;
-const static uint32_t DefaultMaxGenTrxSize = 64 * 1024;
-const static uint32_t ProducersAuthorityThreshold = 14;
 
 /**
  *  The number of sequential blocks produced by a single producer
@@ -60,9 +60,9 @@ const static int irreversible_threshold_percent= 70 * percent_1;
 const static int max_producer_votes = 30;
 
 const static auto staked_balance_cooldown_sec  = fc::days(3).to_seconds();
-} } // namespace eosio::config
+} } } // namespace eosio::chain::config
 
 template<typename Number>
 Number EOS_PERCENT(Number value, int percentage) {
-   return value * percentage / eosio::config::percent_100;
+   return value * percentage / eosio::chain::config::percent_100;
 }

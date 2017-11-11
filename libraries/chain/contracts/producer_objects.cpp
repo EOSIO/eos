@@ -54,6 +54,7 @@ void proxy_vote_object::cancel_proxies(chainbase::database& db) const {
    });
 }
 
+/*
 producer_round producer_schedule_object::calculate_next_round(chainbase::database& db) const {
    // Create storage and machinery with nice names, for choosing the top-voted producers
    producer_round round;
@@ -128,7 +129,7 @@ producer_round producer_schedule_object::calculate_next_round(chainbase::databas
 
    return round;
 }
-
+*/
 void producer_schedule_object::reset_producer_race(chainbase::database& db) const {
    auto reset_race = [&db](const producer_votes_object& pvo) {
       db.modify(pvo, [](producer_votes_object& pvo) {

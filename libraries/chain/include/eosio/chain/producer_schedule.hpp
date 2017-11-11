@@ -15,7 +15,7 @@ namespace eosio { namespace chain {
    /**
     *  Defines both the order, account name, and signing keys of the active set of producers. 
     */
-   using producer_schedule_type = fc::array<producer_key,eosio::config::producer_count>;
+   using producer_schedule_type = fc::array<producer_key,config::producer_count>;
 
 } } /// eosio::chain
 

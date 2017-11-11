@@ -13,6 +13,8 @@
 #include "IR/Operators.h"
 #include "IR/Validate.h"
 
+#include <mutex>
+
 
 namespace eosio { namespace chain {
 
@@ -201,13 +203,13 @@ namespace eosio { namespace chain {
    }
 
    DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-     auto& wasm  = wasm_interface::get();
-     auto  mem   = wasm.memory();
-     auto& value = memoryRef<unsigned __int128>( mem, val );
-     /*
-     fc::uint128_t v(value>>64, uint64_t(value) );
-     std::cerr << fc::variant(v).get_string();
-     */
+      /*
+      auto& wasm  = wasm_interface::get();
+      auto  mem   = wasm.memory();
+      auto& value = memoryRef<unsigned __int128>( mem, val );
+      fc::uint128_t v(value>>64, uint64_t(value) );
+      std::cerr << fc::variant(v).get_string();
+      */
 
    }
    DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {

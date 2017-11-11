@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
 
@@ -42,12 +43,12 @@ class producer_votes_object : public chainbase::object<producer_votes_object_typ
    void update_votes(share_type delta_votes, uint128_t current_race_time);
    /// @brief Get the number of votes this producer has received
    share_type get_votes() const { return race.speed; }
-   pair<share_id,id_type> get_vote_order()const { return { race.speed, id }; }
+   pair<share_type,id_type> get_vote_order()const { return { race.speed, id }; }
 
    /**
     * These fields are used for the producer scheduling algorithm which uses a virtual race to ensure that runner-up
     * producers are given proportional time for producing blocks. Producers are constantly running a racetrack of
-    * length config::ProducerRaceLapLength, at a speed equal to the number of votes they have received. Runner-up
+    * length config::producer_race_lap_length, at a speed equal to the number of votes they have received. Runner-up
     * producers, who lack sufficient votes to get in as a top-N voted producer, get scheduled to produce a block every
     * time they finish the race. The race algorithm ensures that runner-up producers are scheduled with a frequency
     * proportional to their relative vote tallies; i.e. a runner-up with more votes is scheduled more often than one
@@ -85,13 +86,13 @@ class producer_votes_object : public chainbase::object<producer_votes_object_typ
          speed = current_speed;
          position = current_position;
          position_update_time = current_race_time;
-         auto distanceRemaining = config::ProducerRaceLapLength - position;
-         auto projectedTimeToFinish = speed > 0? distanceRemaining / speed
+         auto distane_remaining = config::producer_race_lap_length - position;
+         auto projected_time_to_finish = speed > 0? distane_remaining / speed
                                                : std::numeric_limits<uint128_t>::max();
-         EOS_ASSERT(current_race_time <= std::numeric_limits<uint128_t>::max() - projectedTimeToFinish,
+         EOS_ASSERT(current_race_time <= std::numeric_limits<uint128_t>::max() - projected_time_to_finish,
                     producer_race_overflow_exception, "Producer race time has overflowed",
-                    ("currentTime", current_race_time)("timeToFinish", projectedTimeToFinish)("limit", std::numeric_limits<uint128_t>::max()));
-         projected_finish_time = current_race_time + projectedTimeToFinish;
+                    ("currentTime", current_race_time)("timeToFinish", projected_time_to_finish)("limit", std::numeric_limits<uint128_t>::max()));
+         projected_finish_time = current_race_time + projected_time_to_finish;
       }
    } race;
 
@@ -99,7 +100,8 @@ class producer_votes_object : public chainbase::object<producer_votes_object_typ
    uint128_t projected_race_finish_time() const { return race.projected_finish_time; }
 
    typedef std::pair<uint128_t,id_type> rft_order_type;
-   rft_order_type projected_race_finish_timeOrder() const { return {race.projected_finish_time,id}; }
+   rft_order_type projected_race_finish_time_order() const { return {race.projected_finish_time,id}; }
+
 };
 
 /**
@@ -168,7 +170,8 @@ class producer_schedule_object : public chainbase::object<producer_schedule_obje
     * producers. Although it is a const method, it will use its non-const db parameter to update its own records, as
     * well as the race records stored in the @ref producer_votes_objects
     */
-   producer_round calculate_next_round(chainbase::database& db) const;
+   //TODO: did the concept of producer rounds get destroyed?
+   //producer_round calculate_next_round(chainbase::database& db) const;
 
    /**
     * @brief Reset all producers in the virtual race to the starting line, and reset virtual time to zero
@@ -194,9 +197,9 @@ using producer_votes_multi_index = chainbase::shared_multi_index_container<
          member<producer_votes_object, account_name, &producer_votes_object::owner_name>
       >,
       ordered_unique<tag<by_votes>,
-      composite_key<permission_object,
-         const_mem_fun<producer_votes_object, std::pair<share_type,producer_votes_object::id_type>, &producer_votes_object::get_vote_order>,
-         member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
+         composite_key<producer_votes_object,
+            const_mem_fun<producer_votes_object, std::pair<share_type,producer_votes_object::id_type>, &producer_votes_object::get_vote_order>,
+            member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
          >,
          composite_key_compare<std::greater< std::pair<share_type, producer_votes_object::id_type> >, std::less<producer_votes_object::id_type> >
       >
