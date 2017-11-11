@@ -35,6 +35,36 @@
 #include <chrono>
 
 namespace eosio { namespace chain {
+
+chain_controller::chain_controller( const chain_controller::controller_config& cfg )
+:_db( cfg.shared_memory_dir, 
+      (cfg.read_only ? database::read_only : database::read_write), 
+      cfg.shared_memory_size), 
+ _block_log(cfg.block_log_dir) 
+{
+   _initialize_indexes();
+
+   contracts::chain_initializer starter(cfg.genesis);
+   starter.register_types(*this, _db);
+
+   // Behave as though we are applying a block during chain initialization (it's the genesis block!)
+   with_applying_block([&] {
+      _initialize_chain(starter);
+   });
+
+   _spinup_db();
+   _spinup_fork_db();
+
+   if (_block_log.read_head() && head_block_num() < _block_log.read_head()->block_num())
+      replay();
+} /// chain_controller::chain_controller
+
+
+chain_controller::~chain_controller() {
+   clear_pending();
+   _db.flush();
+}
+
 bool chain_controller::is_known_block(const block_id_type& id)const
 {
    return _fork_db.is_known_block(id) || _block_log.read_block_by_id(id);
@@ -117,9 +147,9 @@ std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type
  *
  * @return true if we switched forks as a result of this push.
  */
-bool chain_controller::push_block(const signed_block& new_block, uint32_t skip)
+void chain_controller::push_block(const signed_block& new_block, uint32_t skip)
 { try {
-   return with_skip_flags( skip, [&](){ 
+   with_skip_flags( skip, [&](){ 
       return without_pending_transactions( [&]() {
          return _db.with_write_lock( [&]() {
             return _push_block(new_block);
@@ -154,7 +184,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
                 optional<fc::exception> except;
                 try {
                    auto session = _db.start_undo_session(true);
-                   apply_block((*ritr)->data, skip);
+                   _apply_block((*ritr)->data, skip);
                    session.push();
                 }
                 catch (const fc::exception& e) { except = e; }
@@ -174,21 +204,21 @@ bool chain_controller::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for (auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr) {
                       auto session = _db.start_undo_session(true);
-                      apply_block((*ritr)->data, skip);
+                      _apply_block((*ritr)->data, skip);
                       session.push();
                    }
                    throw *except;
                 }
             }
-            return true;
+            return true; //swithced fork
          }
-         else return false;
+         else return false; // didn't switch fork
       }
    }
 
    try {
       auto session = _db.start_undo_session(true);
-      apply_block(new_block, skip);
+      _apply_block(new_block, skip);
       session.push();
    } catch ( const fc::exception& e ) {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
@@ -324,7 +354,7 @@ void chain_controller::clear_pending()
 
 //////////////////// private methods ////////////////////
 
-void chain_controller::apply_block(const signed_block& next_block, uint32_t skip)
+void chain_controller::_apply_block(const signed_block& next_block, uint32_t skip)
 {
    auto block_num = next_block.block_num();
    if (_checkpoints.size() && _checkpoints.rbegin()->second != block_id_type()) {
@@ -339,13 +369,13 @@ void chain_controller::apply_block(const signed_block& next_block, uint32_t skip
 
    with_applying_block([&] {
       with_skip_flags(skip, [&] {
-         _apply_block(next_block);
+         __apply_block(next_block);
       });
    });
 }
 
 
-void chain_controller::_apply_block(const signed_block& next_block)
+void chain_controller::__apply_block(const signed_block& next_block)
 { try {
    uint32_t skip = _skip_flags;
 
@@ -742,7 +772,7 @@ uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
 }
 
-void chain_controller::initialize_indexes() {
+void chain_controller::_initialize_indexes() {
    _db.add_index<account_index>();
    _db.add_index<permission_index>();
    _db.add_index<permission_link_index>();
@@ -760,7 +790,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<producer_multi_index>();
 }
 
-void chain_controller::initialize_chain(contracts::chain_initializer& starter)
+void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
 { try {
    if (!_db.find<global_property_object>()) {
       _db.with_write_lock([this, &starter] {
@@ -810,37 +840,6 @@ void chain_controller::initialize_chain(contracts::chain_initializer& starter)
    }
 } FC_CAPTURE_AND_RETHROW() }
 
-chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                                   contracts::chain_initializer& starter, 
-                                   uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
-                                   uint32_t create_block_txn_execution_time,
-                                   const applied_irreverisable_block_func& applied_func)
-:_db(database), _fork_db(fork_db), _block_log(blocklog) 
-{
-
-   if (applied_func)
-      applied_irreversible_block.connect(*applied_func);
-
-   initialize_indexes();
-   starter.register_types(*this, _db);
-
-   // Behave as though we are applying a block during chain initialization (it's the genesis block!)
-   with_applying_block([&] {
-      initialize_chain(starter);
-   });
-
-   spinup_db();
-   spinup_fork_db();
-
-   if (_block_log.read_head() && head_block_num() < _block_log.read_head()->block_num())
-      replay();
-}
-
-chain_controller::~chain_controller() {
-   clear_pending();
-   _db.flush();
-   _fork_db.reset();
-}
 
 void chain_controller::replay() {
    ilog("Replaying blockchain");
@@ -865,7 +864,7 @@ void chain_controller::replay() {
          std::cerr << "   " << double(i*100)/last_block_num << "%   "<<i << " of " <<last_block_num<<"   \n";
       fc::optional<signed_block> block = _block_log.read_block_by_num(i);
       FC_ASSERT(block, "Could not find block #${n} in block_log!", ("n", i));
-      apply_block(*block, skip_producer_signature |
+      _apply_block(*block, skip_producer_signature |
                           skip_transaction_signatures |
                           skip_transaction_dupe_check |
                           skip_tapos_check |
@@ -880,7 +879,7 @@ void chain_controller::replay() {
    _db.set_revision(head_block_num());
 }
 
-void chain_controller::spinup_db() {
+void chain_controller::_spinup_db() {
    // Rewind the database to the last irreversible block
    _db.with_write_lock([&] {
       _db.undo_all();
@@ -890,7 +889,7 @@ void chain_controller::spinup_db() {
    });
 }
 
-void chain_controller::spinup_fork_db()
+void chain_controller::_spinup_fork_db()
 {
    fc::optional<signed_block> last_block = _block_log.read_head();
    if(last_block.valid()) {
@@ -1089,12 +1088,8 @@ uint32_t chain_controller::producer_participation_rate()const
    return uint64_t(config::percent_100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
 }
 
-void chain_controller::set_apply_handler( const account_name& contract, 
-                                          const account_name& scope, 
-                                          const action_name& action, apply_handler v ) {
-
-   //apply_handlers[contract][std::make_pair(scope,action)] = v;
+void chain_controller::_set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {
+   _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
-
-} }
+} } /// eosio::chain

@@ -17,6 +17,7 @@
 #include <eosio/chain/protocol.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/contracts/genesis_state.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -25,23 +26,52 @@
 namespace eosio { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
-   using applied_irreverisable_block_func = fc::optional<signal<void(const signed_block&)>::slot_type>;
 
-   namespace contracts { class chain_initializer; }
+   namespace contracts{ class chain_initializer; }
+
+   enum validation_steps
+   {
+      skip_nothing                = 0,
+      skip_producer_signature     = 1 << 0,  ///< used while reindexing
+      skip_transaction_signatures = 1 << 1,  ///< used by non-producer nodes
+      skip_transaction_dupe_check = 1 << 2,  ///< used while reindexing
+      skip_fork_db                = 1 << 3,  ///< used while reindexing
+      skip_block_size_check       = 1 << 4,  ///< used when applying locally generated transactions
+      skip_tapos_check            = 1 << 5,  ///< used while reindexing -- note this skips expiration check as well
+      skip_authority_check        = 1 << 6,  ///< used while reindexing -- disables any checking of authority on transactions
+      skip_merkle_check           = 1 << 7,  ///< used while reindexing
+      skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
+      skip_undo_history_check     = 1 << 9,  ///< used while reindexing
+      skip_producer_schedule_check= 1 << 10, ///< used while reindexing
+      skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
+      skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
+      skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
+      pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
+      created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
+      received_block              = 1 << 16  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
+   };
+
 
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class chain_controller {
+   class chain_controller : public boost::noncopyable {
       public:
-         chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          contracts::chain_initializer& starter, 
-                          uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
-                          uint32_t create_block_txn_execution_time,
-                          const applied_irreverisable_block_func& applied_func = {});
-         chain_controller(chain_controller&&) = default;
+         struct controller_config {
+            path                           block_log_dir       =  config::default_block_log_dir;
+            path                           shared_memory_dir   =  config::default_shared_memory_dir;
+            uint64_t                       shared_memory_size  =  config::default_shared_memory_size;
+            bool                           read_only           =  false;
+            contracts::genesis_state_type  genesis;
+         };
+
+         chain_controller( const controller_config& cfg );
          ~chain_controller();
+
+         void push_block( const signed_block& b, uint32_t skip = skip_nothing );
+         void push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
@@ -68,40 +98,24 @@ namespace eosio { namespace chain {
           */
          signal<void(const signed_transaction&)> on_pending_transaction;
 
+
+
+
+
+
+
+
+
+
+
          /**
           * @brief Check whether the controller is currently applying a block or not
           * @return True if the controller is now applying a block; false otherwise
           */
          bool is_applying_block()const { return _currently_applying_block; }
 
-         /**
-          *  The controller can override any script endpoint with native code.
-          */
-         ///@{
-         void set_apply_handler( const account_name& contract, const account_name& scope, const action_name& action, apply_handler v );
-         //@}
 
-         enum validation_steps
-         {
-            skip_nothing                = 0,
-            skip_producer_signature     = 1 << 0,  ///< used while reindexing
-            skip_transaction_signatures = 1 << 1,  ///< used by non-producer nodes
-            skip_transaction_dupe_check = 1 << 2,  ///< used while reindexing
-            skip_fork_db                = 1 << 3,  ///< used while reindexing
-            skip_block_size_check       = 1 << 4,  ///< used when applying locally generated transactions
-            skip_tapos_check            = 1 << 5,  ///< used while reindexing -- note this skips expiration check as well
-            skip_authority_check        = 1 << 6,  ///< used while reindexing -- disables any checking of authority on transactions
-            skip_merkle_check           = 1 << 7,  ///< used while reindexing
-            skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
-            skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_producer_schedule_check= 1 << 10, ///< used while reindexing
-            skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
-            skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
-            skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
-            pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
-            created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
-            received_block              = 1 << 16  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
-         };
+
 
          /**
           *  @return true if the block is in our fork DB or saved to disk as
@@ -131,10 +145,6 @@ namespace eosio { namespace chain {
          const flat_map<uint32_t,block_id_type> get_checkpoints()const { return _checkpoints; }
          bool before_last_checkpoint()const;
 
-         bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
-
-
-         void push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
 
 
@@ -240,27 +250,42 @@ namespace eosio { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
 
- //  protected:
          const chainbase::database& get_database() const { return _db; }
-         chainbase::database& get_mutable_database() { return _db; }
+         chainbase::database&       get_mutable_database() { return _db; }
          
-         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
 
 
          const deque<signed_transaction>&  pending()const { return _pending_transactions; }
+
+
+
+
+
    private:
+         friend class contracts::chain_initializer;
+
+         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
+
+         /**
+          *  The controller can override any script endpoint with native code.
+          */
+         ///@{
+         void _set_apply_handler( account_name contract, account_name scope, action_name action, apply_handler v );
+         //@}
+
+
          void _push_transaction( const signed_transaction& trx );
          void _start_pending_block();
          void _apply_transaction( const transaction& trx );
 
          /// Reset the object graph in-memory
-         void initialize_indexes();
-         void initialize_chain(contracts::chain_initializer& starter);
+         void _initialize_indexes();
+         void _initialize_chain(contracts::chain_initializer& starter);
 
          void replay();
 
-         void apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
-         void _apply_block(const signed_block& next_block);
+         void _apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
+         void __apply_block(const signed_block& next_block);
 
          template<typename Function>
          auto with_applying_block(Function&& f) -> decltype((*((Function*)nullptr))()) {
@@ -338,14 +363,14 @@ namespace eosio { namespace chain {
          void clear_expired_transactions();
          /// @}
 
-         void spinup_db();
-         void spinup_fork_db();
+         void _spinup_db();
+         void _spinup_fork_db();
 
  //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
-         database&                        _db;
-         fork_database&                   _fork_db;
-         block_log&                       _block_log;
+         database                         _db;
+         fork_database                    _fork_db;
+         block_log                        _block_log;
 
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block; 

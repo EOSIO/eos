@@ -10,6 +10,9 @@ namespace eosio { namespace chain { namespace config {
 
 typedef __uint128_t uint128_t;
 
+const static auto default_block_log_dir     = "block_log";
+const static auto default_shared_memory_dir = "shared_mem";
+const static auto default_shared_memory_size = 1024*1024*1024ll;
 const static int producer_count = 21;
 
 const static uint64_t system_account_name    = N(eosio);
