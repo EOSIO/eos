@@ -8,8 +8,8 @@
 #include <string>
 
 #include <fc/crypto/sha256.hpp>
-#include <eos/chain/types.hpp>
-#include <eos/native_contract/genesis_state.hpp>
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/contracts/genesis_state.hpp>
 
 namespace eosio { namespace egenesis {
 

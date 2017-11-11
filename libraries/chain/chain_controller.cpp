@@ -14,6 +14,7 @@
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
+#include <eosio/chain/contracts/chain_initializer.hpp>
 
 #include <eosio/chain/wasm_interface.hpp>
 
@@ -759,7 +760,7 @@ void chain_controller::initialize_indexes() {
    _db.add_index<producer_multi_index>();
 }
 
-void chain_controller::initialize_chain(chain_initializer_interface& starter)
+void chain_controller::initialize_chain(contracts::chain_initializer& starter)
 { try {
    if (!_db.find<global_property_object>()) {
       _db.with_write_lock([this, &starter] {
@@ -810,7 +811,7 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 } FC_CAPTURE_AND_RETHROW() }
 
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                                   chain_initializer_interface& starter, 
+                                   contracts::chain_initializer& starter, 
                                    uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                                    uint32_t create_block_txn_execution_time,
                                    const applied_irreverisable_block_func& applied_func)
@@ -1094,11 +1095,6 @@ void chain_controller::set_apply_handler( const account_name& contract,
 
    //apply_handlers[contract][std::make_pair(scope,action)] = v;
 }
-
-chain_initializer_interface::~chain_initializer_interface() {}
-
-
-
 
 
 } }

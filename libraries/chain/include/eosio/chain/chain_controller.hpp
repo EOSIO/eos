@@ -16,7 +16,6 @@
 
 #include <eosio/chain/protocol.hpp>
 #include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/chain_initializer_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 #include <fc/log/logger.hpp>
@@ -28,6 +27,8 @@ namespace eosio { namespace chain {
    using boost::signals2::signal;
    using applied_irreverisable_block_func = fc::optional<signal<void(const signed_block&)>::slot_type>;
 
+   namespace contracts { class chain_initializer; }
+
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
@@ -35,7 +36,7 @@ namespace eosio { namespace chain {
    class chain_controller {
       public:
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          chain_initializer_interface& starter, 
+                          contracts::chain_initializer& starter, 
                           uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                           uint32_t create_block_txn_execution_time,
                           const applied_irreverisable_block_func& applied_func = {});
@@ -254,7 +255,7 @@ namespace eosio { namespace chain {
 
          /// Reset the object graph in-memory
          void initialize_indexes();
-         void initialize_chain(chain_initializer_interface& starter);
+         void initialize_chain(contracts::chain_initializer& starter);
 
          void replay();
 
