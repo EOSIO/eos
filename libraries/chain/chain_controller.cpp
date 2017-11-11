@@ -629,8 +629,8 @@ void check_output(const generated_transaction& expected, const generated_transac
 template<>
 void check_output(const message_output& expected, const message_output& actual, const path_cons_list& path) {
    check_output(expected.notify, actual.notify, path(".notify"));
-   check_output(expected.inline_transaction, actual.inline_transaction, path(".inline_transaction"));
-   check_output(expected.deferred_transactions, actual.deferred_transactions, path(".deferred_transactions"));
+   check_output(expected.inline_trx, actual.inline_trx, path(".inline_trx"));
+   check_output(expected.deferred_trxs, actual.deferred_trxs, path(".deferred_trxs"));
 }
 
 template<typename T>
@@ -973,8 +973,8 @@ void chain_controller::process_message(const transaction& trx, account_name code
 
    // combine inline messages and process
    if (apply_ctx.inline_messages.size() > 0) {
-      output.inline_transaction = inline_transaction(trx);
-      (*output.inline_transaction).messages = std::move(apply_ctx.inline_messages);
+      output.inline_trx = inline_transaction(trx);
+      (*output.inline_trx).messages = std::move(apply_ctx.inline_messages);
    }
 
    for( auto& asynctrx : apply_ctx.deferred_transactions ) {
@@ -989,7 +989,7 @@ void chain_controller::process_message(const transaction& trx, account_name code
          transaction.status = generated_transaction_object::PENDING;
       });
 
-      output.deferred_transactions.emplace_back( gtrx );
+      output.deferred_trxs.emplace_back( gtrx );
    }
 
    // propagate used_authorizations up the context chain
@@ -1062,9 +1062,9 @@ typename T::processed chain_controller::process_transaction( const T& trx, int d
       auto& output = ptrx.output[i];
       rate_limit_message(trx.messages[i]);
       process_message(trx, trx.messages[i].code, trx.messages[i], output);
-      if (output.inline_transaction.valid() ) {
-         const transaction& trx = *output.inline_transaction;
-         output.inline_transaction = process_transaction(pending_inline_transaction(trx), depth + 1, start_time);
+      if (output.inline_trx.valid() ) {
+         const transaction& trx = *output.inline_trx;
+         output.inline_trx = process_transaction(pending_inline_transaction(trx), depth + 1, start_time);
       }
    }
 

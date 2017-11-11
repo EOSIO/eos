@@ -170,8 +170,8 @@ namespace eosio { namespace chain {
     */
    struct message_output {
       vector<notify_output>             notify; ///< accounts to notify, may only be notified once
-      fc::optional<inline_transaction>  inline_transaction; ///< transactions generated and applied after notify
-      vector<generated_transaction>     deferred_transactions; ///< transactions generated but not applied
+      fc::optional<inline_transaction>  inline_trx; ///< transactions generated and applied after notify
+      vector<generated_transaction>     deferred_trxs; ///< transactions generated but not applied
    };
 
    struct notify_output {
@@ -200,7 +200,7 @@ namespace eosio { namespace chain {
 
 FC_REFLECT(eosio::chain::generated_transaction, (id))
 FC_REFLECT_DERIVED(eosio::chain::signed_transaction, (eosio::types::signed_transaction), )
-FC_REFLECT(eosio::chain::message_output, (notify)(inline_transaction)(deferred_transactions) )
+FC_REFLECT(eosio::chain::message_output, (notify)(inline_trx)(deferred_trxs) )
 FC_REFLECT_DERIVED(eosio::chain::processed_transaction, (eosio::types::signed_transaction), (output) )
 FC_REFLECT_DERIVED(eosio::chain::pending_inline_transaction, (eosio::types::transaction), )
 FC_REFLECT_DERIVED(eosio::chain::inline_transaction, (eosio::types::transaction), (output) )
