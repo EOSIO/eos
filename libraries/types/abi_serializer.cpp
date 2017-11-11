@@ -14,19 +14,19 @@ namespace eosio { namespace types {
    using std::string;
 
    template <typename T>
-   inline fc::variant variantFromStream(fc::datastream<const char*>& stream) {
+   inline fc::variant variant_from_stream(fc::datastream<const char*>& stream) {
       T temp;
       fc::raw::unpack( stream, temp );
       return fc::variant(temp);
    }
 
    template <typename T>
-   auto packUnpack() {
+   auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
          []( fc::datastream<const char*>& stream, bool is_array) -> fc::variant  {
             if( is_array )
-               return variantFromStream<vector<T>>(stream);
-            return variantFromStream<T>(stream);
+               return variant_from_stream<vector<T>>(stream);
+            return variant_from_stream<T>(stream);
          },
          []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array ){
             if( is_array )
@@ -44,58 +44,58 @@ namespace eosio { namespace types {
 
    void abi_serializer::configure_built_in_types() {
       //public_key.hpp
-      built_in_types.emplace("public_key",     packUnpack<public_key>());
+      built_in_types.emplace("public_key",    pack_unpack<public_key>());
 
       //asset.hpp
-      built_in_types.emplace("asset",         packUnpack<asset>());
-      built_in_types.emplace("price",         packUnpack<price>());
+      built_in_types.emplace("asset",         pack_unpack<asset>());
+      built_in_types.emplace("price",         pack_unpack<price>());
      
       //native.hpp
-      built_in_types.emplace("string",        packUnpack<string>());
-      built_in_types.emplace("time",          packUnpack<time>());
-      built_in_types.emplace("signature",     packUnpack<signature>());
-      built_in_types.emplace("checksum",      packUnpack<checksum>());
-      built_in_types.emplace("field_name",     packUnpack<field_name>());
-      built_in_types.emplace("fixed_string32", packUnpack<fixed_string32>());
-      built_in_types.emplace("fixed_string16", packUnpack<fixed_string16>());
-      built_in_types.emplace("type_name",      packUnpack<type_name>());
-      built_in_types.emplace("bytes",         packUnpack<bytes>());
-      built_in_types.emplace("uint8",         packUnpack<uint8>());
-      built_in_types.emplace("uint16",        packUnpack<uint16>());
-      built_in_types.emplace("uint32",        packUnpack<uint32>());
-      built_in_types.emplace("uint64",        packUnpack<uint64>());
-      built_in_types.emplace("uint128",       packUnpack<uint128>());
-      built_in_types.emplace("uint256",       packUnpack<uint256>());
-      built_in_types.emplace("int8",          packUnpack<int8_t>());
-      built_in_types.emplace("int16",         packUnpack<int16_t>());
-      built_in_types.emplace("int32",         packUnpack<int32_t>());
-      built_in_types.emplace("int64",         packUnpack<int64_t>());
-      //built_in_types.emplace("int128",      packUnpack<int128>());
-      //built_in_types.emplace("int256",      packUnpack<int256>());
-      //built_in_types.emplace("uint128_t",   packUnpack<uint128_t>());
-      built_in_types.emplace("name",          packUnpack<name>());
-      built_in_types.emplace("field",         packUnpack<field>());
-      built_in_types.emplace("struct_t",        packUnpack<struct_t>());
-      built_in_types.emplace("fields",        packUnpack<fields>());
+      built_in_types.emplace("string",        pack_unpack<string>());
+      built_in_types.emplace("time",          pack_unpack<time>());
+      built_in_types.emplace("signature",     pack_unpack<signature>());
+      built_in_types.emplace("checksum",      pack_unpack<checksum>());
+      built_in_types.emplace("field_name",    pack_unpack<field_name>());
+      built_in_types.emplace("fixed_string32",pack_unpack<fixed_string32>());
+      built_in_types.emplace("fixed_string16",pack_unpack<fixed_string16>());
+      built_in_types.emplace("type_name",     pack_unpack<type_name>());
+      built_in_types.emplace("bytes",         pack_unpack<bytes>());
+      built_in_types.emplace("uint8",         pack_unpack<uint8>());
+      built_in_types.emplace("uint16",        pack_unpack<uint16>());
+      built_in_types.emplace("uint32",        pack_unpack<uint32>());
+      built_in_types.emplace("uint64",        pack_unpack<uint64>());
+      built_in_types.emplace("uint128",       pack_unpack<uint128>());
+      built_in_types.emplace("uint256",       pack_unpack<uint256>());
+      built_in_types.emplace("int8",          pack_unpack<int8_t>());
+      built_in_types.emplace("int16",         pack_unpack<int16_t>());
+      built_in_types.emplace("int32",         pack_unpack<int32_t>());
+      built_in_types.emplace("int64",         pack_unpack<int64_t>());
+      //built_in_types.emplace("int128",      pack_unpack<int128>());
+      //built_in_types.emplace("int256",      pack_unpack<int256>());
+      //built_in_types.emplace("uint128_t",   pack_unpack<uint128_t>());
+      built_in_types.emplace("name",          pack_unpack<name>());
+      built_in_types.emplace("field",         pack_unpack<field>());
+      built_in_types.emplace("struct_t",      pack_unpack<struct_t>());
+      built_in_types.emplace("fields",        pack_unpack<fields>());
       
       //generated.hpp
-      built_in_types.emplace("account_name",            packUnpack<account_name>());
-      built_in_types.emplace("permission_name",          packUnpack<permission_name>());
-      built_in_types.emplace("func_name",                packUnpack<func_name>());
-      built_in_types.emplace("message_name",             packUnpack<message_name>());
-      //built_in_types.emplace("type_name",              packUnpack<type_name>());
-      built_in_types.emplace("account_permission",       packUnpack<account_permission>());
-      built_in_types.emplace("message",                 packUnpack<message>());
-      built_in_types.emplace("account_permission_weight", packUnpack<account_permission_weight>());
-      built_in_types.emplace("transaction",             packUnpack<transaction>());
-      built_in_types.emplace("signed_transaction",       packUnpack<signed_transaction>());
-      built_in_types.emplace("key_permission_weight",     packUnpack<key_permission_weight>());
-      built_in_types.emplace("authority",               packUnpack<authority>());
-      built_in_types.emplace("blockchain_configuration", packUnpack<blockchain_configuration>());
-      built_in_types.emplace("type_def",                 packUnpack<type_def>());
-      built_in_types.emplace("action",                  packUnpack<action>());
-      built_in_types.emplace("table",                   packUnpack<table>());
-      built_in_types.emplace("abi",                     packUnpack<abi>());
+      built_in_types.emplace("account_name",             pack_unpack<account_name>());
+      built_in_types.emplace("permission_name",          pack_unpack<permission_name>());
+      built_in_types.emplace("func_name",                pack_unpack<func_name>());
+      built_in_types.emplace("message_name",             pack_unpack<message_name>());
+      //built_in_types.emplace("type_name",              pack_unpack<type_name>());
+      built_in_types.emplace("account_permission",       pack_unpack<account_permission>());
+      built_in_types.emplace("message",                  pack_unpack<message>());
+      built_in_types.emplace("account_permission_weight",pack_unpack<account_permission_weight>());
+      built_in_types.emplace("transaction",              pack_unpack<transaction>());
+      built_in_types.emplace("signed_transaction",       pack_unpack<signed_transaction>());
+      built_in_types.emplace("key_permission_weight",    pack_unpack<key_permission_weight>());
+      built_in_types.emplace("authority",                pack_unpack<authority>());
+      built_in_types.emplace("blockchain_configuration", pack_unpack<blockchain_configuration>());
+      built_in_types.emplace("type_def",                 pack_unpack<type_def>());
+      built_in_types.emplace("action",                   pack_unpack<action>());
+      built_in_types.emplace("table",                    pack_unpack<table>());
+      built_in_types.emplace("abi",                      pack_unpack<abi>());
    }
 
    void abi_serializer::set_abi(const abi& abi) {
@@ -104,14 +104,14 @@ namespace eosio { namespace types {
       actions.clear();
       tables.clear();
 
+      for( const auto& st : abi.structs )
+         structs[st.name] = st;
+      
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
          typedefs[td.new_type_name] = td.type;
       }
 
-      for( const auto& st : abi.structs )
-         structs[st.name] = st;
-      
       for( const auto& a : abi.actions )
          actions[a.action_name] = a.type;
 
@@ -128,6 +128,29 @@ namespace eosio { namespace types {
       FC_ASSERT( tables.size() == abi.tables.size() );
    }
    
+   bool abi_serializer::is_builtin_type(const type_name& type)const {
+      return built_in_types.find(type) != built_in_types.end();
+   }
+
+   bool abi_serializer::is_integer(const type_name& type) const {
+      string stype = type;
+      return boost::starts_with(stype, "uint") || boost::starts_with(stype, "int");
+   }
+
+   int abi_serializer::get_integer_size(const type_name& type) const {
+      string stype = type;
+      FC_ASSERT( is_integer(type), "${stype} is not an integer type", ("stype",stype));
+      if( boost::starts_with(stype, "uint") ) {
+         return boost::lexical_cast<int>(stype.substr(4));
+      } else {
+         return boost::lexical_cast<int>(stype.substr(3));
+      }      
+   }
+   
+   bool abi_serializer::is_struct(const type_name& type)const {
+      return structs.find(resolve_type(type)) != structs.end();
+   }
+
    bool abi_serializer::is_array(const type_name& type)const {
       return ends_with(string(type), "[]");
    }

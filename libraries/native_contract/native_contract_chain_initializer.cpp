@@ -191,4 +191,4 @@ std::vector<message> native_contract_chain_initializer::prepare_database(chain_c
    return messages_to_process;
 }
 
-} } // namespace eos::native_contract
+} } // namespace eosio::native_contract

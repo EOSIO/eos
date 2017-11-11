@@ -44,10 +44,6 @@ typedef int64_t share_type;
 
 #define PACKED(X) __attribute((packed)) X
 
-struct uint256 {
-   uint64_t words[4];
-};
-
 struct public_key {
    uint8_t data[33];
 };

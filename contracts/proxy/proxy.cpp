@@ -35,7 +35,7 @@ namespace proxy {
       config code_config;
       configs::get(code_config, self);
       code_config.owner = params.owner;
-      configs::store(config, self);
+      configs::store(code_config, self);
    }
 }
 

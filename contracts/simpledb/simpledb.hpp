@@ -23,7 +23,7 @@ struct record1 {
    int16_t   i16;
    int8_t    i8;
 
-   Price     price;
+   price     price;
 };
 
 /* @abi action insert2
@@ -47,8 +47,8 @@ struct record3 {
  * @abi table
 */
 struct key_value1 {
-   eos::string key;
-   eos::string value;
+   eosio::string key;
+   eosio::string value;
 };
 
 struct complex_type {
@@ -61,7 +61,6 @@ struct complex_type {
  * @abi table
 */
 struct key_value2 {
-   eos::string key;
-   ComplexType value;
-
+   eosio::string key;
+   complex_type value;
 };
