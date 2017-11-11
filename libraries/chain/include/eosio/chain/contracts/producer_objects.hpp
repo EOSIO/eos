@@ -201,7 +201,7 @@ using producer_votes_multi_index = chainbase::shared_multi_index_container<
             const_mem_fun<producer_votes_object, std::pair<share_type,producer_votes_object::id_type>, &producer_votes_object::get_vote_order>,
             member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
          >,
-         composite_key_compare<std::greater< std::pair<share_type, producer_votes_object::id_type> >, std::less<producer_votes_object::id_type> >
+         composite_key_compare<std::greater<std::pair<share_type, producer_votes_object::id_type>>, std::less<producer_votes_object::id_type> >
       >
       ordered_unique<tag<by_projected_race_finish_time>,
          const_mem_fun<producer_votes_object, producer_votes_object::rft_order_type, &producer_votes_object::projected_race_finish_time_order>

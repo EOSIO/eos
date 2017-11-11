@@ -16,11 +16,11 @@ struct transfer {
    uint64_t       amount;
    string         memo;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(transfer);
    }
 };
@@ -48,11 +48,11 @@ struct lock {
    account_name                      to;
    share_type                        amount;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(lock);
    }
 };
@@ -78,11 +78,11 @@ struct unlock {
    account_name                      account;
    share_type                        amount;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(unlock);
    }
 };
@@ -107,11 +107,11 @@ struct claim {
    account_name                      account;
    share_type                        amount;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(claim);
    }
 };
@@ -140,11 +140,11 @@ struct newaccount {
    authority                        recovery;
    asset                            deposit;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(newaccount);
    }
 };
@@ -176,11 +176,11 @@ struct setcode {
    bytes                            code;
    abi                              abi;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(setcode);
    }
 };
@@ -209,11 +209,11 @@ struct setproducer {
    public_key                        key;
    blockchain_configuration          configuration;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(setproducer);
    }
 };
@@ -240,11 +240,11 @@ struct okproducer {
    account_name                      producer;
    int8_t                            approve;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(okproducer);
    }
 };
@@ -270,11 +270,11 @@ struct setproxy {
    account_name                      stakeholder;
    account_name                      proxy;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(setproxy);
    }
 };
@@ -301,11 +301,11 @@ struct updateauth {
    permission_name                   parent;
    authority                        authority;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(updateauth);
    }
 };
@@ -332,11 +332,11 @@ struct deleteauth {
    account_name                      account;
    permission_name                   permission;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(deleteauth);
    }
 };
@@ -363,11 +363,11 @@ struct linkauth {
    action_name                        type;
    permission_name                   requirement;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(linkauth);
    }
 };
@@ -395,11 +395,11 @@ struct unlinkauth {
    account_name                      code;
    action_name                       type;
 
-   static constexpr scope_name get_scope() {
+   static scope_name get_scope() {
       return config::system_account_name;
    }
 
-   static constexpr action_name get_name() {
+   static action_name get_name() {
       return N(unlinkauth);
    }
 };
