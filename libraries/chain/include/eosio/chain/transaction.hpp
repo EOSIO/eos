@@ -43,16 +43,16 @@ namespace eosio { namespace chain {
 
       template<typename T>
       action( vector<permission_level> auth, T&& value ) {
-         scope       = T::get_scope;
-         name        = T::get_name;
+         scope       = T::get_scope();
+         name        = T::get_name();
          authorization = move(auth);
          data        = fc::raw::pack(value);
       }
 
       template<typename T>
       T as()const {
-         FC_ASSERT( scope == T::get_scope );
-         FC_ASSERT( name  == T::get_name  );
+         FC_ASSERT( scope == T::get_scope() );
+         FC_ASSERT( name  == T::get_name()  );
          return fc::raw::unpack<T>(data);
       }
    };

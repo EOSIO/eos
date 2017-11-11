@@ -50,7 +50,9 @@ namespace eosio { namespace chain {
 
       void set( const char* str );
 
-      name( uint64_t v = 0 ):value(v){}
+      template<typename T>
+      name( T v ):value(v){}
+      name(){}
 
       explicit operator string()const;
 
@@ -80,6 +82,10 @@ namespace eosio { namespace chain {
       friend bool operator > ( const name& a, const name& b ) { return a.value > b.value; }
       friend bool operator >=( const name& a, const name& b ) { return a.value >= b.value; }
       friend bool operator == ( const name& a, const name& b ) { return a.value == b.value; }
+
+      friend bool operator == ( const name& a, uint64_t b ) { return a.value == b; }
+      friend bool operator != ( const name& a, uint64_t b ) { return a.value != b; }
+
       friend bool operator != ( const name& a, const name& b ) { return a.value != b.value; }
 
       operator bool()const            { return value; }

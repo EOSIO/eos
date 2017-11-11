@@ -13,13 +13,6 @@
 
 namespace eosio { namespace chain { namespace contracts {
 
-void producer_votes_object::update_votes(share_type delta_votes, uint128_t current_race_time) {
-   auto time_since_last_update = current_race_time - race.position_update_time;
-   auto new_position = race.position + race.speed * time_since_last_update;
-   auto new_speed = race.speed + delta_votes;
-
-   race.update(new_speed, new_position, current_race_time);
-}
 
 void proxy_vote_object::add_proxy_source(const account_name& source, share_type source_stake, chainbase::database& db) const {
    db.modify(*this, [&source, source_stake](proxy_vote_object& pvo) {
@@ -130,18 +123,5 @@ producer_round producer_schedule_object::calculate_next_round(chainbase::databas
    return round;
 }
 */
-void producer_schedule_object::reset_producer_race(chainbase::database& db) const {
-   auto reset_race = [&db](const producer_votes_object& pvo) {
-      db.modify(pvo, [](producer_votes_object& pvo) {
-         pvo.start_new_race_lap(0);
-      });
-   };
-   const auto& all_producers = db.get_index<producer_votes_multi_index, by_votes>();
-
-   boost::for_each(all_producers, reset_race);
-   db.modify(*this, [](producer_schedule_object& pso) {
-      pso.current_race_time = 0;
-   });
-}
 
 } } } // namespace eosio::chain::contracts

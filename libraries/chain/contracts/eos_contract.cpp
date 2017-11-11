@@ -26,8 +26,8 @@ namespace eosio { namespace chain { namespace contracts {
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
-      context.db.get<account_object, by_name>(a.permission.account);
-      context.db.find<permission_object, by_owner>(boost::make_tuple(a.permission.account, a.permission.permission));
+      context.db.get<account_object, by_name>(a.permission.actor);
+      context.db.find<permission_object, by_owner>(boost::make_tuple(a.permission.actor, a.permission.permission));
    }
 }
 
@@ -40,14 +40,14 @@ void apply_eos_newaccount(apply_context& context) {
    auto create = context.act.as<newaccount>();
    context.require_authorization(create.creator);
 
-   EOS_ASSERT( validate(create.owner), message_validate_exception, "Invalid owner authority");
-   EOS_ASSERT( validate(create.active), message_validate_exception, "Invalid active authority");
-   EOS_ASSERT( validate(create.recovery), message_validate_exception, "Invalid recovery authority");
+   EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
+   EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
+   EOS_ASSERT( validate(create.recovery), action_validate_exception, "Invalid recovery authority");
 
    auto& db = context.mutable_db;
 
    auto existing_account = db.find<account_object, by_name>(create.name);
-   EOS_ASSERT(existing_account == nullptr, message_precondition_exception,
+   EOS_ASSERT(existing_account == nullptr, action_validate_exception,
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
@@ -76,7 +76,7 @@ void apply_eos_newaccount(apply_context& context) {
 
    const auto& creatorBalance = context.mutable_db.get<balance_object, by_owner_name>(create.creator);
 
-   EOS_ASSERT(creatorBalance.balance >= create.deposit.amount, message_validate_exception,
+   EOS_ASSERT(creatorBalance.balance >= create.deposit.amount, action_validate_exception,
               "Creator '${c}' has insufficient funds to make account creation deposit of ${a}",
               ("c", create.creator)("a", create.deposit));
 
@@ -104,10 +104,10 @@ void apply_eos_newaccount(apply_context& context) {
 
 
 void apply_eos_transfer(apply_context& context) {
-   auto transfer = context.act.as<transfer>();
+   auto transfer = context.act.as<contracts::transfer>();
 
    try {
-      EOS_ASSERT(transfer.amount > 0, message_validate_exception, "Must transfer a positive amount");
+      EOS_ASSERT(transfer.amount > 0, action_validate_exception, "Must transfer a positive amount");
       context.require_scope(transfer.to);
       context.require_scope(transfer.from);
 
@@ -122,7 +122,7 @@ void apply_eos_transfer(apply_context& context) {
       auto& db = context.mutable_db;
       const auto& from = db.get<balance_object, by_owner_name>(transfer.from);
 
-      EOS_ASSERT(from.balance >= transfer.amount, message_precondition_exception, "Insufficient Funds",
+      EOS_ASSERT(from.balance >= transfer.amount, action_validate_exception, "Insufficient Funds",
                  ("from.balance",from.balance)("transfer.amount",transfer.amount));
 
       const auto& to = db.get<balance_object, by_owner_name>(transfer.to);
@@ -140,9 +140,9 @@ void apply_eos_transfer(apply_context& context) {
  *  Deduct the balance from the from account.
  */
 void apply_eos_lock(apply_context& context) {
-   auto lock = context.act.as<lock>();
+   auto lock = context.act.as<contracts::lock>();
 
-   EOS_ASSERT(lock.amount > 0, message_validate_exception, "Locked amount must be positive");
+   EOS_ASSERT(lock.amount > 0, action_validate_exception, "Locked amount must be positive");
 
    context.require_scope(lock.to);
    context.require_scope(lock.from);
@@ -155,7 +155,7 @@ void apply_eos_lock(apply_context& context) {
 
    const auto& locker = context.db.get<balance_object, by_owner_name>(lock.from);
 
-   EOS_ASSERT( locker.balance >= lock.amount, message_precondition_exception, 
+   EOS_ASSERT( locker.balance >= lock.amount, action_validate_exception, 
               "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount)("available",locker.balance) );
 
    context.mutable_db.modify(locker, [&lock](balance_object& a) {
@@ -167,15 +167,15 @@ void apply_eos_lock(apply_context& context) {
 }
 
 void apply_eos_unlock(apply_context& context) {
-   auto unlock = context.act.as<unlock>();
+   auto unlock = context.act.as<contracts::unlock>();
 
    context.require_authorization(unlock.account);
 
-   EOS_ASSERT(unlock.amount >= 0, message_validate_exception, "Unlock amount cannot be negative");
+   EOS_ASSERT(unlock.amount >= 0, action_validate_exception, "Unlock amount cannot be negative");
 
    const auto& balance = context.db.get<staked_balance_object, by_owner_name>(unlock.account);
 
-   EOS_ASSERT(balance.staked_balance  >= unlock.amount, message_precondition_exception,
+   EOS_ASSERT(balance.staked_balance  >= unlock.amount, action_validate_exception,
               "Insufficient locked funds to unlock ${a}", ("a", unlock.amount));
 
    balance.begin_unstaking_tokens(unlock.amount, context.mutable_db);
@@ -206,7 +206,7 @@ void apply_eos_setcode(apply_context& context) {
       a.code.resize( act.code.size() );
       memcpy( a.code.data(), act.code.data(), act.code.size() );
 
-      a.set_abi( act.abi );
+      //a.set_abi( act.abi );
    });
 
    apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.act, act.account );
@@ -214,20 +214,23 @@ void apply_eos_setcode(apply_context& context) {
 }
 
 void apply_eos_claim(apply_context& context) {
-   auto claim = context.act.as<claim>();
+   auto claim = context.act.as<contracts::claim>();
 
-   EOS_ASSERT(claim.amount > 0, message_validate_exception, "Claim amount must be positive");
+   EOS_ASSERT(claim.amount > 0, action_validate_exception, "Claim amount must be positive");
 
    context.require_authorization(claim.account);
 
    auto balance = context.db.find<staked_balance_object, by_owner_name>(claim.account);
-   EOS_ASSERT(balance != nullptr, message_precondition_exception,
+
+   EOS_ASSERT(balance != nullptr, action_validate_exception,
               "Could not find staked balance for ${name}", ("name", claim.account));
-   auto balanceReleaseTime = balance->last_unstaking_time + config::staked_balance_cooldown_seconds;
+
+   auto balance_release_time = balance->last_unstaking_time + fc::seconds(config::staked_balance_cooldown_sec);
    auto now = context.controller.head_block_time();
-   EOS_ASSERT(now >= balanceReleaseTime, message_precondition_exception,
-              "Cannot claim balance until ${releaseDate}", ("releaseDate", balanceReleaseTime));
-   EOS_ASSERT(balance->unstaking_balance >= claim.amount, message_precondition_exception,
+
+   EOS_ASSERT(now >= balance_release_time, action_validate_exception,
+              "Cannot claim balance until ${releaseDate}", ("releaseDate", balance_release_time));
+   EOS_ASSERT(balance->unstaking_balance >= claim.amount, action_validate_exception,
               "Cannot claim ${claimAmount} as only ${available} is available for claim",
               ("claimAmount", claim.amount)("available", balance->unstaking_balance));
 
@@ -244,14 +247,14 @@ void apply_eos_claim(apply_context& context) {
 void apply_eos_setproducer(apply_context& context) {
    auto update = context.act.as<setproducer>();
    context.require_authorization(update.name);
-   EOS_ASSERT(update.name.good(), message_validate_exception, "Producer owner name cannot be empty");
+   EOS_ASSERT(update.name.good(), action_validate_exception, "Producer owner name cannot be empty");
 
    auto& db = context.mutable_db;
    auto producer = db.find<producer_object, by_owner>(update.name);
 
    if (producer) {
       EOS_ASSERT(producer->signing_key != update.key || producer->configuration != update.configuration,
-                 message_validate_exception, "Producer's new settings may not be identical to old settings");
+                 action_validate_exception, "Producer's new settings may not be identical to old settings");
 
       db.modify(*producer, [&](producer_object& p) {
          p.signing_key = update.key;
@@ -263,10 +266,8 @@ void apply_eos_setproducer(apply_context& context) {
          p.signing_key = update.key;
          p.configuration = update.configuration;
       });
-      auto raceTime = producer_schedule_object::get(db).current_race_time;
       db.create<producer_votes_object>([&](producer_votes_object& pvo) {
          pvo.owner_name = update.name;
-         pvo.start_new_race_lap(raceTime);
       });
    }
 }
@@ -274,7 +275,7 @@ void apply_eos_setproducer(apply_context& context) {
 
 void apply_eos_okproducer(apply_context& context) {
    auto approve = context.act.as<okproducer>();
-   EOS_ASSERT(approve.approve == 0 || approve.approve == 1, message_validate_exception,
+   EOS_ASSERT(approve.approve == 0 || approve.approve == 1, action_validate_exception,
               "Unknown approval value: ${val}; must be either 0 or 1", ("val", approve.approve));
    context.require_recipient(approve.voter);
    context.require_recipient(approve.producer);
@@ -289,26 +290,25 @@ void apply_eos_okproducer(apply_context& context) {
    const auto& voter = db.get<staked_balance_object, by_owner_name>(approve.voter);
 
 
-   EOS_ASSERT(voter.producer_votes.contains<producer_slate>(), message_precondition_exception,
+   EOS_ASSERT(voter.producer_votes.contains<producer_slate>(), action_validate_exception,
               "Cannot approve producer; approving account '${name}' proxies its votes to '${proxy}'",
               ("name", voter.owner_name)("proxy", voter.producer_votes.get<account_name>()));
 
 
    const auto& slate = voter.producer_votes.get<producer_slate>();
 
-   EOS_ASSERT(slate.size < config::max_producer_votes, message_precondition_exception,
+   EOS_ASSERT(slate.size < config::max_producer_votes, action_validate_exception,
               "Cannot approve producer; approved producer count is already at maximum");
    if (approve.approve)
-      EOS_ASSERT(!slate.contains(producer.owner_name), message_precondition_exception,
+      EOS_ASSERT(!slate.contains(producer.owner_name), action_validate_exception,
                  "Cannot add approval to producer '${name}'; producer is already approved",
                  ("name", producer.owner_name));
    else
-      EOS_ASSERT(slate.contains(producer.owner_name), message_precondition_exception,
+      EOS_ASSERT(slate.contains(producer.owner_name), action_validate_exception,
                  "Cannot remove approval from producer '${name}'; producer is not approved",
                  ("name", producer.owner_name));
 
 
-   auto raceTime = producer_schedule_object::get(db).current_race_time;
    auto total_voting_stake = voter.staked_balance;
 
    // Check if voter is proxied to; if so, we need to add in the proxied stake
@@ -316,11 +316,11 @@ void apply_eos_okproducer(apply_context& context) {
       total_voting_stake += proxy->proxied_stake;
 
    // Add/remove votes from producer
-   db.modify(producer, [approve = approve.approve, total_voting_stake, &raceTime](producer_votes_object& pvo) {
+   db.modify(producer, [approve = approve.approve, total_voting_stake](producer_votes_object& pvo) {
       if (approve)
-         pvo.update_votes(total_voting_stake, raceTime);
+         pvo.update_votes(total_voting_stake);
       else
-         pvo.update_votes(-total_voting_stake, raceTime);
+         pvo.update_votes(-total_voting_stake);
    });
    // Add/remove producer from voter's approved producer list
    db.modify(voter, [&approve, producer = producer.owner_name](staked_balance_object& sbo) {
@@ -364,15 +364,15 @@ void apply_eos_setproxy(apply_context& context) {
 
 void apply_eos_updateauth(apply_context& context) {
    auto update = context.act.as<updateauth>();
-   EOS_ASSERT(!update.permission.empty(), message_validate_exception, "Cannot create authority with empty name");
-   EOS_ASSERT(update.permission != update.parent, message_validate_exception,
+   EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
+   EOS_ASSERT(update.permission != update.parent, action_validate_exception,
               "Cannot set an authority as its own parent");
-   EOS_ASSERT(validate(update.authority), message_validate_exception,
+   EOS_ASSERT(validate(update.authority), action_validate_exception,
               "Invalid authority: ${auth}", ("auth", update.authority));
    if (update.permission == "active")
-      EOS_ASSERT(update.parent == "owner", message_validate_exception, "Cannot change active authority's parent");
+      EOS_ASSERT(update.parent == "owner", action_validate_exception, "Cannot change active authority's parent");
    if (update.permission == "owner")
-      EOS_ASSERT(update.parent.empty(), message_validate_exception, "Cannot change owner authority's parent");
+      EOS_ASSERT(update.parent.empty(), action_validate_exception, "Cannot change owner authority's parent");
 
    auto& db = context.mutable_db;
    context.require_authorization(update.account);
@@ -389,7 +389,7 @@ void apply_eos_updateauth(apply_context& context) {
    }
 
    if (permission) {
-      EOS_ASSERT(parent_id == permission->parent, message_precondition_exception,
+      EOS_ASSERT(parent_id == permission->parent, action_validate_exception,
                  "Changing parent authority is not currently supported");
       if (context.controller.is_applying_block())
       // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
@@ -412,8 +412,8 @@ void apply_eos_updateauth(apply_context& context) {
 
 void apply_eos_deleteauth(apply_context& context) {
    auto remove = context.act.as<deleteauth>();
-   EOS_ASSERT(remove.permission != "active", message_validate_exception, "Cannot delete active authority");
-   EOS_ASSERT(remove.permission != "owner", message_validate_exception, "Cannot delete owner authority");
+   EOS_ASSERT(remove.permission != "active", action_validate_exception, "Cannot delete active authority");
+   EOS_ASSERT(remove.permission != "owner", action_validate_exception, "Cannot delete owner authority");
 
    auto& db = context.mutable_db;
    context.require_authorization(remove.account);
@@ -422,14 +422,14 @@ void apply_eos_deleteauth(apply_context& context) {
    { // Check for children
       const auto& index = db.get_index<permission_index, by_parent>();
       auto range = index.equal_range(permission.id);
-      EOS_ASSERT(range.first == range.second, message_precondition_exception,
+      EOS_ASSERT(range.first == range.second, action_validate_exception,
                  "Cannot delete an authority which has children. Delete the children first");
    }
 
    { // Check for links to this permission
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
-      EOS_ASSERT(range.first == range.second, message_precondition_exception,
+      EOS_ASSERT(range.first == range.second, action_validate_exception,
                  "Cannot delete a linked authority. Unlink the authority first");
    }
 
@@ -439,7 +439,7 @@ void apply_eos_deleteauth(apply_context& context) {
 
 void apply_eos_linkauth(apply_context& context) {
    auto requirement = context.act.as<linkauth>();
-   EOS_ASSERT(!requirement.requirement.empty(), message_validate_exception, "Required permission cannot be empty");
+   EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
    context.require_authorization(requirement.account);
    
@@ -449,10 +449,10 @@ void apply_eos_linkauth(apply_context& context) {
    db.get<permission_object, by_name>(requirement.requirement);
    
    auto linkKey = boost::make_tuple(requirement.account, requirement.code, requirement.type);
-   auto link = db.find<permission_link_object, by_message_type>(linkKey);
+   auto link = db.find<permission_link_object, by_action_name>(linkKey);
    
    if (link) {
-      EOS_ASSERT(link->required_permission != requirement.requirement, message_precondition_exception,
+      EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
                  "Attempting to update required authority, but new requirement is same as old");
       if (context.controller.is_applying_block())
          db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
@@ -475,8 +475,8 @@ void apply_eos_unlinkauth(apply_context& context) {
    context.require_authorization(unlink.account);
 
    auto linkKey = boost::make_tuple(unlink.account, unlink.code, unlink.type);
-   auto link = db.find<permission_link_object, by_message_type>(linkKey);
-   EOS_ASSERT(link != nullptr, message_precondition_exception, "Attempting to unlink authority, but no link found");
+   auto link = db.find<permission_link_object, by_action_name>(linkKey);
+   EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
    if (context.controller.is_applying_block())
       db.remove(*link);
 }

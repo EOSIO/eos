@@ -29,79 +29,17 @@ FC_DECLARE_EXCEPTION(producer_race_overflow_exception, 10000000, "Producer Virtu
 class producer_votes_object : public chainbase::object<producer_votes_object_type, producer_votes_object> {
    OBJECT_CTOR(producer_votes_object)
 
-   id_type id;
-   account_name owner_name;
+   id_type         id;
+   account_name    owner_name;
+   share_type      votes = 0;
 
    /**
-    * @brief Update the tally of votes for the producer, while maintaining virtual time accounting
-    *
-    * This function will update the producer's position in the race
-    *
+    * @brief Update the tally of votes for the producer
     * @param delta_votes The change in votes since the last update
-    * @param current_race_time The current "race time"
     */
-   void update_votes(share_type delta_votes, uint128_t current_race_time);
-   /// @brief Get the number of votes this producer has received
-   share_type get_votes() const { return race.speed; }
-   pair<share_type,id_type> get_vote_order()const { return { race.speed, id }; }
-
-   /**
-    * These fields are used for the producer scheduling algorithm which uses a virtual race to ensure that runner-up
-    * producers are given proportional time for producing blocks. Producers are constantly running a racetrack of
-    * length config::producer_race_lap_length, at a speed equal to the number of votes they have received. Runner-up
-    * producers, who lack sufficient votes to get in as a top-N voted producer, get scheduled to produce a block every
-    * time they finish the race. The race algorithm ensures that runner-up producers are scheduled with a frequency
-    * proportional to their relative vote tallies; i.e. a runner-up with more votes is scheduled more often than one
-    * with fewer votes, but all runners-up with any votes will theoretically be scheduled eventually.
-    *
-    * Whenever a runner-up producer needs to be scheduled, the one projected to finish the race next is taken, with the
-    * caveat that any producers already scheduled for other reasons (such as being a top-N voted producer) cannot be
-    * scheduled a second time in the same round, and thus they are skipped/ignored when looking for the producer
-    * projected to finish next. After selecting the runner-up for scheduling, the global current race time is updated
-    * to the point at which the winner crossed the finish line (i.e. his position is zero: he is now beginning his next
-    * lap). Furthermore, all producers which crossed the finish line ahead of the winner, but were ineligible to win as
-    * they were already scheduled in the next round, are effectively held at the finish line until the winner crosses,
-    * so their positions are all also set to zero.
-    *
-    * Every time the number of votes for a given producer changes, the producer's speed in the race changes and thus
-    * his projected finishing time changes. In this event, the stats must be updated: first, the producer's position is
-    * updated to reflect his progress since the last stats update to the current race time; second, the producer's
-    * projected finishing time based on his new position and speed are updated so we know where he shakes out in the
-    * new projected finish times.
-    *
-    * @warning Do not update these values directly; use @ref update_votes instead!
-    */
-   struct {
-      /// The current speed for this producer (which is actually the total votes for the producer)
-      share_type speed = 0;
-      /// The position of this producer when we last updated the records
-      uint128_t position = 0;
-      /// The "race time" when we last updated the records
-      uint128_t position_update_time = 0;
-      /// The projected "race time" at which this producer will finish the race
-      uint128_t projected_finish_time = std::numeric_limits<uint128_t>::max();
-
-      /// Set all fields on race, given the current speed, position, and time
-      void update(share_type current_speed, uint128_t current_position, uint128_t current_race_time) {
-         speed = current_speed;
-         position = current_position;
-         position_update_time = current_race_time;
-         auto distane_remaining = config::producer_race_lap_length - position;
-         auto projected_time_to_finish = speed > 0? distane_remaining / speed
-                                               : std::numeric_limits<uint128_t>::max();
-         EOS_ASSERT(current_race_time <= std::numeric_limits<uint128_t>::max() - projected_time_to_finish,
-                    producer_race_overflow_exception, "Producer race time has overflowed",
-                    ("currentTime", current_race_time)("timeToFinish", projected_time_to_finish)("limit", std::numeric_limits<uint128_t>::max()));
-         projected_finish_time = current_race_time + projected_time_to_finish;
-      }
-   } race;
-
-   void start_new_race_lap(uint128_t current_race_time) { race.update(race.speed, 0, current_race_time); }
-   uint128_t projected_race_finish_time() const { return race.projected_finish_time; }
-
-   typedef std::pair<uint128_t,id_type> rft_order_type;
-   rft_order_type projected_race_finish_time_order() const { return {race.projected_finish_time,id}; }
-
+   void update_votes(share_type delta_votes) {
+      votes += delta_votes;
+   }
 };
 
 /**
@@ -190,32 +128,18 @@ struct by_votes;
 using producer_votes_multi_index = chainbase::shared_multi_index_container<
    producer_votes_object,
    indexed_by<
-      ordered_unique<tag<by_id>,
+      ordered_unique< tag<by_id>,
          member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
       >,
-      ordered_unique<tag<by_owner_name>,
+      ordered_unique< tag<by_owner_name>,
          member<producer_votes_object, account_name, &producer_votes_object::owner_name>
       >,
-      ordered_unique<tag<by_votes>,
+      ordered_unique< tag<by_votes>,
          composite_key<producer_votes_object,
-            const_mem_fun<producer_votes_object, std::pair<share_type,producer_votes_object::id_type>, &producer_votes_object::get_vote_order>,
+            member<producer_votes_object, share_type, &producer_votes_object::votes>,
             member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
-         >,
-         composite_key_compare<std::greater<std::pair<share_type, producer_votes_object::id_type>>, std::less<producer_votes_object::id_type> >
+         >
       >
-      ordered_unique<tag<by_projected_race_finish_time>,
-         const_mem_fun<producer_votes_object, producer_votes_object::rft_order_type, &producer_votes_object::projected_race_finish_time_order>
-      >
-/*
-   For some reason this does not compile, so I simulate it by adding a new method
-      ordered_unique<tag<by_votes>,
-         composite_key<
-            const_mem_fun<producer_votes_object, share_type, &producer_votes_object::getVotes>,
-            member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
-         >,
-         composite_key_compare< std::greater<share_type>, std::less<producer_votes_object::id_type> >
-      >*//*,
-      */
    >
 >;
 

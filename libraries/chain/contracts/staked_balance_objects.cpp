@@ -44,7 +44,7 @@ void staked_balance_object::propagate_votes(share_type staked_delta, chainbase::
       // This account votes for producers directly; update their stakes
       boost::for_each(producer_votes.get<producer_slate>().range(), [&db, &staked_delta](const account_name& name) {
          db.modify(db.get<producer_votes_object, by_owner_name>(name), [&db, &staked_delta](producer_votes_object& pvo) {
-            pvo.update_votes(staked_delta, producer_schedule_object::get(db).current_race_time);
+            pvo.update_votes(staked_delta);
          });
       });
    else {

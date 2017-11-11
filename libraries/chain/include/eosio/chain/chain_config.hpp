@@ -25,7 +25,7 @@ struct chain_config {
    uint16_t   max_authority_depth;
    uint32_t   max_transaction_exec_time;
    uint16_t   max_inline_depth;
-   uint32_t   max_inline_message_size;
+   uint32_t   max_inline_action_size;
    uint32_t   max_generated_transaction_size;
 
    static chain_config get_median_values( vector<chain_config> votes );
@@ -40,4 +40,4 @@ FC_REFLECT(eosio::chain::chain_config,
            (target_block_size)(producer_pay)
            (max_block_size)(max_storage_size)
            (max_transaction_lifetime)(max_authority_depth)(max_transaction_exec_time)
-           (max_inline_depth)(max_inline_message_size)(max_generated_transaction_size) )
+           (max_inline_depth)(max_inline_action_size)(max_generated_transaction_size) )

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/config.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
 
 #include <chainbase/chainbase.hpp>

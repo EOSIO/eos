@@ -20,26 +20,32 @@ struct key_weight {
 };
 
 struct authority {
+  authority( public_key_type k ):threshold(1),keys({{k,1}}){}
+  authority( uint32_t t, vector<key_weight> k, vector<permission_level_weight> p = {} )
+  :threshold(t),keys(move(k)),accounts(move(p)){}
+  authority(){}
+
+
   uint32_t                          threshold = 0;
-  vector<permission_level_weight>   accounts;
   vector<key_weight>                keys;
+  vector<permission_level_weight>   accounts;
 };
 
 
 struct shared_authority {
    shared_authority( chainbase::allocator<char> alloc )
-   :accounts(alloc),keys(alloc){}
+   :keys(alloc),accounts(alloc){}
 
    shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
-      accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
+      accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       return *this;
    }
 
    uint32_t                                   threshold = 0;
-   shared_vector<permission_level_weight>   accounts;
    shared_vector<key_weight>                  keys;
+   shared_vector<permission_level_weight>     accounts;
 
    operator authority()const { return to_authority(); }
    authority to_authority()const {

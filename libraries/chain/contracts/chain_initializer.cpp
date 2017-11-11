@@ -19,14 +19,14 @@ time_point chain_initializer::get_chain_start_time() {
    return genesis.initial_timestamp;
 }
 
-blockchain_configuration chain_initializer::get_chain_start_configuration() {
+chain_config chain_initializer::get_chain_start_configuration() {
    return genesis.initial_configuration;
 }
 
 producer_schedule_type chain_initializer::get_chain_start_producers() {
-   std::array<account_name, config::blocks_per_round> result;
+   producer_schedule_type result;
    std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
-                  [](const auto& p) { return p.owner_name; });
+                  [](const auto& p) { return producer_key{p.owner_name,p.block_signing_key}; });
    return result;
 }
 
@@ -39,6 +39,7 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 
    db.add_index<balance_multi_index>();
 
+   /*
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::nspace::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
    SET_APP_HANDLER( eos, eos, newaccount, eosio );
@@ -54,13 +55,15 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eos, eos, deleteauth, eosio );
    SET_APP_HANDLER( eos, eos, linkauth, eosio );
    SET_APP_HANDLER( eos, eos, unlinkauth, eosio ); 
+   */
 }
 
+/*
 abi chain_initializer::eos_contract_abi()
 {
    abi eos_abi;
-   eos_abi.types.push_back( type_def{"account_name","Name"} );
-   eos_abi.types.push_back( type_def{"share_type","Int64"} );
+   eos_abi.types.push_back( type_def{"account_name","name"} );
+   eos_abi.types.push_back( type_def{"share_type","int64"} );
    eos_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
    eos_abi.actions.push_back( action_def{name("lock"), "lock"} );
    eos_abi.actions.push_back( action_def{name("unlock"), "unlock"} );
@@ -90,6 +93,7 @@ abi chain_initializer::eos_contract_abi()
 
    return eos_abi;
 }
+*/
 
 std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
@@ -99,13 +103,13 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
    db.create<producer_schedule_object>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto create_native_account = [this, &db](Name name, auto liquidBalance) {
+   auto create_native_account = [this, &db](account_name name, auto liquidBalance) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
 
          if( name == config::system_account_name ) {
-            a.set_abi(eos_contract_abi());
+         //   a.set_abi(eos_contract_abi());
          }
       });
       const auto& owner = db.create<permission_object>([&name](permission_object& p) {
@@ -128,36 +132,33 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
    create_native_account(config::system_account_name, config::initial_token_supply);
 
    // Queue up messages which will run contracts to create the initial accounts
-   auto key_authority = [](public_key k) {
-      return authority(1, {{k, 1}}, {});
-   };
    for (const auto& acct : genesis.initial_accounts) {
-      action message(config::system_account_name,
-                             vector<account_permission>{{config::system_account_name, "active"}},
-                             "newaccount", newaccount(config::system_account_name, acct.name,
-                                                             key_authority(acct.owner_key),
-                                                             key_authority(acct.active_key),
-                                                             key_authority(acct.owner_key),
+      action message( {{config::system_account_name, config::active_name}},
+                      newaccount( config::system_account_name, acct.name,
+                                                             authority(acct.owner_key),
+                                                             authority(acct.active_key),
+                                                             authority(acct.owner_key),
                                                              acct.staking_balance));
-      messages_to_process.emplace_back(std::move(message));
+
+      messages_to_process.emplace_back(move(message));
+
       if (acct.liquid_balance > 0) {
-         message = action(config::system_account_name,
-                                  vector<account_permission>{{config::system_account_name, "active"}},
-                                  "transfer", transfer(config::system_account_name, acct.name,
-                                                              acct.liquid_balance.amount, "Genesis Allocation"));
-         messages_to_process.emplace_back(std::move(message));
+         message = action( {{config::system_account_name, config::active_name}},
+                           transfer( config::system_account_name, acct.name,
+                                     acct.liquid_balance.amount, "Genesis Allocation"));
+         messages_to_process.emplace_back(move(message));
       }
    }
 
    // Create initial producers
    auto create_producer = boost::adaptors::transformed([config = genesis.initial_configuration](const auto& p) {
-      return action(config::system_account_name, vector<account_permission>{{p.owner_name, "active"}},
-                            "setproducer", setproducer(p.owner_name, p.block_signing_key, config));
+      return action( {{p.owner_name, config::active_name}},
+                     setproducer(p.owner_name, p.block_signing_key, config));
    });
    boost::copy(genesis.initial_producers | create_producer, std::back_inserter(messages_to_process));
 
    // Create special accounts
-   auto create_special_account = [this, &db](Name name, const auto& owner, const auto& active) {
+   auto create_special_account = [this, &db](account_name name, const auto& owner, const auto& active) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
@@ -166,13 +167,13 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
          p.name = config::owner_name;
          p.parent = 0;
          p.owner = name;
-         p.auth = std::move(owner);
+         p.auth = move(owner);
       });
       db.create<permission_object>([&active, &owner_permission](permission_object& p) {
          p.name = config::active_name;
          p.parent = owner_permission.id;
          p.owner = owner_permission.owner;
-         p.auth = std::move(active);
+         p.auth = move(active);
       });
    };
 

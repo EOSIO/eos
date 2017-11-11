@@ -10,23 +10,22 @@
 
 namespace eosio { namespace chain {  namespace contracts {
 
-   class contract_chain_initializer : public chain::chain_initializer_interface {
+   class chain_initializer 
+   {
 
       public:
-         native_contract_chain_initializer(const genesis_state_type& genesis) : genesis(genesis) {}
-         virtual ~native_contract_chain_initializer() {}
+         chain_initializer(const genesis_state_type& genesis) : genesis(genesis) {}
 
-         virtual time_point              get_chain_start_time() override;
-         virtual chain::chain_config     get_chain_start_configuration() override;
-         virtual producer_scheduler_type get_chain_start_producers() override;
+         time_point              get_chain_start_time();
+         chain::chain_config     get_chain_start_configuration();
+         producer_schedule_type  get_chain_start_producers();
 
-         virtual void register_types(chain::chain_controller& chain, chainbase::database& db) override;
+         void register_types(chain::chain_controller& chain, chainbase::database& db);
 
 
-         virtual std::vector<action> prepare_database(chain::chain_controller& chain,
-                                                      chainbase::database& db) override;
+         std::vector<action> prepare_database(chain::chain_controller& chain, chainbase::database& db);
 
-         static abi eos_contract_abi();
+       //  static abi eos_contract_abi();
 
       private:
          genesis_state_type genesis;
