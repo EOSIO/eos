@@ -68,9 +68,9 @@ asset asset::from_string(const string& from)
          auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
          result.set_decimals( fractpart.size() - 1 );
 
-         result.amount *= int64(result.precision());
-         result.amount += int64(fc::to_int64(fractpart));
-         result.amount -= int64(result.precision());
+         result.amount *= int64_t(result.precision());
+         result.amount += int64_t(fc::to_int64(fractpart));
+         result.amount -= int64_t(result.precision());
       }
       auto symbol = s.substr( space_pos + 1 );
 
@@ -87,8 +87,8 @@ bool operator == ( const price& a, const price& b )
    if( std::tie( a.base.symbol, a.quote.symbol ) != std::tie( b.base.symbol, b.quote.symbol ) )
       return false;
 
-   const auto amult = uint128( b.quote.amount ) * uint128(a.base.amount);
-   const auto bmult = uint128( a.quote.amount ) * uint128(b.base.amount);
+   const auto amult = uint128_t( b.quote.amount ) * uint128_t(a.base.amount);
+   const auto bmult = uint128_t( a.quote.amount ) * uint128_t(b.base.amount);
 
    return amult == bmult;
 }
@@ -100,8 +100,8 @@ bool operator < ( const price& a, const price& b )
    if( a.quote.symbol < b.quote.symbol ) return true;
    if( a.quote.symbol > b.quote.symbol ) return false;
 
-   const auto amult = uint128( b.quote.amount ) * uint128(a.base.amount);
-   const auto bmult = uint128( a.quote.amount ) * uint128(b.base.amount);
+   const auto amult = uint128_t( b.quote.amount ) * uint128_t(a.base.amount);
+   const auto bmult = uint128_t( a.quote.amount ) * uint128_t(b.base.amount);
 
    return amult < bmult;
 }
@@ -131,15 +131,15 @@ asset operator * ( const asset& a, const price& b )
    if( a.symbol_name() == b.base.symbol_name() )
    {
       FC_ASSERT( static_cast<int64_t>(b.base.amount) > 0 );
-      auto result = (uint128(a.amount) * uint128(b.quote.amount))/uint128(b.base.amount);
-      return asset( int64(result), b.quote.symbol );
+      auto result = (uint128_t(a.amount) * uint128_t(b.quote.amount))/uint128_t(b.base.amount);
+      return asset( int64_t(result), b.quote.symbol );
    }
 
    else if( a.symbol_name() == b.quote.symbol_name() )
    {
       FC_ASSERT( static_cast<int64_t>(b.quote.amount) > 0 );
-      auto result = (uint128(a.amount) *uint128(b.base.amount))/uint128(b.quote.amount);
-      return asset( int64(result), b.base.symbol );
+      auto result = (uint128_t(a.amount) *uint128_t(b.base.amount))/uint128_t(b.quote.amount);
+      return asset( int64_t(result), b.base.symbol );
    }
    FC_THROW_EXCEPTION( fc::assert_exception, "invalid asset * price", ("asset",a)("price",b) );
 }
