@@ -3,7 +3,7 @@
 #include <eoslib/datastream.hpp>
 #include <eoslib/raw_fwd.hpp>
 
-namespace eos { namespace raw {
+namespace eosio { namespace raw {
    template<typename Stream> inline void pack( Stream& s, const record1& value ) {
       raw::pack(s, value.key);
       raw::pack(s, value.u256);
@@ -50,43 +50,43 @@ namespace eos { namespace raw {
       raw::unpack(s, value.key2);
       raw::unpack(s, value.key3);
    }
-   template<typename Stream> inline void pack( Stream& s, const KeyValue1& value ) {
+   template<typename Stream> inline void pack( Stream& s, const key_value1& value ) {
       raw::pack(s, value.key);
       raw::pack(s, value.value);
    }
-   template<typename Stream> inline void unpack( Stream& s, KeyValue1& value ) {
+   template<typename Stream> inline void unpack( Stream& s, key_value1& value ) {
       raw::unpack(s, value.key);
       raw::unpack(s, value.value);
    }
-   template<typename Stream> inline void pack( Stream& s, const ComplexType& value ) {
+   template<typename Stream> inline void pack( Stream& s, const complex_type& value ) {
       raw::pack(s, value.name);
       raw::pack(s, value.age);
    }
-   template<typename Stream> inline void unpack( Stream& s, ComplexType& value ) {
+   template<typename Stream> inline void unpack( Stream& s, complex_type& value ) {
       raw::unpack(s, value.name);
       raw::unpack(s, value.age);
    }
-   template<typename Stream> inline void pack( Stream& s, const KeyValue2& value ) {
+   template<typename Stream> inline void pack( Stream& s, const key_value2& value ) {
       raw::pack(s, value.key);
       raw::pack(s, value.value);
    }
-   template<typename Stream> inline void unpack( Stream& s, KeyValue2& value ) {
+   template<typename Stream> inline void unpack( Stream& s, key_value2& value ) {
       raw::unpack(s, value.key);
       raw::unpack(s, value.value);
    }
 } }
 
 #include <eoslib/raw.hpp>
-namespace eos {
+namespace eosio {
    void print_ident(int n){while(n-->0){print("  ");}};
    template<typename Type>
    Type current_message_ex() {
       uint32_t size = message_size();
-      char* data = (char *)eos::malloc(size);
+      char* data = (char *)eosio::malloc(size);
       assert(data && read_message(data, size) == size, "error reading message");
       Type value;
-      eos::raw::unpack(data, size, value);
-      eos::free(data);
+      eosio::raw::unpack(data, size, value);
+      eosio::free(data);
       return value;
    }
    void dump(const record1& value, int tab=0) {
@@ -101,7 +101,7 @@ namespace eos {
       print_ident(tab);print("i32:[");printi(uint64_t(value.i32));print("]\n");
       print_ident(tab);print("i16:[");printi(uint64_t(value.i16));print("]\n");
       print_ident(tab);print("i8:[");printi(uint64_t(value.i8));print("]\n");
-      print_ident(tab);print("price:[");printi(value.price.base.amount);print(" ");printn(value.price.base.symbol);print("/");printi(value.price.quote.amount);print(" ");printn(value.price.quote.symbol);print("]\n");
+      print_ident(tab);print("price:[");print("]\n");
    }
    template<>
    record1 current_message<record1>() {
@@ -124,29 +124,29 @@ namespace eos {
    record3 current_message<record3>() {
       return current_message_ex<record3>();
    }
-   void dump(const KeyValue1& value, int tab=0) {
-      print_ident(tab);print("key:[");prints_l(value.key.get_data(), value.key.get_size());print("]\n");
-      print_ident(tab);print("value:[");prints_l(value.value.get_data(), value.value.get_size());print("]\n");
+   void dump(const key_value1& value, int tab=0) {
+      print_ident(tab);print("key:[");print("]\n");
+      print_ident(tab);print("value:[");print("]\n");
    }
    template<>
-   KeyValue1 current_message<KeyValue1>() {
-      return current_message_ex<KeyValue1>();
+   key_value1 current_message<key_value1>() {
+      return current_message_ex<key_value1>();
    }
-   void dump(const ComplexType& value, int tab=0) {
-      print_ident(tab);print("name:[");prints_l(value.name.get_data(), value.name.get_size());print("]\n");
+   void dump(const complex_type& value, int tab=0) {
+      print_ident(tab);print("name:[");print("]\n");
       print_ident(tab);print("age:[");printi(uint64_t(value.age));print("]\n");
    }
    template<>
-   ComplexType current_message<ComplexType>() {
-      return current_message_ex<ComplexType>();
+   complex_type current_message<complex_type>() {
+      return current_message_ex<complex_type>();
    }
-   void dump(const KeyValue2& value, int tab=0) {
-      print_ident(tab);print("key:[");prints_l(value.key.get_data(), value.key.get_size());print("]\n");
-      print_ident(tab);print("value:[");print("\n"); eos::dump(value.value, tab+1);print_ident(tab);print("]\n");
+   void dump(const key_value2& value, int tab=0) {
+      print_ident(tab);print("key:[");print("]\n");
+      print_ident(tab);print("value:[");print("\n"); eosio::dump(value.value, tab+1);print_ident(tab);print("]\n");
    }
    template<>
-   KeyValue2 current_message<KeyValue2>() {
-      return current_message_ex<KeyValue2>();
+   key_value2 current_message<key_value2>() {
+      return current_message_ex<key_value2>();
    }
-} //eos
+} //eosio
 

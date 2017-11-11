@@ -21,8 +21,8 @@
 
 using namespace eosio;
 using namespace chain;
-using namespace eos::types;
-using namespace eos::abi_generator;
+using namespace eosio::types;
+using namespace eosio::abi_generator;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
@@ -228,7 +228,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
     return;
   }
 
-  auto is_abi_generation_exception =[](const eos::abi_generator::abi_generation_exception& e) -> bool { return true; };
+  auto is_abi_generation_exception =[](const eosio::abi_generator::abi_generation_exception& e) -> bool { return true; };
 
   auto generate_abi = [this](const char* source, const char* abi, bool opt_sfs=false) -> bool {
     
@@ -237,14 +237,14 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
     std::string include_param = std::string("-I") + eoslib_path;
     
-    eos::types::Abi output;
+    eosio::types::abi output;
     bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source, 
       {"-fparse-all-comments", "--std=c++14", "--target=wasm32", include_param});
     
     FC_ASSERT(res == true);
-    AbiSerializer(output).validate();
+    abi_serializer(output).validate();
 
-    auto abi1 = fc::json::from_string(abi).as<Abi>();
+    auto abi1 = fc::json::from_string(abi).as<eosio::types::abi>();
 
     auto e = fc::to_hex(fc::raw::pack(abi1)) == fc::to_hex(fc::raw::pack(output));
     
@@ -265,80 +265,69 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    };
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
    
    const char* all_types = R"=====(
-   #include <eoslib/types.hpp>
-   #include <eoslib/string.hpp>
-    
-    typedef uint8_t UInt8;
-    typedef uint16_t UInt16;
-    typedef uint32_t UInt32;
-    typedef uint64_t UInt64;
-    typedef uint128_t UInt128;
-    //typedef uint256 UInt256;
-    typedef int8_t Int8;
-    typedef int16_t Int16;
-    typedef int32_t Int32;
-    typedef int64_t Int64;
-    typedef uint64_t Name;
-    typedef int Field;
-    typedef int Struct;
-    typedef int Fields;
-    typedef int MessageName;
-    typedef int AccountPermission;
-    typedef int Message;
-    typedef int AccountPermissionWeight;
-    typedef int Transaction;
-    typedef int SignedTransaction;
-    typedef int KeyPermissionWeight;
-    typedef int Authority;
-    typedef int BlockchainConfiguration;
-    typedef int TypeDef;
-    typedef int Action;
-    typedef int Table;
-    typedef int Abi;
+    #include <eoslib/types.hpp>
+    #include <eoslib/string.hpp>
+
+    typedef int field;
+    typedef int struct_t;
+    typedef int fields;
+    typedef int message_name;
+    typedef int account_permission;
+    typedef int message;
+    typedef int account_permission_weight;
+    typedef int transaction;
+    typedef int signed_transaction;
+    typedef int key_permission_weight;
+    typedef int authority;
+    typedef int blockchain_configuration;
+    typedef int type_def;
+    typedef int action;
+    typedef int table;
+    typedef int abi;
    
    //@abi action
-   struct TestStruct {
-      eos::string             field1;
-      Time                    field2;
-      Signature               field3;
-      Checksum                field4;
-      FieldName               field5;
-      FixedString32           field6;
-      FixedString16           field7;
-      TypeName                field8;
-      Bytes                   field9;
-      UInt8                   field10;
-      UInt16                  field11;
-      UInt32                  field12;
-      UInt64                  field13;
-      UInt128                 field14;
-      Int8                    field16;
-      Int16                   field17;
-      Int32                   field18;
-      Int64                   field19;
-      Name                    field20;
-      Field                   field21;
-      Struct                  field22;
-      Fields                  field23;
-      AccountName             field24;
-      PermissionName          field25;
-      FuncName                field26;
-      MessageName             field27;
-      AccountPermission       field28;
-      Message                 field29;
-      AccountPermissionWeight field30;
-      Transaction             field31;
-      SignedTransaction       field32;
-      KeyPermissionWeight     field33;
-      Authority               field34;
-      BlockchainConfiguration field35;
-      TypeDef                 field36;
-      Action                  field37;
-      Table                   field38;
-      Abi                     field39;
+   struct test_struct {
+      eosio::string           field1;
+      time                    field2;
+      signature               field3;
+      checksum                field4;
+      field_name              field5;
+      fixed_string32          field6;
+      fixed_string16          field7;
+      type_name               field8;
+      bytes                   field9;
+      uint8_t                 field10;
+      uint16_t                field11;
+      uint32_t                field12;
+      uint64_t                field13;
+      uint128_t               field14;
+      int8_t                  field16;
+      int16_t                 field17;
+      int32_t                 field18;
+      int64_t                 field19;
+      eosio::name             field20;
+      field                   field21;
+      struct_t                field22;
+      fields                  field23;
+      account_name            field24;
+      permission_name         field25;
+      func_name               field26;
+      message_name            field27;
+      account_permission      field28;
+      message                 field29;
+      account_permission_weight field30;
+      transaction               field31;
+      signed_transaction        field32;
+      key_permission_weight     field33;
+      authority                 field34;
+      blockchain_configuration  field35;
+      type_def                  field36;
+      action                    field37;
+      table                     field38;
+      abi                       field39;
    };
    )=====";
 
@@ -346,52 +335,52 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    {
        "types": [],
        "structs": [{
-          "name" : "TestStruct",
+          "name" : "test_struct",
           "base" : "",
           "fields" : {
-            "field1" : "String",
-            "field2" : "Time",
-            "field3" : "Signature",
-            "field4" : "Checksum",
-            "field5" : "FieldName",
-            "field6" : "FixedString32",
-            "field7" : "FixedString16",
-            "field8" : "TypeName",
-            "field9" : "Bytes",
-            "field10" : "UInt8",
-            "field11" : "UInt16",
-            "field12" : "UInt32",
-            "field13" : "UInt64",
-            "field14" : "UInt128",
-            "field16" : "Int8",
-            "field17" : "Int16",
-            "field18" : "Int32",
-            "field19" : "Int64",
-            "field20" : "Name",
-            "field21" : "Field",
-            "field22" : "Struct",
-            "field23" : "Fields",
-            "field24" : "AccountName",
-            "field25" : "PermissionName",
-            "field26" : "FuncName",
-            "field27" : "MessageName",
-            "field28" : "AccountPermission",
-            "field29" : "Message",
-            "field30" : "AccountPermissionWeight",
-            "field31" : "Transaction",
-            "field32" : "SignedTransaction",
-            "field33" : "KeyPermissionWeight",
-            "field34" : "Authority",
-            "field35" : "BlockchainConfiguration",
-            "field36" : "TypeDef",
-            "field37" : "Action",
-            "field38" : "Table",
-            "field39" : "Abi"
+            "field1" : "string",
+            "field2" : "time",
+            "field3" : "signature",
+            "field4" : "checksum",
+            "field5" : "field_name",
+            "field6" : "fixed_string32",
+            "field7" : "fixed_string16",
+            "field8" : "type_name",
+            "field9" : "bytes",
+            "field10" : "uint8",
+            "field11" : "uint16",
+            "field12" : "uint32",
+            "field13" : "uint64",
+            "field14" : "uint128",
+            "field16" : "int8",
+            "field17" : "int16",
+            "field18" : "int32",
+            "field19" : "int64",
+            "field20" : "name",
+            "field21" : "field",
+            "field22" : "struct_t",
+            "field23" : "fields",
+            "field24" : "account_name",
+            "field25" : "permission_name",
+            "field26" : "func_name",
+            "field27" : "message_name",
+            "field28" : "account_permission",
+            "field29" : "message",
+            "field30" : "account_permission_weight",
+            "field31" : "transaction",
+            "field32" : "signed_transaction",
+            "field33" : "key_permission_weight",
+            "field34" : "authority",
+            "field35" : "blockchain_configuration",
+            "field36" : "type_def",
+            "field37" : "action",
+            "field38" : "table",
+            "field39" : "abi"
           }
        }],
        "actions": [{
-          "action" : "teststruct",
-          "type" : "TestStruct"
+          "action_name" : "teststruct",
+          "type" : "test_struct"
        }],
        "tables": []
    }
@@ -414,7 +403,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    };
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    const char* double_action = R"=====(
    #include <eoslib/types.h>
@@ -439,26 +428,26 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
           "name" : "A",
           "base" : "",
           "fields" : {
-            "param3" : "UInt64",
+            "param3" : "uint64",
           }
        },{
           "name" : "B",
           "base" : "A",
           "fields" : {
-            "param2" : "UInt64",
+            "param2" : "uint64",
           }
        },{
           "name" : "C",
           "base" : "B",
           "fields" : {
-            "param1" : "UInt64",
+            "param1" : "uint64",
           }
        }],
        "actions": [{
-          "action" : "action1",
+          "action_name" : "action1",
           "type" : "C"
        },{
-          "action" : "action2",
+          "action_name" : "action2",
           "type" : "C"
        }],
        "tables": []
@@ -469,9 +458,10 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    BOOST_CHECK_EQUAL( generate_abi(double_action, double_action_abi), true );
 
    const char* all_indexes = R"=====(
-   #include <eoslib/types.h>
-   
-   typedef int String;
+   #include <eoslib/types.hpp>
+   #include <eoslib/string.hpp>
+
+   using namespace eosio;
 
    //@abi table
    struct Table1 {
@@ -493,12 +483,12 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    struct MyComplexValue {
       uint64_t    a;
-      AccountName b;
+      account_name b;
    };
 
    //@abi table
    struct Table4 {
-      String key;
+      eosio::string key;
       MyComplexValue value;
    };
 
@@ -511,85 +501,85 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
           "name" : "Table1",
           "base" : "",
           "fields" : {
-            "field1" : "UInt64",
+            "field1" : "uint64",
           }
        },{
           "name" : "Table2",
           "base" : "",
           "fields" : {
-            "field1" : "UInt128",
-            "field2" : "UInt128",
+            "field1" : "uint128",
+            "field2" : "uint128",
           }
        },{
           "name" : "Table3",
           "base" : "",
           "fields" : {
-            "field1" : "UInt64",
-            "field2" : "UInt64",
-            "field3" : "UInt64",
+            "field1" : "uint64",
+            "field2" : "uint64",
+            "field3" : "uint64",
           }
        },{
           "name" : "MyComplexValue",
           "base" : "",
           "fields" : {
-            "a" : "UInt64",
-            "b" : "AccountName",
+            "a" : "uint64",
+            "b" : "account_name",
           }
        },{
           "name" : "Table4",
           "base" : "",
           "fields" : {
-            "key" : "String",
+            "key" : "string",
             "value" : "MyComplexValue",
           }
        }],
        "actions": [],
        "tables": [
         {
-          "table": "table1",
+          "table_name": "table1",
           "type": "Table1",
-          "indextype": "i64",
-          "keynames": [
+          "index_type": "i64",
+          "key_names": [
             "field1"
           ],
-          "keytypes": [
-            "UInt64"
+          "key_types": [
+            "uint64"
           ]
         },{
-          "table": "table2",
+          "table_name": "table2",
           "type": "Table2",
-          "indextype": "i128i128",
-          "keynames": [
+          "index_type": "i128i128",
+          "key_names": [
             "field1",
             "field2"
           ],
-          "keytypes": [
-            "UInt128",
-            "UInt128"
+          "key_types": [
+            "uint128",
+            "uint128"
           ]
         },{
-          "table": "table3",
+          "table_name": "table3",
           "type": "Table3",
-          "indextype": "i64i64i64",
-          "keynames": [
+          "index_type": "i64i64i64",
+          "key_names": [
             "field1",
             "field2",
             "field3"
           ],
-          "keytypes": [
-            "UInt64",
-            "UInt64",
-            "UInt64"
+          "key_types": [
+            "uint64",
+            "uint64",
+            "uint64"
           ]
         },{
-          "table": "table4",
+          "table_name": "table4",
           "type": "Table4",
-          "indextype": "str",
-          "keynames": [
+          "index_type": "str",
+          "key_names": [
             "key",
           ],
-          "keytypes": [
-            "String",
+          "key_types": [
+            "string",
           ]
         },
 
@@ -610,11 +600,11 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(unable_to_determine_index, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(unable_to_determine_index, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    //TODO: full action / full table
 
-  // typedef FixedString16 FieldName;
+  // typedef fixed_string16 FieldName;
    const char* long_field_name = R"=====(
    #include <eoslib/types.h>
    
@@ -625,7 +615,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    const char* long_type_name = R"=====(
    #include <eoslib/types.h>
@@ -642,7 +632,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    )=====";
 
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_type_different_namespace = R"=====(
    #include <eoslib/types.h>
@@ -663,7 +653,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    const char* bad_index_type = R"=====(
    #include <eoslib/types.h>
@@ -677,7 +667,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    const char* full_table_decl = R"=====(
    #include <eoslib/types.hpp>
@@ -686,7 +676,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    class Table1 {
    public:
       uint64_t  id;
-      eos::Name name;
+      eosio::name name;
       uint32_t  age;
    };
 
@@ -699,22 +689,22 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
           "name" : "Table1",
           "base" : "",
           "fields" : {
-            "id" : "UInt64",
-            "name" : "Name",
-            "age" : "UInt32"
+            "id" : "uint64",
+            "name" : "name",
+            "age" : "uint32"
           }
        }],
        "actions": [],
        "tables": [
         {
-          "table": "table1",
+          "table_name": "table1",
           "type": "Table1",
-          "indextype": "i64",
-          "keynames": [
+          "index_type": "i64",
+          "key_names": [
             "id"
           ],
-          "keytypes": [
-            "UInt64"
+          "key_types": [
+            "uint64"
           ]
         }]
    }
@@ -733,7 +723,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_action_different_type = R"=====(
    #include <eoslib/types.h>
@@ -750,7 +740,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eos::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
 
    const char* template_base = R"=====(
    #include <eoslib/types.h>
@@ -777,26 +767,26 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
           "name" : "Base32",
           "base" : "",
           "fields" : {
-            "field" : "UInt32",
+            "field" : "uint32",
           }
        },{
           "name" : "Table1",
           "base" : "Base32",
           "fields" : {
-            "id" : "UInt64",
+            "id" : "uint64",
           }
        }],
        "actions": [],
        "tables": [
         {
-          "table": "table1",
+          "table_name": "table1",
           "type": "Table1",
-          "indextype": "i64",
-          "keynames": [
+          "index_type": "i64",
+          "key_names": [
             "id"
           ],
-          "keytypes": [
-            "UInt64"
+          "key_types": [
+            "uint64"
           ]
         }]
    }
@@ -824,23 +814,23 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
           "name" : "TableAction",
           "base" : "",
           "fields" : {
-            "id" : "UInt64",
+            "id" : "uint64",
           }
        }],
        "actions": [{
-          "action" : "tableaction",
+          "action_name" : "tableaction",
           "type" : "TableAction"
        }],
        "tables": [
         {
-          "table": "tableaction",
+          "table_name": "tableaction",
           "type": "TableAction",
-          "indextype": "i64",
-          "keynames": [
+          "index_type": "i64",
+          "key_names": [
             "id"
           ],
-          "keytypes": [
-            "UInt64"
+          "key_types": [
+            "uint64"
           ]
         }]
    }
@@ -851,7 +841,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* simple_typedef = R"=====(
    #include <eoslib/types.hpp>
 
-   using namespace eos;
+   using namespace eosio;
 
    struct CommonParams {
       uint64_t c1;
@@ -871,26 +861,26 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* simple_typedef_abi = R"=====(
    {
        "types": [{
-          "newTypeName" : "MyBaseAlias",
+          "new_type_name" : "MyBaseAlias",
           "type" : "CommonParams"
        }],
        "structs": [{
           "name" : "CommonParams",
           "base" : "",
           "fields" : {
-            "c1" : "UInt64",
-            "c2" : "UInt64",
-            "c3" : "UInt64"
+            "c1" : "uint64",
+            "c2" : "uint64",
+            "c3" : "uint64"
           }
        },{
           "name" : "MainAction",
           "base" : "MyBaseAlias",
           "fields" : {
-            "param1" : "UInt64"
+            "param1" : "uint64"
           }
        }],
        "actions": [{
-          "action" : "mainaction",
+          "action_name" : "mainaction",
           "type" : "MainAction"
        }],
        "tables": []
@@ -902,9 +892,9 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* field_typedef = R"=====(
    #include <eoslib/types.hpp>
 
-   using namespace eos;
+   using namespace eosio;
 
-   typedef Name MyNameAlias;
+   typedef name MyNameAlias;
 
    struct ComplexField {
       uint64_t  f1;
@@ -925,38 +915,38 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* field_typedef_abi = R"=====(
    {
        "types": [{
-          "newTypeName" : "MyComplexFieldAlias",
+          "new_type_name" : "MyComplexFieldAlias",
           "type" : "ComplexField"
        },{
-          "newTypeName" : "MyNameAlias",
-          "type" : "Name"
+          "new_type_name" : "MyNameAlias",
+          "type" : "name"
        }],
        "structs": [{
           "name" : "ComplexField",
           "base" : "",
           "fields" : {
-            "f1" : "UInt64",
-            "f2" : "UInt32",
+            "f1" : "uint64",
+            "f2" : "uint32",
           }
        },{
           "name" : "Table1",
           "base" : "",
           "fields" : {
-            "field1" : "UInt64",
+            "field1" : "uint64",
             "field2" : "MyComplexFieldAlias",
             "name"   : "MyNameAlias"
           }
        }],
        "actions": [],
        "tables": [{
-          "table": "table1",
+          "table_name": "table1",
           "type": "Table1",
-          "indextype": "i64",
-          "keynames": [
+          "index_type": "i64",
+          "key_names": [
             "field1"
           ],
-          "keytypes": [
-            "UInt64"
+          "key_types": [
+            "uint64"
           ]
         }]
    }
@@ -1199,7 +1189,7 @@ BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
    abi = fc::json::from_string(struct_cycle_abi).as<types::abi>();
-      abis.set_abi(abi);
+   abis.set_abi(abi);
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
 } FC_LOG_AND_RETHROW() }
@@ -1767,12 +1757,12 @@ BOOST_FIXTURE_TEST_CASE(abi_type_repeat, testing_fixture)
        }
      ],
      "actions": [{
-         "action": "transfer",
+         "action_name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table": "account",
+         "table_name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
@@ -1815,12 +1805,12 @@ BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
        }
      ],
      "actions": [{
-         "action": "transfer",
+         "action_name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table": "account",
+         "table_name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
@@ -1863,15 +1853,15 @@ BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
        }
      ],
      "actions": [{
-         "action": "transfer",
+         "action_name": "transfer",
          "type": "transfer"
        },{
-         "action": "transfer",
+         "action_name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table": "account",
+         "table_name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
@@ -1914,18 +1904,18 @@ BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
        }
      ],
      "actions": [{
-         "action": "transfer",
+         "action_name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table": "account",
+         "table_name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
          "key_types" : ["name"]
        },{
-         "table": "account",
+         "table_name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],

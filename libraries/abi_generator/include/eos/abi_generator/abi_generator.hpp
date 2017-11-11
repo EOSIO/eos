@@ -21,7 +21,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <boost/algorithm/string.hpp>
 
-#include <eos/types/AbiSerializer.hpp>
+#include <eos/types/abi_serializer.hpp>
 #include <eos/types/types.hpp>
 #include <fc/io/json.hpp>
 
@@ -30,7 +30,7 @@ using namespace std;
 using namespace clang::tooling;
 namespace cl = llvm::cl;
 
-namespace eos { namespace abi_generator {
+namespace eosio { namespace abi_generator {
 
 FC_DECLARE_EXCEPTION( abi_generation_exception, 999999, "Unable to generate abi" );
 
@@ -41,17 +41,19 @@ FC_DECLARE_EXCEPTION( abi_generation_exception, 999999, "Unable to generate abi"
       {                                                                      \
         if( fc::enable_record_assert_trip )                                  \
            fc::record_assert_trip( __FILE__, __LINE__, #TEST );              \
-        FC_THROW_EXCEPTION( eos::abi_generator::abi_generation_exception, #TEST ": "  __VA_ARGS__ ); \
+        FC_THROW_EXCEPTION( eosio::abi_generator::abi_generation_exception, #TEST ": "  __VA_ARGS__ ); \
       }                                                                      \
     FC_MULTILINE_MACRO_END \
   )
 
+/**
+* @brief Generates eosio::types::abi struct handling events from ASTConsumer
+*/
 class abi_generator {
 
   bool                   verbose;
   int                    optimizations;
-  types::Abi*            output;
-  clang::ASTContext*     context;
+  types::abi*            output;
   CompilerInstance*      compiler_instance;
   map<string, uint64_t>  type_size;
   map<string, string>    full_types;
@@ -66,29 +68,26 @@ class abi_generator {
   }
 
   bool is_builtin_type(const string& type_name) {
-    types::AbiSerializer serializer;
+    types::abi_serializer serializer;
     auto rtype = resolve_type(type_name);
-    //ilog("isBuiltInType: type_name:${type_name}, rtype:${rtype}",("type_name",type_name)("rtype",rtype));
-    return serializer.isBuiltInType(translate_type(rtype));
+    return serializer.is_builtin_type(translate_type(rtype));
   }
 
   string translate_type(const string& type_name) {
     string built_in_type = type_name;
 
-    if (type_name == "uint256") built_in_type = "UInt256";
-    else if (type_name == "unsigned __int128" || type_name == "uint128_t") built_in_type = "UInt128";
-    else if (type_name == "__int128"          || type_name == "int128_t")  built_in_type = "Int128";
+    if (type_name == "unsigned __int128" || type_name == "uint128_t") built_in_type = "uint128";
+    else if (type_name == "__int128"          || type_name == "int128_t")  built_in_type = "unt128";
 
-    else if (type_name == "unsigned long long" || type_name == "uint64_t") built_in_type = "UInt64";
-    else if (type_name == "unsigned long"      || type_name == "uint32_t") built_in_type = "UInt32";
-    else if (type_name == "unsigned short"     || type_name == "uint16_t") built_in_type = "UInt16";
-    else if (type_name == "unsigned char"      || type_name == "uint8_t")  built_in_type = "UInt8";
+    else if (type_name == "unsigned long long" || type_name == "uint64_t") built_in_type = "uint64";
+    else if (type_name == "unsigned long"      || type_name == "uint32_t") built_in_type = "uint32";
+    else if (type_name == "unsigned short"     || type_name == "uint16_t") built_in_type = "uint16";
+    else if (type_name == "unsigned char"      || type_name == "uint8_t")  built_in_type = "uint8";
     
-    else if (type_name == "long long"          || type_name == "int64_t")  built_in_type = "Int64";
-    else if (type_name == "long"               || type_name == "int32_t")  built_in_type = "Int32";
-    else if (type_name == "short"              || type_name == "int16_t")  built_in_type = "Int16";
-    else if (type_name == "char"               || type_name == "int8_t")   built_in_type = "Int8";
-    else if (type_name == "string" ) built_in_type = "String";
+    else if (type_name == "long long"          || type_name == "int64_t")  built_in_type = "int64";
+    else if (type_name == "long"               || type_name == "int32_t")  built_in_type = "int32";
+    else if (type_name == "short"              || type_name == "int16_t")  built_in_type = "int16";
+    else if (type_name == "char"               || type_name == "int8_t")   built_in_type = "int8";
 
     return built_in_type;
   }
@@ -163,18 +162,18 @@ class abi_generator {
           const auto* s = find_struct(type_name);
           ABI_ASSERT(s, "Unable to find type ${type}", ("type",type_name));
 
-          types::Table table;
-          table.table = boost::algorithm::to_lower_copy(boost::erase_all_copy(type_name, "_"));
+          types::table table;
+          table.table_name = boost::algorithm::to_lower_copy(boost::erase_all_copy(type_name, "_"));
           table.type = type_name;
           
           if(params.size() >= 1)
-            table.indextype = params[0];
+            table.index_type = params[0];
           else { try {
             guess_index_type(table, *s);
           } FC_CAPTURE_AND_RETHROW( (type_name) ) }
 
           if(params.size() >= 2) {
-            table.table = params[1];
+            table.table_name = params[1];
           }
           
           try {
@@ -182,7 +181,7 @@ class abi_generator {
           } FC_CAPTURE_AND_RETHROW( (type_name) )
 
           //TODO: assert that we are adding the same table
-          const auto* ta = find_table(table.table);
+          const auto* ta = find_table(table.table_name);
           if(!ta) {
             output->tables.push_back(table);  
           }
@@ -206,8 +205,8 @@ class abi_generator {
     return type == "String" || type == "string";
   }
 
-  void get_all_fields(const types::Struct& s, vector<types::Field>& fields) {
-    types::AbiSerializer abis(*output);
+  void get_all_fields(const types::struct_t& s, vector<types::field>& fields) {
+    types::abi_serializer abis(*output);
     for(const auto& field : s.fields) {
       fields.push_back(field);
     }
@@ -218,90 +217,90 @@ class abi_generator {
     }
   }
 
-  bool is_i64i64i64_index(const vector<types::Field>& fields) {
+  bool is_i64i64i64_index(const vector<types::field>& fields) {
     return fields.size() >= 3 && is_64bit(fields[0].type) && is_64bit(fields[1].type) && is_64bit(fields[2].type);
   }
 
-  bool is_i64_index(const vector<types::Field>& fields) {
+  bool is_i64_index(const vector<types::field>& fields) {
     return fields.size() >= 1 && is_64bit(fields[0].type);
   }
 
-  bool is_i128i128_index(const vector<types::Field>& fields) {
+  bool is_i128i128_index(const vector<types::field>& fields) {
     return fields.size() >= 2 && is_128bit(fields[0].type) && is_128bit(fields[1].type);
   }
 
-  bool is_str_index(const vector<types::Field>& fields) {
+  bool is_str_index(const vector<types::field>& fields) {
     return fields.size() == 2 && is_string(fields[0].type) && fields[0].name == "key" && fields[1].name == "value"; 
   }
 
-  void guess_index_type(types::Table& table, const types::Struct s) {
+  void guess_index_type(types::table& table, const types::struct_t s) {
 
-    vector<types::Field> fields;
+    vector<types::field> fields;
     get_all_fields(s, fields);
     
     if( is_str_index(fields) ) {
-      table.indextype = "str";
+      table.index_type = "str";
     } else if ( is_i64i64i64_index(fields) ) {
-      table.indextype = "i64i64i64";
+      table.index_type = "i64i64i64";
     } else if( is_i128i128_index(fields) ) {
-      table.indextype = "i128i128";
+      table.index_type = "i128i128";
     } else if( is_i64_index(fields) ) {
-      table.indextype = "i64";
+      table.index_type = "i64";
     } else {
       ABI_ASSERT(false, "Unable to guess index type");
     }
   }
 
-  void guess_key_names(types::Table& table, const types::Struct s) {
+  void guess_key_names(types::table& table, const types::struct_t s) {
 
-    vector<types::Field> fields;
+    vector<types::field> fields;
     get_all_fields(s, fields);
 
-    if( table.indextype == "i64i64i64" && is_i64i64i64_index(fields) ) {
-      table.keynames  = vector<types::FieldName>{fields[0].name, fields[1].name, fields[2].name};
-      table.keytypes  = vector<types::TypeName>{fields[0].type, fields[1].type, fields[2].type};
-    } else if( table.indextype == "i128i128" && is_i128i128_index(fields) ) {
-      table.keynames  = vector<types::FieldName>{fields[0].name, fields[1].name};
-      table.keytypes  = vector<types::TypeName>{fields[0].type, fields[1].type};
-    } else if( table.indextype == "i64" && is_i64_index(fields) ) {
-      table.keynames  = vector<types::FieldName>{fields[0].name};
-      table.keytypes  = vector<types::TypeName>{fields[0].type};
-    } else if( table.indextype == "str" && is_str_index(fields) ) {
-      table.keynames  = vector<types::FieldName>{fields[0].name};
-      table.keytypes  = vector<types::TypeName>{fields[0].type};
+    if( table.index_type == "i64i64i64" && is_i64i64i64_index(fields) ) {
+      table.key_names  = vector<types::field_name>{fields[0].name, fields[1].name, fields[2].name};
+      table.key_types  = vector<types::type_name>{fields[0].type, fields[1].type, fields[2].type};
+    } else if( table.index_type == "i128i128" && is_i128i128_index(fields) ) {
+      table.key_names  = vector<types::field_name>{fields[0].name, fields[1].name};
+      table.key_types  = vector<types::type_name>{fields[0].type, fields[1].type};
+    } else if( table.index_type == "i64" && is_i64_index(fields) ) {
+      table.key_names  = vector<types::field_name>{fields[0].name};
+      table.key_types  = vector<types::type_name>{fields[0].type};
+    } else if( table.index_type == "str" && is_str_index(fields) ) {
+      table.key_names  = vector<types::field_name>{fields[0].name};
+      table.key_types  = vector<types::type_name>{fields[0].type};
     } else {
       ABI_ASSERT(false, "Unable to guess key names");
     }
   }
 
-  const types::Table* find_table(const types::Name& name) {
+  const types::table* find_table(const types::name& name) {
     for( const auto& ta : output->tables ) {
-      if(ta.table == name) {
+      if(ta.table_name == name) {
         return &ta;
       }
     }
     return nullptr;
   }
 
-  const types::TypeDef* find_type(const types::TypeName& new_type_name) {
+  const types::type_def* find_type(const types::type_name& new_type_name) {
     for( const auto& td : output->types ) {
-      if(td.newTypeName == new_type_name) {
+      if(td.new_type_name == new_type_name) {
         return &td;
       }
     }
     return nullptr;
   }
 
-  const types::Action* find_action(const types::Name& name) {
+  const types::action* find_action(const types::name& name) {
     for( const auto& ac : output->actions ) {
-      if(ac.action == name) {
+      if(ac.action_name == name) {
         return &ac;
       }
     }
     return nullptr;
   }
 
-  const types::Struct* find_struct(const types::TypeName& name) {
+  const types::struct_t* find_struct(const types::type_name& name) {
     auto rname = resolve_type(name);
     for( const auto& st : output->structs ) {
       if(st.name == rname) {
@@ -311,7 +310,7 @@ class abi_generator {
     return nullptr;
   }
 
-  types::TypeName resolve_type(const types::TypeName& type){
+  types::type_name resolve_type(const types::type_name& type){
     const auto* td = find_type(type);
     if( td ) {
       return resolve_type(td->type);
@@ -325,7 +324,8 @@ class abi_generator {
   }
   
   string decl_to_string(clang::Decl *d) {
-      const auto& sm = context->getSourceManager();
+      ASTContext& ctx = d->getASTContext();
+      const auto& sm = ctx.getSourceManager();
       clang::SourceLocation b(d->getLocStart()), _e(d->getLocEnd());
       clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, compiler_instance->getLangOpts()));
       return string(sm.getCharacterData(b),
@@ -334,7 +334,7 @@ class abi_generator {
 
   void add_typedef(const clang::TypedefType* typeDef) {
 
-    vector<types::TypeDef> types_to_add;
+    vector<types::type_def> types_to_add;
     while(typeDef != nullptr) {
       const auto* typedef_decl = typeDef->getDecl();
       auto qt = typedef_decl->getUnderlyingType().getUnqualifiedType();
@@ -352,22 +352,22 @@ class abi_generator {
       }
 
       //TODO: ABI_ASSERT TypeName length for typedef
-      types::TypeDef abi_typedef;
-      abi_typedef.newTypeName = new_type_name;
+      types::type_def abi_typedef;
+      abi_typedef.new_type_name = new_type_name;
       abi_typedef.type = remove_namespace( full_name );
 
-      const auto* td = find_type(abi_typedef.newTypeName);
+      const auto* td = find_type(abi_typedef.new_type_name);
       if( td ) {
         ABI_ASSERT(abi_typedef.type == td->type);
         typeDef = qt->getAs<clang::TypedefType>();
         continue;
       }
 
-      //ilog("addTypeDef => ${a} ${b} [${c}]", ("a",abi_typedef.newTypeName)("b",abi_typedef.type)("c",getFullScope(qt)));
-      ABI_ASSERT(abi_typedef.newTypeName != abi_typedef.type, 
+      //ilog("addTypeDef => ${a} ${b} [${c}]", ("a",abi_typedef.new_type_name)("b",abi_typedef.type)("c",getFullScope(qt)));
+      ABI_ASSERT(abi_typedef.new_type_name != abi_typedef.type, 
           "Unable to export typedef `${td}` at ${at}",
           ("td",decl_to_string(typeDef->getDecl()))
-          ("at",typeDef->getDecl()->getLocation().printToString(context->getSourceManager()))
+          ("at",typeDef->getDecl()->getLocation().printToString(typeDef->getDecl()->getASTContext().getSourceManager()))
       );
 
       types_to_add.push_back(abi_typedef);
@@ -399,6 +399,8 @@ class abi_generator {
     const auto* record_decl = clang::cast_or_null<clang::CXXRecordDecl>(record_type->getDecl()->getDefinition());
     ABI_ASSERT(record_decl != nullptr);
 
+    ASTContext& ctx = record_decl->getASTContext();
+
     auto full_name = get_name_to_add(qual_type);
 
     auto name = remove_namespace(full_name);
@@ -412,9 +414,9 @@ class abi_generator {
 
     ABI_ASSERT(type->isStructureType() || type->isClassType(), "Only struct and class are supported. ${full_name}",("full_name",full_name));
 
-    ABI_ASSERT(name.size() <= sizeof(types::TypeName),
+    ABI_ASSERT(name.size() <= sizeof(types::type_name),
       "Type name > ${maxsize}, ${name}",
-      ("type",full_name)("name",name)("maxsize",sizeof(types::TypeName)));
+      ("type",full_name)("name",name)("maxsize",sizeof(types::type_name)));
 
     if( find_struct(name) ) {
       auto itr = full_types.find(resolve_type(name));
@@ -436,10 +438,10 @@ class abi_generator {
       base_name = add_struct(qt);
     }
 
-    types::Struct abi_struct;
+    types::struct_t abi_struct;
     for (const auto& field : record_decl->fields()) {
       
-      types::Field struct_field;
+      types::field struct_field;
 
       clang::QualType qt = field->getType();
 
@@ -461,7 +463,7 @@ class abi_generator {
 
       ABI_ASSERT(is_builtin_type(struct_field.type) || find_struct(struct_field.type), "Unknown type ${type} ${name} ${ttt} ${sss}", ("type",struct_field.type)("name",struct_field.name)("types", output->types)("structs",output->structs));
 
-      type_size[string(struct_field.type)] = context->getTypeSize(qt);
+      type_size[string(struct_field.type)] = ctx.getTypeSize(qt);
       abi_struct.fields.push_back(struct_field);
     }
 
@@ -479,52 +481,71 @@ class abi_generator {
   }
 
 public:
-
+  
   enum optimization {
     OPT_SINGLE_FIELD_STRUCT
   };
 
-  abi_generator() : optimizations(0), output(nullptr), context(nullptr), compiler_instance(nullptr) {  
+  abi_generator() : optimizations(0), output(nullptr), compiler_instance(nullptr) {  
   }
 
   ~abi_generator() {}
 
+ /**
+  * @brief Enable optimization when generating ABI
+  * @param o optimization to enable
+  */
   void enable_optimizaton(optimization o) {
     optimizations |= o;
   } 
-  
+
+ /**
+  * @brief Check if an optimization is enabled
+  * @param o optimization to check
+  */
   bool is_opt_enabled(optimization o) {
     return (optimizations & o) != 0;
   }
 
-  void set_output(types::Abi& output) {
+ /**
+  * @brief Set the destination ABI struct to write
+  * @param output ABI destination
+  */
+  void set_output(types::abi& output) {
     this->output = &output;
   }
 
+ /**
+  * @brief Enable/Disable verbose status messages
+  * @param verbose enable/disable flag 
+  */
   void set_verbose(bool verbose) {
     this->verbose = verbose;
   }
 
+ /**
+  * @brief Set the root folder that limits where types will be imported. Types declared in header files located in child sub-folders will also be exported
+  * @param abi_context folder 
+  */
   void set_abi_context(const string& abi_context) {
     this->abi_context = abi_context;
   }
-
-  void set_context(clang::ASTContext& context) {
-    this->context = &context;
-  }
-
+ 
+ /**
+  * @brief Set the single instance of the Clang compiler
+  * @param compiler_instance compiler instance 
+  */
   void set_compiler_instance(CompilerInstance& compiler_instance) {
     this->compiler_instance = &compiler_instance;
   }
 
-  void initialize(clang::ASTContext& context) {
-    this->context = &context;
-  }
- 
-  void handle_translation_unit(ASTContext& context) {}
-  
+  /**
+  * @brief Handle declaration of struct/union/enum
+  * @param tag_decl declaration to handle
+  */
   void handle_tagdecl_definition(TagDecl* tag_decl) { 
-    auto decl_location = tag_decl->getLocation().printToString(context->getSourceManager());
+    ASTContext& ctx = tag_decl->getASTContext();
+    auto decl_location = tag_decl->getLocation().printToString(ctx.getSourceManager());
     try {    
     handle_decl(tag_decl);
   } FC_CAPTURE_AND_RETHROW((decl_location)) }
@@ -540,14 +561,6 @@ struct abi_generator_astconsumer : public ASTConsumer {
     abi_gen.set_compiler_instance(compiler_instance);
   }
 
-  void Initialize(clang::ASTContext& context) override {
-    abi_gen.initialize(context);
-  }
-
-  void HandleTranslationUnit(ASTContext& context) override {
-    abi_gen.handle_translation_unit(context);
-  }
-
   void HandleTagDeclDefinition(TagDecl* tag_decl) override {
     abi_gen.handle_tagdecl_definition(tag_decl);
   }
@@ -558,7 +571,7 @@ class generate_abi_action : public ASTFrontendAction {
   set<string> parsed_templates;
   abi_generator abi_gen;
 public:
-  generate_abi_action(bool verbose, bool opt_sfs, string abi_context, types::Abi& output) {
+  generate_abi_action(bool verbose, bool opt_sfs, string abi_context, types::abi& output) {
     abi_gen.set_output(output);
     abi_gen.set_verbose(verbose);
     abi_gen.set_abi_context(abi_context);
@@ -575,4 +588,4 @@ protected:
 
 };
 
-} } //ns eos::abi_generator
+} } //ns eosio::abi_generator

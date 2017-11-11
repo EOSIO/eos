@@ -34,5 +34,5 @@ chain::blockchain_configuration administrator::get_blockchain_configuration(cons
    return chain::blockchain_configuration::get_median_values({votes_range.begin(), votes_range.end()});
 }
 
-} } //namespace eos::native_contract
+} } //namespace eosio::native_contract
 

@@ -36,9 +36,12 @@ struct abi_serializer {
    void validate()const;
 
    type_name resolve_type(const type_name& t)const;
+   int get_integer_size(const type_name& type)const;
+   bool is_integer(const type_name& type)const;
    bool is_array(const type_name& type)const;
    bool is_type(const type_name& type)const;
    bool is_struct(const type_name& type)const;
+   bool is_builtin_type(const type_name& type)const;
 
    type_name array_type(const type_name& type)const;
 
