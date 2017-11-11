@@ -1,4 +1,6 @@
 #include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/producer_object.hpp>
+#include <fc/io/json.hpp>
 
 using namespace eosio::chain;
 
@@ -8,7 +10,10 @@ int main( int argc, char** argv ) {
       cfg.block_log_dir      = "testdir/blocklog";
       cfg.shared_memory_dir  = "testdir/shared";
       cfg.shared_memory_size = 1024*1024*8;
+
+      cfg.genesis = fc::json::from_file("genesis.json").as<contracts::genesis_state_type>();
       cfg.genesis.initial_timestamp = block_timestamp_type(fc::time_point::now());
+      idump((cfg.genesis));
 
       chain_controller ctrl( cfg );
 
@@ -28,6 +33,10 @@ int main( int argc, char** argv ) {
       idump((next_time.time_since_epoch().count()));
       next_time += fc::milliseconds(config::block_interval_ms);
       idump((next_time)(next_time.time_since_epoch().count()));
+
+      auto sch_pro = ctrl.get_scheduled_producer(slot);
+      const auto&    pro = ctrl.get_producer( sch_pro );
+      idump((pro.signing_key));
 
    } catch ( const fc::exception& e ) {
       elog( "${e}", ("e",e.to_detail_string()) );

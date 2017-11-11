@@ -816,26 +816,24 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          // create a dummy block and cycle for our dummy transactions to send to applied_irreversible_block below
          signed_block block{};
          block.producer = config::system_account_name;
-         /*
-         block.cycles.emplace_back();
-         block.cycles[0].emplace_back();
-
          auto messages = starter.prepare_database(*this, _db);
+         idump((messages));
+         /*
          std::for_each(messages.begin(), messages.end(), [&](const action& m) {
             //actionOutput output;
             signed_transaction trx; /// dummy transaction required for scope validation
             //std::sort(trx.scope.begin(), trx.scope.end() );
 
             with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
-                            [&](){ process_message(trx,m.code,m,output); });
+                            [&](){ process_message(trx,m.scope,m,output); });
 
-            trx.messages.push_back(m);
-            block.cycles[0][0].user_input.push_back(std::move(trx));
+           // trx.messages.push_back(m);
+           // block.cycles[0][0].user_input.push_back(std::move(trx));
          });
+         */
 
          // TODO: Should we write this genesis block instead of faking it on startup?
-         applied_irreversible_block(block);
-         */
+         // applied_irreversible_block(block);
       });
    }
 } FC_CAPTURE_AND_RETHROW() }

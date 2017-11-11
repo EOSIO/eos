@@ -39,23 +39,22 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 
    db.add_index<balance_multi_index>();
 
-   /*
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
-   chain.set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(native::nspace::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+   chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+
+   SET_APP_HANDLER( eos, eos, setproducer, eosio );
    SET_APP_HANDLER( eos, eos, newaccount, eosio );
    SET_APP_HANDLER( eos, eos, transfer, eosio );
    SET_APP_HANDLER( eos, eos, lock, eosio );
    SET_APP_HANDLER( eos, eos, claim, eosio );
    SET_APP_HANDLER( eos, eos, unlock, eosio );
    SET_APP_HANDLER( eos, eos, okproducer, eosio );
-   SET_APP_HANDLER( eos, eos, setproducer, eosio );
    SET_APP_HANDLER( eos, eos, setproxy, eosio );
    SET_APP_HANDLER( eos, eos, setcode, eosio );
    SET_APP_HANDLER( eos, eos, updateauth, eosio );
    SET_APP_HANDLER( eos, eos, deleteauth, eosio );
    SET_APP_HANDLER( eos, eos, linkauth, eosio );
    SET_APP_HANDLER( eos, eos, unlinkauth, eosio ); 
-   */
 }
 
 /*

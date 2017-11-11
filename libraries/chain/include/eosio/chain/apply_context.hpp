@@ -285,10 +285,10 @@ class apply_context {
        *
        * @throws tx_missing_auth If no sufficient permission was found
        */
-      void require_authorization(const account_name& account);
-      void require_authorization(const account_name& account, const permission_name& permission);
-      void require_scope(const account_name& account)const;
-      void require_recipient(const account_name& account);
+      void require_authorization(const account_name& account){};
+      void require_authorization(const account_name& account, const permission_name& permission){};
+      void require_scope(const account_name& account)const{};
+      void require_recipient(const account_name& account){};
 
       bool                     all_authorizations_used()const;
       vector<permission_level> unused_authorizations()const;

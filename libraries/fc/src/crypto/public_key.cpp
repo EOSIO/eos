@@ -66,6 +66,10 @@ namespace fc { namespace crypto {
       return eq_comparator<public_key::storage_type>::apply(p1._storage, p2._storage);
    }
 
+   bool operator != ( const public_key& p1, const public_key& p2) {
+      return !(p1 == p2);
+   }
+
    bool operator < ( const public_key& p1, const public_key& p2)
    {
       return less_comparator<public_key::storage_type>::apply(p1._storage, p2._storage);
