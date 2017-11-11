@@ -74,13 +74,13 @@ void apply_eos_newaccount(apply_context& context) {
       });
    }
 
-   const auto& creatorBalance = context.mutable_db.get<balance_object, by_owner_name>(create.creator);
+   const auto& creator_balance = context.mutable_db.get<balance_object, by_owner_name>(create.creator);
 
-   EOS_ASSERT(creatorBalance.balance >= create.deposit.amount, action_validate_exception,
+   EOS_ASSERT(creator_balance.balance >= create.deposit.amount, action_validate_exception,
               "Creator '${c}' has insufficient funds to make account creation deposit of ${a}",
               ("c", create.creator)("a", create.deposit));
 
-   context.mutable_db.modify(creatorBalance, [&create](balance_object& b) {
+   context.mutable_db.modify(creator_balance, [&create](balance_object& b) {
       b.balance -= create.deposit.amount;
    });
 
@@ -237,8 +237,8 @@ void apply_eos_claim(apply_context& context) {
    const auto& staked_balance = context.db.get<staked_balance_object, by_owner_name>(claim.account);
    staked_balance.finish_unstaking_tokens(claim.amount, context.mutable_db);
 
-   const auto& liquidBalance = context.db.get<balance_object, by_owner_name>(claim.account);
-   context.mutable_db.modify(liquidBalance, [&claim](balance_object& a) {
+   const auto& liquid_balance = context.db.get<balance_object, by_owner_name>(claim.account);
+   context.mutable_db.modify(liquid_balance, [&claim](balance_object& a) {
       a.balance += claim.amount;
    });
 }
@@ -448,8 +448,8 @@ void apply_eos_linkauth(apply_context& context) {
    db.get<account_object, by_name>(requirement.code);
    db.get<permission_object, by_name>(requirement.requirement);
    
-   auto linkKey = boost::make_tuple(requirement.account, requirement.code, requirement.type);
-   auto link = db.find<permission_link_object, by_action_name>(linkKey);
+   auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
+   auto link = db.find<permission_link_object, by_action_name>(link_key);
    
    if (link) {
       EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
@@ -474,8 +474,8 @@ void apply_eos_unlinkauth(apply_context& context) {
 
    context.require_authorization(unlink.account);
 
-   auto linkKey = boost::make_tuple(unlink.account, unlink.code, unlink.type);
-   auto link = db.find<permission_link_object, by_action_name>(linkKey);
+   auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
+   auto link = db.find<permission_link_object, by_action_name>(link_key);
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
    if (context.controller.is_applying_block())
       db.remove(*link);

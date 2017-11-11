@@ -61,25 +61,25 @@ namespace detail {
          using result_type = uint32_t;
 
          authority_checker& checker;
-         uint16_t recursionDepth;
-         uint32_t totalWeight = 0;
+         uint16_t recursion_depth;
+         uint32_t total_weight = 0;
 
-         weight_tally_visitor(authority_checker& checker, uint16_t recursionDepth)
-            : checker(checker), recursionDepth(recursionDepth) {}
+         weight_tally_visitor(authority_checker& checker, uint16_t recursion_depth)
+            : checker(checker), recursion_depth(recursion_depth) {}
 
          uint32_t operator()(const key_weight& permission) {
             auto itr = boost::find(checker.signing_keys, permission.key);
             if (itr != checker.signing_keys.end()) {
                checker._used_keys[itr - checker.signing_keys.begin()] = true;
-               totalWeight += permission.weight;
+               total_weight += permission.weight;
             }
-            return totalWeight;
+            return total_weight;
          }
          uint32_t operator()(const permission_level_weight& permission) {
-            if (recursionDepth < checker.recursion_depth_limit
-                && checker.satisfied(permission.permission, recursionDepth + 1))
-               totalWeight += permission.weight;
-            return totalWeight;
+            if (recursion_depth < checker.recursion_depth_limit
+                && checker.satisfied(permission.permission, recursion_depth + 1))
+               total_weight += permission.weight;
+            return total_weight;
          }
       };
 

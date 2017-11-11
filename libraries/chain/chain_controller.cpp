@@ -437,9 +437,9 @@ namespace {
 }
 
 flat_set<public_key_type> chain_controller::get_required_keys(const signed_transaction& trx, 
-                                                              const flat_set<public_key_type>& candidateKeys)const 
+                                                              const flat_set<public_key_type>& candidate_keys)const 
 {
-   auto checker = make_authority_checker(_db, candidateKeys);
+   auto checker = make_authority_checker(_db, candidate_keys);
 
    for (const auto& act : trx.actions ) {
       for (const auto& declared_auth : act.authorization) {
@@ -764,8 +764,8 @@ account_name chain_controller::head_block_producer() const {
    return {};
 }
 
-const producer_object& chain_controller::get_producer(const account_name& ownerName) const {
-   return _db.get<producer_object, by_owner>(ownerName);
+const producer_object& chain_controller::get_producer(const account_name& owner_name) const {
+   return _db.get<producer_object, by_owner>(owner_name);
 }
 
 uint32_t chain_controller::last_irreversible_block_num() const {

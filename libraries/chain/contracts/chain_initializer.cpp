@@ -102,7 +102,7 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
    db.create<producer_schedule_object>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto create_native_account = [this, &db](account_name name, auto liquidBalance) {
+   auto create_native_account = [this, &db](account_name name, auto liquid_balance) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
@@ -122,9 +122,9 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
          p.name = "active";
          p.auth.threshold = 1;
       });
-      db.create<balance_object>([&name, liquidBalance]( auto& b) {
+      db.create<balance_object>([&name, liquid_balance]( auto& b) {
          b.owner_name = name;
-         b.balance = liquidBalance;
+         b.balance = liquid_balance;
       });
       db.create<staked_balance_object>([&name](auto& sb) { sb.owner_name = name; });
    };

@@ -151,11 +151,11 @@ namespace eosio { namespace chain {
          /**
           * Determine which public keys are needed to sign the given transaction.
           * @param trx transaction that requires signature
-          * @param candidateKeys Set of public keys to examine for applicability
-          * @return Subset of candidateKeys whose private keys should be used to sign transaction
-          * @throws fc::exception if candidateKeys does not contain all required keys
+          * @param candidate_keys Set of public keys to examine for applicability
+          * @return Subset of candidate_keys whose private keys should be used to sign transaction
+          * @throws fc::exception if candidate_keys does not contain all required keys
           */
-         flat_set<public_key_type> get_required_keys(const signed_transaction& trx, const flat_set<public_key_type>& candidateKeys)const;
+         flat_set<public_key_type> get_required_keys(const signed_transaction& trx, const flat_set<public_key_type>& candidate_keys)const;
 
 
          bool _push_block( const signed_block& b );
