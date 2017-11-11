@@ -39,7 +39,7 @@ namespace eosio { namespace types {
 
    abi_serializer::abi_serializer( const abi& abi ) {
       configure_built_in_types();
-      setAbi(abi);
+      set_abi(abi);
    }
 
    void abi_serializer::configure_built_in_types() {
@@ -98,7 +98,7 @@ namespace eosio { namespace types {
       built_in_types.emplace("abi",                     packUnpack<abi>());
    }
 
-   void abi_serializer::setAbi( const abi& abi ) {
+   void abi_serializer::set_abi(const abi& abi) {
       typedefs.clear();
       structs.clear();
       actions.clear();

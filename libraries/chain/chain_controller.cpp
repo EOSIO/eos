@@ -1564,9 +1564,9 @@ processed_transaction chain_controller::transaction_from_variant( const fc::vari
                result.messages[i].data = message_to_binary( result.messages[i].code, result.messages[i].type, data ); 
                /*
                const auto& code_account = _db.get<account_object,by_name>( result.messages[i].code );
-               eosio::types::abi abi;
-               if( abi_serializer::to_abi(code_account.abi, abi) ) {
-                  types::abi_serializer abis( abi );
+               eosio::types::abi code_abi;
+               if( abi_serializer::to_abi(code_account.code_abi, code_abi) ) {
+                  types::abi_serializer abis( code_abi );
                   result.messages[i].data = abis.variant_to_binary( abis.get_action_type( result.messages[i].type ), data );
                }
                */

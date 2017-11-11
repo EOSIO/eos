@@ -446,7 +446,7 @@ BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
    abi = fc::json::from_string(struct_cycle_abi).as<types::abi>();
-   abis.setAbi(abi);
+      abis.set_abi(abi);
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
 } FC_LOG_AND_RETHROW() }
@@ -751,7 +751,7 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
      "account" : "updauth.acct",
      "permission" : "updauth.prm",
      "parent" : "updauth.prnt",
-     "authority" : {
+     "new_authority" : {
         "threshold" : "2147483145",
         "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005},
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
@@ -767,21 +767,21 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
    BOOST_CHECK_EQUAL("updauth.acct", updateauth.account);
    BOOST_CHECK_EQUAL("updauth.prm", updateauth.permission);
    BOOST_CHECK_EQUAL("updauth.prnt", updateauth.parent);
-   BOOST_CHECK_EQUAL(2147483145u, updateauth.authority.threshold);
+   BOOST_CHECK_EQUAL(2147483145u, updateauth.new_authority.threshold);
 
-   BOOST_REQUIRE_EQUAL(2, updateauth.authority.keys.size());
-   BOOST_CHECK_EQUAL("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", (std::string)updateauth.authority.keys[0].key);
-   BOOST_CHECK_EQUAL(57005u, updateauth.authority.keys[0].weight);
-   BOOST_CHECK_EQUAL("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", (std::string)updateauth.authority.keys[1].key);
-   BOOST_CHECK_EQUAL(57605u, updateauth.authority.keys[1].weight);
+   BOOST_REQUIRE_EQUAL(2, updateauth.new_authority.keys.size());
+   BOOST_CHECK_EQUAL("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", (std::string)updateauth.new_authority.keys[0].key);
+   BOOST_CHECK_EQUAL(57005u, updateauth.new_authority.keys[0].weight);
+   BOOST_CHECK_EQUAL("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", (std::string)updateauth.new_authority.keys[1].key);
+   BOOST_CHECK_EQUAL(57605u, updateauth.new_authority.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(2, updateauth.authority.accounts.size());
-   BOOST_CHECK_EQUAL("prm.acct1", updateauth.authority.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm1", updateauth.authority.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(53005u, updateauth.authority.accounts[0].weight);
-   BOOST_CHECK_EQUAL("prm.acct2", updateauth.authority.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm2", updateauth.authority.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(53405u, updateauth.authority.accounts[1].weight);
+   BOOST_REQUIRE_EQUAL(2, updateauth.new_authority.accounts.size());
+   BOOST_CHECK_EQUAL("prm.acct1", updateauth.new_authority.accounts[0].permission.account);
+   BOOST_CHECK_EQUAL("prm.prm1", updateauth.new_authority.accounts[0].permission.permission);
+   BOOST_CHECK_EQUAL(53005u, updateauth.new_authority.accounts[0].weight);
+   BOOST_CHECK_EQUAL("prm.acct2", updateauth.new_authority.accounts[1].permission.account);
+   BOOST_CHECK_EQUAL("prm.prm2", updateauth.new_authority.accounts[1].permission.permission);
+   BOOST_CHECK_EQUAL(53405u, updateauth.new_authority.accounts[1].weight);
 
    auto var2 = verify_round_trip_conversion( abis, "updateauth", var );
    auto updateauth2 = var2.as<eosio::types::updateauth>();
@@ -789,21 +789,21 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
    BOOST_CHECK_EQUAL(updateauth.permission, updateauth2.permission);
    BOOST_CHECK_EQUAL(updateauth.parent, updateauth2.parent);
 
-   BOOST_CHECK_EQUAL(updateauth.authority.threshold, updateauth2.authority.threshold);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.threshold, updateauth2.new_authority.threshold);
 
-   BOOST_REQUIRE_EQUAL(updateauth.authority.keys.size(), updateauth2.authority.keys.size());
-   BOOST_CHECK_EQUAL(updateauth.authority.keys[0].key, updateauth2.authority.keys[0].key);
-   BOOST_CHECK_EQUAL(updateauth.authority.keys[0].weight, updateauth2.authority.keys[0].weight);
-   BOOST_CHECK_EQUAL(updateauth.authority.keys[1].key, updateauth2.authority.keys[1].key);
-   BOOST_CHECK_EQUAL(updateauth.authority.keys[1].weight, updateauth2.authority.keys[1].weight);
+   BOOST_REQUIRE_EQUAL(updateauth.new_authority.keys.size(), updateauth2.new_authority.keys.size());
+   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[0].key, updateauth2.new_authority.keys[0].key);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[0].weight, updateauth2.new_authority.keys[0].weight);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[1].key, updateauth2.new_authority.keys[1].key);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[1].weight, updateauth2.new_authority.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(updateauth.authority.accounts.size(), updateauth2.authority.accounts.size());
-   BOOST_CHECK_EQUAL(updateauth.authority.accounts[0].permission.account, updateauth2.authority.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL(updateauth.authority.accounts[0].permission.permission, updateauth2.authority.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(updateauth.authority.accounts[0].weight, updateauth2.authority.accounts[0].weight);
-   BOOST_CHECK_EQUAL(updateauth.authority.accounts[1].permission.account, updateauth2.authority.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL(updateauth.authority.accounts[1].permission.permission, updateauth2.authority.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(updateauth.authority.accounts[1].weight, updateauth2.authority.accounts[1].weight);
+   BOOST_REQUIRE_EQUAL(updateauth.new_authority.accounts.size(), updateauth2.new_authority.accounts.size());
+   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[0].permission.account, updateauth2.new_authority.accounts[0].permission.account);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[0].permission.permission, updateauth2.new_authority.accounts[0].permission.permission);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[0].weight, updateauth2.new_authority.accounts[0].weight);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[1].permission.account, updateauth2.new_authority.accounts[1].permission.account);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[1].permission.permission, updateauth2.new_authority.accounts[1].permission.permission);
+   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[1].weight, updateauth2.new_authority.accounts[1].weight);
 
 } FC_LOG_AND_RETHROW() }
 

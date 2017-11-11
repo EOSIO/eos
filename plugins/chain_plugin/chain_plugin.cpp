@@ -338,7 +338,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       if( table_key == TERTIARY )
          return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_tertiary>(p,abi);
    }
-   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
+   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("code_abi",abi));
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
@@ -385,9 +385,9 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
 
 read_only::get_code_results read_only::get_code( const get_code_params& params )const {
    get_code_results result;
-   result.name = params.name;
+   result.account_name = params.account_name;
    const auto& d = db.get_database();
-   const auto& accnt  = d.get<account_object,by_name>( params.name );
+   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
       result.wast = chain::wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
@@ -404,11 +404,11 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    using namespace native::eosio;
 
    get_account_results result;
-   result.name = params.name;
+   result.account_name = params.account_name;
 
    const auto& d = db.get_database();
-   const auto& balance        = d.get<balance_object,by_owner_name>( params.name );
-   const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.name );
+   const auto& balance        = d.get<balance_object,by_owner_name>( params.account_name );
+   const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.account_name );
 
    result.eos_balance          = asset(balance.balance, EOS_SYMBOL);
    result.staked_balance       = asset(staked_balance.staked_balance);
@@ -416,8 +416,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.last_unstaking_time  = staked_balance.last_unstaking_time;
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
-   auto perm = permissions.lower_bound( boost::make_tuple( params.name ) );
-   while( perm != permissions.end() && perm->owner == params.name ) {
+   auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
+   while( perm != permissions.end() && perm->owner == params.account_name ) {
       /// TODO: lookup perm->parent name 
       name parent;
 

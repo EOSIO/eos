@@ -19,7 +19,7 @@ using std::pair;
 struct abi_serializer {
    abi_serializer(){ configure_built_in_types(); }
    abi_serializer( const abi& abi );
-   void setAbi( const abi& abi );
+   void set_abi(const abi& abi);
 
    map<type_name, type_name> typedefs;
    map<type_name, struct_t>  structs;

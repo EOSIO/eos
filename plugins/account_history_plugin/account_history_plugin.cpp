@@ -333,10 +333,10 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
                   {
                      const auto update = msg.as<types::updateauth>();
                      remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
-                     add(db, update.authority.keys, update.account, update.permission);
+                     add(db, update.new_authority.keys, update.account, update.permission);
 
                      remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
-                     add(db, update.authority.accounts, update.account, update.permission);
+                     add(db, update.new_authority.accounts, update.account, update.permission);
                   }
                   else if (msg.type == DELETE_AUTH)
                   {

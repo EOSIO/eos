@@ -387,7 +387,7 @@ struct set_account_permission_subcommand {
             name parent;
             if (parentStr.size() == 0) {
                // see if we can auto-determine the proper parent
-               const auto account_result = call(get_account_func, fc::mutable_variant_object("name", accountStr));
+               const auto account_result = call(get_account_func, fc::mutable_variant_object("account_name", accountStr));
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
                auto permissionPredicate = [this](const auto& perm) { 
                   return perm.is_object() && 
@@ -540,7 +540,7 @@ int main( int argc, char** argv ) {
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->set_callback([&] {
       std::cout << fc::json::to_pretty_string(call(get_account_func,
-                                                   fc::mutable_variant_object("name", accountName)))
+                                                   fc::mutable_variant_object("account_name", accountName)))
                 << std::endl;
    });
 
@@ -552,7 +552,7 @@ int main( int argc, char** argv ) {
    getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("name", accountName));
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
 
@@ -686,7 +686,7 @@ int main( int argc, char** argv ) {
       handler.account = account;
       handler.code.assign(wasm.begin(), wasm.end());
       if (abi->count())
-         handler.abi = fc::json::from_file(abiPath).as<types::abi>();
+         handler.code_abi = fc::json::from_file(abiPath).as<types::abi>();
 
       signed_transaction trx;
       trx.scope = sort_names({config::eos_contract_name, account});
