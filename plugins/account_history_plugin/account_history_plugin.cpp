@@ -309,7 +309,7 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
             for (const auto& account_name : trx.scope)
             {
                db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
-                  account_transaction_history.account_name = account_name;
+                  account_transaction_history.name = account_name;
                   account_transaction_history.transaction_id = trx.id();
                });
             }
