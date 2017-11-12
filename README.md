@@ -319,9 +319,9 @@ Next verify the currency contract has the proper initial balance:
 ./eosc get table currency currency account
 {
   "rows": [{
-     "account": "account",
-     "balance": 1000000000
-     }
+      "key": "3607749778735104000",
+      "balance": 1000000000
+    }
   ],
   "more": false
 }
