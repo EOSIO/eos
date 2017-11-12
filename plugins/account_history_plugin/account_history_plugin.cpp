@@ -266,7 +266,7 @@ vector<account_name> account_history_plugin_impl::get_key_accounts(const public_
       auto range = pub_key_idx.equal_range( public_key );
       for (auto obj = range.first; obj != range.second; ++obj)
       {
-         accounts.insert(obj->account_name);
+         accounts.insert(obj->name);
       }
    } );
    return vector<account_name>(accounts.begin(), accounts.end());
@@ -352,13 +352,13 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
    }
 }
 
-void account_history_plugin_impl::add(chainbase::database& db, const vector<types::key_permission_weight>& keys, const account_name& account_name, const permission_name& permission)
+void account_history_plugin_impl::add(chainbase::database& db, const vector<types::key_permission_weight>& keys, const account_name& name, const permission_name& permission)
 {
    for (auto pub_key_weight : keys )
    {
       db.create<public_key_history_object>([&](public_key_history_object& obj) {
          obj.public_key = pub_key_weight.key;
-         obj.account_name = account_name;
+         obj.name = name;
          obj.permission = permission;
       });
    }
