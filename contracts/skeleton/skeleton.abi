@@ -22,7 +22,7 @@
     }
   ],
   "actions": [{
-      "action": "transfer",
+      "action_name": "transfer",
       "type": "transfer"
     }
   ],
