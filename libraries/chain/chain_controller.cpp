@@ -818,19 +818,19 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          block.producer = config::system_account_name;
          auto messages = starter.prepare_database(*this, _db);
          idump((messages));
-         /*
          std::for_each(messages.begin(), messages.end(), [&](const action& m) {
             //actionOutput output;
             signed_transaction trx; /// dummy transaction required for scope validation
             //std::sort(trx.scope.begin(), trx.scope.end() );
 
             with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
-                            [&](){ process_message(trx,m.scope,m,output); });
+            [&](){ 
+             //   process_message(trx,m.scope,m,output); 
+            });
 
            // trx.messages.push_back(m);
            // block.cycles[0][0].user_input.push_back(std::move(trx));
          });
-         */
 
          // TODO: Should we write this genesis block instead of faking it on startup?
          // applied_irreversible_block(block);

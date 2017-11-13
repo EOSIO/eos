@@ -263,6 +263,7 @@ namespace eosio { namespace chain {
 
    private:
          friend class contracts::chain_initializer;
+         friend class apply_context;
 
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
 
