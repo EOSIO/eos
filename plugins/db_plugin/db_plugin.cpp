@@ -3,10 +3,10 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/db_plugin/db_plugin.hpp>
-#include <eos/chain/config.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
-#include <eos/chain/types.hpp>
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
+#include <eosio/chain/types.hpp>
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 
 #include <fc/io/json.hpp>
@@ -32,11 +32,11 @@ namespace fc { class variant; }
 
 namespace eosio {
 
-using chain::AccountName;
-using chain::FuncName;
+using chain::account_name;
+using chain::func_name;
 using chain::block_id_type;
-using chain::PermissionName;
-using chain::ProcessedTransaction;
+using chain::permission_name;
+using chain::processed_transaction;
 using chain::signed_block;
 using chain::transaction_id_type;
 
@@ -60,8 +60,8 @@ public:
    void init();
    void wipe_database();
 
-   std::set<AccountName> filter_on;
-   static types::Abi eos_abi; // cached for common use
+   std::set<account_name> filter_on;
+   static types::abi eos_abi; // cached for common use
 
    bool configured{false};
    bool wipe_database_on_startup{false};
@@ -82,15 +82,15 @@ public:
 
    void consum_blocks();
 
-   bool is_scope_relevant(const eosio::types::Vector<AccountName>& scope);
-   void update_account(const chain::Message& msg);
+   bool is_scope_relevant(const eosio::types::vector<account_name>& scope);
+   void update_account(const chain::message& msg);
 
-   static const FuncName newaccount;
-   static const FuncName transfer;
-   static const FuncName lock;
-   static const FuncName unlock;
-   static const FuncName claim;
-   static const FuncName setcode;
+   static const func_name newaccount;
+   static const func_name transfer;
+   static const func_name lock;
+   static const func_name unlock;
+   static const func_name claim;
+   static const func_name setcode;
 
    static const std::string blocks_col;
    static const std::string trans_col;
@@ -98,14 +98,14 @@ public:
    static const std::string accounts_col;
 };
 
-types::Abi db_plugin_impl::eos_abi;
+types::abi db_plugin_impl::eos_abi;
 
-const FuncName db_plugin_impl::newaccount = "newaccount";
-const FuncName db_plugin_impl::transfer = "transfer";
-const FuncName db_plugin_impl::lock = "lock";
-const FuncName db_plugin_impl::unlock = "unlock";
-const FuncName db_plugin_impl::claim = "claim";
-const FuncName db_plugin_impl::setcode = "setcode";
+const func_name db_plugin_impl::newaccount = "newaccount";
+const func_name db_plugin_impl::transfer = "transfer";
+const func_name db_plugin_impl::lock = "lock";
+const func_name db_plugin_impl::unlock = "unlock";
+const func_name db_plugin_impl::claim = "claim";
+const func_name db_plugin_impl::setcode = "setcode";
 
 const std::string db_plugin_impl::blocks_col = "Blocks";
 const std::string db_plugin_impl::trans_col = "Transactions";
@@ -171,10 +171,10 @@ void db_plugin_impl::consum_blocks() {
 
 namespace {
 
-   auto find_account(mongocxx::collection& accounts, const AccountName& name) {
+   auto find_account(mongocxx::collection& accounts, const account_name& name) {
       using bsoncxx::builder::stream::document;
       document find_acc{};
-      find_acc << "name" << name.toString();
+      find_acc << "name" << name.to_string();
       auto account = accounts.find_one(find_acc.view());
       if (!account) {
          FC_THROW("Unable to find account ${n}", ("n", name));
@@ -184,19 +184,19 @@ namespace {
 
   void add_data(bsoncxx::builder::basic::document& msg_doc,
                 mongocxx::collection& accounts,
-                const chain::Message& msg)
+                const chain::message& msg)
   {
      using bsoncxx::builder::basic::kvp;
      try {
-        types::AbiSerializer abis;
-        if (msg.code == config::EosContractName) {
+        types::abi_serializer abis;
+        if (msg.code == config::eos_contract_name) {
            abis.setAbi(db_plugin_impl::eos_abi);
         } else {
            auto from_account = find_account(accounts, msg.code);
-           auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<types::Abi>();
+           auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<types::abi>();
            abis.setAbi(abi);
         }
-        auto v = abis.binaryToVariant(abis.getActionType(msg.type), msg.data);
+        auto v = abis.binary_to_variant(abis.get_action_type(msg.type), msg.data);
         auto json = fc::json::to_string(v);
         try {
            const auto& value = bsoncxx::from_json(json);
@@ -207,7 +207,7 @@ namespace {
            elog("  EOS JSON: ${j}", ("j", json));
         }
      } catch (fc::exception& e) {
-        elog("Unable to convert Message.data to ABI type: ${t}, what: ${e}", ("t", msg.type)("e", e.to_string()));
+        elog("Unable to convert message.data to ABI type: ${t}, what: ${e}", ("t", msg.type)("e", e.to_string()));
      }
      // if anything went wrong just store raw hex_data
      msg_doc.append(kvp("hex_data", fc::variant(msg.data).as_string()));
@@ -273,7 +273,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
          FC_ASSERT(block_num < 2, "Expected start of block, instead received block_num: ${bn}", ("bn", block_num));
          // Currently we are creating a 'fake' block in chain_controller::initialize_chain() since initial accounts
          // and producers are not written to the block log. If this is the fake block, indicate it as block_num 0.
-         if (block_num == 1 && block.producer == config::EosContractName) {
+         if (block_num == 1 && block.producer == config::eos_contract_name) {
             block_num = 0;
          }
       } else {
@@ -291,7 +291,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
        << "prev_block_id" << prev_block_id_str
        << "timestamp" << b_date{std::chrono::milliseconds{std::chrono::seconds{block.timestamp.sec_since_epoch()}}}
        << "transaction_merkle_root" << block.transaction_merkle_root.str()
-       << "producer_account_id" << block.producer.toString();
+       << "producer_account_id" << block.producer.to_string();
    auto blk_doc = block_doc << "transactions" << stream::open_array;
 
    int32_t trx_num = -1;
@@ -312,16 +312,16 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
                   << "transaction_id" << trans_id_str
                   << "sequence_num" << b_int32{trx_num}
                   << "block_id" << block_id_str
-                  << "ref_block_num" << b_int32{static_cast<int32_t >(trx.refBlockNum)}
-                  << "ref_block_prefix" << trx.refBlockPrefix.str()
+                  << "ref_block_num" << b_int32{static_cast<int32_t >(trx.ref_block_num)}
+                  << "ref_block_prefix" << trx.ref_block_prefix.str()
                   << "scope" << stream::open_array;
             for (const auto& account_name : trx.scope)
-               trx_doc = trx_doc << account_name.toString();
+               trx_doc = trx_doc << account_name.to_string();
             trx_doc = trx_doc
                   << stream::close_array
                   << "read_scope" << stream::open_array;
-            for (const auto& account_name : trx.readscope)
-               trx_doc = trx_doc << account_name.toString();
+            for (const auto& account_name : trx.read_scope)
+               trx_doc = trx_doc << account_name.to_string();
             trx_doc = trx_doc
                   << stream::close_array
                   << "expiration" << b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}
@@ -346,20 +346,20 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
                msg_doc.append(kvp("authorization", [&msg](bsoncxx::builder::basic::sub_array subarr) {
                   for (const auto& auth : msg.authorization) {
                      subarr.append([&auth](bsoncxx::builder::basic::sub_document subdoc) {
-                        subdoc.append(kvp("account", auth.account.toString()),
-                                      kvp("permission", auth.permission.toString()));
+                        subdoc.append(kvp("account", auth.account.to_string()),
+                                      kvp("permission", auth.permission.to_string()));
                      });
                   }
                }));
-               msg_doc.append(kvp("handler_account_name", msg.code.toString()));
-               msg_doc.append(kvp("type", msg.type.toString()));
+               msg_doc.append(kvp("handler_account_name", msg.code.to_string()));
+               msg_doc.append(kvp("type", msg.type.to_string()));
                add_data(msg_doc, accounts, msg);
                msg_doc.append(kvp("createdAt", b_date{now}));
                mongocxx::model::insert_one insert_msg{msg_doc.view()};
                bulk_msgs.append(insert_msg);
 
                // eos account update
-               if (msg.code == config::EosContractName) {
+               if (msg.code == config::eos_contract_name) {
                   try {
                      update_account(msg);
                   } catch(fc::exception& e) {
@@ -407,7 +407,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
 }
 
 // For now providing some simple account processing to maintain eos_balance
-void db_plugin_impl::update_account(const chain::Message& msg) {
+void db_plugin_impl::update_account(const chain::message& msg) {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::stream::document;
    using bsoncxx::builder::stream::open_document;
@@ -415,29 +415,29 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
    using bsoncxx::builder::stream::finalize;
    using namespace bsoncxx::types;
 
-   if (msg.code != config::EosContractName)
+   if (msg.code != config::eos_contract_name)
       return;
 
    if (msg.type == transfer) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto transfer = msg.as<types::transfer>();
-      auto from_name = transfer.from.toString();
-      auto to_name = transfer.to.toString();
+      auto from_name = transfer.from.to_string();
+      auto to_name = transfer.to.to_string();
       auto from_account = find_account(accounts, transfer.from);
       auto to_account = find_account(accounts, transfer.to);
 
-      Asset from_balance = Asset::fromString(from_account.view()["eos_balance"].get_utf8().value.to_string());
-      Asset to_balance = Asset::fromString(to_account.view()["eos_balance"].get_utf8().value.to_string());
-      from_balance -= eosio::types::ShareType(transfer.amount);
-      to_balance += eosio::types::ShareType(transfer.amount);
+      asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
+      asset to_balance = asset::from_string(to_account.view()["eos_balance"].get_utf8().value.to_string());
+      from_balance -= eosio::types::share_type(transfer.amount);
+      to_balance += eosio::types::share_type(transfer.amount);
 
       document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.toString()
+      update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
                   << "updatedAt" << b_date{now}
                   << close_document;
       document update_to{};
-      update_to << "$set" << open_document << "eos_balance" << to_balance.toString()
+      update_to << "$set" << open_document << "eos_balance" << to_balance.to_string()
                 << "updatedAt" << b_date{now}
                 << close_document;
 
@@ -450,7 +450,7 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       auto newaccount = msg.as<types::newaccount>();
 
       // find creator to update its balance
-      auto from_name = newaccount.creator.toString();
+      auto from_name = newaccount.creator.to_string();
       document find_from{};
       find_from << "name" << from_name;
       auto from_account = accounts.find_one(find_from.view());
@@ -460,18 +460,18 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       }
       // decrease creator by deposit amount
       auto from_view = from_account->view();
-      Asset from_balance = Asset::fromString(from_view["eos_balance"].get_utf8().value.to_string());
+      asset from_balance = asset::from_string(from_view["eos_balance"].get_utf8().value.to_string());
       from_balance -= newaccount.deposit;
       document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.toString() << close_document;
+      update_from << "$set" << open_document << "eos_balance" << from_balance.to_string() << close_document;
       accounts.update_one(find_from.view(), update_from.view());
 
       // create new account with staked deposit amount
       bsoncxx::builder::stream::document doc{};
-      doc << "name" << newaccount.name.toString()
-          << "eos_balance" << Asset().toString()
-          << "staked_balance" << newaccount.deposit.toString()
-          << "unstaking_balance" << Asset().toString()
+      doc << "name" << newaccount.name.to_string()
+          << "eos_balance" << asset().to_string()
+          << "staked_balance" << newaccount.deposit.to_string()
+          << "unstaking_balance" << asset().to_string()
           << "createdAt" << b_date{now}
           << "updatedAt" << b_date{now};
       if (!accounts.insert_one(doc.view())) {
@@ -485,17 +485,17 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       auto from_account = find_account(accounts, lock.from);
       auto to_account = find_account(accounts, lock.to);
 
-      Asset from_balance = Asset::fromString(from_account.view()["eos_balance"].get_utf8().value.to_string());
-      Asset to_balance = Asset::fromString(to_account.view()["stacked_balance"].get_utf8().value.to_string());
+      asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
+      asset to_balance = asset::from_string(to_account.view()["stacked_balance"].get_utf8().value.to_string());
       from_balance -= lock.amount;
       to_balance += lock.amount;
 
       document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.toString()
+      update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
                   << "updatedAt" << b_date{now}
                   << close_document;
       document update_to{};
-      update_to << "$set" << open_document << "stacked_balance" << to_balance.toString()
+      update_to << "$set" << open_document << "stacked_balance" << to_balance.to_string()
                 << "updatedAt" << b_date{now}
                 << close_document;
 
@@ -508,8 +508,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       auto unlock = msg.as<types::unlock>();
       auto from_account = find_account(accounts, unlock.account);
 
-      Asset unstack_balance = Asset::fromString(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
-      Asset stack_balance = Asset::fromString(from_account.view()["stacked_balance"].get_utf8().value.to_string());
+      asset unstack_balance = asset::from_string(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
+      asset stack_balance = asset::from_string(from_account.view()["stacked_balance"].get_utf8().value.to_string());
       auto deltaStake = unstack_balance - unlock.amount;
       stack_balance += deltaStake;
       unstack_balance = unlock.amount;
@@ -517,8 +517,8 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
 
       document update_from{};
       update_from << "$set" << open_document
-                  << "staked_balance" << stack_balance.toString()
-                  << "unstacking_balance" << unstack_balance.toString()
+                  << "staked_balance" << stack_balance.to_string()
+                  << "unstacking_balance" << unstack_balance.to_string()
                   << "updatedAt" << b_date{now}
                   << close_document;
 
@@ -530,15 +530,15 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
       auto claim = msg.as<types::claim>();
       auto from_account = find_account(accounts, claim.account);
 
-      Asset balance = Asset::fromString(from_account.view()["eos_balance"].get_utf8().value.to_string());
-      Asset unstack_balance = Asset::fromString(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
+      asset balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
+      asset unstack_balance = asset::from_string(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
       unstack_balance -= claim.amount;
       balance += claim.amount;
 
       document update_from{};
       update_from << "$set" << open_document
-                  << "eos_balance" << balance.toString()
-                  << "unstacking_balance" << unstack_balance.toString()
+                  << "eos_balance" << balance.to_string()
+                  << "unstacking_balance" << unstack_balance.to_string()
                   << "updatedAt" << b_date{now}
                   << close_document;
 
@@ -560,9 +560,9 @@ void db_plugin_impl::update_account(const chain::Message& msg) {
    }
 }
 
-bool db_plugin_impl::is_scope_relevant(const eosio::types::Vector<AccountName>& scope)
+bool db_plugin_impl::is_scope_relevant(const eosio::types::vector<account_name>& scope)
 {
-   for (const AccountName& account_name : scope)
+   for (const account_name& account_name : scope)
       if (filter_on.count(account_name))
          return true;
 
@@ -612,16 +612,16 @@ void db_plugin_impl::init() {
    if (accounts.count(doc.view()) == 0) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      doc << "name" << config::EosContractName.toString()
-          << "eos_balance" << Asset(config::InitialTokenSupply).toString()
-          << "staked_balance" << Asset().toString()
-          << "unstaking_balance" << Asset().toString()
+      doc << "name" << config::eos_contract_name.to_string()
+          << "eos_balance" << asset(config::initial_token_supply).to_string()
+          << "staked_balance" << asset().to_string()
+          << "unstaking_balance" << asset().to_string()
           << "abi" << bsoncxx::from_json(fc::json::to_string(eos_abi))
           << "createdAt" << b_date{now}
           << "updatedAt" << b_date{now};
 
       if (!accounts.insert_one(doc.view())) {
-         elog("Failed to insert account ${n}", ("n", config::EosContractName.toString()));
+         elog("Failed to insert account ${n}", ("n", config::eos_contract_name.to_string()));
       }
 
       // Accounts indexes

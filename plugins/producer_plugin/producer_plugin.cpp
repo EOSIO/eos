@@ -5,7 +5,7 @@
 #include <eos/producer_plugin/producer_plugin.hpp>
 #include <eos/net_plugin/net_plugin.hpp>
 
-#include <eos/chain/producer_object.hpp>
+#include <eosio/chain/producer_object.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
 
@@ -33,12 +33,12 @@ public:
 
    boost::program_options::variables_map _options;
    bool _production_enabled = false;
-   uint32_t _required_producer_participation = 33 * config::Percent1;
+   uint32_t _required_producer_participation = 33 * config::percent1;
    uint32_t _production_skip_flags = eosio::chain::chain_controller::skip_nothing;
    eosio::chain::block_schedule::factory _production_scheduler = eosio::chain::block_schedule::in_single_thread;
 
    std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
-   std::set<types::AccountName> _producers;
+   std::set<types::account_name> _producers;
    boost::asio::deadline_timer _timer;
 };
 
@@ -81,12 +81,12 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::Percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
+         ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
          ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           ("ID of producer controlled by this node (e.g. inita; may specify multiple times)"))
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
                                                                                                 fc::json::to_string(private_key_default)),
-          "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
+          "Tuple of [public_key, WIF private key] (may specify multiple times)")
          ;
    command_line_options.add(producer_options);
    config_file_options.add(producer_options);
@@ -129,7 +129,7 @@ if( options.count(name) ) { \
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->_options = &options;
-   LOAD_VALUE_SET(options, "producer-name", my->_producers, types::AccountName)
+   LOAD_VALUE_SET(options, "producer-name", my->_producers, types::account_name)
 
    if( options.count("private-key") )
    {
@@ -279,7 +279,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    //
    assert( now > chain.head_block_time() );
 
-   eosio::types::AccountName scheduled_producer = chain.get_scheduled_producer( slot );
+   eosio::types::account_name scheduled_producer = chain.get_scheduled_producer( slot );
    // we must control the producer scheduled to produce the next block.
    if( _producers.find( scheduled_producer ) == _producers.end() )
    {
@@ -300,7 +300,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    uint32_t prate = chain.producer_participation_rate();
    if( prate < _required_producer_participation )
    {
-      capture("pct", uint32_t(100*uint64_t(prate) / config::Percent1));
+      capture("pct", uint32_t(100*uint64_t(prate) / config::percent1));
       return block_production_condition::low_participation;
    }
 

@@ -4,8 +4,8 @@
  */
 #include <eos/wallet_api_plugin/wallet_api_plugin.hpp>
 #include <eos/wallet_plugin/wallet_manager.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -74,7 +74,7 @@ void wallet_api_plugin::plugin_startup() {
        CALL(wallet, wallet_mgr, set_timeout,
             INVOKE_V_R(wallet_mgr, set_timeout, int64_t), 200),
        CALL(wallet, wallet_mgr, sign_transaction,
-            INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::SignedTransaction, flat_set<public_key_type>, chain::chain_id_type), 201),
+            INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
        CALL(wallet, wallet_mgr, create,
             INVOKE_R_R(wallet_mgr, create, std::string), 201),
        CALL(wallet, wallet_mgr, open,

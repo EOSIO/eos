@@ -6,8 +6,8 @@
 #include <appbase/application.hpp>
 #include <fc/variant.hpp>
 #include <eos/types/native.hpp>
-#include <eos/chain/types.hpp>
-#include <eos/chain/transaction.hpp>
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/transaction.hpp>
 
 namespace fc { class variant; }
 

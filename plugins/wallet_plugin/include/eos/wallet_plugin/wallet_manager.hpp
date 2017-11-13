@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eos/chain/transaction.hpp>
+#include <eosio/chain/transaction.hpp>
 #include <eos/wallet_plugin/wallet.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
@@ -46,7 +46,7 @@ public:
    /// @param id the chain_id to sign transaction with.
    /// @return txn signed
    /// @throws fc::exception if corresponding private keys not found in unlocked wallets
-   chain::SignedTransaction sign_transaction(const chain::SignedTransaction& txn, const flat_set<public_key_type>& keys,
+   chain::signed_transaction sign_transaction(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
                                              const chain::chain_id_type& id);
 
    /// Create a new wallet.

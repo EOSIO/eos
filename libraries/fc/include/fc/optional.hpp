@@ -92,6 +92,16 @@ namespace fc {
         return *this;
       }
 
+      template<typename ...Args>
+      void emplace(Args... args) {
+        if (_valid) {
+           reset();
+        }
+
+        new ((char*)ptr()) T( args... );
+        _valid = true;
+      }
+
       template<typename U>
       optional& operator=( optional<U>& o ) {
         if (this != &o) {

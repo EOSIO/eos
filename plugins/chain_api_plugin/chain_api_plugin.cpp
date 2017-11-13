@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/chain_api_plugin/chain_api_plugin.hpp>
-#include <eos/chain/exceptions.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 
