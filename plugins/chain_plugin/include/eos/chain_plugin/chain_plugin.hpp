@@ -64,12 +64,12 @@ public:
    get_info_results get_info(const get_info_params&) const;
 
    struct producer_info {
-      name                       name;
+      name                       producer_name;
    };
 
 
    struct get_account_results {
-      name                       name;
+      name                       account_name;
       asset                      eos_balance = asset(0,EOS_SYMBOL);
       asset                      staked_balance;
       asset                      unstaking_balance;
@@ -78,20 +78,20 @@ public:
       optional<producer_info>    producer;
    };
    struct get_account_params {
-      name name;
+      name account_name;
    };
    get_account_results get_account( const get_account_params& params )const;
 
 
    struct get_code_results {
-      name                   name;
+      name                   account_name;
       string                 wast;
       fc::sha256             code_hash;
       optional<types::abi>   abi;
    };
 
    struct get_code_params {
-      name name;
+      name                   account_name;
    };
    get_code_results get_code( const get_code_params& params )const;
 
@@ -209,7 +209,7 @@ public:
       const auto& d = db.get_database();
    
       types::abi_serializer abis;
-      abis.setAbi(abi);
+      abis.set_abi(abi);
    
       const auto& idx = d.get_index<IndexType, Scope>();
       auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table   ) );
@@ -321,11 +321,11 @@ FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transactio
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
-FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
-FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)(abi) )
-FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (name) )
-FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (name) )
-FC_REFLECT( eosio::chain_apis::read_only::producer_info, (name) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )
+FC_REFLECT( eosio::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )

@@ -197,7 +197,7 @@ void apply_eos_setcode(apply_context& context) {
 
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
-   abi_serializer( msg.abi ).validate();
+   abi_serializer( msg.code_abi ).validate();
 
 
    const auto& account = db.get<account_object,by_name>(msg.account);
@@ -209,7 +209,7 @@ void apply_eos_setcode(apply_context& context) {
       a.code.resize( msg.code.size() );
       memcpy( a.code.data(), msg.code.data(), msg.code.size() );
 
-      a.set_abi( msg.abi );
+      a.set_abi( msg.code_abi );
    });
 
    apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.msg, msg.account );
@@ -370,8 +370,8 @@ void apply_eos_updateauth(apply_context& context) {
    EOS_ASSERT(!update.permission.empty(), message_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT(update.permission != update.parent, message_validate_exception,
               "Cannot set an authority as its own parent");
-   EOS_ASSERT(validate(update.authority), message_validate_exception,
-              "Invalid authority: ${auth}", ("auth", update.authority));
+   EOS_ASSERT(validate(update.new_authority), message_validate_exception,
+              "Invalid authority: ${auth}", ("auth", update.new_authority));
    if (update.permission == "active")
       EOS_ASSERT(update.parent == "owner", message_validate_exception, "Cannot change active authority's parent");
    if (update.permission == "owner")
@@ -381,7 +381,7 @@ void apply_eos_updateauth(apply_context& context) {
    context.require_authorization(update.account);
 
    db.get<account_object, by_name>(update.account);
-   validate_authority_precondition(context, update.authority);
+   validate_authority_precondition(context, update.new_authority);
 
    auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
    
@@ -398,7 +398,7 @@ void apply_eos_updateauth(apply_context& context) {
       // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
       // permission satisfies the permission we want to modify?
          db.modify(*permission, [&update, &parent_id](permission_object& po) {
-            po.auth = update.authority;
+            po.auth = update.new_authority;
             po.parent = parent_id;
          });
    } else if (context.controller.is_applying_block()) {
@@ -407,7 +407,7 @@ void apply_eos_updateauth(apply_context& context) {
       db.create<permission_object>([&update, &parent_id](permission_object& po) {
          po.name = update.permission;
          po.owner = update.account;
-         po.auth = update.authority;
+         po.auth = update.new_authority;
          po.parent = parent_id;
       });
    }

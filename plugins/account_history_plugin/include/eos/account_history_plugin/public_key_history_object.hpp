@@ -31,8 +31,8 @@ class public_key_history_object : public chainbase::object<chain::public_key_his
 
    id_type           id;
    public_key_type   public_key;
-   account_name      account_name;
-   permission_name    permission;
+   account_name      name;
+   permission_name   permission;
 };
 
 struct by_id;
@@ -45,7 +45,7 @@ using public_key_history_multi_index = chainbase::shared_multi_index_container<
       hashed_non_unique<tag<by_pub_key>, BOOST_MULTI_INDEX_MEMBER(public_key_history_object, public_key_type, public_key), std::hash<public_key_type> >,
       hashed_non_unique<tag<by_account_permission>,
          composite_key< public_key_history_object,
-            member<public_key_history_object, account_name,     &public_key_history_object::account_name>,
+            member<public_key_history_object, account_name,     &public_key_history_object::name>,
             member<public_key_history_object, permission_name,  &public_key_history_object::permission>
          >,
          composite_key_hash<
@@ -62,5 +62,5 @@ typedef chainbase::generic_index<public_key_history_multi_index> public_key_hist
 
 CHAINBASE_SET_INDEX_TYPE( eosio::public_key_history_object, eosio::public_key_history_multi_index )
 
-FC_REFLECT( eosio::public_key_history_object, (public_key)(account_name)(permission) )
+FC_REFLECT( eosio::public_key_history_object, (public_key)(name)(permission) )
 

@@ -42,7 +42,7 @@ public:
 
 
    struct get_transactions_params {
-      chain::account_name account_name;
+      name                account_name;
       optional<uint32_t>  skip_seq;
       optional<uint32_t>  num_seq;
    };
@@ -63,16 +63,16 @@ public:
       chain::public_key_type     public_key;
    };
    struct get_key_accounts_results {
-      vector<chain::account_name> account_names;
+      vector<name> account_names;
    };
    get_key_accounts_results get_key_accounts(const get_key_accounts_params& params) const;
 
 
    struct get_controlled_accounts_params {
-      chain::account_name     controlling_account;
+      name     controlling_account;
    };
    struct get_controlled_accounts_results {
-      vector<chain::account_name> controlled_accounts;
+      vector<name> controlled_accounts;
    };
    get_controlled_accounts_results get_controlled_accounts(const get_controlled_accounts_params& params) const;
 };

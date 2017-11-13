@@ -190,11 +190,11 @@ namespace {
      try {
         types::abi_serializer abis;
         if (msg.code == config::eos_contract_name) {
-           abis.setAbi(db_plugin_impl::eos_abi);
+           abis.set_abi(db_plugin_impl::eos_abi);
         } else {
            auto from_account = find_account(accounts, msg.code);
            auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<types::abi>();
-           abis.setAbi(abi);
+           abis.set_abi(abi);
         }
         auto v = abis.binary_to_variant(abis.get_action_type(msg.type), msg.data);
         auto json = fc::json::to_string(v);
@@ -208,6 +208,10 @@ namespace {
         }
      } catch (fc::exception& e) {
         elog("Unable to convert message.data to ABI type: ${t}, what: ${e}", ("t", msg.type)("e", e.to_string()));
+     } catch (std::exception& e) {
+        elog("Unable to convert message.data to ABI type: ${t}, std what: ${e}", ("t", msg.type)("e", e.what()));
+     } catch (...) {
+        elog("Unable to convert message.data to ABI type: ${t}", ("t", msg.type));
      }
      // if anything went wrong just store raw hex_data
      msg_doc.append(kvp("hex_data", fc::variant(msg.data).as_string()));
@@ -552,7 +556,7 @@ void db_plugin_impl::update_account(const chain::message& msg) {
 
       document update_from{};
       update_from << "$set" << open_document
-                  << "abi" << bsoncxx::from_json(fc::json::to_string(setcode.abi))
+                  << "abi" << bsoncxx::from_json(fc::json::to_string(setcode.code_abi))
                   << "updatedAt" << b_date{now}
                   << close_document;
 

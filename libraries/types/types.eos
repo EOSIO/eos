@@ -104,10 +104,10 @@ struct newaccount
 
 struct setcode
    account         account_name # the account that is handling the message
-   vm_type          uint8        # the virtual machine type
-   vm_version       uint8        # the virtual machine version
+   vm_type         uint8        # the virtual machine type
+   vm_version      uint8        # the virtual machine version
    code            bytes        # the apply
-   abi             abi          # the interface description of the code
+   code_abi        abi          # the interface description of the code
 
 
 struct setproducer
@@ -130,7 +130,7 @@ struct updateauth
    account     account_name
    permission  permission_name
    parent      permission_name
-   authority   authority
+   new_authority   authority
 
 struct deleteauth
    account account_name
