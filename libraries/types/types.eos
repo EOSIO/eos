@@ -81,6 +81,9 @@ struct transfer
    amount    uint64
    memo      string
 
+struct nonce         # used to make a transaction unique
+   value     string
+
 struct lock
    from      account_name
    to        account_name

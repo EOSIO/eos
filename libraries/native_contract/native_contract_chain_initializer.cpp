@@ -62,6 +62,7 @@ types::abi native_contract_chain_initializer::eos_contract_abi()
 //   eos_abi.types.push_back( types::type_def{"account_name","name"} );
    eos_abi.types.push_back( types::type_def{"share_type","int64"} );
    eos_abi.actions.push_back( types::action{name("transfer"), "transfer"} );
+   eos_abi.actions.push_back( types::action{name("nonce"), "nonce"} );
    eos_abi.actions.push_back( types::action{name("lock"), "lock"} );
    eos_abi.actions.push_back( types::action{name("unlock"), "unlock"} );
    eos_abi.actions.push_back( types::action{name("claim"), "claim"} );
@@ -75,6 +76,7 @@ types::abi native_contract_chain_initializer::eos_contract_abi()
    eos_abi.actions.push_back( types::action{name("deleteauth"), "deleteauth"} );
    eos_abi.actions.push_back( types::action{name("newaccount"), "newaccount"} );
    eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::transfer>::type() );
+   eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::nonce>::type() );
    eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::lock>::type() );
    eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::unlock>::type() );
    eos_abi.structs.push_back( eosio::types::get_struct<eosio::types::claim>::type() );
