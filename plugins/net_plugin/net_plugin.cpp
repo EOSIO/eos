@@ -2059,7 +2059,7 @@ namespace eosio {
     cfg.add_options()
      ( "listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The local IP address and port to listen for incoming connections.")
      ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
-     ( "public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
+     ( "public-endpoint", bpo::value<string>(), "The public IP address is used for peers to access when the node is behind a NAT firewall or listening on 0.0.0.0.")
      ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
       ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
      ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
