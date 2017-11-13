@@ -125,7 +125,13 @@ protected:
 class testing_blockchain : public chain_controller {
 public:
    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                      chain_initializer_interface& initializer, testing_fixture& fixture);
+
+   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                       chain_initializer_interface& initializer, testing_fixture& fixture,
+                      uint32_t transaction_execution_time_msec,
+                      uint32_t received_block_execution_time_msec,
+                      uint32_t create_block_execution_time_msec,
                       const chain_controller::txn_msg_limits& rate_limits = chain_controller::txn_msg_limits());
 
    /**
