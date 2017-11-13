@@ -8,6 +8,15 @@ error()
 {
   (>&2 echo $1)
   killAll
+  echo =================================================================
+  echo Contents of tn_data_0/config.ini:
+  cat tn_data_0/config.ini
+  echo =================================================================
+  echo Contents of tn_data_0/stderr.txt:
+  cat tn_data_0/stderr.txt
+  echo =================================================================
+  echo Contents of test_walletd_output.log:
+  cat test_walletd_output.log
   exit 1
 }
 
