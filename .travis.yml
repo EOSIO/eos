@@ -52,16 +52,17 @@ before_install:
     else
       WASM_BRANCH=master
       CMAKE_DIR=$TRAVIS_BUILD_DIR/ext/cmake-3.9.0-Linux-x86_64/bin/
+      EOS_CMAKE_OPTIONS="-DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext"
       if [ "$COMPILER" == "clang++-4.0" ]; then
         export CC=clang-4.0
         export CXX=clang++-4.0
       else
         export CC=gcc-7
         export CXX=g++-7
+        EOS_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wnoignored-attributes"
       fi
       export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
       MONGOCXX_CMAKE_OPTIONS="-DLIBBSON_DIR=$TRAVIS_BUILD_DIR/ext -DLIBMONGOC_DIR=$TRAVIS_BUILD_DIR/ext"
-      EOS_CMAKE_OPTIONS="-DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext"
       wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
       tar xjf boost_1_64_0.tar.bz2
       cd boost_1_64_0
