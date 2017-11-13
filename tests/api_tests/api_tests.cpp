@@ -526,7 +526,7 @@ BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                        
 
 #define RUN_CODE_ABI_WITH_TRANSFER(account_name, test_wast, test_abi)                                      \
       types::setcode handler;                                                                              \
-      handler.abi = fc::json::from_string(test_abi).as<types::abi>();                                      \
+      handler.code_abi = fc::json::from_string(test_abi).as<types::abi>();                                 \
       RUN_CODE_HANDLER_WITH_TRANSFER(account_name, test_wast)
 
 #define TEST_CASE_RUN_CODE_ABI_W_XFER(test_case_name, account_name, test_wast, test_abi)                   \
