@@ -160,7 +160,8 @@ public:
       name        scope;
       name        code;
       name        table;
-
+//      string      table_type;
+      
       string      table_key;
       string      lower_bound;
       string      upper_bound;
