@@ -4,10 +4,16 @@
  */
 #pragma once
 #include <appbase/application.hpp>
+#include <eosio/chain/asset.hpp>
+#include <eosio/chain/authority.hpp>
+#include <eosio/chain/account_object.hpp>
+#include <eosio/chain/block.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/key_value_object.hpp>
-#include <eosio/chain/account_object.hpp>
-#include <eos/types/abi_serializer.hpp>
+#include <eosio/chain/transaction.hpp>
+
+// TODO: hook in new abi stuff here
+//#include <eos/types/abi_serializer.hpp>
 
 #include <eos/database_plugin/database_plugin.hpp>
 
@@ -16,7 +22,7 @@
 namespace fc { class variant; }
 
 namespace eosio {
-   using eosio::chain::chain_controller;
+   using chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
    using chain::name;
@@ -25,14 +31,16 @@ namespace eosio {
    using fc::optional;
    using boost::container::flat_set;
    using chain::asset;
+   using chain::authority;
+   using chain::account_name;
 
 namespace chain_apis {
 struct empty{};
 
 struct permission {
-   name             perm_name;
-   name             parent;
-   types::authority required_auth;
+   name              perm_name;
+   name              parent;
+   authority         required_auth;
 };
 
 class read_only {
@@ -53,13 +61,13 @@ public:
    using get_info_params = empty;
 
    struct get_info_results {
-      uint32_t              head_block_num = 0;
-      uint32_t              last_irreversible_block_num = 0;
-      chain::block_id_type  head_block_id;
-      fc::time_point_sec    head_block_time;
-      types::account_name   head_block_producer;
-      string                recent_slots;
-      double                participation_rate = 0;
+      uint32_t                head_block_num = 0;
+      uint32_t                last_irreversible_block_num = 0;
+      chain::block_id_type    head_block_id;
+      fc::time_point_sec      head_block_time;
+      account_name            head_block_producer;
+      string                  recent_slots;
+      double                  participation_rate = 0;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -87,7 +95,7 @@ public:
       name                   name;
       string                 wast;
       fc::sha256             code_hash;
-      optional<types::abi>   abi;
+      //optional<types::abi>   abi;
    };
 
    struct get_code_params {
@@ -204,21 +212,24 @@ public:
    }
  
    template <typename IndexType, typename Scope>
-   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const types::abi& abi )const {
+   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p/*, const types::abi& abi */)const {
       read_only::get_table_rows_result result;
       const auto& d = db.get_database();
-   
-      types::abi_serializer abis;
-      abis.setAbi(abi);
+
+      // TODO: ABI stuff
+      //types::abi_serializer abis;
+      //abis.setAbi(abi);
    
       const auto& idx = d.get_index<IndexType, Scope>();
       auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table   ) );
       auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, name(uint64_t(p.table)+1) ) );
 
-      if( p.lower_bound.size() )
-         lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.lower_bound).as<typename IndexType::value_type::key_type>() ) );
-      if( p.upper_bound.size() )
-         upper = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.upper_bound).as<typename IndexType::value_type::key_type>() ) );
+      if( p.lower_bound.size() ) {
+         lower = idx.lower_bound(boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.lower_bound).as<typename IndexType::value_type::key_type>()));
+      }
+      if( p.upper_bound.size() ) {
+         upper = idx.lower_bound(boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.upper_bound).as<typename IndexType::value_type::key_type>()));
+      }
    
       vector<char> data;
    
@@ -229,15 +240,19 @@ public:
       for( itr = lower; itr != upper && itr->table == p.table; ++itr ) {
          copy_row(*itr, data);
    
-         if( p.json ) 
-            result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data) );
-         else
-            result.rows.emplace_back( fc::variant(data) );
-         if( ++count == p.limit || fc::time_point::now() > end )
+         if( p.json ) {
+            //result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data) );
+         } else {
+            result.rows.emplace_back(fc::variant(data));
+         }
+
+         if( ++count == p.limit || fc::time_point::now() > end ) {
             break;
+         }
       }
-      if( itr != upper ) 
+      if( itr != upper ) {
          result.more = true;
+      }
       return result;
    }
       
@@ -322,7 +337,8 @@ FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(table_ke
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
-FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)(abi) )
+//TODO: ABI STUFF
+FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)/*(abi)*/ )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (name) )
 FC_REFLECT( eosio::chain_apis::read_only::producer_info, (name) )
