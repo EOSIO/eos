@@ -444,12 +444,13 @@ verifyErrorCode "eosc create producer"
 getTransactionId "$INFO"
 
 # set permission
-#INFO="$(programs/eosc/eosc --host $SERVER --port $PORT set action permission testera currency transfer active)"
-#verifyErrorCode "eosc set action permission set"
+INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set action permission testera currency transfer active)"
+verifyErrorCode "eosc set action permission set"
+waitForNextBlock
 
 # remove permission
-#INFO="$(programs/eosc/eosc --host $SERVER --port $PORT set action permission testera currency transfer)"
-#verifyErrorCode "eosc set action permission delete"
+INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set action permission testera currency transfer null)"
+verifyErrorCode "eosc set action permission delete"
 
 # lock via lock_all
 programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 wallet lock_all
