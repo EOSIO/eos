@@ -1,6 +1,6 @@
 #pragma once
-#include <eos/chain/block.hpp>
-#include <eos/chain/types.hpp>
+#include <eosio/chain/block.hpp>
+#include <eosio/chain/types.hpp>
 #include <chrono>
 
 namespace eosio {

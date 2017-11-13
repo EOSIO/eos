@@ -4,8 +4,8 @@
  */
 #include <eos/wallet_api_plugin/wallet_api_plugin.hpp>
 #include <eos/wallet_plugin/wallet_manager.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>

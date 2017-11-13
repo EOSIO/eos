@@ -3,12 +3,12 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/chain_plugin/chain_plugin.hpp>
-#include <eos/chain/fork_database.hpp>
-#include <eos/chain/block_log.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/producer_object.hpp>
-#include <eos/chain/config.hpp>
-#include <eos/chain/types.hpp>
+#include <eosio/chain/fork_database.hpp>
+#include <eosio/chain/block_log.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/producer_object.hpp>
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/types.hpp>
 
 #include <eos/db_plugin/db_plugin.hpp>
 
@@ -19,7 +19,7 @@
 #include <eos/native_contract/genesis_state.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
-#include <eos/chain/wast_to_wasm.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>

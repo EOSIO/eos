@@ -3,10 +3,10 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/db_plugin/db_plugin.hpp>
-#include <eos/chain/config.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
-#include <eos/chain/types.hpp>
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
+#include <eosio/chain/types.hpp>
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 
 #include <fc/io/json.hpp>

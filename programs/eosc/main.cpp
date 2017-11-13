@@ -72,7 +72,7 @@ Options:
 #include <fc/exception/exception.hpp>
 #include <eos/utilities/key_conversion.hpp>
 
-#include <eos/chain/config.hpp>
+#include <eosio/chain/config.hpp>
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/utilities/key_conversion.hpp>
 #include <boost/range/algorithm/find_if.hpp>

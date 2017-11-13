@@ -4,9 +4,9 @@
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/key_value_object.hpp>
-#include <eos/chain/account_object.hpp>
+#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/key_value_object.hpp>
+#include <eosio/chain/account_object.hpp>
 #include <eos/types/abi_serializer.hpp>
 
 #include <eos/database_plugin/database_plugin.hpp>

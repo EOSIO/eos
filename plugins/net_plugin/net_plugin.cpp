@@ -2,13 +2,13 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/types.hpp>
+#include <eosio/chain/types.hpp>
 
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/block.hpp>
+#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/block.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>

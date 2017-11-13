@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eos/chain/transaction.hpp>
+#include <eosio/chain/transaction.hpp>
 #include <eos/wallet_plugin/wallet.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>

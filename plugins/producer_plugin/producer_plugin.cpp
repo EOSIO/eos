@@ -5,7 +5,7 @@
 #include <eos/producer_plugin/producer_plugin.hpp>
 #include <eos/net_plugin/net_plugin.hpp>
 
-#include <eos/chain/producer_object.hpp>
+#include <eosio/chain/producer_object.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
 

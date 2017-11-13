@@ -7,11 +7,11 @@
 #include <eos/account_history_plugin/account_transaction_history_object.hpp>
 #include <eos/account_history_plugin/public_key_history_object.hpp>
 #include <eos/account_history_plugin/transaction_history_object.hpp>
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/config.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
-#include <eos/chain/types.hpp>
+#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
+#include <eosio/chain/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
 #include <fc/io/json.hpp>
@@ -19,7 +19,7 @@
 
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
-#include <eos/chain/multi_index_includes.hpp>
+#include <eosio/chain/multi_index_includes.hpp>
 #include <boost/range/adaptors.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/range/algorithm_ext.hpp>
