@@ -270,11 +270,9 @@ bool chain_plugin::is_skipping_transaction_signatures() const {
 }
 
 chain_controller& chain_plugin::chain() { return *my->chain; }
-const chain::chain_controller& chain_plugin::chain() const { return *my->chain; }
-
-  void chain_plugin::get_chain_id (chain_id_type &cid)const {
-    memcpy (cid.data(), my->chain_id.data(), cid.data_size());
-  }
+void chain_plugin::get_chain_id (chain_id_type &cid)const {
+   memcpy (cid.data(), my->chain_id.data(), cid.data_size());
+}
 
 namespace chain_apis {
 
