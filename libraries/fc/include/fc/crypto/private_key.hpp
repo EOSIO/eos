@@ -35,6 +35,11 @@ namespace fc { namespace crypto {
             return private_key(storage_type(KeyType::generate()));
          }
 
+         template< typename KeyType >
+         static private_key regenerate( const typename KeyType::data_type& data ) {
+            return private_key(storage_type(KeyType(data)));
+         }
+
          // serialize to/from string
          explicit private_key(const string& base58str);
          explicit operator string() const;

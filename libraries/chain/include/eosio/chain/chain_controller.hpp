@@ -262,7 +262,7 @@ namespace eosio { namespace chain {
 
 
    private:
-         const apply_handler* find_apply_handler( account_name ontract, scope_name scope, action_name act )const;
+         const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
 
 
          friend class contracts::chain_initializer;
@@ -281,6 +281,8 @@ namespace eosio { namespace chain {
          void _push_transaction( const signed_transaction& trx );
          void _start_pending_block();
          void _apply_transaction( const transaction& trx );
+
+         void _finalize_block( const signed_block& b );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();

@@ -280,11 +280,9 @@ signed_block chain_controller::generate_block(
    )
 { try {
    return with_skip_flags( skip, [&](){
-      auto b = _db.with_write_lock( [&](){
+      return _db.with_write_lock( [&](){
          return _generate_block( when, producer, block_signing_private_key );
       });
-//      push_block(b, skip);
-      return b;
    });
 } FC_CAPTURE_AND_RETHROW( (when) ) }
 
@@ -308,16 +306,18 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
 
    _pending_block->timestamp = when;
-   _pending_block->producer = producer_obj.owner;
+   _pending_block->producer  = producer_obj.owner;
+   _pending_block->previous  = head_block_id();
 
    if( !(skip & skip_producer_signature) )
       _pending_block->sign( block_signing_key );
 
+   _finalize_block( *_pending_block );
+
    auto result = move( *_pending_block );
 
    if (!(skip&skip_fork_db)) {
-      /*shared_ptr<fork_item> new_head = */_fork_db.push_block(result);
-      //FC_ASSERT( new_head.id == new_block.id )
+      _fork_db.push_block(result);
    }
 
    _pending_block_session->push();
@@ -415,6 +415,26 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
+
+/**
+ *  After applying all transactions successfully we can update
+ *  the current block time, block number, producer stats, etc
+ */
+void chain_controller::_finalize_block( const signed_block& b ) {
+   const producer_object& signing_producer = validate_block_header(_skip_flags, b);
+
+   update_global_properties( b );
+   update_global_dynamic_data( b );
+   update_signing_producer(signing_producer, b);
+
+   update_last_irreversible_block();
+
+   create_block_summary(b);
+   clear_expired_transactions();
+
+   if (_currently_replaying_blocks)
+     applied_irreversible_block(b);
+}
 
 namespace {
 
@@ -601,9 +621,7 @@ void chain_controller::process_message( const transaction& trx, account_name cod
    }
 
    for( auto& asynctrx : apply_ctx.deferred_transactions ) {
-      digest_type::encoder enc;
-      fc::raw::pack( enc, trx );
-      fc::raw::pack( enc, asynctrx );
+      digest_type::encoder enc; fc::raw::pack( enc, trx ); fc::raw::pack( enc, asynctrx );
       auto id = enc.result();
       auto gtrx = Generatedtransaction(id, asynctrx);
 
@@ -816,7 +834,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
 
          auto acts = starter.prepare_database(*this, _db);
 
-         signed_transaction genesis_setup_transaction;
+         transaction genesis_setup_transaction;
          genesis_setup_transaction.actions = move(acts);
 
          ilog( "applying genesis transaction" );

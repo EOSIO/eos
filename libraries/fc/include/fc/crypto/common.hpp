@@ -145,15 +145,15 @@ namespace fc { namespace crypto {
       shim()
       {}
 
-      shim(data_type &&data)
+      shim(data_type&& data)
       :_data(forward<data_type>(data))
       {}
 
-      shim(data_type &data)
+      shim(const data_type& data)
       :_data(data)
       {}
 
-      const data_type &serialize() const {
+      const data_type& serialize() const {
          return _data;
       }
 
