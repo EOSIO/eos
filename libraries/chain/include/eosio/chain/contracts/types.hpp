@@ -178,10 +178,12 @@ struct claim {
 };
 
 struct newaccount {
+   /*
    newaccount() = default;
    newaccount(const account_name& creator, const account_name& name, const authority& owner, const authority& active, const authority& recovery, const asset& deposit)
    :creator(creator), name(name), owner(owner), active(active), recovery(recovery), deposit(deposit)
    {}
+   */
 
    account_name                     creator;
    account_name                     name;

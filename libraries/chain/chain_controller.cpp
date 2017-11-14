@@ -256,13 +256,11 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
 
    auto temp_session = _db.start_undo_session(true);
 
-#if 0
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
-   /*auto pt = */_apply_transaction(trx);
-   _pending_transactions.push_back(trx);
+   _apply_transaction(trx);
+//   _pending_transactions.push_back(trx);
 
-#endif
 
    // notify_changed_objects();
    // The transaction applied successfully. Merge its changes into the pending block session.

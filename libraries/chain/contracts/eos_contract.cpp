@@ -491,7 +491,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
       db.remove(*link);
 }
 
-void apply_eos_nonce(apply_context&) {
+void apply_eosio_nonce(apply_context&) {
    /// do nothing
 }
 

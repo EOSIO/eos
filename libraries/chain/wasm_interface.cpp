@@ -216,6 +216,10 @@ namespace eosio { namespace chain {
      std::cerr << name(val).to_string();
    }
 
+
+
+
+
    DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
      auto& wasm  = wasm_interface::get();
      auto  mem   = wasm.memory();

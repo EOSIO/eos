@@ -55,6 +55,10 @@ namespace eosio { namespace chain {
           */
          void apply( apply_context& context );
 
+         /**
+          */
+         void error( apply_context& context );
+
       private:
          wasm_interface();
          unique_ptr<struct wasm_interface_impl> my;

@@ -235,11 +235,11 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
    // Queue up messages which will run contracts to create the initial accounts
    for (const auto& acct : genesis.initial_accounts) {
       action message( {{config::system_account_name, config::active_name}},
-                      newaccount( config::system_account_name, acct.name,
+                      newaccount{ config::system_account_name, acct.name,
                                                              authority(acct.owner_key),
                                                              authority(acct.active_key),
                                                              authority(acct.owner_key),
-                                                             acct.staking_balance));
+                                                             acct.staking_balance});
 
       messages_to_process.emplace_back(move(message));
 
