@@ -27,7 +27,9 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-4.0
           packages:
+            - llvm-4.0-dev
             - g++-7
             - ninja-build
             - libgmp-dev
@@ -61,7 +63,6 @@ before_install:
         export CC=gcc-7
         export CXX=g++-7
         EOS_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
-        EOS_CMAKE_OPTIONS+=" -DCMAKE_MODULE_PATH=$TRAVIS_BUILD_DIR/ext/wasm-compiler/lib/cmake/llvm"
         MONGOCXX_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
       fi
       export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
@@ -74,9 +75,23 @@ before_install:
         BOOST_TOOLSET=clang
       else
         echo 'using gcc : 7 : g++-7 ;' >> project-config.jam
-        BOOST_TOOLSET=gcc
+        BOOST_TOOLSET=gcc-7
       fi
-      ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine toolset=$BOOST_TOOLSET link=static install
+      while read libname; do boost_libs+=("--with-$libname"); done <<EOT
+chrono
+context
+coroutine
+date_time
+filesystem
+locale
+program_options
+serialization
+signals
+system
+test
+thread
+EOT
+      ./b2 -d0 -j4 ${boost_libs[@]} toolset=$BOOST_TOOLSET link=static install
       cd $TRAVIS_BUILD_DIR/ext
       wget https://cmake.org/files/v3.9/cmake-3.9.0-Linux-x86_64.tar.gz
       tar xzf cmake-3.9.0-Linux-x86_64.tar.gz
