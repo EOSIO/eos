@@ -222,7 +222,7 @@ if [ $count == 0 ]; then
 fi
 
 # transfer
-TRANSFER_INFO="$(programs/eosc/eosc --wallet-port 8899 transfer inita testera 975321 "test transfer")"
+TRANSFER_INFO="$(programs/eosc/eosc --wallet-port 8899 transfer -f inita testera 975321 "test transfer")"
 verifyErrorCode "eosc transfer"
 waitForNextTransaction
 
@@ -460,6 +460,12 @@ while [ "$NEXT_BLOCK_NUM" -le "$HEAD_BLOCK_NUM" ]; do
 
   NEXT_BLOCK_NUM=$((NEXT_BLOCK_NUM+1))
 done
+
+ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
+count=`grep -c Assert tn_data_0/stderr.txt`
+if [ $count != 0 ]; then
+  error "FAILURE - Assert in tn_data_0/stderr.txt"
+fi
 
 killAll
 cleanup
