@@ -42,19 +42,19 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-   SET_APP_HANDLER( eos, eos, setproducer, eosio );
-   SET_APP_HANDLER( eos, eos, newaccount, eosio );
-   SET_APP_HANDLER( eos, eos, transfer, eosio );
-   SET_APP_HANDLER( eos, eos, lock, eosio );
-   SET_APP_HANDLER( eos, eos, claim, eosio );
-   SET_APP_HANDLER( eos, eos, unlock, eosio );
-   SET_APP_HANDLER( eos, eos, okproducer, eosio );
-   SET_APP_HANDLER( eos, eos, setproxy, eosio );
-   SET_APP_HANDLER( eos, eos, setcode, eosio );
-   SET_APP_HANDLER( eos, eos, updateauth, eosio );
-   SET_APP_HANDLER( eos, eos, deleteauth, eosio );
-   SET_APP_HANDLER( eos, eos, linkauth, eosio );
-   SET_APP_HANDLER( eos, eos, unlinkauth, eosio ); 
+   SET_APP_HANDLER( eosio, eosio, setproducer, eosio );
+   SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
+   SET_APP_HANDLER( eosio, eosio, transfer, eosio );
+   SET_APP_HANDLER( eosio, eosio, lock, eosio );
+   SET_APP_HANDLER( eosio, eosio, claim, eosio );
+   SET_APP_HANDLER( eosio, eosio, unlock, eosio );
+   SET_APP_HANDLER( eosio, eosio, okproducer, eosio );
+   SET_APP_HANDLER( eosio, eosio, setproxy, eosio );
+   SET_APP_HANDLER( eosio, eosio, setcode, eosio );
+   SET_APP_HANDLER( eosio, eosio, updateauth, eosio );
+   SET_APP_HANDLER( eosio, eosio, deleteauth, eosio );
+   SET_APP_HANDLER( eosio, eosio, linkauth, eosio );
+   SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio ); 
 }
 
 /*

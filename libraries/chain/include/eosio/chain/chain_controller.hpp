@@ -262,6 +262,9 @@ namespace eosio { namespace chain {
 
 
    private:
+         const apply_handler* find_apply_handler( account_name ontract, scope_name scope, action_name act )const;
+
+
          friend class contracts::chain_initializer;
          friend class apply_context;
 
@@ -340,13 +343,6 @@ namespace eosio { namespace chain {
                                                              scope_name code_account,
                                                              action_name type) const;
 
-
-         /*
-         void deliver_message( const transaction& trx, account_name receiving_code, 
-                               const action& act, actionOutput& output, apply_context* parent_context = nullptr);
-                               */
-
-         void apply_action(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }

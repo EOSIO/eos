@@ -19,6 +19,8 @@ class apply_context {
       :controller(con), db(db), trx(t), act(a), receiver(recv), mutable_controller(con),
        mutable_db(db), used_authorizations(act.authorization.size(), false){}
 
+      void exec();
+
       template <typename ObjectType>
       int32_t store_record( name scope, name code, name table, typename ObjectType::key_type* keys, 
                             char* value, uint32_t valuelen ); 

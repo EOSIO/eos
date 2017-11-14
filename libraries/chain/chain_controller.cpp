@@ -764,9 +764,10 @@ account_name chain_controller::head_block_producer() const {
    return {};
 }
 
-const producer_object& chain_controller::get_producer(const account_name& owner_name) const {
+const producer_object& chain_controller::get_producer(const account_name& owner_name) const 
+{ try {
    return _db.get<producer_object, by_owner>(owner_name);
-}
+} FC_CAPTURE_AND_RETHROW( (owner_name) ) }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
@@ -813,27 +814,17 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          for (int i = 0; i < 0x10000; i++)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
-         // create a dummy block and cycle for our dummy transactions to send to applied_irreversible_block below
-         signed_block block{};
-         block.producer = config::system_account_name;
-         auto messages = starter.prepare_database(*this, _db);
-         idump((messages));
-         std::for_each(messages.begin(), messages.end(), [&](const action& m) {
-            //actionOutput output;
-            signed_transaction trx; /// dummy transaction required for scope validation
-            //std::sort(trx.scope.begin(), trx.scope.end() );
+         auto acts = starter.prepare_database(*this, _db);
 
-            with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
-            [&](){ 
-             //   process_message(trx,m.scope,m,output); 
-            });
+         signed_transaction genesis_setup_transaction;
+         genesis_setup_transaction.actions = move(acts);
 
-           // trx.messages.push_back(m);
-           // block.cycles[0][0].user_input.push_back(std::move(trx));
+         ilog( "applying genesis transaction" );
+         with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
+         [&](){ 
+            _apply_transaction( genesis_setup_transaction );
          });
 
-         // TODO: Should we write this genesis block instead of faking it on startup?
-         // applied_irreversible_block(block);
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
@@ -1087,7 +1078,28 @@ uint32_t chain_controller::producer_participation_rate()const
 }
 
 void chain_controller::_set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {
+   idump((contract)(scope)(action));
    _apply_handlers[contract][make_pair(scope,action)] = v;
+}
+
+void chain_controller::_apply_transaction( const transaction& trx ) {
+
+   ilog( "apply transaction" );
+   for( const auto& act : trx.actions ) {
+      apply_context context( *this, _db, trx, act, act.scope );
+      context.exec();
+   }
+}
+
+const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
+{
+   auto native_handler_scope = _apply_handlers.find( receiver );
+   if( native_handler_scope != _apply_handlers.end() ) {
+      auto handler = native_handler_scope->second.find( make_pair( scope, act ) );
+      if( handler != native_handler_scope->second.end() ) 
+         return &handler->second;
+   }
+   return nullptr;
 }
 
 } } /// eosio::chain
