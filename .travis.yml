@@ -60,8 +60,8 @@ before_install:
       else
         export CC=gcc-7
         export CXX=g++-7
-        EOS_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wnoignored-attributes"
-        MONGOCXX_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wnoignored-attributes"
+        EOS_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
+        MONGOCXX_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
       fi
       export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
       wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
