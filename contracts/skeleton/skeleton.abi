@@ -22,12 +22,12 @@
     }
   ],
   "actions": [{
-      "action": "transfer",
+      "name": "transfer",
       "type": "transfer"
     }
   ],
   "tables": [{
-      "table": "account",
+      "name": "account",
       "type": "account",
       "index_type": "i64",
       "key_names" : ["account"],
