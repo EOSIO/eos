@@ -9,8 +9,12 @@
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
+#include <eos/chain/producer_object.hpp>
+#include <eos/producer_plugin/producer_plugin.hpp>
+#include <eos/utilities/key_conversion.hpp>
 
 #include <fc/network/ip.hpp>
+#include <fc/io/json.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/container/flat.hpp>
@@ -22,6 +26,10 @@
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
+
+namespace fc {
+  extern std::unordered_map<std::string,logger>& get_logger_map();
+}
 
 namespace eosio {
   using std::vector;
@@ -107,17 +115,28 @@ namespace eosio {
 
   class net_plugin_impl {
   public:
-    unique_ptr<tcp::acceptor>     acceptor;
-    tcp::endpoint                 listen_endpoint;
-    string                        p2p_address;
-    uint32_t                      max_client_count;
-    uint32_t                      num_clients;
+    unique_ptr<tcp::acceptor>        acceptor;
+    tcp::endpoint                    listen_endpoint;
+    string                           p2p_address;
+    uint32_t                         max_client_count;
+    uint32_t                         num_clients;
 
-    vector<string>                supplied_peers;
+    vector<string>                   supplied_peers;
+    vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
+    std::map<chain::public_key_type,
+             fc::ecc::private_key>   private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
 
-    std::set< connection_ptr >    connections;
-    bool                          done = false;
-    unique_ptr< sync_manager >    sync_master;
+    enum possible_connections : char {
+      None = 0,
+      Producers = 1 << 0,
+      Specified = 1 << 1,
+      Any = 1 << 2
+    };
+    possible_connections             allowed_connections{None};
+
+    std::set< connection_ptr >       connections;
+    bool                             done = false;
+    unique_ptr< sync_manager >       sync_master;
 
     unique_ptr<boost::asio::steady_timer> connector_check;
     unique_ptr<boost::asio::steady_timer> transaction_check;
@@ -126,6 +145,8 @@ namespace eosio {
     boost::asio::steady_timer::duration   txn_exp_period;
     boost::asio::steady_timer::duration   resp_expected_period;
     boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+
+    const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
     int16_t                       network_version;
     chain_id_type                 chain_id;
@@ -198,9 +219,39 @@ namespace eosio {
      */
     void ticker();
     /** @} */
+    /** \brief Determine if a peer is allowed to connect.
+     *
+     * Checks current connection mode and key authentication.
+     *
+     * \return False if the peer should not connect, true otherwise.
+     */
+    bool authenticate_peer(const handshake_message& msg) const;
+    /** \brief Retrieve public key used to authenticate with peers.
+     *
+     * Finds a key to use for authentication.  If this node is a producer, use
+     * the front of the producer key map.  If the node is not a producer but has
+     * a configured private key, use it.  If the node is neither a producer nor has
+     * a private key, returns an empty key.
+     *
+     * \note On a node with multiple private keys configured, the key with the first
+     *       numerically smaller byte will always be used.
+     */
+    chain::public_key_type get_authentication_key() const;
+    /** \brief Returns a signature of the digest using the corresponding private key of the signer.
+     *
+     * If there are no configured private keys, returns an empty signature.
+     */
+    fc::ecc::compact_signature sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
     static const fc::string logger_name;
     static fc::logger logger;
   };
+
+  template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
+  inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
+  {
+    using T = std::underlying_type_t <enum_type>;
+    return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
+  }
 
   static net_plugin_impl *my_impl;
   const fc::string net_plugin_impl::logger_name("net_plugin_impl");
@@ -750,7 +801,7 @@ namespace eosio {
 
   char* connection::convert_tstamp(const tstamp& t)
   {
-    const long NsecPerSec{1000000000};
+    const long long NsecPerSec{1000000000};
     time_t seconds = t / NsecPerSec;
     strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
     snprintf(ts+19, ts_buffer_size-19, ".%lld", t % NsecPerSec);
@@ -1336,6 +1387,12 @@ namespace eosio {
 
         if(  c->node_id != msg.node_id) {
           c->node_id = msg.node_id;
+        }
+
+        if(!authenticate_peer(msg)) {
+          dlog("Peer not authenticated.  Closing connection.");
+          close(c);
+          return;
         }
       }
 
@@ -2017,11 +2074,97 @@ namespace eosio {
         });
     }
 
+    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
+      if(allowed_connections == None)
+        return false;
+
+      if(allowed_connections == Any)
+        return true;
+
+      if(allowed_connections & (Producers | Specified)) {
+        auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
+        auto private_it = private_keys.find(msg.key);
+        bool found_producer_key = false;
+        producer_plugin* pp = app().find_plugin<producer_plugin>();
+        if(pp != nullptr)
+          found_producer_key = pp->is_producer_key(msg.key);
+        if( allowed_it == allowed_peers.end() && private_it == private_keys.end() && !found_producer_key) {
+          elog( "Peer ${peer} sent a handshake with an unauthorized key: ${key}.",
+                ("peer", msg.p2p_address)("key", msg.key));
+          return false;
+        }
+      }
+
+      namespace sc = std::chrono;
+      sc::system_clock::duration msg_time(msg.time);
+      auto time = sc::system_clock::now().time_since_epoch();
+      if(time - msg_time > peer_authentication_interval) {
+        elog( "Peer ${peer} sent a handshake with a timestamp skewed by more than ${time}.",
+              ("peer", msg.p2p_address)("time", "1 second")); // TODO Add to_variant for std::chrono::system_clock::duration
+        return false;
+      }
+
+      if(msg.sig != ecc::compact_signature() && msg.token != sha256()) {
+        sha256 hash = fc::sha256::hash(msg.time);
+        if(hash != msg.token) {
+          elog( "Peer ${peer} sent a handshake with an invalid token.",
+                ("peer", msg.p2p_address));
+          return false;
+        }
+        types::public_key peer_key;
+        try {
+          peer_key = ecc::public_key(msg.sig, msg.token, true);
+        }
+        catch (fc::exception& /*e*/) {
+          elog( "Peer ${peer} sent a handshake with an unrecoverable key.",
+                ("peer", msg.p2p_address));
+          return false;
+        }
+        if((allowed_connections & (Producers | Specified)) && peer_key != msg.key) {
+          elog( "Peer ${peer} sent a handshake with an unauthenticated key.",
+                ("peer", msg.p2p_address));
+          return false;
+        }
+      }
+      else if(allowed_connections & (Producers | Specified)) {
+        dlog( "Peer sent a handshake with blank signature and token, but this node accepts only authenticated connections.");
+        return false;
+      }
+      return true;
+    }
+
+    chain::public_key_type net_plugin_impl::get_authentication_key() const {
+      producer_plugin* pp = app().find_plugin<producer_plugin>();
+      if(pp != nullptr)
+        return pp->first_producer_public_key();
+      if(!private_keys.empty())
+        return private_keys.begin()->first;
+      return chain::public_key_type();
+    }
+
+    fc::ecc::compact_signature net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
+    {
+      producer_plugin* pp = app().find_plugin<producer_plugin>();
+      if(pp != nullptr)
+        return pp->sign_compact(signer, digest);
+      auto private_key_itr = private_keys.find(signer);
+      if(private_key_itr == private_keys.end())
+        return ecc::compact_signature();
+      return private_key_itr->second.sign_compact(digest);
+    }
+
   void
   handshake_initializer::populate( handshake_message &hello) {
     hello.network_version = my_impl->network_version;
     hello.chain_id = my_impl->chain_id;
     hello.node_id = my_impl->node_id;
+    hello.key = my_impl->get_authentication_key();
+    hello.time = std::chrono::system_clock::now().time_since_epoch().count();
+    hello.token = fc::sha256::hash(hello.time);
+    hello.sig = my_impl->sign_compact(hello.key, hello.token);
+    // If we couldn't sign, don't send a token.
+    if(hello.sig == ecc::compact_signature())
+      hello.token = sha256();
     hello.p2p_address = my_impl->p2p_address;
 #if defined( __APPLE__ )
     hello.os = "osx";
@@ -2067,20 +2210,34 @@ namespace eosio {
   net_plugin::~net_plugin() {
   }
 
-  void net_plugin::set_program_options( options_description& cli, options_description& cfg )
+  void net_plugin::set_program_options( options_description& /*cli*/, options_description& cfg )
   {
     cfg.add_options()
      ( "listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The local IP address and port to listen for incoming connections.")
      ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
      ( "public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
      ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
-      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
+     ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
+     ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"none"}, "none"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
+     ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
+     ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+       "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
      ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
-      ;
+     ;
+  }
+
+  template<typename T>
+  T dejsonify(const string& s) {
+     return fc::json::from_string(s).as<T>();
   }
 
   void net_plugin::plugin_initialize( const variables_map& options ) {
     ilog("Initialize net plugin");
+
+    // Housekeeping so fc::logger::get() will work as expected
+    fc::get_logger_map()[connection::logger_name] = connection::logger;
+    fc::get_logger_map()[net_plugin_impl::logger_name] = net_plugin_impl::logger;
+    fc::get_logger_map()[sync_manager::logger_name] = sync_manager::logger;
 
     // Setting a parent would in theory get us the default appenders for free but
     // a) the parent's log level overrides our own in that case; and
@@ -2114,7 +2271,7 @@ namespace eosio {
     my->num_clients = 0;
 
     my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
-    if( options.count( "listen-endpoint" ) ) {
+    if(options.count("listen-endpoint")) {
       my->p2p_address = options.at("listen-endpoint").as< string >();
       auto host = my->p2p_address.substr( 0, my->p2p_address.find(':') );
       auto port = my->p2p_address.substr( host.size()+1, my->p2p_address.size() );
@@ -2126,11 +2283,11 @@ namespace eosio {
 
       my->acceptor.reset( new tcp::acceptor( app().get_io_service() ) );
     }
-    if( options.count( "public-endpoint") ) {
+    if(options.count("public-endpoint")) {
       my->p2p_address = options.at("public-endpoint").as< string >();
     }
     else {
-      if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+      if(my->listen_endpoint.address().to_v4() == address_v4::any()) {
         boost::system::error_code ec;
         auto host = host_name(ec);
         if( ec.value() != boost::system::errc::success) {
@@ -2144,12 +2301,52 @@ namespace eosio {
       }
     }
 
-    if( options.count( "remote-endpoint" ) ) {
-      my->supplied_peers = options.at( "remote-endpoint" ).as< vector<string> >();
+    if(options.count("remote-endpoint")) {
+      my->supplied_peers = options.at("remote-endpoint").as<vector<string> >();
     }
-    if( options.count("agent-name")) {
-      my->user_agent_name = options.at( "agent-name").as< string >( );
+    if(options.count("agent-name")) {
+      my->user_agent_name = options.at("agent-name").as<string>();
     }
+
+    if(options.count("allowed-connection")) {
+      const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
+      for(const std::string& allowed_remote : allowed_remotes)
+      {
+        if(allowed_remote == "any")
+          my->allowed_connections |= net_plugin_impl::Any;
+        else if(allowed_remote == "producers")
+          my->allowed_connections |= net_plugin_impl::Producers;
+        else if(allowed_remote == "specified")
+          my->allowed_connections |= net_plugin_impl::Specified;
+        else if(allowed_remote == "none")
+          my->allowed_connections = net_plugin_impl::None;
+      }
+    }
+
+    if(my->allowed_connections & net_plugin_impl::Specified)
+      FC_ASSERT(options.count("peer-key"), "At least one peer-key must accompany 'allowed-connection=specified'");
+
+    if(options.count("peer-key")) {
+      const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
+      for(const std::string& key_string : key_strings)
+      {
+        my->allowed_peers.push_back(dejsonify<chain::public_key_type>(key_string));
+      }
+    }
+
+    if(options.count("peer-private-key"))
+    {
+      const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+      for(const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
+      {
+         auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
+         fc::optional<fc::ecc::private_key> private_key = eosio::utilities::wif_to_key(key_id_to_wif_pair.second);
+         FC_ASSERT(private_key, "Invalid WIF-format private key ${key_string}",
+                   ("key_string", key_id_to_wif_pair.second));
+         my->private_keys[key_id_to_wif_pair.first] = *private_key;
+      }
+    }
+
     if( options.count( "send-whole-blocks")) {
       my->send_whole_blocks = options.at( "send-whole-blocks" ).as<bool>();
     }

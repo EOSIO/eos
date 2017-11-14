@@ -35,6 +35,8 @@ const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2
 const static int percent_100 = 10000;
 const static int percent_1   = 100;
 
+const static uint32_t  required_producer_participation = 33 * config::percent_1;
+
 const static uint32_t   default_target_block_size      = 128 * 1024;
 const static uint32_t   default_max_block_size         = 5 * 1024 * 1024;
 const static uint64_t   default_max_storage_size       = 10 * 1024;

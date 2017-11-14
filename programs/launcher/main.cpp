@@ -283,12 +283,20 @@ enum launch_modes {
   LM_VERIFY
 };
 
+enum allowed_connection : char {
+  PC_NONE = 0,
+  PC_PRODUCERS = 1 << 0,
+  PC_SPECIFIED = 1 << 1,
+  PC_ANY = 1 << 2
+};
+
 struct launcher_def {
   size_t producers;
   size_t total_nodes;
   size_t prod_nodes;
   size_t next_node;
   string shape;
+  allowed_connection allowed_connections = PC_NONE;
   bf::path genesis;
   bf::path output;
   bf::path host_map_file;
@@ -340,6 +348,13 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
     ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
         ;
+}
+
+template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
+inline enum_type& operator|=(enum_type&lhs, const enum_type& rhs)
+{
+  using T = std::underlying_type_t <enum_type>;
+  return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
 }
 
 void
@@ -951,23 +966,19 @@ int main (int argc, char *argv[]) {
   top.set_options(opts);
 
   opts.add_options()
-    ("timestamp,i",bpo::value<string>(),"set the timestamp for the first block. Use \"now\" to indicate the current time")
+    ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("kill,k", bpo::value<string>(),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
+    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
     ("version,v", "print version information")
     ("help,h","print this list");
 
 
   try {
     bpo::store(bpo::parse_command_line(argc, argv, opts), vmap);
+    bpo::notify(vmap);
 
     top.initialize(vmap);
 
-    if (vmap.count("timestamp"))
-      gts = vmap["timestamp"].as<string>();
-    if (vmap.count("kill")) {
-      kill_arg = vmap["kill"].as<string>();
-    }
     if (vmap.count("help") > 0) {
       opts.print(cerr);
       return 0;
