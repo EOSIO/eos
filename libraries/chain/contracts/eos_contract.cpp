@@ -20,7 +20,7 @@
 #include <eosio/chain/producer_object.hpp>
 
 #include <eosio/chain/wasm_interface.hpp>
-//#include <eos/types/abiSerializer.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
 
 namespace eosio { namespace chain { namespace contracts {
 
@@ -191,12 +191,6 @@ void apply_eosio_setcode(apply_context& context) {
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
 
-   /// if an ABI is specified make sure it is well formed and doesn't
-   /// reference any undefined types
-   // abiSerializer( act.abi ).validate();
-   // todo: figure out abi serilization location
-
-
    const auto& account = db.get<account_object,by_name>(act.account);
 //   wlog( "set code: ${size}", ("size",act.code.size()));
    db.modify( account, [&]( auto& a ) {
@@ -206,11 +200,27 @@ void apply_eosio_setcode(apply_context& context) {
       a.code.resize( act.code.size() );
       memcpy( a.code.data(), act.code.data(), act.code.size() );
 
-      //a.set_abi( act.abi );
    });
 
    apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.act, act.account );
    wasm_interface::get().init( init_context );
+}
+
+void apply_eosio_setabi(apply_context& context) {
+   auto& db = context.mutable_db;
+   auto  act = context.act.as<setabi>();
+
+   context.require_authorization(act.account);
+
+   /// if an ABI is specified make sure it is well formed and doesn't
+   /// reference any undefined types
+   abi_serializer(act.abi).validate();
+   // todo: figure out abi serilization location
+
+   const auto& account = db.get<account_object,by_name>(act.account);
+   db.modify( account, [&]( auto& a ) {
+      a.set_abi( act.abi );
+   });
 }
 
 void apply_eosio_claim(apply_context& context) {
@@ -479,6 +489,10 @@ void apply_eosio_unlinkauth(apply_context& context) {
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
    if (context.controller.is_applying_block())
       db.remove(*link);
+}
+
+void apply_eos_nonce(apply_context&) {
+   /// do nothing
 }
 
 } } } // namespace eosio::chain::contracts

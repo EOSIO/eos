@@ -51,16 +51,18 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eosio, eosio, okproducer, eosio );
    SET_APP_HANDLER( eosio, eosio, setproxy, eosio );
    SET_APP_HANDLER( eosio, eosio, setcode, eosio );
+   SET_APP_HANDLER( eosio, eosio, setabi, eosio );
    SET_APP_HANDLER( eosio, eosio, updateauth, eosio );
    SET_APP_HANDLER( eosio, eosio, deleteauth, eosio );
    SET_APP_HANDLER( eosio, eosio, linkauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio ); 
+   SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio );
+   SET_APP_HANDLER( eosio, eosio, nonce, eosio );
 }
 
-/*
-abi chain_initializer::eos_contract_abi()
+
+abi_def chain_initializer::eos_contract_abi()
 {
-   abi eos_abi;
+   abi_def eos_abi;
    eos_abi.types.push_back( type_def{"account_name","name"} );
    eos_abi.types.push_back( type_def{"share_type","int64"} );
    eos_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
@@ -71,28 +73,128 @@ abi chain_initializer::eos_contract_abi()
    eos_abi.actions.push_back( action_def{name("setproducer"), "setproducer"} );
    eos_abi.actions.push_back( action_def{name("setproxy"), "setproxy"} );
    eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
+   eos_abi.actions.push_back( action_def{name("setabi"), "setabi"} );
    eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
    eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth"} );
    eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth"} );
    eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth"} );
    eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
-   eos_abi.structs.push_back( eosio::get_struct<transfer>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<lock>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<unlock>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<claim>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<okproducer>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<setproducer>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<setproxy>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<setcode>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<updateauth>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<linkauth>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<unlinkauth>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<deleteauth>::type() );
-   eos_abi.structs.push_back( eosio::get_struct<newaccount>::type() );
+   eos_abi.actions.push_back( action_def{name("nonce"), "nonce"} );
+   eos_abi.structs.emplace_back( struct_def {
+      "transfer", "", {
+         {"from", "account_name"},
+         {"to", "account_name"},
+         {"amount", "uint64"},
+         {"memo", "string"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "lock", "", {
+         {"from", "account_name"},
+         {"to", "account_name"},
+         {"amount", "share_type"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "unlock", "", {
+         {"account", "account_name"},
+         {"amount", "share_type"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "claim", "", {
+         {"account", "account_name"},
+         {"amount", "share_type"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "okproducer", "", {
+         {"voter", "account_name"},
+         {"producer", "account_name"},
+         {"approve", "int8"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "setproducer", "", {
+         {"name", "account_name"},
+         {"key", "public_key"},
+         {"configuration", "chain_config"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "setproxy", "", {
+         {"stakeholder", "account_name"},
+         {"proxy", "account_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "setcode", "", {
+         {"account", "account_name"},
+         {"vmtype", "uint8"},
+         {"vmversion", "uint8"},
+         {"code", "bytes"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "updateauth", "", {
+         {"account", "account_name"},
+         {"permission", "permission_name"},
+         {"parent", "permission_name"},
+         {"authority", "authority"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "linkauth", "", {
+         {"account", "account_name"},
+         {"code", "account_name"},
+         {"type", "action_name"},
+         {"requirement", "permission_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "unlinkauth", "", {
+         {"account", "account_name"},
+         {"code", "account_name"},
+         {"type", "action_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "deleteauth", "", {
+         {"account", "account_name"},
+         {"permission", "permission_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "newaccount", "", {
+         {"creator", "account_name"},
+         {"name", "account_name"},
+         {"owner", "authority"},
+         {"active", "authority"},
+         {"recovery", "authority"},
+         {"deposit", "asset"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "nonce", "", {
+         {"value", "name"}
+      }
+   });
 
    return eos_abi;
 }
-*/
 
 std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {

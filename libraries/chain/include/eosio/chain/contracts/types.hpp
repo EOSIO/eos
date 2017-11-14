@@ -1,19 +1,116 @@
 #pragma once
 
+#include <eosio/chain/authority.hpp>
+#include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 
+#include <boost/multiprecision/cpp_int.hpp>
+
 namespace eosio { namespace chain { namespace contracts {
+
+using namespace boost::multiprecision;
+
+template<size_t Size>
+using uint_t = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
+template<size_t Size>
+using int_t = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
+
+using uint8     = uint_t<8>;
+using uint16    = uint_t<16>;
+using uint32    = uint_t<32>;
+using uint64    = uint_t<64>;
+
+using fixed_string32 = fc::fixed_string<fc::array<uint64,4>>;
+using fixed_string16 = fc::fixed_string<>;
+using type_name      = fixed_string32;
+using field_name     = fixed_string16;
+using table_name     = name;
+
+
+struct type_def {
+   type_def() = default;
+   type_def(const type_name& new_type_name, const type_name& type)
+   :new_type_name(new_type_name), type(type)
+   {}
+
+   type_name   new_type_name;
+   type_name   type;
+};
+
+struct field_def {
+   field_def() = default;
+   field_def(const field_name& name, const type_name& type)
+   :name(name), type(type)
+   {}
+   
+   field_name name;
+   type_name  type;
+
+   bool operator==(const field_def& other) const {
+      return std::tie(name, type) == std::tie(other.name, other.type);
+   }
+};
+
+struct struct_def {
+   struct_def() = default;
+   struct_def(const type_name& name, const type_name& base, const vector<field_def>& fields)
+   :name(name), base(base), fields(fields)
+   {}
+
+   type_name            name;
+   type_name            base;
+   vector<field_def>    fields;
+
+   bool operator==(const struct_def& other) const {
+      return std::tie(name, base, fields) == std::tie(other.name, other.base, other.fields);
+   }
+};
+
+struct action_def {
+   action_def() = default;
+   action_def(const action_name& name, const type_name& type)
+   :name(name), type(type)
+   {}
+
+   action_name name;
+   type_name type;
+};
+
+struct table_def {
+   table_def() = default;
+   table_def(const table_name& name, const type_name& index_type, const vector<type_name>& key_names, const vector<type_name>& key_types, const type_name& type)
+   :name(name), index_type(index_type), key_names(key_names), key_types(key_types), type(type)
+   {}
+
+   table_name        name;  // the name of the table
+   type_name         index_type;  // the kind of index, i64, i128i128, etc
+   vector<type_name> key_names;   // names for the keys defined by key_types
+   vector<type_name> key_types;   // the type of key parameters
+   type_name         type;        // type of binary data stored in this table
+};
+
+struct abi_def {
+   abi_def() = default;
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables)
+   :types(types), structs(structs), actions(actions), tables(tables)
+   {}
+
+   vector<type_def>     types;
+   vector<struct_def>   structs;
+   vector<action_def>   actions;
+   vector<table_def>    tables;
+};
 
 struct transfer {
    transfer() = default;
-   transfer(const account_name& from, const account_name& to, const uint64_t& amount, const string& memo) 
+   transfer(const account_name& from, const account_name& to, const uint64& amount, const string& memo) 
    :from(from), to(to), amount(amount), memo(memo)
    {}
 
    account_name   from;
    account_name   to;
-   uint64_t       amount;
+   uint64       amount;
    string         memo;
 
    static name get_scope() {
@@ -24,23 +121,6 @@ struct transfer {
       return N(transfer);
    }
 };
-
-/*
-template<> 
-struct get_struct<transfer> {
-   static const struct_def& type() {
-      static struct_def result = 
-            { "transfer", "", {
-            {"from", "account_name"},
-            {"to", "account_name"},
-            {"amount", "uint64_t"},
-            {"memo", "string"},
-         }
-      };
-      return result;
-   }
-};
-*/
 
 struct lock {
    lock() = default;
@@ -61,21 +141,6 @@ struct lock {
    }
 };
 
-/*
-template<> 
-struct get_struct<lock> {
-   static const struct_def& type() {
-      static struct_def result = { "lock", "", {
-            {"from", "account_name"},
-            {"to", "account_name"},
-            {"amount", "share_type"},
-         }
-      };
-      return result;
-   }
-};
-*/
-
 struct unlock {
    unlock() = default;
    unlock(const account_name& account, const share_type& amount)
@@ -94,19 +159,6 @@ struct unlock {
    }
 };
 
-/*
-template<> struct get_struct<unlock> {
-   static const struct_def& type() {
-      static struct_def result = { "unlock", "", {
-            {"account", "account_name"},
-            {"amount", "share_type"},
-         }
-      };
-      return result;
-   }
-};
-*/
-
 struct claim {
    claim() = default;
    claim(const account_name& account, const share_type& amount)
@@ -124,20 +176,6 @@ struct claim {
       return N(claim);
    }
 };
-
-/*
-template<> struct get_struct<claim> {
-   static const struct_def& type() {
-      static struct_def result = { "claim", "", {
-         {"account", "account_name"},
-         {"amount", "share_type"},
-      }
-      };
-      return result;
-   }
-};
-*/
-
 
 struct newaccount {
    newaccount() = default;
@@ -161,34 +199,16 @@ struct newaccount {
    }
 };
 
-/*
-template<> struct get_struct<newaccount> {
-   static const struct_def& type() {
-      static struct_def result = { "newaccount", "", {
-            {"creator", "account_name"},
-            {"name", "account_name"},
-            {"owner", "authority"},
-            {"active", "authority"},
-            {"recovery", "authority"},
-            {"deposit", "asset"},
-         }
-      };
-      return result;
-   }
-};
-*/
-
 struct setcode {
    setcode() = default;
-   setcode(const account_name& account, const uint8_t& vmtype, const uint8_t& vmversion, const bytes& code/*, const abi& abi*/)
+   setcode(const account_name& account, const uint8& vmtype, const uint8& vmversion, const bytes& code/*, const abi& abi*/)
    :account(account), vmtype(vmtype), vmversion(vmversion), code(code)//, abi(abi)
    {}
 
    account_name                     account;
-   uint8_t                          vmtype;
-   uint8_t                          vmversion;
+   uint8                          vmtype;
+   uint8                          vmversion;
    bytes                            code;
- //  abi                              abi;
 
    static scope_name get_scope() {
       return config::system_account_name;
@@ -199,21 +219,23 @@ struct setcode {
    }
 };
 
-/*
-template<> struct get_struct<setcode> {
-   static const struct_def& type() {
-      static struct_def result = { "setcode", "", {
-            {"account", "account_name"},
-            {"vmtype", "uint8_t"},
-            {"vmversion", "uint8_t"},
-            {"code", "bytes"}
-//            {"abi", "abi"},
-         }
-      };
-      return result;
+struct setabi {
+   setabi() = default;
+   setabi(const account_name& account, const abi_def& abi)
+   :account(account), abi(abi)
+   {}
+
+   account_name                     account;
+   abi_def                          abi;
+
+   static scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(setabi);
    }
 };
-*/
 
 struct setproducer {
    setproducer() = default;
@@ -234,20 +256,6 @@ struct setproducer {
    }
 };
 
-/*
-template<> struct get_struct<setproducer> {
-   static const struct_def& type() {
-      static struct_def result = { "setproducer", "", {
-            {"name", "account_name"},
-            {"key", "public_key"},
-            {"configuration", "chain_config"},
-         }
-      };
-      return result;
-   }
-};
-*/
-
 struct okproducer {
    okproducer() = default;
    okproducer(const account_name& voter, const account_name& producer, const int8_t& approve)
@@ -267,20 +275,6 @@ struct okproducer {
    }
 };
 
-/*
-template<> struct get_struct<okproducer> {
-   static const struct_def& type() {
-      static struct_def result = { "okproducer", "", {
-            {"voter", "account_name"},
-            {"producer", "account_name"},
-            {"approve", "int8_t"},
-         }
-      };
-      return result;
-   }
-};
-*/
-
 struct setproxy {
    setproxy() = default;
    setproxy(const account_name& stakeholder, const account_name& proxy)
@@ -299,19 +293,6 @@ struct setproxy {
    }
 };
 
-/*
-template<> struct get_struct<setproxy> {
-   static const struct_def& type() {
-      static struct_def result = { "setproxy", "", {
-            {"stakeholder", "account_name"},
-            {"proxy", "account_name"},
-         }
-      };
-      return result;
-   }
-};
-*/
-
 struct updateauth {
    updateauth() = default;
    updateauth(const account_name& account, const permission_name& permission, const permission_name& parent, const authority& authority)
@@ -321,7 +302,7 @@ struct updateauth {
    account_name                      account;
    permission_name                   permission;
    permission_name                   parent;
-   authority                        authority;
+   authority                         authority;
 
    static scope_name get_scope() {
       return config::system_account_name;
@@ -331,21 +312,6 @@ struct updateauth {
       return N(updateauth);
    }
 };
-
-/*
-template<> struct get_struct<updateauth> {
-   static const struct_def& type() {
-      static struct_def result = { "updateauth", "", {
-            {"account", "account_name"},
-            {"permission", "permission_name"},
-            {"parent", "permission_name"},
-            {"authority", "authority"},
-         }
-      };
-      return result;
-   }
-};
-*/
 
 struct deleteauth {
    deleteauth() = default;
@@ -365,19 +331,6 @@ struct deleteauth {
    }
 };
 
-/*
-template<> struct get_struct<deleteauth> {
-   static const struct_def& type() {
-      static struct_def result = { "deleteauth", "", {
-            {"account", "account_name"},
-            {"permission", "permission_name"},
-         }
-      };
-      return result;
-   }
-};
-*/
-
 struct linkauth {
    linkauth() = default;
    linkauth(const account_name& account, const account_name& code, const action_name& type, const permission_name& requirement)
@@ -386,7 +339,7 @@ struct linkauth {
 
    account_name                      account;
    account_name                      code;
-   action_name                        type;
+   action_name                       type;
    permission_name                   requirement;
 
    static scope_name get_scope() {
@@ -397,21 +350,6 @@ struct linkauth {
       return N(linkauth);
    }
 };
-
-/*
-template<> struct get_struct<linkauth> {
-   static const struct_def& type() {
-      static struct_def result = { "linkauth", "", {
-            {"account", "account_name"},
-            {"code", "account_name"},
-            {"type", "action_name"},
-            {"requirement", "permission_name"},
-         }
-      };
-      return result;
-   }
-};
-*/
 
 struct unlinkauth {
    unlinkauth() = default;
@@ -432,28 +370,39 @@ struct unlinkauth {
    }
 };
 
-/*
-template<> struct get_struct<unlinkauth> {
-   static const struct_def& type() {
-      static struct_def result = { "unlinkauth", "", {
-            {"account", "account_name"},
-            {"code", "account_name"},
-            {"type", "action_name"},
-         }
-      };
-      return result;
+using nonce_type = name;
+struct nonce {
+   nonce() = default;
+   nonce(const nonce_type& value)
+   :value(value)
+   {}
+
+   nonce_type value;
+
+   static scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(nonce);
    }
 };
-*/
 
 } } } /// namespace eosio::chain::contracts
 
+FC_REFLECT( eosio::chain::contracts::type_def                         , (new_type_name)(type) )
+FC_REFLECT( eosio::chain::contracts::field_def                        , (name)(type) )
+FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(base)(fields) )
+FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
+FC_REFLECT( eosio::chain::contracts::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
+FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables) )
 FC_REFLECT( eosio::chain::contracts::transfer                         , (from)(to)(amount)(memo) )
 FC_REFLECT( eosio::chain::contracts::lock                             , (from)(to)(amount) )
 FC_REFLECT( eosio::chain::contracts::unlock                           , (account)(amount) )
 FC_REFLECT( eosio::chain::contracts::claim                            , (account)(amount) )
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery)(deposit) )
 FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
+FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
 FC_REFLECT( eosio::chain::contracts::setproducer                      , (name)(key)(configuration) )
 FC_REFLECT( eosio::chain::contracts::okproducer                       , (voter)(producer)(approve) )
 FC_REFLECT( eosio::chain::contracts::setproxy                         , (stakeholder)(proxy) )
@@ -461,3 +410,4 @@ FC_REFLECT( eosio::chain::contracts::updateauth                       , (account
 FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account)(code)(type) )
+FC_REFLECT( eosio::chain::contracts::nonce                            , (value) )

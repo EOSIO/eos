@@ -11,11 +11,7 @@
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/key_value_object.hpp>
 #include <eosio/chain/transaction.hpp>
-
-// TODO: hook in new abi stuff here
-//#include <eos/types/abi_serializer.hpp>
-
-#include <eos/database_plugin/database_plugin.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
 
 #include <boost/container/flat_set.hpp>
 
@@ -33,6 +29,8 @@ namespace eosio {
    using chain::asset;
    using chain::authority;
    using chain::account_name;
+   using chain::contracts::abi_def;
+   using chain::contracts::abi_serializer;
 
 namespace chain_apis {
 struct empty{};
@@ -95,7 +93,7 @@ public:
       name                   name;
       string                 wast;
       fc::sha256             code_hash;
-      //optional<types::abi>   abi;
+      optional<abi_def>      abi;
    };
 
    struct get_code_params {
@@ -212,13 +210,12 @@ public:
    }
  
    template <typename IndexType, typename Scope>
-   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p/*, const types::abi& abi */)const {
+   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.get_database();
 
-      // TODO: ABI stuff
-      //types::abi_serializer abis;
-      //abis.setAbi(abi);
+      abi_serializer abis;
+      abis.set_abi(abi);
    
       const auto& idx = d.get_index<IndexType, Scope>();
       auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table   ) );
@@ -241,7 +238,7 @@ public:
          copy_row(*itr, data);
    
          if( p.json ) {
-            //result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data) );
+            result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data) );
          } else {
             result.rows.emplace_back(fc::variant(data));
          }
@@ -284,7 +281,7 @@ public:
 
 class chain_plugin : public plugin<chain_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((database_plugin))
+   APPBASE_PLUGIN_REQUIRES()
 
    chain_plugin();
    virtual ~chain_plugin();
@@ -337,8 +334,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(table_ke
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
-//TODO: ABI STUFF
-FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)/*(abi)*/ )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (name)(code_hash)(wast)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (name) )
 FC_REFLECT( eosio::chain_apis::read_only::producer_info, (name) )
