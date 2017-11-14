@@ -25,6 +25,8 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
+#include "config.hpp"
+
 using namespace std;
 namespace bf = boost::filesystem;
 namespace bp = boost::process;
@@ -739,6 +741,7 @@ int main (int argc, char *argv[]) {
     ("timestamp,i",bpo::value<string>(),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
     ("kill,k", bpo::value<string>(),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
+    ("version,v", "print version information")
     ("help,h","print this list");
 
 
@@ -754,6 +757,10 @@ int main (int argc, char *argv[]) {
     }
     if (vmap.count("help") > 0) {
       opts.print(cerr);
+      return 0;
+    }
+    if (vmap.count("version") > 0) {
+      cout << eosio::launcher::config::version_str << endl;
       return 0;
     }
 
