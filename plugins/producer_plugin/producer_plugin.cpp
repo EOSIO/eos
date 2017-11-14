@@ -33,7 +33,7 @@ public:
 
    boost::program_options::variables_map _options;
    bool _production_enabled = false;
-   uint32_t _required_producer_participation = 33 * config::percent1;
+   uint32_t _required_producer_participation = uint32_t(config::required_producer_participation);
    uint32_t _production_skip_flags = eosio::chain::chain_controller::skip_nothing;
    eosio::chain::block_schedule::factory _production_scheduler = eosio::chain::block_schedule::in_single_thread;
 
@@ -83,11 +83,12 @@ void producer_plugin::set_program_options(
          ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
          ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          ("ID of producer controlled by this node (e.g. inita; may specify multiple times)"))
+         ("ID of producer controlled by this node (e.g. inita; may specify multiple times)"))
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
                                                                                                 fc::json::to_string(private_key_default)),
-          "Tuple of [public_key, WIF private key] (may specify multiple times)")
+          "Tuple of [public key, WIF private key] (may specify multiple times)")
          ;
+
    command_line_options.add(producer_options);
    config_file_options.add(producer_options);
 
@@ -113,6 +114,37 @@ void producer_plugin::set_program_options(
           "  threading-conflicts\n"
           "    \tA greedy scheduler that attempts to make short threads to resolve scope contention before falling back on cycles.")
          ;
+}
+
+chain::public_key_type producer_plugin::first_producer_public_key() const
+{
+  chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
+  try {
+    return chain.get_producer(*my->_producers.begin()).signing_key;
+  } catch(std::out_of_range) {
+    return chain::public_key_type();
+  }
+}
+
+bool producer_plugin::is_producer_key(const chain::public_key_type& key) const
+{
+  auto private_key_itr = my->_private_keys.find(key);
+  if(private_key_itr != my->_private_keys.end())
+    return true;
+  return false;
+}
+
+fc::ecc::compact_signature producer_plugin::sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const
+{
+  if(key != chain::public_key_type()) {
+    auto private_key_itr = my->_private_keys.find(key);
+    FC_ASSERT(private_key_itr != my->_private_keys.end(), "Local producer has no private key in config.ini corresponding to public key ${key}", ("key", key));
+
+    return private_key_itr->second.sign_compact(digest);
+  }
+  else {
+    return fc::ecc::compact_signature();
+  }
 }
 
 template<typename T>
@@ -335,4 +367,4 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    return block_production_condition::produced;
 }
 
-} // namespace eos
+} // namespace eosio
