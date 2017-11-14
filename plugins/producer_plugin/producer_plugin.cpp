@@ -84,8 +84,6 @@ void producer_plugin::set_program_options(
                                                                                                 fc::json::to_string(private_key_default)),
           "Tuple of [public key, WIF private key] (may specify multiple times)")
          ;
-
-   command_line_options.add(producer_options);
    config_file_options.add(producer_options);
 }
 
@@ -257,11 +255,6 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {
-#if 0
-     if( app().get_plugin<net_plugin>().num_peers() == 0 ) {
-       _production_enabled = true;
-     }
-#endif
       if( chain.get_slot_time(1) >= now )
          _production_enabled = true;
       else

@@ -47,7 +47,7 @@ total_nodes="${total_nodes:-`echo $pnodes`}"
 
 rm -rf tn_data_*
 if [ "$delay" == 0 ]; then
-    programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo -i now
+    programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo
 else
     programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo -d $delay
 fi
