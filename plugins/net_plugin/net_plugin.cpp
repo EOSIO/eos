@@ -148,6 +148,7 @@ namespace eosio {
     void start_read_message( connection_ptr c);
 
     void close( connection_ptr c );
+    size_t count_open_sockets () const;
 
     template<typename VerifierFunc>
     void send_all (const net_message &msg, VerifierFunc verify);
@@ -1271,6 +1272,17 @@ namespace eosio {
       );
     }
 
+  size_t net_plugin_impl::count_open_sockets () const
+  {
+    size_t count = 0;
+    for( auto &c : connections) {
+      if (c->socket->is_open())
+        ++count;
+    }
+    return count;
+  }
+
+
     template<typename VerifierFunc>
     void net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
       for( auto &c : connections) {
@@ -2198,4 +2210,9 @@ namespace eosio {
       fc_dlog(my->logger, "broadcasting block #${num}",("num",sb.block_num()) );
       my->broadcast_block_impl( sb);
     }
+
+  size_t net_plugin::num_peers( ) const {
+    return my->count_open_sockets();
+  }
+
 }
