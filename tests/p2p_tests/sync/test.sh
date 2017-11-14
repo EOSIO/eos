@@ -43,7 +43,7 @@ else
     fi
 fi
 
-total_nodes="${total_nodes:-`echo $pnodes`}"
+total_nodes=`expr $pnodes + $npnodes`
 
 rm -rf tn_data_*
 if [ "$delay" == 0 ]; then

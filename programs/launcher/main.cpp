@@ -283,12 +283,19 @@ enum launch_modes {
   LM_VERIFY
 };
 
+enum allowed_connection : char {
+  PC_NONE = 0,
+  PC_PRODUCERS = 1 << 0,
+  PC_SPECIFIED = 1 << 1,
+  PC_ANY = 1 << 2
+};
+
 struct launcher_def {
   size_t producers;
   size_t total_nodes;
   size_t prod_nodes;
-  size_t next_node;
   string shape;
+  allowed_connection allowed_connections = PC_NONE;
   bf::path genesis;
   bf::path output;
   bf::path host_map_file;
@@ -331,15 +338,20 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
     ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that are producers")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
-    ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
+    ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(&output),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "EOSD does not require transaction signatures.")
     ("eosd", bpo::value<string>(&eosd_extra_args), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
-    ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
-    ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
         ;
+}
+
+template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
+inline enum_type& operator|=(enum_type&lhs, const enum_type& rhs)
+{
+  using T = std::underlying_type_t <enum_type>;
+  return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
 }
 
 void
@@ -360,28 +372,6 @@ launcher_def::initialize (const variables_map &vmap) {
       }
     }
   }
-
-  if ( ! (shape.empty() ||
-          boost::iequals( shape, "ring" ) ||
-          boost::iequals( shape, "star" ) ||
-          boost::iequals( shape, "mesh" )) &&
-       host_map_file.empty()) {
-    bf::path src = shape;
-    host_map_file = src.stem().string() + "_hosts.json";
-  }
-
-  if( !host_map_file.empty() ) {
-    try {
-      fc::json::from_file(host_map_file).as<host_map_def>(host_map);
-      for (auto &binding : host_map.bindings) {
-        for (auto &eosd : binding.second.instances) {
-          aliases.push_back (eosd.name);
-        }
-      }
-    } catch (...) { // this is an optional feature, so an exception is OK
-    }
-  }
-
   producers = 21;
   data_dir_base = "tn_data_";
   alias_base = "testnet_";
@@ -508,26 +498,31 @@ void
 launcher_def::bind_nodes () {
   int per_node = producers / prod_nodes;
   int extra = producers % prod_nodes;
-  int i = 0;
-  for (auto &h : host_map.bindings) {
-    for (auto &inst : h.second.instances) {
-      tn_node_def node;
-      node.name = inst.name;
-      node.instance = &inst;
-      keypair kp;
-      node.keys.emplace_back (move(kp));
-      if (i < prod_nodes) {
-        int count = per_node;
-        if (extra) {
-          ++count;
-          --extra;
-        }
-        char ext = 'a' + i;
-        string pname = "init";
-        while (count--) {
-          node.producers.push_back(pname + ext);
-          ext += prod_nodes;
-        }
+  for (size_t i = 0; i < total_nodes; i++) {
+    eosd_def node;
+    string dex = boost::lexical_cast<string,int>(i);
+    string name = alias_base + dex;
+    aliases.push_back(name);
+    node.genesis = genesis.string();
+    node.data_dir = data_dir_base + dex;
+    node.hostname = "127.0.0.1";
+    node.public_name = "localhost";
+    node.remote = false;
+    node.p2p_port += i;
+    node.http_port += i;
+    keypair kp;
+    node.keys.push_back (kp);
+    if (i < prod_nodes) {
+      int count = per_node;
+      if (extra) {
+        ++count;
+        --extra;
+      }
+      char ext = 'a' + i;
+      string pname = "init";
+      while (count--) {
+        node.producers.push_back(pname + ext);
+        ext += prod_nodes;
       }
       network.nodes[node.name] = move(node);
       inst.node = &network.nodes[inst.name];
@@ -574,10 +569,10 @@ launcher_def::write_config_file (tn_node_def &node) {
       << "readonly = 0\n"
       << "send-whole-blocks = true\n"
       << "shared-file-dir = blockchain\n"
-      << "shared-file-size = " << instance.file_size << "\n"
-      << "http-server-endpoint = " << host->host_name << ":" << instance.http_port << "\n"
-      << "listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n"
-      << "public-endpoint = " << host->public_name << ":" << instance.p2p_port << "\n";
+      << "shared-file-size = " << node.filesize << "\n"
+      << "http-server-endpoint = " << node.hostname << ":" << node.http_port << "\n"
+      << "listen-endpoint = 0.0.0.0:" << node.p2p_port << "\n"
+      << "public-endpoint = " << node.public_name << ":" << node.p2p_port << "\n";
   if (allowed_connections & PC_ANY) {
     cfg << "allowed-connection = any\n";
   }
@@ -951,23 +946,19 @@ int main (int argc, char *argv[]) {
   top.set_options(opts);
 
   opts.add_options()
-    ("timestamp,i",bpo::value<string>(),"set the timestamp for the first block. Use \"now\" to indicate the current time")
+    ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("kill,k", bpo::value<string>(),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
+    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
     ("version,v", "print version information")
     ("help,h","print this list");
 
 
   try {
     bpo::store(bpo::parse_command_line(argc, argv, opts), vmap);
+    bpo::notify(vmap);
 
     top.initialize(vmap);
 
-    if (vmap.count("timestamp"))
-      gts = vmap["timestamp"].as<string>();
-    if (vmap.count("kill")) {
-      kill_arg = vmap["kill"].as<string>();
-    }
     if (vmap.count("help") > 0) {
       opts.print(cerr);
       return 0;

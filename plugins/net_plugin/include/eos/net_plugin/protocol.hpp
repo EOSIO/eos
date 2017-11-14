@@ -11,18 +11,25 @@ namespace eosio {
    using namespace chain;
    using namespace fc;
 
-  struct handshake_message {
-      int16_t         network_version = 0; ///< derived from git commit hash, not sequential
-      chain_id_type   chain_id; ///< used to identify chain
-      fc::sha256      node_id; ///< used to identify peers and prevent self-connect
-      string          p2p_address;
-      uint32_t        last_irreversible_block_num = 0;
-      block_id_type   last_irreversible_block_id;
-      uint32_t        head_num = 0;
-      block_id_type   head_id;
-      string          os;
-      string          agent;
-      int16_t         generation;
+   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
+   typedef std::chrono::system_clock::duration::rep tstamp;
+
+   struct handshake_message {
+      int16_t                    network_version = 0; ///< derived from git commit hash, not sequential
+      chain_id_type              chain_id; ///< used to identify chain
+      fc::sha256                 node_id; ///< used to identify peers and prevent self-connect
+      chain::public_key_type     key; ///< authentication key; may be a producer or peer key, or empty
+      tstamp                     time;
+      fc::sha256                 token; ///< digest of time to prove we own the private key of the key above
+      fc::ecc::compact_signature sig; ///< signature for the digest
+      string                     p2p_address;
+      uint32_t                   last_irreversible_block_num = 0;
+      block_id_type              last_irreversible_block_id;
+      uint32_t                   head_num = 0;
+      block_id_type              head_id;
+      string                     os;
+      string                     agent;
+      int16_t                    generation;
    };
 
   enum go_away_reason {
@@ -139,8 +146,8 @@ namespace eosio {
 
 FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )
 FC_REFLECT( eosio::handshake_message,
-            (network_version)(chain_id)(node_id)
-            (p2p_address)
+            (network_version)(chain_id)(node_id)(key)
+            (time)(token)(sig)(p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
             (os)(agent)(generation) )
