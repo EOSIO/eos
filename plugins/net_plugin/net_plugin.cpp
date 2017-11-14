@@ -6,6 +6,7 @@
 
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
+#include <eos/net_plugin/message_buffer.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
@@ -260,8 +261,8 @@ namespace eosio {
   /**
    * default value initializers
    */
-  constexpr auto     def_buffer_size_mb = 4;
-  constexpr auto     def_buffer_size = 1024*1024*def_buffer_size_mb;
+  constexpr auto     def_send_buffer_size_mb = 4;
+  constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
   constexpr auto     def_max_clients = 20; // 0 for unlimited clients
   constexpr auto     def_conn_retry_wait = std::chrono::seconds (30);
   constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
@@ -343,12 +344,10 @@ namespace eosio {
   class connection : public std::enable_shared_from_this<connection> {
   public:
     connection( string endpoint,
-                size_t send_buf_size = def_buffer_size,
-                size_t recv_buf_size = def_buffer_size );
+                size_t send_buf_size = def_send_buffer_size );
 
     connection( socket_ptr s,
-                size_t send_buf_size = def_buffer_size,
-                size_t recv_buf_size = def_buffer_size );
+                size_t send_buf_size = def_send_buffer_size );
     ~connection();
     void initialize ();
 
@@ -358,19 +357,7 @@ namespace eosio {
     sync_state_ptr          sync_requested;  // this peer is requesting info from us
     socket_ptr              socket;
 
-    //#warning ("TODO: Rework Message Caching for efficiency")
-    // WHat I mean here is that incoming data should be read in chunks that are as
-    // large as possible. We can query the recv buffer size. When using async_read_some(),
-    // we will frequently end a read in the middle of a message. That could happen with
-    // small messages, in which a simple "normalize" call could reset the buffer and allow a
-    // subsequent read to pick up the rest. In the case of very large messages, we should allow
-    // for the creation of a secondary buffer big enough to hold the entire message. Better
-    // still would be to have a mempool class that has a series of fixed size blocks that can
-    // be used scatter-gather style.
-
-    vector<char>            pending_message_buffer;
-    uint32_t                pending_message_write_index;
-    uint32_t                pending_message_read_index;
+    message_buffer<4096>    pending_message_buffer;
     vector<char>            send_buffer;
     vector<char>            blk_buffer;
 
@@ -458,16 +445,6 @@ namespace eosio {
     void sync_timeout (boost::system::error_code ec);
     void fetch_timeout (boost::system::error_code ec);
 
-    /** \brief Adjust the pending message buffer
-     *
-     * This method is called to adjust the size of the
-     * pending_message_buffer when there is a partial message
-     * in the buffer of message_length. There may be
-     * additional messages earlier in the buffer that
-     * can be removed
-     */
-    void adjust_buffer_size(uint32_t message_length);
-
     /** \brief Process the next message from the pending message buffer
      *
      * Process the next message from the pending_message_buffer.
@@ -485,26 +462,6 @@ namespace eosio {
 
   const fc::string connection::logger_name("connection");
   fc::logger connection::logger(connection::logger_name);
-
-  struct precache : public fc::visitor<void> {
-    connection_ptr c;
-    size_t message_size;
-    precache( connection_ptr conn, size_t msg_size) : c(conn), message_size(msg_size) {}
-
-    void operator()(const signed_block &msg) const
-    {
-      c->blk_buffer.resize(message_size);
-      memcpy(c->blk_buffer.data(),
-             &c->pending_message_buffer[c->pending_message_read_index+message_header_size],
-             message_size);
-    }
-
-    template <typename T>
-    void operator()(const T &msg) const
-    {
-      //no-op
-    }
-  };
 
   struct msgHandler : public fc::visitor<void> {
     net_plugin_impl &impl;
@@ -551,16 +508,12 @@ namespace eosio {
   //---------------------------------------------------------------------------
 
   connection::connection( string endpoint,
-                          size_t send_buf_size,
-                          size_t recv_buf_size )
+                          size_t send_buf_size )
       : block_state(),
         trx_state(),
         sync_receiving(),
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
-        pending_message_buffer(recv_buf_size),
-        pending_message_write_index(0),
-        pending_message_read_index(0),
         send_buffer(send_buf_size),
         node_id(),
         last_handshake(),
@@ -578,16 +531,12 @@ namespace eosio {
     }
 
   connection::connection( socket_ptr s,
-                          size_t send_buf_size,
-                          size_t recv_buf_size )
+                          size_t send_buf_size )
       : block_state(),
         trx_state(),
         sync_receiving(),
         sync_requested(),
         socket( s ),
-        pending_message_buffer(recv_buf_size),
-        pending_message_write_index(0),
-        pending_message_read_index(0),
         send_buffer(send_buf_size),
         node_id(),
         last_handshake(),
@@ -986,41 +935,21 @@ namespace eosio {
     }
   }
 
-  void connection::adjust_buffer_size(uint32_t message_length) {
-    uint32_t current_buffer_size = pending_message_buffer.size();
-    if (current_buffer_size - pending_message_read_index + 1 < message_length)
-
-      // Not enough room in the buffer, grow the buffer, first move remaining
-      // unprocessed data to the beginning of the buffer
-      if (pending_message_read_index != 0) {
-        memmove(&pending_message_buffer[0],
-                &pending_message_buffer[pending_message_read_index],
-                pending_message_write_index - pending_message_read_index);
-        pending_message_write_index -= pending_message_read_index;
-        pending_message_read_index = 0;
-      }
-
-
-      // See if we need to grow the buffer or if there is enough space now.
-      uint32_t bytes_needed = message_length - current_buffer_size - pending_message_read_index + 1;
-      if (bytes_needed > 0) {
-        // Grow the buffer by some multiplier of the current size.
-        // Note that the buffer size will never shrink in the current implementation.
-        // The eventual solution will be to use a chain of buffers using scatter/gather
-        uint32_t multiplier = (bytes_needed / current_buffer_size) + 2;
-        uint32_t new_size = current_buffer_size * multiplier;
-        pending_message_buffer.resize(new_size);
-      }
-    }
-
   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
     try {
-      fc::datastream<const char*> ds(&pending_message_buffer[pending_message_read_index + message_header_size],
-                                     message_length);
+      // If it is a signed_block, then save the raw message for the cache
+      // This must be done before we unpack the message.
+      unsigned_int which;
+      auto index = pending_message_buffer.read_index();
+      pending_message_buffer.peek(&which, sizeof(unsigned_int), index);
+      if (which == uint32_t(net_message::tag<signed_block>::value)) {
+        blk_buffer.resize(message_length);
+        auto index = pending_message_buffer.read_index();
+        pending_message_buffer.peek(blk_buffer.data(), message_length, index);
+      }
+      auto ds = pending_message_buffer.create_datastream();
       net_message msg;
       fc::raw::unpack(ds, msg);
-      precache pc( shared_from_this(), message_length );
-      msg.visit( pc);
       msgHandler m(impl, shared_from_this() );
       msg.visit(m);
     } catch(  const fc::exception& e ) {
@@ -1028,7 +957,6 @@ namespace eosio {
       impl.close( shared_from_this() );
       return false;
     }
-    pending_message_read_index += message_header_size + message_length;
     return true;
   }
 
@@ -1281,37 +1209,32 @@ namespace eosio {
     void net_plugin_impl::start_read_message( connection_ptr conn ) {
       connection_wptr c( conn);
       conn->socket->async_read_some(
-        boost::asio::buffer(&conn->pending_message_buffer[conn->pending_message_write_index],
-                            conn->pending_message_buffer.size() - conn->pending_message_write_index),
+        conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
         [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
           if( !ec ) {
             connection_ptr conn = c.lock();
             if (!conn) {
               return;
             }
-            conn->pending_message_write_index += bytes_transferred;
-            while (conn->pending_message_read_index < conn->pending_message_write_index) {
-              uint32_t bytes_in_buffer = conn->pending_message_write_index - conn->pending_message_read_index;
+            conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
+            while (conn->pending_message_buffer.bytes_to_read() > 0) {
+              uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
               if (bytes_in_buffer < message_header_size) {
                 break;
               } else {
-                // Ignore byte-ordering concerns
                 uint32_t message_length;
-                memcpy(&message_length, &conn->pending_message_buffer[conn->pending_message_read_index], sizeof(message_length));
-                if (bytes_in_buffer >= message_header_size + message_length) {
+                auto index = conn->pending_message_buffer.read_index();
+                conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
+                if (bytes_in_buffer >= message_length + message_header_size) {
+                  conn->pending_message_buffer.advance_read_ptr(message_header_size);
                   if (!conn->process_next_message(*this, message_length)) {
                     return;
                   }
                 } else {
-                  conn->adjust_buffer_size(message_length);
+                  conn->pending_message_buffer.add_space(message_length - bytes_in_buffer);
                   break;
                 }
               }
-            }
-            if (conn->pending_message_read_index == conn->pending_message_write_index) {
-              // Buffer is empty, reset indices
-              conn->pending_message_read_index = 0;
-              conn->pending_message_write_index = 0;
             }
             start_read_message(conn);
           } else {
