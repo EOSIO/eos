@@ -136,15 +136,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    if (options.at("replay-blockchain").as<bool>()) {
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
       ilog("Replay requested: wiping database");
-      app().get_plugin<database_plugin>().wipe_database();
       if (db_plugin* db = app().find_plugin<db_plugin>()) {
          db->wipe_database();
       }
    }
    if (options.at("resync-blockchain").as<bool>()) {
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
       ilog("Resync requested: wiping blocks");
-      app().get_plugin<database_plugin>().wipe_database();
+
       if (db_plugin* db = app().find_plugin<db_plugin>()) {
          db->wipe_database();
       }
@@ -192,9 +193,7 @@ using applied_irreversible_block_func = typename decltype(((chain_controller*)nu
 
 void chain_plugin::plugin_startup() 
 { try {
-   auto& db = app().get_plugin<database_plugin>().db();
    optional<applied_irreversible_block_func> applied_func;
-
 
    FC_ASSERT( fc::exists( my->genesis_file ), 
               "unable to find genesis file '${f}', check --genesis-json argument", 
@@ -292,28 +291,27 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-#warning TODO: ABI
-/*types::abi getAbi( const chain_controller& db, const name& account ) {
+abi_def get_abi( const chain_controller& db, const name& account ) {
    const auto& d = db.get_database();
    const auto& code_accnt  = d.get<account_object,by_name>( account );
 
-   eosio::types::abi abi;
-   types::abi_serializer::to_abi(code_accnt.abi, abi);
+   abi_def abi;
+   abi_serializer::to_abi(code_accnt.abi, abi);
    return abi;
 }
 
-string getTableType( const types::abi& abi, const name& tablename ) {
+string get_table_type( const abi_def& abi, const name& table_name ) {
    for( const auto& t : abi.tables ) {
-      if( t.table_name == tablename ){
+      if( t.name == table_name ){
          return t.index_type;
       }
    }
-   FC_ASSERT( !"ABI does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
+   FC_ASSERT( !"ABI does not define table", "Table ${table} not specified in ABI", ("table",table_name) );
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   const types::abi abi = getAbi( db, p.code );
-   auto table_type = getTableType( abi, p.table );
+   const abi_def abi = get_abi( db, p.code );
+   auto table_type = get_table_type( abi, p.table );
    auto table_key = PRIMARY;
 
    if( table_type == KEYi64 ) {
@@ -335,7 +333,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    }
    FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
 }
-*/
+
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
    try {
       if (auto block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>()))
@@ -390,11 +388,12 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
       result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
-#warning TODO: ABI
-   /*eosio::types::abi abi;
-   if( types::abi_serializer::to_abi(accnt.abi, abi) ) {
+
+   abi_def abi;
+   if( abi_serializer::to_abi(accnt.abi, abi) ) {
       result.abi = std::move(abi);
-   }*/
+   }
+
    return result;
 }
 
@@ -436,19 +435,27 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    return result;
 }
 
-#warning TODO: ABI
-/*
-read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const {
+read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
-   result.binargs = db.message_to_binary( params.code, params.action, params.args );
+   const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
+   abi_def abi;
+   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+      abi_serializer abis( abi );
+      result.binargs = abis.variant_to_binary( abis.get_action_type( params.action ), params.args );
+   }
    return result;
-}
+} FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
+
 read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
    abi_bin_to_json_result result;
-   result.args = db.message_from_binary( params.code, params.action, params.binargs );
+   const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
+   abi_def abi;
+   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+      abi_serializer abis( abi );
+      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
+   }
    return result;
 }
- */
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    signed_transaction pretty_input;

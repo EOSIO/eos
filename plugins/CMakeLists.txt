@@ -1,7 +1,6 @@
 add_subdirectory(net_plugin)
 #add_subdirectory(p2p_plugin)
 add_subdirectory(http_plugin)
-add_subdirectory(database_plugin)
 add_subdirectory(db_plugin)
 add_subdirectory(chain_plugin)
 add_subdirectory(chain_api_plugin)

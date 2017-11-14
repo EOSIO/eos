@@ -6,13 +6,14 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/block_timestamp.hpp>
+#include <eosio/chain/contracts/types.hpp>
 
 #include "multi_index_includes.hpp"
 
 namespace eosio { namespace chain {
 
    class account_object : public chainbase::object<account_object_type, account_object> {
-      OBJECT_CTOR(account_object,(code))
+      OBJECT_CTOR(account_object,(code)(abi))
 
       id_type              id;
       account_name         name;
@@ -22,15 +23,14 @@ namespace eosio { namespace chain {
       block_timestamp_type creation_date;
 
       shared_vector<char>  code;
-      /*
+
       shared_vector<char>  abi;
 
-      void set_abi( const eosio::types::Abi& a ) {
+      void set_abi( const eosio::chain::contracts::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
          fc::datastream<char*> ds( abi.data(), abi.size() );
          fc::raw::pack( ds, a );
       }
-      */
    };
    using account_id_type = account_object::id_type;
 

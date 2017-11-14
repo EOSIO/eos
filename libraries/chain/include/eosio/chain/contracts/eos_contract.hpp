@@ -19,9 +19,11 @@ namespace eosio { namespace chain { namespace contracts {
    void apply_eos_setproducer(apply_context&);
    void apply_eos_setproxy(apply_context&);
    void apply_eos_setcode(apply_context&);
+   void apply_eos_setabi(apply_context&);
    void apply_eos_updateauth(apply_context&);
    void apply_eos_deleteauth(apply_context&);
    void apply_eos_linkauth(apply_context&);
    void apply_eos_unlinkauth(apply_context&);
+   void apply_eos_nonce(apply_context&);
 
 } } } /// namespace eosio::contracts

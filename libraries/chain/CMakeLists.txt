@@ -22,6 +22,7 @@ add_library( eos_chain
              contracts/staked_balance_objects.cpp
              contracts/chain_initializer.cpp
              contracts/genesis_state.cpp
+             contracts/abi_serializer.cpp
 
 
              ${HEADERS}

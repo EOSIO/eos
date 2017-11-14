@@ -5,7 +5,7 @@
 #pragma once
 
 #include <eosio/chain/contracts/genesis_state.hpp>
-
+#include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/chain_controller.hpp>
 
 namespace eosio { namespace chain {  namespace contracts {
@@ -25,7 +25,7 @@ namespace eosio { namespace chain {  namespace contracts {
 
          std::vector<action> prepare_database(chain::chain_controller& chain, chainbase::database& db);
 
-       //  static abi eos_contract_abi();
+         static abi_def eos_contract_abi();
 
       private:
          genesis_state_type genesis;
