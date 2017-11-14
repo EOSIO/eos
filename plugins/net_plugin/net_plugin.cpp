@@ -148,6 +148,7 @@ namespace eosio {
     void start_read_message( connection_ptr c);
 
     void close( connection_ptr c );
+    size_t count_open_sockets () const;
 
     template<typename VerifierFunc>
     void send_all (const net_message &msg, VerifierFunc verify);
@@ -467,6 +468,7 @@ namespace eosio {
   };
 
   class sync_manager {
+  public:
     uint32_t            sync_known_lib_num;
     uint32_t            sync_last_requested_num;
     uint32_t            sync_req_span;
@@ -1269,6 +1271,17 @@ namespace eosio {
       );
     }
 
+  size_t net_plugin_impl::count_open_sockets () const
+  {
+    size_t count = 0;
+    for( auto &c : connections) {
+      if (c->socket->is_open())
+        ++count;
+    }
+    return count;
+  }
+
+
     template<typename VerifierFunc>
     void net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
       for( auto &c : connections) {
@@ -1720,7 +1733,7 @@ namespace eosio {
 
       if( !has_chunk) {
         if (c->sync_receiving)
-          elog("got a block while syncing but sync_receiving end block == 0set #${n}",
+          elog("got a block while syncing but sync_receiving end block == 0 #${n}",
              ( "n",num));
         else
           elog("got a block while syncing but no sync_receiving set #${n}",
@@ -1728,14 +1741,15 @@ namespace eosio {
       }
       else {
         if( c->sync_receiving->last + 1 != num) {
-          elog( "expected block ${next} but got ${num}",("next",c->sync_receiving->last+1)("num",num));
+          wlog( "expected block ${next} but got ${num} ihnotinh got now",("next",c->sync_receiving->last+1)("num",num));
+          return;
         }
         c->sync_receiving->last = num;
       }
     }
     bool accepted = false;
     fc_dlog(logger, "last irreversible block = ${lib}", ("lib", cc.last_irreversible_block_num()));
-    if( !syncing || num == cc.head_block_num()+1 ){ //  || num > cc.last_irreversible_block_num()) {
+    if( !syncing || num == cc.head_block_num()+1 ) {
       try {
         chain_plug->accept_block(msg, syncing);
         accepted = true;
@@ -1763,11 +1777,11 @@ namespace eosio {
       }
     }
     else {
-      fc_dlog(logger, "forwarding the signed block");
-      if (age < fc::seconds(3) && fc::raw::pack_size(msg) < just_send_it_max && !c->syncing) {
+      if (age < fc::seconds(3) && fc::raw::pack_size(msg) < just_send_it_max && !c->syncing ) {
+        fc_dlog(logger, "forwarding the signed block");
         send_all( msg, [c, blk_id, num](connection_ptr conn) -> bool {
             bool sendit = false;
-            if ( c != conn ) {
+            if ( c != conn && !conn->syncing ) {
               auto b = conn->block_state.get<by_id>().find(blk_id);
               if (b == conn->block_state.end()) {
                 conn->block_state.insert( (block_state){blk_id,true,true,fc::time_point()});
@@ -2195,4 +2209,9 @@ namespace eosio {
       fc_dlog(my->logger, "broadcasting block #${num}",("num",sb.block_num()) );
       my->broadcast_block_impl( sb);
     }
+
+  size_t net_plugin::num_peers( ) const {
+    return my->count_open_sockets();
+  }
+
 }

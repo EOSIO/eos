@@ -458,7 +458,7 @@ launcher_def::generate () {
 void
 launcher_def::write_dot_file () {
   bf::ofstream df ("testnet.dot");
-  df << "digraph G\n{\nlayout=\"circo\";";
+  df << "digraph G\n{\nlayout=\"circo\";\n";
   for (auto &node : network.nodes) {
     for (const auto &p : node.second.peers) {
       string pname=network.nodes.find(p)->second.instance->dot_label();
@@ -467,6 +467,18 @@ launcher_def::write_dot_file () {
          << "\" [dir=\"forward\"];" << std::endl;
     }
   }
+  #if 0
+  // this is an experiment. I was thinking of adding a "notes" box but I
+  // can't figure out hot to force it to the lower left corner of the diagram
+  df << " { rank = sink;\n"
+     << "   Notes  [shape=none, margin=0, label=<\n"
+     << "    <TABLE BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"1\">\n"
+     << "     <TR> <TD align=\"left\">Data flow between nodes is bidirectional</TD> </TR>\n"
+     << "     <TR> <TD align=\"left\">Arrows point from client to server</TD> </TR>\n"
+     << "    </TABLE>\n"
+     << "   >];"
+     << " }\n";
+#endif
   df << "}\n";
 }
 
@@ -585,7 +597,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "remote-endpoint = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
   if (node.producers.size()) {
-    cfg << "enable-stale-production = true\n"
+    cfg << "enable-stale-production = false\n"
         << "required-participation = true\n";
     for (const auto &kp : node.keys ) {
       cfg << "private-key = [\"" << kp.public_key
