@@ -96,7 +96,7 @@ before_install:
     git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver
     cd mongo-cxx-driver/build
     ${CMAKE_DIR}cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/ext $MONGOCXX_CMAKE_OPTIONS ..
-    ninja install
+    ninja -j2 install
     cd $TRAVIS_BUILD_DIR
 
 script:
