@@ -224,7 +224,7 @@ std::string generate_nonce_string() {
 }
 
 types::message generate_nonce() {
-   return message(N(eos),{}, N(nonce), generate_nonce_string());
+   return message(N(eos),{}, N(nonce), types::nonce{generate_nonce_string()});
 }
 
 vector<types::account_permission> get_account_permissions(const vector<string>& permissions) {

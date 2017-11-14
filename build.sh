@@ -7,7 +7,7 @@
 ##########################################################################
 
 VERSION=1.0
-
+ulimit -u
 # Define directories.
 WORK_DIR=$PWD
 BUILD_DIR=${WORK_DIR}/build
@@ -74,7 +74,7 @@ COMPILE_EOS=1
 COMPILE_CONTRACTS=1
 
 # Define default arguments.
-CMAKE_BUILD_TYPE=Debug
+CMAKE_BUILD_TYPE=RelWithDebugInfo
 
 # Install dependencies
 if [ ${INSTALL_DEPS} == "1" ]; then
