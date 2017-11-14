@@ -36,7 +36,7 @@ void validate_authority_precondition( const apply_context& context, const author
  *  deduct the balance of the account creator by deposit, this deposit is supposed to be
  *  credited to the staked balance the new account in the @staked contract.
  */
-void apply_eos_newaccount(apply_context& context) {
+void apply_eosio_newaccount(apply_context& context) {
    auto create = context.act.as<newaccount>();
    context.require_authorization(create.creator);
 
@@ -98,12 +98,12 @@ void apply_eos_newaccount(apply_context& context) {
 /**
  *
  * @ingroup native_eos
- * @defgroup eos_eos_transfer eosio::eos_transfer
+ * @defgroup eos_eosio_transfer eosio::eos_transfer
  */
 ///@{
 
 
-void apply_eos_transfer(apply_context& context) {
+void apply_eosio_transfer(apply_context& context) {
    auto transfer = context.act.as<contracts::transfer>();
 
    try {
@@ -139,7 +139,7 @@ void apply_eos_transfer(apply_context& context) {
 /**
  *  Deduct the balance from the from account.
  */
-void apply_eos_lock(apply_context& context) {
+void apply_eosio_lock(apply_context& context) {
    auto lock = context.act.as<contracts::lock>();
 
    EOS_ASSERT(lock.amount > 0, action_validate_exception, "Locked amount must be positive");
@@ -166,7 +166,7 @@ void apply_eos_lock(apply_context& context) {
    balance.stake_tokens(lock.amount, context.mutable_db);
 }
 
-void apply_eos_unlock(apply_context& context) {
+void apply_eosio_unlock(apply_context& context) {
    auto unlock = context.act.as<contracts::unlock>();
 
    context.require_authorization(unlock.account);
@@ -182,7 +182,7 @@ void apply_eos_unlock(apply_context& context) {
 }
 
 
-void apply_eos_setcode(apply_context& context) {
+void apply_eosio_setcode(apply_context& context) {
    auto& db = context.mutable_db;
    auto  act = context.act.as<setcode>();
 
@@ -206,7 +206,7 @@ void apply_eos_setcode(apply_context& context) {
    wasm_interface::get().init( init_context );
 }
 
-void apply_eos_setabi(apply_context& context) {
+void apply_eosio_setabi(apply_context& context) {
    auto& db = context.mutable_db;
    auto  act = context.act.as<setabi>();
 
@@ -223,7 +223,7 @@ void apply_eos_setabi(apply_context& context) {
    });
 }
 
-void apply_eos_claim(apply_context& context) {
+void apply_eosio_claim(apply_context& context) {
    auto claim = context.act.as<contracts::claim>();
 
    EOS_ASSERT(claim.amount > 0, action_validate_exception, "Claim amount must be positive");
@@ -254,7 +254,7 @@ void apply_eos_claim(apply_context& context) {
 }
 
 
-void apply_eos_setproducer(apply_context& context) {
+void apply_eosio_setproducer(apply_context& context) {
    auto update = context.act.as<setproducer>();
    context.require_authorization(update.name);
    EOS_ASSERT(update.name.good(), action_validate_exception, "Producer owner name cannot be empty");
@@ -283,7 +283,7 @@ void apply_eos_setproducer(apply_context& context) {
 }
 
 
-void apply_eos_okproducer(apply_context& context) {
+void apply_eosio_okproducer(apply_context& context) {
    auto approve = context.act.as<okproducer>();
    EOS_ASSERT(approve.approve == 0 || approve.approve == 1, action_validate_exception,
               "Unknown approval value: ${val}; must be either 0 or 1", ("val", approve.approve));
@@ -342,7 +342,7 @@ void apply_eos_okproducer(apply_context& context) {
    });
 }
 
-void apply_eos_setproxy(apply_context& context) {
+void apply_eosio_setproxy(apply_context& context) {
    auto svp = context.act.as<setproxy>();
    FC_ASSERT( !"Not Implemented Yet" );
 
@@ -372,7 +372,7 @@ void apply_eos_setproxy(apply_context& context) {
    */
 }
 
-void apply_eos_updateauth(apply_context& context) {
+void apply_eosio_updateauth(apply_context& context) {
    auto update = context.act.as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT(update.permission != update.parent, action_validate_exception,
@@ -420,7 +420,7 @@ void apply_eos_updateauth(apply_context& context) {
    }
 }
 
-void apply_eos_deleteauth(apply_context& context) {
+void apply_eosio_deleteauth(apply_context& context) {
    auto remove = context.act.as<deleteauth>();
    EOS_ASSERT(remove.permission != "active", action_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != "owner", action_validate_exception, "Cannot delete owner authority");
@@ -447,7 +447,7 @@ void apply_eos_deleteauth(apply_context& context) {
       db.remove(permission);
 }
 
-void apply_eos_linkauth(apply_context& context) {
+void apply_eosio_linkauth(apply_context& context) {
    auto requirement = context.act.as<linkauth>();
    EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
@@ -478,7 +478,7 @@ void apply_eos_linkauth(apply_context& context) {
    }
 }
 
-void apply_eos_unlinkauth(apply_context& context) {
+void apply_eosio_unlinkauth(apply_context& context) {
    auto& db = context.mutable_db;
    auto unlink = context.act.as<unlinkauth>();
 

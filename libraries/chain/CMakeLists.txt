@@ -8,6 +8,7 @@ add_library( eos_chain
              block.cpp
              wast_to_wasm.cpp
              wasm_interface.cpp
+             apply_context.cpp
 
              fork_database.cpp
              get_config.cpp
