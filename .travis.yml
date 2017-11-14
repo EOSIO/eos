@@ -41,6 +41,7 @@ matrix:
 before_install:
   - |
     mkdir ext && cd ext
+    EOS_BUILD_OPTIONS=-j4
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
       brew install boost openssl llvm@4 gmp gettext ninja mongodb mongo-c-driver
       brew link gettext --force
@@ -64,6 +65,7 @@ before_install:
         export CXX=g++-7
         EOS_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
         MONGOCXX_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
+        EOS_BUILD_OPTIONS=-j3
       fi
       export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
       wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
@@ -106,7 +108,7 @@ before_install:
 script:
   - mkdir build && cd build
   - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release $EOS_CMAKE_OPTIONS ..
-  - ninja -j4
+  - ninja $EOS_BUILD_OPTIONS
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosd_run_test.sh --host=localhost --port=8888'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/chain_test'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/slow_test'
