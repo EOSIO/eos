@@ -310,6 +310,7 @@ struct launcher_def {
   int start_delay;
   bool nogen;
   string launch_name;
+  bool random_start;
 
   void assign_name (eosd_def &node);
 
@@ -344,6 +345,7 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "EOSD does not require transaction signatures.")
     ("eosd", bpo::value<string>(&eosd_extra_args), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
+    ("random", bpo::bool_switch(&random_start)->default_value(false),"start the nodes in a random order")
         ;
 }
 
@@ -592,30 +594,19 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "remote-endpoint = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
   if (node.producers.size()) {
-    cfg << "enable-stale-production = false\n"
-        << "required-participation = true\n";
+    cfg << "required-participation = true\n";
     for (const auto &kp : node.keys ) {
       cfg << "private-key = [\"" << kp.public_key
           << "\",\"" << kp.wif_private_key << "\"]\n";
     }
-    cfg << "plugin = eosio::producer_plugin\n"
-        << "plugin = eosio::chain_api_plugin\n"
-        << "plugin = eosio::wallet_api_plugin\n"
-        << "plugin = eosio::db_plugin\n"
-        << "plugin = eosio::account_history_plugin\n"
-        << "plugin = eosio::account_history_api_plugin\n";
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }
-  }
-  if( instance.has_db ) {
-    if( !node.producers.size() ) {
-      cfg << "plugin = eosio::producer_plugin\n";
-    }
-    cfg << "plugin = eosio::db_plugin\n";
+    cfg << "plugin = eosio::producer_plugin\n";
   }
   cfg << "plugin = eosio::chain_api_plugin\n"
       << "plugin = eosio::wallet_api_plugin\n"
+      << "plugin = eosio::db_plugin\n"
       << "plugin = eosio::account_history_plugin\n"
       << "plugin = eosio::account_history_api_plugin\n";
   cfg.close();
@@ -823,6 +814,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
     eosdcmd += "--skip-transaction-signatures ";
   }
   eosdcmd += eosd_extra_args + " ";
+  eosdcmd += "--enable-stale-production true ";
   eosdcmd += "--data-dir " + node.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
@@ -918,11 +910,22 @@ launcher_def::start_all (string &gts, launch_modes mode) {
             cerr << "unable to launch " << inst.name << endl;
           }
           sleep (start_delay);
-        }
-      }
-    }
     break;
   }
+
+    if (random_start) {
+    // recompute start order - implemenation deferred
+  } else {
+    for (auto &node : network.nodes) {
+      if (mode != LM_ALL) {
+        if ((mode == LM_LOCAL && node.second.remote) ||
+            (mode == LM_REMOTE && !node.second.remote)) {
+          continue;
+        }
+      }
+      launch (node.second, gts);
+      sleep (start_delay);
+    }
   }
   bf::path savefile = "last_run.json";
   bf::ofstream sf (savefile);
