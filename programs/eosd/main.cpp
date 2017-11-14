@@ -19,12 +19,16 @@
 
 #include <boost/exception/diagnostic_information.hpp>
 
+#include "config.hpp"
+
 using namespace appbase;
 using namespace eosio;
 
 int main(int argc, char** argv)
 {
    try {
+      app().set_version(eosio::eosd::config::version_str);
+      ilog("eosd version ${ver}", ("ver", app().version()));
       app().register_plugin<net_plugin>();
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
