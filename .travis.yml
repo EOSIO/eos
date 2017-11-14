@@ -61,6 +61,7 @@ before_install:
         export CC=gcc-7
         export CXX=g++-7
         EOS_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
+        EOS_CMAKE_OPTIONS+=" -DCMAKE_MODULE_PATH=$TRAVIS_BUILD_DIR/ext/wasm-compiler/lib/cmake/llvm"
         MONGOCXX_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
       fi
       export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
