@@ -4,7 +4,6 @@
 #include <eos/types/abi_serializer.hpp>
 
 using namespace eosio;
-using namespace eosio::abi_generator;
 
 std::unique_ptr<FrontendActionFactory> create_factory(bool verbose, bool opt_sfs, string abi_context, types::abi& output) {
   class abi_frontend_action_factory : public FrontendActionFactory {

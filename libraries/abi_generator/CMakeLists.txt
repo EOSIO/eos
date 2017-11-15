@@ -7,7 +7,7 @@ file(GLOB HEADERS "include/eos/abi_generator/*.hpp")
 set(SOURCES ${HEADERS})
 
 add_library( abi_generator
-             ${SOURCES}
+             abi_generator.cpp
              ${HEADERS} )
 
 target_include_directories( abi_generator
