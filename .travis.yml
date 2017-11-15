@@ -25,7 +25,7 @@ before_install:
   - |
     mkdir ext && cd ext
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      brew install boost openssl llvm@4 gmp gettext ninja mongodb mongo-c-driver
+      brew install boost openssl llvm@4 gmp gettext ninja mongodb mongo-c-driver --with-clang
       brew link gettext --force
       brew services start mongodb
       WASM_BRANCH=macos
