@@ -1,7 +1,13 @@
 #!/bin/bash
 
+###############################################################
+# -p <producing nodes count>
+# -n <total nodes>
+# -s <topology>
+# -d <delay between nodes startup>
+###############################################################
+
 pnodes=10
-npnodes=0
 topo=star
 delay=0
 
@@ -14,7 +20,7 @@ if [ $? == 0 ]; then
         in
             -p) pnodes=$2;
                 shift; shift;;
-            -n) npnodes=$2;
+            -n) total_nodes=$2;
                 shift; shift;;
             -d) delay=$2;
                 shift; shift;;
@@ -31,13 +37,13 @@ else
         if [ -n "$2" ]; then
             topo=$2
             if [ -n "$3" ]; then
-                npnodes=$3
+		total_nodes=$3
             fi
         fi
     fi
 fi
 
-total_nodes=`expr $pnodes + $npnodes`
+total_nodes="${total_nodes:-`echo $pnodes`}"
 
 rm -rf tn_data_*
 if [ "$delay" == 0 ]; then
