@@ -409,6 +409,10 @@ count=`echo $INFO | grep -c "1000000000"`
 if [ $count == 0 ]; then
   error "FAILURE - get table currency account failed: $INFO"
 fi
+count=`echo $INFO | grep -c "account"`
+if [ $count == 0 ]; then
+  error "FAILURE - get table currency account failed: $INFO"
+fi
 
 # push message to currency contract
 INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active)"
