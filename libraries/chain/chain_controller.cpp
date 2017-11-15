@@ -1133,6 +1133,7 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
 void chain_controller::_apply_transaction( const transaction& trx ) {
 
    ilog( "apply transaction" );
+
    for( const auto& act : trx.actions ) {
       apply_context context( *this, _db, trx, act, act.scope );
       context.exec();

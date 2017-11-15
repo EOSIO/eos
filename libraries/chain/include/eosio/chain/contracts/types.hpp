@@ -103,14 +103,9 @@ struct abi_def {
 };
 
 struct transfer {
-   transfer() = default;
-   transfer(const account_name& from, const account_name& to, const uint64& amount, const string& memo) 
-   :from(from), to(to), amount(amount), memo(memo)
-   {}
-
    account_name   from;
    account_name   to;
-   uint64       amount;
+   uint64         amount;
    string         memo;
 
    static name get_scope() {

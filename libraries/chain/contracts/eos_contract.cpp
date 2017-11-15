@@ -39,6 +39,7 @@ void validate_authority_precondition( const apply_context& context, const author
 void apply_eosio_newaccount(apply_context& context) {
    auto create = context.act.as<newaccount>();
    context.require_authorization(create.creator);
+   context.require_scope( config::eosio_auth_scope );
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
@@ -59,20 +60,19 @@ void apply_eosio_newaccount(apply_context& context) {
       a.name = create.name;
       a.creation_date = db.get(dynamic_global_property_object::id_type()).time;
    });
-   if (context.controller.is_applying_block()) {
-      const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
-         p.name = "owner";
-         p.parent = 0;
-         p.owner = new_account.name;
-         p.auth = std::move(create.owner);
-      });
-      db.create<permission_object>([&create, &owner_permission](permission_object& p) {
-         p.name = "active";
-         p.parent = owner_permission.id;
-         p.owner = owner_permission.owner;
-         p.auth = std::move(create.active);
-      });
-   }
+
+   const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
+      p.name = "owner";
+      p.parent = 0;
+      p.owner = new_account.name;
+      p.auth = std::move(create.owner);
+   });
+   db.create<permission_object>([&create, &owner_permission](permission_object& p) {
+      p.name = "active";
+      p.parent = owner_permission.id;
+      p.owner = owner_permission.owner;
+      p.auth = std::move(create.active);
+   });
 
    const auto& creator_balance = context.mutable_db.get<balance_object, by_owner_name>(create.creator);
 

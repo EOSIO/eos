@@ -72,17 +72,18 @@ namespace eosio { namespace testing {
       set_tapos( trx );
       trx.write_scope = { creator, config::eosio_auth_scope };
 
-      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}}, contracts::newaccount{ 
-                              .creator = creator,
-                              .name = a,
-                              .owner    = authority( get_public_key( a, "owner" ) ),
-                              .active   = authority( get_public_key( a, "active" ) ),
-                              .recovery = authority( get_public_key( a, "recovery" ) ),
-                              .deposit  = initial_balance
-                          });
+      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}}, 
+                                contracts::newaccount{ 
+                                   .creator  = creator,
+                                   .name     = a,
+                                   .owner    = authority( get_public_key( a, "owner" ) ),
+                                   .active   = authority( get_public_key( a, "active" ) ),
+                                   .recovery = authority( get_public_key( a, "recovery" ) ),
+                                   .deposit  = initial_balance
+                                });
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  ); 
 
-      push_transaction(trx);
+      control->push_transaction( trx );
    }
 
    void tester::push_transaction( signed_transaction& trx ) {
@@ -94,5 +95,20 @@ namespace eosio { namespace testing {
       create_account( a, asset::from_string(initial_balance), creator );
    }
    
+
+   void tester::transfer( account_name from, account_name to, asset amount, string memo ) {
+      signed_transaction trx;
+      trx.write_scope = {from,to};
+      trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
+                                contracts::transfer{
+                                   .from   = from,
+                                   .to     = to,
+                                   .amount = amount.amount,
+                                   .memo   = memo
+                                } );
+
+      trx.sign( get_private_key( from, "active" ), chain_id_type()  ); 
+      control->push_transaction( trx );
+   }
 
 } }  /// eosio::test

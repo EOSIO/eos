@@ -174,31 +174,42 @@ namespace eosio { namespace chain {
 
 
          template<typename Function>
-         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto with_skip_flags( uint64_t flags, Function&& f )
          {
-            auto old_flags = _skip_flags;
-            auto on_exit   = fc::make_scoped_exit( [&](){ _skip_flags = old_flags; } );
+            auto on_exit   = fc::make_scoped_exit( [old_flags=_skip_flags,this](){ _skip_flags = old_flags; } );
             _skip_flags = flags;
             return f();
          }
 
+
+         /**
+          *  This method will backup all tranasctions in the current pending block,
+          *  undo the pending block, call f(), and then push the pending transactions
+          *  on top of the new state.
+          */
          template<typename Function>
-         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto without_pending_transactions( Function&& f )
          {
-            /* TODO: figure out pending trx
-            auto old_pending = std::move( _pending_transactions );
-            _pending_block_session.reset();
+            vector<signed_transaction> old_input;
+
+            if( _pending_block )
+               old_input = move(_pending_block->input_transactions);
+
+            clear_pending();
+
+            /** after applying f() push previously input transactions on top */
             auto on_exit = fc::make_scoped_exit( [&](){ 
-               for( const auto& t : old_pending ) {
+               for( const auto& t : old_input ) {
                   try {
                      if (!is_known_transaction(t.id()))
                         push_transaction( t );
                   } catch ( ... ){}
                }
             });
-            */
             return f();
          }
+
+
 
          void pop_block();
          void clear_pending();
