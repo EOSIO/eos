@@ -319,9 +319,9 @@ Next verify the currency contract has the proper initial balance:
 ./eosc get table currency currency account
 {
   "rows": [{
-     "account": "account",
-     "balance": 1000000000
-     }
+      "key": "3607749778735104000",
+      "balance": 1000000000
+    }
   ],
   "more": false
 }
@@ -362,16 +362,16 @@ So now check the state of both of the accounts involved in the previous transact
 ./eosc get table inita currency account
 {
   "rows": [{
-      "account": "account",
-      "balance": 50 
-       }
-    ],
+      "key": "3607749778735104000",
+      "balance": 50
+    }
+  ],
   "more": false
 }
 ./eosc get table currency currency account
 {
   "rows": [{
-      "account": "account",
+      "key": "3607749778735104000",
       "balance": 999999950
     }
   ],
