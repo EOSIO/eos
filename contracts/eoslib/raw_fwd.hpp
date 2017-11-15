@@ -15,6 +15,8 @@ namespace eosio { namespace raw {
    template<typename Stream> inline void unpack( Stream& s, unsigned_int& vi );
    template<typename Stream> inline void pack( Stream& s, const bytes& value );
    template<typename Stream> inline void unpack( Stream& s, bytes& value );
+   template<typename Stream> inline void pack( Stream& s, const public_key& value );
+   template<typename Stream> inline void unpack( Stream& s, public_key& value );
    template<typename Stream> inline void pack( Stream& s, const string& v );
    template<typename Stream> inline void unpack( Stream& s, string& v);
    template<typename Stream> inline void pack( Stream& s, const fixed_string32& v );

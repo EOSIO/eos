@@ -40,9 +40,9 @@ struct codegen {
          if( abis.is_struct(field_type) ) {
             output << "print(\"\\n\"); eosio::dump(value."<< field.name <<", tab+1);";
             output << "print_ident(tab);";
-         } else if( field_type == "String" ) {
+         } else if( field_type == "string" ) {
             output << "prints_l(value."<< field.name <<".get_data(), value."<< field.name <<".get_size());";
-         } else if( field_type == "FixedString32" || field_type == "FixedString16" ) {
+         } else if( field_type == "fixed_string32" || field_type == "fixed_string16" ) {
             output << "prints_l(value."<< field.name <<".str, value."<< field.name <<".len);";
          } else if( field_type == "Bytes" ) {
             output << "printhex(value."<< field.name <<".data, value."<< field.name <<".len);";
@@ -56,16 +56,16 @@ struct codegen {
                output << "printhex((void*)&value."<< field.name <<", sizeof(value."<< field.name <<"));";
             }
             
-         } else if( field_type == "Bytes" ) {
-            output << "printhex(value."<< field.name <<".data, value."<< field.name <<".len));";
-         } else if( field_type == "Name" || field_type == "AccountName" || field_type == "PermissionName" ||\
-          field_type == "TokenName" || field_type == "TableName" || field_type == "FuncName" ) {
+         } else if( field_type == "bytes" ) {
+            output << "printhex(value."<< field.name <<".data, value."<< field.name <<".len);";
+         } else if( field_type == "name" || field_type == "account_name" || field_type == "permission_name" ||\
+          field_type == "token_name" || field_type == "table_name" || field_type == "func_name" ) {
             output << "printn(value."<< field.name <<");";
-         } else if( field_type == "PublicKey" ) {
+         } else if( field_type == "public_key" ) {
             output << "printhex((void*)value."<< field.name <<".data, 33);";
-         } else if( field_type == "Time" ) {
+         } else if( field_type == "time" ) {
             output << "printi(value."<< field.name <<");";
-         } else if( field_type == "Price" ) {
+         } else if( field_type == "price" ) {
             output << "printi(value."<< field.name <<".base.amount);print(\"/\");printi(value."<< field.name <<".quote.amount);";
          } else {
             
@@ -119,6 +119,7 @@ struct codegen {
       ostringstream output;
       output << "#pragma once" << endl;
       output << "#include <eoslib/types.hpp>" << endl;
+      output << "#include <eoslib/message.hpp>" << endl;
       output << "#include <eoslib/datastream.hpp>" << endl;
       output << "#include <eoslib/raw_fwd.hpp>" << endl;
       

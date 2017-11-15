@@ -9,7 +9,7 @@ namespace exchange {
    using currency::currency_tokens;
    using eos_tokens = eosio::tokens;
 
-   //@abi exchange action cancelbuy cancelsell
+   //@abi action cancelbuy cancelsell
    struct order_id {
       account_name name    = 0;
       uint64_t    number  = 0;
@@ -21,7 +21,7 @@ namespace exchange {
    struct PACKED( bid ) {
       order_id           buyer;
       price              at_price;
-      eosio::tokens        quantity;
+      eosio::tokens      quantity;
       time               expiration;
 
       void print() {
