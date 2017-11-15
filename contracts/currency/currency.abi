@@ -5,7 +5,7 @@
     }
   ],
   "structs": [{
-      "name": "Transfer",
+      "name": "transfer",
       "base": "",
       "fields": {
         "from": "account_name",
@@ -13,7 +13,7 @@
         "amount": "uint64"
       }
     },{
-      "name": "Account",
+      "name": "account",
       "base": "",
       "fields": {
         "key": "uint64",
@@ -30,7 +30,7 @@
       "table_name": "account",
       "type": "account",
       "index_type": "i64",
-      "key_names" : ["account"],
+      "key_names" : ["key"],
       "key_types" : ["name"]
     }
   ]

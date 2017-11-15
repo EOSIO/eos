@@ -132,6 +132,24 @@ namespace eosio {
    }
 
   /**
+   *  Serialize a public_key into a stream
+   *  @param s stream to write
+   *  @param v value to be serialized
+   */
+   template<typename Stream> inline void pack( Stream& s, const public_key& value ) {
+      s.write( (char *)value.data, sizeof(public_key) );
+   }
+   
+  /**
+   *  Deserialize a public_key from a stream
+   *  @param s stream to read
+   *  @param v destination of deserialized public_key
+   */
+   template<typename Stream> inline void unpack( Stream& s, public_key& value ) {
+      s.read( (char *)value.data, sizeof(public_key) );
+   }
+
+  /**
    *  Serialize a string into a stream
    *  @param s stream to write
    *  @param v value to be serialized

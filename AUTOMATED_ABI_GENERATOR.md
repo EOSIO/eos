@@ -32,10 +32,10 @@ Generated types.gen.hpp ...
 #include <eoslib/string.hpp>
 
 //@abi action
-struct ActionName {
+struct action_name {
   uint64_t    param1;
   uint64_t    param2;
-  eos::string param3;
+  eosio::string param3;
 };
 ```
 
@@ -43,35 +43,35 @@ struct ActionName {
 {
   "types": [],
   "structs": [{
-      "name": "ActionName",
+      "name": "action_name",
       "base": "",
       "fields": {
-        "param1": "UInt64",
-        "param2": "UInt64",
-        "param3": "String"
+        "param1": "uint64",
+        "param2": "uint64",
+        "param3": "string"
       }
     }
   ],
   "actions": [{
-      "action": "actionname",
-      "type": "ActionName"
+      "action_name": "actionname",
+      "type": "action_name"
     }
   ],
   "tables": []
 }
 ```
 
-### Declaring multiple actions that use the same struct.
+### Declaring multiple actions using the same interface.
 
 ```c++
 #include <eoslib/types.hpp>
 #include <eoslib/string.hpp>
 
 //@abi action action1 action2
-struct ActionName {
+struct action_name {
   uint64_t param1;
   uint64_t param2;
-  eos::string   param3;
+  eosio::string   param3;
 };
 ```
 
@@ -79,21 +79,21 @@ struct ActionName {
 {
   "types": [],
   "structs": [{
-      "name": "ActionName",
+      "name": "action_name",
       "base": "",
       "fields": {
-        "param1": "UInt64",
-        "param2": "UInt64",
-        "param3": "String"
+        "param1": "uint64",
+        "param2": "uint64",
+        "param3": "string"
       }
     }
   ],
   "actions": [{
-      "action": "action1",
-      "type": "ActionName"
+      "action_name": "action1",
+      "type": "action_name"
     },{
-      "action": "action2",
-      "type": "ActionName"
+      "action_name": "action2",
+      "type": "action_name"
     }
   ],
   "tables": []
@@ -106,7 +106,7 @@ struct ActionName {
 #include <eoslib/string.hpp>
 
 //@abi table
-struct MyTable {
+struct my_table {
   uint64_t key;
 };
 ```
@@ -115,24 +115,24 @@ struct MyTable {
 {
   "types": [],
   "structs": [{
-      "name": "MyTable",
+      "name": "my_table",
       "base": "",
       "fields": {
-        "key": "UInt64"
+        "key": "uint64"
       }
     }
   ],
   "actions": [],
   "tables": [{
-      "table": "mytable",
-      "indextype": "i64",
-      "keynames": [
+      "table_name": "mytable",
+      "index_type": "i64",
+      "key_names": [
         "key"
       ],
-      "keytypes": [
-        "UInt64"
+      "key_types": [
+        "uint64"
       ],
-      "type": "MyTable"
+      "type": "my_table"
     }
   ]
 }
@@ -143,7 +143,7 @@ _a struct with 3 uint64_t can be both i64 or i64i64i64_
 #include <eoslib/types.hpp>
 
 //@abi table i64
-struct MyNewTable {
+struct my_new_table {
   uint64_t key;
   uint64_t name;
   uint64_t age;
@@ -154,26 +154,26 @@ struct MyNewTable {
 {
   "types": [],
   "structs": [{
-      "name": "MyNewTable",
+      "name": "my_new_table",
       "base": "",
       "fields": {
-        "key": "UInt64",
-        "name": "UInt64",
-        "age": "UInt64"
+        "key": "uint64",
+        "name": "uint64",
+        "age": "uint64"
       }
     }
   ],
   "actions": [],
   "tables": [{
-      "table": "mynewtable",
-      "indextype": "i64",
-      "keynames": [
+      "table_name": "mynewtable",
+      "index_type": "i64",
+      "key_names": [
         "key"
       ],
-      "keytypes": [
-        "UInt64"
+      "key_types": [
+        "uint64"
       ],
-      "type": "MyNewTable"
+      "type": "my_new_table"
     }
   ]
 }
@@ -188,38 +188,39 @@ struct MyNewTable {
  * @abi table
  * @abi action
  */ 
-struct MyType {
-  eos::string key;
-  eos::Name value;
+struct my_type {
+  eosio::string key;
+  eosio::name value;
 };
 ```
+
 ```json
 {
   "types": [],
   "structs": [{
-      "name": "MyType",
+      "name": "my_type",
       "base": "",
       "fields": {
-        "key": "String",
-        "value": "Name"
+        "key": "string",
+        "value": "name"
       }
     }
   ],
   "actions": [{
-      "action": "mytype",
-      "type": "MyType"
+      "action_name": "mytype",
+      "type": "my_type"
     }
   ],
   "tables": [{
-      "table": "mytype",
-      "indextype": "str",
-      "keynames": [
+      "table_name": "mytype",
+      "index_type": "str",
+      "key_names": [
         "key"
       ],
-      "keytypes": [
-        "String"
+      "key_types": [
+        "string"
       ],
-      "type": "MyType"
+      "type": "my_type"
     }
   ]
 }
@@ -229,47 +230,48 @@ struct MyType {
 
 ```c++
 #include <eoslib/types.hpp>
-struct Simple {
+struct simple {
   uint64_t u64;
 };
 
-typedef Simple SimpleAlias;
-typedef eos::Name NameAlias;
+typedef simple simple_alias;
+typedef eosio::name name_alias;
 
 //@abi action
-struct ActionOne : SimpleAlias {
+struct action_one : simple_alias {
   uint32_t u32;
-  NameAlias name;
+  name_alias name;
 };
 ```
+
 ```json
 {
   "types": [{
-      "newTypeName": "SimpleAlias",
-      "type": "Simple"
+      "new_type_name": "simple_alias",
+      "type": "simple"
     },{
-      "newTypeName": "NameAlias",
-      "type": "Name"
+      "new_type_name": "name_alias",
+      "type": "name"
     }
   ],
   "structs": [{
-      "name": "Simple",
+      "name": "simple",
       "base": "",
       "fields": {
-        "u64": "UInt64"
+        "u64": "uint64"
       }
     },{
-      "name": "ActionOne",
-      "base": "SimpleAlias",
+      "name": "action_one",
+      "base": "simple_alias",
       "fields": {
-        "u32": "UInt32",
-        "name": "NameAlias"
+        "u32": "uint32",
+        "name": "name_alias"
       }
     }
   ],
   "actions": [{
-      "action": "actionone",
-      "type": "ActionOne"
+      "action_name": "actionone",
+      "type": "action_one"
     }
   ],
   "tables": []
@@ -281,25 +283,25 @@ struct ActionOne : SimpleAlias {
 #include <eoslib/types.hpp>
 #include <eoslib/string.hpp>
 
-struct Simple {
+struct simple {
   uint32_t u32;
-  FixedString16 s16;
+  fixed_string16 s16;
 };
 
-struct MyComplexType {
+struct my_complex_type {
   uint64_t u64;
-  eos::string str;
-  Simple simple;
-  Bytes bytes;
-  PublicKey pub;
+  eosio::string str;
+  simple simple;
+  bytes bytes;
+  public_key pub;
 };
 
-typedef MyComplexType Complex;
+typedef my_complex_type complex;
 
 //@abi action
-struct TestAction {
+struct test_action {
   uint32_t u32;
-  Complex complex;
+  complex cplx;
 };
 ```
 
@@ -307,26 +309,26 @@ struct TestAction {
 void apply( uint64_t code, uint64_t action ) {
    if( code == N(mycontract) ) {
       if( action == N(testaction) ) {
-        auto test_action = eos::current_message_ex<TestAction>();
-        eos::print("TestAction content\n");
-        eos::dump(test_action);
+        auto msg = eosio::current_message<test_action>();
+        eosio::print("test_action content\n");
+        eosio::dump(msg);
          
-        Bytes bytes = eos::raw::to_bytes(test_action);
-        printhex(bytes.data, bytes.len);
+        bytes b = eosio::raw::pack(msg);
+        printhex(b.data, b.len);
      }
   }
 }
 ```
-Calling the contract with some test values
+Calling contract with test values
 ```bash
-eosc push message mycontract testaction '{"u32":"1000", "complex":{"u64":"472", "str":"hello", "bytes":"B0CA", "pub":"EOS8CY2pCW5THmzvPTgEh5WLEAxgpVFXaPogPvgvVpVWCYMRdzmwx", "simple":{"u32":"164","s16":"small-string"}}}' -S mycontract
+eosc push message mycontract testaction '{"u32":"1000", "cplx":{"u64":"472", "str":"hello", "bytes":"B0CA", "pub":"EOS8CY2pCW5THmzvPTgEh5WLEAxgpVFXaPogPvgvVpVWCYMRdzmwx", "simple":{"u32":"164","s16":"small-string"}}}' -S mycontract
 ```
 
 Will produce the following output in eosd console 
 ```bash
-TestAction content
+test_action content
 u32:[1000]
-complex:[
+cplx:[
   u64:[472]
   str:[hello]
   simple:[
