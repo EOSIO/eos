@@ -1,6 +1,8 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <eosio/chain/wasm_interface_private.hpp>
+#include <fc/exception/exception.hpp>
 
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
@@ -12,51 +14,41 @@
 #include "IR/Module.h"
 #include "IR/Operators.h"
 #include "IR/Validate.h"
+#include "IR/Types.h"
 
 #include <mutex>
+
+using namespace IR;
+using namespace Runtime;
 
 
 namespace eosio { namespace chain {
 
-   using namespace IR;
-   using namespace Runtime;
-
-   struct module_state {
-      Runtime::ModuleInstance* instance     = nullptr;
-      IR::Module*              module       = nullptr;
-      int                      mem_start    = 0;
-      int                      mem_end      = 1<<16;
-      vector<char>             init_memory;
-      fc::sha256               code_version;
-   };
+   FunctionInstance *resolve_intrinsic(const string& name);
 
    struct root_resolver : Runtime::Resolver
    {
-      bool resolve(const string& modname,
-                   const string& exportname,
+      bool resolve(const string& mod_name,
+                   const string& export_name,
                    ObjectType type,
                    ObjectInstance*& out) override
       {
-          // Try to resolve an intrinsic first.
-          if(IntrinsicResolver::singleton.resolve(modname,exportname,type,out)) { return true; }
-          FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",modname)("export",exportname) );
-          return false;
+         if (mod_name == "env" && type.kind == ObjectKind::function ) {
+            try {
+               auto* intrinsic = resolve_intrinsic(export_name);
+               if (intrinsic != nullptr) {
+                  out = asObject(intrinsic);
+                  return true;
+               }
+            } FC_RETHROW_EXCEPTIONS(error, "unresolvable symbol ${module}.${export}", ("module",mod_name)("export",export_name));
+         }
+         return false;
       }
    };
 
 
 
    std::mutex                     global_load_mutex;
-   struct wasm_interface_impl {
-      map<digest_type, module_state> code_cache;
-      module_state*                  current_state = nullptr;
-   };
-
-   wasm_interface::wasm_interface()
-   :my( new wasm_interface_impl() ) {
-
-   }
-
    wasm_interface& wasm_interface::get() {
       static bool init_once = [](){  Runtime::init(); return true; }();
       boost::ignore_unused(init_once);
@@ -169,8 +161,10 @@ namespace eosio { namespace chain {
          memcpy( memstart, state.init_memory.data(), state.mem_end);
 
          //checktimeStart = fc::time_point::now();
-
+         my->current_state->context = &context;
          Runtime::invokeFunction(call,args);
+         my->current_state->context = nullptr;
+
       } catch( const Runtime::Exception& e ) {
           edump((std::string(describeExceptionCause(e.cause))));
           edump((e.callStack));
@@ -185,7 +179,8 @@ namespace eosio { namespace chain {
       return Runtime::getDefaultMemorySize( my->current_state->instance );
    }
 
-   DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
+#if 0
+  DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
       elog( "assert" );
       /*
       const char* m = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
@@ -318,6 +313,57 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
    }
    */
 }
+#endif
 
+#if defined(assert)
+#undef assert
+#endif
+
+class intrinsics {
+   public:
+      intrinsics(wasm_interface &wasm)
+      :wasm(wasm)
+      ,context(*intrinsics_accessor::get_module_state(wasm).context)
+      {}
+
+      int read_action(array_ptr<char> memory, size_t size) {
+         FC_ASSERT(size > 0);
+         int minlen = std::min<int>(context.act.data.size(), size);
+         memcpy((void *)memory, context.act.data.data(), minlen);
+         return minlen;
+      }
+
+      void assert(bool condition, char const* str) {
+         std::string message( str );
+         if( !condition ) edump((message));
+         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+      }
+
+   private:
+      wasm_interface& wasm;
+      apply_context& context;
+};
+
+map<string, Intrinsics::Function> intrinsic_registry = {
+   //_EGISTER_INTRINSICS(intrinsics, (read_action)(assert))
+   {
+      std::piecewise_construct,
+      std::forward_as_tuple("read_action"),
+      std::forward_as_tuple(
+         "read_action",
+         eosio::chain::intrinsic_function_invoker<decltype(&intrinsics::read_action)>::wasm_function_type(),
+         (void*)eosio::chain::intrinsic_function_invoker<decltype(&intrinsics::read_action)>::fn<&intrinsics::read_action>()
+      )
+   },
+};
+
+FunctionInstance *resolve_intrinsic(const string& name) {
+   auto iter = intrinsic_registry.find(name);
+   if (iter != intrinsic_registry.end()) {
+      return (iter->second).function;
+   }
+
+   return nullptr;
+}
 
 } } /// eosio::chain

@@ -9,6 +9,7 @@ namespace Runtime {
 namespace eosio { namespace chain {
 
    class apply_context;
+   class intrinsics_accessor;
 
    /**
     * @class wasm_interface
@@ -58,6 +59,7 @@ namespace eosio { namespace chain {
       private:
          wasm_interface();
          unique_ptr<struct wasm_interface_impl> my;
+         friend class eosio::chain::intrinsics_accessor;
    };
 
 
