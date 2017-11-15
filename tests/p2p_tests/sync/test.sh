@@ -14,7 +14,7 @@ if [ $? == 0 ]; then
         in
             -p) pnodes=$2;
                 shift; shift;;
-            -n) nodes=$2;
+            -n) npnodes=$2;
                 shift; shift;;
             -d) delay=$2;
                 shift; shift;;
