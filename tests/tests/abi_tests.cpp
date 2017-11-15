@@ -22,7 +22,6 @@
 using namespace eosio;
 using namespace chain;
 using namespace eosio::types;
-using namespace eosio::abi_generator;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
@@ -228,7 +227,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
     return;
   }
 
-  auto is_abi_generation_exception =[](const eosio::abi_generator::abi_generation_exception& e) -> bool { return true; };
+  auto is_abi_generation_exception =[](const eosio::abi_generation_exception& e) -> bool { return true; };
 
   auto generate_abi = [this](const char* source, const char* abi, bool opt_sfs=false) -> bool {
     
@@ -265,7 +264,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    };
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
    
    const char* all_types = R"=====(
     #include <eoslib/types.hpp>
@@ -403,7 +402,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    };
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* double_action = R"=====(
    #include <eoslib/types.h>
@@ -600,7 +599,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(unable_to_determine_index, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(unable_to_determine_index, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    //TODO: full action / full table
 
@@ -615,7 +614,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* long_type_name = R"=====(
    #include <eoslib/types.h>
@@ -632,7 +631,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    )=====";
 
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_type_different_namespace = R"=====(
    #include <eoslib/types.h>
@@ -653,7 +652,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* bad_index_type = R"=====(
    #include <eoslib/types.h>
@@ -667,7 +666,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* full_table_decl = R"=====(
    #include <eoslib/types.hpp>
@@ -723,7 +722,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_action_different_type = R"=====(
    #include <eoslib/types.h>
@@ -740,7 +739,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eosio::abi_generator::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* template_base = R"=====(
    #include <eoslib/types.h>
