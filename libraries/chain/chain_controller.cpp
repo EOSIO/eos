@@ -256,13 +256,15 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
 
    auto temp_session = _db.start_undo_session(true);
 
+   auto tid = trx.id();
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
+
    _apply_transaction(trx);
-//   _pending_transactions.push_back(trx);
+   /** for now we will just shove everything into the first shard */
+   _pending_block->cycles_summary[0][0].emplace_back( tid );
+   _pending_block->input_transactions.push_back(trx);
 
-
-   // notify_changed_objects();
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
 
@@ -327,6 +329,8 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
 void chain_controller::_start_pending_block() {
    FC_ASSERT( !_pending_block );
    _pending_block         = signed_block();
+   _pending_block->cycles_summary.resize(1);
+   _pending_block->cycles_summary[0].resize(1);
    _pending_block_session = _db.start_undo_session(true);
 }
 
@@ -385,17 +389,35 @@ void chain_controller::__apply_block(const signed_block& next_block)
              */
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
+
+
+   /// cache the input tranasction ids so that they can be looked up when executing the
+   /// summary
+   map<transaction_id_type,const signed_transaction*> trx_index;
+   for( const auto& t : next_block.input_transactions ) {
+      trx_index[t.id()] = &t;
+   }
    
-   /*
-   for (const auto& cycle : next_block.cycles)
-      for (const auto& thread : cycle)
-         for (const auto& trx : thread.user_input) {
-            validate_referenced_accounts(trx);
+   for (const auto& cycle : next_block.cycles_summary) {
+      for (const auto& shard: cycle) {
+         for (const auto& receipt : shard) {
+            if( receipt.status == transaction_receipt::executed ) {
+               auto itr = trx_index.find(receipt.id);
+               if( itr != trx_index.end() ) {
+                  _apply_transaction( *itr->second );
+               } 
+               else 
+               {
+                  FC_ASSERT( !"deferred transactions not yet supported" );
+               }
+            }
+            // validate_referenced_accounts(trx);
             // Check authorization, and allow irrelevant signatures.
             // If the block producer let it slide, we'll roll with it.
-            check_transaction_authorization(trx, true);
-         }
-   */
+            // check_transaction_authorization(trx, true);
+         } /// for each transaction id
+      } /// for each shard
+   } /// for each cycle
 
    update_global_properties(next_block);
    update_global_dynamic_data(next_block);
@@ -571,9 +593,9 @@ void chain_controller::validate_tapos(const transaction& trx)const {
 void chain_controller::validate_referenced_accounts( const transaction& trx )const 
 { try { 
    for( const auto& scope : trx.read_scope )
-      require_account(scope);
+      require_scope(scope);
    for( const auto& scope : trx.write_scope )
-      require_account(scope);
+      require_scope(scope);
 
    for( const auto& act : trx.actions ) {
       require_account(act.scope);
@@ -675,6 +697,16 @@ void chain_controller::apply_message(apply_context& context)
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
 */
 
+
+void chain_controller::require_scope( const scope_name& scope )const {
+   switch( uint64_t(scope) ) {
+      case N(eosio.auto):
+      case N(eosio.auth):
+         return; /// built in scopes
+      default:
+         require_account(scope);
+   }
+}
 
 void chain_controller::require_account(const account_name& name) const {
    auto account = _db.find<account_object, by_name>(name);

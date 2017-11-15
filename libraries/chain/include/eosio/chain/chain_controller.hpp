@@ -306,6 +306,7 @@ namespace eosio { namespace chain {
                                               bool allow_unused_signatures = false)const;
 
 
+         void require_scope(const scope_name& name) const;
          void require_account(const account_name& name) const;
 
          /**

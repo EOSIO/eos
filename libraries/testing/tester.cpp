@@ -14,7 +14,8 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_accounts.resize( config::producer_count );
       cfg.genesis.initial_producers.resize( config::producer_count );
 
-      uint64_t init_name = N(inita);
+     // uint64_t init_name = N(inita);
+      string init_name = "inita";
       for( uint32_t i = 0; i < config::producer_count; ++i ) {
          auto pubkey = get_public_key(init_name);
          cfg.genesis.initial_accounts[i].name               = string(account_name(init_name));
@@ -25,7 +26,7 @@ namespace eosio { namespace testing {
          cfg.genesis.initial_producers[i].owner_name        = string(account_name(init_name));
          cfg.genesis.initial_producers[i].block_signing_key = get_public_key( init_name, "producer" );
 
-         init_name++;
+         init_name[4]++;
       }
       open();
    }
