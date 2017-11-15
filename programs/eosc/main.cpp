@@ -94,7 +94,7 @@ Options:
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
-#include <config.hpp>
+#include "config.hpp"
 
 using namespace std;
 using namespace eosio;
@@ -455,7 +455,7 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   CLI::App app{"Command Line Interface to Eos Daemon"};
+   CLI::App app{"Command Line Interface to Eos Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
    app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
@@ -464,6 +464,13 @@ int main( int argc, char** argv ) {
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose messages on error"));
+
+   auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
+   version->require_subcommand();
+
+   version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
+     std::cout << localized("Build version: ${ver}", ("ver", eosio::client::config::version_str)) << std::endl;
+   });
 
    // Create subcommand
    auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"), false);

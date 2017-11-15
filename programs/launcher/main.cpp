@@ -25,6 +25,8 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
+#include "config.hpp"
+
 using namespace std;
 namespace bf = boost::filesystem;
 namespace bp = boost::process;
@@ -218,11 +220,19 @@ enum launch_modes {
   LM_ALL
 };
 
+enum allowed_connection : char {
+  PC_NONE = 0,
+  PC_PRODUCERS = 1 << 0,
+  PC_SPECIFIED = 1 << 1,
+  PC_ANY = 1 << 2
+};
+
 struct launcher_def {
-  int producers;
-  int total_nodes;
-  int prod_nodes;
+  size_t producers;
+  size_t total_nodes;
+  size_t prod_nodes;
   string shape;
+  allowed_connection allowed_connections = PC_NONE;
   bf::path genesis;
   bf::path output;
   bool skip_transaction_signatures = false;
@@ -233,6 +243,7 @@ struct launcher_def {
   vector <string> aliases;
   last_run_def last_run;
   int start_delay;
+  bool random_start;
 
   void set_options (bpo::options_description &cli);
   void initialize (const variables_map &vmap);
@@ -255,36 +266,44 @@ struct launcher_def {
 void
 launcher_def::set_options (bpo::options_description &cli) {
   cli.add_options()
-    ("nodes,n",bpo::value<int>()->default_value(1),"total number of nodes to configure and launch")
-    ("pnodes,p",bpo::value<int>()->default_value(1),"number of nodes that are producers")
-    ("shape,s",bpo::value<string>()->default_value("star"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
-    ("genesis,g",bpo::value<bf::path>()->default_value("./genesis.json"),"set the path to genesis.json")
-    ("output,o",bpo::value<bf::path>(),"save a copy of the generated topology in this file")
-    ("skip-signature", bpo::bool_switch()->default_value(false), "EOSD does not require transaction signatures.")
-    ("eosd", bpo::value<string>(), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
-    ("delay,d",bpo::value<int>()->default_value(0),"seconds delay before starting each node after the first")
+    ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
+    ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that are producers")
+    ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
+    ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
+    ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
+    ("output,o",bpo::value<bf::path>(&output),"save a copy of the generated topology in this file")
+    ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "EOSD does not require transaction signatures.")
+    ("eosd", bpo::value<string>(&eosd_extra_args), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
+    ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
+    ("random", bpo::bool_switch(&random_start)->default_value(false),"start the nodes in a random order")
         ;
+}
+
+template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
+inline enum_type& operator|=(enum_type&lhs, const enum_type& rhs)
+{
+  using T = std::underlying_type_t <enum_type>;
+  return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
 }
 
 void
 launcher_def::initialize (const variables_map &vmap) {
-  if (vmap.count("nodes"))
-    total_nodes = vmap["nodes"].as<int>();
-  if (vmap.count("pnodes"))
-    prod_nodes = vmap["pnodes"].as<int>();
-  if (vmap.count("shape"))
-    shape = vmap["shape"].as<string>();
-  if (vmap.count("genesis"))
-    genesis = vmap["genesis"].as<bf::path>();
-  if (vmap.count("output"))
-    output = vmap["output"].as<bf::path>();
-  if (vmap.count("skip-signature"))
-    skip_transaction_signatures = vmap["skip-signature"].as<bool>();
-  if (vmap.count("eosd"))
-    eosd_extra_args = vmap["eosd"].as<string>();
-  if (vmap.count("delay"))
-    start_delay = vmap["delay"].as<int>();
-
+  if (vmap.count("mode")) {
+    const vector<string> modes = vmap["mode"].as<vector<string>>();
+    for(const string&m : modes)
+    {
+      if (boost::iequals(m, "any"))
+        allowed_connections |= PC_ANY;
+      else if (boost::iequals(m, "producers"))
+        allowed_connections |= PC_PRODUCERS;
+      else if (boost::iequals(m, "specified"))
+        allowed_connections |= PC_SPECIFIED;
+      else {
+        cerr << "unrecognized connection mode: " << m << endl;
+        exit (-1);
+      }
+    }
+  }
   producers = 21;
   data_dir_base = "tn_data_";
   alias_base = "testnet_";
@@ -357,7 +376,7 @@ void
 launcher_def::define_nodes () {
   int per_node = producers / prod_nodes;
   int extra = producers % prod_nodes;
-  for (int i = 0; i < total_nodes; i++) {
+  for (size_t i = 0; i < total_nodes; i++) {
     eosd_def node;
     string dex = boost::lexical_cast<string,int>(i);
     string name = alias_base + dex;
@@ -430,26 +449,40 @@ launcher_def::write_config_file (eosd_def &node) {
       << "http-server-endpoint = " << node.hostname << ":" << node.http_port << "\n"
       << "listen-endpoint = 0.0.0.0:" << node.p2p_port << "\n"
       << "public-endpoint = " << node.public_name << ":" << node.p2p_port << "\n";
+  if (allowed_connections & PC_ANY) {
+    cfg << "allowed-connection = any\n";
+  }
+  else
+  {
+    if (allowed_connections & PC_PRODUCERS) {
+      cfg << "allowed-connection = producers\n";
+    }
+    if (allowed_connections & PC_SPECIFIED) {
+      cfg << "allowed-connection = specified\n";
+      cfg << "peer-key = \"" << node.keys.begin()->public_key << "\"\n";
+      cfg << "peer-private-key = [\"" << node.keys.begin()->public_key
+          << "\",\"" << node.keys.begin()->wif_private_key << "\"]\n";
+    }
+  }
   for (const auto &p : node.peers) {
     cfg << "remote-endpoint = " << network.nodes.find(p)->second.p2p_endpoint() << "\n";
   }
   if (node.producers.size()) {
-    cfg << "enable-stale-production = false\n"
-        << "required-participation = true\n";
+    cfg << "required-participation = true\n";
     for (const auto &kp : node.keys ) {
       cfg << "private-key = [\"" << kp.public_key
           << "\",\"" << kp.wif_private_key << "\"]\n";
     }
-    cfg << "plugin = eosio::producer_plugin\n"
-        << "plugin = eosio::chain_api_plugin\n"
-        << "plugin = eosio::wallet_api_plugin\n"
-        << "plugin = eosio::db_plugin\n"
-        << "plugin = eosio::account_history_plugin\n"
-        << "plugin = eosio::account_history_api_plugin\n";
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }
+    cfg << "plugin = eosio::producer_plugin\n";
   }
+  cfg << "plugin = eosio::chain_api_plugin\n"
+      << "plugin = eosio::wallet_api_plugin\n"
+      << "plugin = eosio::db_plugin\n"
+      << "plugin = eosio::account_history_plugin\n"
+      << "plugin = eosio::account_history_api_plugin\n";
   cfg.close();
   if (!node.on_host()) {
     prep_remote_config_dir (node);
@@ -647,6 +680,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
     eosdcmd += "--skip-transaction-signatures ";
   }
   eosdcmd += eosd_extra_args + " ";
+  eosdcmd += "--enable-stale-production true ";
   eosdcmd += "--data-dir " + node.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
@@ -716,15 +750,19 @@ launcher_def::start_all (string &gts, launch_modes mode) {
   if (mode == LM_NONE)
     return;
 
-  for (auto &node : network.nodes) {
-    if (mode != LM_ALL) {
-      if ((mode == LM_LOCAL && node.second.remote) ||
-          (mode == LM_REMOTE && !node.second.remote)) {
-        continue;
+  if (random_start) {
+    // recompute start order - implemenation deferred
+  } else {
+    for (auto &node : network.nodes) {
+      if (mode != LM_ALL) {
+        if ((mode == LM_LOCAL && node.second.remote) ||
+            (mode == LM_REMOTE && !node.second.remote)) {
+          continue;
+        }
       }
+      launch (node.second, gts);
+      sleep (start_delay);
     }
-    launch (node.second, gts);
-    sleep (start_delay);
   }
   bf::path savefile = "last_run.json";
   bf::ofstream sf (savefile);
@@ -748,24 +786,25 @@ int main (int argc, char *argv[]) {
   top.set_options(opts);
 
   opts.add_options()
-    ("timestamp,i",bpo::value<string>(),"set the timestamp for the first block. Use \"now\" to indicate the current time")
+    ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("kill,k", bpo::value<string>(),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
+    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
+    ("version,v", "print version information")
     ("help,h","print this list");
 
 
   try {
     bpo::store(bpo::parse_command_line(argc, argv, opts), vmap);
+    bpo::notify(vmap);
 
     top.initialize(vmap);
 
-    if (vmap.count("timestamp"))
-      gts = vmap["timestamp"].as<string>();
-    if (vmap.count("kill")) {
-      kill_arg = vmap["kill"].as<string>();
-    }
     if (vmap.count("help") > 0) {
       opts.print(cerr);
+      return 0;
+    }
+    if (vmap.count("version") > 0) {
+      cout << eosio::launcher::config::version_str << endl;
       return 0;
     }
 

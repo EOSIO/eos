@@ -6,11 +6,16 @@
 
 #include <eos/net_plugin/net_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
+#include <eos/net_plugin/message_buffer.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
 #include <eos/chain/block.hpp>
+#include <eos/chain/producer_object.hpp>
+#include <eos/producer_plugin/producer_plugin.hpp>
+#include <eos/utilities/key_conversion.hpp>
 
 #include <fc/network/ip.hpp>
+#include <fc/io/json.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/container/flat.hpp>
@@ -22,6 +27,10 @@
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
+
+namespace fc {
+  extern std::unordered_map<std::string,logger>& get_logger_map();
+}
 
 namespace eosio {
   using std::vector;
@@ -107,17 +116,28 @@ namespace eosio {
 
   class net_plugin_impl {
   public:
-    unique_ptr<tcp::acceptor>     acceptor;
-    tcp::endpoint                 listen_endpoint;
-    string                        p2p_address;
-    uint32_t                      max_client_count;
-    uint32_t                      num_clients;
+    unique_ptr<tcp::acceptor>        acceptor;
+    tcp::endpoint                    listen_endpoint;
+    string                           p2p_address;
+    uint32_t                         max_client_count;
+    uint32_t                         num_clients;
 
-    vector<string>                supplied_peers;
+    vector<string>                   supplied_peers;
+    vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
+    std::map<chain::public_key_type,
+             fc::ecc::private_key>   private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
 
-    std::set< connection_ptr >    connections;
-    bool                          done = false;
-    unique_ptr< sync_manager >    sync_master;
+    enum possible_connections : char {
+      None = 0,
+      Producers = 1 << 0,
+      Specified = 1 << 1,
+      Any = 1 << 2
+    };
+    possible_connections             allowed_connections{None};
+
+    std::set< connection_ptr >       connections;
+    bool                             done = false;
+    unique_ptr< sync_manager >       sync_master;
 
     unique_ptr<boost::asio::steady_timer> connector_check;
     unique_ptr<boost::asio::steady_timer> transaction_check;
@@ -126,6 +146,8 @@ namespace eosio {
     boost::asio::steady_timer::duration   txn_exp_period;
     boost::asio::steady_timer::duration   resp_expected_period;
     boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+
+    const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
     int16_t                       network_version;
     chain_id_type                 chain_id;
@@ -198,9 +220,39 @@ namespace eosio {
      */
     void ticker();
     /** @} */
+    /** \brief Determine if a peer is allowed to connect.
+     *
+     * Checks current connection mode and key authentication.
+     *
+     * \return False if the peer should not connect, true otherwise.
+     */
+    bool authenticate_peer(const handshake_message& msg) const;
+    /** \brief Retrieve public key used to authenticate with peers.
+     *
+     * Finds a key to use for authentication.  If this node is a producer, use
+     * the front of the producer key map.  If the node is not a producer but has
+     * a configured private key, use it.  If the node is neither a producer nor has
+     * a private key, returns an empty key.
+     *
+     * \note On a node with multiple private keys configured, the key with the first
+     *       numerically smaller byte will always be used.
+     */
+    chain::public_key_type get_authentication_key() const;
+    /** \brief Returns a signature of the digest using the corresponding private key of the signer.
+     *
+     * If there are no configured private keys, returns an empty signature.
+     */
+    fc::ecc::compact_signature sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
     static const fc::string logger_name;
     static fc::logger logger;
   };
+
+  template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
+  inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
+  {
+    using T = std::underlying_type_t <enum_type>;
+    return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
+  }
 
   static net_plugin_impl *my_impl;
   const fc::string net_plugin_impl::logger_name("net_plugin_impl");
@@ -209,13 +261,12 @@ namespace eosio {
   /**
    * default value initializers
    */
-  constexpr auto     def_buffer_size_mb = 4;
-  constexpr auto     def_buffer_size = 1024*1024*def_buffer_size_mb;
+  constexpr auto     def_send_buffer_size_mb = 4;
+  constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
   constexpr auto     def_max_clients = 20; // 0 for unlimited clients
   constexpr auto     def_conn_retry_wait = std::chrono::seconds (30);
   constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds (1);
-  constexpr auto     def_network_version = 0;
   constexpr auto     def_sync_rec_span = 10;
   constexpr auto     def_max_just_send = 1300 * 3; // "mtu" * 3
   constexpr auto     def_send_whole_blocks = true;
@@ -293,12 +344,10 @@ namespace eosio {
   class connection : public std::enable_shared_from_this<connection> {
   public:
     connection( string endpoint,
-                size_t send_buf_size = def_buffer_size,
-                size_t recv_buf_size = def_buffer_size );
+                size_t send_buf_size = def_send_buffer_size );
 
     connection( socket_ptr s,
-                size_t send_buf_size = def_buffer_size,
-                size_t recv_buf_size = def_buffer_size );
+                size_t send_buf_size = def_send_buffer_size );
     ~connection();
     void initialize ();
 
@@ -308,19 +357,7 @@ namespace eosio {
     sync_state_ptr          sync_requested;  // this peer is requesting info from us
     socket_ptr              socket;
 
-    //#warning ("TODO: Rework Message Caching for efficiency")
-    // WHat I mean here is that incoming data should be read in chunks that are as
-    // large as possible. We can query the recv buffer size. When using async_read_some(),
-    // we will frequently end a read in the middle of a message. That could happen with
-    // small messages, in which a simple "normalize" call could reset the buffer and allow a
-    // subsequent read to pick up the rest. In the case of very large messages, we should allow
-    // for the creation of a secondary buffer big enough to hold the entire message. Better
-    // still would be to have a mempool class that has a series of fixed size blocks that can
-    // be used scatter-gather style.
-
-    vector<char>            pending_message_buffer;
-    uint32_t                pending_message_write_index;
-    uint32_t                pending_message_read_index;
+    message_buffer<4096>    pending_message_buffer;
     vector<char>            send_buffer;
     vector<char>            blk_buffer;
 
@@ -408,16 +445,6 @@ namespace eosio {
     void sync_timeout (boost::system::error_code ec);
     void fetch_timeout (boost::system::error_code ec);
 
-    /** \brief Adjust the pending message buffer
-     *
-     * This method is called to adjust the size of the
-     * pending_message_buffer when there is a partial message
-     * in the buffer of message_length. There may be
-     * additional messages earlier in the buffer that
-     * can be removed
-     */
-    void adjust_buffer_size(uint32_t message_length);
-
     /** \brief Process the next message from the pending message buffer
      *
      * Process the next message from the pending_message_buffer.
@@ -435,26 +462,6 @@ namespace eosio {
 
   const fc::string connection::logger_name("connection");
   fc::logger connection::logger(connection::logger_name);
-
-  struct precache : public fc::visitor<void> {
-    connection_ptr c;
-    size_t message_size;
-    precache( connection_ptr conn, size_t msg_size) : c(conn), message_size(msg_size) {}
-
-    void operator()(const signed_block &msg) const
-    {
-      c->blk_buffer.resize(message_size);
-      memcpy(c->blk_buffer.data(),
-             &c->pending_message_buffer[c->pending_message_read_index+message_header_size],
-             message_size);
-    }
-
-    template <typename T>
-    void operator()(const T &msg) const
-    {
-      //no-op
-    }
-  };
 
   struct msgHandler : public fc::visitor<void> {
     net_plugin_impl &impl;
@@ -501,16 +508,12 @@ namespace eosio {
   //---------------------------------------------------------------------------
 
   connection::connection( string endpoint,
-                          size_t send_buf_size,
-                          size_t recv_buf_size )
+                          size_t send_buf_size )
       : block_state(),
         trx_state(),
         sync_receiving(),
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
-        pending_message_buffer(recv_buf_size),
-        pending_message_write_index(0),
-        pending_message_read_index(0),
         send_buffer(send_buf_size),
         node_id(),
         last_handshake(),
@@ -528,16 +531,12 @@ namespace eosio {
     }
 
   connection::connection( socket_ptr s,
-                          size_t send_buf_size,
-                          size_t recv_buf_size )
+                          size_t send_buf_size )
       : block_state(),
         trx_state(),
         sync_receiving(),
         sync_requested(),
         socket( s ),
-        pending_message_buffer(recv_buf_size),
-        pending_message_write_index(0),
-        pending_message_read_index(0),
         send_buffer(send_buf_size),
         node_id(),
         last_handshake(),
@@ -751,7 +750,7 @@ namespace eosio {
 
   char* connection::convert_tstamp(const tstamp& t)
   {
-    const long NsecPerSec{1000000000};
+    const long long NsecPerSec{1000000000};
     time_t seconds = t / NsecPerSec;
     strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
     snprintf(ts+19, ts_buffer_size-19, ".%lld", t % NsecPerSec);
@@ -936,41 +935,21 @@ namespace eosio {
     }
   }
 
-  void connection::adjust_buffer_size(uint32_t message_length) {
-    uint32_t current_buffer_size = pending_message_buffer.size();
-    if (current_buffer_size - pending_message_read_index + 1 < message_length)
-
-      // Not enough room in the buffer, grow the buffer, first move remaining
-      // unprocessed data to the beginning of the buffer
-      if (pending_message_read_index != 0) {
-        memmove(&pending_message_buffer[0],
-                &pending_message_buffer[pending_message_read_index],
-                pending_message_write_index - pending_message_read_index);
-        pending_message_write_index -= pending_message_read_index;
-        pending_message_read_index = 0;
-      }
-
-
-      // See if we need to grow the buffer or if there is enough space now.
-      uint32_t bytes_needed = message_length - current_buffer_size - pending_message_read_index + 1;
-      if (bytes_needed > 0) {
-        // Grow the buffer by some multiplier of the current size.
-        // Note that the buffer size will never shrink in the current implementation.
-        // The eventual solution will be to use a chain of buffers using scatter/gather
-        uint32_t multiplier = (bytes_needed / current_buffer_size) + 2;
-        uint32_t new_size = current_buffer_size * multiplier;
-        pending_message_buffer.resize(new_size);
-      }
-    }
-
   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
     try {
-      fc::datastream<const char*> ds(&pending_message_buffer[pending_message_read_index + message_header_size],
-                                     message_length);
+      // If it is a signed_block, then save the raw message for the cache
+      // This must be done before we unpack the message.
+      unsigned_int which;
+      auto index = pending_message_buffer.read_index();
+      pending_message_buffer.peek(&which, sizeof(unsigned_int), index);
+      if (which == uint32_t(net_message::tag<signed_block>::value)) {
+        blk_buffer.resize(message_length);
+        auto index = pending_message_buffer.read_index();
+        pending_message_buffer.peek(blk_buffer.data(), message_length, index);
+      }
+      auto ds = pending_message_buffer.create_datastream();
       net_message msg;
       fc::raw::unpack(ds, msg);
-      precache pc( shared_from_this(), message_length );
-      msg.visit( pc);
       msgHandler m(impl, shared_from_this() );
       msg.visit(m);
     } catch(  const fc::exception& e ) {
@@ -978,7 +957,6 @@ namespace eosio {
       impl.close( shared_from_this() );
       return false;
     }
-    pending_message_read_index += message_header_size + message_length;
     return true;
   }
 
@@ -1231,37 +1209,32 @@ namespace eosio {
     void net_plugin_impl::start_read_message( connection_ptr conn ) {
       connection_wptr c( conn);
       conn->socket->async_read_some(
-        boost::asio::buffer(&conn->pending_message_buffer[conn->pending_message_write_index],
-                            conn->pending_message_buffer.size() - conn->pending_message_write_index),
+        conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
         [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
           if( !ec ) {
             connection_ptr conn = c.lock();
             if (!conn) {
               return;
             }
-            conn->pending_message_write_index += bytes_transferred;
-            while (conn->pending_message_read_index < conn->pending_message_write_index) {
-              uint32_t bytes_in_buffer = conn->pending_message_write_index - conn->pending_message_read_index;
+            conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
+            while (conn->pending_message_buffer.bytes_to_read() > 0) {
+              uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
               if (bytes_in_buffer < message_header_size) {
                 break;
               } else {
-                // Ignore byte-ordering concerns
                 uint32_t message_length;
-                memcpy(&message_length, &conn->pending_message_buffer[conn->pending_message_read_index], sizeof(message_length));
-                if (bytes_in_buffer >= message_header_size + message_length) {
+                auto index = conn->pending_message_buffer.read_index();
+                conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
+                if (bytes_in_buffer >= message_length + message_header_size) {
+                  conn->pending_message_buffer.advance_read_ptr(message_header_size);
                   if (!conn->process_next_message(*this, message_length)) {
                     return;
                   }
                 } else {
-                  conn->adjust_buffer_size(message_length);
+                  conn->pending_message_buffer.add_space(message_length - bytes_in_buffer);
                   break;
                 }
               }
-            }
-            if (conn->pending_message_read_index == conn->pending_message_write_index) {
-              // Buffer is empty, reset indices
-              conn->pending_message_read_index = 0;
-              conn->pending_message_write_index = 0;
             }
             start_read_message(conn);
           } else {
@@ -1337,6 +1310,12 @@ namespace eosio {
 
         if(  c->node_id != msg.node_id) {
           c->node_id = msg.node_id;
+        }
+
+        if(!authenticate_peer(msg)) {
+          dlog("Peer not authenticated.  Closing connection.");
+          close(c);
+          return;
         }
       }
 
@@ -2018,11 +1997,97 @@ namespace eosio {
         });
     }
 
+    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
+      if(allowed_connections == None)
+        return false;
+
+      if(allowed_connections == Any)
+        return true;
+
+      if(allowed_connections & (Producers | Specified)) {
+        auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
+        auto private_it = private_keys.find(msg.key);
+        bool found_producer_key = false;
+        producer_plugin* pp = app().find_plugin<producer_plugin>();
+        if(pp != nullptr)
+          found_producer_key = pp->is_producer_key(msg.key);
+        if( allowed_it == allowed_peers.end() && private_it == private_keys.end() && !found_producer_key) {
+          elog( "Peer ${peer} sent a handshake with an unauthorized key: ${key}.",
+                ("peer", msg.p2p_address)("key", msg.key));
+          return false;
+        }
+      }
+
+      namespace sc = std::chrono;
+      sc::system_clock::duration msg_time(msg.time);
+      auto time = sc::system_clock::now().time_since_epoch();
+      if(time - msg_time > peer_authentication_interval) {
+        elog( "Peer ${peer} sent a handshake with a timestamp skewed by more than ${time}.",
+              ("peer", msg.p2p_address)("time", "1 second")); // TODO Add to_variant for std::chrono::system_clock::duration
+        return false;
+      }
+
+      if(msg.sig != ecc::compact_signature() && msg.token != sha256()) {
+        sha256 hash = fc::sha256::hash(msg.time);
+        if(hash != msg.token) {
+          elog( "Peer ${peer} sent a handshake with an invalid token.",
+                ("peer", msg.p2p_address));
+          return false;
+        }
+        types::public_key peer_key;
+        try {
+          peer_key = ecc::public_key(msg.sig, msg.token, true);
+        }
+        catch (fc::exception& /*e*/) {
+          elog( "Peer ${peer} sent a handshake with an unrecoverable key.",
+                ("peer", msg.p2p_address));
+          return false;
+        }
+        if((allowed_connections & (Producers | Specified)) && peer_key != msg.key) {
+          elog( "Peer ${peer} sent a handshake with an unauthenticated key.",
+                ("peer", msg.p2p_address));
+          return false;
+        }
+      }
+      else if(allowed_connections & (Producers | Specified)) {
+        dlog( "Peer sent a handshake with blank signature and token, but this node accepts only authenticated connections.");
+        return false;
+      }
+      return true;
+    }
+
+    chain::public_key_type net_plugin_impl::get_authentication_key() const {
+      producer_plugin* pp = app().find_plugin<producer_plugin>();
+      if(pp != nullptr)
+        return pp->first_producer_public_key();
+      if(!private_keys.empty())
+        return private_keys.begin()->first;
+      return chain::public_key_type();
+    }
+
+    fc::ecc::compact_signature net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
+    {
+      producer_plugin* pp = app().find_plugin<producer_plugin>();
+      if(pp != nullptr)
+        return pp->sign_compact(signer, digest);
+      auto private_key_itr = private_keys.find(signer);
+      if(private_key_itr == private_keys.end())
+        return ecc::compact_signature();
+      return private_key_itr->second.sign_compact(digest);
+    }
+
   void
   handshake_initializer::populate( handshake_message &hello) {
     hello.network_version = my_impl->network_version;
     hello.chain_id = my_impl->chain_id;
     hello.node_id = my_impl->node_id;
+    hello.key = my_impl->get_authentication_key();
+    hello.time = std::chrono::system_clock::now().time_since_epoch().count();
+    hello.token = fc::sha256::hash(hello.time);
+    hello.sig = my_impl->sign_compact(hello.key, hello.token);
+    // If we couldn't sign, don't send a token.
+    if(hello.sig == ecc::compact_signature())
+      hello.token = sha256();
     hello.p2p_address = my_impl->p2p_address;
 #if defined( __APPLE__ )
     hello.os = "osx";
@@ -2068,20 +2133,34 @@ namespace eosio {
   net_plugin::~net_plugin() {
   }
 
-  void net_plugin::set_program_options( options_description& cli, options_description& cfg )
+  void net_plugin::set_program_options( options_description& /*cli*/, options_description& cfg )
   {
     cfg.add_options()
-     ( "listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The local IP address and port to listen for incoming connections.")
-     ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
-     ( "public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
-     ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
-      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
+     ( "listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
+     ( "public-endpoint", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to listen-endpoint.")
+     ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple remote-endpoint options as needed to compose a network.")
+     ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
+     ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
+     ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"none"}, "none"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
+     ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
+     ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+       "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
      ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
-      ;
+     ;
+  }
+
+  template<typename T>
+  T dejsonify(const string& s) {
+     return fc::json::from_string(s).as<T>();
   }
 
   void net_plugin::plugin_initialize( const variables_map& options ) {
     ilog("Initialize net plugin");
+
+    // Housekeeping so fc::logger::get() will work as expected
+    fc::get_logger_map()[connection::logger_name] = connection::logger;
+    fc::get_logger_map()[net_plugin_impl::logger_name] = net_plugin_impl::logger;
+    fc::get_logger_map()[sync_manager::logger_name] = sync_manager::logger;
 
     // Setting a parent would in theory get us the default appenders for free but
     // a) the parent's log level overrides our own in that case; and
@@ -2102,7 +2181,7 @@ namespace eosio {
       sync_manager::logger.set_log_level(logl);
     }
 
-    my->network_version = def_network_version;
+    my->network_version = (uint16_t)app().version_int();
     my->send_whole_blocks = def_send_whole_blocks;
 
     my->sync_master.reset( new sync_manager( def_sync_rec_span ) );
@@ -2115,7 +2194,7 @@ namespace eosio {
     my->num_clients = 0;
 
     my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
-    if( options.count( "listen-endpoint" ) ) {
+    if(options.count("listen-endpoint")) {
       my->p2p_address = options.at("listen-endpoint").as< string >();
       auto host = my->p2p_address.substr( 0, my->p2p_address.find(':') );
       auto port = my->p2p_address.substr( host.size()+1, my->p2p_address.size() );
@@ -2127,11 +2206,11 @@ namespace eosio {
 
       my->acceptor.reset( new tcp::acceptor( app().get_io_service() ) );
     }
-    if( options.count( "public-endpoint") ) {
+    if(options.count("public-endpoint")) {
       my->p2p_address = options.at("public-endpoint").as< string >();
     }
     else {
-      if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+      if(my->listen_endpoint.address().to_v4() == address_v4::any()) {
         boost::system::error_code ec;
         auto host = host_name(ec);
         if( ec.value() != boost::system::errc::success) {
@@ -2145,12 +2224,52 @@ namespace eosio {
       }
     }
 
-    if( options.count( "remote-endpoint" ) ) {
-      my->supplied_peers = options.at( "remote-endpoint" ).as< vector<string> >();
+    if(options.count("remote-endpoint")) {
+      my->supplied_peers = options.at("remote-endpoint").as<vector<string> >();
     }
-    if( options.count("agent-name")) {
-      my->user_agent_name = options.at( "agent-name").as< string >( );
+    if(options.count("agent-name")) {
+      my->user_agent_name = options.at("agent-name").as<string>();
     }
+
+    if(options.count("allowed-connection")) {
+      const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
+      for(const std::string& allowed_remote : allowed_remotes)
+      {
+        if(allowed_remote == "any")
+          my->allowed_connections |= net_plugin_impl::Any;
+        else if(allowed_remote == "producers")
+          my->allowed_connections |= net_plugin_impl::Producers;
+        else if(allowed_remote == "specified")
+          my->allowed_connections |= net_plugin_impl::Specified;
+        else if(allowed_remote == "none")
+          my->allowed_connections = net_plugin_impl::None;
+      }
+    }
+
+    if(my->allowed_connections & net_plugin_impl::Specified)
+      FC_ASSERT(options.count("peer-key"), "At least one peer-key must accompany 'allowed-connection=specified'");
+
+    if(options.count("peer-key")) {
+      const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
+      for(const std::string& key_string : key_strings)
+      {
+        my->allowed_peers.push_back(dejsonify<chain::public_key_type>(key_string));
+      }
+    }
+
+    if(options.count("peer-private-key"))
+    {
+      const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+      for(const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
+      {
+         auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
+         fc::optional<fc::ecc::private_key> private_key = eosio::utilities::wif_to_key(key_id_to_wif_pair.second);
+         FC_ASSERT(private_key, "Invalid WIF-format private key ${key_string}",
+                   ("key_string", key_id_to_wif_pair.second));
+         my->private_keys[key_id_to_wif_pair.first] = *private_key;
+      }
+    }
+
     if( options.count( "send-whole-blocks")) {
       my->send_whole_blocks = options.at( "send-whole-blocks" ).as<bool>();
     }
