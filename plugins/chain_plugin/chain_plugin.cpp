@@ -11,7 +11,6 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 
-#include <eos/db_plugin/db_plugin.hpp>
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/staked_balance_objects.hpp>
@@ -138,17 +137,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if (options.at("replay-blockchain").as<bool>()) {
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       ilog("Replay requested: wiping database");
-      if (db_plugin* db = app().find_plugin<db_plugin>()) {
-         db->wipe_database();
-      }
+      /// TODO:   db->wipe_database();
    }
    if (options.at("resync-blockchain").as<bool>()) {
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       ilog("Resync requested: wiping blocks");
 
-      if (db_plugin* db = app().find_plugin<db_plugin>()) {
-         db->wipe_database();
-      }
+      /// TODO:   db->wipe_database();
       fc::remove_all(my->block_log_dir);
    }
    if (options.at("skip-transaction-signatures").as<bool>()) {
@@ -209,12 +204,14 @@ void chain_plugin::plugin_startup()
 
    my->chain.emplace(config);
 
+   /*
    if (db_plugin* plugin = app().find_plugin<db_plugin>()) {
       if (plugin->get_state() != registered) {
          ilog("Blockchain configured with external database.");
          my->chain->applied_irreversible_block.connect([plugin](const signed_block& b) { plugin->applied_irreversible_block(b); });
       }
    }
+   */
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
