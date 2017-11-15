@@ -82,4 +82,5 @@ script:
   - tests/api_test
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/p2p_tests/sync/test.sh'
   - tests/p2p_tests/sync/test.sh -p 2 -d 10
+  - tests/run_tests.sh
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosd_run_mongodb_test.sh'
