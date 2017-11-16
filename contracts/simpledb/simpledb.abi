@@ -1,86 +1,89 @@
 {
   "types": [],
-  "structs": [
-    {
+  "structs": [{
       "name": "record1",
+      "base": "",
       "fields": {
-        "key1": "uint64"
+        "key": "uint64",
+        "u256": "uint256",
+        "u128": "uint128",
+        "u64": "uint64",
+        "u32": "uint32",
+        "u16": "uint16",
+        "u8": "uint8",
+        "i64": "int64",
+        "i32": "int32",
+        "i16": "int16",
+        "i8": "int8",
+        "price": "price"
       }
-    },
-    {
+    },{
       "name": "record2",
+      "base": "",
       "fields": {
         "key1": "uint128",
         "key2": "uint128"
       }
-    },
-    {
+    },{
       "name": "record3",
+      "base": "",
       "fields": {
         "key1": "uint64",
         "key2": "uint64",
         "key3": "uint64"
       }
-    },
-    {
+    },{
       "name": "key_value1",
+      "base": "",
       "fields": {
         "key": "string",
         "value": "string"
       }
-    },
-    {
+    },{
       "name": "complex_type",
+      "base": "",
       "fields": {
         "name": "string",
         "age": "uint64"
       }
-    },
-    {
+    },{
       "name": "key_value2",
+      "base": "",
       "fields": {
         "key": "string",
         "value": "complex_type"
       }
     }
   ],
-  "actions": [
-    {
+  "actions": [{
       "action_name": "insert1",
       "type": "record1"
-    },
-    {
-      "action_name": "insertkv1",
-      "type": "key_value1"
-    },
-    {
+    },{
       "action_name": "insert2",
       "type": "record2"
-    },
-    {
+    },{
       "action_name": "insert3",
       "type": "record3"
-    },
-    {
+    },{
+      "action_name": "insertkv1",
+      "type": "key_value1"
+    },{
       "action_name": "insertkv2",
       "type": "key_value2"
     }
   ],
-  "tables": [
-    {
+  "tables": [{
       "table_name": "record1",
-      "type": "record1",
       "index_type": "i64",
       "key_names": [
-        "key1"
+        "key"
       ],
       "key_types": [
         "uint64"
-      ]
-    },
-    {
+      ],
+      "type": "record1"
+    },{
       "table_name": "record2",
-      "type": "record2",
       "index_type": "i128i128",
       "key_names": [
         "key1",
@@ -89,11 +92,10 @@
       "key_types": [
         "uint128",
         "uint128"
-      ]
-    },
-    {
+      ],
+      "type": "record2"
+    },{
       "table_name": "record3",
-      "type": "record3",
       "index_type": "i64i64i64",
       "key_names": [
         "key1",
@@ -104,29 +106,28 @@
         "uint64",
         "uint64",
         "uint64"
-      ]
-    },
-    {
+      ],
+      "type": "record3"
+    },{
       "table_name": "keyvalue1",
-      "type": "key_value1",
       "index_type": "str",
       "key_names": [
         "key"
       ],
       "key_types": [
         "string"
-      ]
-    },
-    {
+      ],
+      "type": "key_value1"
+    },{
       "table_name": "keyvalue2",
-      "type": "key_value2",
       "index_type": "str",
       "key_names": [
         "key"
       ],
       "key_types": [
         "string"
-      ]
+      ],
+      "type": "key_value2"
     }
   ]
 }

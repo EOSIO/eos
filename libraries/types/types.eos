@@ -63,11 +63,11 @@ struct action
    type        type_name
 
 struct table
-   table_name  name        # the name of the table
-   index_type  type_name   # the kind of index, i64, i128i128, etc
-   key_names   type_name[] # names for the keys defined by keytype
-   key_types   type_name[] # the meaning / type of key parameters, how to convert binary key to json
-   type        type_name   # the meaning / type of the binary data stored in this table
+   table_name  name         # the name of the table
+   index_type  type_name    # the kind of index, i64, i128i128, etc
+   key_names   field_name[] # names for the keys defined by keytype
+   key_types   type_name[]  # the meaning / type of key parameters, how to convert binary key to json
+   type        type_name    # the meaning / type of the binary data stored in this table
 
 struct abi
    types   type_def[]

@@ -30,7 +30,7 @@
       "table_name": "account",
       "type": "account",
       "index_type": "i64",
-      "key_names" : ["account"],
+      "key_names" : ["key"],
       "key_types" : ["name"]
     }
   ]
