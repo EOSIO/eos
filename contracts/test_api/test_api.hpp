@@ -101,6 +101,30 @@ struct test_db {
    static unsigned int key_i64i64i64_general();
    static unsigned int key_str_general();
    static unsigned int key_str_table();
+
+   static unsigned int key_str_setup_limit();
+   static unsigned int key_str_min_exceed_limit();
+   static unsigned int key_str_under_limit();
+   static unsigned int key_str_available_space_exceed_limit();
+   static unsigned int key_str_another_under_limit();
+
+   static unsigned int key_i64_setup_limit();
+   static unsigned int key_i64_min_exceed_limit();
+   static unsigned int key_i64_under_limit();
+   static unsigned int key_i64_available_space_exceed_limit();
+   static unsigned int key_i64_another_under_limit();
+
+   static unsigned int key_i128i128_setup_limit();
+   static unsigned int key_i128i128_min_exceed_limit();
+   static unsigned int key_i128i128_under_limit();
+   static unsigned int key_i128i128_available_space_exceed_limit();
+   static unsigned int key_i128i128_another_under_limit();
+
+   static unsigned int key_i64i64i64_setup_limit();
+   static unsigned int key_i64i64i64_min_exceed_limit();
+   static unsigned int key_i64i64i64_under_limit();
+   static unsigned int key_i64i64i64_available_space_exceed_limit();
+   static unsigned int key_i64i64i64_another_under_limit();
 };
 
 struct test_crypto {

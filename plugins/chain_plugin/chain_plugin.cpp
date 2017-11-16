@@ -9,6 +9,7 @@
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/config.hpp>
 #include <eos/chain/types.hpp>
+#include <eos/chain/wasm_interface.hpp>
 
 #include <eos/db_plugin/db_plugin.hpp>
 
@@ -39,7 +40,7 @@ using chain::key64x64x64_value_object;
 using chain::by_name;
 using chain::by_scope_primary;
 using chain::uint128_t;
-using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
+using txn_msg_limits = chain_controller::txn_msg_limits;
 
 
 class chain_plugin_impl {
@@ -58,7 +59,7 @@ public:
    uint32_t                         rcvd_block_txn_execution_time;
    uint32_t                         txn_execution_time;
    uint32_t                         create_block_txn_execution_time;
-   txn_msg_rate_limits              rate_limits;
+   txn_msg_limits                   cfg_txn_msg_limits;
 };
 
 #ifdef NDEBUG
@@ -92,14 +93,18 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
          ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_create_block_transaction_execution_time),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
-         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_time_frame_seconds),
+         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_rate_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
-         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_auth_account),
+         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_rate),
           "Limits the maximum rate of transaction messages that an account is allowed each per-authorized-account-transaction-msg-rate-limit-time-frame-sec.")
-          ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_code_account_time_frame_seconds),
-           "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
-          ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_code_account),
-           "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
+         ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_code_account_rate_time_frame_seconds),
+          "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
+         ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_code_account_rate),
+          "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
+         ("per-code-account-max-storage-db-limit-mbytes", bpo::value<uint32_t>()->default_value(config::default_per_code_account_max_db_limit_mbytes),
+          "Limits the maximum database storage that an account's code is allowed.")
+         ("row-overhead-db-limit-bytes", bpo::value<uint32_t>()->default_value(config::default_row_overhead_db_limit_bytes),
+          "The overhead to apply per row for approximating total database storage.")
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -185,11 +190,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->txn_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
    my->create_block_txn_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
 
-   my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_auth_account = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
+   my->cfg_txn_msg_limits.per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
+   my->cfg_txn_msg_limits.per_auth_account_txn_msg_rate = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
 
-   my->rate_limits.per_code_account_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_code_account = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
+   my->cfg_txn_msg_limits.per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
+   my->cfg_txn_msg_limits.per_code_account_txn_msg_rate = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
+
+   chain::wasm_interface::get().per_code_account_max_db_limit_mbytes = options.at("per-code-account-max-storage-db-limit-mbytes").as<uint32_t>();
+   chain::wasm_interface::get().row_overhead_db_limit_bytes = options.at("row-overhead-db-limit-bytes").as<uint32_t>();
 }
 
 void chain_plugin::plugin_startup() 
@@ -222,7 +230,7 @@ void chain_plugin::plugin_startup()
                                 my->txn_execution_time,
                                 my->rcvd_block_txn_execution_time,
                                 my->create_block_txn_execution_time,
-                                my->rate_limits,
+                                my->cfg_txn_msg_limits,
                                 applied_func);
 
    if(!my->readonly) {

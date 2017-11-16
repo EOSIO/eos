@@ -37,13 +37,13 @@ namespace eosio { namespace chain {
     */
    class chain_controller {
       public:
-         struct txn_msg_rate_limits;
+         struct txn_msg_limits;
 
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                           chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
                           uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                           uint32_t create_block_txn_execution_time,
-                          const txn_msg_rate_limits& rate_limit,
+                          const txn_msg_limits& rate_limit,
                           const applied_irreverisable_block_func& applied_func = {});
          chain_controller(chain_controller&&) = default;
          ~chain_controller();
@@ -295,11 +295,11 @@ namespace eosio { namespace chain {
          static uint32_t _transaction_message_rate(const fc::time_point_sec& now, const fc::time_point_sec& last_update_sec, const fc::time_point_sec& rate_limit_time_frame_sec,
                                                    uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const account_name& name);
 
-         struct txn_msg_rate_limits {
-            fc::time_point_sec per_auth_account_time_frame_sec = fc::time_point_sec(config::default_per_auth_account_time_frame_seconds);
-            uint32_t per_auth_account = config::default_per_auth_account;
-            fc::time_point_sec per_code_account_time_frame_sec = fc::time_point_sec(config::default_per_code_account_time_frame_seconds);
-            uint32_t per_code_account = config::default_per_code_account;
+         struct txn_msg_limits {
+            fc::time_point_sec per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_auth_account_rate_time_frame_seconds);
+            uint32_t per_auth_account_txn_msg_rate = config::default_per_auth_account_rate;
+            fc::time_point_sec per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_code_account_rate_time_frame_seconds);
+            uint32_t per_code_account_txn_msg_rate = config::default_per_code_account_rate;
          };
 
    private:

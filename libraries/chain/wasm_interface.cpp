@@ -6,6 +6,7 @@
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eos/chain/wasm_interface.hpp>
 #include <eos/chain/chain_controller.hpp>
+#include <eos/chain/rate_limiting_object.hpp>
 #include "Platform/Platform.h"
 #include "WAST/WAST.h"
 #include "Runtime/Runtime.h"
@@ -25,6 +26,7 @@ namespace eosio { namespace chain {
    using namespace IR;
    using namespace Runtime;
    typedef boost::multiprecision::cpp_bin_float_50 DOUBLE;
+   const uint32_t bytes_per_mbyte = 1024 * 1024;
 
    class wasm_memory
    {
@@ -129,6 +131,14 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
       return func(wasm.current_apply_context, &keys, value, valuelen);
    }
 
+   int64_t round_to_byte_boundary(int64_t bytes)
+   {
+      const unsigned int byte_boundary = sizeof(uint64_t);
+      int64_t remainder = bytes % byte_boundary;
+      if (remainder > 0)
+         bytes += byte_boundary - remainder;
+      return bytes;
+   }
 
 #define VERIFY_TABLE(TYPE) \
    const auto table_name = name(table); \
@@ -159,20 +169,55 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
    auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
       return ctx->UPDATEFUNC<INDEX::value_type>( name(scope), name(ctx->code.value), table_name, keys, data, datalen); \
    }; \
-   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
+   const int32_t ret = validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
 
-#define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX) \
+#define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX, KEY_SIZE) \
    DEFINE_INTRINSIC_FUNCTION4(env,store_##OBJTYPE,store_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
       VERIFY_TABLE(OBJTYPE) \
       UPDATE_RECORD(store_record, INDEX, valuelen); \
+      /* ret is -1 if record created, or else it is the length of the data portion of the originally stored */ \
+      /* structure (it does not include the key portion */ \
+      const bool created = (ret == -1); \
+      int64_t& storage = wasm_interface::get().table_storage; \
+      if (created) \
+         storage += round_to_byte_boundary(valuelen) + wasm_interface::get().row_overhead_db_limit_bytes; \
+      else \
+         /* need to calculate the difference between the original rounded byte size and the new rounded byte size */ \
+         storage += round_to_byte_boundary(valuelen) - round_to_byte_boundary(KEY_SIZE + ret); \
+\
+      EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte), \
+                 tx_code_db_limit_exceeded, \
+                 "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value))); \
+      return created ? 1 : 0; \
    } \
    DEFINE_INTRINSIC_FUNCTION4(env,update_##OBJTYPE,update_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
       VERIFY_TABLE(OBJTYPE) \
       UPDATE_RECORD(update_record, INDEX, valuelen); \
+      /* ret is -1 if record created, or else it is the length of the data portion of the originally stored */ \
+      /* structure (it does not include the key portion */ \
+      if (ret == -1) return 0; \
+      int64_t& storage = wasm_interface::get().table_storage; \
+      /* need to calculate the difference between the original rounded byte size and the new rounded byte size */ \
+      storage += round_to_byte_boundary(valuelen) - round_to_byte_boundary(KEY_SIZE + ret); \
+      \
+      EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte), \
+                 tx_code_db_limit_exceeded, \
+                 "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value))); \
+      return 1; \
    } \
    DEFINE_INTRINSIC_FUNCTION3(env,remove_##OBJTYPE,remove_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr) { \
       VERIFY_TABLE(OBJTYPE) \
       UPDATE_RECORD(remove_record, INDEX, sizeof(typename INDEX::value_type::key_type)*INDEX::value_type::number_of_keys); \
+      /* ret is -1 if record created, or else it is the length of the data portion of the originally stored */ \
+      /* structure (it does not include the key portion */ \
+      if (ret == -1) return 0; \
+      int64_t& storage = wasm_interface::get().table_storage; \
+      storage -= round_to_byte_boundary(KEY_SIZE + ret) + wasm_interface::get().row_overhead_db_limit_bytes; \
+      \
+      EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte), \
+                 tx_code_db_limit_exceeded, \
+                 "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value))); \
+      return 1; \
    }
 
 #define DEFINE_RECORD_READ_FUNCTION(OBJTYPE, ACTION, FUNCPREFIX, INDEX, SCOPE) \
@@ -190,14 +235,14 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
    DEFINE_RECORD_READ_FUNCTION(OBJTYPE, lower_bound, FUNCPREFIX, INDEX, SCOPE) \
    DEFINE_RECORD_READ_FUNCTION(OBJTYPE, upper_bound, FUNCPREFIX, INDEX, SCOPE)
 
-DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index);
+DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index, 8);
 DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
       
-DEFINE_RECORD_UPDATE_FUNCTIONS(i128i128, key128x128_value_index);
+DEFINE_RECORD_UPDATE_FUNCTIONS(i128i128, key128x128_value_index, 32);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, primary_,   key128x128_value_index, by_scope_primary);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, secondary_, key128x128_value_index, by_scope_secondary);
 
-DEFINE_RECORD_UPDATE_FUNCTIONS(i64i64i64, key64x64x64_value_index);
+DEFINE_RECORD_UPDATE_FUNCTIONS(i64i64i64, key64x64x64_value_index, 24);
 DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, primary_,   key64x64x64_value_index, by_scope_primary);
 DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, secondary_, key64x64x64_value_index, by_scope_secondary);
 DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, tertiary_,  key64x64x64_value_index, by_scope_tertiary);
@@ -208,7 +253,7 @@ DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, tertiary_,  key64x64x64_value_index, by_
   auto lambda = [&](apply_context* ctx, std::string* keys, char *data, uint32_t datalen) -> int32_t { \
     return ctx->FUNCTION<keystr_value_object>( name(scope), name(ctx->code.value), table_name, keys, data, datalen); \
   }; \
-  return validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
+  const int32_t ret = validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
 
 #define READ_RECORD_STR(FUNCTION) \
   VERIFY_TABLE(str) \
@@ -219,14 +264,46 @@ DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, tertiary_,  key64x64x64_value_index, by_
   return validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
 
 DEFINE_INTRINSIC_FUNCTION6(env,store_str,store_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-  UPDATE_RECORD_STR(store_record)
+   UPDATE_RECORD_STR(store_record)
+   const bool created = (ret == -1);
+   auto& storage = wasm_interface::get().table_storage;
+   if (created)
+   {
+      storage += round_to_byte_boundary(keylen + valuelen) + wasm_interface::get().row_overhead_db_limit_bytes;
+   }
+   else
+      // need to calculate the difference between the original rounded byte size and the new rounded byte size
+      storage += round_to_byte_boundary(keylen + valuelen) - round_to_byte_boundary(keylen + ret);
+
+   EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte),
+              tx_code_db_limit_exceeded,
+              "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value)));
+
+   return created ? 1 : 0;
 }
 DEFINE_INTRINSIC_FUNCTION6(env,update_str,update_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-  UPDATE_RECORD_STR(update_record)
+   UPDATE_RECORD_STR(update_record)
+   if (ret == -1) return 0;
+   auto& storage = wasm_interface::get().table_storage;
+   // need to calculate the difference between the original rounded byte size and the new rounded byte size
+   storage += round_to_byte_boundary(keylen + valuelen) - round_to_byte_boundary(keylen + ret);
+
+   EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte),
+              tx_code_db_limit_exceeded,
+              "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value)));
+   return 1;
 }
 DEFINE_INTRINSIC_FUNCTION4(env,remove_str,remove_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen) {
-  int32_t valueptr=0, valuelen=0;
-  UPDATE_RECORD_STR(remove_record)
+   int32_t valueptr=0, valuelen=0;
+   UPDATE_RECORD_STR(remove_record)
+   if (ret == -1) return 0;
+   auto& storage = wasm_interface::get().table_storage;
+   storage -= round_to_byte_boundary(keylen + ret) + wasm_interface::get().row_overhead_db_limit_bytes;
+
+   EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte),
+              tx_code_db_limit_exceeded,
+              "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value)));
+   return 1;
 }
 
 DEFINE_INTRINSIC_FUNCTION7(env,load_str,load_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
@@ -706,24 +783,24 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    void  wasm_interface::vm_onInit()
    { try {
       try {
-            FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"init"));
-            if( !apply ) {
-               elog( "no onInit method found" );
-               return; /// if not found then it is a no-op
-            }
+         FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"init"));
+         if( !apply ) {
+            elog( "no onInit method found" );
+            return; /// if not found then it is a no-op
+         }
 
          checktimeStart = fc::time_point::now();
 
-            const FunctionType* functionType = getFunctionType(apply);
-            FC_ASSERT( functionType->parameters.size() == 0 );
+         const FunctionType* functionType = getFunctionType(apply);
+         FC_ASSERT( functionType->parameters.size() == 0 );
 
-            std::vector<Value> args(0);
+         std::vector<Value> args(0);
 
-            Runtime::invokeFunction(apply,args);
+         Runtime::invokeFunction(apply,args);
       } catch( const Runtime::Exception& e ) {
-          edump((std::string(describeExceptionCause(e.cause))));
-          edump((e.callStack));
-          throw;
+         edump((std::string(describeExceptionCause(e.cause))));
+         edump((e.callStack));
+         throw;
       }
    } FC_CAPTURE_AND_RETHROW() }
 
@@ -763,8 +840,25 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       if (received_block)
          table_key_types = nullptr;
 
+      auto rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
+      if (rate_limiting == nullptr)
+      {
+         c.mutable_db.create<rate_limiting_object>([code=c.code](rate_limiting_object& rlo) {
+            rlo.name = code;
+            rlo.per_code_account_db_bytes = 0;
+         });
+      }
+      else
+         table_storage = rate_limiting->per_code_account_db_bytes;
+
       vm_apply();
 
+      EOS_ASSERT(table_storage <= (per_code_account_max_db_limit_mbytes * bytes_per_mbyte), tx_code_db_limit_exceeded, "Database limit exceeded for account=${name}",("name", c.code));
+
+      rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
+      c.mutable_db.modify(*rate_limiting, [storage=this->table_storage] (rate_limiting_object& rlo) {
+         rlo.per_code_account_db_bytes = storage;
+      });
    } FC_CAPTURE_AND_RETHROW() }
 
    void wasm_interface::init( apply_context& c ) {
@@ -775,8 +869,26 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
       checktime_limit                = CHECKTIME_LIMIT;
 
       load( c.code, c.db );
+
+      auto rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
+      if (rate_limiting == nullptr)
+      {
+         c.mutable_db.create<rate_limiting_object>([code=c.code](rate_limiting_object& rlo) {
+            rlo.name = code;
+            rlo.per_code_account_db_bytes = 0;
+         });
+      }
+      else
+         table_storage = rate_limiting->per_code_account_db_bytes;
+
       vm_onInit();
 
+      EOS_ASSERT(table_storage <= (per_code_account_max_db_limit_mbytes * bytes_per_mbyte), tx_code_db_limit_exceeded, "Database limit exceeded for account=${name}",("name", c.code));
+
+      rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
+      c.mutable_db.modify(*rate_limiting, [storage=this->table_storage] (rate_limiting_object& rlo) {
+         rlo.per_code_account_db_bytes = storage;
+      });
    } FC_CAPTURE_AND_RETHROW() }
 
 
@@ -864,11 +976,12 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
           throw;
         }
       }
-      current_module  = state.instance;
-      current_memory  = getDefaultMemory( current_module );
-      current_state   = &state;
-      table_key_types = &state.table_key_types;
-      tables_fixed    = state.tables_fixed;
+      current_module      = state.instance;
+      current_memory      = getDefaultMemory( current_module );
+      current_state       = &state;
+      table_key_types     = &state.table_key_types;
+      tables_fixed        = state.tables_fixed;
+      table_storage       = 0;
    }
 
    wasm_memory::wasm_memory(wasm_interface& interface)

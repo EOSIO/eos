@@ -273,7 +273,7 @@ signed_block chain_controller::generate_block(
    uint32_t skip /* = 0 */
    )
 { try {
-   return with_skip_flags( skip, [&](){
+   return with_skip_flags( skip | created_block, [&](){
       auto b = _db.with_write_lock( [&](){
          return _generate_block( when, producer, block_signing_private_key, scheduler );
       });
@@ -919,17 +919,17 @@ void chain_controller::rate_limit_message(const message& message)
          _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
             rlo.name = permission.account;
             rlo.per_auth_account_txn_msg_rate = 1;
-            rlo.per_auth_account_last_update_sec = now;
+            rlo.per_auth_account_txn_msg_rate_last_update_sec = now;
          });
       }
       else
       {
          const auto message_rate =
-               _transaction_message_rate(now, rate_limiting->per_auth_account_last_update_sec, _per_auth_account_txn_msg_rate_limit_time_frame_sec,
+               _transaction_message_rate(now, rate_limiting->per_auth_account_txn_msg_rate_last_update_sec, _per_auth_account_txn_msg_rate_limit_time_frame_sec,
                                         _per_auth_account_txn_msg_rate_limit, rate_limiting->per_auth_account_txn_msg_rate, authorization_account, permission.account);
          _db.modify(*rate_limiting, [&] (rate_limiting_object& rlo) {
             rlo.per_auth_account_txn_msg_rate = message_rate;
-            rlo.per_auth_account_last_update_sec = now;
+            rlo.per_auth_account_txn_msg_rate_last_update_sec = now;
          });
       }
    }
@@ -941,17 +941,17 @@ void chain_controller::rate_limit_message(const message& message)
       _db.create<rate_limiting_object>([&](rate_limiting_object& rlo) {
          rlo.name = message.code;
          rlo.per_code_account_txn_msg_rate = 1;
-         rlo.per_code_account_last_update_sec = now;
+         rlo.per_code_account_txn_msg_rate_last_update_sec = now;
       });
    }
    else
    {
       const auto message_rate =
-            _transaction_message_rate(now, rate_limiting->per_code_account_last_update_sec, _per_code_account_txn_msg_rate_limit_time_frame_sec,
+            _transaction_message_rate(now, rate_limiting->per_code_account_txn_msg_rate_last_update_sec, _per_code_account_txn_msg_rate_limit_time_frame_sec,
                                      _per_code_account_txn_msg_rate_limit, rate_limiting->per_code_account_txn_msg_rate, code_account, message.code);
       _db.modify(*rate_limiting, [&] (rate_limiting_object& rlo) {
          rlo.per_code_account_txn_msg_rate = message_rate;
-         rlo.per_code_account_last_update_sec = now;
+         rlo.per_code_account_txn_msg_rate_last_update_sec = now;
       });
    }
 } FC_CAPTURE_AND_RETHROW((message)) }
@@ -1022,9 +1022,9 @@ void chain_controller::apply_message(apply_context& context)
     if (recipient.code.size()) {
        //idump((context.code)(context.msg.type));
        const uint32_t execution_time =
-          _skip_flags | received_block
+          _skip_flags & received_block
              ? _rcvd_block_txn_execution_time
-             : _skip_flags | created_block
+             : _skip_flags & created_block
                ? _create_block_txn_execution_time
                : _txn_execution_time;
        const bool is_received_block = _skip_flags & received_block;
@@ -1256,14 +1256,14 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
                                    uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                                    uint32_t create_block_txn_execution_time,
-                                   const txn_msg_rate_limits& rate_limit,
+                                   const txn_msg_limits& rate_limit,
                                    const applied_irreverisable_block_func& applied_func)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _txn_execution_time(txn_execution_time),
      _rcvd_block_txn_execution_time(rcvd_block_txn_execution_time), _create_block_txn_execution_time(create_block_txn_execution_time),
-     _per_auth_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_time_frame_sec),
-     _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account),
-     _per_code_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_time_frame_sec),
-     _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account) {
+     _per_auth_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_txn_msg_rate_time_frame_sec),
+     _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account_txn_msg_rate),
+     _per_code_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_txn_msg_rate_time_frame_sec),
+     _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account_txn_msg_rate) {
 
    if (applied_func)
       applied_irreversible_block.connect(*applied_func);

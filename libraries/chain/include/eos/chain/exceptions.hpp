@@ -44,6 +44,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_permission,            eosio::chain::transaction_exception, 3030017, "Unsatisfied permission" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_auth_exceeded,             eosio::chain::transaction_exception, 3030018, "Number of transaction messages per authorized account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_code_exceeded,             eosio::chain::transaction_exception, 3030019, "Number of transaction messages per code account has been exceeded" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_code_db_limit_exceeded,         eosio::chain::transaction_exception, 3030020, "Database storage limit for code account has been exceeded in transaction message" )
 
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eosio::chain::utility_exception, 3060001, "invalid pts address" )
    FC_DECLARE_DERIVED_EXCEPTION( insufficient_feeds,                eosio::chain::chain_exception, 37006, "insufficient feeds" )

@@ -132,7 +132,7 @@ string readFile2(const string &fileName)
 
 uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   //std::cerr << CLASS << "::" << METHOD << std::endl;
-  return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) ); 
+  return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 } 
 
 #define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, message{"testapi", AUTH, TYPE}, DATA)
@@ -649,5 +649,58 @@ TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64_with_i128i128, ldinotii, t
 TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i128i128_with_i64i64i64, ldiinotiii, table_abi_test_wast, table_abi_test_abi)
 
 TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64i64i64_with_str, ldiiinotstr, table_abi_test_wast, table_abi_test_abi)
+
+#define VERIFY_DB_KEY_TYPES(KEY_TYPE) \
+{ try { \
+   auto wasm = assemble_wast( test_api_wast ); \
+   \
+   Make_Blockchain(chain, 500, \
+         ::eosio::chain_plugin::default_received_block_transaction_execution_time, \
+         ::eosio::chain_plugin::default_create_block_transaction_execution_time, chain_controller::txn_msg_limits {}); \
+   chain.produce_blocks(2); \
+   Make_Account(chain, testapi); \
+   Make_Account(chain, dblimits); \
+   Make_Account(chain, another); \
+   chain.produce_blocks(1); \
+   \
+   types::setcode handler; \
+   handler.code.resize(wasm.size()); \
+   memcpy( handler.code.data(), wasm.data(), wasm.size() ); \
+   \
+   send_set_code_message(chain, handler, "testapi"); \
+   send_set_code_message(chain, handler, "another"); \
+   \
+   /* setup the limit */ \
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_setup_limit"), {}, {}, {N(dblimits)} ) == WASM_TEST_PASS, "test_db::key_" KEY_TYPE "_setup_limit()" ); \
+   /* verify exception for exceeding limit */ \
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_min_exceed_limit"), {}, {}, {N(dblimits)} ), \
+         tx_code_db_limit_exceeded, [](const tx_code_db_limit_exceeded& e) -> bool { return e.to_detail_string().find("Database limit exceeded") != std::string::npos; } ); \
+   /* verify we can update and be under limit */ \
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_under_limit"), {}, {}, {N(dblimits)} ) == WASM_TEST_PASS, "test_db::key_" KEY_TYPE "_under_limit()" ); \
+   /* verify exception for allocating more than remainder */ \
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_available_space_exceed_limit"), {}, {}, {N(dblimits)} ), \
+         tx_code_db_limit_exceeded, [](const tx_code_db_limit_exceeded& e) -> bool { return e.to_detail_string().find("Database limit exceeded") != std::string::npos; } ); \
+   /* verify removing and updating under limit is allowed */ \
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_another_under_limit"), {}, {}, {N(dblimits)} ) == WASM_TEST_PASS, "test_db::key_" KEY_TYPE "_another_under_limit()" ); \
+   /* verify exception for exceeding limit */ \
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_min_exceed_limit"), {}, {}, {N(dblimits)} ), \
+         tx_code_db_limit_exceeded, [](const tx_code_db_limit_exceeded& e) -> bool { return e.to_detail_string().find("Database limit exceeded") != std::string::npos; } ); \
+} FC_LOG_AND_RETHROW() }
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_str, testing_fixture)
+   VERIFY_DB_KEY_TYPES("str")
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i64, testing_fixture)
+   VERIFY_DB_KEY_TYPES("i64")
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i128i128, testing_fixture)
+   VERIFY_DB_KEY_TYPES("i128i128")
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i64i64i64, testing_fixture)
+   VERIFY_DB_KEY_TYPES("i64i64i64")
 
 BOOST_AUTO_TEST_SUITE_END()
