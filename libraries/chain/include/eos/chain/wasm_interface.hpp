@@ -33,10 +33,10 @@ class wasm_interface {
       };
       typedef map<name, key_type> TableMap;
       struct ModuleState {
-         Runtime::ModuleInstance* instance     = nullptr;
-         IR::Module*              module       = nullptr;
-         int                      mem_start    = 0;
-         int                      mem_end      = 1<<16;
+         Runtime::ModuleInstance* instance = nullptr;
+         IR::Module*              module = nullptr;
+         int                      mem_start = 0;
+         int                      mem_end = 1<<16;
          vector<char>             init_memory;
          fc::sha256               code_version;
          TableMap                 table_key_types;
@@ -55,18 +55,22 @@ class wasm_interface {
       static key_type to_key_type(const types::type_name& type_name);
       static std::string to_type_name(key_type key_type);
 
-      apply_context*       current_apply_context        = nullptr;
-      apply_context*       current_validate_context     = nullptr;
+      apply_context*       current_apply_context = nullptr;
+      apply_context*       current_validate_context = nullptr;
       apply_context*       current_precondition_context = nullptr;
 
-      Runtime::MemoryInstance*   current_memory  = nullptr;
-      Runtime::ModuleInstance*   current_module  = nullptr;
-      ModuleState*               current_state   = nullptr;
+      Runtime::MemoryInstance*   current_memory = nullptr;
+      Runtime::ModuleInstance*   current_module = nullptr;
+      ModuleState*               current_state = nullptr;
       wasm_memory*               current_memory_management = nullptr;
       TableMap*                  table_key_types = nullptr;
-      bool                       tables_fixed    = false;
+      bool                       tables_fixed = false;
+      int64_t                    table_storage_delta = 0;
 
       uint32_t                   checktime_limit = 0;
+
+      int32_t                    per_code_account_max_db_limit_mbytes = config::default_per_code_account_max_db_limit_mbytes;
+      uint32_t                   row_overhead_db_limit_bytes = config::default_row_overhead_db_limit_bytes;
 
    private:
       void load( const account_name& name, const chainbase::database& db );
