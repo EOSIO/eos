@@ -1,7 +1,8 @@
 #include <eoslib/types.hpp>
-#include <eoslib/message.hpp>
 #include <eoslib/db.h>
 #include <eoslib/db.hpp>
+#include <eoslib/message.hpp>
+#include <eoslib/memory.hpp>
 #include "test_api.hpp"
 
 int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};
@@ -1081,4 +1082,439 @@ unsigned int test_db::key_i128i128_general() {
   return WASM_TEST_PASS;
 }
 
-//eosio::print("xxxx ", res, " ", tmp2.name, " ", uint64_t(tmp2.age), " ", tmp2.phone, " ", tmp2.new_field, "\n");
+void set_key_str(int i, char* key_4_digit)
+{
+   const char nums[] = "0123456789";
+   key_4_digit[0] = nums[(i % 10000) / 1000];
+   key_4_digit[1] = nums[(i % 1000) / 100];
+   key_4_digit[2] = nums[(i % 100) / 10];
+   key_4_digit[3] = nums[(i % 10)];
+}
+
+unsigned int test_db::key_str_setup_limit()
+{
+   // assuming max memory: 5 MBytes
+   // assuming row overhead: 16 Bytes
+   // key length: 30 bytes
+   // value length: 2498 bytes
+   // -> key + value bytes: 2528 Bytes
+   // 1024 * 2 * (2528 + 32)
+   char key[] = "0000abcdefghijklmnopqrstuvwxy";
+   const uint32_t value_size = 2498;
+   char* value = static_cast<char*>(eos::malloc(value_size));
+   value[4] = '\0';
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      set_key_str(i, key);
+      // set the value with the same prefix to be able to identify
+      set_key_str(i, value);
+      store_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
+   }
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_str_min_exceed_limit()
+{
+   char key = '1';
+   char value = '1';
+   // assuming max memory: 5 MBytes
+   // assuming row overhead: 16 Bytes
+   // key length: 1 bytes
+   // value length: 1 bytes
+   // -> key + value bytes: 8 Bytes
+   // 8 + 32 = 40 Bytes (not enough space)
+   store_str(N(dblimits), N(dblstr), &key, 1, &value, 1);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_str_under_limit()
+{
+   // assuming max memory: 5 MBytes
+   // assuming row overhead: 16 Bytes
+   // key length: 30 bytes
+   // value length: 2489 bytes
+   // -> key + value bytes: 2520 Bytes
+   // 1024 * 2 * (2520 + 32) = 5,226,496 => 16K bytes remaining
+   char key[] = "0000abcdefghijklmnopqrstuvwxy";
+   const uint32_t value_size = 2489;
+   char* value = static_cast<char*>(eos::malloc(value_size));
+   value[4] = '\0';
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      set_key_str(i, key);
+      // set the value with the same prefix to be able to identify
+      set_key_str(i, value);
+      store_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
+   }
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_str_available_space_exceed_limit()
+{
+   // key length: 30 bytes
+   // value length: 16323 bytes
+   // -> key + value bytes: 16360 Bytes (rounded to byte boundary)
+   // 16,392 Bytes => exceeds 16K bytes remaining
+   char key[] = "0000abcdefghijklmnopqrstuvwxy";
+   set_key_str(9999, key);
+   const uint32_t value_size = 16323;
+   char* value = static_cast<char*>(eos::malloc(value_size));
+   store_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_str_another_under_limit()
+{
+   // 16K bytes remaining
+   // key length: 30 bytes
+   // value length: 18873 bytes
+   // -> key + value bytes: 18904 Bytes (rounded to byte boundary)
+   // 16,384 Bytes => just under 16K bytes remaining
+   char key[] = "0000abcdefghijklmnopqrstuvwxy";
+   set_key_str(0, key);
+   uint32_t value_size = 18873;
+   char* value = static_cast<char*>(eos::malloc(value_size));
+   update_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
+   // 0 bytes remaining
+
+   // key length: 30 bytes
+   // value length: 2489 bytes
+   // -> key + value bytes: 2520 Bytes
+   set_key_str(1, key);
+   remove_str(N(dblimits), N(dblstr), key, sizeof(key));
+   // 2,552 Bytes remaining
+
+   // leave too little room for 32 Byte overhead + (key + value = 8 Byte min)
+   // key length: 30 bytes
+   // value length: 4909 bytes
+   // -> key + value bytes: 5040 Bytes
+   value_size = 2489 + 2514;
+   set_key_str(2, key);
+   value = static_cast<char*>(eos::realloc(value, value_size));
+   update_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
+   eos::free(value);
+
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64_setup_limit()
+{
+   // assuming max memory: 5M Bytes
+   // assuming row overhead: 16 Bytes
+   // key length: 8 bytes
+   // value length: 315 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 2528 Bytes
+   // 1024 * 2 * (2528 + 32) = 5,242,880
+   const uint64_t value_size = 315 * sizeof(uint64_t) + 1;
+   auto value = (uint64_t*)eos::malloc(value_size);
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      value[0] = i;
+      store_i64(N(dblimits), N(dbli64), (char*)value, value_size);
+   }
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64_min_exceed_limit()
+{
+   // will allocate 8 + 32 Bytes
+   // at 5M Byte limit, so cannot store anything
+   uint64_t value = (uint64_t)-1;
+   store_i64(N(dblimits), N(dbli64), (char*)&value, sizeof(uint64_t));
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64_under_limit()
+{
+   // updating keys' values
+   // key length: 8 bytes
+   // value length: 299 * 8 bytes
+   // -> key + value bytes: 2400 Bytes
+   // 1024 * 2 * (2400 + 32) = 4,980,736
+   const uint64_t value_size = 300 * sizeof(uint64_t);
+   auto value = (uint64_t*)eos::malloc(value_size);
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      value[0] = i;
+      store_i64(N(dblimits), N(dbli64), (char*)value, value_size);
+   }
+   // 262,144 Bytes remaining
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64_available_space_exceed_limit()
+{
+   // 262,144 Bytes remaining
+   // key length: 8 bytes
+   // value length: 32764 * 8 bytes
+   // -> key + value bytes: 262,120 Bytes
+   // storing 262,152 Bytes exceeds remaining
+   const uint64_t value_size = 32765 * sizeof(uint64_t);
+   auto value = (uint64_t*)eos::malloc(value_size);
+   value[0] = 1024 * 2;
+   store_i64(N(dblimits), N(dbli64), (char*)value, value_size);
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64_another_under_limit()
+{
+   // 262,144 Bytes remaining
+   // key length: 8 bytes
+   // value length: 33067 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 264,544 Bytes
+   // replacing storage bytes so 264,544 - 2400 = 262,144 Bytes (0 Bytes remaining)
+   uint64_t value_size = 33067 * sizeof(uint64_t) + 7;
+   auto value = (uint64_t*)eos::malloc(value_size);
+   value[0] = 15;
+   update_i64(N(dblimits), N(dbli64), (char*)value, value_size);
+
+   // 0 Bytes remaining
+   // key length: 8 bytes
+   // previous value length: 299 * 8 bytes
+   // -> key + value bytes: 2400 Bytes
+   // free up 2,432 Bytes
+   value[0] = 14;
+   remove_i64(N(dblimits), N(dbli64), (char*)value);
+
+   // 2,432 Bytes remaining
+   // key length: 8 bytes
+   // previous value length: 294 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 2,368 Bytes
+   // 2,400 Bytes allocated
+   value_size = 295 * sizeof(uint64_t) + 3;
+   value = (uint64_t*)eos::realloc(value, value_size);
+   value[0] = 1024 * 2;
+   store_i64(N(dblimits), N(dbli64), (char*)value, value_size);
+   // 32 Bytes remaining (smallest row entry is 40 Bytes)
+
+   eos::free(value);
+
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i128i128_setup_limit()
+{
+   // assuming max memory: 5M Bytes
+   // assuming row overhead: 16 Bytes
+   // keys length: 32 bytes
+   // value length: 312 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 2528 Bytes
+   // 1024 * 2 * (2528 + 32) = 5,242,880
+   const uint64_t value_size = 315 * sizeof(uint64_t) + 1;
+   auto value = (uint128_t*)eos::malloc(value_size);
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      value[0] = i;
+      value[1] = value[0] + 1;
+      store_i128i128(N(dblimits), N(dbli128i128), (char*)value, value_size);
+   }
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i128i128_min_exceed_limit()
+{
+   // will allocate 32 + 32 Bytes
+   // at 5M Byte limit, so cannot store anything
+   const uint64_t value_size = 2 * sizeof(uint128_t);
+   auto value = (uint128_t*)eos::malloc(value_size);
+   value[0] = (uint128_t)-1;
+   value[1] = value[0] + 1;
+   store_i128i128(N(dblimits), N(dbli128i128), (char*)&value, value_size);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i128i128_under_limit()
+{
+   // updating keys' values
+   // keys length: 32 bytes
+   // value length: 296 * 8 bytes
+   // -> key + value bytes: 2400 Bytes
+   // 1024 * 2 * (2400 + 32) = 4,980,736
+   const uint64_t value_size = 300 * sizeof(uint64_t);
+   auto value = (uint128_t*)eos::malloc(value_size);
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      value[0] = i;
+      value[1] = value[0] + 1;
+      store_i128i128(N(dblimits), N(dbli128i128), (char*)value, value_size);
+   }
+   // 262,144 Bytes remaining
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i128i128_available_space_exceed_limit()
+{
+   // 262,144 Bytes remaining
+   // keys length: 32 bytes
+   // value length: 32761 * 8 bytes
+   // -> key + value bytes: 262,120 Bytes
+   // storing 262,152 Bytes exceeds remaining
+   const uint64_t value_size = 32765 * sizeof(uint64_t);
+   auto value = (uint128_t*)eos::malloc(value_size);
+   value[0] = 1024 * 2;
+   value[1] = value[0] + 1;
+   store_i128i128(N(dblimits), N(dbli128i128), (char*)value, value_size);
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i128i128_another_under_limit()
+{
+   // 262,144 Bytes remaining
+   // keys length: 32 bytes
+   // value length: 33064 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 264,544 Bytes
+   // replacing storage bytes so 264,544 - 2400 = 262,144 Bytes (0 Bytes remaining)
+   uint64_t value_size = 33067 * sizeof(uint64_t) + 7;
+   auto value = (uint128_t*)eos::malloc(value_size);
+   value[0] = 15;
+   value[1] = value[0] + 1;
+   update_i128i128(N(dblimits), N(dbli128i128), (char*)value, value_size);
+
+   // 0 Bytes remaining
+   // keys length: 32 bytes
+   // previous value length: 296 * 8 bytes
+   // -> key + value bytes: 2400 Bytes
+   // free up 2,432 Bytes
+   value[0] = 14;
+   value[1] = value[0] + 1;
+   remove_i128i128(N(dblimits), N(dbli128i128), (char*)value);
+
+   // 2,432 Bytes remaining
+   // keys length: 32 bytes
+   // previous value length: 288 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 2,344 Bytes
+   // 2,376 Bytes allocated
+   value_size = 292 * sizeof(uint64_t) + 3;
+   value = (uint128_t*)eos::realloc(value, value_size);
+   value[0] = 1024 * 2;
+   value[1] = value[0] + 1;
+   store_i128i128(N(dblimits), N(dbli128i128), (char*)value, value_size);
+   // 56 Bytes remaining (smallest row entry is 64 Bytes)
+
+   eos::free(value);
+
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64i64i64_setup_limit()
+{
+   // assuming max memory: 5M Bytes
+   // assuming row overhead: 16 Bytes
+   // keys length: 24 bytes
+   // value length: 313 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 2528 Bytes
+   // 1024 * 2 * (2528 + 32) = 5,242,880
+   const uint64_t value_size = 315 * sizeof(uint64_t) + 1;
+   auto value = (uint64_t*)eos::malloc(value_size);
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      value[0] = i;
+      value[1] = value[0] + 1;
+      value[2] = value[0] + 2;
+      store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value, value_size);
+   }
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64i64i64_min_exceed_limit()
+{
+   // will allocate 24 + 32 Bytes
+   // at 5M Byte limit, so cannot store anything
+   const uint64_t value_size = 3 * sizeof(uint64_t);
+   auto value = (uint64_t*)eos::malloc(value_size);
+   value[0] = (uint64_t)-1;
+   value[1] = value[0] + 1;
+   value[2] = value[0] + 2;
+   store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)&value, value_size);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64i64i64_under_limit()
+{
+   // updating keys' values
+   // keys length: 24 bytes
+   // value length: 297 * 8 bytes
+   // -> key + value bytes: 2400 Bytes
+   // 1024 * 2 * (2400 + 32) = 4,980,736
+   const uint64_t value_size = 300 * sizeof(uint64_t);
+   auto value = (uint64_t*)eos::malloc(value_size);
+   for(int i = 0; i < 1024 * 2; ++i)
+   {
+      value[0] = i;
+      value[1] = value[0] + 1;
+      value[2] = value[0] + 2;
+      store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value, value_size);
+   }
+   // 262,144 Bytes remaining
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64i64i64_available_space_exceed_limit()
+{
+   // 262,144 Bytes remaining
+   // keys length: 24 bytes
+   // value length: 32762 * 8 bytes
+   // -> key + value bytes: 262,120 Bytes
+   // storing 262,152 Bytes exceeds remaining
+   const uint64_t value_size = 32765 * sizeof(uint64_t);
+   auto value = (uint64_t*)eos::malloc(value_size);
+   value[0] = 1024 * 2;
+   value[1] = value[0] + 1;
+   value[2] = value[0] + 2;
+   store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value, value_size);
+   eos::free(value);
+   return WASM_TEST_PASS;
+}
+
+unsigned int test_db::key_i64i64i64_another_under_limit()
+{
+   // 262,144 Bytes remaining
+   // keys length: 24 bytes
+   // value length: 33065 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 264,544 Bytes
+   // replacing storage bytes so 264,544 - 2400 = 262,144 Bytes (0 Bytes remaining)
+   uint64_t value_size = 33067 * sizeof(uint64_t) + 7;
+   auto value = (uint64_t*)eos::malloc(value_size);
+   value[0] = 15;
+   value[1] = value[0] + 1;
+   value[2] = value[0] + 2;
+   update_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value, value_size);
+
+   // 0 Bytes remaining
+   // keys length: 24 bytes
+   // previous value length: 297 * 8 bytes
+   // -> key + value bytes: 2400 Bytes
+   // free up 2,432 Bytes
+   value[0] = 14;
+   value[1] = value[0] + 1;
+   value[2] = value[0] + 2;
+   remove_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value);
+
+   // 2,432 Bytes remaining
+   // keys length: 24 bytes
+   // previous value length: 290 * 8 bytes (rounded to byte boundary)
+   // -> key + value bytes: 2,352 Bytes
+   // 2,384 Bytes allocated
+   value_size = 295 * sizeof(uint64_t) + 3;
+   value = (uint64_t*)eos::realloc(value, value_size);
+   value[0] = 1024 * 2;
+   value[1] = value[0] + 1;
+   value[2] = value[0] + 2;
+   store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value, value_size);
+   // 48 Bytes remaining (smallest row entry is 56 Bytes)
+
+   eos::free(value);
+
+   return WASM_TEST_PASS;
+}
