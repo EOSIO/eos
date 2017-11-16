@@ -9,6 +9,7 @@
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/config.hpp>
 #include <eos/chain/types.hpp>
+#include <eos/chain/wasm_interface.hpp>
 
 #include <eos/db_plugin/db_plugin.hpp>
 
@@ -100,6 +101,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
          ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_code_account_rate),
           "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
+         ("per-code-account-max-storage-db-limit-mbytes", bpo::value<uint32_t>()->default_value(config::default_per_code_account_max_db_limit_mbytes),
+          "Limits the maximum database storage that an account's code is allowed.")
+         ("row-overhead-db-limit-bytes", bpo::value<uint32_t>()->default_value(config::default_row_overhead_db_limit_bytes),
+          "The overhead to apply per row for approximating total database storage.")
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -190,6 +195,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->cfg_txn_msg_limits.per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
    my->cfg_txn_msg_limits.per_code_account_txn_msg_rate = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
+
+   chain::wasm_interface::get().per_code_account_max_db_limit_mbytes = options.at("per-code-account-max-storage-db-limit-mbytes").as<uint32_t>();
+   chain::wasm_interface::get().row_overhead_db_limit_bytes = options.at("row-overhead-db-limit-bytes").as<uint32_t>();
 }
 
 void chain_plugin::plugin_startup() 

@@ -38,6 +38,8 @@ const static int default_per_auth_account_rate_time_frame_seconds = 18;
 const static int default_per_auth_account_rate = 1800;
 const static int default_per_code_account_rate_time_frame_seconds = 18;
 const static int default_per_code_account_rate = 18000;
+const static int default_per_code_account_max_db_limit_mbytes = 5;
+const static int default_row_overhead_db_limit_bytes = 8 + 8 + 8 + 8; // storage for scope/code/table + 8 extra
 
 const static uint32 required_producer_participation = 33 * config::percent1;
 

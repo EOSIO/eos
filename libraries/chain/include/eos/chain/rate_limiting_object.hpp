@@ -24,9 +24,10 @@ namespace eosio { namespace chain {
       id_type             id;
       account_name        name;
       fc::time_point_sec  per_auth_account_txn_msg_rate_last_update_sec;
-      uint32_t            per_auth_account_txn_msg_rate    = 0;
+      uint32_t            per_auth_account_txn_msg_rate = 0;
       fc::time_point_sec  per_code_account_txn_msg_rate_last_update_sec;
-      uint32_t            per_code_account_txn_msg_rate    = 0;
+      uint32_t            per_code_account_txn_msg_rate = 0;
+      int64_t             per_code_account_db_bytes = 0;
    };
    using rate_limiting_id_type = rate_limiting_object::id_type;
 
