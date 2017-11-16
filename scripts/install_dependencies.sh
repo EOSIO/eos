@@ -77,6 +77,26 @@ if [ $ARCH == "darwin" ]; then
     sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
 
     # Install binaryen v1.37.14:
+    
+    # In case user encounter s2wasm not found, uncomment the six lines below to remove the existing binaryen.
+    # sudo rm -rf /usr/local/binaryen.js /usr/local/empty.txt /usr/local/wasm.js 
+    # echo "remove existing binary.js, empty.txt, and wasm.js under /usr/local/"
+    # sudo rm -rf /usr/local/binaryen  
+    # echo "remove existing binaryen folder under /usr/local/"
+    # sudo rm -rf ${TEMP_DIR}/binaryren 
+    # echo "remove existing binaryen folder under \${TEMP_DIR}"
+
+    cd ${TEMP_DIR}
+    git clone https://github.com/WebAssembly/binaryen.git
+    cd binaryen
+    git checkout tags/1.37.14
+    cmake . && make
+    sudo mkdir /usr/local/binaryen
+    sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
+    sudo ln -s /usr/local/binaryen/bin/* /usr/local
+    sudo rm -rf ${TEMP_DIR}/binaryen
+    BINARYEN_BIN=/usr/local/binaryen/bin/
+
     cd ${TEMP_DIR}
     git clone https://github.com/WebAssembly/binaryen.git
     cd binaryen
