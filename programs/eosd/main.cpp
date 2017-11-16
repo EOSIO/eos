@@ -27,9 +27,8 @@ using namespace eosio;
 int main(int argc, char** argv)
 {
    try {
-      app().set_version(eosio::eosd::config::version_str);
-      app().set_version(eosio::eosd::config::version_int);
-      ilog("eosd version ${ver}", ("ver", app().version()));
+      app().set_version(eosio::eosd::config::version);
+      ilog("eosd version ${ver}", ("ver", eosio::eosd::config::itoh((uint32_t)app().version_int())));
       app().register_plugin<net_plugin>();
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
