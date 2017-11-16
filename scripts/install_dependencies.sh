@@ -78,7 +78,7 @@ if [ $ARCH == "darwin" ]; then
 
     # Install binaryen v1.37.14:
     cd ${TEMP_DIR}
-    git clone https://github.com/WebAssembly/binaryen
+    git clone https://github.com/WebAssembly/binaryen.git
     cd binaryen
     git checkout tags/1.37.14
     cmake . && make
