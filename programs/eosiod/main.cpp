@@ -27,6 +27,7 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::eosiod::config::version_str);
+      app().set_version(eosio::eosiod::config::version_int);
       ilog("eosiod version ${ver}", ("ver", app().version()));
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
