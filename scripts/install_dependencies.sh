@@ -34,7 +34,7 @@ if [ $ARCH == "ubuntu" ]; then
 
     # install binaryen
     cd ${TEMP_DIR}
-    git clone https://github.com/WebAssembly/binaryen
+    git clone https://github.com/WebAssembly/binaryen.git
     cd binaryen
     git checkout tags/1.37.14
     cmake . && make
