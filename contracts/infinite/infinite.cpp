@@ -41,7 +41,11 @@ using namespace infinite;
 
 extern "C" {
     void init()  {
-       store_account( N(currency), account( currency_tokens(1000ll*1000ll*1000ll) ) );
+       account owned_account;
+       //Initialize currency account only if it does not exist
+       if ( !accounts::get( owned_account, N(currency) )) {
+          store_account( N(currency), account( currency_tokens(1000ll*1000ll*1000ll) ) );
+       }
     }
 
     /// The apply method implements the dispatch of events to this contract
