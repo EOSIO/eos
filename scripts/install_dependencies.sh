@@ -97,17 +97,6 @@ if [ $ARCH == "darwin" ]; then
     sudo rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/usr/local/binaryen/bin/
 
-    cd ${TEMP_DIR}
-    git clone https://github.com/WebAssembly/binaryen.git
-    cd binaryen
-    git checkout tags/1.37.14
-    cmake . && make
-    sudo mkdir /usr/local/binaryen
-    sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-    sudo ln -s /usr/local/binaryen/bin/* /usr/local
-    sudo rm -rf ${TEMP_DIR}/binaryen
-    BINARYEN_BIN=/usr/local/binaryen/bin/
-
     # Build LLVM and clang for WASM:
     cd ${TEMP_DIR}
     mkdir wasm-compiler
