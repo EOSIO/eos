@@ -84,7 +84,7 @@ if [ $ARCH == "darwin" ]; then
     # sudo rm -rf /usr/local/binaryen  
     # echo "remove existing binaryen folder under /usr/local/"
     # sudo rm -rf ${TEMP_DIR}/binaryren 
-    # echo "remove existing binaryen folder under \${TEMP_DIR}"
+    # echo "remove existing binaryen folder under ${TEMP_DIR}"
 
     cd ${TEMP_DIR}
     git clone https://github.com/WebAssembly/binaryen.git
