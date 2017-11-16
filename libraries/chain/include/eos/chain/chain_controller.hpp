@@ -296,10 +296,10 @@ namespace eosio { namespace chain {
                                                    uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const account_name& name);
 
          struct txn_msg_limits {
-            fc::time_point_sec per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_auth_account_time_frame_seconds);
-            uint32_t per_auth_account_txn_msg_rate = config::default_per_auth_account;
-            fc::time_point_sec per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_code_account_time_frame_seconds);
-            uint32_t per_code_account_txn_msg_rate = config::default_per_code_account;
+            fc::time_point_sec per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_auth_account_rate_time_frame_seconds);
+            uint32_t per_auth_account_txn_msg_rate = config::default_per_auth_account_rate;
+            fc::time_point_sec per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_code_account_rate_time_frame_seconds);
+            uint32_t per_code_account_txn_msg_rate = config::default_per_code_account_rate;
          };
 
    private:

@@ -315,9 +315,9 @@ void WithdrawCurrency( testing_blockchain& chain, account_name from, account_nam
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
       chain_controller::txn_msg_limits rate_limit = { fc::time_point_sec(10), 100000, fc::time_point_sec(10), 100000 };
-      Make_Blockchain(chain, ::eos::chain_plugin::default_transaction_execution_time,
-            ::eos::chain_plugin::default_received_block_transaction_execution_time,
-            ::eos::chain_plugin::default_create_block_transaction_execution_time, rate_limit);
+      Make_Blockchain(chain, ::eosio::chain_plugin::default_transaction_execution_time,
+            ::eosio::chain_plugin::default_received_block_transaction_execution_time,
+            ::eosio::chain_plugin::default_create_block_transaction_execution_time, rate_limit);
       chain.produce_blocks(10);
       Make_Account(chain, currency);
       chain.produce_blocks(1);
