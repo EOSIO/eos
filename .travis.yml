@@ -25,15 +25,14 @@ before_install:
   - |
     mkdir ext && cd ext
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      DEPS="git automake libtool boost openssl llvm@4 gmp wget cmake gettext"
-      brew update
-      brew install --force $DEPS
-      brew unlink $DEPS && brew link --force $DEPS
+      brew install boost openssl llvm@4 gmp gettext ninja mongodb mongo-c-driver
+      brew link gettext --force
       brew services start mongodb
       WASM_BRANCH=macos
       export CC=/usr/local/opt/llvm@4/bin/clang
       export CXX=/usr/local/opt/llvm@4/bin/clang++
       export LLVM_DIR=/usr/local/opt/llvm@4/lib/cmake/llvm
+      export LDFLAGS="-L/usr/local/opt/llvm@4/lib"
       MONGOCXX_CMAKE_OPTIONS="-DLIBBSON_DIR=/usr/local -DLIBMONGOC_DIR=/usr/local"
       EOS_CMAKE_OPTIONS="-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
     else
