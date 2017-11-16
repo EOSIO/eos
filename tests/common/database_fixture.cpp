@@ -92,13 +92,26 @@ flat_set<public_key_type> testing_fixture::available_keys() const {
 }
 
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                                       chain_initializer_interface& initializer, testing_fixture& fixture,
-                                       const chain_controller::txn_msg_rate_limits& rate_limits)
+                                       chain_initializer_interface& initializer, testing_fixture& fixture)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
                       ::eosio::chain_plugin::default_transaction_execution_time * 1000,
                       ::eosio::chain_plugin::default_received_block_transaction_execution_time * 1000,
                       ::eosio::chain_plugin::default_create_block_transaction_execution_time * 1000,
-                       rate_limits),
+                       chain_controller::txn_msg_limits{}),
+     db(db),
+     fixture(fixture) {}
+
+testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                       chain_initializer_interface& initializer, testing_fixture& fixture,
+                                       uint32_t transaction_execution_time_msec,
+                                       uint32_t received_block_execution_time_msec,
+                                       uint32_t create_block_execution_time_msec,
+                                       const chain_controller::txn_msg_limits& rate_limits)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
+                      transaction_execution_time_msec * 1000,
+                      received_block_execution_time_msec * 1000,
+                      create_block_execution_time_msec * 1000,
+                      rate_limits),
      db(db),
      fixture(fixture) {}
 
