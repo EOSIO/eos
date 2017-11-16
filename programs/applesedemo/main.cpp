@@ -11,10 +11,6 @@
 #include <array>
 #include "r1_signature_compactor.hpp"
 
-#include <fc/crypto/public_key.hpp>
-#include <fc/crypto/private_key.hpp>
-#include <fc/crypto/signature.hpp>
-
 namespace po = boost::program_options;
 using namespace std;
 using namespace fc::crypto::r1;
