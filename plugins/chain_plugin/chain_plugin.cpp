@@ -63,8 +63,8 @@ public:
 
 #ifdef NDEBUG
 const uint32_t chain_plugin::default_received_block_transaction_execution_time = 12;
-const uint32_t chain_plugin::default_transaction_execution_time = 3;
-const uint32_t chain_plugin::default_create_block_transaction_execution_time = 3;
+const uint32_t chain_plugin::default_transaction_execution_time = 5;
+const uint32_t chain_plugin::default_create_block_transaction_execution_time = 5;
 #else
 const uint32_t chain_plugin::default_received_block_transaction_execution_time = 72;
 const uint32_t chain_plugin::default_transaction_execution_time = 18;
