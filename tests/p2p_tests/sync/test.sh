@@ -11,7 +11,7 @@ pnodes=10
 topo=star
 delay=0
 
-args=`getopt p:n:t:d: $*`
+args=`getopt p:n:s:d: $*`
 if [ $? == 0 ]; then
 
     set -- $args
@@ -24,7 +24,7 @@ if [ $? == 0 ]; then
                 shift; shift;;
             -d) delay=$2;
                 shift; shift;;
-            -s) shape="$2";
+            -s) topo="$2";
                 shift; shift;;
             --) shift;
                 break;;
