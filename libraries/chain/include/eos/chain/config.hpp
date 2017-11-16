@@ -26,7 +26,7 @@ const static account_name producers_account_name = N(producers);
 const static permission_name active_name = N(active);
 const static permission_name owner_name = N(owner);
 
-const static share_type initial_token_supply = asset::from_string("90000000.0000 EOS").amount;
+const static share_type initial_token_supply = asset::from_string("1000000000.0000 EOS").amount;
 
 const static int block_interval_seconds = 3;
 
