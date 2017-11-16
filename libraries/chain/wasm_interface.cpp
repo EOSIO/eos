@@ -171,26 +171,6 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
    }; \
    const int32_t ret = validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
 
-char* key_str(uint64_t key)
-{
-   const char nums[] = "0123456789";
-   char* ret = new char[512];
-   char* ret2 = new char[512];
-   const uint64_t rem = 10;
-   uint32_t index = 0;
-   for (; key > 0; ++index)
-   {
-      ret[index] = nums[(uint32_t)(key % rem)];
-      key /= rem;
-   }
-   for (uint32_t i = 0; i < index; ++i)
-   {
-      ret2[i] = ret[index - 1 - i];
-   }
-   ret2[index] = '\0';
-   return ret2;
-}
-
 #define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX, KEY_SIZE) \
    DEFINE_INTRINSIC_FUNCTION4(env,store_##OBJTYPE,store_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
       VERIFY_TABLE(OBJTYPE) \
