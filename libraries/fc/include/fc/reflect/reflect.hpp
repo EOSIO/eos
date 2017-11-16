@@ -75,16 +75,16 @@ void throw_bad_enum_cast( const char* k, const char* e );
 
 
 #ifndef _MSC_VER
-  #define TEMPLATE template
+  #define FC_TEMPLATE template
 #else
   // Disable warning C4482: nonstandard extention used: enum 'enum_type::enum_value' used in qualified name
   #pragma warning( disable: 4482 )
-  #define TEMPLATE
+  #define FC_TEMPLATE
 #endif
 
 #define FC_REFLECT_VISIT_MEMBER( r, visitor, elem ) \
 { typedef decltype((static_cast<type*>(nullptr))->elem) member_type;  \
-  visitor.TEMPLATE operator()<member_type,type,&type::elem>( BOOST_PP_STRINGIZE(elem) ); \
+  visitor.FC_TEMPLATE operator()<member_type,type,&type::elem>( BOOST_PP_STRINGIZE(elem) ); \
 }
 
 

@@ -11,11 +11,17 @@
         "key": "name",
         "owner": "name"
       }
+    },{
+      "name": "setowner",
+      "base": "",
+      "fields": {
+        "owner": "name"
+      }
     }
   ],
   "actions": [{
       "name": "setowner",
-      "type": "name"
+      "type": "setowner"
     }
   ],
   "tables": [{

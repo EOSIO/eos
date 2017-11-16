@@ -448,16 +448,46 @@ DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,dests
 
 
 
-#define READ_RECORD(READFUNC, INDEX, SCOPE) \
-   return 0;
-   /*
-   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      auto res = ctx->READFUNC<INDEX, SCOPE>( Name(scope), Name(code), Name(table), keys, data, datalen); \
-      if (res >= 0) res += INDEX::value_type::number_of_keys*sizeof(INDEX::value_type::key_type); \
-      return res; \
-   }; \
-   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, valuelen, lambda);
-   */
+DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+  auto& value = memoryRef<unsigned __int128>( mem, val );
+  fc::uint128_t v(value>>64, uint64_t(value) );
+  std::cerr << fc::variant(v).get_string();
+}
+DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
+  std::cerr << name(val).to_string();
+}
+
+DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const char* str = &memoryRef<const char>( mem, charptr );
+
+  std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,prints_l,prints_l,none,i32,charptr,i32,len) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const char* str = &memoryRef<const char>( mem, charptr );
+
+  std::cerr << std::string( str, len );
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  char* buff = memoryArrayPtr<char>(mem, data, datalen);
+  std::cerr << fc::to_hex(buff, datalen);
+}
+
+
+DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
+}
 
 #define DEFINE_RECORD_READ_FUNCTIONS(OBJTYPE, FUNCPREFIX, INDEX, SCOPE) \
    DEFINE_INTRINSIC_FUNCTION5(env,load_##FUNCPREFIX##OBJTYPE,load_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
