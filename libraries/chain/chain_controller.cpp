@@ -1022,9 +1022,9 @@ void chain_controller::apply_message(apply_context& context)
     if (recipient.code.size()) {
        //idump((context.code)(context.msg.type));
        const uint32_t execution_time =
-          _skip_flags | received_block
+          _skip_flags & received_block
              ? _rcvd_block_txn_execution_time
-             : _skip_flags | created_block
+             : _skip_flags & created_block
                ? _create_block_txn_execution_time
                : _txn_execution_time;
        const bool is_received_block = _skip_flags & received_block;
