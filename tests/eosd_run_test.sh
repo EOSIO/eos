@@ -409,6 +409,10 @@ count=`echo $INFO | grep -c "1000000000"`
 if [ $count == 0 ]; then
   error "FAILURE - get table currency account failed: $INFO"
 fi
+count=`echo $INFO | grep -c "account"`
+if [ $count == 0 ]; then
+  error "FAILURE - get table currency account failed: $INFO"
+fi
 
 # push message to currency contract
 

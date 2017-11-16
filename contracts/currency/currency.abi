@@ -16,7 +16,7 @@
       "name": "account",
       "base": "",
       "fields": {
-        "key": "uint64",
+        "account": "name",
         "balance": "uint64"
       }
     }
