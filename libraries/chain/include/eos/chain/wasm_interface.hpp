@@ -65,7 +65,7 @@ class wasm_interface {
       wasm_memory*               current_memory_management = nullptr;
       TableMap*                  table_key_types = nullptr;
       bool                       tables_fixed = false;
-      int64_t                    table_storage_delta = 0;
+      int64_t                    table_storage = 0;
 
       uint32_t                   checktime_limit = 0;
 
