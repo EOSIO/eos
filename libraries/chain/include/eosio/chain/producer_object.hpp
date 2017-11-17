@@ -19,6 +19,7 @@ class producer_object : public chainbase::object<producer_object_type, producer_
    int64_t            total_missed = 0;
    uint32_t           last_confirmed_block_num = 0;
 
+
    /// The blockchain configuration values this producer recommends
    chain_config       configuration;
 };

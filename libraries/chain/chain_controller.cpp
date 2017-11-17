@@ -15,6 +15,7 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
+#include <eosio/chain/contracts/producer_objects.hpp>
 
 #include <eosio/chain/wasm_interface.hpp>
 
@@ -309,10 +310,19 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    _pending_block->producer  = producer_obj.owner;
    _pending_block->previous  = head_block_id();
 
+   const auto& gpo = get_global_properties();
+   if( gpo.pending_active_producers.size() &&
+       gpo.pending_active_producers.back().first == _pending_block->block_num() ) {
+       _pending_block->new_producers = gpo.pending_active_producers.back().second;
+   }
+
    if( !(skip & skip_producer_signature) )
       _pending_block->sign( block_signing_key );
 
+
    _finalize_block( *_pending_block );
+
+
 
    _pending_block_session->push();
 
@@ -751,15 +761,35 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
    });
 }
 
-void chain_controller::update_global_properties(const signed_block& b) {
+void chain_controller::update_global_properties(const signed_block& b) { try {
    // If we're at the end of a round, update the BlockchainConfiguration, producer schedule
    // and "producers" special account authority
    if (b.block_num() % config::blocks_per_round == 0) {
+      const auto& producers_by_vote = _db.get_index<contracts::producer_votes_multi_index,contracts::by_votes>();
+      auto itr = producers_by_vote.begin();
+      producer_schedule_type schedule;
+      uint32_t count = 0;
+      while( itr != producers_by_vote.end() ) {
+         schedule[count].producer_name = itr->owner_name;
+         wdump((itr->owner_name));
+         schedule[count].block_signing_key = get_producer(itr->owner_name).signing_key;
+         idump((itr->owner_name));
+         ++itr;
+      }
+
+      const auto& gpo = get_global_properties();
+      if( schedule != gpo.active_producers ) {
+         _db.modify( gpo, [&]( auto& props ) {
+            if( props.pending_active_producers.size() && props.pending_active_producers.back().first == head_block_num()+1 )
+               props.pending_active_producers.back().second = schedule;
+            else
+               props.pending_active_producers.push_back( make_pair(head_block_num()+1,schedule) );
+         });
+      }
       /*
       auto schedule = _admin->get_next_round(_db);
       auto config   = _admin->get_blockchain_configuration(_db, schedule);
 
-      const auto& gpo = get_global_properties();
       _db.modify(gpo, [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
          gpo.active_producers = std::move(schedule);
          gpo.configuration = std::move(config);
@@ -777,7 +807,7 @@ void chain_controller::update_global_properties(const signed_block& b) {
       });
       */
    }
-}
+} FC_CAPTURE_AND_RETHROW() } 
 
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
    for (const auto& i : checkpts)
@@ -1050,7 +1080,7 @@ void chain_controller::update_last_irreversible_block()
    if (old_last_irreversible_block)
       last_block_on_disk = old_last_irreversible_block->block_num();
 
-   if (last_block_on_disk < new_last_irreversible_block_num)
+   if (last_block_on_disk < new_last_irreversible_block_num) {
       for (auto block_to_write = last_block_on_disk + 1;
            block_to_write <= new_last_irreversible_block_num;
            ++block_to_write) {
@@ -1059,6 +1089,32 @@ void chain_controller::update_last_irreversible_block()
          _block_log.append(*block);
          applied_irreversible_block(*block);
       }
+   }
+
+   if( new_last_irreversible_block_num > last_block_on_disk ) {
+      /// TODO: use upper / lower bound to find
+      optional<producer_schedule_type> new_producer_schedule;
+      for( const auto& item : gpo.pending_active_producers ) {
+         if( item.first < new_last_irreversible_block_num ) {
+            new_producer_schedule = item.second;
+         }
+      }
+      if( new_producer_schedule ) {
+         _db.modify( gpo, [&]( auto& props ){
+             /// TODO: use upper / lower bound to remove range
+              while( gpo.pending_active_producers.size() ) {
+                 if( gpo.pending_active_producers.front().first < new_last_irreversible_block_num ) {
+                   props.pending_active_producers.erase(props.pending_active_producers.begin());
+                 }
+              }
+              for( const auto& n : *new_producer_schedule ) {
+                 wdump((name(n.producer_name))(n.block_signing_key));
+              }
+              //props.active_producers = *new_producer_schedule;
+         });
+      }
+   }
+
 
    // Trim fork_database and undo histories
    _fork_db.set_max_size(head_block_num() - new_last_irreversible_block_num + 1);

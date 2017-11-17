@@ -138,7 +138,8 @@ using producer_votes_multi_index = chainbase::shared_multi_index_container<
          composite_key<producer_votes_object,
             member<producer_votes_object, share_type, &producer_votes_object::votes>,
             member<producer_votes_object, producer_votes_object::id_type, &producer_votes_object::id>
-         >
+         >,
+         composite_key_compare< std::greater<share_type>,std::less<producer_votes_object::id_type> >
       >
    >
 >;
