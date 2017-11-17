@@ -1,33 +1,25 @@
 # Run in docker
 
-Simple and fast setup of EOS on Docker is also available. 
+Simple and fast setup of EOS on Docker is also available.
 
 ## Install Dependencies
- - [Docker](https://docs.docker.com)
- - [Docker-compose](https://github.com/docker/compose)
- - [Docker-volumes](https://github.com/cpuguy83/docker-volumes)
+ - [Docker](https://docs.docker.com) Docker 17.05 or higher is required
 
 ## Build eos image
 
 ```bash
 git clone https://github.com/EOSIO/eos.git --recursive
 cd eos
-cp genesis.json Docker 
+cp genesis.json Docker
 docker build -t eosio/eos -f Docker/Dockerfile .
 ```
 
 ## Start docker
 
 ```bash
-sudo rm -rf /data/store/eos # options 
+sudo rm -rf /data/store/eos # options
 sudo mkdir -p /data/store/eos
-docker-compose -f Docker/docker-compose.yml up
-```
-
-If you get an error after `docker-compose` step, you may have to change directory permissions to your current system user 
-
-```bash
-sudo chown -R SYSTEM_USER /data/store/eos
+sudo docker run -v /data/store/eos:/opt/eos/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos
 ```
 
 ## Get chain info
@@ -48,7 +40,7 @@ docker exec docker_eos_1 eosc get info
 docker exec docker_eos_1 eosc get account inita
 ```
 
-Upload sample exchange contract 
+Upload sample exchange contract
 
 ```bash
 docker exec docker_eos_1 eosc set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
