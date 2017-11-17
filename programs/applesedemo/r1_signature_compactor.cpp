@@ -73,57 +73,49 @@ err:
     return ret;
 }
 
+SSL_TYPE(ec_key, EC_KEY, EC_KEY_free)
+
 fc::crypto::r1::compact_signature compact_r1(fc::crypto::r1::public_key_data& pubkey, fc::ecdsa_sig& sig, fc::sha256& digest) {
    fc::crypto::r1::compact_signature csig;
+   ec_key key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );
+
+   //want to always use the low S value
+   const EC_GROUP* group = EC_KEY_get0_group(key);
+   ssl_bignum order, halforder;
+   EC_GROUP_get_order(group, order, nullptr);
+   BN_rshift1(halforder, order);
+   if(BN_cmp(sig->s, halforder) > 0)
+       BN_sub(sig->s, order, sig->s);
 
    int nBitsR = BN_num_bits(sig->r);
    int nBitsS = BN_num_bits(sig->s);
-   if (nBitsR <= 256 && nBitsS <= 256)
-   {
-       int nRecId = -1;
-       for (int i=0; i<4; i++)
-       {
-           ////public_key keyRec;
-           EC_KEY* key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );
-           if (ECDSA_SIG_recover_key_GFp(key, sig, (unsigned char*)digest.data(), digest.data_size(), i, 1) == 1)
-           {
-              EC_KEY_set_conv_form(key, POINT_CONVERSION_COMPRESSED );
-              unsigned char* pubcheck = nullptr;
-              int s = i2o_ECPublicKey(key, &pubcheck);
-              if (memcmp(pubcheck, pubkey.data, pubkey.size()) == 0)
-              {
-               nRecId = i;
-               free(pubcheck);
-               break;
-              }
-              if(s > 0)
-                 free(pubcheck);
-           }
-       }
+   if(nBitsR > 256 || nBitsS > 256)
+      FC_THROW_EXCEPTION( exception, "Unable to sign" );
 
-       if (nRecId == -1)
-       {
-         FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
-       }
-       unsigned char* result = nullptr;
-       auto bytes = i2d_ECDSA_SIG( sig, &result );
-       auto lenR = result[3];
-       auto lenS = result[5+lenR];
-       auto idxR = 4;
-       auto idxS = 6+lenR;
-       if(result[idxR] == 0x00) {
-          ++idxR;
-          --lenR;
-       }
-       if(result[idxS] == 0x00) {
-          ++idxS;
-          --lenS;
-       }
-       memcpy( &csig.data[1], &result[idxR], lenR );
-       memcpy( &csig.data[33], &result[idxS], lenS );
-       free(result);
-       csig.data[0] = nRecId+27+4;
+   int nRecId = -1;
+   for (int i=0; i<4; i++)
+   {
+      if (ECDSA_SIG_recover_key_GFp(key, sig, (unsigned char*)digest.data(), digest.data_size(), i, 1) == 1)
+      {
+         EC_KEY_set_conv_form(key, POINT_CONVERSION_COMPRESSED );
+         unsigned char* pubcheck = nullptr;
+         int s = i2o_ECPublicKey(key, &pubcheck);
+         if (memcmp(pubcheck, pubkey.data, pubkey.size()) == 0)
+         {
+            nRecId = i;
+            free(pubcheck);
+            break;
+         }
+         if(s > 0)
+            free(pubcheck);
+      }
    }
+   if (nRecId == -1)
+      FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
+
+   BN_bn2bin(sig->r,&csig.data[33-(nBitsR+7)/8]);
+   BN_bn2bin(sig->s,&csig.data[65-(nBitsS+7)/8]);
+   csig.data[0] = nRecId+27+4;
 
    return csig;
 }

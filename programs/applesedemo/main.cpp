@@ -198,27 +198,17 @@ void sign(const string& hex) {
 
    CFDataRef digestData = CFDataCreateWithBytesNoCopy(nullptr, (UInt8*)digest.data(), digest.data_size(), kCFAllocatorNull);
 
-   //the X9.62 representation of r & s must be exactly 32 bytes or otherwise the "canonical" check fails
-   while(true) {
-      CFDataRef signature = SecKeyCreateSignature(key, kSecKeyAlgorithmECDSASignatureDigestX962SHA256, digestData, &error);
-      if(error) {
-         cout << "Failed to sign" << endl;
-         CFShow(error);
-         goto err;
-      }
-   
-      der_bytes = CFDataGetBytePtr(signature);
-      assert(der_bytes[0] == 0x30);
-      assert(der_bytes[2] == 0x02);
-      assert(der_bytes[4+der_bytes[3]] == 0x02);
-
-      UInt8 rLen, sLen;
-      rLen = der_bytes[3];
-      sLen = der_bytes[5+32];
-      CFRelease(signature);
-      if(rLen == 32 && sLen == 32)
-         break;
+   CFDataRef signature = SecKeyCreateSignature(key, kSecKeyAlgorithmECDSASignatureDigestX962SHA256, digestData, &error);
+   if(error) {
+      cout << "Failed to sign" << endl;
+      CFShow(error);
+      goto err;
    }
+   
+   der_bytes = CFDataGetBytePtr(signature);
+   assert(der_bytes[0] == 0x30);
+   assert(der_bytes[2] == 0x02);
+   assert(der_bytes[4+der_bytes[3]] == 0x02);
    
    BN_bin2bn(der_bytes+4, der_bytes[3], sig->r);
    BN_bin2bn(der_bytes+6+der_bytes[3], der_bytes[4+der_bytes[3]+1], sig->s);
