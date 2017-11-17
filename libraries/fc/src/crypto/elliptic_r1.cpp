@@ -486,11 +486,18 @@ namespace fc { namespace crypto { namespace r1 {
         if (nV<27 || nV>=35)
             FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
 
-        ECDSA_SIG *sig = ECDSA_SIG_new();
+        ecdsa_sig sig = ECDSA_SIG_new();
         BN_bin2bn(&c.data[1],32,sig->r);
         BN_bin2bn(&c.data[33],32,sig->s);
 
         my->_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+
+        const EC_GROUP* group = EC_KEY_get0_group(my->_key);
+        ssl_bignum order, halforder;
+        EC_GROUP_get_order(group, order, nullptr);
+        BN_rshift1(halforder, order);
+        if(BN_cmp(sig->s, halforder) > 0)
+           FC_THROW_EXCEPTION( exception, "invalid high s-value encountered in r1 signature" );
 
         if (nV >= 31)
         {
@@ -500,11 +507,7 @@ namespace fc { namespace crypto { namespace r1 {
         }
 
         if (ECDSA_SIG_recover_key_GFp(my->_key, sig, (unsigned char*)&digest, sizeof(digest), nV - 27, 0) == 1)
-        {
-            ECDSA_SIG_free(sig);
             return;
-        }
-        ECDSA_SIG_free(sig);
         FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
     }
 
