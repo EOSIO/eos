@@ -486,19 +486,18 @@ namespace fc { namespace crypto { namespace r1 {
         if (nV<27 || nV>=35)
             FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
 
-        ECDSA_SIG *sig = ECDSA_SIG_new();
+        ecdsa_sig sig = ECDSA_SIG_new();
         BN_bin2bn(&c.data[1],32,sig->r);
         BN_bin2bn(&c.data[33],32,sig->s);
 
-        if( check_canonical )
-        {
-           FC_ASSERT( !(c.data[1] & 0x80), "signature is not canonical" );
-           FC_ASSERT( !(c.data[1] == 0 && !(c.data[2] & 0x80)), "signature is not canonical" );
-           FC_ASSERT( !(c.data[33] & 0x80), "signature is not canonical" );
-           FC_ASSERT( !(c.data[33] == 0 && !(c.data[34] & 0x80)), "signature is not canonical" );
-        }
-
         my->_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+
+        const EC_GROUP* group = EC_KEY_get0_group(my->_key);
+        ssl_bignum order, halforder;
+        EC_GROUP_get_order(group, order, nullptr);
+        BN_rshift1(halforder, order);
+        if(BN_cmp(sig->s, halforder) > 0)
+           FC_THROW_EXCEPTION( exception, "invalid high s-value encountered in r1 signature" );
 
         if (nV >= 31)
         {
@@ -508,79 +507,57 @@ namespace fc { namespace crypto { namespace r1 {
         }
 
         if (ECDSA_SIG_recover_key_GFp(my->_key, sig, (unsigned char*)&digest, sizeof(digest), nV - 27, 0) == 1)
-        {
-            ECDSA_SIG_free(sig);
             return;
-        }
-        ECDSA_SIG_free(sig);
         FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
     }
 
     compact_signature private_key::sign_compact( const fc::sha256& digest )const
     {
-       try {
+      try {
         FC_ASSERT( my->_key != nullptr );
         auto my_pub_key = get_public_key().serialize(); // just for good measure
-        //ECDSA_SIG *sig = ECDSA_do_sign((unsigned char*)&digest, sizeof(digest), my->_key);
-        while( true )
+        ecdsa_sig sig = ECDSA_do_sign((unsigned char*)&digest, sizeof(digest), my->_key);
+
+        if (sig==nullptr)
+          FC_THROW_EXCEPTION( exception, "Unable to sign" );
+
+        //want to always use the low S value
+        const EC_GROUP* group = EC_KEY_get0_group(my->_key);
+        ssl_bignum order, halforder;
+        EC_GROUP_get_order(group, order, nullptr);
+        BN_rshift1(halforder, order);
+        if(BN_cmp(sig->s, halforder) > 0)
+           BN_sub(sig->s, order, sig->s);
+
+        compact_signature csig;
+
+        int nBitsR = BN_num_bits(sig->r);
+        int nBitsS = BN_num_bits(sig->s);
+        if(nBitsR > 256 || nBitsS > 256)
+          FC_THROW_EXCEPTION( exception, "Unable to sign" );
+        
+        int nRecId = -1;
+        for (int i=0; i<4; i++)
         {
-           ecdsa_sig sig = ECDSA_do_sign((unsigned char*)&digest, sizeof(digest), my->_key);
+          public_key keyRec;
+          keyRec.my->_key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );
+          if (ECDSA_SIG_recover_key_GFp(keyRec.my->_key, sig, (unsigned char*)&digest, sizeof(digest), i, 1) == 1)
+          {
+            if (keyRec.serialize() == my_pub_key )
+            {
+              nRecId = i;
+              break;
+            }
+          }
+        }
+        if (nRecId == -1)
+          FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
 
-           if (sig==nullptr)
-             FC_THROW_EXCEPTION( exception, "Unable to sign" );
-
-           compact_signature csig;
-          // memset( csig.data, 0, sizeof(csig) );
-
-           int nBitsR = BN_num_bits(sig->r);
-           int nBitsS = BN_num_bits(sig->s);
-           if (nBitsR <= 256 && nBitsS <= 256)
-           {
-               int nRecId = -1;
-               for (int i=0; i<4; i++)
-               {
-                   public_key keyRec;
-                   keyRec.my->_key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );
-                   if (ECDSA_SIG_recover_key_GFp(keyRec.my->_key, sig, (unsigned char*)&digest, sizeof(digest), i, 1) == 1)
-                   {
-                       if (keyRec.serialize() == my_pub_key )
-                       {
-                          nRecId = i;
-                          break;
-                       }
-                   }
-               }
-
-               if (nRecId == -1)
-               {
-                 FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
-               }
-               unsigned char* result = nullptr;
-               auto bytes = i2d_ECDSA_SIG( sig, &result );
-               auto lenR = result[3];
-               auto lenS = result[5+lenR];
-               //idump( (result[0])(result[1])(result[2])(result[3])(result[3+lenR])(result[4+lenR])(bytes)(lenR)(lenS) );
-               if( lenR != 32 ) { free(result); continue; }
-               if( lenS != 32 ) { free(result); continue; }
-               //idump( (33-(nBitsR+7)/8) );
-               //idump( (65-(nBitsS+7)/8) );
-               //idump( (sizeof(csig) ) );
-               memcpy( &csig.data[1], &result[4], lenR );
-               memcpy( &csig.data[33], &result[6+lenR], lenS );
-               //idump( (csig.data[33]) );
-               //idump( (csig.data[1]) );
-               free(result);
-               //idump( (nRecId) );
-               csig.data[0] = nRecId+27+4;//(fCompressedPubKey ? 4 : 0);
-               /*
-               idump( (csig) );
-               auto rlen = BN_bn2bin(sig->r,&csig.data[33-(nBitsR+7)/8]);
-               auto slen = BN_bn2bin(sig->s,&csig.data[65-(nBitsS+7)/8]);
-               idump( (rlen)(slen) );
-               */
-           }
-           return csig;
-        } // while true
+        csig.data[0] = nRecId+27+4;
+        BN_bn2bin(sig->r,&csig.data[33-(nBitsR+7)/8]);
+        BN_bn2bin(sig->s,&csig.data[65-(nBitsS+7)/8]);
+        
+        return csig;
       } FC_RETHROW_EXCEPTIONS( warn, "sign ${digest}", ("digest", digest)("private_key",*this) );
     }
 
