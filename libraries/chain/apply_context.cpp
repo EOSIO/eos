@@ -27,4 +27,28 @@ void apply_context::require_authorization(const account_name& account,
               ("account",account)("permission",permission) );
 }
 
+void apply_context::require_write_scope(const account_name& account)const {
+   for( const auto& s : trx.write_scope )
+      if( s == account ) return;
+
+   if( trx.write_scope.size() == 1 && trx.write_scope.front() == config::eosio_all_scope )
+      return;
+
+   EOS_ASSERT( false, tx_missing_write_scope, "missing write scope ${account}", 
+               ("account",account) );
+}
+
+void apply_context::require_read_scope(const account_name& account)const {
+   for( const auto& s : trx.write_scope )
+      if( s == account ) return;
+   for( const auto& s : trx.read_scope )
+      if( s == account ) return;
+
+   if( trx.write_scope.size() == 1 && trx.write_scope.front() == config::eosio_all_scope )
+      return;
+
+   EOS_ASSERT( false, tx_missing_read_scope, "missing read scope ${account}", 
+               ("account",account) );
+}
+
 } } /// eosio::chain

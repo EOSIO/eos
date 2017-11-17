@@ -72,7 +72,8 @@ class apply_context {
        */
       void require_authorization(const account_name& account);
       void require_authorization(const account_name& account, const permission_name& permission);
-      void require_scope(const account_name& account)const{};
+      void require_write_scope(const account_name& account)const;
+      void require_read_scope(const account_name& account)const;
       void require_recipient(const account_name& account){};
 
       bool                     all_authorizations_used()const;
@@ -155,7 +156,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename ObjectType>
       int32_t apply_context::store_record( name scope, name code, name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_write_scope( scope );
 
          auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
          const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
@@ -179,7 +180,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename ObjectType>
       int32_t apply_context::update_record( name scope, name code, name table, typename ObjectType::key_type *keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_write_scope( scope );
          
          auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
          const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
@@ -200,7 +201,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename ObjectType>
       int32_t apply_context::remove_record( name scope, name code, name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_write_scope( scope );
 
          auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
          const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
@@ -213,7 +214,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename IndexType, typename Scope>
       int32_t apply_context::load_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_read_scope( scope );
 
          const auto& idx = db.get_index<IndexType, Scope>();
          auto tuple = load_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
@@ -236,7 +237,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename IndexType, typename Scope>
       int32_t apply_context::front_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_read_scope( scope );
 
          const auto& idx = db.get_index<IndexType, Scope>();
          auto tuple = front_record_tuple<typename IndexType::value_type>::get(scope, code, table);
@@ -258,7 +259,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename IndexType, typename Scope>
       int32_t apply_context::back_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_read_scope( scope );
 
          const auto& idx = db.get_index<IndexType, Scope>();
          auto tuple = boost::make_tuple( account_name(scope), account_name(code), account_name(uint64_t(table)+1) );
@@ -283,7 +284,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename IndexType, typename Scope>
       int32_t apply_context::next_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_read_scope( scope );
 
          const auto& pidx = db.get_index<IndexType, by_scope_primary>();
          
@@ -326,7 +327,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename IndexType, typename Scope>
       int32_t apply_context::previous_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_read_scope( scope );
 
          const auto& pidx = db.get_index<IndexType, by_scope_primary>();
          
@@ -365,7 +366,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename IndexType, typename Scope>
       int32_t apply_context::lower_bound_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_read_scope( scope );
 
          const auto& idx = db.get_index<IndexType, Scope>();
          auto tuple = lower_bound_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
@@ -387,7 +388,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       template <typename IndexType, typename Scope>
       int32_t apply_context::upper_bound_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
-         require_scope( scope );
+         require_read_scope( scope );
 
          const auto& idx = db.get_index<IndexType, Scope>();
          auto tuple = upper_bound_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);

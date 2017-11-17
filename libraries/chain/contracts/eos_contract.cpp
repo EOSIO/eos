@@ -39,7 +39,7 @@ void validate_authority_precondition( const apply_context& context, const author
 void apply_eosio_newaccount(apply_context& context) {
    auto create = context.act.as<newaccount>();
    context.require_authorization(create.creator);
-   context.require_scope( config::eosio_auth_scope );
+   context.require_write_scope( config::eosio_auth_scope );
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
@@ -108,8 +108,8 @@ void apply_eosio_transfer(apply_context& context) {
 
    try {
       EOS_ASSERT(transfer.amount > 0, action_validate_exception, "Must transfer a positive amount");
-      context.require_scope(transfer.to);
-      context.require_scope(transfer.from);
+      context.require_write_scope(transfer.to);
+      context.require_write_scope(transfer.from);
 
       context.require_authorization(transfer.from);
 
@@ -144,9 +144,9 @@ void apply_eosio_lock(apply_context& context) {
 
    EOS_ASSERT(lock.amount > 0, action_validate_exception, "Locked amount must be positive");
 
-   context.require_scope(lock.to);
-   context.require_scope(lock.from);
-   context.require_scope(config::system_account_name);
+   context.require_write_scope(lock.to);
+   context.require_write_scope(lock.from);
+   context.require_write_scope(config::system_account_name);
 
    context.require_authorization(lock.from);
 
@@ -290,8 +290,8 @@ void apply_eosio_okproducer(apply_context& context) {
    context.require_recipient(approve.voter);
    context.require_recipient(approve.producer);
 
-   context.require_scope(config::system_account_name);
-   context.require_scope(approve.voter);
+   context.require_write_scope(config::system_account_name);
+   context.require_write_scope(approve.voter);
    context.require_authorization(approve.voter);
 
 

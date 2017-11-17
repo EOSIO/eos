@@ -705,8 +705,8 @@ void chain_controller::apply_message(apply_context& context)
 
 void chain_controller::require_scope( const scope_name& scope )const {
    switch( uint64_t(scope) ) {
-      case N(eosio.auto):
-      case N(eosio.auth):
+      case config::eosio_all_scope:
+      case config::eosio_auth_scope:
          return; /// built in scopes
       default:
          require_account(scope);
@@ -871,6 +871,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          auto acts = starter.prepare_database(*this, _db);
 
          transaction genesis_setup_transaction;
+         genesis_setup_transaction.write_scope = { config::eosio_all_scope };
          genesis_setup_transaction.actions = move(acts);
 
          ilog( "applying genesis transaction" );

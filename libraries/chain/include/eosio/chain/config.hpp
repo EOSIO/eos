@@ -20,6 +20,7 @@ const static uint64_t nobody_account_name    = N(nobody);
 const static uint64_t anybody_account_name   = N(anybody);
 const static uint64_t producers_account_name = N(producers);
 const static uint64_t eosio_auth_scope       = N(eosio.auth);
+const static uint64_t eosio_all_scope        = N(eosio.all);
 
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
