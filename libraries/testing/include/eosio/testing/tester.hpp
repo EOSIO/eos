@@ -28,10 +28,14 @@ namespace eosio { namespace testing {
          }
 
 
+         void set_authority( account_name account, permission_name perm, authority auth,
+                                     permission_name parent = config::owner_name );
+
          void              create_account( account_name name, asset initial_balance = asset(), account_name creator = N(inita) );
          void              create_account( account_name name, string balance = "0.0000 EOS", account_name creator = N(inita));
 
          void              transfer( account_name from, account_name to, asset amount, string memo = "" );
+         void              transfer( account_name from, account_name to, string amount, string memo = "" );
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {

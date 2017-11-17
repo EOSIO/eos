@@ -314,14 +314,16 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
 
    _finalize_block( *_pending_block );
 
+   _pending_block_session->push();
+
    auto result = move( *_pending_block );
+
+   _pending_block.reset();
+   _pending_block_session.reset();
 
    if (!(skip&skip_fork_db)) {
       _fork_db.push_block(result);
    }
-
-   _pending_block_session->push();
-   _pending_block.reset();
    return result;
 
 } FC_CAPTURE_AND_RETHROW( (producer) ) }
@@ -454,6 +456,8 @@ void chain_controller::_finalize_block( const signed_block& b ) {
 
    if (_currently_replaying_blocks)
      applied_irreversible_block(b);
+
+
 }
 
 namespace {
@@ -471,6 +475,7 @@ namespace {
         return get_permission(permission).auth;
      };
      auto depth_limit = db.get<global_property_object>().configuration.max_authority_depth;
+     wdump((depth_limit));
      return make_auth_checker( move(get_authority), depth_limit, signing_keys);
   }
 
@@ -506,8 +511,8 @@ void chain_controller::check_transaction_authorization(const signed_transaction&
 // #warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
    auto checker = make_authority_checker(_db, trx.get_signature_keys(chain_id_type{}));
 
-   for (const auto& act : trx.actions )
-      for (const auto& declared_auth : act.authorization) {
+   for( const auto& act : trx.actions )
+      for( const auto& declared_auth : act.authorization ) {
 
          const auto& min_permission = lookup_minimum_permission(declared_auth.actor, act.scope, act.name);
 
@@ -853,6 +858,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
          });
+
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
             p.time = initial_timestamp;
             p.recent_slots_filled = uint64_t(-1);
@@ -920,9 +926,9 @@ void chain_controller::_spinup_db() {
    // Rewind the database to the last irreversible block
    _db.with_write_lock([&] {
       _db.undo_all();
-
       FC_ASSERT(_db.revision() == head_block_num(), "Chainbase revision does not match head block num",
                 ("rev", _db.revision())("head_block", head_block_num()));
+
    });
 }
 
@@ -1126,14 +1132,10 @@ uint32_t chain_controller::producer_participation_rate()const
 }
 
 void chain_controller::_set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {
-   idump((contract)(scope)(action));
    _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
 void chain_controller::_apply_transaction( const transaction& trx ) {
-
-   ilog( "apply transaction" );
-
    for( const auto& act : trx.actions ) {
       apply_context context( *this, _db, trx, act, act.scope );
       context.exec();

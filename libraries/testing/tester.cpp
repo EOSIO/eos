@@ -96,6 +96,9 @@ namespace eosio { namespace testing {
    }
    
 
+   void tester::transfer( account_name from, account_name to, string amount, string memo ) {
+      transfer( from, to, asset::from_string(amount), memo );
+   }
    void tester::transfer( account_name from, account_name to, asset amount, string memo ) {
       signed_transaction trx;
       trx.write_scope = {from,to};
@@ -110,5 +113,24 @@ namespace eosio { namespace testing {
       trx.sign( get_private_key( from, "active" ), chain_id_type()  ); 
       control->push_transaction( trx );
    }
+
+   void tester::set_authority( account_name account,
+                               permission_name perm,
+                               authority auth,
+                               permission_name parent ) { try {
+      signed_transaction trx;
+      trx.write_scope = {config::eosio_auth_scope};
+      trx.actions.emplace_back( vector<permission_level>{{account,perm}},
+                                contracts::updateauth{
+                                   .account    = account,
+                                   .permission = perm,
+                                   .authority  = move(auth),
+                                   .parent     = parent
+                                });
+
+      set_tapos( trx );
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  ); 
+      control->push_transaction( trx );
+   } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
 } }  /// eosio::test

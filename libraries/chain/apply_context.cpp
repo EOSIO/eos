@@ -12,4 +12,19 @@ void apply_context::exec()
    }
 } /// exec()
 
+void apply_context::require_authorization( const account_name& account ) {
+  for( const auto& auth : act.authorization )
+     if( auth.actor == account ) return;
+  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+}
+void apply_context::require_authorization(const account_name& account, 
+                                          const permission_name& permission) {
+  for( const auto& auth : act.authorization )
+     if( auth.actor == account ) {
+        if( auth.permission == permission ) return;
+     }
+  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}", 
+              ("account",account)("permission",permission) );
+}
+
 } } /// eosio::chain

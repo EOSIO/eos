@@ -291,11 +291,6 @@ struct setproxy {
 };
 
 struct updateauth {
-   updateauth() = default;
-   updateauth(const account_name& account, const permission_name& permission, const permission_name& parent, const authority& authority)
-   :account(account), permission(permission), parent(parent), authority(authority)
-   {}
-
    account_name                      account;
    permission_name                   permission;
    permission_name                   parent;

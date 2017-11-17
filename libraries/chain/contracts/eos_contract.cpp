@@ -380,7 +380,7 @@ void apply_eosio_updateauth(apply_context& context) {
    EOS_ASSERT(validate(update.authority), action_validate_exception,
               "Invalid authority: ${auth}", ("auth", update.authority));
    if (update.permission == "active")
-      EOS_ASSERT(update.parent == "owner", action_validate_exception, "Cannot change active authority's parent");
+      EOS_ASSERT(update.parent == "owner", action_validate_exception, "Cannot change active authority's parent from owner", ("update.parent", update.parent) );
    if (update.permission == "owner")
       EOS_ASSERT(update.parent.empty(), action_validate_exception, "Cannot change owner authority's parent");
 
