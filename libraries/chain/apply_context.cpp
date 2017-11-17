@@ -11,12 +11,14 @@ void apply_context::exec()
    } else {
       const auto& a = mutable_controller.get_database().get<account_object,by_name>(receiver);
 
-      // get code from cache
-      const auto& code_cache = mutable_controller.get_cached_code(a.code_version, a.code.data(), a.code.size());
+      if (a.code.size() > 0) {
+         // get code from cache
+         auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(), a.code.size());
 
-      // get wasm_interface
-      auto& wasm = wasm_interface::get();
-      wasm.apply(code_cache, *this);
+         // get wasm_interface
+         auto &wasm = wasm_interface::get();
+         wasm.apply(code, *this);
+      }
    }
 } /// exec()
 

@@ -78,6 +78,8 @@ namespace eosio { namespace chain {
       ~wasm_cache_impl() {
          _work.reset();
          _ios.stop();
+         _utility_thread.join();
+         freeUnreferencedObjects({});
       }
 
       /**
@@ -103,6 +105,9 @@ namespace eosio { namespace chain {
          size_t available_instances = 0;
       };
 
+      using optional_info_ref = optional<std::reference_wrapper<code_info>>;
+      using optional_entry_ref = optional<std::reference_wrapper<wasm_cache::entry>>;
+
       /**
        * Convenience method for running code with the _cache_lock and releaseint that lock
        * when the code completes
@@ -122,14 +127,14 @@ namespace eosio { namespace chain {
        * @param code_id
        * @return
        */
-      optional<code_info&> fetch_info(const digest_type& code_id) {
-         return with_lock([this, &](){
+      optional_info_ref fetch_info(const digest_type& code_id) {
+         return with_lock([&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end()) {
-               return optional<code_info&>(iter->second);
+               return optional_info_ref(iter->second);
             }
 
-            return optional<code_info&>();
+            return optional_info_ref();
          });
       }
 
@@ -138,14 +143,15 @@ namespace eosio { namespace chain {
        * @param code_id - the id of the code to fetch
        * @return - reference to the entry when one is available
        */
-      optional<wasm_cache::entry&> try_fetch_entry(const digest_type& code_id) {
-         return with_lock([this, &](){
+      optional_entry_ref try_fetch_entry(const digest_type& code_id) {
+         return with_lock([&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end() && iter->second.available_instances > 0) {
-               return optional<wasm_cache::entry&>(iter->second.instances.at(iter->second.available_instances--));
+               auto &ptr = iter->second.instances.at(iter->second.available_instances--);
+               return optional_entry_ref(*ptr);
             }
 
-            return optional<wasm_cache::entry&>();
+            return optional_entry_ref();
          });
       }
 
@@ -161,36 +167,36 @@ namespace eosio { namespace chain {
        */
       wasm_cache::entry& fetch_entry(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
          std::condition_variable condition;
-         optional<wasm_cache::entry&> result;
+         optional_entry_ref result;
          std::exception_ptr error;
 
          // compilation is not thread safe, so we dispatch it to a io_service running on a single thread to
          // queue up and synchronize compilations
-         _ios.post([this,&](){
+         _ios.post([&,this](){
             // check to see if someone returned what we need before making a new one
             auto pending_result = try_fetch_entry(code_id);
             std::exception_ptr pending_error;
 
             if (!pending_result) {
                // time to compile a brand new (maybe first) copy of this code
-               unique_ptr<Module> module = std::make_unique(Module());
-               unique_ptr<ModuleInstance> instance;
+               Module* module = new Module();
+               ModuleInstance* instance = nullptr;
                size_t mem_end;
                vector<char> mem_image;
 
                try {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serializeWithInjection(stream, *module.get());
+                  WASM::serializeWithInjection(stream, *module);
 
                   root_resolver resolver;
-                  LinkResult link_result = linkModule(*module.get(), resolver);
-                  instance = instantiateModule(*module.get(), move(link_result.resolvedImports));
+                  LinkResult link_result = linkModule(*module, resolver);
+                  instance = instantiateModule(*module, std::move(link_result.resolvedImports));
                   FC_ASSERT(instance != nullptr);
 
-                  auto current_memory = Runtime::getDefaultMemory(instance.get());
+                  auto current_memory = Runtime::getDefaultMemory(instance);
 
                   char *mem_ptr = &memoryRef<char>(current_memory, 0);
-                  const auto allocated_memory = Runtime::getDefaultMemorySize(instance.get());
+                  const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
                   for (uint64_t i = 0; i < allocated_memory; ++i) {
                      if (mem_ptr[i]) {
                         mem_end = i + 1;
@@ -205,15 +211,15 @@ namespace eosio { namespace chain {
 
                if (pending_error == nullptr) {
                   // grab the lock and put this in the cache as unavailble
-                  with_lock([this, &]() {
+                  with_lock([&,this]() {
                      // find or create a new entry
                      auto iter = _cache.emplace(code_id, code_info {
                         .mem_end = mem_end,
                         .mem_image = std::move(mem_image)
                      }).first;
 
-                     iter->second.instances.emplace_back(std::make_unique(std::move(module), std::move(instance)));
-                     pending_result = optional<wasm_cache::entry &>(*iter->second.instances.back());
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
+                     pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
             }
@@ -242,7 +248,7 @@ namespace eosio { namespace chain {
             if (error != nullptr) {
                std::rethrow_exception(error);
             } else {
-               return *result;
+               return (*result).get();
             }
          } FC_RETHROW_EXCEPTIONS(error, "error compiling WASM for code with hash: ${code_id}", ("code_id", code_id));
       }
@@ -256,15 +262,15 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-         _ios.post([this,&](){
+         _ios.post([&,this](){
             // sanitize by reseting the memory that may now be dirty
-            auto& info = *fetch_info(code_id);
-            char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance.get()), 0 );
+            auto& info = (*fetch_info(code_id)).get();
+            char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
             memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
             memcpy( memstart, info.mem_image.data(), info.mem_end);
 
             // under a lock, put this entry back in the available instances side of the instances vector
-            with_lock([this,&](){
+            with_lock([&,this](){
                // walk the vector and find this entry
                auto iter = info.instances.begin();
                while (iter->get() != &entry) {
@@ -296,13 +302,14 @@ namespace eosio { namespace chain {
       :_my( new wasm_cache_impl() ) {
    }
 
-   std::mutex                     global_load_mutex;
+   wasm_cache::~wasm_cache() = default;
+
    wasm_cache::entry &wasm_cache::checkout( const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size ) {
       // see if there is an avaialble entry in the cache
-      optional<entry&> result = _my->try_fetch_entry(code_id);
+      auto result = _my->try_fetch_entry(code_id);
 
       if (result) {
-         return *result;
+         return (*result).get();
       }
 
       return _my->fetch_entry(code_id, wasm_binary, wasm_binary_size);
@@ -313,19 +320,35 @@ namespace eosio { namespace chain {
       _my->return_entry(code_id, code);
    }
 
+   /**
+    * RAII wrapper to make sure that the context is cleaned up on exception
+    */
+   struct scoped_context {
+      template<typename ...Args>
+      scoped_context(optional<wasm_context> &context, Args&... args)
+      :context(context)
+      {
+         context = wasm_context{ args... };
+      }
+
+      ~scoped_context() {
+         context.reset();
+      }
+
+      optional<wasm_context>& context;
+   };
+
    void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context &context)
    try {
-      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance.get(),entry_point) );
+      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance,entry_point) );
       if( !call ) {
          return;
       }
 
       FC_ASSERT( getFunctionType(call)->parameters.size() == 2 );
 
-      current_context = wasm_context{ code, context };
+      auto context_guard = scoped_context(current_context, code, context);
       Runtime::invokeFunction(call,args);
-      current_context.reset();
-
    } catch( const Runtime::Exception& e ) {
       FC_THROW_EXCEPTION(wasm_execution_error,
                          "cause: ${cause}\n${callstack}",
@@ -336,6 +359,18 @@ namespace eosio { namespace chain {
    wasm_interface::wasm_interface()
       :my( new wasm_interface_impl() ) {
    }
+
+   wasm_interface& wasm_interface::get() {
+      static bool init_once = [](){  Runtime::init(); return true; }();
+      boost::ignore_unused(init_once);
+
+      thread_local wasm_interface* single = nullptr;
+      if( !single ) {
+         single = new wasm_interface();
+      }
+      return *single;
+   }
+
 
    void wasm_interface::init( wasm_cache::entry& code, apply_context& context ) {
       my->call("init", {}, code, context);
@@ -500,7 +535,7 @@ class intrinsics {
    public:
       intrinsics(wasm_interface &wasm)
       :wasm(wasm)
-      ,context(*intrinsics_accessor::get_module_state(wasm).context)
+      ,context(intrinsics_accessor::get_context(wasm).context)
       {}
 
       int read_action(array_ptr<char> memory, size_t size) {

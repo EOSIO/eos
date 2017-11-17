@@ -21,6 +21,7 @@ namespace eosio { namespace chain {
    class wasm_cache {
       public:
          wasm_cache();
+         ~wasm_cache();
 
          /**
           * an opaque code entry used in the wasm_interface class
@@ -37,7 +38,6 @@ namespace eosio { namespace chain {
           */
          entry &checkout( const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size );
 
-
          /**
           * Return an entry to the cache so that future checkouts may retrieve it
           *
@@ -45,6 +45,44 @@ namespace eosio { namespace chain {
           * @param code - the entry which should be considered invalid post-call
           */
          void checkin( const digest_type& code_id, entry& code );
+
+         /**
+          * RAII wrapper to make sure that the cache entries are returned regardless of exceptions etc
+          */
+         struct scoped_entry {
+            explicit scoped_entry(const digest_type& code_id, entry &code, wasm_cache &cache)
+            :code_id(code_id)
+            ,code(code)
+            ,cache(cache)
+            {}
+
+            ~scoped_entry() {
+               cache.checkin(code_id, code);
+            }
+
+            operator entry&() {
+               return code;
+            }
+
+            digest_type code_id;
+            entry&      code;
+            wasm_cache& cache;
+         };
+
+         /**
+          * Checkout the desired code from the cache.  Code is idenfied via a digest of the wasm binary
+          * this method will wrap the code in an RAII construct so that it will automatically
+          * return to the cache when it falls out of scope
+          *
+          * @param code_id - a digest of the wasm_binary bytes
+          * @param wasm_binary - a pointer to the wasm_binary bytes
+          * @param wasm_binary_size - the size of the wasm_binary bytes array
+          * @return an entry which can be immediately used by the wasm_interface to execute contract code
+          */
+         scoped_entry checkout_scoped(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
+            return scoped_entry(code_id, checkout(code_id, wasm_binary, wasm_binary_size), *this);
+         }
+
 
       private:
          unique_ptr<struct wasm_cache_impl> _my;

@@ -13,8 +13,13 @@ using namespace Runtime;
 using namespace fc;
 
 struct wasm_cache::entry {
-   unique_ptr<ModuleInstance>    instance;
-   unique_ptr<Module>            module;
+   entry(ModuleInstance* instance, Module* module)
+   :instance(instance)
+   ,module(module)
+   {}
+
+   ModuleInstance*    instance;
+   Module*            module;
 };
 
 struct wasm_context {
