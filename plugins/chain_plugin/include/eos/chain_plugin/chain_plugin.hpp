@@ -145,12 +145,12 @@ public:
       :signed_block(b),
       id(b.id()),
       block_num(b.block_num()),
-      refBlockPrefix( id._hash[1] )
+      ref_block_prefix( id._hash[1] )
       {}
 
       chain::block_id_type id;
       uint32_t             block_num = 0;
-      uint32_t             refBlockPrefix = 0;
+      uint32_t             ref_block_prefix = 0;
    };
 
    get_block_results get_block(const get_block_params& params) const;
@@ -315,7 +315,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
   (recent_slots)(participation_rate))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
   
-FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(refBlockPrefix) );
+FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(ref_block_prefix) );
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
