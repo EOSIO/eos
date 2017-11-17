@@ -305,18 +305,16 @@ struct intrinsic_function_invoker<Ret (Cls::*)(Params...)> {
    }
 };
 
-#define _REGISTER_INTRINSIC(R, CLS, METHOD)\
-   {\
-      std::piecewise_construct,\
-      std::forward_as_tuple(#METHOD),\
-      std::forward_as_tuple(\
+#define _REGISTER_INTRINSIC(R, DATA, METHOD)\
+   BOOST_PP_TUPLE_ELEM(2, 0, DATA).emplace( #METHOD, \
+      std::make_unique<Intrinsics::Function>(\
          #METHOD,\
-         eosio::chain::intrinsic_function_invoker<decltype(&CLS::METHOD)>::wasm_function_type(),\
-         (void *)eosio::chain::intrinsic_function_invoker<decltype(&CLS::METHOD)>::fn<&CLS::METHOD>()\
+         eosio::chain::intrinsic_function_invoker<decltype(&BOOST_PP_TUPLE_ELEM(2, 1, DATA)::METHOD)>::wasm_function_type(),\
+         (void *)eosio::chain::intrinsic_function_invoker<decltype(&BOOST_PP_TUPLE_ELEM(2, 1, DATA)::METHOD)>::fn<&BOOST_PP_TUPLE_ELEM(2, 1, DATA)::METHOD>()\
       )\
-   },
+   );
 
-#define REGISTER_INTRINSICS(CLS, MEMBERS)\
-   BOOST_PP_SEQ_FOR_EACH(_REGISTER_INTRINSIC, CLS, MEMBERS)
+#define REGISTER_INTRINSICS(DATA, MEMBERS)\
+   BOOST_PP_SEQ_FOR_EACH(_REGISTER_INTRINSIC, DATA, MEMBERS)
 
 } };

@@ -348,14 +348,20 @@ class intrinsics {
       apply_context& context;
 };
 
-map<string, Intrinsics::Function> intrinsic_registry = {
-   REGISTER_INTRINSICS(intrinsics, (read_action)(assert))
+static map<string, unique_ptr<Intrinsics::Function>> intrinsic_registry;
+static void lazy_register_intrinsics()
+{
+   if (intrinsic_registry.size() !=0 ) {
+      return;
+   }
+   REGISTER_INTRINSICS((intrinsic_registry, intrinsics), (read_action)(assert));
 };
 
 FunctionInstance *resolve_intrinsic(const string& name) {
+   lazy_register_intrinsics();
    auto iter = intrinsic_registry.find(name);
    if (iter != intrinsic_registry.end()) {
-      return (iter->second).function;
+      return (iter->second)->function;
    }
 
    return nullptr;
