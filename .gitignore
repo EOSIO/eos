@@ -43,6 +43,7 @@ programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
 programs/witness_node/witness_node
 programs/data-dir
+programs/eos-walletd/eos-walletd
 programs/eosd/eosd
 programs/eosc/eosc
 programs/launcher/launcher
