@@ -18,6 +18,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
+#include <eosio/chain/wasm_interface.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -26,6 +27,7 @@
 namespace eosio { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
+
 
    namespace contracts{ class chain_initializer; }
 
@@ -269,8 +271,9 @@ namespace eosio { namespace chain {
          const deque<signed_transaction>&  pending()const { return _pending_transactions; }
 
 
-
-
+         wasm_cache& get_wasm_cache() {
+            return _wasm_cache;
+         }
 
    private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
@@ -396,6 +399,8 @@ namespace eosio { namespace chain {
 
          typedef pair<scope_name,action_name>                   handler_key;
          map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
+
+         wasm_cache                       _wasm_cache;
    };
 
 } }

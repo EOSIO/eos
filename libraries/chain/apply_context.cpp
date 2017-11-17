@@ -1,5 +1,6 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/wasm_interface.hpp>
 
 namespace eosio { namespace chain {
 void apply_context::exec()
@@ -8,7 +9,16 @@ void apply_context::exec()
    if( native ) {
       (*native)(*this);
    } else {
-      wlog( "WASM handler not yet implemented ${receiver}  ${scope}::${name}", ("receiver",receiver)("scope",act.scope)("name",act.name) );
+      const auto& a = mutable_controller.get_database().get<account_object,by_name>(receiver);
+
+      if (a.code.size() > 0) {
+         // get code from cache
+         auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(), a.code.size());
+
+         // get wasm_interface
+         auto &wasm = wasm_interface::get();
+         wasm.apply(code, *this);
+      }
    }
 } /// exec()
 

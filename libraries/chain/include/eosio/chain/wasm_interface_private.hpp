@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/wasm_interface.hpp>
+#include <fc/optional.hpp>
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"
 
@@ -9,31 +10,33 @@ namespace eosio { namespace chain {
 
 using namespace IR;
 using namespace Runtime;
+using namespace fc;
 
-struct module_state {
-   ModuleInstance*      instance     = nullptr;
-   Module*              module       = nullptr;
-   apply_context*       context      = nullptr;
-   int                  mem_start    = 0;
-   int                  mem_end      = 1<<16;
-   vector<char>         init_memory;
-   fc::sha256           code_version;
+struct wasm_cache::entry {
+   entry(ModuleInstance* instance, Module* module)
+   :instance(instance)
+   ,module(module)
+   {}
+
+   ModuleInstance*    instance;
+   Module*            module;
+};
+
+struct wasm_context {
+   wasm_cache::entry&   code;
+   apply_context&       context;
 };
 
 struct wasm_interface_impl {
-   map<digest_type, module_state> code_cache;
-   module_state*                  current_state = nullptr;
+   optional<wasm_context> current_context;
+   void call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context &context);
 };
-
-wasm_interface::wasm_interface()
-   :my( new wasm_interface_impl() ) {
-}
 
 class intrinsics_accessor {
    public:
-      static module_state& get_module_state(wasm_interface& wasm) {
-         FC_ASSERT(wasm.my->current_state != nullptr);
-         return *wasm.my->current_state;
+      static wasm_context& get_context(wasm_interface& wasm) {
+         FC_ASSERT(wasm.my->current_context.valid());
+         return *wasm.my->current_context;
       }
 };
 
@@ -213,7 +216,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
 
    template<then_type Then>
    static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
-      auto mem = getDefaultMemory(intrinsics_accessor::get_module_state(wasm).instance);
+      auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       size_t length = size_t(size);
       T* base = memoryArrayPtr<T>( mem, ptr, length );
       return Then(wasm, array_ptr<T>{base}, length, rest..., translated...);
@@ -242,7 +245,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T*, Inputs...>, std::tuple<Transla
 
    template<then_type Then>
    static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr) {
-      auto mem = getDefaultMemory(intrinsics_accessor::get_module_state(wasm).instance);
+      auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       T* base = memoryArrayPtr<T>( mem, ptr, 1 );
       return Then(wasm, base, rest..., translated...);
    };
@@ -272,7 +275,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T&, Inputs...>, std::tuple<Transla
    static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr) {
       // references cannot be created for null pointers
       FC_ASSERT(ptr != 0);
-      auto mem = getDefaultMemory(intrinsics_accessor::get_module_state(wasm).instance);
+      auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       T& base = memoryRef<T>( mem, ptr );
       return Then(wasm, base, rest..., translated...);
    }
