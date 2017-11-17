@@ -46,7 +46,6 @@ const static uint32_t   default_max_gen_trx_size       = 64 * 1024;
 const static uint32_t   producers_authority_threshold  = 14;
 
 const static share_type default_elected_pay            = asset(100).amount;
-const static share_type default_runner_up_pay          = asset(75).amount;
 const static share_type default_min_eos_balance        = asset(100).amount;
 
 

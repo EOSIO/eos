@@ -18,7 +18,7 @@ add_library( eos_chain
 
              chain_controller.cpp
 
-             contracts/eos_contract.cpp
+             contracts/eosio_contract.cpp
              contracts/producer_objects.cpp
              contracts/staked_balance_objects.cpp
              contracts/chain_initializer.cpp
