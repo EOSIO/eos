@@ -191,19 +191,25 @@ void apply_eosio_setcode(apply_context& context) {
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
 
+   auto code_id = fc::sha256::hash( act.code.data(), act.code.size() );
+
    const auto& account = db.get<account_object,by_name>(act.account);
 //   wlog( "set code: ${size}", ("size",act.code.size()));
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate 
-      a.code_version = fc::sha256::hash( act.code.data(), act.code.size() );
+      a.code_version = code_id;
       a.code.resize( act.code.size() );
       memcpy( a.code.data(), act.code.data(), act.code.size() );
 
    });
 
+   // create an apply context for initialization
    apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.act, act.account );
-   wasm_interface::get().init( init_context );
+
+   // get code from cache
+   auto code = context.mutable_controller.get_wasm_cache().checkout_scoped(code_id, act.code.data(), act.code.size());
+   wasm_interface::get().init( code, init_context );
 }
 
 void apply_eosio_setabi(apply_context& context) {
