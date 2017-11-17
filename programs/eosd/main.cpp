@@ -28,7 +28,7 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::eosd::config::version);
-      ilog("eosd version ${ver}", ("ver", eosio::eosd::config::itoh((uint32_t)app().version_int())));
+      ilog("eosd version ${ver}", ("ver", eosio::eosd::config::itoh(static_cast<uint32_t>(app().version_int()))));
       app().register_plugin<net_plugin>();
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<producer_plugin>();
