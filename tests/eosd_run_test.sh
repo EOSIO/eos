@@ -491,10 +491,12 @@ while [ "$NEXT_BLOCK_NUM" -le "$HEAD_BLOCK_NUM" ]; do
   NEXT_BLOCK_NUM=$((NEXT_BLOCK_NUM+1))
 done
 
-ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
-count=`grep -c Assert tn_data_0/stderr.txt`
-if [ $count != 0 ]; then
-  error "FAILURE - Assert in tn_data_0/stderr.txt"
+if [ "$SERVER" == "localhost" ]; then
+  ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
+  count=`grep -c Assert tn_data_0/stderr.txt`
+  if [ "$count" != "0" ]; then
+    error "FAILURE - Assert in tn_data_0/stderr.txt"
+  fi
 fi
 
 killAll
