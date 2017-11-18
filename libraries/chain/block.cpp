@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <algorithm>
@@ -41,21 +42,19 @@ namespace eosio { namespace chain {
       return signee() == expected_signee;
    }
 
-   digest_type merkle(vector<digest_type> ids) {
-      while (ids.size() > 1) {
-         if (ids.size() % 2)
-            ids.push_back(ids.back());
-         for (int i = 0; i < ids.size() / 2; ++i)
-            ids[i/2] = digest_type::hash(std::make_pair(ids[i], ids[i+1]));
-         ids.resize(ids.size() / 2);
-      }
-
-      return ids.front();
-   }
-
    checksum_type signed_block_summary::calculate_transaction_mroot()const
    {
       return checksum_type();// TODO ::hash(merkle(ids));
+   }
+
+   digest_type   signed_block::calculate_transaction_merkle_root()const {
+      vector<digest_type> ids; 
+      ids.reserve(input_transactions.size());
+
+      for( const auto& t : input_transactions ) 
+         ids.emplace_back( t.id() );
+
+      return merkle( std::move(ids) );
    }
 
 } }

@@ -10,6 +10,7 @@
 #include <eosio/chain/block_timestamp.hpp>
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/producer_schedule.hpp>
+#include <eosio/chain/incremental_merkle.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -52,7 +53,7 @@ namespace eosio { namespace chain {
     */
    class dynamic_global_property_object : public chainbase::object<dynamic_global_property_object_type, dynamic_global_property_object>
    {
-        OBJECT_CTOR(dynamic_global_property_object)
+        OBJECT_CTOR(dynamic_global_property_object, (block_merkle_root))
 
         id_type              id;
         uint32_t             head_block_number = 0;
@@ -87,6 +88,11 @@ namespace eosio { namespace chain {
         uint64_t recent_slots_filled;
         
         uint32_t last_irreversible_block_num = 0;
+
+        /** 
+         * Used to calculate the merkle root over all blocks
+         */ 
+        shared_incremental_merkle  block_merkle_root;
    };
 
    using global_property_multi_index = chainbase::shared_multi_index_container<

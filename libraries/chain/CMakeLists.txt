@@ -3,6 +3,7 @@ file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.h
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_chain
              chain_config.cpp
+             merkle.cpp
              name.cpp
              transaction.cpp
              block.cpp

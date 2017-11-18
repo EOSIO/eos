@@ -310,9 +310,11 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
 
-   _pending_block->timestamp = when;
-   _pending_block->producer  = producer_obj.owner;
-   _pending_block->previous  = head_block_id();
+   _pending_block->timestamp   = when;
+   _pending_block->producer    = producer_obj.owner;
+   _pending_block->previous    = head_block_id();
+   _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
+   _pending_block->transaction_mroot = _pending_block->calculate_transaction_merkle_root();
 
    if( is_start_of_round( _pending_block->block_num() ) ) {
       auto latest_producer_schedule = _calculate_producer_schedule();
@@ -433,29 +435,13 @@ void chain_controller::__apply_block(const signed_block& next_block)
    } /// for each cycle
 
    _finalize_block( next_block );
-   /*
-   update_global_properties(next_block);
-   update_global_dynamic_data(next_block);
-   update_signing_producer(signing_producer, next_block);
-   update_last_irreversible_block();
-
-   create_block_summary(next_block);
-   clear_expired_transactions();
-
-   // notify observers that the block has been applied
-   // TODO: do this outside the write lock...? 
-   if (_currently_replaying_blocks)
-     applied_irreversible_block(next_block);
-     */
-
-
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
 /**
  *  After applying all transactions successfully we can update
  *  the current block time, block number, producer stats, etc
  */
-void chain_controller::_finalize_block( const signed_block& b ) {
+void chain_controller::_finalize_block( const signed_block& b ) { try {
    const producer_object& signing_producer = validate_block_header(_skip_flags, b);
 
    update_global_properties( b );
@@ -469,7 +455,8 @@ void chain_controller::_finalize_block( const signed_block& b ) {
    applied_block( b ); //emit
    if (_currently_replaying_blocks)
      applied_irreversible_block(b);
-}
+
+} FC_CAPTURE_AND_RETHROW( (b) ) }
 
 namespace {
 
@@ -752,6 +739,9 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
+   
+   FC_ASSERT( next_block.calculate_transaction_merkle_root() == next_block.transaction_mroot, "merkle root does not match" );
+
    return producer;
 }
 
@@ -1025,6 +1015,9 @@ ProducerRound chain_controller::calculate_next_round(const signed_block& next_bl
 void chain_controller::update_global_dynamic_data(const signed_block& b) {
    const dynamic_global_property_object& _dgp = _db.get<dynamic_global_property_object>();
 
+   const auto& bmroot = _dgp.block_merkle_root.get_root();
+   FC_ASSERT( bmroot == b.block_mroot, "block merkle root does not match expected value" );
+
    uint32_t missed_blocks = head_block_num() == 0? 1 : get_slot_at_time((fc::time_point)b.timestamp);
    assert(missed_blocks != 0);
    missed_blocks--;
@@ -1060,8 +1053,10 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
          dgp.recent_slots_filled <<= 1;
          dgp.recent_slots_filled += 1;
          dgp.recent_slots_filled <<= missed_blocks;
-      } else
+      } else {
          dgp.recent_slots_filled = 0;
+      }
+      dgp.block_merkle_root.append( head_block_id() ); 
    });
 
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
