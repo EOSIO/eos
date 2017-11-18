@@ -45,7 +45,10 @@ namespace eosio { namespace chain {
                           uint32_t create_block_txn_execution_time,
                           const txn_msg_limits& rate_limit,
                           const applied_irreverisable_block_func& applied_func = {});
-         chain_controller(chain_controller&&) = default;
+         chain_controller(const chain_controller&) = delete;
+         chain_controller(chain_controller&&) = delete;
+         chain_controller& operator=(const chain_controller&) = delete;
+         chain_controller& operator=(chain_controller&&) = delete;
          ~chain_controller();
 
          /**
