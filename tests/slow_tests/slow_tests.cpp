@@ -199,7 +199,7 @@ BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
 
    // Fast forward to when we can liquidate
    wlog("Hang on, this will take a minute...");
-   chain.produce_blocks(config::staked_balance_cooldown_seconds / config::block_interval_seconds + 1);
+   chain.produce_blocks(config::staked_balance_cooldown_seconds / config::default_block_interval_seconds + 1);
 
    BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, asset(21).amount), chain::message_precondition_exception);
    BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(135).amount);

@@ -28,7 +28,7 @@ const static permission_name owner_name = N(owner);
 
 const static share_type initial_token_supply = asset::from_string("1000000000.0000 EOS").amount;
 
-const static int block_interval_seconds = 3;
+const static uint32_t default_block_interval_seconds = 1;
 
 /** Percentages are fixed point with a denominator of 10,000 */
 const static int percent100 = 10000;

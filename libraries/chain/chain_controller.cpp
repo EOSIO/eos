@@ -1210,8 +1210,8 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
       _db.with_write_lock([this, &starter] {
          auto initial_timestamp = starter.get_chain_start_time();
          FC_ASSERT(initial_timestamp != time_point_sec(), "Must initialize genesis timestamp." );
-         FC_ASSERT(initial_timestamp.sec_since_epoch() % config::block_interval_seconds == 0,
-                    "Genesis timestamp must be divisible by config::block_interval_seconds." );
+         FC_ASSERT(initial_timestamp.sec_since_epoch() % block_interval() == 0,
+                    "Genesis timestamp must be divisible by block-interval-seconds." );
 
          // Create global properties
          _db.create<global_property_object>([&starter](global_property_object& p) {
@@ -1254,11 +1254,13 @@ void chain_controller::initialize_chain(chain_initializer_interface& starter)
 
 chain_controller::chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                                    chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
+                                   uint32_t block_interval_seconds,
                                    uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                                    uint32_t create_block_txn_execution_time,
                                    const txn_msg_limits& rate_limit,
                                    const applied_irreverisable_block_func& applied_func)
-   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _txn_execution_time(txn_execution_time),
+   : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _block_interval_seconds(block_interval_seconds),
+     _txn_execution_time(txn_execution_time),
      _rcvd_block_txn_execution_time(rcvd_block_txn_execution_time), _create_block_txn_execution_time(create_block_txn_execution_time),
      _per_auth_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_txn_msg_rate_time_frame_sec),
      _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account_txn_msg_rate),

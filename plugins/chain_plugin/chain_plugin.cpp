@@ -56,6 +56,7 @@ public:
    fc::optional<block_log>          block_logger;
    std::unique_ptr<chain_controller>   chain;
    chain_id_type                    chain_id;
+   uint32_t                         block_interval_seconds;
    uint32_t                         rcvd_block_txn_execution_time;
    uint32_t                         txn_execution_time;
    uint32_t                         create_block_txn_execution_time;
@@ -86,6 +87,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
+         ("block-interval-seconds", bpo::value<uint32_t>()->default_value(config::default_block_interval_seconds),
+          "Sets the block interval in seconds.")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_received_block_transaction_execution_time),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
@@ -119,6 +122,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
+   my->block_interval_seconds = config::default_block_interval_seconds;
+   if(options.count("block-interval-seconds")) {
+      my->block_interval_seconds = options.at("block-interval-seconds").as<uint32_t>();
+   }
    if(options.count("genesis-json")) {
       my->genesis_file = options.at("genesis-json").as<bfs::path>();
    }
@@ -126,9 +133,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
      string tstr = options.at("genesis-timestamp").as<string>();
      if (strcasecmp (tstr.c_str(), "now") == 0) {
        my->genesis_timestamp = fc::time_point::now();
-       auto diff = my->genesis_timestamp.sec_since_epoch() % config::block_interval_seconds;
+       auto diff = my->genesis_timestamp.sec_since_epoch() % my->block_interval_seconds;
        if (diff > 0) {
-         auto delay =  (config::block_interval_seconds - diff);
+         auto delay = (my->block_interval_seconds - diff);
          my->genesis_timestamp += delay;
          dlog ("pausing ${s} seconds to the next interval",("s",delay));
        }
@@ -227,6 +234,7 @@ void chain_plugin::plugin_startup()
    my->chain_id = genesis.compute_chain_id();
    my->chain.reset(new chain_controller(db, *my->fork_db, *my->block_logger,
                                         initializer, native_contract::make_administrator(),
+                                        my->block_interval_seconds,
                                         my->txn_execution_time,
                                         my->rcvd_block_txn_execution_time,
                                         my->create_block_txn_execution_time,
