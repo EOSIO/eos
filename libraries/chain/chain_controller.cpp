@@ -37,6 +37,10 @@
 
 namespace eosio { namespace chain {
 
+bool is_start_of_round( block_num_type block_num ) {
+  return (block_num % config::blocks_per_round) == 0; 
+}
+
 chain_controller::chain_controller( const chain_controller::controller_config& cfg )
 :_db( cfg.shared_memory_dir, 
       (cfg.read_only ? database::read_only : database::read_write), 
@@ -310,19 +314,16 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    _pending_block->producer  = producer_obj.owner;
    _pending_block->previous  = head_block_id();
 
-   const auto& gpo = get_global_properties();
-   if( gpo.pending_active_producers.size() &&
-       gpo.pending_active_producers.back().first == _pending_block->block_num() ) {
-       _pending_block->new_producers = gpo.pending_active_producers.back().second;
+   if( is_start_of_round( _pending_block->block_num() ) ) {
+      auto latest_producer_schedule = _calculate_producer_schedule();
+      if( latest_producer_schedule != _head_producer_schedule() )
+         _pending_block->new_producers = latest_producer_schedule;
    }
 
    if( !(skip & skip_producer_signature) )
       _pending_block->sign( block_signing_key );
 
-
    _finalize_block( *_pending_block );
-
-
 
    _pending_block_session->push();
 
@@ -431,6 +432,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
       } /// for each shard
    } /// for each cycle
 
+   _finalize_block( next_block );
+   /*
    update_global_properties(next_block);
    update_global_dynamic_data(next_block);
    update_signing_producer(signing_producer, next_block);
@@ -441,9 +444,9 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    // notify observers that the block has been applied
    // TODO: do this outside the write lock...? 
-   applied_block( next_block ); //emit
    if (_currently_replaying_blocks)
      applied_irreversible_block(next_block);
+     */
 
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
@@ -458,16 +461,14 @@ void chain_controller::_finalize_block( const signed_block& b ) {
    update_global_properties( b );
    update_global_dynamic_data( b );
    update_signing_producer(signing_producer, b);
-
    update_last_irreversible_block();
 
    create_block_summary(b);
    clear_expired_transactions();
 
+   applied_block( b ); //emit
    if (_currently_replaying_blocks)
      applied_irreversible_block(b);
-
-
 }
 
 namespace {
@@ -761,31 +762,63 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
    });
 }
 
+/**
+ *  Takes the top config::producer_count producers by total vote excluding any producer whose
+ *  block_signing_key is null.  
+ */
+producer_schedule_type chain_controller::_calculate_producer_schedule()const {
+   const auto& producers_by_vote = _db.get_index<contracts::producer_votes_multi_index,contracts::by_votes>();
+   auto itr = producers_by_vote.begin();
+   producer_schedule_type schedule;
+   uint32_t count = 0;
+   while( itr != producers_by_vote.end() && count < schedule.size() ) {
+      schedule[count].producer_name = itr->owner_name;
+      schedule[count].block_signing_key = get_producer(itr->owner_name).signing_key;
+      ++itr;
+      if( schedule[count].block_signing_key != public_key_type() ) {
+         ++count;
+      }
+   }
+   return schedule;
+}
+
+/**
+ *  Returns the most recent and/or pending producer schedule
+ */
+const producer_schedule_type& chain_controller::_head_producer_schedule()const {
+   const auto& gpo = get_global_properties();
+   if( gpo.pending_active_producers.size() ) 
+      return gpo.pending_active_producers.back().second;
+   return gpo.active_producers;
+}
+
 void chain_controller::update_global_properties(const signed_block& b) { try {
    // If we're at the end of a round, update the BlockchainConfiguration, producer schedule
    // and "producers" special account authority
-   if (b.block_num() % config::blocks_per_round == 0) {
-      const auto& producers_by_vote = _db.get_index<contracts::producer_votes_multi_index,contracts::by_votes>();
-      auto itr = producers_by_vote.begin();
-      producer_schedule_type schedule;
-      uint32_t count = 0;
-      while( itr != producers_by_vote.end() ) {
-         schedule[count].producer_name = itr->owner_name;
-         wdump((itr->owner_name));
-         schedule[count].block_signing_key = get_producer(itr->owner_name).signing_key;
-         idump((itr->owner_name));
-         ++itr;
+   if( is_start_of_round( b.block_num() ) ) {
+      auto schedule = _calculate_producer_schedule();
+      if( b.new_producers )
+      {
+         for( uint32_t i = 0; i < schedule.size(); ++i ) {
+            idump((schedule[i])((*b.new_producers)[i]) );
+            FC_ASSERT( schedule[i] == (*b.new_producers)[i], "missmatch in expected producers", ("i", i) );
+         }
+          FC_ASSERT( schedule == *b.new_producers, "pending producer set different than expected" );
       }
 
       const auto& gpo = get_global_properties();
-      if( schedule != gpo.active_producers ) {
-         _db.modify( gpo, [&]( auto& props ) {
-            if( props.pending_active_producers.size() && props.pending_active_producers.back().first == head_block_num()+1 )
-               props.pending_active_producers.back().second = schedule;
-            else
-               props.pending_active_producers.push_back( make_pair(head_block_num()+1,schedule) );
-         });
+
+      if( _head_producer_schedule() != schedule ) {
+         FC_ASSERT( b.new_producers, "pending producer set changed but block didn't indicate it" );
       }
+      _db.modify( gpo, [&]( auto& props ) {
+         if( props.pending_active_producers.size() && props.pending_active_producers.back().first == b.block_num() )
+            props.pending_active_producers.back().second = schedule;
+         else
+            props.pending_active_producers.push_back( make_pair(b.block_num(),schedule) );
+      });
+
+
       /*
       auto schedule = _admin->get_next_round(_db);
       auto config   = _admin->get_blockchain_configuration(_db, schedule);
@@ -1107,10 +1140,7 @@ void chain_controller::update_last_irreversible_block()
                    props.pending_active_producers.erase(props.pending_active_producers.begin());
                  }
               }
-              for( const auto& n : *new_producer_schedule ) {
-                 wdump((name(n.producer_name))(n.block_signing_key));
-              }
-              //props.active_producers = *new_producer_schedule;
+              props.active_producers = *new_producer_schedule;
          });
       }
    }

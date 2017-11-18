@@ -302,6 +302,10 @@ namespace eosio { namespace chain {
          void _initialize_indexes();
          void _initialize_chain(contracts::chain_initializer& starter);
 
+         producer_schedule_type _calculate_producer_schedule()const;
+         const producer_schedule_type& _head_producer_schedule()const;
+
+
          void replay();
 
          void _apply_block(const signed_block& next_block, uint32_t skip = skip_nothing);
