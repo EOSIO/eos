@@ -2,12 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/producer_plugin/producer_plugin.hpp>
-#include <eos/net_plugin/net_plugin.hpp>
+#include <eosio/producer_plugin/producer_plugin.hpp>
 
 #include <eosio/chain/producer_object.hpp>
-
-#include <eos/utilities/key_conversion.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -22,6 +19,8 @@ using std::vector;
 
 namespace eosio {
 
+using namespace eosio::chain;
+
 class producer_plugin_impl {
 public:
    producer_plugin_impl(boost::asio::io_service& io)
@@ -32,14 +31,13 @@ public:
    block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
 
    boost::program_options::variables_map _options;
-   bool _production_enabled = false;
-   uint32_t _required_producer_participation = 33 * config::percent1;
-   uint32_t _production_skip_flags = eosio::chain::chain_controller::skip_nothing;
-   eosio::chain::block_schedule::factory _production_scheduler = eosio::chain::block_schedule::in_single_thread;
+   bool     _production_enabled                 = false;
+   uint32_t _required_producer_participation    = 33 * chain::config::percent_1;
+   uint32_t _production_skip_flags              = eosio::chain::skip_nothing;
 
-   std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
-   std::set<types::account_name> _producers;
-   boost::asio::deadline_timer _timer;
+   std::map<chain::public_key_type, chain::private_key_type> _private_keys;
+   std::set<chain::account_name>                             _producers;
+   boost::asio::deadline_timer                               _timer;
 };
 
 void new_chain_banner(const eosio::chain::chain_controller& db)
@@ -48,7 +46,7 @@ void new_chain_banner(const eosio::chain::chain_controller& db)
       "*******************************\n"
       "*                             *\n"
       "*   ------ NEW CHAIN ------   *\n"
-      "*   -   Welcome to EOS!   -   *\n"
+      "*   -   Welcome to EOS.IO!   -   *\n"
       "*   -----------------------   *\n"
       "*                             *\n"
       "*******************************\n"
@@ -72,16 +70,14 @@ void producer_plugin::set_program_options(
    boost::program_options::options_description& command_line_options,
    boost::program_options::options_description& config_file_options)
 {
-   auto default_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("nathan")));
-
-   auto private_key_default = std::make_pair(chain::public_key_type(default_priv_key.get_public_key()),
-                                             eosio::utilities::key_to_wif(default_priv_key));
+   auto default_priv_key = private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("nathan")));
+   auto private_key_default = std::make_pair(default_priv_key.get_public_key(), default_priv_key );
 
    boost::program_options::options_description producer_options;
 
    producer_options.add_options()
          ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::percent1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
+         ("required-participation", boost::program_options::bool_switch()->notifier([this](int e){my->_required_producer_participation = uint32_t(e*config::percent_1);}), "Percent of producers (0-99) that must be participating in order to produce blocks")
          ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           ("ID of producer controlled by this node (e.g. inita; may specify multiple times)"))
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
@@ -90,29 +86,6 @@ void producer_plugin::set_program_options(
          ;
    command_line_options.add(producer_options);
    config_file_options.add(producer_options);
-
-   command_line_options.add_options()
-         ("scheduler", boost::program_options::value<string>()->default_value("single-thread")->notifier([this](const string& v){
-             if (v == "single-thread") {
-                my->_production_scheduler = eosio::chain::block_schedule::in_single_thread;
-             } else if (v == "cycling-conflicts") {
-                ilog("Using scheduler by_cycling_conflicts");
-                my->_production_scheduler = eosio::chain::block_schedule::by_cycling_conflicts;
-             } else if (v == "threading-conflicts") {
-                ilog("Using scheduler by_threading_conflicts");
-                my->_production_scheduler = eosio::chain::block_schedule::by_threading_conflicts;
-             } else {
-                FC_ASSERT(false, "Invalid scheduler specified ${s}", ("s", v));
-             }
-          }),
-          "Specify scheduler producer should use. One of the following:\n"
-          "  single-thread\n"
-          "    \tA reference scheduler that puts all transactions in a single thread (FIFO).\n"
-          "  cycling-conflicts\n"
-          "    \tA greedy scheduler that attempts to cycle through threads to resolve scope contention before falling back on cycles.\n"
-          "  threading-conflicts\n"
-          "    \tA greedy scheduler that attempts to make short threads to resolve scope contention before falling back on cycles.")
-         ;
 }
 
 template<typename T>
@@ -133,6 +106,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    if( options.count("private-key") )
    {
+      /*
       const std::vector<std::string> key_id_to_wif_pair_strings = options["private-key"].as<std::vector<std::string>>();
       for (const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
       {
@@ -143,6 +117,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
                    ("key_string", key_id_to_wif_pair.second));
          my->_private_keys[key_id_to_wif_pair.first] = *private_key;
       }
+      */
    }
 } FC_LOG_AND_RETHROW() }
 
@@ -158,7 +133,7 @@ void producer_plugin::plugin_startup()
       {
          if(chain.head_block_num() == 0)
             new_chain_banner(chain);
-         my->_production_skip_flags |= eosio::chain::chain_controller::skip_undo_history_check;
+         my->_production_skip_flags |= eosio::chain::skip_undo_history_check;
       }
       my->schedule_production_loop();
    } else
@@ -180,7 +155,7 @@ void producer_plugin_impl::schedule_production_loop() {
    fc::time_point now = fc::time_point::now();
    int64_t time_to_next_second = 1000000 - (now.time_since_epoch().count() % 1000000);
    if(time_to_next_second < 50000)      // we must sleep for at least 50ms
-       time_to_next_second += 1000000;
+       time_to_next_second += 500000;
 
    _timer.expires_from_now(boost::posix_time::microseconds(time_to_next_second));
    _timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
@@ -250,7 +225,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    fc::time_point_sec now = now_fine + fc::microseconds(500000);
 
    if (app().get_plugin<chain_plugin>().is_skipping_transaction_signatures()) {
-      _production_skip_flags |= chain_controller::skip_transaction_signatures;
+      _production_skip_flags |= skip_transaction_signatures;
    }
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
@@ -279,7 +254,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    //
    assert( now > chain.head_block_time() );
 
-   eosio::types::account_name scheduled_producer = chain.get_scheduled_producer( slot );
+   auto scheduled_producer = chain.get_scheduled_producer( slot );
    // we must control the producer scheduled to produce the next block.
    if( _producers.find( scheduled_producer ) == _producers.end() )
    {
@@ -287,7 +262,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::not_my_turn;
    }
 
-   fc::time_point_sec scheduled_time = chain.get_slot_time( slot );
+   auto scheduled_time = chain.get_slot_time( slot );
    eosio::chain::public_key_type scheduled_key = chain.get_producer(scheduled_producer).signing_key;
    auto private_key_itr = _private_keys.find( scheduled_key );
 
@@ -300,7 +275,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    uint32_t prate = chain.producer_participation_rate();
    if( prate < _required_producer_participation )
    {
-      capture("pct", uint32_t(100*uint64_t(prate) / config::percent1));
+      capture("pct", uint32_t(100*uint64_t(prate) / config::percent_1));
       return block_production_condition::low_participation;
    }
 
@@ -314,10 +289,10 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       scheduled_time,
       scheduled_producer,
       private_key_itr->second,
-      _production_scheduler,
       _production_skip_flags
       );
 
+   /*
    uint32_t count = 0;
    for( const auto& cycle : block.cycles ) {
       for( const auto& thread : cycle ) {
@@ -325,10 +300,10 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
          count += thread.user_input.size();
       }
    }
+   */
 
-   capture("n", block.block_num())("t", block.timestamp)("c", now)("count",count);
+   capture("n", block.block_num())("t", block.timestamp)("c", now)("count",block.input_transactions.size());
 
-   app().get_plugin<net_plugin>().broadcast_block(block);
    return block_production_condition::produced;
 }
 

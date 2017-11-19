@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <eos/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <appbase/application.hpp>
 
@@ -46,4 +46,4 @@ private:
    std::unique_ptr<class producer_plugin_impl> my;
 };
 
-} //eos
+} //eosiio
