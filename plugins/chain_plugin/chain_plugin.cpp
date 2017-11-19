@@ -196,6 +196,7 @@ void chain_plugin::plugin_startup()
 
    chain_controller::controller_config config;
    config.block_log_dir = my->block_log_dir;
+   config.shared_memory_dir = app().data_dir() / default_shared_memory_dir;
    config.read_only = my->readonly;
    config.genesis = fc::json::from_file(my->genesis_file).as<contracts::genesis_state_type>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
@@ -203,15 +204,6 @@ void chain_plugin::plugin_startup()
    }
 
    my->chain.emplace(config);
-
-   /*
-   if (db_plugin* plugin = app().find_plugin<db_plugin>()) {
-      if (plugin->get_state() != registered) {
-         ilog("Blockchain configured with external database.");
-         my->chain->applied_irreversible_block.connect([plugin](const signed_block& b) { plugin->applied_irreversible_block(b); });
-      }
-   }
-   */
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
