@@ -54,7 +54,7 @@ public:
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
-   fc::optional<chain_controller>   chain;
+   std::unique_ptr<chain_controller>   chain;
    chain_id_type                    chain_id;
    uint32_t                         rcvd_block_txn_execution_time;
    uint32_t                         txn_execution_time;
@@ -225,13 +225,13 @@ void chain_plugin::plugin_startup()
    my->fork_db = fork_database();
    my->block_logger = block_log(my->block_log_dir);
    my->chain_id = genesis.compute_chain_id();
-   my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
-                                initializer, native_contract::make_administrator(),
-                                my->txn_execution_time,
-                                my->rcvd_block_txn_execution_time,
-                                my->create_block_txn_execution_time,
-                                my->cfg_txn_msg_limits,
-                                applied_func);
+   my->chain.reset(new chain_controller(db, *my->fork_db, *my->block_logger,
+                                        initializer, native_contract::make_administrator(),
+                                        my->txn_execution_time,
+                                        my->rcvd_block_txn_execution_time,
+                                        my->create_block_txn_execution_time,
+                                        my->cfg_txn_msg_limits,
+                                        applied_func));
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
