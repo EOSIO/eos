@@ -364,11 +364,6 @@ struct unlinkauth {
 
 using nonce_type = name;
 struct nonce {
-   nonce() = default;
-   nonce(const nonce_type& value)
-   :value(value)
-   {}
-
    nonce_type value;
 
    static scope_name get_scope() {

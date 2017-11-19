@@ -30,12 +30,12 @@ namespace fc { namespace crypto {
          signature      sign( const sha256& digest, bool require_canonical = true ) const;
          sha512         generate_shared_secret( const public_key& pub ) const;
 
-         template< typename KeyType >
+         template< typename KeyType = ecc::private_key_shim >
          static private_key generate() {
             return private_key(storage_type(KeyType::generate()));
          }
 
-         template< typename KeyType >
+         template< typename KeyType = ecc::private_key_shim >
          static private_key regenerate( const typename KeyType::data_type& data ) {
             return private_key(storage_type(KeyType(data)));
          }

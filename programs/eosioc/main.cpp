@@ -21,7 +21,7 @@ Command Line Interface to Eos Daemon
 Usage: ./eosc [OPTIONS] SUBCOMMAND
 
 Options:
-  -h,--help                   Print this help message and exit
+  -h,--help                   Print this help actions and exit
   -H,--host TEXT=localhost    the host where eosd is running
   -p,--port UINT=8888         the port where eosd is running
   --wallet-host TEXT=localhost
@@ -73,14 +73,14 @@ Options:
 #include <eos/utilities/key_conversion.hpp>
 
 #include <eosio/chain/config.hpp>
-#include <eos/chain_plugin/chain_plugin.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/range/algorithm/copy.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
@@ -219,22 +219,22 @@ void add_standard_transaction_options(CLI::App* cmd) {
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
 }
 
-std::string generate_nonce_string() {
-   return std::to_string(fc::time_point::now().time_since_epoch().count() % 1000000);
+uint64_t generate_nonce_value() {
+   return fc::time_point::now().time_since_epoch().count();
 }
 
-types::message generate_nonce() {
-   return message(N(eos),{}, N(nonce), generate_nonce_string());
+chain::action generate_nonce() {
+   return chain::action( {}, contracts::nonce{.value = generate_nonce_value()} ); 
 }
 
-vector<types::account_permission> get_account_permissions(const vector<string>& permissions) {
+vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
       split(pieces, p, boost::algorithm::is_any_of("@"));
       EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
-      return types::account_permission(pieces[0], pieces[1]);
+      return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
    });
-   vector<types::account_permission> accountPermissions;
+   vector<chain::permission_level> accountPermissions;
    boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
    return accountPermissions;
 }
@@ -273,8 +273,9 @@ void sign_transaction(signed_transaction& trx) {
 fc::variant push_transaction( signed_transaction& trx, bool sign ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + tx_expiration;
-    transaction_set_reference_block(trx, info.head_block_id);
-    boost::sort( trx.scope );
+    trx.set_reference_block(info.head_block_id);
+    boost::sort( trx.write_scope );
+    boost::sort( trx.read_scope );
 
     if (sign) {
        sign_transaction(trx);
@@ -292,51 +293,43 @@ void create_account(name creator, name newaccount, public_key_type owner, public
       uint64_t deposit = 1;
 
       signed_transaction trx;
-      trx.scope = sort_names({creator,config::eos_contract_name});
-      transaction_emplace_message(trx, config::eos_contract_name, vector<types::account_permission>{{creator,"active"}}, "newaccount",
-                                           types::newaccount{creator, newaccount, owner_auth,
-                                                             active_auth, recovery_auth, deposit});
+      trx.write_scope = sort_names({creator,config::system_account_name});
+      trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}}, 
+                                contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
+
       std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
 
-types::message create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth, const name& permissionAuth) {
-   return message { config::eos_contract_name,
-                           vector<types::account_permission>{{account,permissionAuth}},
-                           "updateauth", 
-                           types::updateauth{account, permission, parent, auth}};
+chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth, const name& permissionAuth) {
+   return action { vector<chain::permission_level>{{account,permissionAuth}},
+                   contracts::updateauth{account, permission, parent, auth}};
 }
 
-types::message create_deleteauth(const name& account, const name& permission, const name& permissionAuth) {
-   return message { config::eos_contract_name,
-                           vector<types::account_permission>{{account,permissionAuth}},
-                           "deleteauth", 
-                           types::deleteauth{account, permission}};
+chain::action create_deleteauth(const name& account, const name& permission, const name& permissionAuth) {
+   return action { vector<chain::permission_level>{{account,permissionAuth}},
+                   contracts::deleteauth{account, permission}};
 }
 
-types::message create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
-   return message { config::eos_contract_name,
-                           vector<types::account_permission>{{account,"active"}},
-                           "linkauth", 
-                           types::linkauth{account, code, type, requirement}};
+chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
+   return action { vector<chain::permission_level>{{account,"active"}},
+                   contracts::linkauth{account, code, type, requirement}};
 }
 
-types::message create_unlinkauth(const name& account, const name& code, const name& type) {
-   return message { config::eos_contract_name,
-                           vector<types::account_permission>{{account,"active"}},
-                           "unlinkauth", 
-                           types::unlinkauth{account, code, type}};
+chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
+   return action { vector<chain::permission_level>{{account,"active"}},
+                   contracts::unlinkauth{account, code, type}};
 }
 
-void send_transaction(const std::vector<types::message>& messages, const std::vector<name>& scopes, bool skip_sign = false) {
+void send_transaction(const std::vector<chain::action>& actions, const std::vector<name>& scopes, bool skip_sign = false) {
    signed_transaction trx;
-   trx.scope = sort_names(scopes);
-   for (const auto& m: messages) {
-      transaction_emplace_message(trx, m);
+   trx.write_scope = sort_names(scopes);
+   for (const auto& m: actions) {
+      trx.actions.emplace_back( m );
    }
 
    auto info = get_info();
    trx.expiration = info.head_block_time + tx_expiration;
-   transaction_set_reference_block(trx, info.head_block_id);
+   trx.set_reference_block(info.head_block_id);
    if (!skip_sign) {
       sign_transaction(trx);
    }
@@ -368,11 +361,11 @@ struct set_account_permission_subcommand {
          bool is_delete = boost::iequals(authorityJsonOrFile, "null");
          
          if (is_delete) {
-            send_transaction({create_deleteauth(account, permission, name(permissionAuth))}, {account, config::eos_contract_name}, skip_sign);
+            send_transaction({create_deleteauth(account, permission, name(permissionAuth))}, {account, config::system_account_name}, skip_sign);
          } else {
-            types::authority authority;
+            authority auth;
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
-               authority = types::authority { 1, { {public_key_type(authorityJsonOrFile), 1 } }, {} };
+               auth = authority(public_key_type(authorityJsonOrFile));
             } else {
                fc::variant parsedAuthority;
                if (boost::istarts_with(authorityJsonOrFile, "{")) {
@@ -381,7 +374,7 @@ struct set_account_permission_subcommand {
                   parsedAuthority = fc::json::from_file(authorityJsonOrFile);
                }
 
-               authority = parsedAuthority.as<types::authority>();
+               auth = parsedAuthority.as<authority>();
             }
 
             name parent;
@@ -406,7 +399,7 @@ struct set_account_permission_subcommand {
                parent = name(parentStr);
             }
 
-            send_transaction({create_updateauth(account, permission, parent, authority, name(permissionAuth))}, {name(account), config::eos_contract_name}, skip_sign);
+            send_transaction({create_updateauth(account, permission, parent, auth, name(permissionAuth))}, {name(account), config::system_account_name}, skip_sign);
          }      
       });
    }
@@ -436,17 +429,17 @@ struct set_action_permission_subcommand {
          bool is_delete = boost::iequals(requirementStr, "null");
          
          if (is_delete) {
-            send_transaction({create_unlinkauth(account, code, type)}, {account, config::eos_contract_name}, skip_sign);
+            send_transaction({create_unlinkauth(account, code, type)}, {account, config::system_account_name}, skip_sign);
          } else {
             name requirement = name(requirementStr);
-            send_transaction({create_linkauth(account, code, type, requirement)}, {name(account), config::eos_contract_name}, skip_sign);
+            send_transaction({create_linkauth(account, code, type, requirement)}, {name(account), config::system_account_name}, skip_sign);
          }      
       });
    }
 };
 
 int main( int argc, char** argv ) {
-   path binPath = argv[0];
+   fc::path binPath = argv[0];
    if (binPath.is_relative()) {
       binPath = relative(binPath, current_path()); 
    }
@@ -463,17 +456,19 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-port", wallet_port, localized("the port where eos-walletd is running"), true );
 
    bool verbose_errors = false;
-   app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose messages on error"));
+   app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
 
    // Create subcommand
    auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"), false);
    create->require_subcommand();
 
    // create key
-   create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback([] {
-      auto privateKey = fc::ecc::private_key::generate();
-      std::cout << localized("Private key: ${key}", ("key",  key_to_wif(privateKey.get_secret()))) << std::endl;
-      std::cout << localized("Public key: ${key}", ("key", string(public_key_type(privateKey.get_public_key())))) << std::endl;
+   create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [](){
+      auto pk    = private_key_type::generate();
+      auto privs = string(pk);
+      auto pubs  = string(pk.get_public_key());
+      std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
+      std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
    });
 
    // create account
@@ -509,9 +504,8 @@ int main( int argc, char** argv ) {
       auto account_permissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      trx.scope = sort_names({config::eos_contract_name, account_name});
-      transaction_emplace_message(trx, config::eos_contract_name, account_permissions,
-                                  "setproducer", types::setproducer{account_name, public_key_type(ownerKey), blockchain_configuration{}});
+      trx.write_scope = sort_names({config::system_account_name, account_name});
+      trx.actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
 
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
    });
@@ -653,7 +647,7 @@ int main( int argc, char** argv ) {
          string  id       = tobj["transaction_id"].as_string();
          const auto& trx  = tobj["transaction"].get_object();
          const auto& exp  = trx["expiration"].as<fc::time_point_sec>();
-         const auto& msgs = trx["messages"].get_array();
+         const auto& msgs = trx["actions"].get_array();
          std::cout << tobj["seq_num"].as_string() <<"] " << id << "  " << trx["expiration"].as_string() << std::endl;
       }
 
@@ -682,16 +676,15 @@ int main( int argc, char** argv ) {
       std::cout << localized("Assembling WASM...") << std::endl;
       auto wasm = assemble_wast(wast);
 
-      types::setcode handler;
+      contracts::setcode handler;
       handler.account = account;
       handler.code.assign(wasm.begin(), wasm.end());
-      if (abi->count())
-         handler.abi = fc::json::from_file(abiPath).as<types::abi>();
+      //if (abi->count())
+      // TODO   handler.abi = fc::json::from_file(abiPath).as<types::abi>();
 
       signed_transaction trx;
-      trx.scope = sort_names({config::eos_contract_name, account});
-      transaction_emplace_message(trx, config::eos_contract_name, vector<types::account_permission>{{account,"active"}},
-                                           "setcode", handler);
+      trx.write_scope = sort_names({config::system_account_name, account});
+      trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
 
       std::cout << localized("Publishing contract...") << std::endl;
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
@@ -718,9 +711,8 @@ int main( int argc, char** argv ) {
       auto account_permissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      trx.scope = sort_names({config::eos_contract_name, account_name});
-      transaction_emplace_message(trx, config::eos_contract_name, account_permissions,
-                                  "okproducer", types::okproducer{account_name, producer, approve});
+      trx.write_scope = sort_names({config::system_account_name, account_name});
+      trx.actions.emplace_back( account_permissions, contracts::okproducer{account_name, producer, approve});
 
       push_transaction(trx, !skip_sign);
       std::cout << localized("Set producer approval from ${name} for ${producer} to ${approve}",
@@ -746,9 +738,8 @@ int main( int argc, char** argv ) {
       }
 
       signed_transaction trx;
-      trx.scope = sort_names({config::eos_contract_name, account_name});
-      transaction_emplace_message(trx, config::eos_contract_name, account_permissions,
-                                  "setproxy", types::setproxy{account_name, proxy});
+      trx.write_scope = sort_names({config::system_account_name, account_name});
+      trx.actions.emplace_back( account_permissions, contracts::setproxy{account_name, proxy});
 
       push_transaction(trx, !skip_sign);
       std::cout << localized("Set proxy for ${name} to ${proxy}", ("name", account_name)("proxy", proxy)) << std::endl;
@@ -780,26 +771,25 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(transfer);
    transfer->set_callback([&] {
       signed_transaction trx;
-      trx.scope = sort_names({sender,recipient});
+      trx.write_scope = sort_names({sender,recipient});
       
       if (tx_force_unique) {
          if (memo.size() == 0) {
             // use the memo to add a nonce
-            memo = generate_nonce_string();
+            memo = fc::to_string(generate_nonce_value());
          } else {
-            // add a nonce message
-            transaction_emplace_message(trx, generate_nonce());
+            // add a nonce actions
+            trx.actions.emplace_back( generate_nonce() );
          }
       }
 
-      transaction_emplace_message(trx, config::eos_contract_name,
-                                           vector<types::account_permission>{{sender,"active"}},
-                                           "transfer", types::transfer{sender, recipient, amount, memo});
+      trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}}, 
+                                contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
 
 
       auto info = get_info();
       trx.expiration = info.head_block_time + tx_expiration;
-      transaction_set_reference_block(trx, info.head_block_id);
+      trx.set_reference_block( info.head_block_id);
       if (!skip_sign) {
          sign_transaction(trx);
       }
@@ -876,9 +866,8 @@ int main( int argc, char** argv ) {
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
    importWallet->add_option("key", wallet_key, localized("Private key in WIF format to import"))->required();
    importWallet->set_callback([&wallet_name, &wallet_key] {
-      auto key = utilities::wif_to_key(wallet_key);
-      EOSC_ASSERT( key, "invalid private key: ${k}", ("k",wallet_key) );
-      public_key_type pubkey = key->get_public_key();
+      private_key_type key( wallet_key );
+      public_key_type pubkey = key.get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
@@ -928,13 +917,12 @@ int main( int argc, char** argv ) {
         uint64_t deposit = 1;
         
         signed_transaction trx;
-        trx.scope = sort_names({creator,config::eos_contract_name});
-        transaction_emplace_message(trx, config::eos_contract_name, vector<types::account_permission>{{creator,"active"}}, "newaccount",
-                                             types::newaccount{creator, newaccount, owner_auth,
-                                                               active_auth, recovery_auth, deposit});
+        trx.write_scope = sort_names({creator,config::system_account_name});
+        trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}}, 
+                                  contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
 
         trx.expiration = info.head_block_time + tx_expiration; 
-        transaction_set_reference_block(trx, info.head_block_id);
+        trx.set_reference_block(info.head_block_id);
         batch.emplace_back(trx);
       }
       auto result = call( push_txns_func, batch );
@@ -961,12 +949,11 @@ int main( int argc, char** argv ) {
          uint32_t amount = 100000;
 
          signed_transaction trx;
-         trx.scope = sort_names({sender,recipient});
-         transaction_emplace_message(trx, config::eos_contract_name,
-                                              vector<types::account_permission>{{sender,"active"}},
-                                              "transfer", types::transfer{sender, recipient, amount, memo});
+         trx.write_scope = sort_names({sender,recipient});
+         trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}},
+                                   contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
          trx.expiration = info.head_block_time + tx_expiration; 
-         transaction_set_reference_block(trx, info.head_block_id);
+         trx.set_reference_block(info.head_block_id);
 
          batch.emplace_back(trx);
          if( batch.size() == 100 ) {
@@ -998,12 +985,11 @@ int main( int argc, char** argv ) {
 
 
             auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
-            trx.scope = sort_names({sender,recipient});
-            transaction_emplace_message(trx, config::eos_contract_name,
-                                                 vector<types::account_permission>{{sender,"active"}},
-                                                 "transfer", types::transfer{sender, recipient, amount, memo});
+            trx.write_scope = sort_names({sender,recipient});
+            trx.actions.emplace_back(  vector<chain::permission_level>{{sender,"active"}},
+                                       contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
             trx.expiration = info.head_block_time + tx_expiration; 
-            transaction_set_reference_block(trx, info.head_block_id);
+            trx.set_reference_block( info.head_block_id);
 
             batch.emplace_back(trx);
             if( batch.size() == 600 ) {
@@ -1022,24 +1008,24 @@ int main( int argc, char** argv ) {
    auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
    push->require_subcommand();
 
-   // push message
+   // push actions
    string contract;
    string action;
    string data;
    vector<string> scopes;
-   auto messageSubcommand = push->add_subcommand("message", localized("Push a transaction with a single message"));
-   messageSubcommand->fallthrough(false);
-   messageSubcommand->add_option("contract", contract,
+   auto actionsSubcommand = push->add_subcommand("actions", localized("Push a transaction with a single actions"));
+   actionsSubcommand->fallthrough(false);
+   actionsSubcommand->add_option("contract", contract,
                                  localized("The account providing the contract to execute"), true)->required();
-   messageSubcommand->add_option("action", action, localized("The action to execute on the contract"), true)
+   actionsSubcommand->add_option("action", action, localized("The action to execute on the contract"), true)
          ->required();
-   messageSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
-   messageSubcommand->add_option("-p,--permission", permissions,
+   actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
+   actionsSubcommand->add_option("-p,--permission", permissions,
                                  localized("An account and permission level to authorize, as in 'account@permission'"));
-   messageSubcommand->add_option("-S,--scope", scopes, localized("An comma separated list of accounts in scope for this operation"), true);
-   messageSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
-   add_standard_transaction_options(messageSubcommand);
-   messageSubcommand->set_callback([&] {
+   actionsSubcommand->add_option("-S,--scope", scopes, localized("An comma separated list of accounts in scope for this operation"), true);
+   actionsSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
+   add_standard_transaction_options(actionsSubcommand);
+   actionsSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto arg= fc::mutable_variant_object
                 ("code", contract)
@@ -1050,18 +1036,20 @@ int main( int argc, char** argv ) {
       auto accountPermissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      transaction_emplace_serialized_message(trx, contract, action, accountPermissions,
+      /* TODO: restore this function
+      transaction_emplace_serialized_actions(trx, contract, action, accountPermissions,
                                                       result.get_object()["binargs"].as<bytes>());
+      */
 
       if (tx_force_unique) {
-         transaction_emplace_message(trx, generate_nonce());
+         trx.actions.emplace_back( generate_nonce() );
       }                                                      
 
       for( const auto& scope : scopes ) {
          vector<string> subscopes;
          boost::split( subscopes, scope, boost::is_any_of( ", :" ) );
          for( const auto& s : subscopes )
-         trx.scope.emplace_back(s);
+            trx.write_scope.emplace_back(s);
       }
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign )) << std::endl;
    });

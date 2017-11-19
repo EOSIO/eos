@@ -1,7 +1,7 @@
 file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
-add_library( eos_chain
+add_library( eosio_chain
              chain_config.cpp
              merkle.cpp
              name.cpp
@@ -30,8 +30,8 @@ add_library( eos_chain
              ${HEADERS}
         )
 
-target_link_libraries( eos_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
-target_include_directories( eos_chain
+target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
+target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                             )
@@ -41,7 +41,7 @@ if(MSVC)
 endif(MSVC)
 
 INSTALL( TARGETS
-   eos_chain
+   eosio_chain
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib
@@ -50,4 +50,4 @@ INSTALL( TARGETS
 INSTALL( FILES ${HEADERS} DESTINATION "include/eosio/chain" )
 
 #add_executable( test test.cpp )
-#target_link_libraries( test eos_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
+#target_link_libraries( test eosio_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )

@@ -4,8 +4,8 @@
  */
 #pragma once
 
-#include <eos/wallet_plugin/wallet_plugin.hpp>
-#include <eos/http_plugin/http_plugin.hpp>
+#include <eosio/wallet_plugin/wallet_plugin.hpp>
+#include <eosio/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
 

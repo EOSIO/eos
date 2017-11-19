@@ -28,6 +28,7 @@ const static uint64_t owner_name  = N(owner);
 const static uint64_t initial_token_supply = 900*1000*1000*10000ll;  /// 900,000,000.0000
 
 const static int      block_interval_ms = 500;
+const static int      block_interval_us = block_interval_ms*1000;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
 
 /** Percentages are fixed point with a denominator of 10,000 */
@@ -52,7 +53,7 @@ const static share_type default_min_eos_balance        = asset(100).amount;
 /**
  *  The number of sequential blocks produced by a single producer
  */
-const static int producer_repititions = 4;
+const static int producer_repititions = 6;
 
 /**
  * The number of blocks produced per round is based upon all producers having a chance

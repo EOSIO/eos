@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/transaction.hpp>
-#include <eos/wallet_plugin/wallet.hpp>
+#include <eosio/wallet_plugin/wallet.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 
@@ -68,7 +68,7 @@ public:
    std::vector<std::string> list_wallets();
 
    /// @return A list of private keys from all unlocked wallets in wif format.
-   map<public_key_type,std::string> list_keys();
+   map<public_key_type,private_key_type> list_keys();
 
    /// @return A set of public keys from all unlocked wallets, use with chain_controller::get_required_keys.
    flat_set<public_key_type> get_public_keys();

@@ -46,7 +46,7 @@ void new_chain_banner(const eosio::chain::chain_controller& db)
       "*******************************\n"
       "*                             *\n"
       "*   ------ NEW CHAIN ------   *\n"
-      "*   -   Welcome to EOS.IO!   -   *\n"
+      "*   -  Welcome to EOSIO!  -   *\n"
       "*   -----------------------   *\n"
       "*                             *\n"
       "*******************************\n"
@@ -84,7 +84,6 @@ void producer_plugin::set_program_options(
                                                                                                 fc::json::to_string(private_key_default)),
           "Tuple of [public_key, WIF private key] (may specify multiple times)")
          ;
-   command_line_options.add(producer_options);
    config_file_options.add(producer_options);
 }
 
@@ -106,18 +105,12 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    if( options.count("private-key") )
    {
-      /*
       const std::vector<std::string> key_id_to_wif_pair_strings = options["private-key"].as<std::vector<std::string>>();
       for (const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
       {
-         auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
-         ilog("Public Key: ${public}", ("public", key_id_to_wif_pair.first));
-         fc::optional<fc::ecc::private_key> private_key = eosio::utilities::wif_to_key(key_id_to_wif_pair.second);
-         FC_ASSERT(private_key, "Invalid WIF-format private key ${key_string}",
-                   ("key_string", key_id_to_wif_pair.second));
-         my->_private_keys[key_id_to_wif_pair.first] = *private_key;
+         auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
+         my->_private_keys[key_id_to_wif_pair.first] = key_id_to_wif_pair.second;
       }
-      */
    }
 } FC_LOG_AND_RETHROW() }
 
@@ -153,12 +146,14 @@ void producer_plugin_impl::schedule_production_loop() {
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms, wait for the whole second.
    fc::time_point now = fc::time_point::now();
-   int64_t time_to_next_second = 1000000 - (now.time_since_epoch().count() % 1000000);
-   if(time_to_next_second < 50000)      // we must sleep for at least 50ms
-       time_to_next_second += 500000;
+   int64_t time_to_next_block_time = (config::block_interval_us) - (now.time_since_epoch().count() % (config::block_interval_us) );
+   if(time_to_next_block_time < config::block_interval_us/10 )      // we must sleep for at least 50ms
+       time_to_next_block_time += config::block_interval_us;
 
-   _timer.expires_from_now(boost::posix_time::microseconds(time_to_next_second));
-   _timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
+   //_timer.expires_from_now(boost::posix_time::microseconds(time_to_next_block_time));
+   _timer.expires_from_now( boost::posix_time::microseconds(time_to_next_block_time) );
+   //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
+   _timer.async_wait( [&](auto){ block_production_loop(); } );
 }
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::block_production_loop() {
@@ -181,38 +176,38 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
    switch(result)
    {
-   case block_production_condition::produced: {
-      const auto& db = app().get_plugin<chain_plugin>().chain();
-      auto producer  = db.head_block_producer();
-      auto pending   = db.pending().size();
+      case block_production_condition::produced: {
+         const auto& db = app().get_plugin<chain_plugin>().chain();
+         auto producer  = db.head_block_producer();
+         auto pending   = db.pending().size();
 
-      wlog("${p} generated block #${n} @ ${t} with ${count} trxs  ${pending} pending", ("p", producer)(capture)("pending",pending) );
-      break;
-   }
-   case block_production_condition::not_synced:
-      ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
-      break;
-   case block_production_condition::not_my_turn:
-      //         ilog("Not producing block because it isn't my turn");
-      break;
-   case block_production_condition::not_time_yet:
-      //         ilog("Not producing block because slot has not yet arrived");
-      break;
-   case block_production_condition::no_private_key:
-      ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
-      break;
-   case block_production_condition::low_participation:
-      elog("Not producing block because node appears to be on a minority fork with only ${pct}% producer participation", (capture) );
-      break;
-   case block_production_condition::lag:
-      elog("Not producing block because node didn't wake up within 500ms of the slot time.");
-      break;
-   case block_production_condition::consecutive:
-      elog("Not producing block because the last block was generated by the same producer.\nThis node is probably disconnected from the network so block production has been disabled.\nDisable this check with --allow-consecutive option.");
-      break;
-   case block_production_condition::exception_producing_block:
-      elog( "exception producing block" );
-      break;
+         wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs  ${pending} pending", ("p", producer)(capture)("pending",pending) );
+         break;
+      }
+      case block_production_condition::not_synced:
+         ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
+         break;
+      case block_production_condition::not_my_turn:
+         ilog("Not producing block because it isn't my turn");
+         break;
+      case block_production_condition::not_time_yet:
+         ilog("Not producing block because slot has not yet arrived");
+         break;
+      case block_production_condition::no_private_key:
+         ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
+         break;
+      case block_production_condition::low_participation:
+         elog("Not producing block because node appears to be on a minority fork with only ${pct}% producer participation", (capture) );
+         break;
+      case block_production_condition::lag:
+         elog("Not producing block because node didn't wake up within 500ms of the slot time.");
+         break;
+      case block_production_condition::consecutive:
+         elog("Not producing block because the last block was generated by the same producer.\nThis node is probably disconnected from the network so block production has been disabled.\nDisable this check with --allow-consecutive option.");
+         break;
+      case block_production_condition::exception_producing_block:
+         elog( "exception producing block" );
+         break;
    }
 
    schedule_production_loop();
@@ -221,8 +216,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
    chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
-   fc::time_point now_fine = fc::time_point::now();
-   fc::time_point_sec now = now_fine + fc::microseconds(500000);
+   fc::time_point now = fc::time_point::now();
 
    if (app().get_plugin<chain_plugin>().is_skipping_transaction_signatures()) {
       _production_skip_flags |= skip_transaction_signatures;
@@ -279,11 +273,12 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::low_participation;
    }
 
-   if( llabs((scheduled_time - now).count()) > fc::milliseconds( 500 ).count() )
+   if( llabs(( time_point(scheduled_time) - now).count()) > fc::milliseconds( config::block_interval_ms ).count() )
    {
       capture("scheduled_time", scheduled_time)("now", now);
       return block_production_condition::lag;
    }
+
 
    auto block = chain.generate_block(
       scheduled_time,
@@ -292,17 +287,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       _production_skip_flags
       );
 
-   /*
-   uint32_t count = 0;
-   for( const auto& cycle : block.cycles ) {
-      for( const auto& thread : cycle ) {
-         count += thread.generated_input.size();
-         count += thread.user_input.size();
-      }
-   }
-   */
-
-   capture("n", block.block_num())("t", block.timestamp)("c", now)("count",block.input_transactions.size());
+   capture("n", block.block_num())("t", block.timestamp)("c", now)("count",block.input_transactions.size())("id",string(block.id()).substr(8,8));
 
    return block_production_condition::produced;
 }

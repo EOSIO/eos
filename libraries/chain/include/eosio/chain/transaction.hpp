@@ -42,7 +42,7 @@ namespace eosio { namespace chain {
       action(){}
 
       template<typename T>
-      action( vector<permission_level> auth, T&& value ) {
+      action( vector<permission_level> auth, const T& value ) {
          scope       = T::get_scope();
          name        = T::get_name();
          authorization = move(auth);

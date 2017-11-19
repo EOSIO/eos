@@ -49,17 +49,17 @@ class wallet_api
        * Get the WIF private key corresponding to a public key.  The
        * private key must already be in the wallet.
        */
-      string                            get_private_key( public_key_type pubkey )const;
+      private_key_type get_private_key( public_key_type pubkey )const;
 
       /**
        * Get the private key corresponding to a public key or nothing.
        */
-      optional<fc::ecc::private_key>    try_get_private_key(const public_key_type& id)const;
+      optional<private_key_type>    try_get_private_key(const public_key_type& id)const;
 
       /**
        *  @param role - active | owner | posting | memo
        */
-      pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
+      pair<public_key_type,private_key_type>  get_private_key_from_password( string account, string role, string password )const;
 
       /** Checks whether the wallet has just been created and has not yet had a password set.
        *
@@ -105,7 +105,7 @@ class wallet_api
        * using \c import_key()
        * @returns a map containing the private keys, indexed by their public key
        */
-      map<public_key_type, string> list_keys();
+      map<public_key_type, private_key_type> list_keys();
 
       /** Loads a specified Graphene wallet.
        *
@@ -156,8 +156,8 @@ class wallet_api
 };
 
 struct plain_keys {
-   fc::sha512                  checksum;
-   map<public_key_type,string> keys;
+   fc::sha512                            checksum;
+   map<public_key_type,private_key_type> keys;
 };
 
 } }

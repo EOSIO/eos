@@ -5,8 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/variant.hpp>
-#include <eos/types/native.hpp>
-#include <eosio/chain/types.hpp>
+#include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/transaction.hpp>
 
 namespace fc { class variant; }
