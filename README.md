@@ -150,13 +150,17 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 
 After successfully building the project, the `eosd` binary should be present in the `build/programs/eosd` directory. Go ahead and run `eosd` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. Note that `eosd` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosd`.
 
-Edit the `config.ini` file, adding the following settings to the defaults already in place:
-
+Edit the `config.ini` file:
+* Update the key values:
 ```
 # Load the testnet genesis state, which creates some initial block producers with the default key
 genesis-json = /path/to/eos/source/genesis.json
  # Enable production on a stale chain, since a single-node test chain is pretty much always stale
 enable-stale-production = true
+```
+* Add the following settings to the defaults already in place:
+
+```
 # Enable block production with the testnet producers
 producer-name = inita
 producer-name = initb
