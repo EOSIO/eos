@@ -86,16 +86,6 @@ optional<signed_block> chain_controller::fetch_block_by_number(uint32_t num)cons
    return optional<signed_block>();
 }
 
-/*
-const signed_transaction& chain_controller::get_recent_transaction(const transaction_id_type& trx_id) const
-{
-   auto& index = _db.get_index<transaction_multi_index, by_trx_id>();
-   auto itr = index.find(trx_id);
-   FC_ASSERT(itr != index.end());
-   return itr->trx;
-}
-*/
-
 std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type head_of_fork) const
 {
   pair<fork_database::branch_type, fork_database::branch_type> branches = _fork_db.fetch_branch_from(head_block_id(), head_of_fork);
