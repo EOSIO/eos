@@ -121,7 +121,7 @@ namespace eosio { namespace chain {
          block_id_type               get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>      fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>      fetch_block_by_number( uint32_t num )const;
-         const signed_transaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
+         //const signed_transaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type>  get_block_ids_on_fork(block_id_type head_of_fork)const;
          const generated_transaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
 
@@ -134,7 +134,7 @@ namespace eosio { namespace chain {
 
          /**
           * This method will convert a signed transaction into a human-friendly variant that can be
-          * converted to JSON.  
+          * converted to JSON.
           */
          fc::variant       transaction_to_variant( const processed_transaction& trx )const;
 
@@ -189,7 +189,7 @@ namespace eosio { namespace chain {
 
 
          template<typename Function>
-         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))())
          {
             auto old_flags = _skip_flags;
             auto on_exit   = fc::make_scoped_exit( [&](){ _skip_flags = old_flags; } );
@@ -198,11 +198,11 @@ namespace eosio { namespace chain {
          }
 
          template<typename Function>
-         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))())
          {
             auto old_pending = std::move( _pending_transactions );
             _pending_tx_session.reset();
-            auto on_exit = fc::make_scoped_exit( [&](){ 
+            auto on_exit = fc::make_scoped_exit( [&](){
                for( const auto& t : old_pending ) {
                   try {
                      if (!is_known_transaction(t.id()))
@@ -268,7 +268,7 @@ namespace eosio { namespace chain {
  //  protected:
          const chainbase::database& get_database() const { return _db; }
          chainbase::database& get_mutable_database() { return _db; }
-         
+
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
 
 
@@ -333,7 +333,7 @@ namespace eosio { namespace chain {
 
          template<typename T>
          typename T::processed apply_transaction(const T& trx);
-         
+
          template<typename T>
          typename T::processed process_transaction(const T& trx, int depth, const fc::time_point& start_time);
 
@@ -354,7 +354,7 @@ namespace eosio { namespace chain {
             validate_tapos(trx);
 
          } FC_CAPTURE_AND_RETHROW( (trx) ) }
-         
+
          /// Validate transaction helpers @{
          void validate_uniqueness(const signed_transaction& trx)const;
          void validate_uniqueness(const generated_transaction& trx)const;
