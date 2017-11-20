@@ -20,6 +20,15 @@ void apply_context::exec()
          wasm.apply(code, *this);
       }
    }
+   for( uint32_t i = 0; i < _notified.size(); ++i ) {
+      apply_context ncontext( mutable_controller, mutable_db, trx, act, _notified[i], this );
+      ncontext.exec();
+   }
+   for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
+      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i], _inline_actions[i].scope, this );
+      ncontext.exec();
+   }
+
 } /// exec()
 
 void apply_context::require_authorization( const account_name& account ) {
@@ -59,6 +68,22 @@ void apply_context::require_read_scope(const account_name& account)const {
 
    EOS_ASSERT( false, tx_missing_read_scope, "missing read scope ${account}", 
                ("account",account) );
+}
+
+bool apply_context::has_recipient( account_name code )const {
+   for( auto a : _notified )
+      if( a == code ) 
+         return true;
+   if( _parent ) 
+      return _parent->has_recipient(code);
+   return false;
+}
+
+void apply_context::require_recipient( account_name code ) {
+   if( _parent ) 
+      _parent->require_recipient( code );
+   else if( !has_recipient(code) )
+      _notified.push_back(code);
 }
 
 } } /// eosio::chain

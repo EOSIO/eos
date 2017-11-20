@@ -266,11 +266,6 @@ namespace eosio { namespace chain {
 
          const chainbase::database& get_database() const { return _db; }
          chainbase::database&       get_mutable_database() { return _db; }
-         
-
-
-         const deque<signed_transaction>&  pending()const { return _pending_transactions; }
-
 
          wasm_cache& get_wasm_cache() {
             return _wasm_cache;
@@ -393,7 +388,6 @@ namespace eosio { namespace chain {
 
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block; 
-         deque<signed_transaction>        _pending_transactions; ///< transactions that are waiting to get added to pending block
          uint32_t                         _pending_transaction_count = 0; 
 
          bool                             _currently_applying_block = false;
