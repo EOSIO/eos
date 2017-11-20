@@ -50,92 +50,96 @@ namespace detail {
     * @tparam F A callable which takes a single argument of type @ref AccountPermission and returns the corresponding
     * authority
     */
-   template<typename F>
+   template<typename PermissionToAuthorityFunc>
    class authority_checker {
-      F                       permission_to_authority;
-      uint16_t                recursion_depth_limit;
-      vector<public_key_type> signing_keys;
-      vector<bool>            _used_keys;
+      private:
+         PermissionToAuthorityFunc  permission_to_authority;
+         uint16_t                   recursion_depth_limit;
+         vector<public_key_type>    signing_keys;
+         vector<bool>               _used_keys;
 
-      struct weight_tally_visitor {
-         using result_type = uint32_t;
+         struct weight_tally_visitor {
+            using result_type = uint32_t;
 
-         authority_checker& checker;
-         uint16_t recursion_depth;
-         uint32_t total_weight = 0;
+            authority_checker& checker;
+            uint16_t recursion_depth;
+            uint32_t total_weight = 0;
 
-         weight_tally_visitor(authority_checker& checker, uint16_t recursion_depth)
-            : checker(checker), recursion_depth(recursion_depth) {}
+            weight_tally_visitor(authority_checker& checker, uint16_t recursion_depth)
+               : checker(checker), recursion_depth(recursion_depth) {}
 
-         uint32_t operator()(const key_weight& permission) {
-            auto itr = boost::find(checker.signing_keys, permission.key);
-            if (itr != checker.signing_keys.end()) {
-               checker._used_keys[itr - checker.signing_keys.begin()] = true;
-               total_weight += permission.weight;
+            uint32_t operator()(const key_weight& permission) {
+               auto itr = boost::find(checker.signing_keys, permission.key);
+               if (itr != checker.signing_keys.end()) {
+                  checker._used_keys[itr - checker.signing_keys.begin()] = true;
+                  total_weight += permission.weight;
+               }
+               return total_weight;
             }
-            return total_weight;
-         }
-         uint32_t operator()(const permission_level_weight& permission) {
-            if (recursion_depth < checker.recursion_depth_limit
-                && checker.satisfied(permission.permission, recursion_depth + 1))
-               total_weight += permission.weight;
-            return total_weight;
-         }
-      };
+            uint32_t operator()(const permission_level_weight& permission) {
+               if (recursion_depth < checker.recursion_depth_limit) {
+                  if( checker.satisfied(permission.permission, recursion_depth + 1) )
+                     total_weight += permission.weight;
+               }
+               return total_weight;
+            }
+         };
 
-   public:
-      authority_checker(F permission_to_authority, uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys)
-         : permission_to_authority(permission_to_authority),
-           recursion_depth_limit(recursion_depth_limit),
-           signing_keys(signing_keys.begin(), signing_keys.end()),
-           _used_keys(signing_keys.size(), false)
-      {}
+      public:
+         authority_checker( PermissionToAuthorityFunc permission_to_authority, 
+                            uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys)
+            : permission_to_authority(permission_to_authority),
+              recursion_depth_limit(recursion_depth_limit),
+              signing_keys(signing_keys.begin(), signing_keys.end()),
+              _used_keys(signing_keys.size(), false)
+         {}
 
-      bool satisfied(const permission_level& permission, uint16_t depth = 0) {
-         return satisfied(permission_to_authority(permission), depth);
-      }
-      template<typename AuthorityType>
-      bool satisfied(const AuthorityType& authority, uint16_t depth = 0) {
-         // This check is redundant, since weight_tally_visitor did it too, but I'll leave it here for future-proofing
-         if (depth > recursion_depth_limit)
+         bool satisfied(const permission_level& permission, uint16_t depth = 0) {
+            return satisfied(permission_to_authority(permission), depth);
+         }
+         template<typename AuthorityType>
+         bool satisfied(const AuthorityType& authority, uint16_t depth = 0) {
+            // This check is redundant, since weight_tally_visitor did it too, but I'll leave it here for future-proofing
+            if (depth > recursion_depth_limit)
+               return false;
+
+            // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
+            auto KeyReverter = fc::make_scoped_exit([this, keys = _used_keys] () mutable {
+               _used_keys = keys;
+            });
+
+            // Sort key permissions and account permissions together into a single set of meta_permissions
+            detail::meta_permission_set permissions;
+
+            permissions.insert(authority.keys.begin(), authority.keys.end());
+            permissions.insert(authority.accounts.begin(), authority.accounts.end());
+
+            // Check all permissions, from highest weight to lowest, seeing if signing_keys satisfies them or not
+            weight_tally_visitor visitor(*this, depth);
+            for (const auto& permission : permissions)
+               // If we've got enough weight, to satisfy the authority, return!
+               if (permission.visit(visitor) >= authority.threshold) {
+                  KeyReverter.cancel();
+                  return true;
+               }
             return false;
+         }
 
-         // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
-         auto KeyReverter = fc::make_scoped_exit([this, keys = _used_keys] () mutable {
-            _used_keys = keys;
-         });
+         bool all_keys_used() const { return boost::algorithm::all_of_equal(_used_keys, true); }
 
-         // Sort key permissions and account permissions together into a single set of meta_permissions
-         detail::meta_permission_set permissions;
-         permissions.insert(authority.keys.begin(), authority.keys.end());
-         permissions.insert(authority.accounts.begin(), authority.accounts.end());
-
-         // Check all permissions, from highest weight to lowest, seeing if signing_keys satisfies them or not
-         weight_tally_visitor visitor(*this, depth);
-         for (const auto& permission : permissions)
-            // If we've got enough weight, to satisfy the authority, return!
-            if (permission.visit(visitor) >= authority.threshold) {
-               KeyReverter.cancel();
-               return true;
-            }
-         return false;
-      }
-
-      bool all_keys_used() const { return boost::algorithm::all_of_equal(_used_keys, true); }
-
-      flat_set<public_key_type> used_keys() const {
-         auto range = utilities::FilterDataByMarker(signing_keys, _used_keys, true);
-         return {range.begin(), range.end()};
-      }
-      flat_set<public_key_type> unused_keys() const {
-         auto range = utilities::FilterDataByMarker(signing_keys, _used_keys, false);
-         return {range.begin(), range.end()};
-      }
+         flat_set<public_key_type> used_keys() const {
+            auto range = utilities::FilterDataByMarker(signing_keys, _used_keys, true);
+            return {range.begin(), range.end()};
+         }
+         flat_set<public_key_type> unused_keys() const {
+            auto range = utilities::FilterDataByMarker(signing_keys, _used_keys, false);
+            return {range.begin(), range.end()};
+         }
    }; /// authority_checker
 
-   template<typename F>
-   authority_checker<F> make_auth_checker(F&& pta, uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys) {
-      return authority_checker<F>(std::forward<F>(pta), recursion_depth_limit, signing_keys);
+   template<typename PermissionToAuthorityFunc>
+   auto make_auth_checker(PermissionToAuthorityFunc&& pta, uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys) {
+      return authority_checker<PermissionToAuthorityFunc>(std::forward<PermissionToAuthorityFunc>(pta), recursion_depth_limit, signing_keys);
    }
 
 } } // namespace eosio::chain

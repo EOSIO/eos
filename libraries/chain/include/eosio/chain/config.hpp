@@ -49,6 +49,7 @@ const static uint32_t   producers_authority_threshold  = 14;
 const static share_type default_elected_pay            = asset(100).amount;
 const static share_type default_min_eos_balance        = asset(100).amount;
 
+const static uint16_t   max_recursion_depth = 6;
 
 /**
  *  The number of sequential blocks produced by a single producer

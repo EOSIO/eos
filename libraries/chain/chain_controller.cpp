@@ -458,31 +458,12 @@ void chain_controller::_finalize_block( const signed_block& b ) { try {
 
 } FC_CAPTURE_AND_RETHROW( (b) ) }
 
-namespace {
-
-  auto make_get_permission(const chainbase::database& db) {
-     return [&db](const permission_level& permission) {
-        auto key = boost::make_tuple(permission.actor, permission.permission);
-        return db.get<permission_object, by_owner>(key);
-     };
-  }
-
-  auto make_authority_checker(const chainbase::database& db, const flat_set<public_key_type>& signing_keys) {
-     auto get_permission = make_get_permission(db);
-     auto get_authority = [get_permission](const permission_level& permission) {
-        return get_permission(permission).auth;
-     };
-     auto depth_limit = db.get<global_property_object>().configuration.max_authority_depth;
-     wdump((depth_limit));
-     return make_auth_checker( move(get_authority), depth_limit, signing_keys);
-  }
-
-}
-
 flat_set<public_key_type> chain_controller::get_required_keys(const signed_transaction& trx, 
                                                               const flat_set<public_key_type>& candidate_keys)const 
 {
-   auto checker = make_authority_checker(_db, candidate_keys);
+   auto checker = make_auth_checker( [&](auto p){ return get_permission(p).auth; }, 
+                                     get_global_properties().configuration.max_authority_depth,
+                                     candidate_keys);
 
    for (const auto& act : trx.actions ) {
       for (const auto& declared_auth : act.authorization) {
@@ -500,23 +481,21 @@ flat_set<public_key_type> chain_controller::get_required_keys(const signed_trans
 void chain_controller::check_transaction_authorization(const signed_transaction& trx, 
                                                        bool allow_unused_signatures)const 
 {
-   if ((_skip_flags & skip_transaction_signatures) && (_skip_flags & skip_authority_check)) {
-      //ilog("Skipping auth and sigs checks");
-      return;
-   }
-
-   auto get_permission = make_get_permission(_db);
 // #warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
-   auto checker = make_authority_checker(_db, trx.get_signature_keys(chain_id_type{}));
+   auto checker = make_auth_checker( [&](auto p){ return get_permission(p).auth; }, 
+                                     get_global_properties().configuration.max_authority_depth,
+                                     trx.get_signature_keys(chain_id_type{}) );
 
    for( const auto& act : trx.actions )
       for( const auto& declared_auth : act.authorization ) {
 
-         const auto& min_permission = lookup_minimum_permission(declared_auth.actor, act.scope, act.name);
+         const auto& min_permission = lookup_minimum_permission(declared_auth.actor, 
+                                                                act.scope, act.name);
 
          if ((_skip_flags & skip_authority_check) == false) {
             const auto& index = _db.get_index<permission_index>().indices();
-            EOS_ASSERT(get_permission(declared_auth).satisfies(min_permission, index), tx_irrelevant_auth,
+            EOS_ASSERT(get_permission(declared_auth).satisfies(min_permission, index), 
+                       tx_irrelevant_auth,
                        "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                        ("auth", declared_auth)("min", min_permission.name));
          }
@@ -529,14 +508,19 @@ void chain_controller::check_transaction_authorization(const signed_transaction&
 
    if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
-                 "transaction bears irrelevant signatures from these keys: ${keys}", ("keys", checker.unused_keys()));
+                 "transaction bears irrelevant signatures from these keys: ${keys}", 
+                 ("keys", checker.unused_keys()));
 }
 
 void chain_controller::validate_scope( const transaction& trx )const {
-   for( uint32_t i = 1; i < trx.read_scope.size(); ++i )
-      EOS_ASSERT( trx.read_scope[i-1] < trx.read_scope[i], transaction_exception, "Scopes must be sorted and unique" );
-   for( uint32_t i = 1; i < trx.write_scope.size(); ++i )
-      EOS_ASSERT( trx.write_scope[i-1] < trx.write_scope[i], transaction_exception, "Scopes must be sorted and unique" );
+   for( uint32_t i = 1; i < trx.read_scope.size(); ++i ) {
+      EOS_ASSERT( trx.read_scope[i-1] < trx.read_scope[i], transaction_exception, 
+                  "Scopes must be sorted and unique" );
+   }
+   for( uint32_t i = 1; i < trx.write_scope.size(); ++i ) {
+      EOS_ASSERT( trx.write_scope[i-1] < trx.write_scope[i], transaction_exception, 
+                  "Scopes must be sorted and unique" );
+   }
 
    vector<account_name> intersection;
    std::set_intersection( trx.read_scope.begin(), trx.read_scope.end(),
@@ -874,6 +858,11 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
 { try {
    return _db.get<producer_object, by_owner>(owner_name);
 } FC_CAPTURE_AND_RETHROW( (owner_name) ) }
+
+const permission_object&   chain_controller::get_permission( const permission_level& level )const 
+{ try {
+   return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
+} FC_CAPTURE_AND_RETHROW( (level) ) }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;

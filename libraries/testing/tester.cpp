@@ -81,6 +81,7 @@ namespace eosio { namespace testing {
                                    .recovery = authority( get_public_key( a, "recovery" ) ),
                                    .deposit  = initial_balance
                                 });
+
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  ); 
 
       control->push_transaction( trx );
