@@ -41,6 +41,7 @@ namespace eosio { namespace chain {
 
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                           chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
+                          uint32_t block_interval_seconds,
                           uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                           uint32_t create_block_txn_execution_time,
                           const txn_msg_limits& rate_limit,
@@ -260,7 +261,7 @@ namespace eosio { namespace chain {
          block_id_type    head_block_id()const;
          account_name     head_block_producer()const;
 
-         uint32_t block_interval()const { return config::block_interval_seconds; }
+         uint32_t block_interval()const { return _block_interval_seconds; }
 
          uint32_t last_irreversible_block_num() const;
 
@@ -424,6 +425,7 @@ namespace eosio { namespace chain {
          bool                             _currently_replaying_blocks = false;
          uint64_t                         _skip_flags = 0;
 
+         const uint32_t                   _block_interval_seconds;
          const uint32_t                   _txn_execution_time;
          const uint32_t                   _rcvd_block_txn_execution_time;
          const uint32_t                   _create_block_txn_execution_time;
