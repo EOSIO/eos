@@ -1,4 +1,7 @@
 set(SOURCES main.cpp)
+find_package(LLVM 4.0 REQUIRED CONFIG)
+
+link_directories(${LLVM_LIBRARY_DIR})
 
 add_executable(abi_gen ${SOURCES})
 
@@ -10,7 +13,7 @@ endif()
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling steemd with TCMalloc")
+    message( STATUS "Found gperftools; compiling with TCMalloc")
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
