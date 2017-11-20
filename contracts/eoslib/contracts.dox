@@ -49,7 +49,7 @@
      void apply( uint64_t code, uint64_t action ) {
         if( code == N(currency) ) {
            if( action == N(transfer) ) 
-              currency::apply_currency_transfer( currentMessage< currency::Transfer >() );
+              currency::apply_currency_transfer( current_message< currency::transfer >() );
         } else {
            assert( false, "rejecting unexpected event" );
         }
