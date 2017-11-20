@@ -122,10 +122,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
-   my->block_interval_seconds = config::default_block_interval_seconds;
-   if(options.count("block-interval-seconds")) {
-      my->block_interval_seconds = options.at("block-interval-seconds").as<uint32_t>();
-   }
+   // option block-interval-seconds default set to config::default_block_interval_seconds
+   my->block_interval_seconds = options.at("block-interval-seconds").as<uint32_t>();
+
    if(options.count("genesis-json")) {
       my->genesis_file = options.at("genesis-json").as<bfs::path>();
    }
