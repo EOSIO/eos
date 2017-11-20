@@ -1,8 +1,7 @@
 FROM ubuntu:16.04 as builder
 
-LABEL maintainer="xiaobo <peterwillcn@gmail.com>" version="0.1.1" \
-  description="This is eosio/eos image" website="https://eos.io" \
-  reviewers="toonsevrin (toonsevrin@gmail.com), etc..."
+LABEL maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
+  description="This is a base image for building eosio/eos"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -68,12 +67,15 @@ RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-dr
     && cmake --build build --target install
 
 
-# ** Following the official master branch code takes a long time to download, depending on the network speed.
+### If you don't want to change the depedencies, you can commet out above lines and uncoment the following line to get faster build time.
+# FROM huangminghuang/eos_builder as builder
+
 RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
     && cd eos \
     && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_LLVM_CONFIG=/opt/wasm/bin/llvm-config -DCMAKE_CXX_COMPILER=clang++ \
        -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos  -DSecp256k1_ROOT_DIR=/usr/local \
     && cmake --build /tmp/build --target install
+
 
 
 FROM ubuntu:16.04
@@ -82,9 +84,8 @@ COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /opt/eos/bin /opt/eos/bin
 COPY --from=builder /tmp/build/contracts /contracts
 COPY --from=builder /eos/Docker/config.ini /eos/genesis.json /
-COPY --from=builder /eos/Docker/entrypoint.sh /sbin
+COPY start_eosd.sh /opt/eos/bin/start_eosd.sh
+RUN chmod +x /opt/eos/bin/start_eosd.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
-RUN chmod +x /sbin/entrypoint.sh
 VOLUME /opt/eos/bin/data-dir
-EXPOSE 9876 8888
-ENTRYPOINT ["/sbin/entrypoint.sh"]
+ENV PATH /opt/eos/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
