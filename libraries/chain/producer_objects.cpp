@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/native_contract/producer_objects.hpp>
-#include <eos/native_contract/staked_balance_objects.hpp>
+#include <eos/chain/producer_objects.hpp>
+#include <eos/chain/staked_balance_objects.hpp>
 
 #include <eos/chain/producer_object.hpp>
 
@@ -11,9 +11,8 @@
 #include <boost/range/algorithm.hpp>
 #include <boost/range/algorithm_ext.hpp>
 
-namespace native {
 namespace eosio {
-using namespace chain;
+namespace chain {
 using namespace types;
 
 void producer_votes_object::update_votes(share_type deltaVotes, uint128 current_race_time) {
@@ -146,4 +145,4 @@ void producer_schedule_object::reset_producer_race(chainbase::database& db) cons
    });
 }
 
-} } // namespace native::eosio
+} } // namespace eosio::chain

@@ -13,12 +13,10 @@
 
 #include <fc/static_variant.hpp>
 
-namespace native {
 namespace eosio {
+namespace chain {
 
-using namespace ::eosio::chain;
 namespace config = ::eosio::config;
-namespace chain = ::eosio::chain;
 namespace types = ::eosio::types;
 
 /**
@@ -47,7 +45,7 @@ struct producer_slate {
 /**
  * @brief The staked_balance_object class tracks the staked balance (voting balance) for accounts
  */
-class staked_balance_object : public chainbase::object<chain::staked_balance_object_type, staked_balance_object> {
+class staked_balance_object : public chainbase::object<staked_balance_object_type, staked_balance_object> {
    OBJECT_CTOR(staked_balance_object)
 
    id_type id;
@@ -115,6 +113,6 @@ using staked_balance_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // namespace native::eos
+} } // namespace eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(native::eosio::staked_balance_object, native::eosio::staked_balance_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::staked_balance_object, eosio::chain::staked_balance_multi_index)
