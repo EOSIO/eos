@@ -28,7 +28,7 @@ add_executable( chain_test ${UNIT_TESTS} common/main.cpp )
 target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
 if(WASM_TOOLCHAIN)
   target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
-  add_dependencies(chain_test rate_limit_auth)
+#  add_dependencies(chain_test rate_limit_auth)
 endif()
 
 
