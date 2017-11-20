@@ -17,6 +17,8 @@
 #include "IR/Validate.h"
 #include <eos/chain/key_value_object.hpp>
 #include <eos/chain/account_object.hpp>
+#include <eos/chain/balance_object.hpp>
+#include <eos/chain/staked_balance_objects.hpp>
 #include <eos/types/abi_serializer.hpp>
 #include <chrono>
 #include <boost/lexical_cast.hpp>
@@ -45,6 +47,42 @@ namespace eosio { namespace chain {
       const U32 _min_bytes;
       U32 _num_bytes;
    };
+
+   // account.h/hpp expected account API balance interchange format
+   // must match account.hpp account_balance definition
+   PACKED_STRUCT(
+   struct account_balance
+   {
+      /**
+      * Name of the account who's balance this is
+      * @brief Name of the account who's balance this is
+      */
+      account_name account;
+
+      /**
+      * Balance for this account
+      * @brief Balance for this account
+      */
+      asset eos_balance;
+
+      /**
+      * Staked balance for this account
+      * @brief Staked balance for this account
+      */
+      asset staked_balance;
+
+      /**
+      * Unstaking balance for this account
+      * @brief Unstaking balance for this account
+      */
+      asset unstaking_balance;
+
+      /**
+      * Time at which last unstaking occurred for this account
+      * @brief Time at which last unstaking occurred for this account
+      */
+      time last_unstaking_time;
+   })
 
    wasm_interface::wasm_interface() {
    }
@@ -686,6 +724,30 @@ DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
 
 
 DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
+}
+
+DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,charptr,i32,len) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const uint32_t account_balance_size = sizeof(account_balance);
+  FC_ASSERT( len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size) );
+
+  account_balance& total_balance = memoryRef<account_balance>( mem, charptr );
+
+  auto& db = wasm.current_apply_context->db;
+  auto* balance        = db.find< balance_object,by_owner_name >( total_balance.account );
+  auto* staked_balance = db.find<staked_balance_object,by_owner_name>( total_balance.account );
+
+  if (balance == nullptr || staked_balance == nullptr)
+     return false;
+
+  total_balance.eos_balance          = asset(balance->balance, EOS_SYMBOL);
+  total_balance.staked_balance       = asset(staked_balance->staked_balance);
+  total_balance.unstaking_balance    = asset(staked_balance->unstaking_balance);
+  total_balance.last_unstaking_time  = staked_balance->last_unstaking_time;
+
+  return true;
 }
 
    wasm_interface& wasm_interface::get() {
