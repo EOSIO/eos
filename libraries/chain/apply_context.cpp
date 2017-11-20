@@ -86,4 +86,36 @@ void apply_context::require_recipient( account_name code ) {
       _notified.push_back(code);
 }
 
+void apply_context::deferred_transaction_start( uint32_t id, 
+                                 uint16_t region,
+                                 vector<scope_name> write_scopes, 
+                                 vector<scope_name> read_scopes,
+                                 time_point_sec     execute_after,
+                                 time_point_sec     execute_before
+                               ) {
+   FC_ASSERT( execute_before > (controller.head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
+                                "transaction is expired when created" );
+   FC_ASSERT( execute_after < execute_before );
+
+   /// TODO: make default_max_gen_trx_count a producer parameter
+   FC_ASSERT( _pending_deferred_transactions.size() < config::default_max_gen_trx_count );
+
+   auto itr = _pending_deferred_transactions.find( id );
+   FC_ASSERT( itr == _pending_deferred_transactions.end(), "pending transaction with ID ${id} already started", ("id",id) );
+   auto& trx = _pending_deferred_transactions[id];
+   trx.write_scope = move( write_scopes );
+   trx.read_scope  = move( read_scopes );
+   trx.expiration  = execute_before;
+
+   controller.validate_scope( trx );
+
+   /// TODO: make sure there isn't already a deferred transaction with this ID
+}
+
+
+void apply_context::deferred_transaction_append( uint32_t id, action a ) {
+}
+void apply_context::deferred_transaction_send( uint32_t id ) {
+}
+
 } } /// eosio::chain

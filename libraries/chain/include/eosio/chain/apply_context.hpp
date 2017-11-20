@@ -14,10 +14,10 @@ class chain_controller;
 
 class apply_context {
    private:
-      std::vector<account_name>     _notified; ///< keeps track of new accounts to be notifed of current message
-      std::vector<action>           _inline_actions; ///< queued inline messages
-      std::vector<transaction>      _deferred_transactions; ///< deferred txs /// TODO specify when
-      apply_context*                _parent = nullptr;
+      vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
+      vector<action>                      _inline_actions; ///< queued inline messages
+      map<uint32_t,deferred_transaction>  _pending_deferred_transactions; ///< deferred txs /// TODO specify when
+      apply_context*                      _parent = nullptr;
 
    public:
       apply_context(chain_controller& con, chainbase::database& db,
@@ -28,6 +28,16 @@ class apply_context {
       void exec();
 
       void execute_inline( action a ) { _inline_actions.emplace_back( move(a) ); }
+      void deferred_transaction_start( uint32_t id, 
+                                       uint16_t region,
+                                       vector<scope_name> write_scopes, 
+                                       vector<scope_name> read_scopes,
+                                       time_point_sec     execute_after,
+                                       time_point_sec     execute_before
+                                     );
+      void deferred_transaction_append( uint32_t id, action a );
+      void deferred_transaction_send( uint32_t id );
+
 
       template <typename ObjectType>
       int32_t store_record( name scope, name code, name table, typename ObjectType::key_type* keys, 
