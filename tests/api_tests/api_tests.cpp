@@ -654,7 +654,7 @@ TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64i64i64_with_str, ldiiinotst
 { try { \
    auto wasm = assemble_wast( test_api_wast ); \
    \
-   Make_Blockchain(chain, 500, \
+   Make_Blockchain(chain, 5000, \
          ::eosio::chain_plugin::default_received_block_transaction_execution_time, \
          ::eosio::chain_plugin::default_create_block_transaction_execution_time, chain_controller::txn_msg_limits {}); \
    chain.produce_blocks(2); \
