@@ -153,6 +153,7 @@ bool is_access_violation(fc::unhandled_exception const & e) {
    return false;
 }
 
+bool is_api_not_supported(api_not_supported const & e) { return true;}
 bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
 bool is_tx_missing_scope(tx_missing_scope const& e) { return true; }
@@ -422,7 +423,8 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          transaction_exception, is_tx_resource_exhausted_or_checktime );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_inline_fail"), {}, {} ),
          fc::assert_exception, is_assert_exception );
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction"), {}, {}) == WASM_TEST_PASS, "test_transaction::send_message()");
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction"), {}, {} ),
+         api_not_supported, is_api_not_supported );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_empty"), {}, {} ),
          tx_unknown_argument, is_tx_unknown_argument );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_large"), {}, {} ),
