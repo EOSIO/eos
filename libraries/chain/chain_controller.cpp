@@ -949,7 +949,11 @@ void chain_controller::rate_limit_message(const message& message)
 } FC_CAPTURE_AND_RETHROW((message)) }
 
 void chain_controller::process_message(const transaction& trx, account_name code,
-                                       const message& message, message_output& output, apply_context* parent_context) {
+                                       const message& message, message_output& output, apply_context* parent_context, int depth) {
+   const blockchain_configuration& chain_configuration = get_global_properties().configuration;
+   EOS_ASSERT(depth < chain_configuration.in_depth_limit, msg_resource_exhausted,
+     "Message processing exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.in_depth_limit));
+
    apply_context apply_ctx(*this, _db, trx, message, code);
    apply_message(apply_ctx);
 
@@ -959,7 +963,7 @@ void chain_controller::process_message(const transaction& trx, account_name code
       try {
          auto notify_code = apply_ctx.notified[i];
          output.notify.push_back( {notify_code} );
-         process_message(trx, notify_code, message, output.notify.back().output, &apply_ctx);
+         process_message(trx, notify_code, message, output.notify.back().output, &apply_ctx, depth + 1);
       } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
 
@@ -1035,7 +1039,7 @@ typename T::processed chain_controller::apply_transaction(const T& trx)
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 /**
- *  @pre the transaction is assumed valid and all signatures / duplicate checks have bee performed
+ *  @pre the transaction is assumed valid and all signatures / duplicate checks have been performed
  */
 template<typename T>
 typename T::processed chain_controller::process_transaction( const T& trx, int depth, const fc::time_point& start_time )
@@ -1053,7 +1057,7 @@ typename T::processed chain_controller::process_transaction( const T& trx, int d
    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
       auto& output = ptrx.output[i];
       rate_limit_message(trx.messages[i]);
-      process_message(trx, trx.messages[i].code, trx.messages[i], output);
+      process_message(trx, trx.messages[i].code, trx.messages[i], output, 0);
       if (output.inline_trx.valid() ) {
          const transaction& trx = *output.inline_trx;
          output.inline_trx = process_transaction(pending_inline_transaction(trx), depth + 1, start_time);
