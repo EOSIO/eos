@@ -24,7 +24,6 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <eos/native_contract/native_contract_chain_initializer.hpp>
 
 #include "config.hpp"
 
@@ -652,7 +651,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     scp_cmd_line += host->host_name + ":" + dpath.string();
 
     cerr << "cmdline = " << scp_cmd_line << endl;
-    int res = 1; //boost::process::system (scp_cmd_line);
+    int res = boost::process::system (scp_cmd_line);
     if (res != 0) {
       cerr << "unable to scp config file to host " << host->host_name << endl;
       exit(-1);
@@ -916,7 +915,8 @@ launcher_def::start_all (string &gts, launch_modes mode) {
       auto node = network.nodes.find(launch_name);
       launch(*node->second.instance, gts);
     } catch (...) {
-      // failed to start.
+      cerr << "Unable to launch " << launch_name << endl;
+      exit -1;
     }
     break;
   }
@@ -927,7 +927,11 @@ launcher_def::start_all (string &gts, launch_modes mode) {
       if (mode == LM_ALL ||
           (h.second.is_local() ? mode == LM_LOCAL : mode == LM_REMOTE)) {
         for (auto &inst : h.second.instances) {
-          launch (inst, gts);
+          try {
+            launch (inst, gts);
+          } catch (...) {
+            cerr << "unable to launch " << inst.name << endl;
+          }
           sleep (start_delay);
         }
       }

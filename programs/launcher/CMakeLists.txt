@@ -29,7 +29,7 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 target_include_directories(launcher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(launcher
-                      PRIVATE fc eos_native_contract ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                      PRIVATE fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
    launcher
