@@ -210,7 +210,7 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
          a.creation_date = genesis.initial_timestamp;
 
          if( name == config::system_account_name ) {
-         //   a.set_abi(eos_contract_abi());
+            a.set_abi(eos_contract_abi());
          }
       });
       const auto& owner = db.create<permission_object>([&name](permission_object& p) {

@@ -1,11 +1,15 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
 #include <asserter/asserter.wast.hpp>
+
+#include <fc/variant_object.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
+using namespace fc;
 
 struct assertdef {
    int8_t      condition;
@@ -33,6 +37,41 @@ struct provereset {
 };
 
 FC_REFLECT_EMPTY(provereset);
+
+const char* const asserter_abi = R"EOF(
+{
+   "types": [],
+   "structs": [
+      {
+         "name": "assertdef",
+         "base": "",
+         "fields": [
+            {
+               "name": "condition",
+               "type": "int8"
+            },{
+               "name": "message",
+               "type": "string"
+            }
+         ]
+      }, {
+         "name": "nothing",
+         "base": "",
+         "fields": []
+      }
+   ],
+   "actions": [
+      {
+         "name": "procassert",
+         "type": "assertdef"
+      }, {
+         "name": "provereset",
+         "type": "nothing"
+      }
+   ],
+   "tables": []
+}
+)EOF";
 
 BOOST_AUTO_TEST_SUITE(wasm_tests)
 
@@ -113,6 +152,60 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
       const auto& receipt = get_transaction_receipt(trx.id());
       BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
    }
+
+} FC_LOG_AND_RETHROW() /// prove_mem_reset
+
+/**
+ * Prove the modifications to global variables are wiped between runs
+ */
+BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(asserter)} );
+   transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(asserter), asserter_wast);
+   set_abi(N(asserter), asserter_abi);
+   produce_blocks(1);
+
+   auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
+      try {
+         const auto& accnt  = this->control->get_database().get<account_object,by_name>( name );
+         abi_def abi;
+         if (abi_serializer::to_abi(accnt.abi, abi)) {
+            return abi_serializer(abi);
+         }
+         return optional<abi_serializer>();
+      } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+   };
+
+   variant pretty_trx = mutable_variant_object()
+      ("actions", variants({
+         mutable_variant_object()
+            ("scope", "asserter")
+            ("name", "procassert")
+            ("authorization", variants({
+               mutable_variant_object()
+                  ("actor", "asserter")
+                  ("permission", name(config::active_name).to_string())
+            }))
+            ("data", mutable_variant_object()
+               ("condition", 1)
+               ("message", "Should Not Assert!")
+            )
+         })
+      );
+
+   signed_transaction trx;
+   abi_serializer::from_variant(pretty_trx, trx, resolver);
+   set_tapos( trx );
+   trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
+   control->push_transaction( trx );
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   const auto& receipt = get_transaction_receipt(trx.id());
+   BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
 
