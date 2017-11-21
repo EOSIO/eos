@@ -61,6 +61,7 @@ unsigned int test_transaction::send_message_inline_fail() {
    return WASM_TEST_PASS;
 }
 
+/*
 unsigned int test_transaction::send_transaction() {
    dummy_message payload = {DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
    auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_message", "read_message_normal"), &payload, sizeof(dummy_message));
@@ -79,6 +80,7 @@ unsigned int test_transaction::send_transaction_empty() {
    transaction_send(trx);
    return WASM_TEST_FAIL;
 }
+*/
 
 /**
  * cause failure due to too many pending deferred transactions
@@ -94,6 +96,7 @@ unsigned int test_transaction::send_transaction_max() {
 /**
  * cause failure due to a large transaction size
  */
+/*
 unsigned int test_transaction::send_transaction_large() {
    auto trx = transaction_create();
    transaction_require_scope(trx, N(testapi));
@@ -106,4 +109,5 @@ unsigned int test_transaction::send_transaction_large() {
    transaction_send(trx);
    return WASM_TEST_FAIL;
 }
+*/
 

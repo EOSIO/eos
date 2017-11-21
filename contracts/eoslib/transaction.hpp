@@ -64,11 +64,13 @@ namespace eosio {
          add_permissions(permissions...);
       }
 
+      /* Disabled for STAT
       void send() {
          assert_valid_handle();
          message_send(handle);
          handle = invalid_message_handle;
       }
+      */
 
    private:
       void assert_valid_handle() {
@@ -114,11 +116,13 @@ namespace eosio {
          msg.handle = invalid_message_handle;
       }
 
+      /* Disabled for STAT
       void send() {
          assert_valid_handle();
          transaction_send(handle);
          handle = invalid_transaction_handle;
       }
+      */
 
       transaction_handle get() {
          return handle;
