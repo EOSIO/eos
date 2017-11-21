@@ -539,13 +539,14 @@ DEFINE_INTRINSIC_FUNCTION2(env,transaction_add_message,transaction_add_message,n
 }
 
 DEFINE_INTRINSIC_FUNCTION1(env,transaction_send,transaction_send,none,i32,handle) {
-   EOS_ASSERT(false, api_not_supported,
-      "transaction_send is unsupported in this release");
    auto apply_context  = wasm_interface::get().current_apply_context;
    auto& ptrx = apply_context->get_pending_transaction(handle);
 
    EOS_ASSERT(ptrx.messages.size() > 0, tx_unknown_argument,
       "Attempting to send a transaction with no messages");
+
+   EOS_ASSERT(false, api_not_supported,
+      "transaction_send is unsupported in this release");
 
    apply_context->deferred_transactions.emplace_back(ptrx);
    apply_context->release_pending_transaction(handle);
