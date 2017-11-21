@@ -5,7 +5,7 @@
 *
 */
 #pragma once
-#include <eoslib/math.hpp>
+#include <eoslib/account.h>
 #include <eoslib/print.hpp>
 
 
@@ -75,7 +75,7 @@ struct PACKED (account_balance) {
 
 bool get(account_balance& b)
 {
-   return account_balance(&b, sizeof(account_balance));
+   return account_balance_get(&b, sizeof(account_balance));
 }
 
 } }

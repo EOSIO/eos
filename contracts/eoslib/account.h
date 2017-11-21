@@ -14,10 +14,11 @@
 
 extern "C" {
    /**
-    * @brief Return the balance for the provided account
+    * @brief Retrieve the balance for the provided account
     *
     * @param balance -  a pointer to a range of memory to store balance data
     * @param len     -  length of the range of memory to store balance data
+    * @ret true if account information is retrieved
     *
     * @pre data is a valid pointer to a range of memory at least datalen bytes long
     * @pre data is a pointer to a balance object
@@ -31,6 +32,6 @@ extern "C" {
     *  @endcode
     */
 
-   void account_balance_get( void* balance, uint32_t len );
+   bool account_balance_get( void* balance, uint32_t len );
    ///@ } accountcapi
 }

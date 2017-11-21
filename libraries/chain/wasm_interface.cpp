@@ -735,6 +735,8 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
 
   account_balance& total_balance = memoryRef<account_balance>( mem, charptr );
 
+  wasm.current_apply_context->require_scope(total_balance.account);
+
   auto& db = wasm.current_apply_context->db;
   auto* balance        = db.find< balance_object,by_owner_name >( total_balance.account );
   auto* staked_balance = db.find<staked_balance_object,by_owner_name>( total_balance.account );
