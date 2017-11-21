@@ -30,11 +30,11 @@ using namespace eosio;
 using namespace chain;
 
 
-void Set_Proxy_Owner( testing_blockchain& chain, AccountName proxy, AccountName owner ) {
-   eosio::chain::SignedTransaction trx;
+void Set_Proxy_Owner( testing_blockchain& chain, account_name proxy, account_name owner ) {
+   eosio::chain::signed_transaction trx;
    trx.scope = sort_names({proxy,owner});
    transaction_emplace_message(trx, "proxy", 
-                      vector<types::AccountPermission>({ }),
+                      vector<types::account_permission>({ }),
                       "setowner", owner);
 
    trx.expiration = chain.head_block_time() + 100;
@@ -45,7 +45,7 @@ void Set_Proxy_Owner( testing_blockchain& chain, AccountName proxy, AccountName 
 
 // declared in slow_test.cpp
 namespace slow_tests {
-   void SetCode( testing_blockchain& chain, AccountName account, const char* wast );
+   void SetCode( testing_blockchain& chain, account_name account, const char* wast );
 }
 
 BOOST_AUTO_TEST_SUITE(deferred_tests)
@@ -64,17 +64,17 @@ BOOST_FIXTURE_TEST_CASE(opaque_proxy, testing_fixture)
       Set_Proxy_Owner(chain, "proxy", "newguy");
       chain.produce_blocks(7);
       
-      Transfer_Asset(chain, inita, proxy, Asset(100));
+      Transfer_Asset(chain, inita, proxy, asset(100));
       chain.produce_blocks(1);
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(0));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-300));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), Asset(100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), asset(0));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000-300));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), asset(100));
 
 
       chain.produce_blocks(1);
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(100));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-300));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), Asset(0));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), asset(100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000-300));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), asset(0));
       
       BOOST_CHECK_EQUAL(chain.head_block_num(), 12);
       BOOST_CHECK(chain.fetch_block_by_number(12).valid());

@@ -58,7 +58,7 @@ namespace  eosio {
    #define N(X) ::eosio::string_to_name(#X)
 
    /**
-    *  @class Name
+    *  @class name
     *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
     *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and
     *         that no mathematical operations occur.  It also enables specialization of print
@@ -67,11 +67,11 @@ namespace  eosio {
     *  @ingroup types
     *  @{
     */
-   struct Name {
-      Name( uint64_t v = 0 ): value(v) {}
+   struct name {
+      name( uint64_t v = 0 ): value(v) {}
       operator uint64_t()const { return value; }
 
-      friend bool operator==( const Name& a, const Name& b ) { return a.value == b.value; }
+      friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
    };
 
