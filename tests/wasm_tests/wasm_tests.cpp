@@ -2,6 +2,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <asserter/asserter.wast.hpp>
+#include <asserter/asserter.abi.hpp>
 
 #include <fc/variant_object.hpp>
 
@@ -37,41 +38,6 @@ struct provereset {
 };
 
 FC_REFLECT_EMPTY(provereset);
-
-const char* const asserter_abi = R"EOF(
-{
-   "types": [],
-   "structs": [
-      {
-         "name": "assertdef",
-         "base": "",
-         "fields": [
-            {
-               "name": "condition",
-               "type": "int8"
-            },{
-               "name": "message",
-               "type": "string"
-            }
-         ]
-      }, {
-         "name": "nothing",
-         "base": "",
-         "fields": []
-      }
-   ],
-   "actions": [
-      {
-         "name": "procassert",
-         "type": "assertdef"
-      }, {
-         "name": "provereset",
-         "type": "nothing"
-      }
-   ],
-   "tables": []
-}
-)EOF";
 
 BOOST_AUTO_TEST_SUITE(wasm_tests)
 

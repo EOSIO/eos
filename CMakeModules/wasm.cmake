@@ -149,6 +149,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
       VERBATIM
     )
     set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.abi.hpp)
+    set(extra_target_dependency   ${DESTINATION_FOLDER}/${target}.abi.hpp)
   else()
   endif()
   
@@ -160,17 +161,3 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   set(extra_target_dependency)
 
 endmacro(add_wast_target)
-
-function(add_wast_abi_target target INCLUDE_FOLDERS SOURCE_FOLDER DESTINATION_FOLDER)
-  add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
-    DEPENDS ${SOURCE_FOLDER}/${target}.abi
-    COMMAND echo "const char* ${target}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
-    COMMAND cat ${SOURCE_FOLDER}/${target}.abi >> ${DESTINATION_FOLDER}/${target}.abi.hpp
-    COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.abi.hpp
-    COMMENT "Generating ${target}.abi.hpp"
-    VERBATIM
-  )
-  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.abi.hpp)
-  set(extra_target_dependency   ${DESTINATION_FOLDER}/${target}.abi.hpp)
-  add_wast_target(${target} "${INCLUDE_FOLDERS}" ${CMAKE_CURRENT_BINARY_DIR})
-endfunction(add_wast_abi_target)
