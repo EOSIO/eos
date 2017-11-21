@@ -4,7 +4,7 @@
 #include <eoslib/print.hpp>
 
 // These functions can be auto-generated using the ABI definition.
-// The specialization for current_message must only be defined if the
+// The specialization for current_action must only be defined if the
 // struct has at least one variable length type (String, bytes, etc),
 // otherwise the default function will do ok.
 //
@@ -25,10 +25,10 @@ namespace eosio {
    T bytes_to_value(const bytes& bytes_val) { return *reinterpret_cast<T*>(bytes_val.data); }
 
    template<>
-   key_value1 current_message<key_value1>() {
-      uint32_t msgsize = message_size();
+   key_value1 current_action<key_value1>() {
+      uint32_t msgsize = action_size();
       char* buffer = (char *)eosio::malloc(msgsize);
-      assert(read_message(buffer, msgsize) == msgsize, "error reading key_value1");
+      assert(read_action(buffer, msgsize) == msgsize, "error reading key_value1");
       datastream<char *> ds(buffer, msgsize);
       key_value1 value;
       raw::unpack(ds, value.key);
@@ -62,10 +62,10 @@ namespace eosio {
    }
 
    template<>
-   key_value2 current_message<key_value2>() {
-      uint32_t msgsize = message_size();
+   key_value2 current_action<key_value2>() {
+      uint32_t msgsize = action_size();
       char* buffer = (char *)eosio::malloc(msgsize);
-      assert(read_message(buffer, msgsize) == msgsize, "error reading key_value2");
+      assert(read_action(buffer, msgsize) == msgsize, "error reading key_value2");
       datastream<char *> ds(buffer, msgsize);
       key_value2 value;
       raw::unpack(ds, value.key);

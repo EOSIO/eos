@@ -3,43 +3,43 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eoslib/message.h>
+#include <eoslib/action.h>
 #include <eoslib/print.hpp>
 
 namespace eosio {
 
    /**
-    * @defgroup messagecppapi Message C++ API
-    * @ingroup messageapi
-    * @brief Type-safe C++ wrapers for Message C API
+    * @defgroup actioncppapi Action C++ API
+    * @ingroup actionapi
+    * @brief Type-safe C++ wrapers for Action C API
     *
-    * @note There are some methods from the @ref messagecapi that can be used directly from C++
+    * @note There are some methods from the @ref actioncapi that can be used directly from C++
     *
     * @{
     */
 
    /**
     *
-    *  This method attempts to reinterpret the message body as type T. This will only work
-    *  if the message has no dynamic fields and the struct packing on type T is properly defined.
+    *  This method attempts to reinterpret the action body as type T. This will only work
+    *  if the action has no dynamic fields and the struct packing on type T is properly defined.
     *
-    *  @brief Interpret the message body as type T
+    *  @brief Interpret the action body as type T
     *  
     *  Example:
     *  @code
-    *  struct dummy_message {
+    *  struct dummy_action {
     *    char a; //1
     *    unsigned long long b; //8
     *    int  c; //4
     *  };
-    *  dummy_message msg = current_message<dummy_message>();
+    *  dummy_action msg = current_action<dummy_action>();
     *  @endcode
     */
    template<typename T>
-   T current_message() {
+   T current_action() {
       T value;
-      auto read = read_message( &value, sizeof(value) );
-      assert( read >= sizeof(value), "message shorter than expected" );
+      auto read = read_action( &value, sizeof(value) );
+      assert( read >= sizeof(value), "action shorter than expected" );
       return value;
    }
 
@@ -52,7 +52,7 @@ namespace eosio {
     *  This helper method enables you to add multiple accounts to accounts to be notified list with a single
     *  call rather than having to call the similar C API multiple times.
     *
-    *  @note message.code is also considered as part of the set of notified accounts
+    *  @note action.code is also considered as part of the set of notified accounts
     *
     *  @brief Verify specified accounts exist in the set of notified accounts
     *
@@ -68,6 +68,6 @@ namespace eosio {
    }
 
 
- ///@} messagecpp api
+ ///@} actioncpp api
 
 } // namespace eos

@@ -187,6 +187,7 @@ void apply_eosio_setcode(apply_context& context) {
    auto  act = context.act.as<setcode>();
 
    context.require_authorization(act.account);
+   context.require_write_scope( config::eosio_auth_scope );
 
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );

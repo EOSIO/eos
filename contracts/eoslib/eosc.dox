@@ -1,6 +1,6 @@
 /**
 
-  @defgroup eosc EOS Command Line Client (eosc)
+  @defgroup eosioc EOS Command Line Client (eosioc)
   @brief Tool for sending transactions and querying state from @ref eosd
 
   @section contents Table of Contents
@@ -14,7 +14,7 @@
   - [Transfer EOS](#transfereos)
   - [Getting Transaction](#gettingtransaction)
   - [Creating a Contract](#createcontract)
-  - [Pushing Message to Contract](#pushmessage)
+  - [Pushing Actions to Contracts](#pushaction)
   - [Querying Contract](#querycontract)
   - [Connecting to Particular Node](#particularnode)
   - [Using Separate Wallet App](#separatewallet)
@@ -23,7 +23,7 @@
 
   @section intro Introduction to EOSC
 
-  `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
+  `eosioc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosioc` you will need to
   have a local copy of `eosd` running and configured to load the 'eosio::chain_api_plugin'.
 
   In order to sign transaction and push it to the blockchain, you will need to have the 'eosio::wallet_api_plugin'
@@ -41,7 +41,7 @@
   After starting `eosd` you should be able to query the current blockchain state like so:
 
   ```
-  $ ./eosc get info
+  $ ./eosioc get info
   {
    "head_block_num": 25048,
    "last_irreversible_block_num": 25027,
@@ -58,7 +58,7 @@
   Any transaction sent to the blockchain will need to be signed by the respective authority's private key.
   Before you will be able to sign the transaction, you will need a wallet to store and manage the private key.
   ```
-  $ ./eosc wallet create
+  $ ./eosioc wallet create
   Creating wallet: default
   Save password to use in the future to unlock this wallet.
   Without password imported keys will not be retrievable.
@@ -68,7 +68,7 @@
 
   You can create multiple wallets by specifying unique name
   ```
-  $ ./eosc wallet create -n second-wallet
+  $ ./eosioc wallet create -n second-wallet
   Creating wallet: second-wallet
   Save password to use in the future to unlock this wallet.
   Without password imported keys will not be retrievable.
@@ -77,7 +77,7 @@
 
   And you will be see it in the list of your wallets
   ```
-  $ ./eosc wallet list
+  $ ./eosioc wallet list
   Wallets:
   [
     "default *",
@@ -92,12 +92,12 @@
   Import the key that you want to use to sign the transaction to your wallet.
   The following will import key for genesis accounts (i.e. inita, initb, initc, ..., initu)
   ```
-  $ ./eosc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+  $ ./eosioc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
   imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
   ```
   You will then be able to see the list of imported private keys and their respective public key
   ```
-  $ ./eosc wallet keys
+  $ ./eosioc wallet keys
   [[
       "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
@@ -109,12 +109,12 @@
 
   To keep your private key safe, lock your wallet
   ```
-  $ ./eosc wallet lock -n second-wallet
+  $ ./eosioc wallet lock -n second-wallet
   Locked: 'second-wallet'
   ```
   Notice that the locked wallet doesn't have * symbol in the list
   ```
-  $ ./eosc wallet list
+  $ ./eosioc wallet list
   Wallets:
   [
     "default *",
@@ -123,22 +123,22 @@
   ```
   To unlock it specify the password you get when creating the wallet
   ```
-  $ ./eosc wallet unlock -n second-wallet --password PW5Ji6JUrLjhKAVn68nmacLxwhvtqUAV18J7iycZppsPKeoGGgBEw
+  $ ./eosioc wallet unlock -n second-wallet --password PW5Ji6JUrLjhKAVn68nmacLxwhvtqUAV18J7iycZppsPKeoGGgBEw
   Unlocked: 'second-wallet'
   ```
 
   @section openwallet Opening Wallet
 
   All of the wallets data are store inside data_dir folder.
-  When you restart your wallet app (in this case `eosd`), you will need to open the wallet so `eosc` can have access to it.
+  When you restart your wallet app (in this case `eosd`), you will need to open the wallet so `eosioc` can have access to it.
   ```
-  $ ./eosc wallet list
+  $ ./eosioc wallet list
   Wallets: []
-  $ ./eosc wallet open
+  $ ./eosioc wallet open
   Wallets: [
     "default"
   ]
-  $ ./eosc wallet open -n second-wallet
+  $ ./eosioc wallet open -n second-wallet
   Wallets: [
     "default",
     "second-wallet"
@@ -148,23 +148,23 @@
 
   @section createaccount Creating an Account
 
-  In order to create an account you will need two new keys: owner and active. You can ask `eosc` to create some keys for you:
+  In order to create an account you will need two new keys: owner and active. You can ask `eosioc` to create some keys for you:
 
   This will be your owner key,
   ```
-  $ ./eosc create key
+  $ ./eosioc create key
   public: EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq
   private: 5JKbLfCXgcafDQVwHMm3shHt6iRWgrr9adcmt6vX3FNjAEtJGaT
   ```
 
   And this will be your active key,
   ```
-  $ ./eosc create key
+  $ ./eosioc create key
   public: EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
   private: 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
   ```
 
-  @note eosc does not save the generated private key.
+  @note eosioc does not save the generated private key.
 
   Next we will create the account `tester`, but because all accounts need to be created by an existing account we will ask the `inita` account
   to create `tester` using the owner and active keys created above.  `inita` was specified in the genesis file.
@@ -173,7 +173,7 @@
 
   Then create an account called tester
   ```
-  $ ./eosc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+  $ ./eosioc create account inita tester EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
   {
     "transaction_id": "6acd2ece68c4b86c1fa209c3989235063384020781f2c67bbb80bc8d540ca120",
     "processed": {
@@ -185,7 +185,7 @@
         "inita"
       ],
       "signatures": [],
-      "messages": [{
+      "actions": [{
           "code": "eos",
           "type": "newaccount",
           "authorization": [{
@@ -207,7 +207,7 @@
   ```
   You can see that `tester` is now the controlled_account under `inita`
   ```
-  $ ./eosc get servants inita
+  $ ./eosioc get servants inita
   {
     "controlled_accounts": [
       "tester"
@@ -220,7 +220,7 @@
   After creating the account we can view the current account status like so:
 
   ```
-  $ ./eosc get account tester
+  $ ./eosioc get account tester
   {
     "name": "tester",
     "eos_balance": 0,
@@ -270,10 +270,10 @@
   ```
 
   Since we have the private key of the genesis accounts (i.e. inita, initb, initc, etc) in the wallet.
-  We can fund our `tester` account via `eosc` through any of the genesis account with the following command:
+  We can fund our `tester` account via `eosioc` through any of the genesis account with the following command:
 
   ```
-  $ ./eosc transfer inita tester 1000
+  $ ./eosioc transfer inita tester 1000
   {
     "transaction_id": "eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703",
     "processed": {
@@ -287,7 +287,7 @@
       "signatures": [
         "1f22e64240e1e479eee6ccbbd79a29f1a6eb6020384b4cca1a958e7c708d3e562009ae6e60afac96f9a3b89d729a50cd5a7b5a7a647540ba1678831bf970e83312"
       ],
-      "messages": [{
+      "actions": [{
           "code": "eos",
           "type": "transfer",
           "authorization": [{
@@ -333,7 +333,7 @@
   Now we can verify that the funds were received.
 
   ```
-  $ ./eosc get account tester
+  $ ./eosioc get account tester
   {
     "name": "tester",
     "eos_balance": "0.1000 EOS",
@@ -373,7 +373,7 @@
 
   With account_history_api_plugin loaded in `eosd`, we can query for particular transaction
   ```
-  $ ./eosc get transaction eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703
+  $ ./eosioc get transaction eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703
   {
     "transaction_id": "eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703",
     "processed": {
@@ -387,7 +387,7 @@
       "signatures": [
         "1f22e64240e1e479eee6ccbbd79a29f1a6eb6020384b4cca1a958e7c708d3e562009ae6e60afac96f9a3b89d729a50cd5a7b5a7a647540ba1678831bf970e83312"
       ],
-      "messages": [{
+      "actions": [{
           "code": "eos",
           "type": "transfer",
           "authorization": [{
@@ -430,7 +430,7 @@
   ```
   Also we can query list of transactions performed by certain account starting from recent one
   ```
-  $ ./eosc get transactions inita
+  $ ./eosioc get transactions inita
   [
     {
       "transaction_id": "eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703",
@@ -446,26 +446,26 @@
 
   @section createcontract Creating a Contract
 
-  In this section we will use `eosc` to create and publish a currency contract. You can find the example currency contract in the `eos/contracts/currency` directory.
+  In this section we will use `eosioc` to create and publish a currency contract. You can find the example currency contract in the `eos/contracts/currency` directory.
 
   The first step is to create an account for currency. We will have the `inita` account create the `currency` account. Ensure you have inita private key imported.
 
 
   ```
-  $ ./eosc create account inita currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
+  $ ./eosioc create account inita currency EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
   ```
 
   The next step is to publish the contract (.wast) and its abi (.abi).
 
   We will need currency active key in our wallet for this
   ```
-  $ ./eosc import 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
+  $ ./eosioc import 5Hv22aPcjnENBv6X9o9nKGdkfrW44En6z4zJUt2PobAvbQXrT9z
   imported private key for: EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA
   ```
   Then proceed with setting the code
 
   ```
-  $ ./eosc set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
+  $ ./eosioc set contract currency ../../../contracts/currency/currency.wast ../../../contracts/currency/currency.abi
   Reading WAST...
   Assembling WASM...
   Publishing contract...
@@ -480,7 +480,7 @@
         "eos"
       ],
       "signatures": [],
-      "messages": [{
+      "actions": [{
           "code": "eos",
           "type": "setcode",
           "authorization": [{
@@ -501,13 +501,13 @@
   }
   ```
 
-  @section pushmessage Pushing Message to Contract
+  @section pushaction Pushing Actions to Contracts
 
   After the contract is published it initially allocates all of the currency to the `currency` account.  So lets transfer some of it to our tester.
 
-  We can query the blockchain for the .abi of the contract, on which we can check the list of available actions and their respective message structure
+  We can query the blockchain for the .abi of the contract, on which we can check the list of available actions and their respective action structure
   ```
-  $ ./eosc get code --a currency.abi currency
+  $ ./eosioc get code --a currency.abi currency
   code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
   saving abi to currency.abi
   $ cat currency.abi
@@ -552,10 +552,10 @@
   }
   ```
 
-  From the above abi, we can see that `currency` contract accepts an action called `transfer` that accepts message with fields `from`, `to`, and `amount`.
+  From the above abi, we can see that `currency` contract accepts an action called `transfer` that accepts action with fields `from`, `to`, and `amount`.
 
   ```
-  $ ./eosc push message currency transfer '{"from":"currency","to":"tester","amount":50}' -S currency -S tester -p currency@active
+  $ ./eosioc push action currency transfer '{"from":"currency","to":"tester","amount":50}' -S currency -S tester -p currency@active
   1589302ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
   1589304ms thread-0   main.cpp:290                  operator()           ] Transaction result:
   {
@@ -569,7 +569,7 @@
         "tester"
       ],
       "signatures": [],
-      "messages": [{
+      "actions": [{
           "code": "currency",
           "type": "transfer",
           "authorization": [{
@@ -606,7 +606,7 @@
   Now we can transfer it from `tester` to `inita` and require the permission of `tester`.  This should drain the balance of `tester` to 0.
 
   ```
-  $ ./eosc push message currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
+  $ ./eosioc push action currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
   3116153ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
   3116154ms thread-0   main.cpp:290                  operator()           ] Transaction result:
   {
@@ -620,7 +620,7 @@
         "tester"
       ],
       "signatures": [],
-      "messages": [{
+      "actions": [{
           "code": "currency",
           "type": "transfer",
           "authorization": [{
@@ -664,7 +664,7 @@
   Now that `tester` has a balance of 0, if we attempt this transfer a second time it should fail:
 
   ```
-  $ ./eosc push message currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
+  $ ./eosioc push action currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
   3543610ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
   3543615ms thread-0   main.cpp:311                  main                 ] Failed with error: 10 assert_exception: Assert Exception
   status_code == 200: Error
@@ -683,12 +683,12 @@
   This table is stored on the scope of each account instead of on `currency` scope.
 
   ```
-  $./eosc get table tester currency account
+  $./eosioc get table tester currency account
   {
     "rows": [],
     "more": false
   }
-  $./eosc get table inita currency account
+  $./eosioc get table inita currency account
   {
     "rows": [{
         "account": "account",
@@ -702,9 +702,9 @@
 
   @section particularnode Connecting to Particular Node
 
-  By default, `eosc` will connect to `eosd` running on localhost port 8888. You can connect to another `eosd` node by specifying its host and port.
+  By default, `eosioc` will connect to `eosd` running on localhost port 8888. You can connect to another `eosd` node by specifying its host and port.
   ```
-  ./eosc -H localhost -p 8889
+  ./eosioc -H localhost -p 8889
   ```
 
   @section separatewallet Using Separate Wallet App
@@ -716,7 +716,7 @@
   ```
   Then for any operation that requires signing, use the --wallet-host and --wallet-port option
   ```
-  ./eosc --wallet-host 127.0.0.1 --wallet-port 8887 <COMMAND> <SUBCOMMAND> <PARAMS>
+  ./eosioc --wallet-host 127.0.0.1 --wallet-port 8887 <COMMAND> <SUBCOMMAND> <PARAMS>
   ```
 
 
@@ -729,18 +729,18 @@
   ```
   And then for any operation that requires signing, use the `-s` option
   ```
-  ./eosc <COMMAND> <SUBCOMMAND> -s <PARAMS>
+  ./eosioc <COMMAND> <SUBCOMMAND> -s <PARAMS>
   ```
 
 
   @section additionaldoc Additional Documentation
 
-  eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
+  eosioc contains documentation for all of its commands. For a list of all commands known to eosioc, simply run it with no arguments:
   ```
-  $ ./eosc
+  $ ./eosioc
   ERROR: RequiredError: Subcommand required
   Command Line Interface to Eos Daemon
-  Usage: ./eosc [OPTIONS] SUBCOMMAND
+  Usage: ./eosioc [OPTIONS] SUBCOMMAND
 
   Options:
     -h,--help                   Print this help message and exit
@@ -761,18 +761,18 @@
   ```
   To get help with any particular subcommand, run it with no arguments as well:
   ```
-  $ ./eosc create
+  $ ./eosioc create
   ERROR: RequiredError: Subcommand required
   Create various items, on and off the blockchain
-  Usage: ./eosc create SUBCOMMAND
+  Usage: ./eosioc create SUBCOMMAND
 
   Subcommands:
     key                         Create a new keypair and print the public and private keys
     account                     Create a new account on the blockchain
-  $ ./eosc create account
+  $ ./eosioc create account
   ERROR: RequiredError: creator
   Create a new account on the blockchain
-  Usage: ./eosc create account creator name OwnerKey ActiveKey
+  Usage: ./eosioc create account creator name OwnerKey ActiveKey
 
   Positionals:
     creator TEXT                The name of the account creating the new account

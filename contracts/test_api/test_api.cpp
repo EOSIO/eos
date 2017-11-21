@@ -9,7 +9,7 @@
 #include "test_crypto.cpp"
 #include "test_db.cpp"
 #include "test_math.cpp"
-#include "test_message.cpp"
+#include "test_action.cpp"
 #include "test_print.cpp"
 #include "test_string.cpp"
 #include "test_transaction.cpp"
@@ -31,15 +31,15 @@ extern "C" {
       WASM_TEST_HANDLER(test_types, string_to_name);
       WASM_TEST_HANDLER(test_types, name_class);
 
-      //test_message
-      WASM_TEST_HANDLER(test_message, read_message_normal);
-      WASM_TEST_HANDLER(test_message, read_message_to_0);
-      WASM_TEST_HANDLER(test_message, read_message_to_64k);
-      WASM_TEST_HANDLER(test_message, require_notice);
-      WASM_TEST_HANDLER(test_message, require_auth);
-      WASM_TEST_HANDLER(test_message, assert_false);
-      WASM_TEST_HANDLER(test_message, assert_true);
-      WASM_TEST_HANDLER(test_message, now);
+      //test_action
+      WASM_TEST_HANDLER(test_action, read_action_normal);
+      WASM_TEST_HANDLER(test_action, read_action_to_0);
+      WASM_TEST_HANDLER(test_action, read_action_to_64k);
+      WASM_TEST_HANDLER(test_action, require_notice);
+      WASM_TEST_HANDLER(test_action, require_auth);
+      WASM_TEST_HANDLER(test_action, assert_false);
+      WASM_TEST_HANDLER(test_action, assert_true);
+      WASM_TEST_HANDLER(test_action, now);
 
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);

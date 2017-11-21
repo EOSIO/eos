@@ -48,7 +48,7 @@ namespace TOKEN_NAME {
       uint32_t eospathlen;
       uint32_t ipfspathlen;
       char tmp[4098];
-      auto bufferlen = read_message(tmp, 4098);
+      auto bufferlen = read_action(tmp, 4098);
       auto linklen = read_link_from_buffer( tmp, bufferlen, link_to_set, eospathlen, ipfspathlen );
       eosio::require_notice( link_to_set.owner );
       eosio::require_auth( link_to_set.owner );
@@ -109,20 +109,20 @@ extern "C" {
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(storage) ) {
           if( action == N(transfer) ) {
-               TOKEN_NAME::apply_storage_transfer( eosio::current_message< TOKEN_NAME::transfer >() );
+               TOKEN_NAME::apply_storage_transfer( eosio::current_action< TOKEN_NAME::transfer >() );
           } else if (action == N(setlink) ) {
                TOKEN_NAME::apply_storage_setlink(); 
           } else if (action == N(removelink) ) {
                char tmp[1025];
-               auto len = read_message( tmp, 1025 );
+               auto len = read_action( tmp, 1025 );
                TOKEN_NAME::apply_storage_removelink( tmp, len );
           } else if (action == N(acceptstore) ) {
                char tmp[1025];
-               auto len = read_message( tmp, 1025 );
+               auto len = read_action( tmp, 1025 );
                TOKEN_NAME::apply_storage_createstore( tmp, len );
           } else if (action == N(rejectstore) ) {
                char tmp[1025];
-               auto len = read_message( tmp, 1025 );
+               auto len = read_action( tmp, 1025 );
                TOKEN_NAME::apply_storage_rejectstore( tmp, len );
           } else {
                assert(0, "unknown message");

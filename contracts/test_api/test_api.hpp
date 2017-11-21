@@ -34,7 +34,7 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
   }
 
 #pragma pack(push, 1)
-struct dummy_message {
+struct dummy_action {
   char a; //1
   unsigned long long b; //8
   int  c; //4
@@ -45,7 +45,7 @@ struct u128_msg {
 };
 #pragma pack(pop)
 
-static_assert( sizeof(dummy_message) == 13 , "unexpected packing" );
+static_assert( sizeof(dummy_action) == 13 , "unexpected packing" );
 static_assert( sizeof(u128_msg) == 16*3 , "unexpected packing" );
 
 struct test_types {
@@ -66,11 +66,11 @@ struct test_print {
 #define DUMMY_MESSAGE_DEFAULT_B 0xab11cd1244556677
 #define DUMMY_MESSAGE_DEFAULT_C 0x7451ae12
 
-struct test_message {
+struct test_action {
 
-  static unsigned int read_message_normal();
-  static unsigned int read_message_to_0();
-  static unsigned int read_message_to_64k();
+  static unsigned int read_action_normal();
+  static unsigned int read_action_to_0();
+  static unsigned int read_action_to_64k();
   static unsigned int require_notice();
   static unsigned int require_auth();
   static unsigned int assert_false();

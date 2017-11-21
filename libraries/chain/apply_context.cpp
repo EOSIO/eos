@@ -16,7 +16,7 @@ void apply_context::exec()
          auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(), a.code.size());
 
          // get wasm_interface
-         auto &wasm = wasm_interface::get();
+         auto& wasm = wasm_interface::get();
          wasm.apply(code, *this);
       }
    }
