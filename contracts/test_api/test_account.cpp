@@ -1,10 +1,15 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #include <eoslib/account.hpp>
 #include <eoslib/eos.hpp>
 #include <eoslib/system.h>
 
 #include "test_api.hpp"
 
-/// eos with 8 digits of precision
+/// must match #define in eos/types/asset.hpp
 #define EOS_SYMBOL  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
 
 unsigned int test_account::test_balance_acc1()

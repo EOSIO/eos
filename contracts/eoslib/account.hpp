@@ -1,7 +1,7 @@
 /**
-* @file token.hpp
+* @file account.hpp
 * @copyright defined in eos/LICENSE.txt
-* @brief Defines types and ABI for standard token messages and database tables
+* @brief Defines types and ABI for account API interactions
 *
 */
 #pragma once
@@ -11,8 +11,8 @@
 
 namespace eosio { namespace account {
   /**
-  *  @defgroup tokens Token API
-  *  @brief Defines the ABI for interfacing with standard-compatible token messages and database tables.
+  *  @defgroup account Account API
+  *  @brief Defines the ABI for interfacing with account balances.
   *  @ingroup contractdev
   *
   * @{
@@ -21,7 +21,7 @@ namespace eosio { namespace account {
 /**
 *  @struct eosio::account_balance (must match account_balance defined in wasm_interface.cpp)
 *  @brief The binary structure expected and populated by native balance function.
-*  @ingroup tokens
+*  @ingroup account
 *
 *  @details
 *  Example:
@@ -38,31 +38,26 @@ namespace eosio { namespace account {
 struct PACKED (account_balance) {
   /**
   * Name of the account who's balance this is
-  * @brief Name of the account who's balance this is
   */
   account_name account;
 
   /**
   * Balance for this account
-  * @brief Balance for this account
   */
   asset eos_balance;
 
   /**
   * Staked balance for this account
-  * @brief Staked balance for this account
   */
   asset staked_balance;
 
   /**
   * Unstaking balance for this account
-  * @brief Unstaking balance for this account
   */
   asset unstaking_balance;
 
   /**
   * Time at which last unstaking occurred for this account
-  * @brief Time at which last unstaking occurred for this account
   */
   time last_unstaking_time;
 };

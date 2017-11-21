@@ -27,7 +27,7 @@ extern "C" {
     *  Example:
     *  @code
     *  balance b;
-    *  b.account = n(myaccount);
+    *  b.account = N(myaccount);
     *  balance(b, sizeof(balance));
     *  @endcode
     */

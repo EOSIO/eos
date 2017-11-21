@@ -55,31 +55,26 @@ namespace eosio { namespace chain {
    {
       /**
       * Name of the account who's balance this is
-      * @brief Name of the account who's balance this is
       */
       account_name account;
 
       /**
       * Balance for this account
-      * @brief Balance for this account
       */
       asset eos_balance;
 
       /**
       * Staked balance for this account
-      * @brief Staked balance for this account
       */
       asset staked_balance;
 
       /**
       * Unstaking balance for this account
-      * @brief Unstaking balance for this account
       */
       asset unstaking_balance;
 
       /**
       * Time at which last unstaking occurred for this account
-      * @brief Time at which last unstaking occurred for this account
       */
       time last_unstaking_time;
    })
