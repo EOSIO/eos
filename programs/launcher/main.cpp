@@ -36,12 +36,14 @@ using boost::asio::ip::host_name;
 using bpo::options_description;
 using bpo::variables_map;
 
-struct localIdentity {
+struct local_identity {
   vector <fc::ip::address> addrs;
   vector <string> names;
 
   void initialize () {
     names.push_back ("localhost");
+    names.push_back ("127.0.0.1");
+
     boost::system::error_code ec;
     string hn = host_name (ec);
     if (ec.value() != boost::system::errc::success) {
@@ -108,85 +110,140 @@ struct keypair {
   {}
 };
 
-struct eosd_def {
-  eosd_def ()
-    : genesis("genesis.json"),
-      remote(false),
+class eosd_def;
+
+class host_def {
+public:
+  host_def ()
+    : genesis("./genesis.json"),
       ssh_identity (""),
       ssh_args (""),
       eos_root_dir(),
-      data_dir(),
-      hostname("127.0.0.1"),
+      host_name("127.0.0.1"),
       public_name("localhost"),
-      p2p_port(9876),
-      http_port(8888),
-      filesize (8192),
-      keys(),
-      peers(),
-      producers(),
-      onhost_set(false),
-      onhost(true),
-      localaddrs(),
-      dot_alias_str()
+      listen_addr("0.0.0.0"),
+      base_p2p_port(9876),
+      base_http_port(8888),
+      def_file_size(8192),
+      instances(),
+      p2p_count(0),
+      http_count(0),
+      dot_label_str()
   {}
 
-  bool on_host () {
-    if (! onhost_set) {
-      onhost_set = true;
-      onhost = local_id.contains (hostname);
-    }
-    return onhost;
+  string           genesis;
+  string           ssh_identity;
+  string           ssh_args;
+  string           eos_root_dir;
+  string           host_name;
+  string           public_name;
+  string           listen_addr;
+  uint16_t         base_p2p_port;
+  uint16_t         base_http_port;
+  uint16_t         def_file_size;
+  vector<eosd_def> instances;
+
+  uint16_t p2p_port() {
+    return base_p2p_port + p2p_count++;
   }
 
-  string p2p_endpoint () {
-    if (p2p_endpoint_str.empty()) {
-      p2p_endpoint_str = public_name + ":" + boost::lexical_cast<string, uint16_t>(p2p_port);
-    }
-    return p2p_endpoint_str;
+  uint16_t http_port() {
+    return base_http_port + http_count++;
   }
 
- const string &dot_alias (const string &name) {
-    if (dot_alias_str.empty()) {
-      dot_alias_str = name + "\\nprod=";
-      if (producers.empty()) {
-        dot_alias_str += "<none>";
-      }
-      else {
-        bool docomma=false;
-        for (auto &prod: producers) {
-          if (docomma)
-            dot_alias_str += ",";
-          else
-            docomma = true;
-          dot_alias_str += prod;
-        }
-      }
-    }
-    return dot_alias_str;
+  bool is_local( ) {
+    return local_id.contains( host_name );
   }
 
-  string genesis;
-  bool remote;
-  string ssh_identity;
-  string ssh_args;
-  string eos_root_dir;
-  string data_dir;
-  string hostname;
-  string public_name;
-  uint16_t p2p_port;
-  uint16_t http_port;
-  uint16_t filesize;
-  vector<keypair> keys;
-  vector<string> peers;
-  vector<string> producers;
+  const string &dot_label () {
+    if (dot_label_str.empty() ) {
+      mk_dot_label();
+    }
+    return dot_label_str;
+  }
+
 
 private:
-  string p2p_endpoint_str;
-  bool onhost_set;
-  bool onhost;
-  vector<fc::ip::address> localaddrs;
-  string dot_alias_str;
+  uint16_t p2p_count;
+  uint16_t http_count;
+  string   dot_label_str;
+
+protected:
+  void mk_dot_label() {
+    if (public_name.empty()) {
+      dot_label_str = host_name;
+    }
+    else if (boost::iequals(public_name,host_name)) {
+      dot_label_str = public_name;
+    }
+    else
+      dot_label_str = public_name + "/" + host_name;
+  }
 };
+
+class tn_node_def;
+
+class eosd_def {
+public:
+  string       data_dir;
+  uint16_t     p2p_port;
+  uint16_t     http_port;
+  uint16_t     file_size;
+  bool         has_db;
+  string       name;
+  tn_node_def* node;
+  string       host;
+  string       p2p_endpoint;
+
+  void set_host (host_def* h);
+  void mk_dot_label ();
+  const string &dot_label () {
+    if (dot_label_str.empty() ) {
+      mk_dot_label();
+    }
+    return dot_label_str;
+  }
+
+private:
+  string dot_label_str;
+};
+
+class tn_node_def {
+public:
+  string          name;
+  vector<keypair> keys;
+  vector<string>  peers;
+  vector<string>  producers;
+  eosd_def*       instance;
+};
+
+void
+eosd_def::mk_dot_label () {
+  dot_label_str = name + "\\nprod=";
+  if (node == 0 || node->producers.empty()) {
+    dot_label_str += "<none>";
+  }
+  else {
+    bool docomma = false;
+    for (auto &prod: node->producers) {
+      if (docomma)
+        dot_label_str += ",";
+      else
+        docomma = true;
+      dot_label_str += prod;
+    }
+  }
+}
+
+void
+eosd_def::set_host( host_def* h ) {
+  host = h->host_name;
+  has_db = false;
+  p2p_port = h->p2p_port();
+  http_port = h->http_port();
+  file_size = h->def_file_size;
+  p2p_endpoint = h->public_name + ":" + boost::lexical_cast<string, uint16_t>(p2p_port);
+}
 
 struct remote_deploy {
   string ssh_cmd = "/usr/bin/ssh";
@@ -196,9 +253,13 @@ struct remote_deploy {
   string local_config_file = "temp_config";
 };
 
+struct host_map_def {
+  map <string, host_def> bindings;
+};
+
 struct testnet_def {
   remote_deploy ssh_helper;
-  map <string,eosd_def> nodes;
+  map <string,tn_node_def> nodes;
 };
 
 
@@ -217,7 +278,9 @@ enum launch_modes {
   LM_NONE,
   LM_LOCAL,
   LM_REMOTE,
-  LM_ALL
+  LM_NAMED,
+  LM_ALL,
+  LM_VERIFY
 };
 
 enum allowed_connection : char {
@@ -231,32 +294,39 @@ struct launcher_def {
   size_t producers;
   size_t total_nodes;
   size_t prod_nodes;
+  size_t next_node;
   string shape;
   allowed_connection allowed_connections = PC_NONE;
   bf::path genesis;
   bf::path output;
+  bf::path host_map_file;
+  string data_dir_base;
   bool skip_transaction_signatures = false;
   string eosd_extra_args;
   testnet_def network;
-  string data_dir_base;
   string alias_base;
   vector <string> aliases;
+  host_map_def host_map;
   last_run_def last_run;
   int start_delay;
-  bool random_start;
+  bool nogen;
+  string launch_name;
+
+  void assign_name (eosd_def &node);
 
   void set_options (bpo::options_description &cli);
   void initialize (const variables_map &vmap);
   bool generate ();
-  void define_nodes ();
-  void write_config_file (eosd_def &node);
+  void define_local ();
+  void bind_nodes ();
+  void write_config_file (tn_node_def &node);
   void make_ring ();
   void make_star ();
   void make_mesh ();
   void make_custom ();
   void write_dot_file ();
-  void format_ssh (const string &cmd, const string &hostname, string &ssh_cmd_line);
-  bool do_ssh (const string &cmd, const string &hostname);
+  void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
+  bool do_ssh (const string &cmd, const string &host_name);
   void prep_remote_config_dir (eosd_def &node);
   void launch (eosd_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
@@ -269,13 +339,14 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
     ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that are producers")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
-    ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"ring\" \"star\" \"mesh\" or give a filename for custom")
+    ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(&output),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "EOSD does not require transaction signatures.")
     ("eosd", bpo::value<string>(&eosd_extra_args), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
-    ("random", bpo::bool_switch(&random_start)->default_value(false),"start the nodes in a random order")
+    ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
+    ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
         ;
 }
 
@@ -304,18 +375,53 @@ launcher_def::initialize (const variables_map &vmap) {
       }
     }
   }
+
+  if ( ! (shape.empty() ||
+          boost::iequals( shape, "ring" ) ||
+          boost::iequals( shape, "star" ) ||
+          boost::iequals( shape, "mesh" )) &&
+       host_map_file.empty()) {
+    bf::path src = shape;
+    host_map_file = src.stem().string() + "_hosts.json";
+  }
+
+  if( !host_map_file.empty() ) {
+    try {
+      fc::json::from_file(host_map_file).as<host_map_def>(host_map);
+      for (auto &binding : host_map.bindings) {
+        for (auto &eosd : binding.second.instances) {
+          aliases.push_back (eosd.name);
+        }
+      }
+    } catch (...) { // this is an optional feature, so an exception is OK
+    }
+  }
+
   producers = 21;
   data_dir_base = "tn_data_";
   alias_base = "testnet_";
+  next_node = 0;
 
   if (prod_nodes > producers)
     prod_nodes = producers;
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
+
+  if (host_map.bindings.empty()) {
+    define_local ();
+  }
+}
+
+void
+launcher_def::assign_name (eosd_def &node) {
+  string dex = boost::lexical_cast<string,int>(next_node++);
+  node.name = alias_base + dex;
+  node.data_dir = data_dir_base + dex;
 }
 
 bool
 launcher_def::generate () {
+
   if (boost::iequals (shape,"ring")) {
     make_ring ();
   }
@@ -328,18 +434,37 @@ launcher_def::generate () {
   else {
     make_custom ();
   }
-  for (auto &node : network.nodes) {
-      write_config_file(node.second);
-  }
 
-  write_dot_file ();
+  if( !nogen ) {
+    for (auto &node : network.nodes) {
+      write_config_file(node.second);
+    }
+    write_dot_file ();
+  }
 
   if (!output.empty()) {
     bf::path savefile = output;
-    bf::ofstream sf (savefile);
+    {
+      bf::ofstream sf (savefile);
 
-    sf << fc::json::to_pretty_string (network) << endl;
-    sf.close();
+      sf << fc::json::to_pretty_string (network) << endl;
+      sf.close();
+    }
+    if (host_map_file.empty()) {
+      savefile = bf::path (output.stem().string() + "_hosts.json");
+    }
+    else {
+      savefile = bf::path (host_map_file);
+    }
+
+    {
+
+      bf::ofstream sf (savefile);
+
+      sf << fc::json::to_pretty_string (host_map) << endl;
+      sf.close();
+    }
+
     return false;
   }
   return true;
@@ -351,8 +476,8 @@ launcher_def::write_dot_file () {
   df << "digraph G\n{\nlayout=\"circo\";\n";
   for (auto &node : network.nodes) {
     for (const auto &p : node.second.peers) {
-      string pname=network.nodes.find(p)->second.dot_alias(p);
-      df << "\"" << node.second.dot_alias (node.first)
+      string pname=network.nodes.find(p)->second.instance->dot_label();
+      df << "\"" << node.second.instance->dot_label ()
          << "\"->\"" << pname
          << "\" [dir=\"forward\"];" << std::endl;
     }
@@ -373,48 +498,67 @@ launcher_def::write_dot_file () {
 }
 
 void
-launcher_def::define_nodes () {
+launcher_def::define_local () {
+  host_def local_host;
+  char * erd = getenv ("EOS_ROOT_DIR");
+  if (erd == 0) {
+    cerr << "environment variable \"EOS_ROOT_DIR\" unset. defaulting to current dir" << endl;
+    erd = getenv ("PWD");
+  }
+  local_host.eos_root_dir = erd;
+  local_host.genesis = genesis.string();
+
+  for (size_t i = 0; i < total_nodes; i++) {
+    eosd_def eosd;
+
+    assign_name(eosd);
+    aliases.push_back(eosd.name);
+    eosd.set_host (&local_host);
+    local_host.instances.emplace_back(move(eosd));
+  }
+  host_map.bindings[local_host.host_name] = move(local_host);
+}
+
+void
+launcher_def::bind_nodes () {
   int per_node = producers / prod_nodes;
   int extra = producers % prod_nodes;
-  for (size_t i = 0; i < total_nodes; i++) {
-    eosd_def node;
-    string dex = boost::lexical_cast<string,int>(i);
-    string name = alias_base + dex;
-    aliases.push_back(name);
-    node.genesis = genesis.string();
-    node.data_dir = data_dir_base + dex;
-    node.hostname = "127.0.0.1";
-    node.public_name = "localhost";
-    node.remote = false;
-    node.p2p_port += i;
-    node.http_port += i;
-    keypair kp;
-    node.keys.push_back (kp);
-    if (i < prod_nodes) {
-      int count = per_node;
-      if (extra) {
-        ++count;
-        --extra;
+  int i = 0;
+  for (auto &h : host_map.bindings) {
+    for (auto &inst : h.second.instances) {
+      tn_node_def node;
+      node.name = inst.name;
+      node.instance = &inst;
+      keypair kp;
+      node.keys.emplace_back (move(kp));
+      if (i < prod_nodes) {
+        int count = per_node;
+        if (extra) {
+          ++count;
+          --extra;
+        }
+        char ext = 'a' + i;
+        string pname = "init";
+        while (count--) {
+          node.producers.push_back(pname + ext);
+          ext += prod_nodes;
+        }
       }
-      char ext = 'a' + i;
-      string pname = "init";
-      while (count--) {
-        node.producers.push_back(pname + ext);
-        ext += prod_nodes;
-      }
+      network.nodes[node.name] = move(node);
+      inst.node = &network.nodes[inst.name];
+      i++;
     }
-    network.nodes.insert (pair<string, eosd_def>(name, node));
-
   }
 }
 
 void
-launcher_def::write_config_file (eosd_def &node) {
+launcher_def::write_config_file (tn_node_def &node) {
   bf::path filename;
   boost::system::error_code ec;
-
-  if (node.on_host()) {
-    bf::path dd(node.data_dir);
+  eosd_def &instance = *node.instance;
+  host_def *host = &host_map.bindings[instance.host];
+  if (host->is_local()) {
+    bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
     filename = dd / "config.ini";
     if (bf::exists (dd)) {
       int64_t count =  bf::remove_all (dd, ec);
@@ -424,8 +568,8 @@ launcher_def::write_config_file (eosd_def &node) {
         exit (-1);
       }
     }
-    if (!bf::create_directory (node.data_dir, ec) && ec.value()) {
-      cerr << "could not create new directory: " << node.data_dir
+    if (!bf::create_directory (instance.data_dir, ec) && ec.value()) {
+      cerr << "could not create new directory: " << instance.data_dir
            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
       exit (-1);
     }
@@ -440,15 +584,15 @@ launcher_def::write_config_file (eosd_def &node) {
     exit (-1);
   }
 
-  cfg << "genesis-json = " << node.genesis << "\n"
+  cfg << "genesis-json = " << host->genesis << "\n"
       << "block-log-dir = blocks\n"
       << "readonly = 0\n"
       << "send-whole-blocks = true\n"
       << "shared-file-dir = blockchain\n"
-      << "shared-file-size = " << node.filesize << "\n"
-      << "http-server-endpoint = " << node.hostname << ":" << node.http_port << "\n"
-      << "listen-endpoint = 0.0.0.0:" << node.p2p_port << "\n"
-      << "public-endpoint = " << node.public_name << ":" << node.p2p_port << "\n";
+      << "shared-file-size = " << instance.file_size << "\n"
+      << "http-server-endpoint = " << host->host_name << ":" << instance.http_port << "\n"
+      << "listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n"
+      << "public-endpoint = " << host->public_name << ":" << instance.p2p_port << "\n";
   if (allowed_connections & PC_ANY) {
     cfg << "allowed-connection = any\n";
   }
@@ -465,7 +609,7 @@ launcher_def::write_config_file (eosd_def &node) {
     }
   }
   for (const auto &p : node.peers) {
-    cfg << "remote-endpoint = " << network.nodes.find(p)->second.p2p_endpoint() << "\n";
+    cfg << "remote-endpoint = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
   if (node.producers.size()) {
     cfg << "required-participation = true\n";
@@ -478,33 +622,38 @@ launcher_def::write_config_file (eosd_def &node) {
     }
     cfg << "plugin = eosio::producer_plugin\n";
   }
+  if( instance.has_db ) {
+    if( !node.producers.size() ) {
+      cfg << "plugin = eosio::producer_plugin\n";
+    }
+    cfg << "plugin = eosio::db_plugin\n";
+  }
   cfg << "plugin = eosio::chain_api_plugin\n"
       << "plugin = eosio::wallet_api_plugin\n"
-      << "plugin = eosio::db_plugin\n"
       << "plugin = eosio::account_history_plugin\n"
       << "plugin = eosio::account_history_api_plugin\n";
   cfg.close();
-  if (!node.on_host()) {
-    prep_remote_config_dir (node);
+  if (!host->is_local()) {
+    prep_remote_config_dir (instance);
     string scp_cmd_line = network.ssh_helper.scp_cmd + " ";
-    const string &args = node.ssh_args.length() ? node.ssh_args : network.ssh_helper.ssh_args;
+    const string &args = host->ssh_args.length() ? host->ssh_args : network.ssh_helper.ssh_args;
     if (args.length()) {
       scp_cmd_line += args + " ";
     }
     scp_cmd_line += filename.string() + " ";
 
-    const string &uid = node.ssh_identity.length() ? node.ssh_identity : network.ssh_helper.ssh_identity;
+    const string &uid = host->ssh_identity.length() ? host->ssh_identity : network.ssh_helper.ssh_identity;
     if (uid.length()) {
       scp_cmd_line += uid + "@";
     }
 
-    bf::path dpath = bf::path (node.eos_root_dir) / node.data_dir / "config.ini";
-    scp_cmd_line += node.hostname + ":" + dpath.string();
+    bf::path dpath = bf::path (host->eos_root_dir) / instance.data_dir / "config.ini";
+    scp_cmd_line += host->host_name + ":" + dpath.string();
 
     cerr << "cmdline = " << scp_cmd_line << endl;
     int res = boost::process::system (scp_cmd_line);
     if (res != 0) {
-      cerr << "unable to scp config file to host " << node.hostname << endl;
+      cerr << "unable to scp config file to host " << host->host_name << endl;
       exit(-1);
     }
   }
@@ -512,9 +661,8 @@ launcher_def::write_config_file (eosd_def &node) {
 
 void
 launcher_def::make_ring () {
-  define_nodes ();
+  bind_nodes();
   if (total_nodes > 2) {
-
     for (size_t i = 0; i < total_nodes; i++) {
       size_t front = (i + 1) % total_nodes;
       network.nodes.find(aliases[i])->second.peers.push_back (aliases[front]);
@@ -528,11 +676,12 @@ launcher_def::make_ring () {
 
 void
 launcher_def::make_star () {
+  bind_nodes();
   if (total_nodes < 4) {
     make_ring ();
     return;
   }
-  define_nodes ();
+
   size_t links = 3;
   if (total_nodes > 12) {
     links = (size_t)sqrt(total_nodes);
@@ -565,7 +714,6 @@ launcher_def::make_star () {
               ndx = 0;
             }
 
-
             peer = aliases[ndx];
 
             found = true;
@@ -585,7 +733,7 @@ launcher_def::make_star () {
 
 void
 launcher_def::make_mesh () {
-  define_nodes ();
+  bind_nodes();
   // use to prevent duplicates since all connections are bidirectional
   std::map <string, std::set<string>> peers_to_from;
   for (size_t i = 0; i < total_nodes; i++) {
@@ -607,14 +755,20 @@ launcher_def::make_mesh () {
 
 void
 launcher_def::make_custom () {
-  //don't need to define nodes here
   bf::path source = shape;
   fc::json::from_file(source).as<testnet_def>(network);
+  for (auto &h : host_map.bindings) {
+    for (auto &inst : h.second.instances) {
+      tn_node_def *node = &network.nodes[inst.name];
+      node->instance = &inst;
+      inst.node = node;
+    }
+  }
 }
 
 void
 launcher_def::format_ssh (const string &cmd,
-                          const string &hostname,
+                          const string &host_name,
                           string & ssh_cmd_line) {
 
   ssh_cmd_line = network.ssh_helper.ssh_cmd + " ";
@@ -624,42 +778,43 @@ launcher_def::format_ssh (const string &cmd,
   if (network.ssh_helper.ssh_identity.length()) {
     ssh_cmd_line += network.ssh_helper.ssh_identity + "@";
   }
-  ssh_cmd_line += hostname + " \"" + cmd + "\"";
+  ssh_cmd_line += host_name + " \"" + cmd + "\"";
   cerr << "cmdline = " << ssh_cmd_line << endl;
 }
 
 bool
-launcher_def::do_ssh (const string &cmd, const string &hostname) {
+launcher_def::do_ssh (const string &cmd, const string &host_name) {
   string ssh_cmd_line;
-  format_ssh (cmd, hostname, ssh_cmd_line);
+  format_ssh (cmd, host_name, ssh_cmd_line);
   int res = boost::process::system (ssh_cmd_line);
   return (res == 0);
 }
 
 void
 launcher_def::prep_remote_config_dir (eosd_def &node) {
-  bf::path abs_data_dir = bf::path(node.eos_root_dir) / node.data_dir;
+  host_def* host = &host_map.bindings[node.host];
+  bf::path abs_data_dir = bf::path(host->eos_root_dir) / node.data_dir;
   string add = abs_data_dir.string();
-  string cmd = "cd " + node.eos_root_dir;
-  if (!do_ssh(cmd, node.hostname)) {
-    cerr << "Unable to switch to path " << node.eos_root_dir
-         << " on host " <<  node.hostname << endl;
+  string cmd = "cd " + host->eos_root_dir;
+  if (!do_ssh(cmd, host->host_name)) {
+    cerr << "Unable to switch to path " << host->eos_root_dir
+         << " on host " <<  host->host_name << endl;
     exit (-1);
   }
   cmd = "cd " + add;
-  if (do_ssh(cmd,node.hostname)) {
+  if (do_ssh(cmd,host->host_name)) {
     cmd = "rm -rf " + add + "/block*";
-    if (!do_ssh (cmd, node.hostname)) {
+    if (!do_ssh (cmd, host->host_name)) {
       cerr << "Unable to remove old data directories on host "
-           << node.hostname << endl;
+           << host->host_name << endl;
       exit (-1);
     }
   }
   else {
     cmd = "mkdir " + add;
-    if (!do_ssh (cmd, node.hostname)) {
+    if (!do_ssh (cmd, host->host_name)) {
       cerr << "Unable to invoke " << cmd << " on host "
-           << node.hostname << endl;
+           << host->host_name << endl;
       exit (-1);
     }
   }
@@ -672,8 +827,10 @@ launcher_def::launch (eosd_def &node, string &gts) {
   bf::path reerr = dd / "stderr.txt";
   bf::path pidf  = dd / "eosd.pid";
 
+  host_def* host = &host_map.bindings[node.host];
+
   node_rt_info info;
-  info.remote = node.remote;
+  info.remote = !host->is_local();
 
   string eosdcmd = "programs/eosd/eosd ";
   if (skip_transaction_signatures) {
@@ -686,18 +843,18 @@ launcher_def::launch (eosd_def &node, string &gts) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
 
-  if (!node.on_host()) {
+  if (info.remote) {
     string cmdl ("cd ");
-    cmdl += node.eos_root_dir + "; nohup " + eosdcmd + " > "
+    cmdl += host->eos_root_dir + "; nohup " + eosdcmd + " > "
       + reout.string() + " 2> " + reerr.string() + "& echo $! > " + pidf.string();
-    if (!do_ssh (cmdl, node.hostname)){
+    if (!do_ssh (cmdl, host->host_name)){
       cerr << "Unable to invoke " << cmdl
-           << " on host " << node.hostname << endl;
+           << " on host " << host->host_name << endl;
       exit (-1);
     }
 
-    string cmd = "cd " + node.eos_root_dir + "; kill -9 `cat " + pidf.string() + "`";
-    format_ssh (cmd, node.hostname, info.kill_cmd);
+    string cmd = "cd " + host->eos_root_dir + "; kill -9 `cat " + pidf.string() + "`";
+    format_ssh (cmd, host->host_name, info.kill_cmd);
   }
   else {
     cerr << "spawning child, " << eosdcmd << endl;
@@ -719,7 +876,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
     }
     c.detach();
   }
-  last_run.running_nodes.push_back (info);
+  last_run.running_nodes.emplace_back (move(info));
 }
 
 void
@@ -747,22 +904,40 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
 
 void
 launcher_def::start_all (string &gts, launch_modes mode) {
-  if (mode == LM_NONE)
+  switch (mode) {
+  case LM_NONE:
     return;
-
-  if (random_start) {
-    // recompute start order - implemenation deferred
-  } else {
-    for (auto &node : network.nodes) {
-      if (mode != LM_ALL) {
-        if ((mode == LM_LOCAL && node.second.remote) ||
-            (mode == LM_REMOTE && !node.second.remote)) {
-          continue;
+  case LM_VERIFY:
+    //validate configuration, report findings, exit
+    return;
+  case LM_NAMED : {
+    try {
+      auto node = network.nodes.find(launch_name);
+      launch(*node->second.instance, gts);
+    } catch (...) {
+      cerr << "Unable to launch " << launch_name << endl;
+      exit -1;
+    }
+    break;
+  }
+  case LM_ALL:
+  case LM_REMOTE:
+  case LM_LOCAL: {
+    for (auto &h : host_map.bindings ) {
+      if (mode == LM_ALL ||
+          (h.second.is_local() ? mode == LM_LOCAL : mode == LM_REMOTE)) {
+        for (auto &inst : h.second.instances) {
+          try {
+            launch (inst, gts);
+          } catch (...) {
+            cerr << "unable to launch " << inst.name << endl;
+          }
+          sleep (start_delay);
         }
       }
-      launch (node.second, gts);
-      sleep (start_delay);
     }
+    break;
+  }
   }
   bf::path savefile = "last_run.json";
   bf::ofstream sf (savefile);
@@ -818,7 +993,11 @@ int main (int argc, char *argv[]) {
         mode = LM_REMOTE;
       else if (boost::iequals(l,"none"))
         mode = LM_NONE;
+      else if (boost::iequals(l,"verify"))
+        mode = LM_VERIFY;
       else {
+        mode = LM_NAMED;
+        top.launch_name = l;
         cerr << "unrecognized launch mode: " << l << endl;
         exit (-1);
       }
@@ -854,16 +1033,22 @@ FC_REFLECT( keypair, (public_key)(wif_private_key) )
 FC_REFLECT( remote_deploy,
             (ssh_cmd)(scp_cmd)(ssh_identity)(ssh_args) )
 
+FC_REFLECT( host_def,
+            (genesis)(ssh_identity)(ssh_args)(eos_root_dir)
+            (host_name)(public_name)
+            (base_p2p_port)(base_http_port)(def_file_size)
+            (instances) )
+
 FC_REFLECT( eosd_def,
-            (genesis)(remote)(ssh_identity)(ssh_args)(eos_root_dir)(data_dir)
-            (hostname)(public_name)(p2p_port)(http_port)(filesize)
-            (keys)(peers)(producers) )
+            (name)(data_dir)(has_db)(host)(p2p_endpoint)
+            (p2p_port)(http_port)(file_size) )
 
-FC_REFLECT( testnet_def,
-            (ssh_helper)(nodes) )
+FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
 
-FC_REFLECT( node_rt_info,
-            (remote)(pid_file)(kill_cmd) )
+FC_REFLECT( testnet_def, (ssh_helper)(nodes) )
 
-FC_REFLECT( last_run_def,
-            (running_nodes) )
+FC_REFLECT( host_map_def, (bindings) )
+
+FC_REFLECT( node_rt_info, (remote)(pid_file)(kill_cmd) )
+
+FC_REFLECT( last_run_def, (running_nodes) )
