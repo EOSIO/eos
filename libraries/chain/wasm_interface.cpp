@@ -12,7 +12,6 @@
 #include "Runtime/Runtime.h"
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
-#include "IR/Module.h"
 #include "IR/Operators.h"
 #include "IR/Validate.h"
 #include "IR/Types.h"
@@ -31,8 +30,9 @@ using boost::asio::io_service;
 
 namespace eosio { namespace chain {
 
-   FunctionInstance *resolve_intrinsic(const string& name);
-
+   /**
+    * Integration with the WASM Linker to resolve our intrinsics
+    */
    struct root_resolver : Runtime::Resolver
    {
       bool resolve(const string& mod_name,
@@ -40,15 +40,12 @@ namespace eosio { namespace chain {
                    ObjectType type,
                    ObjectInstance*& out) override
       {
-         if (mod_name == "env" && type.kind == ObjectKind::function ) {
-            try {
-               auto* intrinsic = resolve_intrinsic(export_name);
-               if (intrinsic != nullptr) {
-                  out = asObject(intrinsic);
-                  return true;
-               }
-            } FC_RETHROW_EXCEPTIONS(error, "unresolvable symbol ${module}.${export}", ("module",mod_name)("export",export_name));
+         // Try to resolve an intrinsic first.
+         if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
+            return true;
          }
+
+         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
          return false;
       }
    };
@@ -63,6 +60,8 @@ namespace eosio { namespace chain {
       :_ios()
       ,_work(_ios)
       {
+         Runtime::init();
+
          _utility_thread = std::thread([](io_service* ios){
             ios->run();
          }, &_ios);
@@ -147,7 +146,7 @@ namespace eosio { namespace chain {
          return with_lock([&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end() && iter->second.available_instances > 0) {
-               auto &ptr = iter->second.instances.at(iter->second.available_instances--);
+               auto &ptr = iter->second.instances.at(--(iter->second.available_instances));
                return optional_entry_ref(*ptr);
             }
 
@@ -186,7 +185,8 @@ namespace eosio { namespace chain {
 
                try {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serializeWithInjection(stream, *module);
+                  #warning TODO: restore checktime injection?
+                  WASM::serialize(stream, *module);
 
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
@@ -262,7 +262,7 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-         _ios.post([&,this](){
+         _ios.post([&,code_id,this](){
             // sanitize by reseting the memory that may now be dirty
             auto& info = (*fetch_info(code_id)).get();
             char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
@@ -338,7 +338,7 @@ namespace eosio { namespace chain {
       optional<wasm_context>& context;
    };
 
-   void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context &context)
+   void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context)
    try {
       FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance,entry_point) );
       if( !call ) {
@@ -361,9 +361,6 @@ namespace eosio { namespace chain {
    }
 
    wasm_interface& wasm_interface::get() {
-      static bool init_once = [](){  Runtime::init(); return true; }();
-      boost::ignore_unused(init_once);
-
       thread_local wasm_interface* single = nullptr;
       if( !single ) {
          single = new wasm_interface();
@@ -528,24 +525,24 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 #endif
 
 #if defined(assert)
-#undef assert
+   #undef assert
 #endif
 
 class intrinsics {
    public:
-      intrinsics(wasm_interface &wasm)
+      intrinsics(wasm_interface& wasm)
       :wasm(wasm)
       ,context(intrinsics_accessor::get_context(wasm).context)
       {}
 
       int read_action(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
-         int minlen = std::min<int>(context.act.data.size(), size);
+         int minlen = std::min<size_t>(context.act.data.size(), size);
          memcpy((void *)memory, context.act.data.data(), minlen);
          return minlen;
       }
 
-      void assert(bool condition, char const* str) {
+      void assert(bool condition, char* str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -556,23 +553,6 @@ class intrinsics {
       apply_context& context;
 };
 
-static map<string, unique_ptr<Intrinsics::Function>> intrinsic_registry;
-static void lazy_register_intrinsics()
-{
-   if (intrinsic_registry.size() !=0 ) {
-      return;
-   }
-   REGISTER_INTRINSICS((intrinsic_registry, intrinsics), (read_action)(assert));
-};
-
-FunctionInstance *resolve_intrinsic(const string& name) {
-   lazy_register_intrinsics();
-   auto iter = intrinsic_registry.find(name);
-   if (iter != intrinsic_registry.end()) {
-      return (iter->second)->function;
-   }
-
-   return nullptr;
-}
+REGISTER_INTRINSICS(intrinsics, (read_action)(assert));
 
 } } /// eosio::chain

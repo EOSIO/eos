@@ -45,11 +45,20 @@ namespace eosio { namespace testing {
          public_key_type   get_public_key( name keyname, string role = "owner" );
          private_key_type  get_private_key( name keyname, string role = "owner" );
 
+         void              set_code( account_name name, const char* wast );
+
+
          unique_ptr<chain_controller> control;
 
+         bool                          chain_has_transaction( const transaction_id_type& txid ) const;
+         const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
+
+
       private:
-         fc::temp_directory                  tempdir;
-         chain_controller::controller_config cfg;
+         fc::temp_directory                            tempdir;
+         chain_controller::controller_config           cfg;
+
+         map<transaction_id_type, transaction_receipt> chain_transactions;
    };
 
 } } /// eosio::testing

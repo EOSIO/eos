@@ -29,7 +29,7 @@ struct wasm_context {
 
 struct wasm_interface_impl {
    optional<wasm_context> current_context;
-   void call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context &context);
+   void call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context);
 };
 
 class intrinsics_accessor {
@@ -113,6 +113,8 @@ template<> struct wasm_to_rvalue_type<I64>  { static constexpr auto value = Resu
 template<typename T>
 constexpr auto wasm_to_rvalue_type_v = wasm_to_rvalue_type<T>::value;
 
+struct void_type{};
+
 /**
  * Forward delclaration of the invoker type which transcribes arguments to/from a native method
  * and injects the appropriate checks
@@ -135,15 +137,16 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
       return FunctionType::get(wasm_to_rvalue_type_v<Ret>, { wasm_to_value_type_v<Translated> ...  });
    }
 
-   using wasm_method_type = Ret (*)(wasm_interface&, Translated...);
+   using next_method_type        = Ret (*)(wasm_interface&, Translated...);
+   using intrinsic_method_type   = Ret (*)(Translated...);
 
-   template<wasm_method_type Method>
+   template<next_method_type Method>
    static Ret invoke(Translated... translated) {
       wasm_interface& wasm = wasm_interface::get();
       return native_to_wasm_t<Ret>(Method(wasm, translated...));
    }
 
-   template<wasm_method_type Method>
+   template<next_method_type Method>
    static const auto fn() {
       return invoke<Method>;
    }
@@ -154,20 +157,21 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
  * @tparam Translated - the arguments to the wasm function
  */
 template<typename ...Translated>
-struct intrinsic_invoker_impl<void, std::tuple<>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>> {
    static const FunctionType* wasm_function_type() {
       return FunctionType::get(ResultType::none, { wasm_to_value_type_v<Translated> ...  });
    }
 
-   using wasm_method_type = void (*)(wasm_interface&, Translated...);
+   using next_method_type        = void_type (*)(wasm_interface&, Translated...);
+   using intrinsic_method_type   = void (*)(Translated...);
 
-   template<wasm_method_type Method>
+   template<next_method_type Method>
    static void invoke(Translated... translated) {
       wasm_interface& wasm = wasm_interface::get();
       Method(wasm, translated...);
    }
 
-   template<wasm_method_type Method>
+   template<next_method_type Method>
    static const auto fn() {
       return invoke<Method>;
    }
@@ -184,8 +188,11 @@ template<typename Ret, typename Input, typename... Inputs, typename... Translate
 struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Translated...>> {
    using translated_type = native_to_wasm_t<Input>;
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., translated_type>>;
-   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
    using then_type = Ret (*)(wasm_interface&, Input, Inputs..., Translated...);
+   using intrinsic_method_type = typename next_step::intrinsic_method_type;
+
+   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
+
 
    template<then_type Then>
    static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, translated_type last) {
@@ -211,8 +218,10 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
-   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
    using then_type = Ret(*)(wasm_interface&, array_ptr<T>, size_t, Inputs..., Translated...);
+   using intrinsic_method_type = typename next_step::intrinsic_method_type;
+
+   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
 
    template<then_type Then>
    static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
@@ -240,8 +249,10 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<T*, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
    using then_type = Ret (*)(wasm_interface&, T*, Inputs..., Translated...);
+   using intrinsic_method_type = typename next_step::intrinsic_method_type;
+
+   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
 
    template<then_type Then>
    static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr) {
@@ -252,7 +263,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T*, Inputs...>, std::tuple<Transla
 
    template<then_type Then>
    static const auto fn() {
-      return next_step::template fn<translate_one<Then>>;
+      return next_step::template fn<translate_one<Then>>();
    }
 };
 
@@ -268,8 +279,10 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T*, Inputs...>, std::tuple<Transla
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<T&, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
    using then_type = Ret (*)(wasm_interface&, T&, Inputs..., Translated...);
+   using intrinsic_method_type = typename next_step::intrinsic_method_type;
+
+   static const FunctionType* wasm_function_type() { return next_step::wasm_function_type(); }
 
    template<then_type Then>
    static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr) {
@@ -282,7 +295,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T&, Inputs...>, std::tuple<Transla
 
    template<then_type Then>
    static const auto fn() {
-      return next_step::template fn<translate_one<Then>>;
+      return next_step::template fn<translate_one<Then>>();
    }
 };
 
@@ -295,6 +308,8 @@ struct intrinsic_function_invoker;
 template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker<Ret (Cls::*)(Params...)> {
    using impl = intrinsic_invoker_impl<Ret, std::tuple<Params...>, std::tuple<>>;
+   using intrinsic_method_type = typename impl::intrinsic_method_type;
+
    static const FunctionType* wasm_function_type() { return impl::wasm_function_type(); }
 
    template< Ret (Cls::*Method)(Params...) >
@@ -303,21 +318,38 @@ struct intrinsic_function_invoker<Ret (Cls::*)(Params...)> {
    }
 
    template< Ret (Cls::*Method)(Params...) >
-   static const auto fn() {
+   static const intrinsic_method_type fn() {
       return impl::template fn<wrapper<Method>>();
    }
 };
 
-#define _REGISTER_INTRINSIC(R, DATA, METHOD)\
-   BOOST_PP_TUPLE_ELEM(2, 0, DATA).emplace( #METHOD, \
-      std::make_unique<Intrinsics::Function>(\
-         #METHOD,\
-         eosio::chain::intrinsic_function_invoker<decltype(&BOOST_PP_TUPLE_ELEM(2, 1, DATA)::METHOD)>::wasm_function_type(),\
-         (void *)eosio::chain::intrinsic_function_invoker<decltype(&BOOST_PP_TUPLE_ELEM(2, 1, DATA)::METHOD)>::fn<&BOOST_PP_TUPLE_ELEM(2, 1, DATA)::METHOD>()\
-      )\
+template<typename Cls, typename... Params>
+struct intrinsic_function_invoker<void (Cls::*)(Params...)> {
+   using impl = intrinsic_invoker_impl<void_type, std::tuple<Params...>, std::tuple<>>;
+   using intrinsic_method_type = typename impl::intrinsic_method_type;
+
+   static const FunctionType* wasm_function_type() { return impl::wasm_function_type(); }
+
+   template< void (Cls::*Method)(Params...) >
+   static void_type wrapper(wasm_interface& wasm, Params... params) {
+      (Cls(wasm).*Method)(params...);
+      return void_type();
+   }
+
+   template< void (Cls::*Method)(Params...) >
+   static const intrinsic_method_type fn() {
+      return impl::template fn<wrapper<Method>>();
+   }
+};
+
+#define _REGISTER_INTRINSIC(R, CLS, METHOD)\
+   static Intrinsics::Function BOOST_PP_CAT(__intrinsic_fn_, __COUNTER__)(\
+      "env." BOOST_PP_STRINGIZE(METHOD),\
+      eosio::chain::intrinsic_function_invoker<decltype(&CLS::METHOD)>::wasm_function_type(),\
+      (void *)eosio::chain::intrinsic_function_invoker<decltype(&CLS::METHOD)>::fn<&CLS::METHOD>()\
    );
 
-#define REGISTER_INTRINSICS(DATA, MEMBERS)\
-   BOOST_PP_SEQ_FOR_EACH(_REGISTER_INTRINSIC, DATA, MEMBERS)
+#define REGISTER_INTRINSICS(CLS, MEMBERS)\
+   BOOST_PP_SEQ_FOR_EACH(_REGISTER_INTRINSIC, CLS, MEMBERS)
 
 } };

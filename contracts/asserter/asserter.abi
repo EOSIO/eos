@@ -1,0 +1,27 @@
+{
+   "types": [],
+   "structs": [
+      {
+         "name": "assertdef",
+         "base": "",
+         "fields": {
+            "condition": "int8",
+            "message": "string"
+         }
+      }, {
+         "name": "nothing",
+         "base": "",
+         "fields": {}
+      }
+   ],
+   "actions": [
+      {
+         "action": "procassert",
+         "type": "assert_def"
+      }, {
+         "action": "provereset",
+         "type": "nothing"
+      }
+   ],
+   "tables": []
+}
