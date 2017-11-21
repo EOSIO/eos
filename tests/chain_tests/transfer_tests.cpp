@@ -139,7 +139,10 @@ BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
                           });
 
    test.set_authority( N(dan), config::active_name,  dans_active_auth );
-   idump((dans_active_auth));
+
+   const auto& danauth = test.control->get_permission( permission_level{N(dan),config::active_name} );
+   const auto& trustauth = test.control->get_permission( permission_level{N(trust),config::active_name} );
+
 
    test.produce_block();
 
@@ -161,10 +164,10 @@ BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
 
       test.set_tapos( trx );
       trx.sign( test.get_private_key( N(trust), "active" ), chain_id_type()  ); 
+
       /// action not provided from authority
       test.control->push_transaction( trx );
   }
-
 
 } FC_LOG_AND_RETHROW() }
 

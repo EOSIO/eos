@@ -1,5 +1,5 @@
 #include <eoslib/types.hpp>
-#include <eoslib/message.hpp>
+#include <eoslib/action.hpp>
 #include <eoslib/db.h>
 #include <eoslib/db.hpp>
 #include "test_api.hpp"

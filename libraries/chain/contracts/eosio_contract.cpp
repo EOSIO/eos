@@ -187,6 +187,7 @@ void apply_eosio_setcode(apply_context& context) {
    auto  act = context.act.as<setcode>();
 
    context.require_authorization(act.account);
+   context.require_write_scope( config::eosio_auth_scope );
 
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
@@ -379,6 +380,8 @@ void apply_eosio_setproxy(apply_context& context) {
 }
 
 void apply_eosio_updateauth(apply_context& context) {
+   context.require_write_scope( config::eosio_auth_scope );
+
    auto update = context.act.as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT(update.permission != update.parent, action_validate_exception,
@@ -407,14 +410,14 @@ void apply_eosio_updateauth(apply_context& context) {
    if (permission) {
       EOS_ASSERT(parent_id == permission->parent, action_validate_exception,
                  "Changing parent authority is not currently supported");
-      if (context.controller.is_applying_block())
+   
       // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
       // permission satisfies the permission we want to modify?
-         db.modify(*permission, [&update, &parent_id](permission_object& po) {
-            po.auth = update.authority;
-            po.parent = parent_id;
-         });
-   } else if (context.controller.is_applying_block()) {
+      db.modify(*permission, [&update, &parent_id](permission_object& po) {
+         po.auth = update.authority;
+         po.parent = parent_id;
+      });
+   }  else {
       // TODO/QUESTION: If we are creating a new permission, should we check if the message declared
       // permission satisfies the parent permission?
       db.create<permission_object>([&update, &parent_id](permission_object& po) {

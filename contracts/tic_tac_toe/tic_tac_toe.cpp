@@ -112,7 +112,7 @@ namespace tic_tac_toe {
     bool game_exists = Games::get(restart.challenger, game_to_restart, restart.host);
     assert(game_exists == true, "game doesn't exist!");
 
-    // Check if this game belongs to the message sender
+    // Check if this game belongs to the action sender
     assert(restart.by == game_to_restart.host || restart.by == game_to_restart.challenger, "this is not your game!");
 
     // Reset game
@@ -150,9 +150,9 @@ namespace tic_tac_toe {
 
     // Check if this game hasn't ended yet
     assert(game_to_move.winner == N(none), "the game has ended!");
-    // Check if this game belongs to the message sender
+    // Check if this game belongs to the action sender
     assert(move.by == game_to_move.host || move.by == game_to_move.challenger, "this is not your game!");
-    // Check if this is the  message sender's turn
+    // Check if this is the  action sender's turn
     assert(move.by == game_to_move.turn, "it's not your turn yet!");
 
 
@@ -194,13 +194,13 @@ extern "C" {
   void apply( uint64_t code, uint64_t action ) {
     if (code == N(tic.tac.toe)) {
       if (action == N(create)) {
-        tic_tac_toe::apply_create(current_message<tic_tac_toe::Create>());
+        tic_tac_toe::apply_create(current_action<tic_tac_toe::Create>());
       } else if (action == N(restart)) {
-        tic_tac_toe::apply_restart(current_message<tic_tac_toe::Restart>());
+        tic_tac_toe::apply_restart(current_action<tic_tac_toe::Restart>());
       } else if (action == N(close)) {
-        tic_tac_toe::apply_close(current_message<tic_tac_toe::Close>());
+        tic_tac_toe::apply_close(current_action<tic_tac_toe::Close>());
       } else if (action == N(move)) {
-        tic_tac_toe::apply_move(current_message<tic_tac_toe::Move>());
+        tic_tac_toe::apply_move(current_action<tic_tac_toe::Move>());
       }
     }
   }

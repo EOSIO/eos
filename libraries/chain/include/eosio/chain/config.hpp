@@ -43,12 +43,14 @@ const static uint16_t   default_max_auth_depth         = 6;
 const static uint32_t   default_max_trx_runtime        = 10*1000;
 const static uint16_t   default_max_inline_depth       = 4;
 const static uint32_t   default_max_inline_action_size = 4 * 1024;
-const static uint32_t   default_max_gen_trx_size       = 64 * 1024;
+const static uint32_t   default_max_gen_trx_size       = 64 * 1024; /// 
+const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
 const static uint32_t   producers_authority_threshold  = 14;
 
 const static share_type default_elected_pay            = asset(100).amount;
 const static share_type default_min_eos_balance        = asset(100).amount;
 
+const static uint16_t   max_recursion_depth = 6;
 
 /**
  *  The number of sequential blocks produced by a single producer

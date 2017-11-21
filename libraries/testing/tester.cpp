@@ -2,8 +2,14 @@
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/contracts/types.hpp>
 
-namespace eosio { namespace testing {
+#include <fc/utility.hpp>
 
+#include "WAST/WAST.h"
+#include "WASM/WASM.h"
+#include "IR/Module.h"
+#include "IR/Validate.h"
+
+namespace eosio { namespace testing {
 
    tester::tester() {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
@@ -41,9 +47,21 @@ namespace eosio { namespace testing {
 
    void tester::close() {
       control.reset();
+      chain_transactions.clear();
    }
    void tester::open() {
       control.reset( new chain_controller(cfg) );
+      chain_transactions.clear();
+      // this will not index generated transactions
+      control->applied_block.connect([this]( const signed_block& block ){
+         for( const auto& cycle : block.cycles_summary ) {
+            for ( const auto& shard : cycle ) {
+               for( const auto& receipt: shard ) {
+                  chain_transactions.emplace(receipt.id, receipt);
+               }
+            }
+         }
+      });
    }
 
    signed_block tester::produce_block( fc::microseconds skip_time ) {
@@ -81,6 +99,7 @@ namespace eosio { namespace testing {
                                    .recovery = authority( get_public_key( a, "recovery" ) ),
                                    .deposit  = initial_balance
                                 });
+
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  ); 
 
       control->push_transaction( trx );
@@ -132,5 +151,73 @@ namespace eosio { namespace testing {
       trx.sign( get_private_key( account, "active" ), chain_id_type()  ); 
       control->push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
+
+   void tester::set_code( account_name account, const char* wast ) try {
+      const auto assemble = [](const char* wast) -> vector<unsigned char> {
+         using namespace IR;
+         using namespace WAST;
+         using namespace WASM;
+         using namespace Serialization;
+
+         Module module;
+         vector<Error> parse_errors;
+         parseModule(wast, fc::const_strlen(wast), module, parse_errors);
+         if (!parse_errors.empty()) {
+            fc::exception parse_exception(
+               FC_LOG_MESSAGE(warn, "Failed to parse WAST"),
+               fc::std_exception_code,
+               "wast_parse_error",
+               "Failed to parse WAST"
+            );
+
+            for (const auto& err: parse_errors) {
+               parse_exception.append_log( FC_LOG_MESSAGE(error, ":${desc}: ${message}", ("desc", err.locus.describe())("message", err.message.c_str()) ) );
+               parse_exception.append_log( FC_LOG_MESSAGE(error, string(err.locus.column(8), ' ') + "^" ));
+            }
+
+            throw parse_exception;
+         }
+
+         try {
+            // Serialize the WebAssembly module.
+            ArrayOutputStream stream;
+            serialize(stream,module);
+            return stream.getBytes();
+         } catch(const FatalSerializationException& ex) {
+            fc::exception serialize_exception (
+               FC_LOG_MESSAGE(warn, "Failed to serialize wasm: ${message}", ("message", ex.message)),
+               fc::std_exception_code,
+               "wasm_serialization_error",
+               "Failed to serialize WASM"
+            );
+            throw serialize_exception;
+         }
+      };
+
+      auto wasm = assemble(wast);
+
+      signed_transaction trx;
+      trx.write_scope = {config::eosio_auth_scope};
+      trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
+                                contracts::setcode{
+                                   .account    = account,
+                                   .vmtype     = 0,
+                                   .vmversion  = 0,
+                                   .code       = bytes(wasm.begin(), wasm.end())
+                                });
+
+      set_tapos( trx );
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      control->push_transaction( trx );
+   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+
+   bool tester::chain_has_transaction( const transaction_id_type& txid ) const {
+      return chain_transactions.count(txid) != 0;
+   }
+
+   const transaction_receipt& tester::get_transaction_receipt( const transaction_id_type& txid ) const {
+      return chain_transactions.at(txid);
+   }
+
 
 } }  /// eosio::test

@@ -179,9 +179,9 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       case block_production_condition::produced: {
          const auto& db = app().get_plugin<chain_plugin>().chain();
          auto producer  = db.head_block_producer();
-         auto pending   = db.pending().size();
+ //        auto pending   = db.pending().size();
 
-         wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs  ${pending} pending", ("p", producer)(capture)("pending",pending) );
+         wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs", ("p", producer)(capture) );
          break;
       }
       case block_production_condition::not_synced:

@@ -47,10 +47,10 @@ extern "C" {
     * // }
     *
     * char buffer[128];
-    * uint32_t total = read_message(buffer, 5); // buffer contains the content of the message up to 5 bytes
+    * uint32_t total = read_action(buffer, 5); // buffer contains the content of the message up to 5 bytes
     * print(total); // Output: 5
     *
-    * uint32_t msgsize = message_size();
+    * uint32_t msgsize = action_size();
     * print(msgsize); // Output: size of the above message's data field
     *
     * require_notice(N(initc)); // initc account will be notified for this message
@@ -79,7 +79,7 @@ extern "C" {
     *  @param len - len of the current message to be copied
     *  @return the number of bytes copied to msg
     */
-   uint32_t read_message( void* msg, uint32_t len );
+   uint32_t read_action( void* msg, uint32_t len );
 
    /**
     * Get the length of the current message's data field
@@ -87,7 +87,7 @@ extern "C" {
     * @brief Get the length of current message's data field
     * @return the length of the current message's data field
     */
-   uint32_t message_size();
+   uint32_t action_size();
 
    /**
     *  Add the specified account to set of accounts to be notified

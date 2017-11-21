@@ -8,7 +8,7 @@ For the rest of this tutorial we will use the term "contract" to refer to the co
 
 ## Required Background Knowledge
 
-This tutorial assumes that you have basic understanding of how to use 'eosd' and 'eosc' to setup a node
+This tutorial assumes that you have basic understanding of how to use 'eosd' and 'eosioc' to setup a node
 and deploy the example contracts.  If you have not yet successfully followed that tutorial, then do that
 first and come back.  
 
@@ -77,7 +77,7 @@ extern "C" {
 } // extern "C"
 ```
 
-This contract implements the two entry points, `init` and `apply`. All it does is log the messages delivered and makes no other checks. Anyone can deliver any message at any time provided the block producers allow it.  Absent any required signatures, the contract will be billed for the bandwidth consumed.
+This contract implements the two entry points, `init` and `apply`. All it does is log the actions delivered and makes no other checks. Anyone can deliver any action at any time provided the block producers allow it.  Absent any required signatures, the contract will be billed for the bandwidth consumed.
 
 You can compile this contract into a text version of WASM (.wast) like so:
 
@@ -96,7 +96,7 @@ Now that you have compiled your application it is time to deploy it. This will r
 Assuming your wallet is unlocked and has keys for `${account}`, you can now upload this contract to the blockchain with the following command:
 
 ```bash
-$ eosc set contract ${account} hello.wast hello.abi
+$ eosioc set contract ${account} hello.wast hello.abi
 Reading WAST...
 Assembling WASM...
 Publishing contract...
@@ -113,7 +113,7 @@ Publishing contract...
     "signatures": [
       "2064610856c773423d239a388d22cd30b7ba98f6a9fbabfa621e42cec5dd03c3b87afdcbd68a3a82df020b78126366227674dfbdd33de7d488f2d010ada914b438"
     ],
-    "messages": [{
+    "actions": [{
         "code": "eos",
         "type": "setcode",
         "authorization": [{
@@ -158,15 +158,15 @@ You will notice the lines "Init World!" are executed 3 times, this isn't a mista
    3. eosd pushes the generated block as if it received it from the network
      - **prints "Init World!" a third time**
 
-At this point your contract is ready to start receiving messages. Since the default message handler accepts all messages we can send it
-anything we want. Let's try sending it an empty message:
+At this point your contract is ready to start receiving actions. Since the default action handler accepts all actions we can send it
+anything we want. Let's try sending it an empty action:
 
 ```bash
-$ eosc push message ${account} hello '"abcd"' --scope ${account}
+$ eosioc push action ${account} hello '"abcd"' --scope ${account}
 ```
 
-This command will send the message "hello" with binary data represented by the hex string "abcd". Note, in a bit we will show how to define the ABI so that
-you can replace the hex string with a pretty, easy-to-read, JSON object. For now we merely want to demonstrate how the message type "hello" is dispatched to
+This command will send the action "hello" with binary data represented by the hex string "abcd". Note, in a bit we will show how to define the ABI so that
+you can replace the hex string with a pretty, easy-to-read, JSON object. For now we merely want to demonstrate how the action type "hello" is dispatched to
 account.
 
 
@@ -182,7 +182,7 @@ The result is:
       "${account}"
     ],
     "signatures": [],
-    "messages": [{
+    "actions": [{
         "code": "${account}",
         "type": "hello",
         "authorization": [],
@@ -208,9 +208,9 @@ Hello World: ${account}->hello
 
 Once again your contract was executed and undone twice before being applied the 3rd time as part of a generated block.  
 
-### Message Name Restrictions
+### Action Name Restrictions
 
-Message types (eg. "hello") are actually base32 encoded 64 bit integers. This means they are limited to the charcters a-z, 1-5, and '.' for the first
+Action types (eg. "hello") are actually base32 encoded 64 bit integers. This means they are limited to the charcters a-z, 1-5, and '.' for the first
 12 charcters and if there is a 13th character then it is restricted to the first 16 characters ('.' and a-p).
 
 
@@ -265,7 +265,7 @@ Here is an example of what the skeleton contract ABI looks like:
 }
 ```
 
-You will notice that this ABI defines an action `transfer` of type `transfer`.  This tells EOS.IO that when `${account}->transfer` message is seen that the payload is of type
+You will notice that this ABI defines an action `transfer` of type `transfer`.  This tells EOS.IO that when `${account}->transfer` action is seen that the payload is of type
 `transfer`.  The type `transfer` is defined in the `structs` array in the object with `name` set to `"transfer"`.  
 
 ```json
@@ -295,10 +295,10 @@ the `types` array to `Name`, which is a built in type used to encode a uint64_t 
 ...
 ```
 
-Now that we have reviewed the ABI defined by the skeleton, we can construct a message call for `transfer`:
+Now that we have reviewed the ABI defined by the skeleton, we can construct a action call for `transfer`:
 
 ```bash
-eosc push message ${account} transfer '{"from":"currency","to":"inita","amount":50}' --scope initc
+eosioc push action ${account} transfer '{"from":"currency","to":"inita","amount":50}' --scope initc
 2570494ms thread-0   main.cpp:797                  operator()           ] Converting argument to binary...
 {
   "transaction_id": "b191eb8bff3002757839f204ffc310f1bfe5ba1872a64dda3fc42bfc2c8ed688",
@@ -310,7 +310,7 @@ eosc push message ${account} transfer '{"from":"currency","to":"inita","amount":
       "initc"
     ],
     "signatures": [],
-    "messages": [{
+    "actions": [{
         "code": "initc",
         "type": "transfer",
         "authorization": [],
@@ -339,9 +339,9 @@ Hello World: ${account}->transfer
 Hello World: ${account}->transfer
 ```
 
-## Processing Arguments of Transfer Message
+## Processing Arguments of Transfer Action
 
-According to the ABI the transfer message has the format: 
+According to the ABI the transfer action has the format:
 
 ```json
 	 "fields": {
@@ -351,7 +351,7 @@ According to the ABI the transfer message has the format:
 	 }
 ```
 
-We also know that AccountName -> Name -> UInt64 which means that the binary representation of the message is the same as:
+We also know that AccountName -> Name -> UInt64 which means that the binary representation of the action is the same as:
 
 ```c
 struct transfer {
@@ -361,14 +361,14 @@ struct transfer {
 };
 ```
 
-The EOS.IO C API provides access to the message payload via the Message API:
+The EOS.IO C API provides access to the action payload via the Action API:
 
 ```
-uint32_t messageSize();
-uint32_t readMessage( void* msg, uint32_t msglen );
+uint32_t action_size();
+uint32_t read_action( void* act, uint32_t actlen );
 ```
 
-Let's modify `hello.cpp` to print out the content of the message:
+Let's modify `hello.cpp` to print out the content of the action:
 
 ```c
 #include <hello.hpp>
@@ -396,11 +396,11 @@ extern "C" {
     void apply( uint64_t code, uint64_t action ) {
        eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
-          transfer message;
-          static_assert( sizeof(message) == 3*sizeof(uint64_t), "unexpected padding" );
-          auto read = readMessage( &message, sizeof(message) );
-          assert( read == sizeof(message), "message too short" );
-          eosio::print( "Transfer ", message.amount, " from ", eosio::Name(message.from), " to ", eosio::Name(message.to), "\n" );
+          transfer action;
+          static_assert( sizeof(action) == 3*sizeof(uint64_t), "unexpected padding" );
+          auto read = read_action( &action, sizeof(action) );
+          assert( read == sizeof(action), "action too short" );
+          eosio::print( "Transfer ", action.amount, " from ", eosio::Name(action.from), " to ", eosio::Name(action.to), "\n" );
        }
     }
 
@@ -411,7 +411,7 @@ Then we can recompile and deploy it with:
 
 ```bash
 eoscpp -o hello.wast hello.cpp 
-eosc set contract ${account} hello.wast hello.abi
+eosioc set contract ${account} hello.wast hello.abi
 ```
 
 `eosd` will call init() again because of the redeploy
@@ -425,7 +425,7 @@ Init World!
 Then we can execute transfer:
 
 ```bash
-$ eosc push message ${account} transfer '{"from":"currency","to":"inita","amount":50}' --scope ${account}
+$ eosioc push action ${account} transfer '{"from":"currency","to":"inita","amount":50}' --scope ${account}
 {
   "transaction_id": "a777539b7d5f752fb40e6f2d019b65b5401be8bf91c8036440661506875ba1c0",
   "processed": {
@@ -436,7 +436,7 @@ $ eosc push message ${account} transfer '{"from":"currency","to":"inita","amount
       "${account}"
     ],
     "signatures": [],
-    "messages": [{
+    "actions": [{
         "code": "${account}",
         "type": "transfer",
         "authorization": [],
@@ -468,15 +468,15 @@ Hello World: ${account}->transfer
 Transfer 50 from currency to inita
 ```
 
-### Using C++ API to Read Messages
+### Using C++ API to Read Actions
 So far we used the C API because it is the lowest level API that is directly exposed by EOS.IO to the WASM virtual machine. Fortunately, eoslib provides a higher level API that
 removes much of the boiler plate. 
 
 ```c
-/// eoslib/message.hpp
+/// eoslib/action.hpp
 namespace eosio {
 	 template<typename T>
-	 T currentMessage();
+	 T currentAction();
 }
 ```
 
@@ -508,8 +508,8 @@ extern "C" {
     void apply( uint64_t code, uint64_t action ) {
        eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
-          auto message = eosio::currentMessage<transfer>();
-          eosio::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
+          auto action = eosio::currentAction<transfer>();
+          eosio::print( "Transfer ", action.amount, " from ", action.from, " to ", action.to, "\n" );
        }
     }
 
@@ -517,13 +517,13 @@ extern "C" {
 
 ```
 
-You will notice that we updated the `transfer` struct to use the `eosio::Name` type directly, and then condenced the checks around `readMessage` to a single call to `currentMessage`.
+You will notice that we updated the `transfer` struct to use the `eosio::Name` type directly, and then condenced the checks around `read_action` to a single call to `currentAction`.
 
 After compiling and uploading it you should get the same results as the C version.
 
 ## Requiring Sender Authority to Transfer
 
-One of the most common requirements of any contract is to define who is allowed to perform the action. In the case of a curency transfer, we want require that the account defined by the `from` parameter signs off on the message. 
+One of the most common requirements of any contract is to define who is allowed to perform the action. In the case of a curency transfer, we want require that the account defined by the `from` parameter signs off on the action.
 
 The EOS.IO software will take care of enforcing and validating the signatures, all you need to do is require the necessary authority.
 
@@ -532,9 +532,9 @@ The EOS.IO software will take care of enforcing and validating the signatures, a
     void apply( uint64_t code, uint64_t action ) {
        eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
-          auto message = eosio::currentMessage<transfer>();
-          eosio::requireAuth( message.from );
-          eosio::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
+          auto action = eosio::currentAction<transfer>();
+          eosio::requireAuth( action.from );
+          eosio::print( "Transfer ", action.amount, " from ", action.from, " to ", action.to, "\n" );
        }
     }
     ...
@@ -543,14 +543,14 @@ The EOS.IO software will take care of enforcing and validating the signatures, a
 After building and deploying we can attempt to transfer again:
 
 ```bash
- eosc push message ${account} transfer '{"from":"initb","to":"inita","amount":50}' --scope ${account}
+ eosioc push action ${account} transfer '{"from":"initb","to":"inita","amount":50}' --scope ${account}
  1881603ms thread-0   main.cpp:797                  operator()           ] Converting argument to binary...
  1881630ms thread-0   main.cpp:851                  main                 ] Failed with error: 10 assert_exception: Assert Exception
  status_code == 200: Error
  : 3030001 tx_missing_auth: missing required authority
  Transaction is missing required authorization from initb
      {"acct":"initb"}
-         thread-0  message_handling_contexts.cpp:19 require_authorization
+         thread-0  action_handling_contexts.cpp:19 require_authorization
 ...
 ```
 
@@ -563,17 +563,17 @@ Hello World: initc->transfer
 
 This shows that it attempted to apply your transaction, printed the initial "Hello World" and then aborted when `eosio::requireAuth` failed to find authorization of account `initb`.
 
-We can fix that by telling `eosc` to add the required permission:
+We can fix that by telling `eosioc` to add the required permission:
 
 ```bash
- eosc push message ${account} transfer '{"from":"initb","to":"inita","amount":50}' --scope ${account} --permission initb@active
+ eosioc push action ${account} transfer '{"from":"initb","to":"inita","amount":50}' --scope ${account} --permission initb@active
 ```
 
 The `--permission` command defines the account and permission level, in this case we use the `active` authority which is the default.
 
 This time the transfer should have worked like we saw before.
 
-## Aborting a Message on Error
+## Aborting a Action on Error
 
 A large part of contract development is verifying preconditions, such that the amount transferred is greater than 0. If a user attempts to execute an invalid action, then
 the contract must abort and any changes made get automatically reverted.
@@ -583,10 +583,10 @@ the contract must abort and any changes made get automatically reverted.
     void apply( uint64_t code, uint64_t action ) {
        eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
        if( action == N(transfer) ) {
-          auto message = eosio::currentMessage<transfer>();
-          assert( message.amount > 0, "Must transfer an amount greater than 0" );
-          eosio::requireAuth( message.from );
-          eosio::print( "Transfer ", message.amount, " from ", message.from, " to ", message.to, "\n" );
+          auto action = eosio::currentAction<transfer>();
+          assert( action.amount > 0, "Must transfer an amount greater than 0" );
+          eosio::requireAuth( action.from );
+          eosio::print( "Transfer ", action.amount, " from ", action.from, " to ", action.to, "\n" );
        }
     }
     ...
@@ -595,8 +595,8 @@ We can now compile, deploy, and attempt to execute a transfer of 0:
 
 ```bash
  $ eoscpp -o hello.wast hello.cpp
- $ eosc set contract ${account} hello.wast hello.abi
- $ eosc push message ${account} transfer '{"from":"initb","to":"inita","amount":0}' --scope initc --permission initb@active
+ $ eosioc set contract ${account} hello.wast hello.abi
+ $ eosioc push action ${account} transfer '{"from":"initb","to":"inita","amount":0}' --scope initc --permission initb@active
  3071182ms thread-0   main.cpp:851                  main                 ] Failed with error: 10 assert_exception: Assert Exception
  status_code == 200: Error
  : 10 assert_exception: Assert Exception

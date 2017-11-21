@@ -104,7 +104,7 @@ namespace native {
 
       <h3> Required Recipients </h3>
 
-      This message requires that the accounts `from` and `to` are listed in the required recipients. This ensures
+      This action requires that the accounts `from` and `to` are listed in the required recipients. This ensures
       other contracts are notified anytime EOS tokens are transferred.
 
       */

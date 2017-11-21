@@ -13,13 +13,31 @@ namespace eosio { namespace chain {
 class chain_controller;
 
 class apply_context {
+   private:
+      vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
+      vector<action>                      _inline_actions; ///< queued inline messages
+      map<uint32_t,deferred_transaction>  _pending_deferred_transactions; ///< deferred txs /// TODO specify when
+      apply_context*                      _parent = nullptr;
+
    public:
       apply_context(chain_controller& con, chainbase::database& db,
-                    const transaction& t, const action& a, account_name recv )
+                    const transaction& t, const action& a, account_name recv, apply_context* parent = nullptr )
       :controller(con), db(db), trx(t), act(a), receiver(recv), mutable_controller(con),
-       mutable_db(db), used_authorizations(act.authorization.size(), false){}
+       mutable_db(db), used_authorizations(act.authorization.size(), false), _parent(parent){}
 
       void exec();
+
+      void execute_inline( action a ) { _inline_actions.emplace_back( move(a) ); }
+      void deferred_transaction_start( uint32_t id, 
+                                       uint16_t region,
+                                       vector<scope_name> write_scopes, 
+                                       vector<scope_name> read_scopes,
+                                       time_point_sec     execute_after,
+                                       time_point_sec     execute_before
+                                     );
+      void deferred_transaction_append( uint32_t id, action a );
+      void deferred_transaction_send( uint32_t id );
+
 
       template <typename ObjectType>
       int32_t store_record( name scope, name code, name table, typename ObjectType::key_type* keys, 
@@ -74,7 +92,18 @@ class apply_context {
       void require_authorization(const account_name& account, const permission_name& permission);
       void require_write_scope(const account_name& account)const;
       void require_read_scope(const account_name& account)const;
-      void require_recipient(const account_name& account){};
+
+      /**
+       * Requires that the current action be delivered to account
+       */
+      void require_recipient(account_name account);
+
+      /**
+       * Return true if the current action has already been scheduled to be
+       * delivered to the specified account.
+       */
+      bool has_recipient(account_name account)const;
+
 
       bool                     all_authorizations_used()const;
       vector<permission_level> unused_authorizations()const;
@@ -90,9 +119,6 @@ class apply_context {
       chain_controller&             mutable_controller;
       chainbase::database&          mutable_db;
 
-      std::deque<account_name>      notified;
-      std::vector<action>           inline_actions; ///< queued inline messages
-      std::vector<transaction>      deferred_transactions; ///< deferred txs /// TODO specify when
 
       ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
       vector<bool> used_authorizations;

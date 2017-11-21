@@ -48,7 +48,7 @@ extern "C" {
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(currency) ) {
           if( action == N(transfer) )
-             infinite::apply_currency_transfer( current_message< infinite::transfer >() );
+             infinite::apply_currency_transfer( current_action< infinite::transfer >() );
        }
     }
 }

@@ -255,6 +255,7 @@ namespace eosio { namespace chain {
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const producer_object&                 get_producer(const account_name& ownername)const;
+         const permission_object&               get_permission( const permission_level& level )const;
 
        	 time_point           head_block_time()const;
          uint32_t             head_block_num()const;
@@ -265,11 +266,6 @@ namespace eosio { namespace chain {
 
          const chainbase::database& get_database() const { return _db; }
          chainbase::database&       get_mutable_database() { return _db; }
-         
-
-
-         const deque<signed_transaction>&  pending()const { return _pending_transactions; }
-
 
          wasm_cache& get_wasm_cache() {
             return _wasm_cache;
@@ -392,7 +388,6 @@ namespace eosio { namespace chain {
 
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block; 
-         deque<signed_transaction>        _pending_transactions; ///< transactions that are waiting to get added to pending block
          uint32_t                         _pending_transaction_count = 0; 
 
          bool                             _currently_applying_block = false;

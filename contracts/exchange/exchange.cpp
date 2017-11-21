@@ -303,16 +303,16 @@ extern "C" {
       if( code == N(exchange) ) {
          switch( action ) {
             case N(buy):
-               apply_exchange_buy( current_message<exchange::buy_order>() );
+               apply_exchange_buy( current_action<exchange::buy_order>() );
                break;
             case N(sell):
-               apply_exchange_sell( current_message<exchange::sell_order>() );
+               apply_exchange_sell( current_action<exchange::sell_order>() );
                break;
             case N(cancelbuy):
-               apply_exchange_cancel_buy( current_message<exchange::order_id>() );
+               apply_exchange_cancel_buy( current_action<exchange::order_id>() );
                break;
             case N(cancelsell):
-               apply_exchange_cancel_sell( current_message<exchange::order_id>() );
+               apply_exchange_cancel_sell( current_action<exchange::order_id>() );
                break;
             default:
                assert( false, "unknown action" );
@@ -320,11 +320,11 @@ extern "C" {
       } 
       else if( code == N(currency) ) {
         if( action == N(transfer) ) 
-           apply_currency_transfer( current_message<currency::transfer>() );
+           apply_currency_transfer( current_action<currency::transfer>() );
       } 
       else if( code == N(eos) ) {
         if( action == N(transfer) ) 
-           apply_eos_transfer( current_message<eosio::transfer>() );
+           apply_eos_transfer( current_action<eosio::transfer>() );
       } 
       else {
       }

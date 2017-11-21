@@ -197,14 +197,16 @@ struct newaccount {
 };
 
 struct setcode {
+   /*
    setcode() = default;
-   setcode(const account_name& account, const uint8& vmtype, const uint8& vmversion, const bytes& code/*, const abi& abi*/)
+   setcode(const account_name& account, const uint8& vmtype, const uint8& vmversion, const bytes& code)
    :account(account), vmtype(vmtype), vmversion(vmversion), code(code)//, abi(abi)
    {}
+   */
 
    account_name                     account;
-   uint8                          vmtype;
-   uint8                          vmversion;
+   uint8                            vmtype;
+   uint8                            vmversion;
    bytes                            code;
 
    static scope_name get_scope() {

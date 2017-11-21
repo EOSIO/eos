@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
           * RAII wrapper to make sure that the cache entries are returned regardless of exceptions etc
           */
          struct scoped_entry {
-            explicit scoped_entry(const digest_type& code_id, entry &code, wasm_cache &cache)
+            explicit scoped_entry(const digest_type& code_id, entry& code, wasm_cache& cache)
             :code_id(code_id)
             ,code(code)
             ,cache(cache)
