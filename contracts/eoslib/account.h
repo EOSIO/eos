@@ -1,5 +1,5 @@
 /**
- *  @file
+ *  @file account.h
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once

@@ -1,5 +1,5 @@
 /**
- *  @file
+ *  @file test_account.cpp
  *  @copyright defined in eos/LICENSE.txt
  */
 
