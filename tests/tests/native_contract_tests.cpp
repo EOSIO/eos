@@ -12,7 +12,7 @@
 #include <eos/chain/authority_checker.hpp>
 #include <eos/chain_plugin/chain_plugin.hpp>
 
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/producer_objects.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -259,7 +259,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), asset(100));
-         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         const auto& joeVotes = chain_db.get<eosio::chain::producer_votes_object, eosio::chain::by_owner_name>("joe");
          BOOST_CHECK_EQUAL(joeVotes.get_votes(), chain.get_staked_balance("bob"));
       }
 
@@ -274,7 +274,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         const auto& joeVotes = chain_db.get<eosio::chain::producer_votes_object, eosio::chain::by_owner_name>("joe");
          BOOST_CHECK_EQUAL(joeVotes.get_votes(), 0);
       }
    } FC_LOG_AND_RETHROW()
@@ -295,7 +295,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), asset(100));
-         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         const auto& joeVotes = chain_db.get<eosio::chain::producer_votes_object, eosio::chain::by_owner_name>("joe");
          BOOST_CHECK_EQUAL(joeVotes.get_votes(), chain.get_staked_balance("bob"));
       }
 
@@ -305,7 +305,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 1);
          BOOST_CHECK_EQUAL(chain.get_staked_balance("bob"), asset(100));
-         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         const auto& joeVotes = chain_db.get<eosio::chain::producer_votes_object, eosio::chain::by_owner_name>("joe");
          BOOST_CHECK_EQUAL(joeVotes.get_votes(), chain.get_staked_balance("bob"));
       }
 
@@ -320,7 +320,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
 
       {
          BOOST_CHECK_EQUAL(chain.get_approved_producers("bob").count("joe"), 0);
-         const auto& joeVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("joe");
+         const auto& joeVotes = chain_db.get<eosio::chain::producer_votes_object, eosio::chain::by_owner_name>("joe");
          BOOST_CHECK_EQUAL(joeVotes.get_votes(), 0);
       }
    } FC_LOG_AND_RETHROW()
@@ -358,7 +358,7 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
          {
             BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 1);
             BOOST_CHECK_EQUAL(chain.get_staked_balance("stakeholder"), asset(100));
-            const auto& producerVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("producer");
+            const auto& producerVotes = chain_db.get<eosio::chain::producer_votes_object, eosio::chain::by_owner_name>("producer");
             BOOST_CHECK_EQUAL(producerVotes.get_votes(), chain.get_staked_balance("stakeholder"));
          }
 
@@ -373,7 +373,7 @@ BOOST_FIXTURE_TEST_CASE(producer_proxy_voting, testing_fixture) {
 
          {
             BOOST_CHECK_EQUAL(chain.get_approved_producers("proxy").count("producer"), 0);
-            const auto& producerVotes = chain_db.get<native::eosio::producer_votes_object, native::eosio::by_owner_name>("producer");
+            const auto& producerVotes = chain_db.get<eosio::chain::producer_votes_object, eosio::chain::by_owner_name>("producer");
             BOOST_CHECK_EQUAL(producerVotes.get_votes(), 0);
          }
       };

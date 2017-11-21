@@ -5,6 +5,7 @@
 #include <eoslib/eos.hpp>
 #include "test_api.hpp"
 
+#include "test_account.cpp"
 #include "test_chain.cpp"
 #include "test_crypto.cpp"
 #include "test_db.cpp"
@@ -148,6 +149,10 @@ extern "C" {
       WASM_TEST_HANDLER(test_real, test_addition);
       WASM_TEST_HANDLER(test_real, test_multiplication);
       WASM_TEST_HANDLER(test_real, test_division);
+
+      // test account
+      WASM_TEST_HANDLER(test_account, test_balance_acc1);
+
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }

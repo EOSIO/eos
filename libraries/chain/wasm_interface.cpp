@@ -24,9 +24,43 @@
 #include <condition_variable>
 
 
+
 using namespace IR;
 using namespace Runtime;
 using boost::asio::io_service;
+
+#if 0
+   // account.h/hpp expected account API balance interchange format
+   // must match account.hpp account_balance definition
+   PACKED_STRUCT(
+   struct account_balance
+   {
+      /**
+      * Name of the account who's balance this is
+      */
+      account_name account;
+
+      /**
+      * Balance for this account
+      */
+      asset eos_balance;
+
+      /**
+      * Staked balance for this account
+      */
+      asset staked_balance;
+
+      /**
+      * Unstaking balance for this account
+      */
+      asset unstaking_balance;
+
+      /**
+      * Time at which last unstaking occurred for this account
+      */
+      time last_unstaking_time;
+   })
+#endif
 
 namespace eosio { namespace chain {
 
@@ -511,6 +545,31 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_##FUNCPREFIX##OBJTYPE,upper_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
       READ_RECORD(upper_bound_record, INDEX, SCOPE); \
    }
+DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,charptr,i32,len) {
+  auto& wasm  = wasm_interface::get();
+  auto  mem   = wasm.current_memory;
+
+  const uint32_t account_balance_size = sizeof(account_balance);
+  FC_ASSERT( len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size) );
+
+  account_balance& total_balance = memoryRef<account_balance>( mem, charptr );
+
+  wasm.current_apply_context->require_scope(total_balance.account);
+
+  auto& db = wasm.current_apply_context->db;
+  auto* balance        = db.find< balance_object,by_owner_name >( total_balance.account );
+  auto* staked_balance = db.find<staked_balance_object,by_owner_name>( total_balance.account );
+
+  if (balance == nullptr || staked_balance == nullptr)
+     return false;
+
+  total_balance.eos_balance          = asset(balance->balance, EOS_SYMBOL);
+  total_balance.staked_balance       = asset(staked_balance->staked_balance);
+  total_balance.unstaking_balance    = asset(staked_balance->unstaking_balance);
+  total_balance.last_unstaking_time  = staked_balance->last_unstaking_time;
+
+  return true;
+}
 
 #define UPDATE_RECORD(UPDATEFUNC, INDEX, DATASIZE) \
    return 0;

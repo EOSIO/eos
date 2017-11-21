@@ -177,16 +177,20 @@ struct test_string {
 };
 
 struct test_fixedpoint {
-    static unsigned int create_instances();
-    static unsigned int test_addition();
-    static unsigned int test_subtraction();
-    static unsigned int test_multiplication();
-    static unsigned int test_division();
+   static unsigned int create_instances();
+   static unsigned int test_addition();
+   static unsigned int test_subtraction();
+   static unsigned int test_multiplication();
+   static unsigned int test_division();
 };
 
 struct test_real {
-    static unsigned int create_instances();
-    static unsigned int test_addition();
-    static unsigned int test_multiplication();
-    static unsigned int test_division();
+   static unsigned int create_instances();
+   static unsigned int test_addition();
+   static unsigned int test_multiplication();
+   static unsigned int test_division();
+};
+
+struct test_account {
+   static unsigned int test_balance_acc1();
 };
