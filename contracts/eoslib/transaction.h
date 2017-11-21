@@ -112,8 +112,7 @@ extern "C" {
     *
     * @param trx - the `transaction_handle` of the pending transaction to send
     */
-   // Disabled for STAT
-   //void transaction_send(transaction_handle trx);
+   void transaction_send(transaction_handle trx);
 
    /**
     * @brief drop a pending transaction

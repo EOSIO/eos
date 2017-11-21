@@ -26,8 +26,7 @@ namespace proxy {
          out.add_message(out_msg);
          out.add_scope(self);
          out.add_scope(code_config.owner);
-         // Disabled for STAT
-         //out.send();
+         out.send();
       }
    }
 
