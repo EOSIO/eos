@@ -74,10 +74,9 @@ namespace eosio { namespace chain {
     *  tree of a block should be generated over a set of message IDs rather than a set of
     *  transaction ids. 
     */
+   typedef vector<transaction_receipt>   shard; /// new or generated transactions
+   typedef vector<shard>                 cycle;
    struct signed_block_summary : public signed_block_header {
-      typedef vector<transaction_receipt>   shard; /// new or generated transactions 
-      typedef vector<shard>                 cycle;
-
       vector<cycle>    cycles_summary;
 
       checksum_type calculate_transaction_mroot()const;
