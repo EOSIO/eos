@@ -59,6 +59,7 @@ public:
    using get_info_params = empty;
 
    struct get_info_results {
+      string                  server_version;
       uint32_t                head_block_num = 0;
       uint32_t                last_irreversible_block_num = 0;
       chain::block_id_type    head_block_id;
@@ -323,7 +324,7 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-  (head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
+  (server_version)(head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
   (recent_slots)(participation_rate))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
   
