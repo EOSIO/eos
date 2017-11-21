@@ -1588,6 +1588,8 @@ namespace eosio {
               }
             }
             */
+            /* Commented out when signed_transaction removed from transaction_object.
+               This code needs to be re-evaluated when block summaries are reworked.
             for( auto &ut : cyc_thr_id.user_trx ) {
               // auto ltxn = local_txns.get<by_id>().find(ut);
 
@@ -1607,6 +1609,7 @@ namespace eosio {
                 break;
               }
             }
+            */
             if( fetch_error ){
               break;
             }
