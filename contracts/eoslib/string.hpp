@@ -6,11 +6,25 @@
 #include <eoslib/print.hpp>
 
 namespace eosio {
-
+  /**
+   * @brief Count the length of null terminated string (excluding the null terminated symbol)
+   * Non-null terminated string need to be passed here, 
+   * Otherwise it will not give the right length
+   * @param cstr - null terminated string
+   */
+  inline size_t cstrlen(const char* cstr) {
+    size_t len = 0;
+    while(*cstr != '\0') {
+      len++;
+      cstr++;
+    }
+    return len;
+  }
+    
   class string {
 
   private:
-    uint32_t size; // size of the string
+    size_t size; // size of the string
     char* data; // underlying data
     bool own_memory; // true if the object is responsible to clean the memory
     uint32_t* refcount; // shared reference count to the underlying data
@@ -36,10 +50,17 @@ namespace eosio {
      * Constructor to create string with reserved space
      * @param s size to be reserved (in number o)
      */
-    string(uint32_t s) : size(s), own_memory(true) {
-      data = (char *)malloc(s * sizeof(char));
-      refcount = (uint32_t*)malloc(sizeof(uint32_t));
-      *refcount = 1;
+    string(size_t s) : size(s) {
+      if (s == 0) {
+        data = nullptr;
+        own_memory = false;
+        refcount = nullptr;
+      } else {
+        data = (char *)malloc(s * sizeof(char));
+        own_memory = true;
+        refcount = (uint32_t*)malloc(sizeof(uint32_t));
+        *refcount = 1;
+      }
     }
 
     /**
@@ -48,7 +69,7 @@ namespace eosio {
      * @param s    size of the string (in number of bytes)
      * @param copy true to have the data copied and owned by the object
      */
-    string(char* d, uint32_t s, bool copy) {
+    string(char* d, size_t s, bool copy) {
       assign(d, s, copy);
     }
 
@@ -63,13 +84,28 @@ namespace eosio {
       }
     }
 
+    /**
+     * @brief Constructor for string literal
+     * Non-null terminated string need to be passed here, 
+     * Otherwise it will have extraneous data
+     * @param cstr - null terminated string
+     */
+    string(const char* cstr) {
+      size = cstrlen(cstr) + 1;
+      data = (char *)malloc(size * sizeof(char));
+      memcpy(data, cstr, size * sizeof(char));
+      own_memory = true;
+      refcount = (uint32_t*)malloc(sizeof(uint32_t));
+      *refcount = 1;
+    }
+
     // Destructor
     ~string() {
       release_data_if_needed();
     }
 
     // Get size of the string (in number of bytes)
-    const uint32_t get_size() const {
+    const size_t get_size() const {
       return size;
     }
 
@@ -95,23 +131,37 @@ namespace eosio {
      * @param  copy true to have the data copied and owned by the object
      * @return      the current string
      */
-    string& assign(char* d, uint32_t s, bool copy) {
-      release_data_if_needed();
-
-      if (copy) {
-        data = (char *)malloc(s * sizeof(char));
-        memcpy(data, d, s * sizeof(char));
-        own_memory = true;
-        refcount = (uint32_t*)malloc(sizeof(uint32_t));
-        *refcount = 1;
+    string& assign(char* d, size_t s, bool copy) {
+      if (s == 0) {
+        clear();
       } else {
-        data = d;
-        own_memory = false;
-        refcount = nullptr;
+        release_data_if_needed();
+        if (copy) {
+          data = (char *)malloc(s * sizeof(char));
+          memcpy(data, d, s * sizeof(char));
+          own_memory = true;
+          refcount = (uint32_t*)malloc(sizeof(uint32_t));
+          *refcount = 1;
+        } else {
+          data = d;
+          own_memory = false;
+          refcount = nullptr;
+        }
+        size = s;
       }
-      size = s;
 
       return *this;
+    }
+    
+    /**
+     * Clear the content of the string
+     */
+    void clear() {
+      release_data_if_needed();
+      data = nullptr;
+      size = 0;
+      own_memory = false;
+      refcount = nullptr;
     }
 
     /**
@@ -121,16 +171,17 @@ namespace eosio {
      * @param  copy        true to have the data copied and owned by the object
      * @return             substring of the current string
      */
-    string substr(uint32_t offset, uint32_t substr_size, bool copy) {
+    string substr(size_t offset, size_t substr_size, bool copy) {
       assert((offset < size) && (offset + substr_size < size), "out of bound");
       return string(data + offset, substr_size, copy);
     }
 
-    char operator [] (const uint32_t index) {
+    char operator [] (const size_t index) {
       assert(index < size, "index out of bound");
       return *(data + index);
     }
 
+    // Assignment operator
     string& operator = (const string& obj) {
       if (this != &obj) {
         release_data_if_needed();
@@ -143,11 +194,28 @@ namespace eosio {
       return *this;
     }
 
+    /**
+     * @brief Assignment operator for string literal
+     * Non-null terminated string need to be passed here, 
+     * Otherwise it will have extraneous data
+     * @param cstr - null terminated string
+     */
+    string& operator = (const char* cstr) {
+        release_data_if_needed();
+        size = cstrlen(cstr) + 1;
+        data = (char *)malloc(size * sizeof(char));
+        memcpy(data, cstr, size * sizeof(char));
+        own_memory = true;
+        refcount = (uint32_t*)malloc(sizeof(uint32_t));
+        *refcount = 1;
+        return *this;
+    }
+
     string& operator += (const string& str){
       assert((size + str.size > size) && (size + str.size > str.size), "overflow");
 
       char* new_data;
-      uint32_t new_size;
+      size_t new_size;
       if (size > 0 && *(data + size - 1) == '\0') {
         // Null terminated string, remove the \0 when concatenates
         new_size = size - 1 + str.size;
