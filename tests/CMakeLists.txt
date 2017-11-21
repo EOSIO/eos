@@ -6,7 +6,11 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
+find_package(LLVM 4.0 REQUIRED CONFIG)
 
+link_directories(${LLVM_LIBRARY_DIR})
+
+set( CMAKE_CXX_STANDARD 14 )
 
 #file(GLOB UNIT_TESTS "tests/*.cpp")
 #if(WASM_TOOLCHAIN)
