@@ -894,7 +894,7 @@ launcher_def::start_all (string &gts, launch_modes mode) {
       launch(*node->second.instance, gts);
     } catch (...) {
       cerr << "Unable to launch " << launch_name << endl;
-      exit -1;
+      exit (-1);
     }
     break;
   }
