@@ -478,15 +478,17 @@ flat_set<public_key_type> chain_controller::get_required_keys(const signed_trans
    return checker.used_keys();
 }
 
-void chain_controller::check_transaction_authorization(const signed_transaction& trx, 
-                                                       bool allow_unused_signatures)const 
+void chain_controller::check_authorization( const transaction& trx, 
+                                            flat_set<public_key_type> provided_keys,
+                                            bool allow_unused_signatures,
+                                            flat_set<account_name>    provided_accounts  )const
 {
-// #warning TODO: Use a real chain_id here (where is this stored? Do we still need it?)
    auto checker = make_auth_checker( [&](auto p){ return get_permission(p).auth; }, 
                                      get_global_properties().configuration.max_authority_depth,
-                                     trx.get_signature_keys(chain_id_type{}) );
+                                     provided_keys, provided_accounts );
 
-   for( const auto& act : trx.actions )
+
+   for( const auto& act : trx.actions ) {
       for( const auto& declared_auth : act.authorization ) {
 
          const auto& min_permission = lookup_minimum_permission(declared_auth.actor, 
@@ -505,11 +507,18 @@ void chain_controller::check_transaction_authorization(const signed_transaction&
                        ("auth", declared_auth));
          }
       }
+   }
 
    if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                  "transaction bears irrelevant signatures from these keys: ${keys}", 
                  ("keys", checker.unused_keys()));
+}
+
+void chain_controller::check_transaction_authorization(const signed_transaction& trx, 
+                                                       bool allow_unused_signatures)const 
+{
+   check_authorization( trx, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
 }
 
 void chain_controller::validate_scope( const transaction& trx )const {

@@ -159,4 +159,6 @@ FC_REFLECT( eosio::chain::action, (scope)(name)(authorization)(data) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (read_scope)(write_scope)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
+FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (id)(sender)(execute_after) )
+
 

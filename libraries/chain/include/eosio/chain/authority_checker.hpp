@@ -56,6 +56,7 @@ namespace detail {
          PermissionToAuthorityFunc  permission_to_authority;
          uint16_t                   recursion_depth_limit;
          vector<public_key_type>    signing_keys;
+         flat_set<account_name>     _provided_auths; /// accounts which have authorized the transaction at owner level
          vector<bool>               _used_keys;
 
          struct weight_tally_visitor {
@@ -78,16 +79,23 @@ namespace detail {
             }
             uint32_t operator()(const permission_level_weight& permission) {
                if (recursion_depth < checker.recursion_depth_limit) {
-                  if( checker.satisfied(permission.permission, recursion_depth + 1) )
+                  if( checker.has_permission( permission.permission.actor ) )
+                     total_weight += permission.weight;
+                  else if( checker.satisfied(permission.permission, recursion_depth + 1) )
                      total_weight += permission.weight;
                }
                return total_weight;
             }
          };
 
+         bool has_permission( account_name n )const {
+            return _provided_auths.find(n) != _provided_auths.end();
+         }
+
       public:
          authority_checker( PermissionToAuthorityFunc permission_to_authority, 
-                            uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys)
+                            uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys,
+                            flat_set<account_name> provided_auths = flat_set<account_name>() )
             : permission_to_authority(permission_to_authority),
               recursion_depth_limit(recursion_depth_limit),
               signing_keys(signing_keys.begin(), signing_keys.end()),
@@ -95,8 +103,10 @@ namespace detail {
          {}
 
          bool satisfied(const permission_level& permission, uint16_t depth = 0) {
-            return satisfied(permission_to_authority(permission), depth);
+            return has_permission( permission.actor ) ||
+                   satisfied(permission_to_authority(permission), depth);
          }
+
          template<typename AuthorityType>
          bool satisfied(const AuthorityType& authority, uint16_t depth = 0) {
             // This check is redundant, since weight_tally_visitor did it too, but I'll leave it here for future-proofing
@@ -138,8 +148,11 @@ namespace detail {
    }; /// authority_checker
 
    template<typename PermissionToAuthorityFunc>
-   auto make_auth_checker(PermissionToAuthorityFunc&& pta, uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys) {
-      return authority_checker<PermissionToAuthorityFunc>(std::forward<PermissionToAuthorityFunc>(pta), recursion_depth_limit, signing_keys);
+   auto make_auth_checker(PermissionToAuthorityFunc&& pta, 
+                          uint16_t recursion_depth_limit, 
+                          const flat_set<public_key_type>& signing_keys,
+                          const flat_set<account_name>& accounts = flat_set<account_name>() ) {
+      return authority_checker<PermissionToAuthorityFunc>(std::forward<PermissionToAuthorityFunc>(pta), recursion_depth_limit, signing_keys, accounts);
    }
 
 } } // namespace eosio::chain

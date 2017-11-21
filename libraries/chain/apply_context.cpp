@@ -103,19 +103,38 @@ void apply_context::deferred_transaction_start( uint32_t id,
    auto itr = _pending_deferred_transactions.find( id );
    FC_ASSERT( itr == _pending_deferred_transactions.end(), "pending transaction with ID ${id} already started", ("id",id) );
    auto& trx = _pending_deferred_transactions[id];
-   trx.write_scope = move( write_scopes );
-   trx.read_scope  = move( read_scopes );
-   trx.expiration  = execute_before;
+   trx.region        = region;
+   trx.write_scope   = move( write_scopes );
+   trx.read_scope    = move( read_scopes );
+   trx.expiration    = execute_before;
+   trx.execute_after = execute_after;
+   trx.sender        = receiver; ///< sender is the receiver of the current action
+   trx.id            = id;
 
    controller.validate_scope( trx );
 
    /// TODO: make sure there isn't already a deferred transaction with this ID
 }
 
+deferred_transaction& apply_context::get_deferred_transaction( uint32_t id ) {
+   auto itr = _pending_deferred_transactions.find( id );
+   FC_ASSERT( itr != _pending_deferred_transactions.end(), "attempt to reference unknown pending deferred transaction" );
+   return itr->second;
+}
 
 void apply_context::deferred_transaction_append( uint32_t id, action a ) {
+   auto& dt = get_deferred_transaction(id);
+   dt.actions.emplace_back( move(a) );
+
+   /// TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+   FC_ASSERT( fc::raw::pack_size( dt ) < config::default_max_gen_trx_size, "generated transaction too big" );
 }
 void apply_context::deferred_transaction_send( uint32_t id ) {
+   auto& dt = get_deferred_transaction(id);
+   FC_ASSERT( dt.actions.size(), "transaction must contain at least one action" );
+   controller.check_authorization( dt, flat_set<public_key_type>(), false, {receiver} );
+   auto itr = _pending_deferred_transactions.find( id );
+   _pending_deferred_transactions.erase(itr);
 }
 
 } } /// eosio::chain

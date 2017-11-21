@@ -271,6 +271,19 @@ namespace eosio { namespace chain {
             return _wasm_cache;
          }
 
+
+         /**
+          * @param provided_keys - the set of public keys which have authorized the transaction
+          * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
+          *
+          * @return true if the provided keys and accounts are sufficient to authorize actions of the transaction
+          */
+         void check_authorization( const transaction& trx, 
+                                   flat_set<public_key_type> provided_keys,
+                                   bool                      allow_unused_signatures = false,
+                                   flat_set<account_name>    provided_accounts = flat_set<account_name>()
+                                   )const;
+
    private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
 
