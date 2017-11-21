@@ -377,7 +377,7 @@ if [ $count == 0 ]; then
 fi
 
 # push message to currency contract
-INFO="$(programs/eosc/eosc --wallet-port 8899 push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active)"
+INFO="$(programs/eosc/eosc --wallet-port 8899 push message currency transfer '{"from":"currency","to":"inita","quantity":50}' --scope currency,inita --permission currency@active)"
 verifyErrorCode "eosc push message currency transfer"
 getTransactionId "$INFO"
 

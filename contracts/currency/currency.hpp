@@ -58,7 +58,7 @@ namespace TOKEN_NAME {
    };
 
    /**
-    *  @brief row in Account table stored within each scope
+    *  @brief row in account table stored within each scope
     *  @abi table
     */
    struct account {
@@ -92,7 +92,7 @@ namespace TOKEN_NAME {
    /**
    Defines the database table for account information
    **/
-   using accounts = table<N(currency),N(currency),N(account),account,uint64_t>;
+   using accounts = table<N(defaultscope),N(currency),N(account),account,uint64_t>;
 
    /**
     *  accounts information for owner is stored:
