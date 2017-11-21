@@ -15,8 +15,8 @@
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
-#include <eos/native_contract/staked_balance_objects.hpp>
-#include <eos/native_contract/balance_object.hpp>
+#include <eos/chain/staked_balance_objects.hpp>
+#include <eos/chain/balance_object.hpp>
 #include <eos/native_contract/genesis_state.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
@@ -424,7 +424,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-   using namespace native::eosio;
+   using namespace eosio::chain;
 
    get_account_results result;
    result.account_name = params.account_name;

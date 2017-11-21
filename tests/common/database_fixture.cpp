@@ -38,8 +38,6 @@
 uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
 namespace eosio { namespace chain {
-   using namespace native::eosio;
-   using namespace native;
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
@@ -152,15 +150,15 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
 }
 
 types::asset testing_blockchain::get_liquid_balance(const types::account_name& account) {
-   return get_database().get<balance_object, native::eosio::by_owner_name>(account).balance;
+   return get_database().get<balance_object, eosio::chain::by_owner_name>(account).balance;
 }
 
 types::asset testing_blockchain::get_staked_balance(const types::account_name& account) {
-   return get_database().get<staked_balance_object, native::eosio::by_owner_name>(account).staked_balance;
+   return get_database().get<staked_balance_object, eosio::chain::by_owner_name>(account).staked_balance;
 }
 
 types::asset testing_blockchain::get_unstaking_balance(const types::account_name& account) {
-   return get_database().get<staked_balance_object, native::eosio::by_owner_name>(account).unstaking_balance;
+   return get_database().get<staked_balance_object, eosio::chain::by_owner_name>(account).unstaking_balance;
 }
 
 std::set<types::account_name> testing_blockchain::get_approved_producers(const types::account_name& account) {

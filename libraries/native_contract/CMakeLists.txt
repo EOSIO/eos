@@ -3,8 +3,6 @@ file(GLOB HEADERS "include/eos/native_contract/*.hpp")
 ## SORT .cpp by most likely to change / break compile
 add_library( eos_native_contract
              eos_contract.cpp
-             producer_objects.cpp
-             staked_balance_objects.cpp
              native_contract_chain_initializer.cpp
              native_contract_chain_administrator.cpp
              genesis_state.cpp

@@ -43,6 +43,9 @@
 #include "table_abi_test/table_abi_test.wast.hpp"
 #include "table_abi_test/table_abi_test.abi.hpp"
 
+#include <eos/chain/staked_balance_objects.hpp>
+#include <eos/chain/balance_object.hpp>
+
 FC_REFLECT( dummy_message, (a)(b)(c) );
 FC_REFLECT( u128_msg, (values) );
 
@@ -702,5 +705,53 @@ BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i128i128, testing_fixture)
 //Test logic for database storage limiting
 BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i64i64i64, testing_fixture)
    VERIFY_DB_KEY_TYPES("i64i64i64")
+
+//Test logic for preventing reducing page memory
+BOOST_FIXTURE_TEST_CASE(test_account_api_balance, testing_fixture)
+{ try {
+   //auto wasm = assemble_wast( readFile2("/home/matu/Documents/Dev/eos/build/contracts/test_api/test_api.wast").c_str() );
+   auto wasm = assemble_wast( test_api_wast );
+
+   Make_Blockchain(chain);
+   chain.produce_blocks(2);
+   Make_Account(chain, testapi);
+   Make_Account(chain, acc1);
+   chain.produce_blocks(1);
+
+   //Set test code
+   types::setcode handler;
+   handler.code.resize(wasm.size());
+   memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+   send_set_code_message(chain, handler, "testapi");
+
+   eosio::chain::signed_transaction trx;
+   trx.scope = sort_names({"acc1","inita"});
+   transaction_emplace_message(trx, "eos",
+                      vector<types::account_permission>{ {"inita","active"} },
+                      "transfer", types::transfer{"inita", "acc1", 1000,""});
+   trx.expiration = chain.head_block_time() + 100;
+   transaction_set_reference_block(trx, chain.head_block_id());
+   chain.push_transaction(trx);
+   chain.produce_blocks(1);
+
+   const auto& balance        = chain_db.get<eosio::chain::balance_object,eosio::chain::by_owner_name>( "acc1" );
+   const auto& staked_balance = chain_db.get<eosio::chain::staked_balance_object,eosio::chain::by_owner_name>( "acc1" );
+
+   // manually set balance so it can be verified in test_account
+   chain_db.modify(balance, [](eosio::chain::balance_object& bo) {
+      bo.balance = 24;
+   });
+   chain_db.modify(staked_balance, [](eosio::chain::staked_balance_object& sbo) {
+      sbo.staked_balance = 23;
+      sbo.unstaking_balance = 14;
+      sbo.last_unstaking_time = types::time(55);
+   });
+
+   // Test account
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_account", "test_balance_acc1"), {}, {} ),tx_missing_scope, is_tx_missing_scope );
+   vector<account_name> scope = sort_names({"testapi", "acc1"});
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_account", "test_balance_acc1"), {}, {}, scope ) == WASM_TEST_PASS, "test_account::test_balance_acc1()" );
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

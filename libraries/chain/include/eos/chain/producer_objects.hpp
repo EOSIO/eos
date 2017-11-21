@@ -15,12 +15,10 @@
 
 #include <boost/multi_index/mem_fun.hpp>
 
-namespace native {
 namespace eosio {
+namespace chain {
 
-using namespace ::eosio::chain;
 namespace config = ::eosio::config;
-namespace chain = ::eosio::chain;
 namespace types = ::eosio::types;
 
 FC_DECLARE_EXCEPTION(producer_race_overflow_exception, 10000000, "Producer Virtual Race time has overflowed");
@@ -33,7 +31,7 @@ FC_DECLARE_EXCEPTION(producer_race_overflow_exception, 10000000, "Producer Virtu
  *
  * This class also tracks the votes cast by block producers on various chain configuration options and key documents.
  */
-class producer_votes_object : public chainbase::object<chain::producer_votes_object_type, producer_votes_object> {
+class producer_votes_object : public chainbase::object<producer_votes_object_type, producer_votes_object> {
    OBJECT_CTOR(producer_votes_object)
 
    id_type id;
@@ -129,22 +127,22 @@ class producer_votes_object : public chainbase::object<chain::producer_votes_obj
  * An account A may only proxy to one account at a time, and if A has proxied its votes to some other account, A may 
  * not cast any other votes until it unproxies its voting power.
  */
-class proxy_vote_object : public chainbase::object<chain::proxy_vote_object_type, proxy_vote_object> {
+class proxy_vote_object : public chainbase::object<proxy_vote_object_type, proxy_vote_object> {
    OBJECT_CTOR(proxy_vote_object, (proxy_sources))
 
    id_type id;
    /// The account receiving the proxied voting power
    types::account_name proxy_target;
    /// The list of accounts proxying their voting power to @ref proxy_target
-   chain::shared_set<types::account_name> proxy_sources;
+   shared_set<types::account_name> proxy_sources;
    /// The total stake proxied to @ref proxy_target. At all times, this should be equal to the sum of stake over all
    /// accounts in @ref proxy_sources
    types::share_type proxied_stake = 0;
    
-   void add_proxy_source(const types::account_name& source, chain::share_type source_stake, chainbase::database& db) const;
-   void removeProxySource(const types::account_name& source, chain::share_type source_stake,
+   void add_proxy_source(const types::account_name& source, share_type source_stake, chainbase::database& db) const;
+   void removeProxySource(const types::account_name& source, share_type source_stake,
                           chainbase::database& db) const;
-   void update_proxied_stake(chain::share_type stake_delta, chainbase::database& db) const;
+   void update_proxied_stake(share_type stake_delta, chainbase::database& db) const;
 
    /// Cancel proxying votes to @ref proxyTarget for all @ref proxySources
    void cancel_proxies(chainbase::database& db) const;
@@ -158,7 +156,7 @@ class proxy_vote_object : public chainbase::object<chain::proxy_vote_object_type
  *
  * This is a singleton object within the database; there will only be one stored.
  */
-class producer_schedule_object : public chainbase::object<chain::producer_schedule_object_type, producer_schedule_object> {
+class producer_schedule_object : public chainbase::object<producer_schedule_object_type, producer_schedule_object> {
    OBJECT_CTOR(producer_schedule_object)
 
    id_type id;
@@ -176,7 +174,7 @@ class producer_schedule_object : public chainbase::object<chain::producer_schedu
     * producers. Although it is a const method, it will use its non-const db parameter to update its own records, as
     * well as the race records stored in the @ref ProducerVotesObjects
     */
-   chain::producer_round calculate_next_round(chainbase::database& db) const;
+   producer_round calculate_next_round(chainbase::database& db) const;
 
    /**
     * @brief Reset all producers in the virtual race to the starting line, and reset virtual time to zero
@@ -243,6 +241,6 @@ using producer_schedule_multi_index = chainbase::shared_multi_index_container<
 
 } } // namespace native::eos
 
-CHAINBASE_SET_INDEX_TYPE(native::eosio::producer_votes_object, native::eosio::producer_votes_multi_index)
-CHAINBASE_SET_INDEX_TYPE(native::eosio::proxy_vote_object, native::eosio::proxy_vote_multi_index)
-CHAINBASE_SET_INDEX_TYPE(native::eosio::producer_schedule_object, native::eosio::producer_schedule_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::producer_votes_object, eosio::chain::producer_votes_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::proxy_vote_object, eosio::chain::proxy_vote_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::producer_schedule_object, eosio::chain::producer_schedule_multi_index)
