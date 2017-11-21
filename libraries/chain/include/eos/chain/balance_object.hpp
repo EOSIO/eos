@@ -13,8 +13,7 @@
 
 namespace eosio {
 namespace chain {
-namespace types = ::eosio::types;
-namespace config = ::eosio::config;
+
 
 /**
  * @brief The balance_object class tracks the EOS balance for accounts

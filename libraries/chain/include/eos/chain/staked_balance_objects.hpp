@@ -16,8 +16,6 @@
 namespace eosio {
 namespace chain {
 
-namespace config = ::eosio::config;
-namespace types = ::eosio::types;
 
 /**
  * @brief The producer_slate struct stores a list of producers voted on by an account
