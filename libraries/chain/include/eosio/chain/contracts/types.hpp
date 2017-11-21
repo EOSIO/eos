@@ -219,10 +219,12 @@ struct setcode {
 };
 
 struct setabi {
+   /*
    setabi() = default;
    setabi(const account_name& account, const abi_def& abi)
    :account(account), abi(abi)
    {}
+   */
 
    account_name                     account;
    abi_def                          abi;

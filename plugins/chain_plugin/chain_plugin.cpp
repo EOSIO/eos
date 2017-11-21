@@ -344,11 +344,24 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
    signed_transaction pretty_input;
-   from_variant(params, pretty_input);
+   auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
+      const auto* accnt  = db.get_database().find<account_object,by_name>( name );
+      if (accnt != nullptr) {
+         abi_def abi;
+         if (abi_serializer::to_abi(accnt->abi, abi)) {
+            return abi_serializer(abi);
+         }
+      }
+
+      return optional<abi_serializer>();
+   };
+
+   abi_serializer::from_variant(params, pretty_input, resolver);
    db.push_transaction(pretty_input, skip_flags);
 #warning TODO: get transaction results asynchronously
-   //auto pretty_trx = db.transaction_to_variant( ptrx );
-   return read_write::push_transaction_results{ pretty_input.id(), fc::variant_object() };
+   fc::variant pretty_output;
+   abi_serializer::to_variant(pretty_input, pretty_output, resolver);
+   return read_write::push_transaction_results{ pretty_input.id(), pretty_output };
 }
 
 read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {

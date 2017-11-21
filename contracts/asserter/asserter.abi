@@ -4,22 +4,27 @@
       {
          "name": "assertdef",
          "base": "",
-         "fields": {
-            "condition": "int8",
-            "message": "string"
-         }
+         "fields": [
+            {
+               "name": "condition",
+               "type": "int8"
+            },{
+               "name": "message",
+               "type": "string"
+            }
+         ]
       }, {
          "name": "nothing",
          "base": "",
-         "fields": {}
+         "fields": []
       }
    ],
    "actions": [
       {
-         "action": "procassert",
-         "type": "assert_def"
+         "name": "procassert",
+         "type": "assertdef"
       }, {
-         "action": "provereset",
+         "name": "provereset",
          "type": "nothing"
       }
    ],

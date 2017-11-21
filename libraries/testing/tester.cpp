@@ -3,6 +3,7 @@
 #include <eosio/chain/contracts/types.hpp>
 
 #include <fc/utility.hpp>
+#include <fc/io/json.hpp>
 
 #include "WAST/WAST.h"
 #include "WASM/WASM.h"
@@ -210,6 +211,21 @@ namespace eosio { namespace testing {
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       control->push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+
+   void tester::set_abi( account_name account, const char* abi_json) {
+      auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();
+      signed_transaction trx;
+      trx.write_scope = {config::eosio_auth_scope};
+      trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
+                                contracts::setabi{
+                                   .account    = account,
+                                   .abi        = abi
+                                });
+
+      set_tapos( trx );
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      control->push_transaction( trx );
+   }
 
    bool tester::chain_has_transaction( const transaction_id_type& txid ) const {
       return chain_transactions.count(txid) != 0;

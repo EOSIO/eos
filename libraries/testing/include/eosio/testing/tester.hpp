@@ -46,6 +46,7 @@ namespace eosio { namespace testing {
          private_key_type  get_private_key( name keyname, string role = "owner" );
 
          void              set_code( account_name name, const char* wast );
+         void              set_abi( account_name name, const char* abi_json );
 
 
          unique_ptr<chain_controller> control;
