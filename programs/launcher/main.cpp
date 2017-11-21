@@ -347,7 +347,7 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("eosd", bpo::value<string>(&eosd_extra_args), "forward eosd command line argument(s) to each instance of eosd, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
-    ("host_map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
+    ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
         ;
 }
 
@@ -451,8 +451,13 @@ launcher_def::generate () {
       sf << fc::json::to_pretty_string (network) << endl;
       sf.close();
     }
+    if (host_map_file.empty()) {
+      savefile = bf::path (output.stem().string() + "_hosts.json");
+    }
+    else {
+      savefile = bf::path (host_map_file);
+    }
 
-    savefile = bf::path (output.stem().string() + "_hosts.json");
     {
 
       bf::ofstream sf (savefile);
@@ -496,7 +501,12 @@ launcher_def::write_dot_file () {
 void
 launcher_def::define_local () {
   host_def local_host;
-  local_host.eos_root_dir = getenv ("EOS_ROOT_DIR");
+  char * erd = getenv ("EOS_ROOT_DIR");
+  if (erd == 0) {
+    cerr << "environment variable \"EOS_ROOT_DIR\" unset. defaulting to current dir" << endl;
+    erd = getenv ("PWD");
+  }
+  local_host.eos_root_dir = erd;
   local_host.genesis = genesis.string();
 
   for (size_t i = 0; i < total_nodes; i++) {
@@ -536,6 +546,7 @@ launcher_def::bind_nodes () {
         }
       }
       network.nodes[node.name] = move(node);
+      inst.node = &network.nodes[inst.name];
       i++;
     }
   }
