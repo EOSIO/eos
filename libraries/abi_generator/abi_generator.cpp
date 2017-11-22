@@ -1,4 +1,4 @@
-#include <eos/abi_generator/abi_generator.hpp>
+#include <eosio/abi_generator/abi_generator.hpp>
 
 namespace eosio {
 

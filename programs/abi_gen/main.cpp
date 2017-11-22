@@ -1,7 +1,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/io/json.hpp>
-#include <eos/abi_generator/abi_generator.hpp>
-#include <eos/types/abi_serializer.hpp>
+#include <eosio/abi_generator/abi_generator.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
 
 using namespace eosio;
 

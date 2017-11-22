@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <eos/types/types.hpp>
-#include <eos/types/abi_serializer.hpp>
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
 
 #include <fc/io/json.hpp>
 
