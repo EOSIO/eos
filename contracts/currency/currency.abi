@@ -10,13 +10,13 @@
       "fields": {
         "from": "account_name",
         "to": "account_name",
-        "amount": "uint64"
+        "quantity": "uint64"
       }
     },{
       "name": "account",
       "base": "",
       "fields": {
-        "account": "name",
+        "key": "name",
         "balance": "uint64"
       }
     }

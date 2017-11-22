@@ -12,7 +12,7 @@
 #include <eos/chain/permission_object.hpp>
 #include <eos/chain/key_value_object.hpp>
 
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/producer_objects.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 

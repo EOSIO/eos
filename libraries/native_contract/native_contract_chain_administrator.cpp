@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/producer_objects.hpp>
 
 #include <eos/chain/global_property_object.hpp>
 #include <eos/chain/producer_object.hpp>
@@ -16,7 +16,7 @@ namespace eosio { namespace native_contract {
 using administrator = native_contract_chain_administrator;
 
 producer_round administrator::get_next_round(chainbase::database& db) {
-   return native::eosio::producer_schedule_object::get(db).calculate_next_round(db);
+   return eosio::chain::producer_schedule_object::get(db).calculate_next_round(db);
 }
 
 chain::blockchain_configuration administrator::get_blockchain_configuration(const chainbase::database& db,

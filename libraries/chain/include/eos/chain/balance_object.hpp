@@ -11,16 +11,15 @@
 
 #include <chainbase/chainbase.hpp>
 
-namespace native {
 namespace eosio {
-namespace chain = ::eosio::chain;
+namespace chain {
 namespace types = ::eosio::types;
 namespace config = ::eosio::config;
 
 /**
  * @brief The balance_object class tracks the EOS balance for accounts
  */
-class balance_object : public chainbase::object<chain::balance_object_type, balance_object> {
+class balance_object : public chainbase::object<balance_object_type, balance_object> {
    OBJECT_CTOR(balance_object)
 
    id_type id;
@@ -42,6 +41,6 @@ using balance_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // namespace native::eosio
+} } // namespace eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(native::eosio::balance_object, native::eosio::balance_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::balance_object, eosio::chain::balance_multi_index)
