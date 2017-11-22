@@ -6,7 +6,11 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
+find_package(LLVM 4.0 REQUIRED CONFIG)
 
+link_directories(${LLVM_LIBRARY_DIR})
+
+set( CMAKE_CXX_STANDARD 14 )
 
 #file(GLOB UNIT_TESTS "tests/*.cpp")
 #if(WASM_TOOLCHAIN)
@@ -37,7 +41,6 @@ if(WASM_TOOLCHAIN)
 endif()
 
 
-
 # WASM only tests
 #if(WASM_TOOLCHAIN)
 #  file(GLOB SLOW_TESTS "slow_tests/*.cpp")
@@ -58,3 +61,6 @@ endif()
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.sh COPYONLY)
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_mongodb_test.sh ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_mongodb_test.sh COPYONLY)
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)
+#configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run_tests.sh ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh COPYONLY)
+#configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trans_sync_across_mixed_cluster_test.sh ${CMAKE_CURRENT_BINARY_DIR}/trans_sync_across_mixed_cluster_test.sh COPYONLY)
+

@@ -81,9 +81,9 @@ namespace dice {
       bool is_empty()const { return ! ( bool(eos_balance) |  open_offers); }
    };
 
-   using accounts = table<N(dice),N(dice),N(account),account,uint64_t>;
-   using global_dices = table<N(dice),N(dice),N(global),global_dice,uint64_t>;
-   using offers = table<N(dice),N(dice),N(global),global_dice,offer_primary_key,uint128_t>;
+   using accounts = eosio::table<N(dice),N(dice),N(account),account,uint64_t>;
+   using global_dices = eosio::table<N(dice),N(dice),N(global),global_dice,uint64_t>;
+   using offers = eosio::table<N(dice),N(dice),N(global),global_dice,offer_primary_key,uint128_t>;
 
    inline account get_account( account_name owner ) {
       account owned_account(owner);

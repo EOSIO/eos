@@ -34,22 +34,22 @@ using namespace chain;
 
 
    struct order_id {
-      AccountName name;
-      uint64_t    number  = 0;
+      account_name name;
+      uint64_t     number  = 0;
    };
 
    struct __attribute((packed)) bid {
       order_id           buyer;
       unsigned __int128  price;
       uint64_t           quantity;
-      Time               expiration;
+      types::time        expiration;
       uint8_t            fill_or_kill = false;
    };
    struct __attribute((packed)) ask {
       order_id           seller;
       unsigned __int128  price;
       uint64_t           quantity;
-      Time               expiration;
+      types::time        expiration;
       uint8_t            fill_or_kill = false;
    };
 FC_REFLECT( order_id, (name)(number) );
@@ -156,12 +156,12 @@ BOOST_FIXTURE_TEST_CASE(tapos_wrap, testing_fixture)
       Make_Account(chain, system);
       Make_Account(chain, acct);
       chain.produce_blocks(1);
-      Transfer_Asset(chain, inita, system, Asset(1000) );
-      Transfer_Asset(chain, system, acct, Asset(5));
-      Stake_Asset(chain, acct, Asset(5).amount);
+      Transfer_Asset(chain, inita, system, asset(1000) );
+      Transfer_Asset(chain, system, acct, asset(5));
+      Stake_Asset(chain, acct, asset(5).amount);
       wlog("Hang on, this will take a minute...");
       chain.produce_blocks(65536);
-      Begin_Unstake_Asset(chain, acct, Asset(1).amount);
+      Begin_Unstake_Asset(chain, acct, asset(1).amount);
 } FC_LOG_AND_RETHROW() }
 
 // Verify that staking and unstaking works
@@ -173,62 +173,62 @@ BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
 
    chain.produce_blocks();
 
-   Transfer_Asset(chain, inita, sam, Asset(55) );
+   Transfer_Asset(chain, inita, sam, asset(55) );
 
    // MakeAccount should start sam out with some staked balance
-   BOOST_REQUIRE_EQUAL(chain.get_staked_balance("sam"), Asset(100).amount);
+   BOOST_REQUIRE_EQUAL(chain.get_staked_balance("sam"), asset(100).amount);
 
-   Stake_Asset(chain, sam, Asset(55).amount);
+   Stake_Asset(chain, sam, asset(55).amount);
 
    // Check balances
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(155).amount);
-   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(0).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(0).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(155).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), asset(0).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), asset(0).amount);
 
    chain.produce_blocks();
 
    // Start unstaking 20, check balances
-   BOOST_CHECK_THROW(Begin_Unstake_Asset(chain, sam, Asset(156).amount), chain::message_precondition_exception);
-   Begin_Unstake_Asset(chain, sam, Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
-   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(0).amount);
+   BOOST_CHECK_THROW(Begin_Unstake_Asset(chain, sam, asset(156).amount), chain::message_precondition_exception);
+   Begin_Unstake_Asset(chain, sam, asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(135).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), asset(0).amount);
 
    // Make sure we can't liquidate early
-   BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, Asset(10).amount), chain::message_precondition_exception);
+   BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, asset(10).amount), chain::message_precondition_exception);
 
    // Fast forward to when we can liquidate
    wlog("Hang on, this will take a minute...");
-   chain.produce_blocks(config::StakedBalanceCooldownSeconds / config::BlockIntervalSeconds + 1);
+   chain.produce_blocks(config::staked_balance_cooldown_seconds / config::block_interval_seconds + 1);
 
-   BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, Asset(21).amount), chain::message_precondition_exception);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
-   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(0).amount);
+   BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, asset(21).amount), chain::message_precondition_exception);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(135).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), asset(0).amount);
 
    // Liquidate 10 of the 20 unstaking and check balances
-   Finish_Unstake_Asset(chain, sam, Asset(10).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
-   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(10).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(10).amount);
+   Finish_Unstake_Asset(chain, sam, asset(10).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(135).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), asset(10).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), asset(10).amount);
 
    // Liquidate 2 of the 10 left unstaking and check balances
-   Finish_Unstake_Asset(chain, sam, Asset(2).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(135).amount);
-   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(8).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(12).amount);
+   Finish_Unstake_Asset(chain, sam, asset(2).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(135).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), asset(8).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), asset(12).amount);
 
    // Ignore the 8 left in unstaking, and begin unstaking 5, which should restake the 8, and start over unstaking 5
-   Begin_Unstake_Asset(chain, sam, Asset(5).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(138).amount);
-   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(5).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(12).amount);
+   Begin_Unstake_Asset(chain, sam, asset(5).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(138).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), asset(5).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), asset(12).amount);
 
    // Begin unstaking 20, which should only deduct 15 from staked, since 5 was already in unstaking
-   Begin_Unstake_Asset(chain, sam, Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), Asset(123).amount);
-   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), Asset(20).amount);
-   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), Asset(12).amount);
+   Begin_Unstake_Asset(chain, sam, asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(123).amount);
+   BOOST_CHECK_EQUAL(chain.get_unstaking_balance("sam"), asset(20).amount);
+   BOOST_CHECK_EQUAL(chain.get_liquid_balance("sam"), asset(12).amount);
 } FC_LOG_AND_RETHROW() }
 
 vector<uint8_t> assemble_wast( const std::string& wast ) {
@@ -264,7 +264,7 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
    }
 }
 
-void SetCode( testing_blockchain& chain, AccountName account, const char* wast ) {
+void SetCode( testing_blockchain& chain, account_name account, const char* wast ) {
    try {
       types::setcode handler;
       handler.account = account;
@@ -274,11 +274,11 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eosio::chain::SignedTransaction trx;
+         eosio::chain::signed_transaction trx;
          trx.scope = {account};
          trx.messages.resize(1);
-         trx.messages[0].code = config::EosContractName;
-         trx.messages[0].authorization.emplace_back(types::AccountPermission{account,"active"});
+         trx.messages[0].code = config::eos_contract_name;
+         trx.messages[0].authorization.emplace_back(types::account_permission{account,"active"});
          transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
@@ -287,11 +287,11 @@ void SetCode( testing_blockchain& chain, AccountName account, const char* wast )
       }
 } FC_LOG_AND_RETHROW( ) }
 
-void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
-   eosio::chain::SignedTransaction trx;
+void TransferCurrency( testing_blockchain& chain, account_name from, account_name to, uint64_t amount ) {
+   eosio::chain::signed_transaction trx;
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "currency", 
-                      vector<types::AccountPermission>{ {from,"active"} },
+                      vector<types::account_permission>{ {from,"active"} },
                       "transfer", types::transfer{from, to, amount,""});
 
    trx.expiration = chain.head_block_time() + 100;
@@ -300,11 +300,11 @@ void TransferCurrency( testing_blockchain& chain, AccountName from, AccountName 
    chain.push_transaction(trx);
 }
 
-void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName to, uint64_t amount ) {
-   eosio::chain::SignedTransaction trx;
+void WithdrawCurrency( testing_blockchain& chain, account_name from, account_name to, uint64_t amount ) {
+   eosio::chain::signed_transaction trx;
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "currency", 
-                      vector<types::AccountPermission>{ {from,"active"},{to,"active"} },
+                      vector<types::account_permission>{ {from,"active"},{to,"active"} },
                       "transfer", types::transfer{from, to, amount,""});
    trx.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(trx, chain.head_block_id());
@@ -314,7 +314,10 @@ void WithdrawCurrency( testing_blockchain& chain, AccountName from, AccountName 
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
-      Make_Blockchain(chain, fc::time_point_sec(10), 100000, fc::time_point_sec(10), 100000);
+      chain_controller::txn_msg_limits rate_limit = { fc::time_point_sec(10), 100000, fc::time_point_sec(10), 100000 };
+      Make_Blockchain(chain, ::eosio::chain_plugin::default_transaction_execution_time,
+            ::eosio::chain_plugin::default_received_block_transaction_execution_time,
+            ::eosio::chain_plugin::default_create_block_transaction_execution_time, rate_limit);
       chain.produce_blocks(10);
       Make_Account(chain, currency);
       chain.produce_blocks(1);
@@ -328,11 +331,11 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eosio::chain::SignedTransaction trx;
+         eosio::chain::signed_transaction trx;
          trx.scope = {"currency"};
          trx.messages.resize(1);
-         trx.messages[0].code = config::EosContractName;
-         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+         trx.messages[0].code = config::eos_contract_name;
+         trx.messages[0].authorization.emplace_back(types::account_permission{"currency","active"});
          transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
@@ -344,10 +347,10 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
       auto start = fc::time_point::now();
       for (uint32_t i = 0; i < 10000; ++i)
       {
-         eosio::chain::SignedTransaction trx;
+         eosio::chain::signed_transaction trx;
          trx.scope = sort_names({"currency","inita"});
          transaction_emplace_message(trx, "currency", 
-                            vector<types::AccountPermission>{ {"currency","active"} },
+                            vector<types::account_permission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "inita", 1+i,""});
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
@@ -374,7 +377,7 @@ unsigned __int128 to_price( double p ) {
 }
 
 
-void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
+void SellCurrency( testing_blockchain& chain, account_name seller, account_name exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
 
    ask b {  order_id{seller,ordernum},
             to_price(price),
@@ -382,10 +385,10 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
             chain.head_block_time()+fc::days(3) 
          };
 
-   eosio::chain::SignedTransaction trx;
+   eosio::chain::signed_transaction trx;
    trx.scope = sort_names({"exchange"});
    transaction_emplace_message(trx, "exchange", 
-                      vector<types::AccountPermission>{ {seller,"active"} },
+                      vector<types::account_permission>{ {seller,"active"} },
                       "sell", b );
    //trx.messages.back().set_packed( "sell", b);
    trx.expiration = chain.head_block_time() + 100;
@@ -393,17 +396,17 @@ void SellCurrency( testing_blockchain& chain, AccountName seller, AccountName ex
    chain.push_transaction(trx);
 
 }
-void BuyCurrency( testing_blockchain& chain, AccountName buyer, AccountName exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
+void BuyCurrency( testing_blockchain& chain, account_name buyer, account_name exchange, uint64_t ordernum, uint64_t cur_quantity, double price ) {
    bid b {  order_id{buyer,ordernum},
             to_price(price),
             cur_quantity, 
             chain.head_block_time()+fc::days(3) 
          };
 
-   eosio::chain::SignedTransaction trx;
+   eosio::chain::signed_transaction trx;
    trx.scope = sort_names({"exchange"});
    transaction_emplace_message(trx, "exchange", 
-                      vector<types::AccountPermission>{ {buyer,"active"} },
+                      vector<types::account_permission>{ {buyer,"active"} },
                       "buy", b );
    //trx.messages.back().set_packed( "buy", b);
    trx.expiration = chain.head_block_time() + 100;
@@ -434,8 +437,8 @@ BOOST_FIXTURE_TEST_CASE(create_exchange, testing_fixture) {
       TransferCurrency( chain, "inita", "exchange", 1000 );
       TransferCurrency( chain, "initb", "exchange", 2000 );
 
-      Transfer_Asset(chain, inita, exchange, Asset(500));
-      Transfer_Asset(chain, initb, exchange, Asset(500));
+      Transfer_Asset(chain, inita, exchange, asset(500));
+      Transfer_Asset(chain, initb, exchange, asset(500));
 
       BOOST_REQUIRE_THROW( TransferCurrency( chain, "initb", "exchange", 2000 ), fc::exception ); // insufficient funds
 
@@ -486,7 +489,7 @@ R"(
   (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
   (type $FUNCSIG$iiiii (func (param i32 i32 i32 i32) (result i32)))
   (type $FUNCSIG$iiii (func (param i32 i32 i32) (result i32)))
-  (import "env" "AccountName_unpack" (func $AccountName_unpack (param i32 i32)))
+  (import "env" "account_name_unpack" (func $account_name_unpack (param i32 i32)))
   (import "env" "Varint_unpack" (func $Varint_unpack (param i32 i32)))
   (import "env" "assert" (func $assert (param i32 i32)))
   (import "env" "load" (func $load (param i32 i32 i32 i32) (result i32)))
@@ -497,7 +500,7 @@ R"(
   (table 0 anyfunc)
   (memory $0 1)
   (data (i32.const 8224) "out of memory\00")
-  (data (i32.const 8240) "String is longer than account name allows\00")
+  (data (i32.const 8240) "string is longer than account name allows\00")
   (data (i32.const 8288) "read past end of stream\00")
   (data (i32.const 8368) "simplecoin\00")
   (data (i32.const 8608) "no existing balance\00")
@@ -505,8 +508,8 @@ R"(
   (export "memory" (memory $0))
   (export "malloc" (func $malloc))
   (export "DataStream_init" (func $DataStream_init))
-  (export "AccountName_initString" (func $AccountName_initString))
-  (export "AccountName_initCString" (func $AccountName_initCString))
+  (export "account_name_initString" (func $account_name_initString))
+  (export "account_name_initCString" (func $account_name_initCString))
   (export "uint64_unpack" (func $uint64_unpack))
   (export "String_unpack" (func $String_unpack))
   (export "Transfer_unpack" (func $Transfer_unpack))
@@ -562,7 +565,7 @@ R"(
       )
     )
   )
-  (func $AccountName_initString (param $0 i32) (param $1 i32)
+  (func $account_name_initString (param $0 i32) (param $1 i32)
     (call $assert
       (i32.lt_u
         (i32.load
@@ -585,7 +588,7 @@ R"(
       )
     )
   )
-  (func $AccountName_initCString (param $0 i32) (param $1 i32) (param $2 i32)
+  (func $account_name_initCString (param $0 i32) (param $1 i32) (param $2 i32)
     (call $assert
       (i32.lt_u
         (get_local $2)
@@ -710,11 +713,11 @@ R"(
   (func $Transfer_unpack (param $0 i32) (param $1 i32)
     (local $2 i32)
     (local $3 i32)
-    (call $AccountName_unpack
+    (call $account_name_unpack
       (get_local $0)
       (get_local $1)
     )
-    (call $AccountName_unpack
+    (call $account_name_unpack
       (get_local $0)
       (i32.add
         (get_local $1)
@@ -875,11 +878,11 @@ R"(
         (i32.const 8384)
       )
     )
-    (call $AccountName_unpack
+    (call $account_name_unpack
       (i32.const 8568)
       (i32.const 8488)
     )
-    (call $AccountName_unpack
+    (call $account_name_unpack
       (i32.const 8568)
       (i32.const 8520)
     )
@@ -1093,11 +1096,11 @@ R"(
       handler.code.resize(wasm.size());
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
-      eosio::chain::SignedTransaction trx;
+      eosio::chain::signed_transaction trx;
       trx.scope = {"simplecoin"};
       trx.messages.resize(1);
-      trx.messages[0].code = config::EosContractName;
-      trx.messages[0].authorization.emplace_back(types::AccountPermission{"simplecoin","active"});
+      trx.messages[0].code = config::eos_contract_name;
+      trx.messages[0].authorization.emplace_back(types::account_permission{"simplecoin","active"});
       transaction_set_message(trx, 0, "setcode", handler);
       trx.expiration = chain.head_block_time() + 100;
       transaction_set_reference_block(trx, chain.head_block_id());
@@ -1130,11 +1133,11 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
       memcpy( handler.code.data(), wasm.data(), wasm.size() );
 
       {
-         eosio::chain::SignedTransaction trx;
+         eosio::chain::signed_transaction trx;
          trx.scope = {"currency"};
          trx.messages.resize(1);
-         trx.messages[0].code = config::EosContractName;
-         trx.messages[0].authorization.emplace_back(types::AccountPermission{"currency","active"});
+         trx.messages[0].code = config::eos_contract_name;
+         trx.messages[0].authorization.emplace_back(types::account_permission{"currency","active"});
          transaction_set_message(trx, 0, "setcode", handler);
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());
@@ -1144,10 +1147,10 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
 
 
       {
-         eosio::chain::SignedTransaction trx;
+         eosio::chain::signed_transaction trx;
          trx.scope = sort_names({"currency","inita"});
          transaction_emplace_message(trx, "currency",
-                            vector<types::AccountPermission>{ {"currency","active"} },
+                            vector<types::account_permission>{ {"currency","active"} },
                             "transfer", types::transfer{"currency", "inita", 1,""});
          trx.expiration = chain.head_block_time() + 100;
          transaction_set_reference_block(trx, chain.head_block_id());

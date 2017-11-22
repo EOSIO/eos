@@ -218,7 +218,6 @@ namespace eosio {
   constexpr auto     def_conn_retry_wait = std::chrono::seconds (30);
   constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds (1);
-  constexpr auto     def_network_version = 0;
   constexpr auto     def_sync_rec_span = 10;
   constexpr auto     def_max_just_send = 1300 * 3; // "mtu" * 3
   constexpr auto     def_send_whole_blocks = true;
@@ -2085,7 +2084,7 @@ namespace eosio {
       sync_manager::logger.set_log_level(logl);
     }
 
-    my->network_version = def_network_version;
+    my->network_version = (uint16_t)app().version_int();
     my->send_whole_blocks = def_send_whole_blocks;
 
     my->sync_master.reset( new sync_manager( def_sync_rec_span ) );

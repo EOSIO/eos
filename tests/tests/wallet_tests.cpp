@@ -130,12 +130,12 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    fc::optional<fc::ecc::private_key> optional_private_key2 = utilities::wif_to_key(key2);
    fc::optional<fc::ecc::private_key> optional_private_key3 = utilities::wif_to_key(key3);
 
-   chain::SignedTransaction trx;
-   Name sender("billgates");
-   Name recipient("kevinheifner");
+   chain::signed_transaction trx;
+   name sender("billgates");
+   name recipient("kevinheifner");
    uint64_t amount = 100000000;
    trx.scope = {sender,recipient};
-   transaction_emplace_message(trx,config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
+   transaction_emplace_message(trx,config::eos_contract_name, vector<types::account_permission>{{sender,"active"}}, "transfer",
                          types::transfer{sender, recipient, amount, "deposit"});
    trx = wm.sign_transaction(trx,
                              { optional_private_key1->get_public_key(), optional_private_key2->get_public_key(), optional_private_key3->get_public_key()},

@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
@@ -8,7 +12,7 @@ namespace eosio {
    using namespace fc;
 
   struct handshake_message {
-      int16_t         network_version = 0;
+      int16_t         network_version = 0; ///< derived from git commit hash, not sequential
       chain_id_type   chain_id; ///< used to identify chain
       fc::sha256      node_id; ///< used to identify peers and prevent self-connect
       string          p2p_address;

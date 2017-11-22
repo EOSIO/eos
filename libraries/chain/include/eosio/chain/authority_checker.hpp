@@ -138,11 +138,11 @@ namespace detail {
          bool all_keys_used() const { return boost::algorithm::all_of_equal(_used_keys, true); }
 
          flat_set<public_key_type> used_keys() const {
-            auto range = utilities::FilterDataByMarker(signing_keys, _used_keys, true);
+            auto range = utilities::filter_data_by_marker(signing_keys, _used_keys, true);
             return {range.begin(), range.end()};
          }
          flat_set<public_key_type> unused_keys() const {
-            auto range = utilities::FilterDataByMarker(signing_keys, _used_keys, false);
+            auto range = utilities::filter_data_by_marker(signing_keys, _used_keys, false);
             return {range.begin(), range.end()};
          }
    }; /// authority_checker

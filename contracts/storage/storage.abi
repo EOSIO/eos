@@ -1,7 +1,7 @@
 {
     "types": [{
-        "newTypeName": "account_name",
-        "type": "Name"
+        "new_type_name": "account_name",
+        "type": "name"
         }
     ],
     "structs": [{
@@ -10,60 +10,60 @@
         "fields": {
             "from": "account_name",
             "to": "account_name",
-            "amount": "UInt64"
+            "amount": "uint64"
         } 
     },{
         "name": "account",
         "base": "",
         "fields": {
             "account": "account_name",
-            "tokbalance": "UInt64",
-            "quotausage": "UInt64"
+            "tokbalance": "uint64",
+            "quotausage": "uint64"
         }
     },{ 
         "name": "link",
         "base": "",
         "fields": {
             "owner"  : "account_name",
-            "eospath" : "String",
-            "ipfspath" : "String",
-            "size"  : "UInt32",
-            "store" : "UInt8",
-            "accept": "UInt8",
-            "stake" : "UInt64",
+            "eospath" : "string",
+            "ipfspath" : "string",
+            "size"  : "uint32",
+            "store" : "uint8",
+            "accept": "uint8",
+            "stake" : "uint64",
             "producer": "account_name"
         }
     }
   ],
     "actions": [{
-         "action": "transfer",
+         "name": "transfer",
          "type": "transfer"
     },{
-         "action": "setlink",
+         "name": "setlink",
          "type": "link"
     },{
-         "action": "removelink",
-         "type": "String"
+         "name": "removelink",
+         "type": "string"
     },{
-         "action": "acceptstore",
-         "type": "String"
+         "name": "acceptstore",
+         "type": "string"
     },{
-         "action": "rejectstore",
-         "type": "String"
+         "name": "rejectstore",
+         "type": "string"
     }
   ],
     "tables": [{
-         "table": "account",
+         "name": "account",
          "type": "account",
-         "indextype": "i64",
-         "keynames" : ["account"],
-         "keytypes" : ["account_name"]
+         "index_type": "i64",
+         "key_names" : ["account"],
+         "key_types" : ["account_name"]
     },{
-         "table": "links",
+         "name": "links",
          "type" : "link",
-         "indextype": "str",
-         "keynames" : ["eospath"]
-         "keytypes" : ["String"]
+         "index_type": "str",
+         "key_names" : ["eospath"]
+         "key_types" : ["string"]
     }
   ]
 }

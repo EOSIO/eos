@@ -38,12 +38,10 @@
 uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
 namespace eosio { namespace chain {
-   using namespace native::eosio;
-   using namespace native;
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-   for (int i = 0; i < config::BlocksPerRound; ++i) {
+   for (int i = 0; i < config::blocks_per_round; ++i) {
       auto name = std::string("inita"); name.back()+=i;
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
@@ -92,13 +90,26 @@ flat_set<public_key_type> testing_fixture::available_keys() const {
 }
 
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                                       chain_initializer_interface& initializer, testing_fixture& fixture,
-                                       const chain_controller::txn_msg_rate_limits& rate_limits)
+                                       chain_initializer_interface& initializer, testing_fixture& fixture)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
                       ::eosio::chain_plugin::default_transaction_execution_time * 1000,
                       ::eosio::chain_plugin::default_received_block_transaction_execution_time * 1000,
                       ::eosio::chain_plugin::default_create_block_transaction_execution_time * 1000,
-                       rate_limits),
+                       chain_controller::txn_msg_limits{}),
+     db(db),
+     fixture(fixture) {}
+
+testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                       chain_initializer_interface& initializer, testing_fixture& fixture,
+                                       uint32_t transaction_execution_time_msec,
+                                       uint32_t received_block_execution_time_msec,
+                                       uint32_t create_block_execution_time_msec,
+                                       const chain_controller::txn_msg_limits& rate_limits)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
+                      transaction_execution_time_msec * 1000,
+                      received_block_execution_time_msec * 1000,
+                      create_block_execution_time_msec * 1000,
+                      rate_limits),
      db(db),
      fixture(fixture) {}
 
@@ -136,32 +147,32 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
    sync_dbs(other, *this);
 }
 
-types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& account) {
-   return get_database().get<BalanceObject, native::eosio::byOwnerName>(account).balance;
+types::asset testing_blockchain::get_liquid_balance(const types::account_name& account) {
+   return get_database().get<balance_object, eosio::chain::by_owner_name>(account).balance;
 }
 
-types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).stakedBalance;
+types::asset testing_blockchain::get_staked_balance(const types::account_name& account) {
+   return get_database().get<staked_balance_object, eosio::chain::by_owner_name>(account).staked_balance;
 }
 
-types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::eosio::byOwnerName>(account).unstakingBalance;
+types::asset testing_blockchain::get_unstaking_balance(const types::account_name& account) {
+   return get_database().get<staked_balance_object, eosio::chain::by_owner_name>(account).unstaking_balance;
 }
 
-std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
-   const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
-   if (sbo.producerVotes.contains<ProducerSlate>()) {
-      auto range = sbo.producerVotes.get<ProducerSlate>().range();
+std::set<types::account_name> testing_blockchain::get_approved_producers(const types::account_name& account) {
+   const auto& sbo = get_database().get<staked_balance_object, by_owner_name>(account);
+   if (sbo.producer_votes.contains<producer_slate>()) {
+      auto range = sbo.producer_votes.get<producer_slate>().range();
       return {range.begin(), range.end()};
    }
    return {};
 }
 
-types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountName& producerName) {
+types::public_key testing_blockchain::get_block_signing_key(const types::account_name& producerName) {
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
-void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
+void testing_blockchain::sign_transaction(signed_transaction& trx) const {
    auto keys = get_required_keys(trx, fixture.available_keys());
    for (const auto& k : keys) {
       // TODO: Use a real chain_id here
@@ -169,7 +180,7 @@ void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
    }
 }
 
-fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
+fc::optional<processed_transaction> testing_blockchain::push_transaction(signed_transaction trx, uint32_t skip_flags) {
    if (skip_trx_sigs)
       skip_flags |= chain_controller::skip_transaction_signatures;
 

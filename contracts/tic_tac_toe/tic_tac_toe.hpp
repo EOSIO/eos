@@ -123,6 +123,6 @@ namespace tic_tac_toe {
   /**
    * @brief table to store list of games
    */ 
-  using Games = table<N(tic.tac.toe),N(tic.tac.toe),N(games),game,uint64_t>;
+  using Games = eosio::table<N(tic.tac.toe),N(tic.tac.toe),N(games),game,uint64_t>;
 }
 /// @}

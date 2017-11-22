@@ -94,7 +94,7 @@ Options:
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
-#include <config.hpp>
+#include "config.hpp"
 
 using namespace std;
 using namespace eosio;
@@ -380,7 +380,7 @@ struct set_account_permission_subcommand {
             name parent;
             if (parentStr.size() == 0) {
                // see if we can auto-determine the proper parent
-               const auto account_result = call(get_account_func, fc::mutable_variant_object("name", accountStr));
+               const auto account_result = call(get_account_func, fc::mutable_variant_object("account_name", accountStr));
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
                auto permissionPredicate = [this](const auto& perm) { 
                   return perm.is_object() && 
@@ -448,7 +448,7 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   CLI::App app{"Command Line Interface to Eos Daemon"};
+   CLI::App app{"Command Line Interface to Eos Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
    app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
@@ -457,6 +457,13 @@ int main( int argc, char** argv ) {
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
+
+   auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
+   version->require_subcommand();
+
+   version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
+     std::cout << localized("Build version: ${ver}", ("ver", eosio::client::config::version_str)) << std::endl;
+   });
 
    // Create subcommand
    auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"), false);
@@ -534,7 +541,7 @@ int main( int argc, char** argv ) {
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->set_callback([&] {
       std::cout << fc::json::to_pretty_string(call(get_account_func,
-                                                   fc::mutable_variant_object("name", accountName)))
+                                                   fc::mutable_variant_object("account_name", accountName)))
                 << std::endl;
    });
 
@@ -546,7 +553,7 @@ int main( int argc, char** argv ) {
    getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("name", accountName));
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
 
@@ -679,12 +686,17 @@ int main( int argc, char** argv ) {
       contracts::setcode handler;
       handler.account = account;
       handler.code.assign(wasm.begin(), wasm.end());
-      //if (abi->count())
-      // TODO   handler.abi = fc::json::from_file(abiPath).as<types::abi>();
 
       signed_transaction trx;
       trx.write_scope = sort_names({config::system_account_name, account});
       trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
+
+      if (abi->count()) {
+         contracts::setabi handler;
+         handler.account = account;
+         handler.abi = fc::json::from_file(abiPath).as<contracts::abi_def>();
+         trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
+      }
 
       std::cout << localized("Publishing contract...") << std::endl;
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;

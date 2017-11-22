@@ -8,7 +8,7 @@
 #include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/authority_checker.hpp>
 
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/producer_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -31,7 +31,7 @@ BOOST_FIXTURE_TEST_CASE(get_required_keys, testing_fixture)
       chain.set_auto_sign_transactions(false);
       chain.set_skip_transaction_signature_checking(false);
 
-      SignedTransaction trx;
+      signed_transaction trx;
       trx.messages.resize(1);
       transaction_set_reference_block(trx, chain.head_block_id());
       trx.expiration = chain.head_block_time() + 100;
@@ -40,7 +40,7 @@ BOOST_FIXTURE_TEST_CASE(get_required_keys, testing_fixture)
 
       trx.messages[0].type = "transfer";
       trx.messages[0].authorization = {{"inita", "active"}};
-      trx.messages[0].code = config::EosContractName;
+      trx.messages[0].code = config::eos_contract_name;
       transaction_set_message(trx, 0, "transfer", trans);
       BOOST_REQUIRE_THROW(chain.push_transaction(trx), tx_missing_sigs);
 
@@ -49,8 +49,8 @@ BOOST_FIXTURE_TEST_CASE(get_required_keys, testing_fixture)
       chain.sign_transaction(trx); // uses get_required_keys
       chain.push_transaction(trx);
 
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000 - 100));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("initb"), Asset(100000 + 100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000 - 100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("initb"), asset(100000 + 100));
 
 } FC_LOG_AND_RETHROW() }
 

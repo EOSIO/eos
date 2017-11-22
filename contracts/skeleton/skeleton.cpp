@@ -19,7 +19,7 @@ extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::name(code), "->", eosio::name(action), "\n" );
     }
 
 } // extern "C"
