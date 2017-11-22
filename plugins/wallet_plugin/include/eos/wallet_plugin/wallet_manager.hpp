@@ -111,6 +111,6 @@ private:
 };
 
 } // namespace wallet
-} // namespace eos
+} // namespace eosio
 
 

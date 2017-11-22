@@ -459,4 +459,4 @@ read_only::get_controlled_accounts_results read_only::get_controlled_accounts(co
 }
 
 } // namespace account_history_apis
-} // namespace eos
+} // namespace eosio

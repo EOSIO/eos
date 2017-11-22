@@ -1,7 +1,7 @@
 #pragma once
 #include <eoslib/types.h>
 
-namespace eos 
+namespace eosio
 {
     /**
     * @defgroup fixed_point Template classes for Fixed Point representaton

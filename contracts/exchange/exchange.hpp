@@ -55,7 +55,7 @@ namespace exchange {
       bool is_empty()const { return ! ( bool(eos_balance) | bool(currency_balance) | open_orders); }
    };
 
-   using accounts = table<N(exchange),N(exchange),N(account),account,uint64_t>;
+   using accounts = eosio::table<N(exchange),N(exchange),N(account),account,uint64_t>;
 
    TABLE2(bids,exchange,exchange,bids,bid,bids_by_id,order_id,bids_by_price,price);
    TABLE2(asks,exchange,exchange,asks,ask,asks_by_id,order_id,asks_by_price,price);

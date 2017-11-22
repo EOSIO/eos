@@ -237,7 +237,7 @@ using producer_schedule_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // namespace native::eos
+} } // namespace eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::producer_votes_object, eosio::chain::producer_votes_multi_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::proxy_vote_object, eosio::chain::proxy_vote_multi_index)
