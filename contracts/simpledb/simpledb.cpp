@@ -19,7 +19,7 @@ extern "C" {
          if( action == N(insertkv1) ) {
             // eosioc push message simpledb insertkv1 '{"key":"a", "value":"aa"}' -S simpledb
             // eosioc get table simpledb simpledb keyvalue1
-            auto kv1 = eosio::current_message<key_value1>();
+            auto kv1 = eosio::current_action<key_value1>();
             eosio::print("Inserting key_value1\n");
             eosio::dump(kv1);
             bytes b = eosio::raw::pack(kv1.value);
@@ -27,7 +27,7 @@ extern "C" {
          } else if( action == N(insertkv2) ) {
             // eosioc push message simpledb insertkv2 '{"key":"a", "value":{"name":"aaa", "age":10}}' -S simpledb
             // eosioc get table simpledb simpledb keyvalue2
-            auto kv2 = eosio::current_message<key_value2>();
+            auto kv2 = eosio::current_action<key_value2>();
             eosio::print("Inserting key_value2\n");
             eosio::dump(kv2);
             bytes b = eosio::raw::pack(kv2.value);
@@ -35,7 +35,7 @@ extern "C" {
          } else if( action == N(insert1) ) {
             // eosioc push message simpledb insert1 '{"key":75}' -S simpledb
             // eosioc get table simpledb simpledb record1
-            auto tmp = eosio::current_message<record1>();
+            auto tmp = eosio::current_action<record1>();
             eosio::print("Inserting record1\n");
             eosio::dump(tmp);
             auto bytes = eosio::raw::pack(tmp);
@@ -43,7 +43,7 @@ extern "C" {
          } else if(action == N(insert2)) {
             // eosioc push message simpledb insert2 '{"key1":"75", "key2":"77"}' -S simpledb
             // eosioc get table simpledb simpledb record2
-            auto tmp = eosio::current_message<record2>();
+            auto tmp = eosio::current_action<record2>();
             eosio::print("Inserting record2\n");
             eosio::dump(tmp);
             auto bytes = eosio::raw::pack(tmp);
@@ -51,7 +51,7 @@ extern "C" {
          } else if(action == N(insert3)) {
             // eosioc push message simpledb insert3 '{"key1":75, "key2":77, "key3":79}' -S simpledb
             // eosioc get table simpledb simpledb record3
-            auto tmp = eosio::current_message<record3>();
+            auto tmp = eosio::current_action<record3>();
             eosio::print("Inserting record3\n");
             eosio::dump(tmp);
             auto bytes = eosio::raw::pack(tmp);
