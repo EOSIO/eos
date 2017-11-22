@@ -5,7 +5,7 @@ services:
     build:
       context: .
     image: eosio/eos
-    command: /opt/eos/bin/start_eosd.sh
+    command: /usr/local/bin/eosd.sh
     ports:
       - 8888:8888
       - 9876:9876
@@ -23,5 +23,5 @@ services:
       - walletd-data-volume:/opt/eos/bin/data-dir
 
 volumes:
-  eosd-data-volume:
-  walletd-data-volume:
+  eosd-data-volume: /data/store/eos
+  walletd-data-volume: /data/store/wallet
