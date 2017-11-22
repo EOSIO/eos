@@ -1,18 +1,18 @@
 #include <fc/exception/exception.hpp>
 #include <fc/io/json.hpp>
 #include <eosio/abi_generator/abi_generator.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
 
 using namespace eosio;
+using namespace eosio::chain::contracts;
 
-std::unique_ptr<FrontendActionFactory> create_factory(bool verbose, bool opt_sfs, string abi_context, types::abi& output) {
+std::unique_ptr<FrontendActionFactory> create_factory(bool verbose, bool opt_sfs, string abi_context, abi_def& output) {
   class abi_frontend_action_factory : public FrontendActionFactory {
     bool             verbose;
     bool             opt_sfs;
     string           abi_context;
-    types::abi& output;
+    abi_def& output;
   public:
-    abi_frontend_action_factory(bool verbose, bool opt_sfs, string abi_context, types::abi& output) : verbose(verbose), abi_context(abi_context), output(output) {}
+    abi_frontend_action_factory(bool verbose, bool opt_sfs, string abi_context, abi_def& output) : verbose(verbose), abi_context(abi_context), output(output) {}
     clang::FrontendAction *create() override { return new generate_abi_action(verbose, opt_sfs, abi_context, output); }
   };
 
@@ -46,12 +46,12 @@ int main(int argc, const char **argv) { try {
    CommonOptionsParser op(argc, argv, abi_generator_category);
    ClangTool Tool(op.getCompilations(), op.getSourcePathList());
 
-   types::abi abi;
+   abi_def abi;
 
    int result = Tool.run(create_factory(abi_verbose, abi_opt_sfs, abi_context, abi).get());
    if(!result) {
-      types::abi_serializer(abi).validate();
-      fc::json::save_to_file<types::abi>(abi, abi_destination, true);
+      abi_serializer(abi).validate();
+      fc::json::save_to_file<abi_def>(abi, abi_destination, true);
    }
    return result;
 } FC_CAPTURE_AND_LOG(()); return -1; }

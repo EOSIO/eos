@@ -15,15 +15,17 @@
 
 
 using namespace std;
-using namespace eosio;
+using namespace eosio::chain::contracts;
 
 const string tab = "   ";
 
 struct codegen {
 
-   types::abi abi;
-   types::abi_serializer abis;
-   codegen(const types::abi& abi) : abi(abi) {
+   abi_def abi;
+   abi_serializer abis;
+   codegen(const abi_def& abi)
+   :abi(abi) 
+   {
       abis.set_abi(abi);
    }
 
@@ -31,7 +33,7 @@ struct codegen {
       output << tab << "void print_ident(int n){while(n-->0){print(\"  \");}};" << endl;      
    }
    
-   void generate_dump(ostringstream& output, const types::struct_t& type) {
+   void generate_dump(ostringstream& output, const struct_def& type) {
       output << tab << "void dump(const " << type.name << "& value, int tab=0) {" << endl;
       for(const auto& field : type.fields ) {
          auto field_type = abis.resolve_type(field.type);
@@ -88,29 +90,29 @@ struct codegen {
       output << tab << "}" << endl;
    }
 
-   void generate_current_message(ostringstream& output, const types::struct_t& type) {
+   void generate_current_message(ostringstream& output, const struct_def& type) {
       output << tab << "template<>" << endl;
       output << tab << type.name << " current_message<" << type.name << ">() {" << endl;
       output << tab << tab << "return current_message_ex<" << type.name << ">();" << endl;
       output << tab << "}" << endl;
    }
 
-   void generate_pack(ostringstream& output, const types::struct_t& type) {
+   void generate_pack(ostringstream& output, const struct_def& type) {
       output << tab << "template<typename Stream> inline void pack( Stream& s, const " << type.name << "& value ) {" << endl;
       for(const auto& field : type.fields ) {
          output << tab << tab << "raw::pack(s, value." << field.name << ");" << endl;
       }
-      if( type.base != types::type_name() )
+      if( type.base != type_name() )
          output << tab << tab << "raw::pack(s, static_cast<const " << type.base << "&>(value));" << endl;
       output << tab << "}" << endl;
    }
 
-   void generate_unpack(ostringstream& output, const types::struct_t& type) {
+   void generate_unpack(ostringstream& output, const struct_def& type) {
       output << tab << "template<typename Stream> inline void unpack( Stream& s, " << type.name << "& value ) {" << endl;
       for(const auto& field : type.fields ) {
          output << tab << tab << "raw::unpack(s, value." << field.name << ");" << endl;
       }
-      if( type.base != types::type_name() )
+      if( type.base != type_name() )
          output << tab << tab << "raw::unpack(s, static_cast<" << type.base << "&>(value));" << endl;
       output << tab << "}" << endl;
    }
@@ -160,7 +162,7 @@ int main (int argc, char *argv[]) {
    if( argc < 2 )
       return 1;
 
-   auto abi = fc::json::from_file<types::abi>(argv[1]);
+   auto abi = fc::json::from_file<abi_def>(argv[1]);
    codegen generator(abi);
    generator.generate();
 
