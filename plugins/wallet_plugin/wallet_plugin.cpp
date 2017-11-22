@@ -46,4 +46,4 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
       wallet_manager_ptr->set_timeout(t);
    }
 }
-} // namespace eos
+} // namespace eosio

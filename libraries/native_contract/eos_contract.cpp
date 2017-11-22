@@ -494,5 +494,5 @@ void apply_eos_unlinkauth(apply_context& context) {
       db.remove(*link);
 }
 
-} // namespace eos
+} // namespace eosio
 } // namespace native

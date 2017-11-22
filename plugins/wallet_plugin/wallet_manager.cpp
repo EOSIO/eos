@@ -194,4 +194,4 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
 }
 
 } // namespace wallet
-} // namespace eos
+} // namespace eosio

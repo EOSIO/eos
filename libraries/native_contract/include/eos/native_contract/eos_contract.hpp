@@ -27,5 +27,5 @@ void apply_eos_deleteauth(chain::apply_context&);
 void apply_eos_linkauth(chain::apply_context&);
 void apply_eos_unlinkauth(chain::apply_context&);
 
-} // namespace eos
+} // namespace eosio
 } // namespace native

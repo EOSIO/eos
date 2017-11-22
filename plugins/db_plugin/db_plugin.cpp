@@ -746,4 +746,4 @@ void db_plugin::plugin_shutdown()
    my.reset();
 }
 
-} // namespace eos
+} // namespace eosio

@@ -19,6 +19,6 @@ namespace proxy {
       account_name        owner;
    };
 
-   using configs = table<N(proxy),N(proxy),N(configs),config,uint64_t>;
+   using configs = eosio::table<N(proxy),N(proxy),N(configs),config,uint64_t>;
 
 } /// namespace proxy

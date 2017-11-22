@@ -30,7 +30,7 @@ namespace eosio { namespace account {
 *  test1_balance.account = N(test1);
 *  if (account_api::get(test1_balance))
 *  {
-*     eos::print("test1 balance=", test1_balance.eos_balance, "\n");
+*     eosio::print("test1 balance=", test1_balance.eos_balance, "\n");
 *  }
 *  @endcode
 *  @{
