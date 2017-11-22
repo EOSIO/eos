@@ -2,7 +2,7 @@
 #include <eoslib/eos.hpp>
 
 #include "test_api.hpp"
-using namespace eos;
+using namespace eosio;
 unsigned int test_fixedpoint::create_instances()
 {
     {

@@ -7,6 +7,7 @@
 #include <eoslib/db.h>
 
 
+namespace eosio {
 
 /**
  *  @ingroup databaseCpp
@@ -1009,8 +1010,9 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    }
 }; /// @}
 
+} // namespace eosio
 
 #define TABLE2(NAME, SCOPE, CODE, TABLE, TYPE, PRIMARY_NAME, PRIMARY_TYPE, SECONDARY_NAME, SECONDARY_TYPE) \
-   using NAME = table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
+   using NAME = eosio::table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
    typedef NAME::primary_index PRIMARY_NAME; \
    typedef NAME::secondary_index SECONDARY_NAME;

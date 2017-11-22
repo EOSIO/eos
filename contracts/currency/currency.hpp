@@ -92,7 +92,7 @@ namespace TOKEN_NAME {
    /**
    Defines the database table for account information
    **/
-   using accounts = table<N(defaultscope),N(currency),N(account),account,uint64_t>;
+   using accounts = eosio::table<N(defaultscope),N(currency),N(account),account,uint64_t>;
 
    /**
     *  accounts information for owner is stored:

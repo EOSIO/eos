@@ -76,9 +76,9 @@ unsigned int test_db::key_str_table() {
     const char* atr[]  = { "atr", "atr", "atr", "atr" };
     const char* ztr[]  = { "ztr", "ztr", "ztr", "ztr" };
     
-    var_table<N(tester), N(tester), N(atr), char*> StringTableAtr;
-    var_table<N(tester), N(tester), N(ztr), char*> StringTableZtr;
-    var_table<N(tester), N(tester), N(str), char*> StringTableStr;
+    eosio::var_table<N(tester), N(tester), N(atr), char*> StringTableAtr;
+    eosio::var_table<N(tester), N(tester), N(ztr), char*> StringTableZtr;
+    eosio::var_table<N(tester), N(tester), N(str), char*> StringTableStr;
 
     uint32_t res = 0;
 

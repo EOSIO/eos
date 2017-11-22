@@ -68,4 +68,4 @@ BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
       // Check that block 21 can now be found
       BOOST_CHECK_EQUAL(chain.get_block_id_for_num(21), chain.head_block_id());
 } FC_LOG_AND_RETHROW() }
-} // namespace eos
+} // namespace eosio
