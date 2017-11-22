@@ -36,7 +36,7 @@ namespace infinite {
    };
    static_assert( sizeof(account) == sizeof(uint64_t)+sizeof(currency_tokens), "unexpected packing" );
 
-   using accounts = table<N(currency),N(currency),N(account),account,uint64_t>;
+   using accounts = eosio::table<N(currency),N(currency),N(account),account,uint64_t>;
 
    /**
     *  accounts information for owner is stored:

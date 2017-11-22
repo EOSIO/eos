@@ -25,7 +25,7 @@ const static uint64_t eosio_all_scope        = N(eosio.all);
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
 
-const static uint64_t initial_token_supply = 900*1000*1000*10000ll;  /// 900,000,000.0000
+const static share_type initial_token_supply = asset::from_string("1000000000.0000 EOS").amount;
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

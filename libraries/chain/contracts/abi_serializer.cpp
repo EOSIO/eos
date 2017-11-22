@@ -104,14 +104,14 @@ namespace eosio { namespace chain { namespace contracts {
       actions.clear();
       tables.clear();
 
+      for( const auto& st : abi.structs )
+         structs[st.name] = st;
+      
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
          typedefs[td.new_type_name] = td.type;
       }
 
-      for( const auto& st : abi.structs )
-         structs[st.name] = st;
-      
       for( const auto& a : abi.actions )
          actions[a.name] = a.type;
 
@@ -128,6 +128,29 @@ namespace eosio { namespace chain { namespace contracts {
       FC_ASSERT( tables.size() == abi.tables.size() );
    }
    
+   bool abi_serializer::is_builtin_type(const type_name& type)const {
+      return built_in_types.find(type) != built_in_types.end();
+   }
+
+   bool abi_serializer::is_integer(const type_name& type) const {
+      string stype = type;
+      return boost::starts_with(stype, "uint") || boost::starts_with(stype, "int");
+   }
+
+   int abi_serializer::get_integer_size(const type_name& type) const {
+      string stype = type;
+      FC_ASSERT( is_integer(type), "${stype} is not an integer type", ("stype",stype));
+      if( boost::starts_with(stype, "uint") ) {
+         return boost::lexical_cast<int>(stype.substr(4));
+      } else {
+         return boost::lexical_cast<int>(stype.substr(3));
+      }      
+   }
+   
+   bool abi_serializer::is_struct(const type_name& type)const {
+      return structs.find(resolve_type(type)) != structs.end();
+   }
+
    bool abi_serializer::is_array(const type_name& type)const {
       return ends_with(string(type), "[]");
    }

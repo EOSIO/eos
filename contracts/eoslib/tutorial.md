@@ -71,7 +71,7 @@ extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::name(code), "->", eosio::name(action), "\n" );
     }
 
 } // extern "C"
@@ -103,8 +103,8 @@ Publishing contract...
 {
   "transaction_id": "1abb46f1b69feb9a88dbff881ea421fd4f39914df769ae09f66bd684436443d5",
   "processed": {
-    "refBlockNum": 144,
-    "refBlockPrefix": 2192682225,
+    "ref_block_num": 144,
+    "ref_block_prefix": 2192682225,
     "expiration": "2017-09-14T05:39:15",
     "scope": [
       "eos",
@@ -175,8 +175,8 @@ The result is:
 {
   "transaction_id": "69d66204ebeeee68c91efef6f8a7f229c22f47bcccd70459e0be833a303956bb",
   "processed": {
-    "refBlockNum": 57477,
-    "refBlockPrefix": 1051897037,
+    "ref_block_num": 57477,
+    "ref_block_prefix": 1051897037,
     "expiration": "2017-09-13T22:17:04",
     "scope": [
       "${account}"
@@ -228,24 +228,24 @@ Here is an example of what the skeleton contract ABI looks like:
 ```json
 {
   "types": [{
-      "newTypeName": "AccountName",
-      "type": "Name"
+      "newTypeName": "account_name",
+      "type": "name
     }
   ],
   "structs": [{
       "name": "transfer",
       "base": "",
       "fields": {
-        "from": "AccountName",
-        "to": "AccountName",
-        "amount": "UInt64"
+        "from": "account_name",
+        "to": "account_name",
+        "amount": "uint64"
       }
     },{
       "name": "account",
       "base": "",
       "fields": {
-        "account": "Name",
-        "balance": "UInt64"
+        "account": "name,
+        "balance": "uint64"
       }
     }
   ],
@@ -257,9 +257,9 @@ Here is an example of what the skeleton contract ABI looks like:
   "tables": [{
       "table": "account",
       "type": "account",
-      "indextype": "i64",
-      "keynames" : ["account"],
-      "keytypes" : ["Name"]
+      "index_type": "i64",
+      "key_names" : ["account"],
+      "key_types" : ["name]
     }
   ]
 }
@@ -274,22 +274,22 @@ You will notice that this ABI defines an action `transfer` of type `transfer`.  
       "name": "transfer",
       "base": "",
       "fields": {
-        "from": "AccountName",
-        "to": "AccountName",
-        "amount": "UInt64"
+        "from": "account_name",
+        "to": "account_name",
+        "amount": "uint64"
       }
     },{
 ...
 ```
 
-It has several fields, including `from`, `to` and `amount`.  These fields have the coresponding types `AccountName`, `AccountName`, and `UInt64`.  `AccountName` is defined as a typedef in
+It has several fields, including `from`, `to` and `amount`.  These fields have the coresponding types `account_name`, `account_name`, and `uint64`.  `account_name` is defined as a typedef in
 the `types` array to `Name`, which is a built in type used to encode a uint64_t as base32 (eg account names).
 
 ```json
 {
   "types": [{
-      "newTypeName": "AccountName",
-      "type": "Name"
+      "newTypeName": "account_name",
+      "type": "name
     }
   ],
 ...
@@ -303,8 +303,8 @@ eosioc push action ${account} transfer '{"from":"currency","to":"inita","amount"
 {
   "transaction_id": "b191eb8bff3002757839f204ffc310f1bfe5ba1872a64dda3fc42bfc2c8ed688",
   "processed": {
-    "refBlockNum": 253,
-    "refBlockPrefix": 3297765944,
+    "ref_block_num": 253,
+    "ref_block_prefix": 3297765944,
     "expiration": "2017-09-14T00:44:28",
     "scope": [
       "initc"
@@ -345,13 +345,13 @@ According to the ABI the transfer action has the format:
 
 ```json
 	 "fields": {
-		 "from": "AccountName",
-		 "to": "AccountName",
-		 "amount": "UInt64"
+		 "from": "account_name",
+		 "to": "account_name",
+		 "amount": "uint64"
 	 }
 ```
 
-We also know that AccountName -> Name -> UInt64 which means that the binary representation of the action is the same as:
+We also know that account_name -> Name -> uint64 which means that the binary representation of the action is the same as:
 
 ```c
 struct transfer {
@@ -394,13 +394,13 @@ extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::name(code), "->", eosio::name(action), "\n" );
        if( action == N(transfer) ) {
           transfer action;
           static_assert( sizeof(action) == 3*sizeof(uint64_t), "unexpected padding" );
           auto read = read_action( &action, sizeof(action) );
           assert( read == sizeof(action), "action too short" );
-          eosio::print( "Transfer ", action.amount, " from ", eosio::Name(action.from), " to ", eosio::Name(action.to), "\n" );
+          eosio::print( "Transfer ", action.amount, " from ", eosio::name(action.from), " to ", eosio::name(action.to), "\n" );
        }
     }
 
@@ -429,8 +429,8 @@ $ eosioc push action ${account} transfer '{"from":"currency","to":"inita","amoun
 {
   "transaction_id": "a777539b7d5f752fb40e6f2d019b65b5401be8bf91c8036440661506875ba1c0",
   "processed": {
-    "refBlockNum": 20,
-    "refBlockPrefix": 463381070,
+    "ref_block_num": 20,
+    "ref_block_prefix": 463381070,
     "expiration": "2017-09-14T01:05:49",
     "scope": [
       "${account}"
@@ -499,14 +499,14 @@ extern "C" {
     }
 
     struct transfer {
-       eosio::Name from;
-       eosio::Name to;
+       eosio::name from;
+       eosio::name to;
        uint64_t amount;
     };
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::name(code), "->", eosio::name(action), "\n" );
        if( action == N(transfer) ) {
           auto action = eosio::currentAction<transfer>();
           eosio::print( "Transfer ", action.amount, " from ", action.from, " to ", action.to, "\n" );
@@ -517,7 +517,7 @@ extern "C" {
 
 ```
 
-You will notice that we updated the `transfer` struct to use the `eosio::Name` type directly, and then condenced the checks around `read_action` to a single call to `currentAction`.
+You will notice that we updated the `transfer` struct to use the `eosio::name` type directly, and then condenced the checks around `read_action` to a single call to `currentAction`.
 
 After compiling and uploading it you should get the same results as the C version.
 
@@ -530,7 +530,7 @@ The EOS.IO software will take care of enforcing and validating the signatures, a
 ```c
     ...
     void apply( uint64_t code, uint64_t action ) {
-       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::name(code), "->", eosio::name(action), "\n" );
        if( action == N(transfer) ) {
           auto action = eosio::currentAction<transfer>();
           eosio::requireAuth( action.from );
@@ -581,7 +581,7 @@ the contract must abort and any changes made get automatically reverted.
 ```c
     ...
     void apply( uint64_t code, uint64_t action ) {
-       eosio::print( "Hello World: ", eosio::Name(code), "->", eosio::Name(action), "\n" );
+       eosio::print( "Hello World: ", eosio::name(code), "->", eosio::name(action), "\n" );
        if( action == N(transfer) ) {
           auto action = eosio::currentAction<transfer>();
           assert( action.amount > 0, "Must transfer an amount greater than 0" );

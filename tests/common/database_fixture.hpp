@@ -125,15 +125,21 @@ protected:
 class testing_blockchain : public chain_controller {
 public:
    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                      chain_initializer_interface& initializer, testing_fixture& fixture);
+
+   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                       chain_initializer_interface& initializer, testing_fixture& fixture,
-                      const chain_controller::txn_msg_rate_limits& rate_limits = chain_controller::txn_msg_rate_limits());
+                      uint32_t transaction_execution_time_msec,
+                      uint32_t received_block_execution_time_msec,
+                      uint32_t create_block_execution_time_msec,
+                      const chain_controller::txn_msg_limits& rate_limits = chain_controller::txn_msg_limits());
 
    /**
     * @brief Publish the provided contract to the blockchain, owned by owner
     * @param owner The account to publish the contract under
     * @param contract_wast The WAST of the contract
     */
-   void set_contract(AccountName owner, const char* contract_wast);
+   void set_contract(account_name owner, const char* contract_wast);
 
    /**
     * @brief Produce new blocks, adding them to the blockchain, optionally following a gap of missed blocks
@@ -158,29 +164,29 @@ public:
    void sync_with(testing_blockchain& other);
 
    /// @brief Get the liquid balance belonging to the named account
-   Asset get_liquid_balance(const types::AccountName& account);
+   asset get_liquid_balance(const types::account_name& account);
    /// @brief Get the staked balance belonging to the named account
-   Asset get_staked_balance(const types::AccountName& account);
+   asset get_staked_balance(const types::account_name& account);
    /// @brief Get the unstaking balance belonging to the named account
-   Asset get_unstaking_balance(const types::AccountName& account);
+   asset get_unstaking_balance(const types::account_name& account);
 
    /// @brief Get the set of producers approved by the named account
-   std::set<AccountName> get_approved_producers(const AccountName& account);
+   std::set<account_name> get_approved_producers(const account_name& account);
    /// @brief Get the specified block producer's signing key
-   PublicKey get_block_signing_key(const AccountName& producerName);
+   public_key get_block_signing_key(const account_name& producerName);
 
    /// @brief Attempt to sign the provided transaction using the keys available to the testing_fixture
-   void sign_transaction(SignedTransaction& trx) const;
+   void sign_transaction(signed_transaction& trx) const;
 
    /// @brief Override push_transaction to apply testing policies
    /// If transactions are being held for review, transaction will be held after testing policies are applied
-   fc::optional<ProcessedTransaction> push_transaction(SignedTransaction trx, uint32_t skip_flags = 0);
+   fc::optional<processed_transaction> push_transaction(signed_transaction trx, uint32_t skip_flags = 0);
    /// @brief Review and optionally push last held transaction
    /// @tparam F A callable with signature `bool f(SignedTransaction&, uint32_t&)`
    /// @param reviewer Callable which inspects and potentially alters the held transaction and skip flags, and returns
    /// whether it should be pushed or not
    template<typename F>
-   fc::optional<ProcessedTransaction> review_transaction(F&& reviewer) {
+   fc::optional<processed_transaction> review_transaction(F&& reviewer) {
       if (reviewer(review_storage.first, review_storage.second))
          return chain_controller::push_transaction(review_storage.first, review_storage.second);
       return {};
@@ -205,7 +211,7 @@ public:
 protected:
    chainbase::database& db;
    testing_fixture& fixture;
-   std::pair<SignedTransaction, uint32_t> review_storage;
+   std::pair<signed_transaction, uint32_t> review_storage;
    bool skip_trx_sigs = true;
    bool auto_sign_trxs = false;
    bool hold_for_review = false;

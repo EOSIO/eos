@@ -1,7 +1,7 @@
 {
   "types": [{
-      "newTypeName": "account_name",
-      "type": "Name"
+      "new_type_name": "account_name",
+      "type": "name"
     }
   ],
   "structs": [{
@@ -12,7 +12,7 @@
         "host": "account_name",
         "turn": "account_name",
         "winner": "account_name",
-        "board": "UInt8[]"      
+        "board": "uint8[]"
       }
     },{
       "name": "create",
@@ -40,8 +40,8 @@
       "name": "movement",
       "base": "",
       "fields": {
-        "row": "UInt32",
-        "column": "UInt32"
+        "row": "uint32",
+        "column": "uint32"
       }
     },{
       "name": "move",
@@ -55,25 +55,25 @@
     }
   ],
   "actions": [{
-      "action": "create",
+      "name": "create",
       "type": "create"
     },{
-      "action": "restart",
+      "name": "restart",
       "type": "restart"
     },{
-      "action": "close",
+      "name": "close",
       "type": "close"
     },{
-      "action": "move",
+      "name": "move",
       "type": "move"
     }
   ],
   "tables": [{
-        "table": "games",
+        "name": "games",
         "type": "game",
-        "indextype": "i64",
-        "keynames" : ["challenger"],
-        "keytypes" : ["account_name"]
+        "index_type": "i64",
+        "key_names" : ["challenger"],
+        "key_types" : ["account_name"]
       }
   ]
 }

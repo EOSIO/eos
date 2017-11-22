@@ -81,7 +81,7 @@ curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":00
   "cycles": [ ],
   "id":"000000050c0175cbf218a70131ddc3c3fab8b6e954edef77e0bfe7c36b599b1d",
   "block_num":5,
-  "refBlockPrefix":27728114
+  "ref_block_prefix":27728114
 }
 ```
 
@@ -155,8 +155,8 @@ curl  http://localhost:8888/v1/chain/get_code -X POST -d '{"name":"currency"}'
   "abi": {
    "types": [
      {
-       "newTypeName": "AccountName",
-       "type": "Name"
+       "new_type_name": "account_name",
+       "type": "name
      }
    ],
    "structs": [
@@ -164,34 +164,34 @@ curl  http://localhost:8888/v1/chain/get_code -X POST -d '{"name":"currency"}'
        "name": "transfer",
        "base": "",
        "fields": {
-         "from": "AccountName",
-         "to": "AccountName",
-         "amount": "UInt64"
+         "from": "account_name",
+         "to": "account_name",
+         "amount": "uint64"
        }
      },
      {
        "name": "account",
        "base": "",
        "fields": {
-         "account": "Name",
-         "balance": "UInt64"
+         "account": "name,
+         "balance": "uint64"
        }
      }
    ],
    "actions": [
      {
-       "action": "transfer",
+       "name": "transfer",
        "type": "transfer"
      }
    ],
    "tables": [
      {
-       "table": "account",
-       "indextype": "i64",
-       "keynames": [
+       "name": "account",
+       "index_type": "i64",
+       "key_names": [
          "account"
        ],
-       "keytype": [],
+       "key_types": [],
        "type": "account"
      }
    ]
@@ -302,9 +302,9 @@ Content-Length: 1466
 ```
 
 @subsubsection examplepushtrx Example push_transaction Usage
-This example assumes a transfer operation. The `refBlockNum` and `refBlockPrefix` are provided as a result of `/v1/chain/get_block`.
+This example assumes a transfer operation. The `ref_block_num` and `ref_block_prefix` are provided as a result of `/v1/chain/get_block`.
 ```
-curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '{"refBlockNum":"100","refBlockPrefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}'
+curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '{"ref_block_num":"100","ref_block_prefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}'
 ```
 
 
@@ -314,7 +314,7 @@ This method push multiple transactions at once.
 
 @subsubsection examplepushtrxs Example push_transactions Usage
 ```
-curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '[{"refBlockNum":"101","refBlockPrefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, {"refBlockNum":"101","refBlockPrefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["inita","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["inita","initc"],"authorization":[{"account":"inita","permission":"active"}],"data":"000000008040934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}]'
+curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '[{"ref_block_num":"101","ref_block_prefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, {"ref_block_num":"101","ref_block_prefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["inita","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["inita","initc"],"authorization":[{"account":"inita","permission":"active"}],"data":"000000008040934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}]'
 ```
 
 
@@ -324,7 +324,7 @@ Get required keys to sign a transaction from list of your keys.
 
 @subsubsection examplegetrequiredkeys  Example get_required_keys Usage
 ```
-curl  http://localhost:8888/v1/chain/get_required_keys -X POST -d '{"transaction": {"refBlockNum":"100","refBlockPrefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, "available_keys":["EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq","EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]}'
+curl  http://localhost:8888/v1/chain/get_required_keys -X POST -d '{"transaction": {"ref_block_num":"100","ref_block_prefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, "available_keys":["EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq","EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]}'
 ```
 
 @subsubsection examplegetrequiredkeysresult  Example get_required_keys Result

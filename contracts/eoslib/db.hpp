@@ -7,6 +7,7 @@
 #include <eoslib/db.h>
 
 
+namespace eosio {
 
 /**
  *  @ingroup databaseCpp
@@ -385,7 +386,7 @@ struct table_impl<sizeof(uint64_t),0> {
     *
     *  @return the number of bytes read or -1 if no record found
     */
-    static int32_t next( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+    static int32_t next_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return next_i64( scope, code, table_n, data, len );
     }
 
@@ -398,7 +399,7 @@ struct table_impl<sizeof(uint64_t),0> {
     *
     *  @return the number of bytes read or -1 if no record found
     */
-    static int32_t previous( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+    static int32_t previous_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return previous_i64( scope, code, table_n, data, len );
     }
 
@@ -411,7 +412,7 @@ struct table_impl<sizeof(uint64_t),0> {
     *
     *  @return the number of bytes read or -1 if no record found
     */
-    static int32_t lower_bound( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+    static int32_t lower_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return lower_bound_i64( scope, code, table_n, data, len );
     }
 
@@ -424,8 +425,9 @@ struct table_impl<sizeof(uint64_t),0> {
     *
     *  @return the number of bytes read or -1 if no record found
     */
-    static int32_t upper_bound( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return upper_bound_i64( scope, code, table_n, data, len );
+
+    static int32_t upper_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+        return upper_bound_i64(scope, code, table_n, data, len);
     }
 
     /**
@@ -918,7 +920,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
        *  @return true if successfully retrieved the record.
        */
       static bool lower_bound( const PrimaryType& p, Record& r ) {
-         return impl::lower_bound_primary( scope, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+         *reinterpret_cast<PrimaryType*>(&r) = p;
+         return impl::lower_bound_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -927,7 +930,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
        *  @return true if successfully retrieved the record.
        */
        static bool upper_bound( const PrimaryType& p, Record& r ) {
-         return impl::upper_bound_primary( scope, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+         *reinterpret_cast<PrimaryType*>(&r) = p;
+         return impl::upper_bound_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -1006,8 +1010,9 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    }
 }; /// @}
 
+} // namespace eosio
 
 #define TABLE2(NAME, SCOPE, CODE, TABLE, TYPE, PRIMARY_NAME, PRIMARY_TYPE, SECONDARY_NAME, SECONDARY_TYPE) \
-   using NAME = table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
+   using NAME = eosio::table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
    typedef NAME::primary_index PRIMARY_NAME; \
    typedef NAME::secondary_index SECONDARY_NAME;

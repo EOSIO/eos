@@ -4,105 +4,105 @@
     {
       "name": "table1",
       "fields": {
-        "key1": "UInt64",
-        "value1": "UInt128",
-        "value2": "Int64"
+        "key1": "uint64",
+        "value1": "uint128",
+        "value2": "int64"
       }
     },
     {
       "name": "table2",
       "fields": {
-        "key1": "UInt128",
-        "key2": "UInt128",
-        "value1": "UInt64",
-        "value2": "Int64"
+        "key1": "uint128",
+        "key2": "uint128",
+        "value1": "uint64",
+        "value2": "int64"
       }
     },
     {
       "name": "table3",
       "fields": {
-        "key1": "UInt64",
-        "key2": "UInt64",
-        "key3": "UInt64",
-        "value1": "UInt128",
-        "value2": "Int64"
+        "key1": "uint64",
+        "key2": "uint64",
+        "key3": "uint64",
+        "value1": "uint128",
+        "value2": "int64"
       }
     },
     {
       "name": "strkey",
       "fields": {
-        "key": "String",
-        "value": "String"
+        "key": "string",
+        "value": "string"
       }
     }
   ],
   "actions": [
     {
-      "action": "storei",
+      "action_name": "storei",
       "type": "table1"
     },
     {
-      "action": "storestr",
+      "action_name": "storestr",
       "type": "strkey"
     },
     {
-      "action": "storeii",
+      "action_name": "storeii",
       "type": "table2"
     },
     {
-      "action": "storeiii",
+      "action_name": "storeiii",
       "type": "table3"
     }
   ],
   "tables": [
     {
-      "table": "table1",
+      "table_name": "table1",
       "type": "table1",
-      "indextype": "i64",
-      "keynames": [
+      "index_type": "i64",
+      "key_names": [
         "key1"
       ],
-      "keytypes": [
-        "UInt64"
+      "key_types": [
+        "uint64"
       ]
     },
     {
-      "table": "table2",
+      "table_name": "table2",
       "type": "table2",
-      "indextype": "i128i128",
-      "keynames": [
+      "index_type": "i128i128",
+      "key_names": [
         "key1",
         "key2"
       ],
-      "keytypes": [
-        "UInt128",
-        "UInt128"
+      "key_types": [
+        "uint128",
+        "uint128"
       ]
     },
     {
-      "table": "table3",
+      "table_name": "table3",
       "type": "table3",
-      "indextype": "i64i64i64",
-      "keynames": [
+      "index_type": "i64i64i64",
+      "key_names": [
         "key1",
         "key2",
         "key3"
       ],
-      "keytypes": [
-        "UInt64",
-        "Int64",
-        "UInt64"
+      "key_types": [
+        "uint64",
+        "int64",
+        "uint64"
       ]
     },
     {
-      "table": "strkey",
+      "table_name": "strkey",
       "type": "strkey",
-      "indextype": "str",
-      "keynames": [
+      "index_type": "str",
+      "key_names": [
         "key"
       ],
-      "keytypes": [
-        "String"
+      "key_types": [
+        "string"
       ]
     }
   ]

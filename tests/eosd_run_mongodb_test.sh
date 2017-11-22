@@ -74,12 +74,12 @@ waitForNextTransaction()
 {
   getTransactionCount
   NEXT_TRANS_COUNT=$((TRANS_COUNT+1))
-  echo "Waiting for next Transaction $NEXT_TRANS_COUNT"
+  echo "Waiting for next transaction $NEXT_TRANS_COUNT"
   while [ "$TRANS_COUNT" -lt "$NEXT_TRANS_COUNT" ]; do
     sleep 0.50
     getTransactionCount
   done
-  echo "Done waiting for Transaction $NEXT_TRANS_COUNT"
+  echo "Done waiting for transaction $NEXT_TRANS_COUNT"
 }
 
 # cleanup from last run
@@ -90,7 +90,7 @@ INITB_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 LOG_FILE=eosd_run_test.log
 
 # eosd
-programs/launcher/launcher --eosd "--mongodb-uri $DB"
+programs/launcher/launcher --eosd "--plugin eosio::db_plugin --mongodb-uri $DB"
 verifyErrorCode "launcher"
 sleep 60
 count=`grep -c "generated block" tn_data_0/stderr.txt`
@@ -222,7 +222,7 @@ if [ $count == 0 ]; then
 fi
 
 # transfer
-TRANSFER_INFO="$(programs/eosc/eosc --wallet-port 8899 transfer inita testera 975321 "test transfer")"
+TRANSFER_INFO="$(programs/eosc/eosc --wallet-port 8899 transfer -f inita testera 975321 "test transfer")"
 verifyErrorCode "eosc transfer"
 waitForNextTransaction
 
@@ -377,7 +377,7 @@ if [ $count == 0 ]; then
 fi
 
 # push message to currency contract
-INFO="$(programs/eosc/eosc --wallet-port 8899 push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active)"
+INFO="$(programs/eosc/eosc --wallet-port 8899 push message currency transfer '{"from":"currency","to":"inita","quantity":50}' --scope currency,inita --permission currency@active)"
 verifyErrorCode "eosc push message currency transfer"
 getTransactionId "$INFO"
 
@@ -460,6 +460,12 @@ while [ "$NEXT_BLOCK_NUM" -le "$HEAD_BLOCK_NUM" ]; do
 
   NEXT_BLOCK_NUM=$((NEXT_BLOCK_NUM+1))
 done
+
+ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
+count=`grep -c Assert tn_data_0/stderr.txt`
+if [ $count != 0 ]; then
+  error "FAILURE - Assert in tn_data_0/stderr.txt"
+fi
 
 killAll
 cleanup

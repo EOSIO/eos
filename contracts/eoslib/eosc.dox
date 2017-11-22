@@ -177,8 +177,8 @@
   {
     "transaction_id": "6acd2ece68c4b86c1fa209c3989235063384020781f2c67bbb80bc8d540ca120",
     "processed": {
-      "refBlockNum": "25217",
-      "refBlockPrefix": "2095475630",
+      "ref_block_num": "25217",
+      "ref_block_prefix": "2095475630",
       "expiration": "2017-07-25T17:54:55",
       "scope": [
         "eos",
@@ -277,8 +277,8 @@
   {
     "transaction_id": "eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703",
     "processed": {
-      "refBlockNum": 2206,
-      "refBlockPrefix": 221394282,
+      "ref_block_num": 2206,
+      "ref_block_prefix": 221394282,
       "expiration": "2017-09-05T08:03:58",
       "scope": [
         "inita",
@@ -377,8 +377,8 @@
   {
     "transaction_id": "eb4b94b72718a369af09eb2e7885b3f494dd1d8a20278a6634611d5edd76b703",
     "processed": {
-      "refBlockNum": 2206,
-      "refBlockPrefix": 221394282,
+      "ref_block_num": 2206,
+      "ref_block_prefix": 221394282,
       "expiration": "2017-09-05T08:03:58",
       "scope": [
         "inita",
@@ -472,8 +472,8 @@
   {
     "transaction_id": "9990306e13f630a9c5436a5a0b6fb8fe2c7f3da2f342b4898a39c4a2c17dcdb3",
     "processed": {
-      "refBlockNum": 1208,
-      "refBlockPrefix": 3058534156,
+      "ref_block_num": 1208,
+      "ref_block_prefix": 3058534156,
       "expiration": "2017-08-24T18:29:52",
       "scope": [
         "currency",
@@ -513,39 +513,39 @@
   $ cat currency.abi
   {
     "types": [{
-        "newTypeName": "AccountName",
-        "type": "Name"
+        "new_type_name": "account_name",
+        "type": "name"
       }
     ],
     "structs": [{
         "name": "transfer",
         "base": "",
         "fields": {
-          "from": "AccountName",
-          "to": "AccountName",
-          "amount": "UInt64"
+          "from": "account_name",
+          "to": "account_name",
+          "quantity": "uint64"
         }
       },{
         "name": "account",
         "base": "",
         "fields": {
-          "account": "Name",
-          "balance": "UInt64"
+          "key": "name",
+          "balance": "uint64"
         }
       }
     ],
     "actions": [{
-        "action": "transfer",
+        "name": "transfer",
         "type": "transfer"
       }
     ],
     "tables": [{
-        "table": "account",
-        "indextype": "i64",
-        "keynames": [
-          "account"
+        "name": "account",
+        "index_type": "i64",
+        "key_names": [
+          "key"
         ],
-        "keytype": [],
+        "key_types": [],
         "type": "account"
       }
     ]
@@ -555,14 +555,14 @@
   From the above abi, we can see that `currency` contract accepts an action called `transfer` that accepts action with fields `from`, `to`, and `amount`.
 
   ```
-  $ ./eosioc push action currency transfer '{"from":"currency","to":"tester","amount":50}' -S currency -S tester -p currency@active
+  $ ./eosioc push action currency transfer '{"from":"currency","to":"tester","quantity":50}' -S currency -S tester -p currency@active
   1589302ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
   1589304ms thread-0   main.cpp:290                  operator()           ] Transaction result:
   {
     "transaction_id": "1c4911c0b277566dce4217edbbca0f688f7bdef761ed445ff31b31f286720057",
     "processed": {
-      "refBlockNum": 1173,
-      "refBlockPrefix": 2184027244,
+      "ref_block_num": 1173,
+      "ref_block_prefix": 2184027244,
       "expiration": "2017-08-24T18:28:07",
       "scope": [
         "currency",
@@ -606,14 +606,14 @@
   Now we can transfer it from `tester` to `inita` and require the permission of `tester`.  This should drain the balance of `tester` to 0.
 
   ```
-  $ ./eosioc push action currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
+  $ ./eosioc push action currency transfer '{"from":"tester","to":"inita","quantity":50}' -S inita -S tester -p tester@active
   3116153ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
   3116154ms thread-0   main.cpp:290                  operator()           ] Transaction result:
   {
     "transaction_id": "56b9f0f3b9f43254af446c5dca02a6fcb24ebcdb506d7248947fd4d52a27972a",
     "processed": {
-      "refBlockNum": 2882,
-      "refBlockPrefix": 1880685856,
+      "ref_block_num": 2882,
+      "ref_block_prefix": 1880685856,
       "expiration": "2017-08-24T19:53:34",
       "scope": [
         "inita",
@@ -680,7 +680,7 @@
 
   After doing the transfer action on `currency` contract, we can verify the amount of token held by each account by looking at `currency`'s `account` table.
 
-  This table is stored on the scope of each account instead of on `currency` scope.
+  This table is stored on the scope of each account instead of on `currency` scope. The key of "account" is hard coded since retrieved by scope.
 
   ```
   $./eosioc get table tester currency account
@@ -691,7 +691,7 @@
   $./eosioc get table inita currency account
   {
     "rows": [{
-        "account": "account",
+        "key": "account",
         "balance": 50
       }
     ],

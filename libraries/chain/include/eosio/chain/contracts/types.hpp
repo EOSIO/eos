@@ -26,6 +26,7 @@ using fixed_string16 = fc::fixed_string<>;
 using type_name      = fixed_string32;
 using field_name     = fixed_string16;
 using table_name     = name;
+using action_name    = eosio::chain::action_name;
 
 
 struct type_def {
@@ -79,15 +80,15 @@ struct action_def {
 
 struct table_def {
    table_def() = default;
-   table_def(const table_name& name, const type_name& index_type, const vector<type_name>& key_names, const vector<type_name>& key_types, const type_name& type)
+   table_def(const table_name& name, const type_name& index_type, const vector<field_name>& key_names, const vector<type_name>& key_types, const type_name& type)
    :name(name), index_type(index_type), key_names(key_names), key_types(key_types), type(type)
    {}
 
-   table_name        name;  // the name of the table
-   type_name         index_type;  // the kind of index, i64, i128i128, etc
-   vector<type_name> key_names;   // names for the keys defined by key_types
-   vector<type_name> key_types;   // the type of key parameters
-   type_name         type;        // type of binary data stored in this table
+   table_name         name;  // the name of the table
+   type_name          index_type;  // the kind of index, i64, i128i128, etc
+   vector<field_name> key_names;   // names for the keys defined by key_types
+   vector<type_name>  key_types;   // the type of key parameters
+   type_name          type;        // type of binary data stored in this table
 };
 
 struct abi_def {

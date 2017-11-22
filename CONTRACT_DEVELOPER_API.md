@@ -8,12 +8,12 @@ the APIs exposed to WebAssembly by the blockchain environment and explains how t
 All accounts have immutable names and can send messages to other accounts. Every message has the following fields:
 
 ```
-struct Message
-   sender      AccountName 
-   recipient   AccountName
-   notify      AccountName[]
-   type        TypeName
-   data        Bytes
+struct message
+   sender      account_name 
+   recipient   account_name
+   notify      account_name[]
+   type        type_name
+   data        bytes
 ```
 
 Every message has a `type` which can be viewed like a function name and `data` which could be viewed as arguments. Every account

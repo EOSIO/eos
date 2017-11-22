@@ -5,11 +5,26 @@ endif()
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling steemd with TCMalloc")
+    message( STATUS "Found gperftools; compiling with TCMalloc")
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-find_package(Intl)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
+  find_package(Git)
+  if(GIT_FOUND)
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+      OUTPUT_VARIABLE "eosc_BUILD_VERSION"
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Git commit revision: ${eosc_BUILD_VERSION}")
+  else()
+    set(eosc_BUILD_VERSION 0)
+  endif()
+endif()
+
+find_package(Intl REQUIRED)
 
 set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
 set(LOCALEDOMAIN eosioc)

@@ -10,7 +10,7 @@ if( GPERFTOOLS_FOUND )
 endif()
 
 target_link_libraries( codegen
-                       PRIVATE fc eos_types ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                       PRIVATE fc eosio_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
    codegen
