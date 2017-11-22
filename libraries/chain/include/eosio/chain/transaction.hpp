@@ -147,7 +147,7 @@ namespace eosio { namespace chain {
     */
    struct deferred_transaction : public transaction
    {
-      uint32_t       id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
+      uint32_t       sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
       account_name   sender; /// receives error handler callback
       time_point_sec execute_after; /// delayed exeuction
    };
@@ -159,6 +159,6 @@ FC_REFLECT( eosio::chain::action, (scope)(name)(authorization)(data) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (read_scope)(write_scope)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
-FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (id)(sender)(execute_after) )
+FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
 
 

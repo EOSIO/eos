@@ -19,6 +19,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/pending_cycle_state.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -392,6 +393,7 @@ namespace eosio { namespace chain {
 
          void _spinup_db();
          void _spinup_fork_db();
+         void _start_cycle();
 
  //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
@@ -402,6 +404,7 @@ namespace eosio { namespace chain {
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block; 
          uint32_t                         _pending_transaction_count = 0; 
+         pending_cycle_state              _pending_cycle;
 
          bool                             _currently_applying_block = false;
          bool                             _currently_replaying_blocks = false;

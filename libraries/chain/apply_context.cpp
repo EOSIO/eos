@@ -1,6 +1,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 
 namespace eosio { namespace chain {
 void apply_context::exec()
@@ -109,7 +110,7 @@ void apply_context::deferred_transaction_start( uint32_t id,
    trx.expiration    = execute_before;
    trx.execute_after = execute_after;
    trx.sender        = receiver; ///< sender is the receiver of the current action
-   trx.id            = id;
+   trx.sender_id     = id;
 
    controller.validate_scope( trx );
 
@@ -134,6 +135,18 @@ void apply_context::deferred_transaction_send( uint32_t id ) {
    FC_ASSERT( dt.actions.size(), "transaction must contain at least one action" );
    controller.check_authorization( dt, flat_set<public_key_type>(), false, {receiver} );
    auto itr = _pending_deferred_transactions.find( id );
+
+   mutable_db.create<generated_transaction_object>( [&]( auto& obj ) {
+       obj.trx_id = dt.id();
+       obj.sender      = receiver;
+       obj.sender_id   = dt.sender_id;
+       obj.expiration  = dt.expiration;
+       obj.delay_until = dt.execute_after;
+       obj.packed_trx.resize( fc::raw::pack_size( dt ) );
+       fc::datastream<char*> ds( obj.packed_trx.data(), obj.packed_trx.size() );
+       fc::raw::pack( ds, dt );
+   });
+
    _pending_deferred_transactions.erase(itr);
 }
 

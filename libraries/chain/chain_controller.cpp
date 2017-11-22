@@ -265,9 +265,19 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
 
+   auto shardnum = _pending_cycle.schedule( trx );
+   if( shardnum == -1 ) { /// schedule conflict start new cycle
+      _start_cycle();
+   }
+
+   auto& bcycle = _pending_block->cycles_summary.back();
+   if( shardnum >= bcycle.size() ) {
+      bcycle.resize( bcycle.size()+1 );
+      bcycle.back().emplace_back( tid );
+   }
+
    _apply_transaction(trx);
    /** for now we will just shove everything into the first shard */
-   _pending_block->cycles_summary[0][0].emplace_back( tid );
    _pending_block->input_transactions.push_back(trx);
 
    // The transaction applied successfully. Merge its changes into the pending block session.
@@ -276,6 +286,18 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
    // notify anyone listening to pending transactions
    on_pending_transaction(trx); 
 }
+
+
+/**
+ *  Wraps up all work for current shards, starts a new cycle, and
+ *  executes any pending transactions 
+ */
+void chain_controller::_start_cycle() {
+   _pending_block->cycles_summary.resize( _pending_block->cycles_summary.size() + 1 );
+   _pending_cycle = pending_cycle_state();
+
+   /// TODO: check for deferred transactions and schedule them
+} // _start_cycle
 
 signed_block chain_controller::generate_block(
    block_timestamp_type when,
@@ -614,86 +636,6 @@ void chain_controller::validate_expiration( const transaction& trx ) const
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 
-/*
-void chain_controller::process_message( const transaction& trx, account_name code,
-                                        const action& message, actionOutput& output, apply_context* parent_context) {
-   apply_context apply_ctx(*this, _db, trx, message, code);
-   apply_message(apply_ctx);
-
-   output.notify.reserve( apply_ctx.notified.size() );
-
-   for( uint32_t i = 0; i < apply_ctx.notified.size(); ++i ) {
-      try {
-         auto notify_code = apply_ctx.notified[i];
-         output.notify.push_back( {notify_code} );
-         process_message(trx, notify_code, message, output.notify.back().output, &apply_ctx);
-      } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
-   }
-
-   // combine inline messages and process
-   if (apply_ctx.inline_messages.size() > 0) {
-      output.inline_transaction = Inlinetransaction(trx);
-      (*output.inline_transaction).messages = std::move(apply_ctx.inline_messages);
-   }
-
-   for( auto& asynctrx : apply_ctx.deferred_transactions ) {
-      digest_type::encoder enc; fc::raw::pack( enc, trx ); fc::raw::pack( enc, asynctrx );
-      auto id = enc.result();
-      auto gtrx = Generatedtransaction(id, asynctrx);
-
-      _db.create<generated_transaction_object>([&](generated_transaction_object& transaction) {
-         transaction.trx = gtrx;
-         transaction.status = generated_transaction_object::PENDING;
-      });
-
-      output.deferred_transactions.emplace_back( gtrx );
-   }
-
-   // propagate used_authorizations up the context chain
-   if (parent_context != nullptr)
-      for (int i = 0; i < apply_ctx.used_authorizations.size(); ++i)
-         if (apply_ctx.used_authorizations[i])
-            parent_context->used_authorizations[i] = true;
-
-   // process_message recurses for each notified account, but we only want to run this check at the top level
-   if (parent_context == nullptr && (_skip_flags & skip_authority_check) == false)
-      EOS_ASSERT(apply_ctx.all_authorizations_used(), tx_irrelevant_auth,
-                 "action declared authorities it did not need: ${unused}",
-                 ("unused", apply_ctx.unused_authorizations())("message", message));
-}
-*/
-
-/*
-void chain_controller::apply_message(apply_context& context)
-{ try {
-    /// context.code => the execution namespace
-    /// message.code / message.type => Event
-    const auto& m = context.msg;
-    auto contract_handlers_itr = apply_handlers.find(context.code);
-    if (contract_handlers_itr != apply_handlers.end()) {
-       auto message_handler_itr = contract_handlers_itr->second.find({m.code, m.type});
-       if (message_handler_itr != contract_handlers_itr->second.end()) {
-          message_handler_itr->second(context);
-          return;
-       }
-    }
-    const auto& recipient = _db.get<account_object,by_name>(context.code);
-    if (recipient.code.size()) {
-       //idump((context.code)(context.msg.type));
-       const uint32_t execution_time =
-          _skip_flags | received_block
-             ? _rcvd_block_txn_execution_time
-             : _skip_flags | created_block
-               ? _create_block_txn_execution_time
-               : _txn_execution_time;
-       const bool is_received_block = _skip_flags & received_block;
-       wasm_interface::get().apply(context, execution_time, is_received_block);
-    }
-
-} FC_CAPTURE_AND_RETHROW((context.msg)) }
-*/
-
-
 void chain_controller::require_scope( const scope_name& scope )const {
    switch( uint64_t(scope) ) {
       case config::eosio_all_scope:
@@ -802,26 +744,17 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       });
 
 
-      /*
-      auto schedule = _admin->get_next_round(_db);
-      auto config   = _admin->get_blockchain_configuration(_db, schedule);
 
-      _db.modify(gpo, [schedule = std::move(schedule), config = std::move(config)] (global_property_object& gpo) {
-         gpo.active_producers = std::move(schedule);
-         gpo.configuration = std::move(config);
-      });
-
-      auto active_producers_authority = types::Authority(config::ProducersAuthorityThreshold, {}, {});
+      auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
       for(auto& name : gpo.active_producers) {
-         active_producers_authority.accounts.push_back({{name, config::ActiveName}, 1});
+         active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
       }
 
       auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name, 
-                                                                         config::active_level_name ) );
+                                                                         config::active_name ) );
       _db.modify(po,[active_producers_authority] (permission_object& po) {
          po.auth = active_producers_authority;
       });
-      */
    }
 } FC_CAPTURE_AND_RETHROW() } 
 
