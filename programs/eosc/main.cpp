@@ -914,6 +914,10 @@ int main( int argc, char** argv ) {
    auto benchmark_setup = benchmark->add_subcommand( "setup", localized("Configures initial condition for benchmark") );
    uint64_t number_of_accounts = 2;
    benchmark_setup->add_option("accounts", number_of_accounts, localized("the number of accounts in transfer among"))->required();
+   string owner_key;
+   string active_key;
+   benchmark_setup->add_option("owner", owner_key, localized("The owner key to use for account creation"))->required();
+   benchmark_setup->add_option("active", active_key, localized("The active key to use for account creation"))->required();
    add_standard_transaction_options(benchmark_setup);
    benchmark_setup->set_callback([&]{
       std::cerr << localized("Creating ${number_of_accounts} accounts with initial balances", ("number_of_accounts",number_of_accounts)) << std::endl;
@@ -925,7 +929,7 @@ int main( int argc, char** argv ) {
       batch.reserve( number_of_accounts );
       for( uint32_t i = 0; i < number_of_accounts; ++i ) {
         name newaccount( name("benchmark").value + i );
-        public_key_type owner, active;
+        public_key_type owner(owner_key), active(active_key);
         name creator("inita" );
 
         auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
@@ -942,6 +946,7 @@ int main( int argc, char** argv ) {
 
         trx.expiration = info.head_block_time + tx_expiration; 
         transaction_set_reference_block(trx, info.head_block_id);
+        sign_transaction(trx);
         batch.emplace_back(trx);
       }
       auto result = call( push_txns_func, batch );
@@ -972,10 +977,11 @@ int main( int argc, char** argv ) {
          transaction_emplace_message(trx, config::eos_contract_name,
                                               vector<types::account_permission>{{sender,"active"}},
                                               "transfer", types::transfer{sender, recipient, amount, memo});
-         trx.expiration = info.head_block_time + tx_expiration; 
+         trx.expiration = info.head_block_time + fc::seconds(1800);
          transaction_set_reference_block(trx, info.head_block_id);
-
+         sign_transaction(trx);
          batch.emplace_back(trx);
+          std::cout << fc::json::to_pretty_string(trx) << std::endl;
          if( batch.size() == 100 ) {
             auto result = call( push_txns_func, batch );
       //      std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -1009,13 +1015,15 @@ int main( int argc, char** argv ) {
             transaction_emplace_message(trx, config::eos_contract_name,
                                                  vector<types::account_permission>{{sender,"active"}},
                                                  "transfer", types::transfer{sender, recipient, amount, memo});
-            trx.expiration = info.head_block_time + tx_expiration; 
+
+            trx.expiration = info.head_block_time + fc::seconds(1800);
             transaction_set_reference_block(trx, info.head_block_id);
 
+            sign_transaction(trx);
             batch.emplace_back(trx);
             if( batch.size() == 600 ) {
                auto result = call( push_txns_func, batch );
-               //std::cout << fc::json::to_pretty_string(result) << std::endl;
+               std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);
             }
          }
