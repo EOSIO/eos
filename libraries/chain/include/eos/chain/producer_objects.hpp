@@ -18,8 +18,6 @@
 namespace eosio {
 namespace chain {
 
-namespace config = ::eosio::config;
-namespace types = ::eosio::types;
 
 FC_DECLARE_EXCEPTION(producer_race_overflow_exception, 10000000, "Producer Virtual Race time has overflowed");
 
