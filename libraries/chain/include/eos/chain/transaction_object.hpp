@@ -26,10 +26,10 @@ namespace eosio { namespace chain {
          OBJECT_CTOR(transaction_object)
 
          id_type             id;
-         signed_transaction  trx;
+         time_point_sec      expiration;
          transaction_id_type trx_id;
 
-         time_point_sec get_expiration()const { return trx.expiration; }
+         time_point_sec get_expiration()const { return expiration; }
    };
 
    struct by_expiration;
@@ -48,4 +48,4 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
 
-FC_REFLECT( eosio::chain::transaction_object, (trx)(trx_id) )
+FC_REFLECT( eosio::chain::transaction_object, (expiration)(trx_id) )

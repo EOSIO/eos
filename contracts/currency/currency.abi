@@ -10,13 +10,13 @@
       "fields": {
         "from": "account_name",
         "to": "account_name",
-        "amount": "uint64"
+        "quantity": "uint64"
       }
     },{
       "name": "account",
       "base": "",
       "fields": {
-        "key": "uint64",
+        "key": "name",
         "balance": "uint64"
       }
     }
@@ -30,7 +30,7 @@
       "table_name": "account",
       "type": "account",
       "index_type": "i64",
-      "key_names" : ["account"],
+      "key_names" : ["key"],
       "key_types" : ["name"]
     }
   ]

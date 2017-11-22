@@ -523,13 +523,13 @@
         "fields": {
           "from": "account_name",
           "to": "account_name",
-          "amount": "uint64"
+          "quantity": "uint64"
         }
       },{
         "name": "account",
         "base": "",
         "fields": {
-          "account": "name",
+          "key": "name",
           "balance": "uint64"
         }
       }
@@ -543,7 +543,7 @@
         "table_name": "account",
         "index_type": "i64",
         "key_names": [
-          "account"
+          "key"
         ],
         "keytype": [],
         "type": "account"
@@ -555,7 +555,7 @@
   From the above abi, we can see that `currency` contract accepts an action called `transfer` that accepts message with fields `from`, `to`, and `amount`.
 
   ```
-  $ ./eosc push message currency transfer '{"from":"currency","to":"tester","amount":50}' -S currency -S tester -p currency@active
+  $ ./eosc push message currency transfer '{"from":"currency","to":"tester","quantity":50}' -S currency -S tester -p currency@active
   1589302ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
   1589304ms thread-0   main.cpp:290                  operator()           ] Transaction result:
   {
@@ -606,7 +606,7 @@
   Now we can transfer it from `tester` to `inita` and require the permission of `tester`.  This should drain the balance of `tester` to 0.
 
   ```
-  $ ./eosc push message currency transfer '{"from":"tester","to":"inita","amount":50}' -S inita -S tester -p tester@active
+  $ ./eosc push message currency transfer '{"from":"tester","to":"inita","quantity":50}' -S inita -S tester -p tester@active
   3116153ms thread-0   main.cpp:271                  operator()           ] Converting argument to binary...
   3116154ms thread-0   main.cpp:290                  operator()           ] Transaction result:
   {
@@ -680,7 +680,7 @@
 
   After doing the transfer action on `currency` contract, we can verify the amount of token held by each account by looking at `currency`'s `account` table.
 
-  This table is stored on the scope of each account instead of on `currency` scope.
+  This table is stored on the scope of each account instead of on `currency` scope. The key of "account" is hard coded since retrieved by scope.
 
   ```
   $./eosc get table tester currency account
@@ -691,7 +691,7 @@
   $./eosc get table inita currency account
   {
     "rows": [{
-        "account": "account",
+        "key": "account",
         "balance": 50
       }
     ],

@@ -409,9 +409,14 @@ count=`echo $INFO | grep -c "1000000000"`
 if [ $count == 0 ]; then
   error "FAILURE - get table currency account failed: $INFO"
 fi
+count=`echo $INFO | grep -c "account"`
+if [ $count == 0 ]; then
+  error "FAILURE - get table currency account failed: $INFO"
+fi
 
 # push message to currency contract
-INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active)"
+
+INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 push message currency transfer '{"from":"currency","to":"inita","quantity":50}' --scope currency,inita --permission currency@active)"
 verifyErrorCode "eosc push message currency transfer"
 getTransactionId "$INFO"
 
@@ -486,10 +491,12 @@ while [ "$NEXT_BLOCK_NUM" -le "$HEAD_BLOCK_NUM" ]; do
   NEXT_BLOCK_NUM=$((NEXT_BLOCK_NUM+1))
 done
 
-ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
-count=`grep -c Assert tn_data_0/stderr.txt`
-if [ $count != 0 ]; then
-  error "FAILURE - Assert in tn_data_0/stderr.txt"
+if [ "$SERVER" == "localhost" ]; then
+  ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
+  count=`grep -c Assert tn_data_0/stderr.txt`
+  if [ "$count" != "0" ]; then
+    error "FAILURE - Assert in tn_data_0/stderr.txt"
+  fi
 fi
 
 killAll

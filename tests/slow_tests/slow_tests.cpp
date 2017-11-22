@@ -199,7 +199,7 @@ BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
 
    // Fast forward to when we can liquidate
    wlog("Hang on, this will take a minute...");
-   chain.produce_blocks(config::staked_balance_cooldown_seconds / config::block_interval_seconds + 1);
+   chain.produce_blocks(config::staked_balance_cooldown_seconds / config::default_block_interval_seconds + 1);
 
    BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, asset(21).amount), chain::message_precondition_exception);
    BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(135).amount);
@@ -314,7 +314,10 @@ void WithdrawCurrency( testing_blockchain& chain, account_name from, account_nam
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
-      Make_Blockchain(chain, fc::time_point_sec(10), 100000, fc::time_point_sec(10), 100000);
+      chain_controller::txn_msg_limits rate_limit = { fc::time_point_sec(10), 100000, fc::time_point_sec(10), 100000 };
+      Make_Blockchain(chain, ::eosio::chain_plugin::default_transaction_execution_time,
+            ::eosio::chain_plugin::default_received_block_transaction_execution_time,
+            ::eosio::chain_plugin::default_create_block_transaction_execution_time, rate_limit);
       chain.produce_blocks(10);
       Make_Account(chain, currency);
       chain.produce_blocks(1);

@@ -43,6 +43,9 @@
 #include "table_abi_test/table_abi_test.wast.hpp"
 #include "table_abi_test/table_abi_test.abi.hpp"
 
+#include <eos/chain/staked_balance_objects.hpp>
+#include <eos/chain/balance_object.hpp>
+
 FC_REFLECT( dummy_message, (a)(b)(c) );
 FC_REFLECT( u128_msg, (values) );
 
@@ -132,7 +135,7 @@ string readFile2(const string &fileName)
 
 uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   //std::cerr << CLASS << "::" << METHOD << std::endl;
-  return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) ); 
+  return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 } 
 
 #define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, message{"testapi", AUTH, TYPE}, DATA)
@@ -150,6 +153,7 @@ bool is_access_violation(fc::unhandled_exception const & e) {
    return false;
 }
 
+bool is_api_not_supported(api_not_supported const & e) { return true;}
 bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
 bool is_tx_missing_scope(tx_missing_scope const& e) { return true; }
@@ -419,7 +423,8 @@ BOOST_FIXTURE_TEST_CASE(test_all, testing_fixture)
          transaction_exception, is_tx_resource_exhausted_or_checktime );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_message_inline_fail"), {}, {} ),
          fc::assert_exception, is_assert_exception );
-      BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction"), {}, {}) == WASM_TEST_PASS, "test_transaction::send_message()");
+      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction"), {}, {} ),
+         api_not_supported, is_api_not_supported );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_empty"), {}, {} ),
          tx_unknown_argument, is_tx_unknown_argument );
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_transaction", "send_transaction_large"), {}, {} ),
@@ -649,5 +654,106 @@ TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64_with_i128i128, ldinotii, t
 TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i128i128_with_i64i64i64, ldiinotiii, table_abi_test_wast, table_abi_test_abi)
 
 TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64i64i64_with_str, ldiiinotstr, table_abi_test_wast, table_abi_test_abi)
+
+#define VERIFY_DB_KEY_TYPES(KEY_TYPE) \
+{ try { \
+   auto wasm = assemble_wast( test_api_wast ); \
+   \
+   Make_Blockchain(chain, 5000, \
+         ::eosio::chain_plugin::default_received_block_transaction_execution_time, \
+         ::eosio::chain_plugin::default_create_block_transaction_execution_time, chain_controller::txn_msg_limits {}); \
+   chain.produce_blocks(2); \
+   Make_Account(chain, testapi); \
+   Make_Account(chain, dblimits); \
+   Make_Account(chain, another); \
+   chain.produce_blocks(1); \
+   \
+   types::setcode handler; \
+   handler.code.resize(wasm.size()); \
+   memcpy( handler.code.data(), wasm.data(), wasm.size() ); \
+   \
+   send_set_code_message(chain, handler, "testapi"); \
+   send_set_code_message(chain, handler, "another"); \
+   \
+   /* setup the limit */ \
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_setup_limit"), {}, {}, {N(dblimits)} ) == WASM_TEST_PASS, "test_db::key_" KEY_TYPE "_setup_limit()" ); \
+   /* verify exception for exceeding limit */ \
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_min_exceed_limit"), {}, {}, {N(dblimits)} ), \
+         tx_code_db_limit_exceeded, [](const tx_code_db_limit_exceeded& e) -> bool { return e.to_detail_string().find("Database limit exceeded") != std::string::npos; } ); \
+   /* verify we can update and be under limit */ \
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_under_limit"), {}, {}, {N(dblimits)} ) == WASM_TEST_PASS, "test_db::key_" KEY_TYPE "_under_limit()" ); \
+   /* verify exception for allocating more than remainder */ \
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_available_space_exceed_limit"), {}, {}, {N(dblimits)} ), \
+         tx_code_db_limit_exceeded, [](const tx_code_db_limit_exceeded& e) -> bool { return e.to_detail_string().find("Database limit exceeded") != std::string::npos; } ); \
+   /* verify removing and updating under limit is allowed */ \
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_another_under_limit"), {}, {}, {N(dblimits)} ) == WASM_TEST_PASS, "test_db::key_" KEY_TYPE "_another_under_limit()" ); \
+   /* verify exception for exceeding limit */ \
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_db", "key_" KEY_TYPE "_min_exceed_limit"), {}, {}, {N(dblimits)} ), \
+         tx_code_db_limit_exceeded, [](const tx_code_db_limit_exceeded& e) -> bool { return e.to_detail_string().find("Database limit exceeded") != std::string::npos; } ); \
+} FC_LOG_AND_RETHROW() }
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_str, testing_fixture)
+   VERIFY_DB_KEY_TYPES("str")
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i64, testing_fixture)
+   VERIFY_DB_KEY_TYPES("i64")
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i128i128, testing_fixture)
+   VERIFY_DB_KEY_TYPES("i128i128")
+
+//Test logic for database storage limiting
+BOOST_FIXTURE_TEST_CASE(test_database_limiting_for_i64i64i64, testing_fixture)
+   VERIFY_DB_KEY_TYPES("i64i64i64")
+
+//Test logic for preventing reducing page memory
+BOOST_FIXTURE_TEST_CASE(test_account_api_balance, testing_fixture)
+{ try {
+   //auto wasm = assemble_wast( readFile2("/home/matu/Documents/Dev/eos/build/contracts/test_api/test_api.wast").c_str() );
+   auto wasm = assemble_wast( test_api_wast );
+
+   Make_Blockchain(chain);
+   chain.produce_blocks(2);
+   Make_Account(chain, testapi);
+   Make_Account(chain, acc1);
+   chain.produce_blocks(1);
+
+   //Set test code
+   types::setcode handler;
+   handler.code.resize(wasm.size());
+   memcpy( handler.code.data(), wasm.data(), wasm.size() );
+
+   send_set_code_message(chain, handler, "testapi");
+
+   eosio::chain::signed_transaction trx;
+   trx.scope = sort_names({"acc1","inita"});
+   transaction_emplace_message(trx, "eos",
+                      vector<types::account_permission>{ {"inita","active"} },
+                      "transfer", types::transfer{"inita", "acc1", 1000,""});
+   trx.expiration = chain.head_block_time() + 100;
+   transaction_set_reference_block(trx, chain.head_block_id());
+   chain.push_transaction(trx);
+   chain.produce_blocks(1);
+
+   const auto& balance        = chain_db.get<eosio::chain::balance_object,eosio::chain::by_owner_name>( "acc1" );
+   const auto& staked_balance = chain_db.get<eosio::chain::staked_balance_object,eosio::chain::by_owner_name>( "acc1" );
+
+   // manually set balance so it can be verified in test_account
+   chain_db.modify(balance, [](eosio::chain::balance_object& bo) {
+      bo.balance = 24;
+   });
+   chain_db.modify(staked_balance, [](eosio::chain::staked_balance_object& sbo) {
+      sbo.staked_balance = 23;
+      sbo.unstaking_balance = 14;
+      sbo.last_unstaking_time = types::time(55);
+   });
+
+   // Test account
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( TEST_METHOD("test_account", "test_balance_acc1"), {}, {} ),tx_missing_scope, is_tx_missing_scope );
+   vector<account_name> scope = sort_names({"testapi", "acc1"});
+   BOOST_CHECK_MESSAGE( CALL_TEST_FUNCTION_SCOPE( TEST_METHOD("test_account", "test_balance_acc1"), {}, {}, scope ) == WASM_TEST_PASS, "test_account::test_balance_acc1()" );
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

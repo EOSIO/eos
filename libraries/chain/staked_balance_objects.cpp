@@ -2,16 +2,15 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/native_contract/staked_balance_objects.hpp>
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/staked_balance_objects.hpp>
+#include <eos/chain/producer_objects.hpp>
 
 #include <eos/chain/global_property_object.hpp>
 
 #include <boost/range/algorithm/for_each.hpp>
 
-namespace native {
 namespace eosio {
-using namespace eosio::chain;
+namespace chain {
 using namespace eosio::types;
 
 void staked_balance_object::stake_tokens(share_type new_stake, chainbase::database& db) const {
@@ -57,4 +56,4 @@ void staked_balance_object::propagate_votes(share_type stake_delta, chainbase::d
    }
 }
 
-} } // namespace native::eos
+} } // namespace eosio::chain

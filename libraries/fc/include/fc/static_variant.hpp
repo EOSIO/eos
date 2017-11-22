@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <typeinfo>
 #include <fc/exception/exception.hpp>
+#include <boost/core/typeinfo.hpp>
 
 namespace fc {
 
@@ -385,5 +386,5 @@ struct visitor {
       s.visit( to_static_variant(ar[1]) );
    }
 
-  template<typename... T> struct get_typename { static const char* name()   { return typeid(static_variant<T...>).name();   } };
+  template<typename... T> struct get_typename { static const char* name()   { return BOOST_CORE_TYPEID(static_variant<T...>).name();   } };
 } // namespace fc

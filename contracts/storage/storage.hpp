@@ -95,7 +95,7 @@ namespace TOKEN_NAME {
    /**
    Defines the database table for account information
    **/
-   using accounts = table<N(storage),N(storage),N(account),account,uint64_t>;
+   using accounts = eosio::table<N(storage),N(storage),N(account),account,uint64_t>;
 
    /**
     *  accounts information for owner is stored:

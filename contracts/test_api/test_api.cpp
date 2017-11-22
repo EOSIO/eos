@@ -5,6 +5,7 @@
 #include <eoslib/eos.hpp>
 #include "test_api.hpp"
 
+#include "test_account.cpp"
 #include "test_chain.cpp"
 #include "test_crypto.cpp"
 #include "test_db.cpp"
@@ -70,6 +71,26 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
       WASM_TEST_HANDLER(test_db, key_str_general);
       WASM_TEST_HANDLER(test_db, key_str_table);
+      WASM_TEST_HANDLER(test_db, key_str_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_str_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_str_under_limit);
+      WASM_TEST_HANDLER(test_db, key_str_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_str_another_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_another_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_another_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_another_under_limit);
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_sha256);
@@ -128,6 +149,10 @@ extern "C" {
       WASM_TEST_HANDLER(test_real, test_addition);
       WASM_TEST_HANDLER(test_real, test_multiplication);
       WASM_TEST_HANDLER(test_real, test_division);
+
+      // test account
+      WASM_TEST_HANDLER(test_account, test_balance_acc1);
+
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }

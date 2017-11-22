@@ -6,7 +6,7 @@
 #include <fc/exception/exception.hpp>
 #include <eos/types/native.hpp>
 
-/// eos with 8 digits of precision
+/// eos with 4 digits of precision
 #define EOS_SYMBOL  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
 
 /// Defined to be largest power of 10 that fits in 53 bits of precision

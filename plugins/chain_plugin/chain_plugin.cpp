@@ -9,13 +9,14 @@
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/config.hpp>
 #include <eos/chain/types.hpp>
+#include <eos/chain/wasm_interface.hpp>
 
 #include <eos/db_plugin/db_plugin.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
-#include <eos/native_contract/staked_balance_objects.hpp>
-#include <eos/native_contract/balance_object.hpp>
+#include <eos/chain/staked_balance_objects.hpp>
+#include <eos/chain/balance_object.hpp>
 #include <eos/native_contract/genesis_state.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
@@ -26,7 +27,6 @@
 
 namespace eosio {
 
-using namespace eosio;
 using fc::flat_map;
 using chain::block_id_type;
 using chain::fork_database;
@@ -39,7 +39,7 @@ using chain::key64x64x64_value_object;
 using chain::by_name;
 using chain::by_scope_primary;
 using chain::uint128_t;
-using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
+using txn_msg_limits = chain_controller::txn_msg_limits;
 
 
 class chain_plugin_impl {
@@ -53,18 +53,19 @@ public:
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
-   fc::optional<chain_controller>   chain;
+   std::unique_ptr<chain_controller>   chain;
    chain_id_type                    chain_id;
+   uint32_t                         block_interval_seconds;
    uint32_t                         rcvd_block_txn_execution_time;
    uint32_t                         txn_execution_time;
    uint32_t                         create_block_txn_execution_time;
-   txn_msg_rate_limits              rate_limits;
+   txn_msg_limits                   cfg_txn_msg_limits;
 };
 
 #ifdef NDEBUG
 const uint32_t chain_plugin::default_received_block_transaction_execution_time = 12;
-const uint32_t chain_plugin::default_transaction_execution_time = 3;
-const uint32_t chain_plugin::default_create_block_transaction_execution_time = 3;
+const uint32_t chain_plugin::default_transaction_execution_time = 5;
+const uint32_t chain_plugin::default_create_block_transaction_execution_time = 5;
 #else
 const uint32_t chain_plugin::default_received_block_transaction_execution_time = 72;
 const uint32_t chain_plugin::default_transaction_execution_time = 18;
@@ -85,6 +86,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
+         ("block-interval-seconds", bpo::value<uint32_t>()->default_value(config::default_block_interval_seconds),
+          "Sets the block interval in seconds.")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_received_block_transaction_execution_time),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
@@ -92,14 +95,18 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
          ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_create_block_transaction_execution_time),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
-         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_time_frame_seconds),
+         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_rate_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
-         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_auth_account),
+         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_rate),
           "Limits the maximum rate of transaction messages that an account is allowed each per-authorized-account-transaction-msg-rate-limit-time-frame-sec.")
-          ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_code_account_time_frame_seconds),
-           "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
-          ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_code_account),
-           "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
+         ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_code_account_rate_time_frame_seconds),
+          "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
+         ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_code_account_rate),
+          "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
+         ("per-code-account-max-storage-db-limit-mbytes", bpo::value<uint32_t>()->default_value(config::default_per_code_account_max_db_limit_mbytes),
+          "Limits the maximum database storage that an account's code is allowed.")
+         ("row-overhead-db-limit-bytes", bpo::value<uint32_t>()->default_value(config::default_row_overhead_db_limit_bytes),
+          "The overhead to apply per row for approximating total database storage.")
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -114,6 +121,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
+   // option block-interval-seconds default set to config::default_block_interval_seconds
+   my->block_interval_seconds = options.at("block-interval-seconds").as<uint32_t>();
+
    if(options.count("genesis-json")) {
       my->genesis_file = options.at("genesis-json").as<bfs::path>();
    }
@@ -121,9 +131,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
      string tstr = options.at("genesis-timestamp").as<string>();
      if (strcasecmp (tstr.c_str(), "now") == 0) {
        my->genesis_timestamp = fc::time_point::now();
-       auto diff = my->genesis_timestamp.sec_since_epoch() % config::block_interval_seconds;
+       auto diff = my->genesis_timestamp.sec_since_epoch() % my->block_interval_seconds;
        if (diff > 0) {
-         auto delay =  (config::block_interval_seconds - diff);
+         auto delay = (my->block_interval_seconds - diff);
          my->genesis_timestamp += delay;
          dlog ("pausing ${s} seconds to the next interval",("s",delay));
        }
@@ -185,11 +195,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->txn_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
    my->create_block_txn_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
 
-   my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_auth_account = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
+   my->cfg_txn_msg_limits.per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
+   my->cfg_txn_msg_limits.per_auth_account_txn_msg_rate = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
 
-   my->rate_limits.per_code_account_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_code_account = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
+   my->cfg_txn_msg_limits.per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
+   my->cfg_txn_msg_limits.per_code_account_txn_msg_rate = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
+
+   chain::wasm_interface::get().per_code_account_max_db_limit_mbytes = options.at("per-code-account-max-storage-db-limit-mbytes").as<uint32_t>();
+   chain::wasm_interface::get().row_overhead_db_limit_bytes = options.at("row-overhead-db-limit-bytes").as<uint32_t>();
 }
 
 void chain_plugin::plugin_startup() 
@@ -217,13 +230,14 @@ void chain_plugin::plugin_startup()
    my->fork_db = fork_database();
    my->block_logger = block_log(my->block_log_dir);
    my->chain_id = genesis.compute_chain_id();
-   my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
-                                initializer, native_contract::make_administrator(),
-                                my->txn_execution_time,
-                                my->rcvd_block_txn_execution_time,
-                                my->create_block_txn_execution_time,
-                                my->rate_limits,
-                                applied_func);
+   my->chain.reset(new chain_controller(db, *my->fork_db, *my->block_logger,
+                                        initializer, native_contract::make_administrator(),
+                                        my->block_interval_seconds,
+                                        my->txn_execution_time,
+                                        my->rcvd_block_txn_execution_time,
+                                        my->create_block_txn_execution_time,
+                                        my->cfg_txn_msg_limits,
+                                        applied_func));
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
@@ -287,7 +301,15 @@ const string read_only::SECONDARY = "secondary";
 const string read_only::TERTIARY = "tertiary";
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+   auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t)<<1) {
+    static const char* digits = "0123456789abcdef";
+    std::string r(hlen, '0');
+    for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
+      r[i] = digits[(n>>j) & 0x0f];
+    return r;
+  };
    return {
+      itoh(static_cast<uint32_t>(app().version_int())),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.head_block_id(),
@@ -401,7 +423,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-   using namespace native::eosio;
+   using namespace eosio::chain;
 
    get_account_results result;
    result.account_name = params.account_name;
@@ -458,4 +480,4 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 
 } // namespace chain_apis
-} // namespace eos
+} // namespace eosio

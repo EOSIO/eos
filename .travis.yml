@@ -18,6 +18,7 @@ matrix:
             - g++-6
             - ninja-build
             - libgmp-dev
+            - libclang-4.0-dev
       env: COMPILER=clang++-4.0
     - os: linux
       dist: trusty
@@ -33,6 +34,7 @@ matrix:
             - g++-7
             - ninja-build
             - libgmp-dev
+            - libclang-4.0-dev
       env: COMPILER=g++-7
     - os: osx
       osx_image: xcode9.1
@@ -50,6 +52,7 @@ before_install:
       export CC=/usr/local/opt/llvm@4/bin/clang
       export CXX=/usr/local/opt/llvm@4/bin/clang++
       export LLVM_DIR=/usr/local/opt/llvm@4/lib/cmake/llvm
+      export LDFLAGS="-L/usr/local/opt/llvm@4/lib"
       MONGOCXX_CMAKE_OPTIONS="-DLIBBSON_DIR=/usr/local -DLIBMONGOC_DIR=/usr/local"
       EOS_CMAKE_OPTIONS="-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
     else
@@ -109,10 +112,11 @@ script:
   - mkdir build && cd build
   - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release $EOS_CMAKE_OPTIONS ..
   - ninja $EOS_BUILD_OPTIONS
-  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosd_run_test.sh --host=localhost --port=8888'
-  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/chain_test'
+  - tests/eosd_run_test.sh --host=localhost --port=8888
+  - '[ "$TRAVIS_OS_NAME" == "osx" ] || EOSLIB=../contracts tests/chain_test'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/slow_test'
-  - tests/api_test
+  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/api_test'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/p2p_tests/sync/test.sh'
-  - tests/p2p_tests/sync/test.sh -p 2 -d 10
+  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/p2p_tests/sync/test.sh -p 2 -d 10'
+  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/run_tests.sh'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosd_run_mongodb_test.sh'

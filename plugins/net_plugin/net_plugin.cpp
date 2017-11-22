@@ -1588,6 +1588,8 @@ namespace eosio {
               }
             }
             */
+            /* Commented out when signed_transaction removed from transaction_object.
+               This code needs to be re-evaluated when block summaries are reworked.
             for( auto &ut : cyc_thr_id.user_trx ) {
               // auto ltxn = local_txns.get<by_id>().find(ut);
 
@@ -1607,6 +1609,7 @@ namespace eosio {
                 break;
               }
             }
+            */
             if( fetch_error ){
               break;
             }
@@ -2057,23 +2060,23 @@ namespace eosio {
     }
 
     chain::public_key_type net_plugin_impl::get_authentication_key() const {
+      if(!private_keys.empty())
+        return private_keys.begin()->first;
       producer_plugin* pp = app().find_plugin<producer_plugin>();
       if(pp != nullptr)
         return pp->first_producer_public_key();
-      if(!private_keys.empty())
-        return private_keys.begin()->first;
       return chain::public_key_type();
     }
 
     fc::ecc::compact_signature net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
     {
+      auto private_key_itr = private_keys.find(signer);
+      if(private_key_itr != private_keys.end())
+        return private_key_itr->second.sign_compact(digest);
       producer_plugin* pp = app().find_plugin<producer_plugin>();
       if(pp != nullptr)
         return pp->sign_compact(signer, digest);
-      auto private_key_itr = private_keys.find(signer);
-      if(private_key_itr == private_keys.end())
-        return ecc::compact_signature();
-      return private_key_itr->second.sign_compact(digest);
+      return ecc::compact_signature();
     }
 
   void

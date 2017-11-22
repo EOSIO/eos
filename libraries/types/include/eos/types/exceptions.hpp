@@ -21,4 +21,4 @@ namespace eosio { namespace types {
    FC_DECLARE_DERIVED_EXCEPTION(invalid_schema_exception, type_exception,
                                 4050000, "Schema is invalid")
 
-} } // eosio::chain
+} } // eosio::types

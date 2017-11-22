@@ -23,10 +23,11 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(rate_limiting_object)
       id_type             id;
       account_name        name;
-      fc::time_point_sec  per_auth_account_last_update_sec;
-      uint32_t            per_auth_account_txn_msg_rate    = 0;
-      fc::time_point_sec  per_code_account_last_update_sec;
-      uint32_t            per_code_account_txn_msg_rate    = 0;
+      fc::time_point_sec  per_auth_account_txn_msg_rate_last_update_sec;
+      uint32_t            per_auth_account_txn_msg_rate = 0;
+      fc::time_point_sec  per_code_account_txn_msg_rate_last_update_sec;
+      uint32_t            per_code_account_txn_msg_rate = 0;
+      int64_t             per_code_account_db_bytes = 0;
    };
    using rate_limiting_id_type = rate_limiting_object::id_type;
 
@@ -45,4 +46,4 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::rate_limiting_object, eosio::chain::rate_
 
 FC_REFLECT(chainbase::oid<eosio::chain::rate_limiting_object>, (_id))
 
-FC_REFLECT(eosio::chain::rate_limiting_object, (id)(name)(per_auth_account_last_update_sec)(per_auth_account_txn_msg_rate)(per_code_account_last_update_sec)(per_code_account_txn_msg_rate))
+FC_REFLECT(eosio::chain::rate_limiting_object, (id)(name)(per_auth_account_txn_msg_rate_last_update_sec)(per_auth_account_txn_msg_rate)(per_code_account_txn_msg_rate_last_update_sec)(per_code_account_txn_msg_rate))

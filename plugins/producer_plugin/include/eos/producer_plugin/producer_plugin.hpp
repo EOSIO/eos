@@ -50,4 +50,4 @@ private:
    std::unique_ptr<class producer_plugin_impl> my;
 };
 
-} //eos
+} //eosio

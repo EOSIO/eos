@@ -43,7 +43,7 @@ public:
 class simple_symbol_table : public abstract_symbol_table {
 public:
    simple_symbol_table():
-      known({ "field", "struct_t", "asset", "share_type", "name", "fixed_string16", "fixed_string32",
+      known({ "field", "struct_t", "asset", "share_type", "name", "field_name", "fixed_string16", "fixed_string32",
             "uint8", "uint16", "uint32", "uint64",
             "uint128", "checksum", "uint256", "UInt512",
             "int8", "int16", "int32", "int64",

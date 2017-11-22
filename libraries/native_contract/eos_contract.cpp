@@ -10,12 +10,12 @@
 #include <eos/chain/exceptions.hpp>
 
 #include <eos/chain/account_object.hpp>
-#include <eos/native_contract/balance_object.hpp>
+#include <eos/chain/balance_object.hpp>
 #include <eos/chain/permission_object.hpp>
 #include <eos/chain/permission_link_object.hpp>
 #include <eos/chain/global_property_object.hpp>
-#include <eos/native_contract/staked_balance_objects.hpp>
-#include <eos/native_contract/producer_objects.hpp>
+#include <eos/chain/staked_balance_objects.hpp>
+#include <eos/chain/producer_objects.hpp>
 #include <eos/chain/producer_object.hpp>
 
 #include <eos/chain/wasm_interface.hpp>
@@ -494,5 +494,5 @@ void apply_eos_unlinkauth(apply_context& context) {
       db.remove(*link);
 }
 
-} // namespace eos
+} // namespace eosio
 } // namespace native

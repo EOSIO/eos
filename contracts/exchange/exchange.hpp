@@ -9,6 +9,7 @@ namespace exchange {
    using currency::currency_tokens;
    using eos_tokens = eosio::tokens;
 
+   //@abi action cancelbuy cancelsell
    struct order_id {
       account_name name    = 0;
       uint64_t    number  = 0;
@@ -16,10 +17,11 @@ namespace exchange {
 
    typedef eosio::price<eos_tokens,currency_tokens>     price;
 
+   //@abi table
    struct PACKED( bid ) {
       order_id           buyer;
       price              at_price;
-      eosio::tokens        quantity;
+      eosio::tokens      quantity;
       time               expiration;
 
       void print() {
@@ -28,6 +30,7 @@ namespace exchange {
    };
    static_assert( sizeof(bid) == 32+12, "unexpected padding" );
 
+   //@abi table 
    struct PACKED( ask ) {
       order_id         seller;
       price            at_price;
@@ -40,6 +43,7 @@ namespace exchange {
    };
    static_assert( sizeof(ask) == 32+12, "unexpected padding" );
 
+   //@abi table i64
    struct PACKED( account ) {
       account( account_name o = account_name() ):owner(o){}
 
@@ -51,13 +55,17 @@ namespace exchange {
       bool is_empty()const { return ! ( bool(eos_balance) | bool(currency_balance) | open_orders); }
    };
 
-   using accounts = table<N(exchange),N(exchange),N(account),account,uint64_t>;
+   using accounts = eosio::table<N(exchange),N(exchange),N(account),account,uint64_t>;
 
    TABLE2(bids,exchange,exchange,bids,bid,bids_by_id,order_id,bids_by_price,price);
    TABLE2(asks,exchange,exchange,asks,ask,asks_by_id,order_id,asks_by_price,price);
 
 
+
+   //@abi action buy
    struct buy_order : public bid  { uint8_t fill_or_kill = false; };
+
+   //@abi action sell
    struct sell_order : public ask { uint8_t fill_or_kill = false; };
 
 
@@ -65,6 +73,7 @@ namespace exchange {
       account owned_account(owner);
       accounts::get( owned_account );
       return owned_account;
+
    }
 }
 

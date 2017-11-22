@@ -37,15 +37,19 @@ namespace eosio { namespace chain {
     */
    class chain_controller {
       public:
-         struct txn_msg_rate_limits;
+         struct txn_msg_limits;
 
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
                           chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
+                          uint32_t block_interval_seconds,
                           uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                           uint32_t create_block_txn_execution_time,
-                          const txn_msg_rate_limits& rate_limit,
+                          const txn_msg_limits& rate_limit,
                           const applied_irreverisable_block_func& applied_func = {});
-         chain_controller(chain_controller&&) = default;
+         chain_controller(const chain_controller&) = delete;
+         chain_controller(chain_controller&&) = delete;
+         chain_controller& operator=(const chain_controller&) = delete;
+         chain_controller& operator=(chain_controller&&) = delete;
          ~chain_controller();
 
          /**
@@ -117,7 +121,6 @@ namespace eosio { namespace chain {
          block_id_type               get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>      fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>      fetch_block_by_number( uint32_t num )const;
-         const signed_transaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type>  get_block_ids_on_fork(block_id_type head_of_fork)const;
          const generated_transaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
 
@@ -130,7 +133,7 @@ namespace eosio { namespace chain {
 
          /**
           * This method will convert a signed transaction into a human-friendly variant that can be
-          * converted to JSON.  
+          * converted to JSON.
           */
          fc::variant       transaction_to_variant( const processed_transaction& trx )const;
 
@@ -185,7 +188,7 @@ namespace eosio { namespace chain {
 
 
          template<typename Function>
-         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))())
          {
             auto old_flags = _skip_flags;
             auto on_exit   = fc::make_scoped_exit( [&](){ _skip_flags = old_flags; } );
@@ -194,11 +197,11 @@ namespace eosio { namespace chain {
          }
 
          template<typename Function>
-         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))())
          {
             auto old_pending = std::move( _pending_transactions );
             _pending_tx_session.reset();
-            auto on_exit = fc::make_scoped_exit( [&](){ 
+            auto on_exit = fc::make_scoped_exit( [&](){
                for( const auto& t : old_pending ) {
                   try {
                      if (!is_known_transaction(t.id()))
@@ -257,14 +260,14 @@ namespace eosio { namespace chain {
          block_id_type    head_block_id()const;
          account_name     head_block_producer()const;
 
-         uint32_t block_interval()const { return config::block_interval_seconds; }
+         uint32_t block_interval()const { return _block_interval_seconds; }
 
          uint32_t last_irreversible_block_num() const;
 
  //  protected:
          const chainbase::database& get_database() const { return _db; }
          chainbase::database& get_mutable_database() { return _db; }
-         
+
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
 
 
@@ -295,11 +298,11 @@ namespace eosio { namespace chain {
          static uint32_t _transaction_message_rate(const fc::time_point_sec& now, const fc::time_point_sec& last_update_sec, const fc::time_point_sec& rate_limit_time_frame_sec,
                                                    uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const account_name& name);
 
-         struct txn_msg_rate_limits {
-            fc::time_point_sec per_auth_account_time_frame_sec = fc::time_point_sec(config::default_per_auth_account_time_frame_seconds);
-            uint32_t per_auth_account = config::default_per_auth_account;
-            fc::time_point_sec per_code_account_time_frame_sec = fc::time_point_sec(config::default_per_code_account_time_frame_seconds);
-            uint32_t per_code_account = config::default_per_code_account;
+         struct txn_msg_limits {
+            fc::time_point_sec per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_auth_account_rate_time_frame_seconds);
+            uint32_t per_auth_account_txn_msg_rate = config::default_per_auth_account_rate;
+            fc::time_point_sec per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_code_account_rate_time_frame_seconds);
+            uint32_t per_code_account_txn_msg_rate = config::default_per_code_account_rate;
          };
 
    private:
@@ -329,7 +332,7 @@ namespace eosio { namespace chain {
 
          template<typename T>
          typename T::processed apply_transaction(const T& trx);
-         
+
          template<typename T>
          typename T::processed process_transaction(const T& trx, int depth, const fc::time_point& start_time);
 
@@ -350,7 +353,7 @@ namespace eosio { namespace chain {
             validate_tapos(trx);
 
          } FC_CAPTURE_AND_RETHROW( (trx) ) }
-         
+
          /// Validate transaction helpers @{
          void validate_uniqueness(const signed_transaction& trx)const;
          void validate_uniqueness(const generated_transaction& trx)const;
@@ -384,7 +387,7 @@ namespace eosio { namespace chain {
          void rate_limit_message(const message& message);
 
          void process_message(const transaction& trx, account_name code, const message& message,
-                              message_output& output, apply_context* parent_context = nullptr);
+                              message_output& output, apply_context* parent_context = nullptr, int depth = 0);
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
@@ -421,6 +424,7 @@ namespace eosio { namespace chain {
          bool                             _currently_replaying_blocks = false;
          uint64_t                         _skip_flags = 0;
 
+         const uint32_t                   _block_interval_seconds;
          const uint32_t                   _txn_execution_time;
          const uint32_t                   _rcvd_block_txn_execution_time;
          const uint32_t                   _create_block_txn_execution_time;
