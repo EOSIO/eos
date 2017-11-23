@@ -489,6 +489,7 @@ namespace eosio {
   public:
     sync_manager (uint32_t span);
     bool syncing ();
+    void request_next_chunk ();
     void assign_chunk (connection_ptr c);
     void apply_chunk (sync_state_ptr ss);
     void take_chunk (connection_ptr c);
@@ -977,6 +978,17 @@ namespace eosio {
             chain_plug->chain( ).head_block_num( ) < sync_last_requested_num );
   }
 
+  void sync_manager::request_next_chunk () {
+    uint32_t head_block = chain_plug->chain().head_block_num();
+    for (auto &c : my_impl->connections ) {
+      if (c->sync_receiving && c->sync_receiving->start_block == head_block + 1) {
+        c->enqueue( (sync_request_message){c->sync_receiving->start_block,
+              c->sync_receiving->end_block});
+        sync_last_requested_num = c->sync_receiving->end_block;
+      }
+    }
+  }
+
   void sync_manager::assign_chunk( connection_ptr c ) {
     uint32_t start = 0;
     uint32_t end = 0;
@@ -1001,10 +1013,12 @@ namespace eosio {
       fc_dlog(logger, "conn ${n} resetting sync recv",("n",c->peer_name() ));
       c->sync_receiving.reset ( );
     }
+#if 0
     if( end > 0 && end >= start ) {
       c->enqueue( (sync_request_message){start, end} );
       sync_last_requested_num = end;
     }
+#endif
   }
 
     struct postcache : public fc::visitor<void> {
@@ -1018,7 +1032,7 @@ namespace eosio {
         } catch( const unlinkable_block_exception &ex ) {
           elog( "post cache: unlinkable_block_exception accept block #${n}",("n",block.block_num()));
         } catch (const assert_exception &ex) {
-          elog ("post cache: unable to accept block on assert exception ${n}",("n",ex.what()));
+          elog ("post cache: unable to accept block on assert exception ${n}",("n",ex.to_string()));
         } catch (const fc::exception &ex) {
           elog ("post cache: accept_block threw a non-assert exception ${x}", ("x",ex.what()));
         } catch (...) {
@@ -1099,6 +1113,7 @@ namespace eosio {
       if( c->connected()) {
         assign_chunk( c);
       }
+      request_next_chunk();
     }
 
     void sync_manager::start_sync( connection_ptr c, uint32_t target) {
@@ -1114,6 +1129,7 @@ namespace eosio {
         return;
       }
       assign_chunk( c);
+      request_next_chunk();
     }
 
   void sync_manager::reassign_fetch( connection_ptr c) {
@@ -1633,6 +1649,7 @@ namespace eosio {
       }
     }
 
+
     void net_plugin_impl::handle_message( connection_ptr c, const signed_transaction &msg) {
       fc_dlog(logger, "got a signed transaction from ${p}", ("p",c->peer_name()));
       transaction_id_type txnid = msg.id();
@@ -1721,7 +1738,7 @@ namespace eosio {
       }
       else {
         if( c->sync_receiving->last + 1 != num) {
-          wlog( "expected block ${next} but got ${num} ihnotinh got now",("next",c->sync_receiving->last+1)("num",num));
+          wlog( "expected block ${next} but got ${num}",("next",c->sync_receiving->last+1)("num",num));
           return;
         }
         c->sync_receiving->last = num;
