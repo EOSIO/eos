@@ -1,6 +1,8 @@
 FROM ubuntu:16.04 as builder
 
-LABEL maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
+LABEL author="Xiaobo Tian <peterwillcn@gmail.com>" \
+  maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" \
+  version="0.2.1" \
   description="This is a base image for building eosio/eos"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -79,6 +81,10 @@ RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
 
 
 FROM ubuntu:16.04
+LABEL author="Xiaobo Tian <peterwillcn@gmail.com>" \
+  maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" \
+  version="0.2.1" \
+  description="This is an eosio/eos image"
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /opt/eos/bin /opt/eos/bin
