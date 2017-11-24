@@ -241,6 +241,8 @@ processed_transaction chain_controller::_push_transaction(const signed_transacti
    if (!_pending_tx_session.valid())
       _pending_tx_session = _db.start_undo_session(true);
 
+   FC_ASSERT( _pending_transactions.size() < 1000, "too many pending transactions, try again later" );
+
    auto temp_session = _db.start_undo_session(true);
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
@@ -308,114 +310,48 @@ signed_block chain_controller::_generate_block(
    _pending_tx_session.reset();
    _pending_tx_session = _db.start_undo_session(true);
 
-   const auto& generated = _db.get_index<generated_transaction_multi_index, generated_transaction_object::by_status>().equal_range(generated_transaction_object::PENDING);
+   deque<signed_transaction> pending;
 
-   vector<pending_transaction> pending;
-   std::set<transaction_id_type> invalid_pending;
-   pending.reserve(std::distance(generated.first, generated.second) + _pending_transactions.size());
-   for (auto iter = generated.first; iter != generated.second; ++iter) {
-      const auto& gt = *iter;
-      pending.emplace_back(std::reference_wrapper<const generated_transaction> {gt.trx});
-   }
-
-   for(const auto& st: _pending_transactions) {
-      pending.emplace_back(std::reference_wrapper<const signed_transaction> {st});
-   }
-
-   auto schedule = scheduler(pending, get_global_properties());
+   auto start = fc::time_point::now();
 
    signed_block pending_block;
-   pending_block.cycles.reserve(schedule.cycles.size());
+   const auto& gprops = get_global_properties();
 
-   size_t invalid_transaction_count = 0;
-   size_t valid_transaction_count = 0;
+   uint32_t pending_block_size = fc::raw::pack_size( pending_block );
+   if( _pending_transactions.size() ) {
+      pending_block.cycles.resize(1);
+      pending_block.cycles[0].resize(1); // single thread
 
-   for (const auto &c : schedule.cycles) {
-     cycle block_cycle;
-     block_cycle.reserve(c.size());
+      for( const auto& pending_trx : _pending_transactions ) {
+         if( (fc::time_point::now() - start) > fc::milliseconds(200) ||
+             pending_block_size > gprops.configuration.max_blk_size)
+         {
+            pending.push_back(pending_trx);
+            continue;
+         }
+         try {
+            auto temp_session = _db.start_undo_session(true);
+            validate_referenced_accounts(pending_trx);
+            check_transaction_authorization(pending_trx);
+            auto processed = apply_transaction(pending_trx);
 
-     for (const auto &t : c) {
-       thread block_thread;
-       block_thread.user_input.reserve(t.transactions.size());
-       block_thread.generated_input.reserve(t.transactions.size());
-       for (const auto &trx : t.transactions) {
-          try
-          {
-             auto temp_session = _db.start_undo_session(true);
-             if (trx.contains<std::reference_wrapper<const signed_transaction>>()) {
-                const auto& t = trx.get<std::reference_wrapper<const signed_transaction>>().get();
-                validate_referenced_accounts(t);
-                check_transaction_authorization(t);
-                auto processed = apply_transaction(t);
-                block_thread.user_input.emplace_back(processed);
-             } else if (trx.contains<std::reference_wrapper<const generated_transaction>>()) {
-                const auto& t = trx.get<std::reference_wrapper<const generated_transaction>>().get();
-                auto processed = apply_transaction(t);
-                block_thread.generated_input.emplace_back(processed);
-             } else {
-                FC_THROW_EXCEPTION(tx_scheduling_exception, "Unknown transaction type in block_schedule");
-             }
+            pending_block_size += fc::raw::pack_size(processed);
 
-             temp_session.squash();
-             valid_transaction_count++;
-          }
-          catch ( const fc::exception& e )
-          {
-             // Do nothing, transaction will not be re-applied
-             elog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-             if (trx.contains<std::reference_wrapper<const signed_transaction>>()) {
-                const auto& t = trx.get<std::reference_wrapper<const signed_transaction>>().get();
-                wlog( "The transaction was ${t}", ("t", t ) );
-                invalid_pending.emplace(t.id());
-             } else if (trx.contains<std::reference_wrapper<const generated_transaction>>()) {
-                wlog( "The transaction was ${t}", ("t", trx.get<std::reference_wrapper<const generated_transaction>>().get()) );
-             }
-             invalid_transaction_count++;
-          }
-       }
-
-       if (!(block_thread.generated_input.empty() && block_thread.user_input.empty())) {
-          block_thread.generated_input.shrink_to_fit();
-          block_thread.user_input.shrink_to_fit();
-          block_cycle.emplace_back(std::move(block_thread));
-       }
-     }
-
-     if (!block_cycle.empty()) {
-        pending_block.cycles.emplace_back(std::move(block_cycle));
-     }
-   }
-
-   size_t postponed_tx_count = pending.size() - valid_transaction_count - invalid_transaction_count;
-   if( postponed_tx_count > 0 )
-   {
-      wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
-   }
-
-   if( invalid_transaction_count > 0 )
-   {
-      wlog( "Postponed ${n} transactions errors when processing", ("n", invalid_transaction_count) );
-
-      // remove pending transactions determined to be bad during scheduling
-      if (invalid_pending.size() > 0) {
-         for (auto itr = _pending_transactions.begin(); itr != _pending_transactions.end(); ) {
-            auto& tx = *itr;
-            if (invalid_pending.find(tx.id()) != invalid_pending.end()) {
-               itr = _pending_transactions.erase(itr);
-            } else {
-               ++itr;
+            if( pending_block_size > gprops.configuration.max_blk_size) {
+               pending.push_back( pending_trx );
+               continue;
             }
+
+            temp_session.squash();
+            pending_block.cycles[0][0].user_input.emplace_back( processed );
+         } catch ( const fc::exception& e ) {
+            edump((e.to_detail_string()));
          }
       }
    }
 
-   _pending_tx_session.reset();
-
-   // We have temporarily broken the invariant that
-   // _pending_tx_session is the result of applying _pending_tx, as
-   // _pending_transactions now consists of the set of postponed transactions.
-   // However, the push_block() call below will re-create the
-   // _pending_tx_session.
+   if( pending.size() )
+      wlog( "${x} pending transactions postponed to future block", ("x", pending.size()) );
 
    pending_block.previous = head_block_id();
    pending_block.timestamp = when;
@@ -429,16 +365,25 @@ signed_block chain_controller::_generate_block(
       pending_block.producer_changes = get_global_properties().active_producers - new_schedule;
    }
 
+   const auto end = fc::time_point::now();
+   const auto gen_time = end - start;
+   if( gen_time > fc::milliseconds(10) ) {
+      ilog("generation took ${x} ms", ("x", gen_time.count() / 1000));
+      FC_ASSERT(gen_time < fc::milliseconds(250), "block took too long to build");
+   }
+
    if( !(skip & skip_producer_signature) )
       pending_block.sign( block_signing_private_key );
 
-   // TODO:  Move this to _push_block() so session is restored.
-   /*
-   if( !(skip & skip_block_size_check) )
-   {
-      FC_ASSERT( fc::raw::pack_size(pending_block) <= get_global_properties().parameters.maximum_block_size );
+   _pending_tx_session.reset();
+
+   _pending_transactions.clear();
+   for( const auto& t : pending ) {
+      try {
+         push_transaction( t );
+      } catch ( ... ) {
+      }
    }
-   */
 
    // push_block( pending_block, skip );
 
