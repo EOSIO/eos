@@ -323,7 +323,6 @@ signed_block chain_controller::_generate_block(
       pending_block.cycles[0].resize(1); // single thread
 
       for( const auto& pending_trx : _pending_transactions ) {
-         idump((pending_trx.id()));
          if( (fc::time_point::now() - start) > fc::milliseconds(200) ||
              pending_block_size > gprops.configuration.max_blk_size)
          {
@@ -351,8 +350,8 @@ signed_block chain_controller::_generate_block(
       }
    }
 
-   _pending_transactions = move( pending );
-
+   if( pending.size() )
+      wlog( "${x} pending transactions postponed to future block", ("x", pending.size()) );
 
    pending_block.previous = head_block_id();
    pending_block.timestamp = when;
@@ -374,6 +373,14 @@ signed_block chain_controller::_generate_block(
       pending_block.sign( block_signing_private_key );
 
    _pending_tx_session.reset();
+
+   _pending_transactions.clear();
+   for( const auto& t : pending ) {
+      try {
+         push_transaction( t );
+      } catch ( ... ) {
+      }
+   }
 
    // push_block( pending_block, skip );
 
