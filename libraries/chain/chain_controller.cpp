@@ -365,9 +365,12 @@ signed_block chain_controller::_generate_block(
       pending_block.producer_changes = get_global_properties().active_producers - new_schedule;
    }
 
-   auto end = fc::time_point::now();
-   ilog( "generation took ${x} ms", ("x", (end-start).count()/1000) );
-   FC_ASSERT( end - start < fc::milliseconds( 250 ), "block took too long to build" );
+   const auto end = fc::time_point::now();
+   const auto gen_time = end - start;
+   if( gen_time > fc::milliseconds(10) ) {
+      ilog("generation took ${x} ms", ("x", gen_time.count() / 1000));
+      FC_ASSERT(gen_time < fc::milliseconds(250), "block took too long to build");
+   }
 
    if( !(skip & skip_producer_signature) )
       pending_block.sign( block_signing_private_key );
