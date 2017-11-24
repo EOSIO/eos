@@ -1,0 +1,24 @@
+{
+  "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+    }
+  ],
+  "structs": [{
+      "name": "transfer",
+      "base": "",
+      "fields": {
+        "from": "account_name",
+        "to": "account_name",
+        "amount": "uint64"
+      }
+    },
+  ],
+  "actions": [{
+      "action_name": "notify",
+      "type": "transfer"
+    },
+  ],
+  "tables": []
+
+}
