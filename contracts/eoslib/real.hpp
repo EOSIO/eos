@@ -2,7 +2,7 @@
 #include <eoslib/math.hpp>
 #include <eoslib/print.hpp>
 
-namespace eos {
+namespace eosio {
     /**
     *  @defgroup real data type representation for eos
     *  @brief real data type with basic operators. Contract developers need not use the math APIs

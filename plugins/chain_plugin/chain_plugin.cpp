@@ -27,7 +27,6 @@
 
 namespace eosio {
 
-using namespace eosio;
 using fc::flat_map;
 using chain::block_id_type;
 using chain::fork_database;
@@ -481,4 +480,4 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 
 } // namespace chain_apis
-} // namespace eos
+} // namespace eosio

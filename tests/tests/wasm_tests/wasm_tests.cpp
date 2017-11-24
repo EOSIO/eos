@@ -17,7 +17,8 @@ BOOST_AUTO_TEST_SUITE(wasm_tests)
 //Test rate limiting with single authority
 BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
 { try {
-      Make_Blockchain(chain);
+      chain_controller::txn_msg_limits rate_limit = { fc::time_point_sec(18), 1800, fc::time_point_sec(18), 18000 };
+      Make_Blockchain(chain, 18000, 72000, 18000, rate_limit);
       chain.produce_blocks(10);
       Make_Account(chain, currency);
       Make_Account(chain, test1);
@@ -121,7 +122,8 @@ BOOST_FIXTURE_TEST_CASE(rate_limit_single_authority_test, testing_fixture)
 //Test rate limiting with multiple authorities
 BOOST_FIXTURE_TEST_CASE(rate_limit_multi_authority_test, testing_fixture)
 { try {
-   Make_Blockchain(chain);
+   chain_controller::txn_msg_limits rate_limit = { fc::time_point_sec(18), 1800, fc::time_point_sec(18), 18000 };
+   Make_Blockchain(chain, 18000, 72000, 18000, rate_limit);
    chain.produce_blocks(10);
    Make_Account(chain, currency);
    Make_Account(chain, test1);

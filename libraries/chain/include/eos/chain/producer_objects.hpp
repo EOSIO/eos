@@ -18,8 +18,6 @@
 namespace eosio {
 namespace chain {
 
-namespace config = ::eosio::config;
-namespace types = ::eosio::types;
 
 FC_DECLARE_EXCEPTION(producer_race_overflow_exception, 10000000, "Producer Virtual Race time has overflowed");
 
@@ -239,7 +237,7 @@ using producer_schedule_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // namespace native::eos
+} } // namespace eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::producer_votes_object, eosio::chain::producer_votes_multi_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::proxy_vote_object, eosio::chain::proxy_vote_multi_index)

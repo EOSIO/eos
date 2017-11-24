@@ -2,7 +2,7 @@
 #include <eoslib/eos.hpp>
 
 #include "test_api.hpp"
-using namespace eos;
+using namespace eosio;
 unsigned int test_real::create_instances() {
     real lhs1(5);
     WASM_ASSERT(lhs1.value() == 5, "real instance value is wrong");
