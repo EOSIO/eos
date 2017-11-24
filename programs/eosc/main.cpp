@@ -959,7 +959,6 @@ int main( int argc, char** argv ) {
    bool loop = false;
    benchmark_transfer->add_option("accounts", number_of_accounts, localized("the number of accounts in transfer among"))->required();
    benchmark_transfer->add_option("count", number_of_transfers, localized("the number of transfers to execute"))->required();
-   benchmark_transfer->add_option("expiration", expiration, localized("the number of seconds to expire"))->required();
    benchmark_transfer->add_option("loop", loop, localized("whether or not to loop for ever"));
    add_standard_transaction_options(benchmark_transfer);
    benchmark_transfer->set_callback([&]{
@@ -1018,7 +1017,7 @@ int main( int argc, char** argv ) {
                                                  vector<types::account_permission>{{sender,"active"}},
                                                  "transfer", types::transfer{sender, recipient, amount, memo});
 
-            trx.expiration = info.head_block_time + fc::seconds(1800);
+            trx.expiration = info.head_block_time + tx_expiration;
             transaction_set_reference_block(trx, info.head_block_id);
 
             sign_transaction(trx);
