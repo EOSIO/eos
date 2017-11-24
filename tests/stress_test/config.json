@@ -1,0 +1,10 @@
+{   
+    "testnetUris": [
+        "http://localhost:8888"
+    ],
+    "serializeTrxNodeUri": "http://localhost:8888",
+    "walletUri": "http://localhost:8888",
+    "minNumOfTrxToSend": 1000,
+    "numOfTrxPerBatch": 100,
+    "maxSimulHttpReqPerNode": 120
+}
