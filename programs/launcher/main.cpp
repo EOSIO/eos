@@ -265,8 +265,8 @@ struct server_name_def {
 };
 
 struct server_identities {
-  vector<server_name_def> prod;
-  vector<server_name_def> obsvr;
+  vector<server_name_def> producer;
+  vector<server_name_def> observer;
   vector<string> db;
 };
 
@@ -433,6 +433,8 @@ launcher_def::load_servers () {
   if (!server_ident_file.empty()) {
     try {
       fc::json::from_file(server_ident_file).as<server_identities>(servers);
+      prod_nodes = servers.producer.size();
+      total_nodes = prod_nodes + servers.observer.size();
     }
     catch (...) {
       cerr << "unable to load server identity file " << server_ident_file << endl;
@@ -541,8 +543,8 @@ launcher_def::define_network () {
     int ph_count = 0;
     host_def *lhost = 0;
     size_t hnum = 0;
-    size_t num_prod_addr = servers.prod.size();
-    size_t num_obsvr_addr = servers.obsvr.size();
+    size_t num_prod_addr = servers.producer.size();
+    size_t num_observer_addr = servers.observer.size();
     for (size_t i = total_nodes; i > 0; i--) {
       if (ph_count == 0) {
         ph_count = per_host;
@@ -551,13 +553,15 @@ launcher_def::define_network () {
           delete lhost;
         }
         lhost = new host_def;
-        if (hnum < servers.prod.size()) {
-          lhost->host_name = servers.prod[hnum].ipaddr;
-          lhost->public_name = servers.prod[hnum].name;
+        lhost->eos_root_dir = erd;
+        lhost->genesis = genesis.string();
+        if (hnum < servers.producer.size()) {
+          lhost->host_name = servers.producer[hnum].ipaddr;
+          lhost->public_name = servers.producer[hnum].name;
         }
-        else if (hnum - num_prod_addr < num_obsvr_addr) {
-          lhost->host_name = servers.obsvr[hnum - num_prod_addr].ipaddr;
-          lhost->public_name = servers.obsvr[hnum - num_prod_addr].name;
+        else if (hnum - num_prod_addr < num_observer_addr) {
+          lhost->host_name = servers.observer[hnum - num_prod_addr].ipaddr;
+          lhost->public_name = servers.observer[hnum - num_prod_addr].name;
         }
         else {
           string ext = hnum < 10 ? "0" : "";
@@ -593,8 +597,8 @@ launcher_def::define_network () {
 
 void
 launcher_def::bind_nodes () {
-  if (servers.prod.size() > 0) {
-    prod_nodes = servers.prod.size();
+  if (servers.producer.size() > 0) {
+    prod_nodes = servers.producer.size();
   }
 
   int per_node = producers / prod_nodes;
@@ -1155,7 +1159,7 @@ FC_REFLECT( testnet_def, (ssh_helper)(nodes) )
 
 FC_REFLECT( server_name_def, (ipaddr) (name) )
 
-FC_REFLECT( server_identities, (prod) (obsvr) (db) )
+FC_REFLECT( server_identities, (producer) (observer) (db) )
 
 FC_REFLECT( node_rt_info, (remote)(pid_file)(kill_cmd) )
 
