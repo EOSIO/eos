@@ -265,7 +265,7 @@ namespace eosio {
   constexpr auto     def_send_buffer_size_mb = 4;
   constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
   constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-  constexpr auto     def_conn_retry_wait = std::chrono::seconds (1);
+  constexpr auto     def_conn_retry_wait = 30;
   constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds (1);
   constexpr auto     def_sync_rec_span = 10;
@@ -2172,7 +2172,7 @@ namespace eosio {
        "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
      ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
       ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
-      ( "connection-cleanup-period", bpo::value<int>()->default_value(30), "number of seconds to wait before cleaning up dead connections")
+      ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
      ;
   }
 
@@ -2213,11 +2213,11 @@ namespace eosio {
 
     my->sync_master.reset( new sync_manager( def_sync_rec_span ) );
 
-    my->connector_period = options.count( "connection-cleanup-period") ? std::chrono::seconds(options.at("connection-cleanup-period").as<int>()) : def_conn_retry_wait;
+    my->connector_period = std::chrono::seconds(options.at("connection-cleanup-period").as<int>());
     my->txn_exp_period = def_txn_expire_wait;
     my->resp_expected_period = def_resp_expected_wait;
     my->just_send_it_max = def_max_just_send;
-    my->max_client_count = options.count( "max-clients" ) ? options.at("max-clients").as<int>() : def_max_clients;
+    my->max_client_count = options.at("max-clients").as<int>();
 
     my->max_client_count = def_max_clients;
     my->num_clients = 0;

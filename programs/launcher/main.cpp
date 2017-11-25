@@ -465,10 +465,6 @@ launcher_def::load_servers () {
       per_host = 1;
       network.ssh_helper = servers.ssh;
     }
-    catch (const exception &ex) {
-      elog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
-      exit (-1);
-      }
     catch (...) {
       cerr << "unable to load server identity file " << server_ident_file << endl;
       exit (-1);
@@ -581,7 +577,7 @@ launcher_def::define_network () {
   }
   else {
     int ph_count = 0;
-    host_def *lhost = 0;
+    host_def *lhost = nullptr;
     size_t host_ndx = 0;
     size_t num_prod_addr = servers.producer.size();
     size_t num_observer_addr = servers.observer.size();
@@ -676,7 +672,7 @@ launcher_def::bind_nodes () {
 host_def *
 launcher_def::find_host (const string &name)
 {
-  host_def *host = 0;
+  host_def *host = nullptr;
   for (auto &h : bindings) {
     if (h.host_name == name) {
       host = &h;
@@ -846,7 +842,7 @@ launcher_def::make_star () {
 
   size_t links = 3;
   if (total_nodes > 12) {
-    links = (size_t)sqrt(total_nodes) + 2;
+    links = static_cast<size_t>(sqrt(total_nodes)) + 2;
   }
   size_t gap = total_nodes > 6 ? 3 : (total_nodes - links)/2 +1;
   while (total_nodes % gap == 0) {
