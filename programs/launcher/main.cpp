@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <math.h>
+#include <strstream>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -270,6 +271,7 @@ struct server_identities {
   vector<server_name_def> producer;
   vector<server_name_def> observer;
   vector<string> db;
+  string remote_eos_root;
   remote_deploy ssh;
 };
 
@@ -325,6 +327,7 @@ struct launcher_def {
   int start_delay;
   bool nogen;
   string launch_name;
+  string launch_time;
   server_identities servers;
 
   void assign_name (eosd_def &node);
@@ -336,6 +339,7 @@ struct launcher_def {
   void define_network ();
   void bind_nodes ();
   host_def *find_host (const string &name);
+  host_def *deploy_config_file (tn_node_def &node);
   void write_config_file (tn_node_def &node);
   void make_ring ();
   void make_star ();
@@ -344,7 +348,7 @@ struct launcher_def {
   void write_dot_file ();
   void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
   bool do_ssh (const string &cmd, const string &host_name);
-  void prep_remote_config_dir (eosd_def &node);
+  void prep_remote_config_dir (eosd_def &node, host_def *host);
   void launch (eosd_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
   void start_all (string &gts, launch_modes mode);
@@ -394,6 +398,13 @@ launcher_def::initialize (const variables_map &vmap) {
       }
     }
   }
+
+  using namespace std::chrono;
+  system_clock::time_point now = system_clock::now();
+  std::time_t now_c = system_clock::to_time_t(now);
+  ostrstream dstrm;
+  dstrm <<   std::put_time(std::localtime(&now_c), "%Y_%m_%d_%H_%M_%S") << ends;
+  launch_time = dstrm.str();
 
   if ( ! (shape.empty() ||
           boost::iequals( shape, "ring" ) ||
@@ -494,11 +505,11 @@ launcher_def::generate () {
     for (auto &node : network.nodes) {
       write_config_file(node.second);
     }
-    write_dot_file ();
   }
+  write_dot_file ();
 
   if (!output.empty()) {
-    bf::path savefile = output;
+   bf::path savefile = output;
     {
       bf::ofstream sf (savefile);
 
@@ -550,7 +561,8 @@ launcher_def::define_network () {
     cerr << erd << " is not a valid path" << endl;
     exit (-1);
   }
-  stage /= bf::path("eosd_staging");
+  stage /= bf::path("staging");
+  bf::create_directory (stage);
 
   if (per_host == 0) {
     host_def local_host;
@@ -580,7 +592,6 @@ launcher_def::define_network () {
           delete lhost;
         }
         lhost = new host_def;
-        lhost->eos_root_dir = erd;
         lhost->genesis = genesis.string();
         if (host_ndx < num_prod_addr ) {
           lhost->host_name = servers.producer[host_ndx].ipaddr;
@@ -600,6 +611,10 @@ launcher_def::define_network () {
           lhost->public_name = lhost->host_name;
           ph_count = 1;
         }
+        lhost->eos_root_dir =
+          (local_id.contains (lhost->host_name) || servers.remote_eos_root.empty()) ?
+          erd : servers.remote_eos_root;
+
         host_ndx++;
       }
       eosd_def eosd;
@@ -675,6 +690,66 @@ launcher_def::find_host (const string &name)
   return host;
 }
 
+host_def *
+launcher_def::deploy_config_file (tn_node_def &node) {
+  bf::path filename;
+  boost::system::error_code ec;
+  eosd_def &instance = *node.instance;
+  host_def *host = find_host (instance.host);
+
+  bf::path source = stage / instance.data_dir / "config.ini";
+  if (host->is_local()) {
+    bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
+    filename = dd / "config.ini";
+    if (bf::exists (dd)) {
+      int64_t count =  bf::remove_all (dd / "blocks", ec);
+      if (ec.value() != 0) {
+        cerr << "count = " << count << " could not remove old directory: " << dd
+             << " " << strerror(ec.value()) << endl;
+        exit (-1);
+      }
+      count = bf::remove_all (dd / "blockchain", ec);
+      if (ec.value() != 0) {
+        cerr << "count = " << count << " could not remove old directory: " << dd
+             << " " << strerror(ec.value()) << endl;
+        exit (-1);
+      }
+
+    } else if (!bf::create_directory (instance.data_dir, ec) && ec.value()) {
+      cerr << "could not create new directory: " << instance.data_dir
+           << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
+      exit (-1);
+    }
+
+    bf::copy (source, filename);
+  }
+  else {
+    prep_remote_config_dir (instance, host);
+    string scp_cmd_line = network.ssh_helper.scp_cmd + " ";
+    const string &args = host->ssh_args.length() ? host->ssh_args : network.ssh_helper.ssh_args;
+    if (args.length()) {
+      scp_cmd_line += args + " ";
+    }
+    scp_cmd_line += source.string() + " ";
+
+    const string &uid = host->ssh_identity.length() ? host->ssh_identity : network.ssh_helper.ssh_identity;
+    if (uid.length()) {
+      scp_cmd_line += uid + "@";
+    }
+
+    bf::path dpath = bf::path (host->eos_root_dir) / instance.data_dir / "config.ini";
+    scp_cmd_line += host->host_name + ":" + dpath.string();
+
+    cerr << "cmdline = " << scp_cmd_line << endl;
+    int res = boost::process::system (scp_cmd_line);
+    if (res != 0) {
+      cerr << "unable to scp config file to host " << host->host_name << endl;
+      exit(-1);
+    }
+  }
+  return host;
+}
+
 void
 launcher_def::write_config_file (tn_node_def &node) {
   bf::path filename;
@@ -682,26 +757,12 @@ launcher_def::write_config_file (tn_node_def &node) {
   eosd_def &instance = *node.instance;
   host_def *host = find_host (instance.host);
 
-  if (host->is_local()) {
-    bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
-    filename = dd / "config.ini";
-    if (bf::exists (dd)) {
-      int64_t count =  bf::remove_all (dd, ec);
-      if (ec.value() != 0) {
-        cerr << "count = " << count << " could not remove old directory: " << dd
-             << " " << strerror(ec.value()) << endl;
-        exit (-1);
-      }
-    }
-    if (!bf::create_directory (instance.data_dir, ec) && ec.value()) {
-      cerr << "could not create new directory: " << instance.data_dir
-           << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
-      exit (-1);
-    }
+  bf::path dd = stage / instance.data_dir;
+  if (!bf::exists(dd)) {
+    bf::create_directory(dd);
   }
-  else {
-    filename = network.ssh_helper.local_config_file;
-  }
+
+  filename = dd / "config.ini";
 
   bf::ofstream cfg(filename);
   if (!cfg.good()) {
@@ -758,31 +819,6 @@ launcher_def::write_config_file (tn_node_def &node) {
       << "plugin = eosio::account_history_plugin\n"
       << "plugin = eosio::account_history_api_plugin\n";
   cfg.close();
-
-  if (!host->is_local()) {
-    prep_remote_config_dir (instance);
-    string scp_cmd_line = network.ssh_helper.scp_cmd + " ";
-    const string &args = host->ssh_args.length() ? host->ssh_args : network.ssh_helper.ssh_args;
-    if (args.length()) {
-      scp_cmd_line += args + " ";
-    }
-    scp_cmd_line += filename.string() + " ";
-
-    const string &uid = host->ssh_identity.length() ? host->ssh_identity : network.ssh_helper.ssh_identity;
-    if (uid.length()) {
-      scp_cmd_line += uid + "@";
-    }
-
-    bf::path dpath = bf::path (host->eos_root_dir) / instance.data_dir / "config.ini";
-    scp_cmd_line += host->host_name + ":" + dpath.string();
-
-    cerr << "cmdline = " << scp_cmd_line << endl;
-    int res = boost::process::system (scp_cmd_line);
-    if (res != 0) {
-      cerr << "unable to scp config file to host " << host->host_name << endl;
-      exit(-1);
-    }
-  }
 }
 
 void
@@ -917,9 +953,7 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 }
 
 void
-launcher_def::prep_remote_config_dir (eosd_def &node) {
-  host_def* host = find_host (node.host);
-
+launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
   bf::path abs_data_dir = bf::path(host->eos_root_dir) / node.data_dir;
   string add = abs_data_dir.string();
   string cmd = "cd " + host->eos_root_dir;
@@ -948,13 +982,15 @@ launcher_def::prep_remote_config_dir (eosd_def &node) {
 }
 
 void
-launcher_def::launch (eosd_def &node, string &gts) {
-  bf::path dd = node.data_dir;
+launcher_def::launch (eosd_def &instance, string &gts) {
+  bf::path dd = instance.data_dir;
   bf::path reout = dd / "stdout.txt";
-  bf::path reerr = dd / "stderr.txt";
+  bf::path reerr_sl = dd / "stderr.txt";
+  bf::path reerr_base = bf::path("stderr." + launch_time + ".txt");
+  bf::path reerr = dd / reerr_base;
   bf::path pidf  = dd / "eosd.pid";
 
-  host_def* host = find_host (node.host);
+  host_def* host = deploy_config_file (*instance.node);
 
   node_rt_info info;
   info.remote = !host->is_local();
@@ -965,15 +1001,17 @@ launcher_def::launch (eosd_def &node, string &gts) {
   }
   eosdcmd += eosd_extra_args + " ";
   eosdcmd += "--enable-stale-production true ";
-  eosdcmd += "--data-dir " + node.data_dir;
+  eosdcmd += "--data-dir " + instance.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
 
-  if (info.remote) {
+  if (!host->is_local()) {
     string cmdl ("cd ");
     cmdl += host->eos_root_dir + "; nohup " + eosdcmd + " > "
-      + reout.string() + " 2> " + reerr.string() + "& echo $! > " + pidf.string();
+      + reout.string() + " 2> " + reerr.string() + "& echo $! > " + pidf.string()
+      + "; rm -f " + reerr_sl.string()
+      + "; ln -s " + reerr_base.string() + " " + reerr_sl.string();
     if (!do_ssh (cmdl, host->host_name)){
       cerr << "Unable to invoke " << cmdl
            << " on host " << host->host_name << endl;
@@ -987,6 +1025,8 @@ launcher_def::launch (eosd_def &node, string &gts) {
     cerr << "spawning child, " << eosdcmd << endl;
 
     bp::child c(eosdcmd, bp::std_out > reout, bp::std_err > reerr );
+    bf::remove(reerr_sl);
+    bf::create_symlink (reerr_base, reerr_sl);
 
     bf::ofstream pidout (pidf);
     pidout << c.id() << flush;
@@ -1176,7 +1216,7 @@ FC_REFLECT( testnet_def, (ssh_helper)(nodes) )
 
 FC_REFLECT( server_name_def, (ipaddr) (name) (instances) )
 
-FC_REFLECT( server_identities, (producer) (observer) (db) (ssh) )
+FC_REFLECT( server_identities, (producer) (observer) (db) (remote_eos_root) (ssh) )
 
 FC_REFLECT( node_rt_info, (remote)(pid_file)(kill_cmd) )
 
