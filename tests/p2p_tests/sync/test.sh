@@ -99,9 +99,9 @@ fi
 echo ERROR: $lines reports out of $total_nodes and prods = $prodsfound
 programs/launcher/launcher -k 15
 echo =================================================================
-echo Contents of tn_data_0/config.ini:
-cat tn_data_0/config.ini
+echo Contents of tn_data_00/config.ini:
+cat tn_data_00/config.ini
 echo =================================================================
-echo Contents of tn_data_0/stderr.txt:
-cat tn_data_0/stderr.txt
+echo Contents of tn_data_00/stderr.txt:
+cat tn_data_00/stderr.txt
 exit 1

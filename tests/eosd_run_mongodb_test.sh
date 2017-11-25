@@ -93,7 +93,7 @@ LOG_FILE=eosd_run_test.log
 programs/launcher/launcher --eosd "--plugin eosio::db_plugin --mongodb-uri $DB"
 verifyErrorCode "launcher"
 sleep 60
-count=`grep -c "generated block" tn_data_0/stderr.txt`
+count=`grep -c "generated block" tn_data_00/stderr.txt`
 if [[ $count == 0 ]]; then
   error "FAILURE - no blocks produced"
 fi
@@ -461,10 +461,10 @@ while [ "$NEXT_BLOCK_NUM" -le "$HEAD_BLOCK_NUM" ]; do
   NEXT_BLOCK_NUM=$((NEXT_BLOCK_NUM+1))
 done
 
-ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
-count=`grep -c Assert tn_data_0/stderr.txt`
+ASSERT_ERRORS="$(grep Assert tn_data_00/stderr.txt)"
+count=`grep -c Assert tn_data_00/stderr.txt`
 if [ $count != 0 ]; then
-  error "FAILURE - Assert in tn_data_0/stderr.txt"
+  error "FAILURE - Assert in tn_data_00/stderr.txt"
 fi
 
 killAll
