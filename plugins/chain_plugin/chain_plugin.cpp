@@ -60,6 +60,7 @@ public:
    uint32_t                         txn_execution_time;
    uint32_t                         create_block_txn_execution_time;
    txn_msg_limits                   cfg_txn_msg_limits;
+   uint32_t                         pending_txn_depth_limit;
 };
 
 #ifdef NDEBUG
@@ -107,7 +108,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum database storage that an account's code is allowed.")
          ("row-overhead-db-limit-bytes", bpo::value<uint32_t>()->default_value(config::default_row_overhead_db_limit_bytes),
           "The overhead to apply per row for approximating total database storage.")
-         ;
+         ("pending-txn-depth-limit", bpo::value<uint32_t>()->default_value(config::default_pending_txn_depth_limit),
+          "The maximum depth the pending transaction queue will be allowed to reach till new pushed transactions are rejected.")
+          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
@@ -201,6 +204,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->cfg_txn_msg_limits.per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
    my->cfg_txn_msg_limits.per_code_account_txn_msg_rate = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
 
+   my->pending_txn_depth_limit = options.at("pending-txn-depth-limit").as<uint32_t>();
+
    chain::wasm_interface::get().per_code_account_max_db_limit_mbytes = options.at("per-code-account-max-storage-db-limit-mbytes").as<uint32_t>();
    chain::wasm_interface::get().row_overhead_db_limit_bytes = options.at("row-overhead-db-limit-bytes").as<uint32_t>();
 }
@@ -237,6 +242,7 @@ void chain_plugin::plugin_startup()
                                         my->rcvd_block_txn_execution_time,
                                         my->create_block_txn_execution_time,
                                         my->cfg_txn_msg_limits,
+                                        my->pending_txn_depth_limit,
                                         applied_func));
 
    if(!my->readonly) {

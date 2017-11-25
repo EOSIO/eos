@@ -45,6 +45,7 @@ namespace eosio { namespace chain {
                           uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                           uint32_t create_block_txn_execution_time,
                           const txn_msg_limits& rate_limit,
+                          uint32_t pending_txn_depth_limit,
                           const applied_irreverisable_block_func& applied_func = {});
          chain_controller(const chain_controller&) = delete;
          chain_controller(chain_controller&&) = delete;
@@ -432,6 +433,7 @@ namespace eosio { namespace chain {
          const uint32_t                   _per_auth_account_txn_msg_rate_limit;
          const fc::time_point_sec         _per_code_account_txn_msg_rate_limit_time_frame_sec;
          const uint32_t                   _per_code_account_txn_msg_rate_limit;
+         const uint32_t                   _pending_txn_depth_limit;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 

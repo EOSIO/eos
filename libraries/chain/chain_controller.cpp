@@ -241,7 +241,7 @@ processed_transaction chain_controller::_push_transaction(const signed_transacti
    if (!_pending_tx_session.valid())
       _pending_tx_session = _db.start_undo_session(true);
 
-   FC_ASSERT( _pending_transactions.size() < 1000, "too many pending transactions, try again later" );
+   FC_ASSERT( _pending_transactions.size() < _pending_txn_depth_limit, "too many pending transactions, try again later" );
 
    auto temp_session = _db.start_undo_session(true);
    validate_referenced_accounts(trx);
@@ -1199,6 +1199,7 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
                                    uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                                    uint32_t create_block_txn_execution_time,
                                    const txn_msg_limits& rate_limit,
+                                   uint32_t pending_txn_depth_limit,
                                    const applied_irreverisable_block_func& applied_func)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _block_interval_seconds(block_interval_seconds),
      _txn_execution_time(txn_execution_time),
@@ -1206,7 +1207,8 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
      _per_auth_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_txn_msg_rate_time_frame_sec),
      _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account_txn_msg_rate),
      _per_code_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_txn_msg_rate_time_frame_sec),
-     _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account_txn_msg_rate) {
+     _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account_txn_msg_rate),
+     _pending_txn_depth_limit(pending_txn_depth_limit) {
 
    if (applied_func)
       applied_irreversible_block.connect(*applied_func);
