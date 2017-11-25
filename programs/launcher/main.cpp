@@ -250,7 +250,7 @@ struct remote_deploy {
   string scp_cmd = "/usr/bin/scp";
   string ssh_identity;
   string ssh_args;
-  string local_config_file = "temp_config";
+  bf::path local_config_file = "temp_config";
 };
 
 struct testnet_def {
@@ -262,12 +262,15 @@ struct testnet_def {
 struct server_name_def {
   string ipaddr;
   string name;
+  uint16_t instances;
+  server_name_def () : ipaddr(), name(), instances(1) {}
 };
 
 struct server_identities {
   vector<server_name_def> producer;
   vector<server_name_def> observer;
   vector<string> db;
+  remote_deploy ssh;
 };
 
 struct node_rt_info {
@@ -308,6 +311,7 @@ struct launcher_def {
   bf::path output;
   bf::path host_map_file;
   bf::path server_ident_file;
+  bf::path stage;
 
   string data_dir_base;
   bool skip_transaction_signatures = false;
@@ -331,6 +335,7 @@ struct launcher_def {
   bool generate ();
   void define_network ();
   void bind_nodes ();
+  host_def *find_host (const string &name);
   void write_config_file (tn_node_def &node);
   void make_ring ();
   void make_star ();
@@ -404,6 +409,8 @@ launcher_def::initialize (const variables_map &vmap) {
       fc::json::from_file(host_map_file).as<vector<host_def>>(bindings);
       for (auto &binding : bindings) {
         for (auto &eosd : binding.instances) {
+          eosd.host = binding.host_name;
+          eosd.p2p_endpoint = binding.public_name + ":" + boost::lexical_cast<string,uint16_t>(eosd.p2p_port);
           aliases.push_back (eosd.name);
         }
       }
@@ -433,9 +440,24 @@ launcher_def::load_servers () {
   if (!server_ident_file.empty()) {
     try {
       fc::json::from_file(server_ident_file).as<server_identities>(servers);
-      prod_nodes = servers.producer.size();
-      total_nodes = prod_nodes + servers.observer.size();
+      size_t nodes = 0;
+      for (auto &s : servers.producer) {
+        nodes += s.instances;
+      }
+      prod_nodes = nodes;
+      nodes = 0;
+      for (auto &s : servers.observer) {
+        nodes += s.instances;
+      }
+
+      total_nodes = prod_nodes + nodes;
+      per_host = 1;
+      network.ssh_helper = servers.ssh;
     }
+    catch (const exception &ex) {
+      elog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
+      exit (-1);
+      }
     catch (...) {
       cerr << "unable to load server identity file " << server_ident_file << endl;
       exit (-1);
@@ -523,6 +545,12 @@ launcher_def::define_network () {
   if (erd == 0) {
     erd = getenv ("PWD");
   }
+  stage = bf::path(erd);
+  if (!bf::exists(stage)) {
+    cerr << erd << " is not a valid path" << endl;
+    exit (-1);
+  }
+  stage /= bf::path("eosd_staging");
 
   if (per_host == 0) {
     host_def local_host;
@@ -542,12 +570,11 @@ launcher_def::define_network () {
   else {
     int ph_count = 0;
     host_def *lhost = 0;
-    size_t hnum = 0;
+    size_t host_ndx = 0;
     size_t num_prod_addr = servers.producer.size();
     size_t num_observer_addr = servers.observer.size();
     for (size_t i = total_nodes; i > 0; i--) {
       if (ph_count == 0) {
-        ph_count = per_host;
         if (lhost) {
           bindings.emplace_back(move(*lhost));
           delete lhost;
@@ -555,21 +582,25 @@ launcher_def::define_network () {
         lhost = new host_def;
         lhost->eos_root_dir = erd;
         lhost->genesis = genesis.string();
-        if (hnum < servers.producer.size()) {
-          lhost->host_name = servers.producer[hnum].ipaddr;
-          lhost->public_name = servers.producer[hnum].name;
+        if (host_ndx < num_prod_addr ) {
+          lhost->host_name = servers.producer[host_ndx].ipaddr;
+          lhost->public_name = servers.producer[host_ndx].name;
+          ph_count = servers.producer[host_ndx].instances;
         }
-        else if (hnum - num_prod_addr < num_observer_addr) {
-          lhost->host_name = servers.observer[hnum - num_prod_addr].ipaddr;
-          lhost->public_name = servers.observer[hnum - num_prod_addr].name;
+        else if (host_ndx - num_prod_addr < num_observer_addr) {
+          size_t ondx = host_ndx - num_prod_addr;
+          lhost->host_name = servers.observer[ondx].ipaddr;
+          lhost->public_name = servers.observer[ondx].name;
+          ph_count = servers.observer[ondx].instances;
         }
         else {
-          string ext = hnum < 10 ? "0" : "";
-          ext += boost::lexical_cast<string,int>(hnum++);
+          string ext = host_ndx < 10 ? "0" : "";
+          ext += boost::lexical_cast<string,int>(host_ndx);
           lhost->host_name = "pseudo_" + ext;
           lhost->public_name = lhost->host_name;
+          ph_count = 1;
         }
-        hnum++;
+        host_ndx++;
       }
       eosd_def eosd;
 
@@ -597,10 +628,6 @@ launcher_def::define_network () {
 
 void
 launcher_def::bind_nodes () {
-  if (servers.producer.size() > 0) {
-    prod_nodes = servers.producer.size();
-  }
-
   int per_node = producers / prod_nodes;
   int extra = producers % prod_nodes;
   int i = 0;
@@ -631,22 +658,30 @@ launcher_def::bind_nodes () {
   }
 }
 
-void
-launcher_def::write_config_file (tn_node_def &node) {
-  bf::path filename;
-  boost::system::error_code ec;
-  eosd_def &instance = *node.instance;
+host_def *
+launcher_def::find_host (const string &name)
+{
   host_def *host = 0;
   for (auto &h : bindings) {
-    if (h.host_name == instance.host) {
+    if (h.host_name == name) {
       host = &h;
       break;
     }
   }
   if (host == 0) {
-    cerr << "could not find host for " << instance.host << endl;
+    cerr << "could not find host for " << name << endl;
     exit(-1);
   }
+  return host;
+}
+
+void
+launcher_def::write_config_file (tn_node_def &node) {
+  bf::path filename;
+  boost::system::error_code ec;
+  eosd_def &instance = *node.instance;
+  host_def *host = find_host (instance.host);
+
   if (host->is_local()) {
     bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
     filename = dd / "config.ini";
@@ -723,6 +758,7 @@ launcher_def::write_config_file (tn_node_def &node) {
       << "plugin = eosio::account_history_plugin\n"
       << "plugin = eosio::account_history_api_plugin\n";
   cfg.close();
+
   if (!host->is_local()) {
     prep_remote_config_dir (instance);
     string scp_cmd_line = network.ssh_helper.scp_cmd + " ";
@@ -882,17 +918,8 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 
 void
 launcher_def::prep_remote_config_dir (eosd_def &node) {
-  host_def* host = 0;
-  for (auto &h : bindings) {
-    if (h.host_name == node.host) {
-      host = &h;
-      break;
-    }
-  }
-  if (host == 0) {
-    cerr << "unable to locate binding for " << node.host << endl;
-    exit (-1);
-  }
+  host_def* host = find_host (node.host);
+
   bf::path abs_data_dir = bf::path(host->eos_root_dir) / node.data_dir;
   string add = abs_data_dir.string();
   string cmd = "cd " + host->eos_root_dir;
@@ -927,17 +954,7 @@ launcher_def::launch (eosd_def &node, string &gts) {
   bf::path reerr = dd / "stderr.txt";
   bf::path pidf  = dd / "eosd.pid";
 
-  host_def* host = 0;
-  for (auto &h : bindings) {
-    if (h.host_name == node.host) {
-      host = &h;
-      break;
-    }
-  }
-  if (host == 0) {
-    cerr << "unable to locate binding for " << node.host << endl;
-    exit (-1);
-  }
+  host_def* host = find_host (node.host);
 
   node_rt_info info;
   info.remote = !host->is_local();
@@ -1150,16 +1167,16 @@ FC_REFLECT( host_def,
             (instances) )
 
 FC_REFLECT( eosd_def,
-            (name)(data_dir)(has_db)(host)(p2p_endpoint)
+            (name)(data_dir)(has_db)
             (p2p_port)(http_port)(file_size) )
 
 FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
 
 FC_REFLECT( testnet_def, (ssh_helper)(nodes) )
 
-FC_REFLECT( server_name_def, (ipaddr) (name) )
+FC_REFLECT( server_name_def, (ipaddr) (name) (instances) )
 
-FC_REFLECT( server_identities, (producer) (observer) (db) )
+FC_REFLECT( server_identities, (producer) (observer) (db) (ssh) )
 
 FC_REFLECT( node_rt_info, (remote)(pid_file)(kill_cmd) )
 
