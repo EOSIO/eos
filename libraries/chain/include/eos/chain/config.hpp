@@ -42,6 +42,7 @@ const static int default_per_code_account_max_db_limit_mbytes = 5;
 const static int default_row_overhead_db_limit_bytes = 8 + 8 + 8 + 8; // storage for scope/code/table + 8 extra
 
 const static int default_pending_txn_depth_limit = 1000;
+const static fc::microseconds default_gen_block_time_limit = fc::milliseconds(200);
 
 const static uint32 required_producer_participation = 33 * config::percent1;
 

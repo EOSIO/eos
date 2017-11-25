@@ -323,7 +323,7 @@ signed_block chain_controller::_generate_block(
       pending_block.cycles[0].resize(1); // single thread
 
       for( const auto& pending_trx : _pending_transactions ) {
-         if( (fc::time_point::now() - start) > fc::milliseconds(200) ||
+         if( (fc::time_point::now() - start) > _gen_block_time_limit ||
              pending_block_size > gprops.configuration.max_blk_size)
          {
             pending.push_back(pending_trx);
@@ -1199,7 +1199,6 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
                                    uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
                                    uint32_t create_block_txn_execution_time,
                                    const txn_msg_limits& rate_limit,
-                                   uint32_t pending_txn_depth_limit,
                                    const applied_irreverisable_block_func& applied_func)
    : _db(database), _fork_db(fork_db), _block_log(blocklog), _admin(std::move(admin)), _block_interval_seconds(block_interval_seconds),
      _txn_execution_time(txn_execution_time),
@@ -1208,7 +1207,8 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
      _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account_txn_msg_rate),
      _per_code_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_txn_msg_rate_time_frame_sec),
      _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account_txn_msg_rate),
-     _pending_txn_depth_limit(pending_txn_depth_limit) {
+     _pending_txn_depth_limit(rate_limit.pending_txn_depth_limit),
+     _gen_block_time_limit(rate_limit.gen_block_time_limit) {
 
    if (applied_func)
       applied_irreversible_block.connect(*applied_func);
