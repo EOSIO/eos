@@ -39,11 +39,11 @@ error()
   (>&2 echo $1)
   killAll
   echo =================================================================
-  echo Contents of tn_data_0/config.ini:
-  cat tn_data_0/config.ini
+  echo Contents of tn_data_00/config.ini:
+  cat tn_data_00/config.ini
   echo =================================================================
-  echo Contents of tn_data_0/stderr.txt:
-  cat tn_data_0/stderr.txt
+  echo Contents of tn_data_00/stderr.txt:
+  cat tn_data_00/stderr.txt
   echo =================================================================
   echo Contents of test_walletd_output.log:
   cat test_walletd_output.log
@@ -121,7 +121,7 @@ if [ "$SERVER" == "localhost" ]; then
   programs/launcher/launcher
   verifyErrorCode "launcher"
   sleep 7
-  count=`grep -c "generated block" tn_data_0/stderr.txt`
+  count=`grep -c "generated block" tn_data_00/stderr.txt`
   if [[ $count == 0 ]]; then
     error "FAILURE - no blocks produced"
   fi
@@ -492,10 +492,10 @@ while [ "$NEXT_BLOCK_NUM" -le "$HEAD_BLOCK_NUM" ]; do
 done
 
 if [ "$SERVER" == "localhost" ]; then
-  ASSERT_ERRORS="$(grep Assert tn_data_0/stderr.txt)"
-  count=`grep -c Assert tn_data_0/stderr.txt`
+  ASSERT_ERRORS="$(grep Assert tn_data_00/stderr.txt)"
+  count=`grep -c Assert tn_data_00/stderr.txt`
   if [ "$count" != "0" ]; then
-    error "FAILURE - Assert in tn_data_0/stderr.txt"
+    error "FAILURE - Assert in tn_data_00/stderr.txt"
   fi
 fi
 
@@ -503,4 +503,3 @@ killAll
 cleanup
 echo "END" >> $TEST_OUTPUT
 echo SUCCESS!
-
