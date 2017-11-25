@@ -494,16 +494,7 @@ launcher_def::generate () {
       sf << fc::json::to_pretty_string (bindings) << endl;
       sf.close();
     }
-    #if 0
-    {
-      bf::path savefile("stat_server.json");
-      bf::ofstream sf (savefile);
-
-      sf << fc::json::to_pretty_string (servers) << endl;
-      sf.close();
-    }
-#endif
-    return false;
+     return false;
   }
   return true;
 }
@@ -520,18 +511,6 @@ launcher_def::write_dot_file () {
          << "\" [dir=\"forward\"];" << std::endl;
     }
   }
-  #if 0
-  // this is an experiment. I was thinking of adding a "notes" box but I
-  // can't figure out hot to force it to the lower left corner of the diagram
-  df << " { rank = sink;\n"
-     << "   Notes  [shape=none, margin=0, label=<\n"
-     << "    <TABLE BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"1\">\n"
-     << "     <TR> <TD align=\"left\">Data flow between nodes is bidirectional</TD> </TR>\n"
-     << "     <TR> <TD align=\"left\">Arrows point from client to server</TD> </TR>\n"
-     << "    </TABLE>\n"
-     << "   >];"
-     << " }\n";
-#endif
   df << "}\n";
 }
 
@@ -596,24 +575,14 @@ launcher_def::define_network () {
       if (servers.db.size()) {
         for (auto &dbn : servers.db) {
           if (lhost->host_name == dbn) {
-            cerr << "hostname matches dbn" << endl;
             eosd.has_db = true;
             break;
           }
         }
       }
-      if (eosd.has_db) {
-        cerr << "eosd.has_db is true" << endl;
-      }
       aliases.push_back(eosd.name);
       eosd.set_host (lhost);
-      if (eosd.has_db) {
-        cerr << "eosd.has_db is true" << endl;
-      }
       lhost->instances.emplace_back(move(eosd));
-      if (lhost->instances.back().has_db) {
-        cerr << "has_db is true" << endl;
-      }
       --ph_count;
     }
     bindings.emplace_back( move(*lhost) );
@@ -801,7 +770,7 @@ launcher_def::make_star () {
 
   size_t links = 3;
   if (total_nodes > 12) {
-    links = (size_t)sqrt(total_nodes);
+    links = (size_t)sqrt(total_nodes) + 2;
   }
   size_t gap = total_nodes > 6 ? 3 : (total_nodes - links)/2 +1;
   while (total_nodes % gap == 0) {
@@ -839,7 +808,7 @@ launcher_def::make_star () {
         }
       }
       // if already established, don't add to list
-      if (peers_to_from[peer].count(current_name) == 0) {
+      if (peers_to_from[peer].count(current_name) < 2) {
         current.peers.push_back(peer); // current_name -> peer
         // keep track of bidirectional relationships to prevent duplicates
         peers_to_from[current_name].insert(peer);
@@ -861,7 +830,7 @@ launcher_def::make_mesh () {
       size_t ndx = (i + j) % total_nodes;
       const auto& peer = aliases[ndx];
       // if already established, don't add to list
-      if (peers_to_from[peer].count(current_name) == 0) {
+      if (peers_to_from[peer].count(current_name) < 2) {
         current.peers.push_back (peer);
         // keep track of bidirectional relationships to prevent duplicates
         peers_to_from[current_name].insert(peer);
