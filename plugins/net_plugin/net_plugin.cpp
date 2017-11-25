@@ -157,6 +157,7 @@ namespace eosio {
     chain_plugin*                 chain_plug;
     size_t                        just_send_it_max;
     bool                          send_whole_blocks;
+    int                           started_sessions;
 
     node_transaction_index        local_txns;
     ordered_txn_ids               pending_notify;
@@ -263,8 +264,8 @@ namespace eosio {
    */
   constexpr auto     def_send_buffer_size_mb = 4;
   constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
-  constexpr auto     def_max_clients = 20; // 0 for unlimited clients
-  constexpr auto     def_conn_retry_wait = std::chrono::seconds (30);
+  constexpr auto     def_max_clients = 25; // 0 for unlimited clients
+  constexpr auto     def_conn_retry_wait = std::chrono::seconds (1);
   constexpr auto     def_txn_expire_wait = std::chrono::seconds (3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds (1);
   constexpr auto     def_sync_rec_span = 10;
@@ -1184,6 +1185,9 @@ namespace eosio {
                                        ( "peer", c->peer_name())("error",err.message()));
                                  c->connecting = false;
                                  c->close();
+                                 if (started_sessions == 0) {
+                                   connect (c);
+                                 }
                                }
                              }
                            } );
@@ -1193,6 +1197,7 @@ namespace eosio {
       boost::asio::ip::tcp::no_delay option( true );
       con->socket->set_option( option );
       start_read_message( con );
+      ++started_sessions;
       con->send_handshake( );
 
       // for now, we can just use the application main loop.
@@ -2166,6 +2171,8 @@ namespace eosio {
      ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
        "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
      ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
+      ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
+      ( "connection-cleanup-period", bpo::value<int>()->default_value(30), "number of seconds to wait before cleaning up dead connections")
      ;
   }
 
@@ -2206,12 +2213,15 @@ namespace eosio {
 
     my->sync_master.reset( new sync_manager( def_sync_rec_span ) );
 
-    my->connector_period = def_conn_retry_wait;
+    my->connector_period = options.count( "connection-cleanup-period") ? std::chrono::seconds(options.at("connection-cleanup-period").as<int>()) : def_conn_retry_wait;
     my->txn_exp_period = def_txn_expire_wait;
     my->resp_expected_period = def_resp_expected_wait;
     my->just_send_it_max = def_max_just_send;
+    my->max_client_count = options.count( "max-clients" ) ? options.at("max-clients").as<int>() : def_max_clients;
+
     my->max_client_count = def_max_clients;
     my->num_clients = 0;
+    my->started_sessions = 0;
 
     my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
     if(options.count("listen-endpoint")) {

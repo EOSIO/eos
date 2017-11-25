@@ -36,6 +36,7 @@ using boost::asio::ip::host_name;
 using bpo::options_description;
 using bpo::variables_map;
 
+
 struct local_identity {
   vector <fc::ip::address> addrs;
   vector <string> names;
@@ -238,7 +239,6 @@ eosd_def::mk_dot_label () {
 void
 eosd_def::set_host( host_def* h ) {
   host = h->host_name;
-  has_db = false;
   p2p_port = h->p2p_port();
   http_port = h->http_port();
   file_size = h->def_file_size;
@@ -253,15 +253,22 @@ struct remote_deploy {
   string local_config_file = "temp_config";
 };
 
-struct host_map_def {
-  map <string, host_def> bindings;
-};
-
 struct testnet_def {
   remote_deploy ssh_helper;
   map <string,tn_node_def> nodes;
 };
 
+
+struct server_name_def {
+  string ipaddr;
+  string name;
+};
+
+struct server_identities {
+  vector<server_name_def> prod;
+  vector<server_name_def> obsvr;
+  vector<string> db;
+};
 
 struct node_rt_info {
   bool remote;
@@ -300,24 +307,29 @@ struct launcher_def {
   bf::path genesis;
   bf::path output;
   bf::path host_map_file;
+  bf::path server_ident_file;
+
   string data_dir_base;
   bool skip_transaction_signatures = false;
   string eosd_extra_args;
   testnet_def network;
   string alias_base;
   vector <string> aliases;
-  host_map_def host_map;
+  vector <host_def> bindings;
+  int per_host;
   last_run_def last_run;
   int start_delay;
   bool nogen;
   string launch_name;
+  server_identities servers;
 
   void assign_name (eosd_def &node);
 
   void set_options (bpo::options_description &cli);
   void initialize (const variables_map &vmap);
+  void load_servers ();
   bool generate ();
-  void define_local ();
+  void define_network ();
   void bind_nodes ();
   void write_config_file (tn_node_def &node);
   void make_ring ();
@@ -347,6 +359,8 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
     ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
+    ("servers",bpo::value<bf::path>(&server_ident_file)->default_value(""),"a file containing ip addresses and names of individual servers to deploy as producers or observers ")
+    ("per-host",bpo::value<int>(&per_host)->default_value(0),"specifies how many eosd instances will run on a single host. Use 0 to indicate all on one.")
         ;
 }
 
@@ -387,9 +401,9 @@ launcher_def::initialize (const variables_map &vmap) {
 
   if( !host_map_file.empty() ) {
     try {
-      fc::json::from_file(host_map_file).as<host_map_def>(host_map);
-      for (auto &binding : host_map.bindings) {
-        for (auto &eosd : binding.second.instances) {
+      fc::json::from_file(host_map_file).as<vector<host_def>>(bindings);
+      for (auto &binding : bindings) {
+        for (auto &eosd : binding.instances) {
           aliases.push_back (eosd.name);
         }
       }
@@ -402,19 +416,36 @@ launcher_def::initialize (const variables_map &vmap) {
   alias_base = "testnet_";
   next_node = 0;
 
+  load_servers ();
+
   if (prod_nodes > producers)
     prod_nodes = producers;
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
-  if (host_map.bindings.empty()) {
-    define_local ();
+  if (bindings.empty()) {
+    define_network ();
   }
 }
 
 void
+launcher_def::load_servers () {
+  if (!server_ident_file.empty()) {
+    try {
+      fc::json::from_file(server_ident_file).as<server_identities>(servers);
+    }
+    catch (...) {
+      cerr << "unable to load server identity file " << server_ident_file << endl;
+      exit (-1);
+    }
+  }
+}
+
+
+void
 launcher_def::assign_name (eosd_def &node) {
-  string dex = boost::lexical_cast<string,int>(next_node++);
+  string dex = next_node < 10 ? "0":"";
+  dex += boost::lexical_cast<string,int>(next_node++);
   node.name = alias_base + dex;
   node.data_dir = data_dir_base + dex;
 }
@@ -458,13 +489,20 @@ launcher_def::generate () {
     }
 
     {
-
       bf::ofstream sf (savefile);
 
-      sf << fc::json::to_pretty_string (host_map) << endl;
+      sf << fc::json::to_pretty_string (bindings) << endl;
       sf.close();
     }
+    #if 0
+    {
+      bf::path savefile("stat_server.json");
+      bf::ofstream sf (savefile);
 
+      sf << fc::json::to_pretty_string (servers) << endl;
+      sf.close();
+    }
+#endif
     return false;
   }
   return true;
@@ -498,56 +536,125 @@ launcher_def::write_dot_file () {
 }
 
 void
-launcher_def::define_local () {
-  host_def local_host;
+launcher_def::define_network () {
+
   char * erd = getenv ("EOS_ROOT_DIR");
   if (erd == 0) {
-    cerr << "environment variable \"EOS_ROOT_DIR\" unset. defaulting to current dir" << endl;
     erd = getenv ("PWD");
   }
-  local_host.eos_root_dir = erd;
-  local_host.genesis = genesis.string();
 
-  for (size_t i = 0; i < total_nodes; i++) {
-    eosd_def eosd;
+  if (per_host == 0) {
+    host_def local_host;
+    local_host.eos_root_dir = erd;
+    local_host.genesis = genesis.string();
 
-    assign_name(eosd);
-    aliases.push_back(eosd.name);
-    eosd.set_host (&local_host);
-    local_host.instances.emplace_back(move(eosd));
+    for (size_t i = 0; i < total_nodes; i++) {
+      eosd_def eosd;
+
+      assign_name(eosd);
+      aliases.push_back(eosd.name);
+      eosd.set_host (&local_host);
+      local_host.instances.emplace_back(move(eosd));
+    }
+    bindings.emplace_back(move(local_host));
   }
-  host_map.bindings[local_host.host_name] = move(local_host);
+  else {
+    int ph_count = 0;
+    host_def *lhost = 0;
+    size_t hnum = 0;
+    size_t num_prod_addr = servers.prod.size();
+    size_t num_obsvr_addr = servers.obsvr.size();
+    for (size_t i = total_nodes; i > 0; i--) {
+      if (ph_count == 0) {
+        ph_count = per_host;
+        if (lhost) {
+          bindings.emplace_back(move(*lhost));
+          delete lhost;
+        }
+        lhost = new host_def;
+        if (hnum < servers.prod.size()) {
+          lhost->host_name = servers.prod[hnum].ipaddr;
+          lhost->public_name = servers.prod[hnum].name;
+        }
+        else if (hnum - num_prod_addr < num_obsvr_addr) {
+          lhost->host_name = servers.obsvr[hnum - num_prod_addr].ipaddr;
+          lhost->public_name = servers.obsvr[hnum - num_prod_addr].name;
+        }
+        else {
+          string ext = hnum < 10 ? "0" : "";
+          ext += boost::lexical_cast<string,int>(hnum++);
+          lhost->host_name = "pseudo_" + ext;
+          lhost->public_name = lhost->host_name;
+        }
+        hnum++;
+      }
+      eosd_def eosd;
+
+      assign_name(eosd);
+      eosd.has_db = false;
+
+      if (servers.db.size()) {
+        for (auto &dbn : servers.db) {
+          if (lhost->host_name == dbn) {
+            cerr << "hostname matches dbn" << endl;
+            eosd.has_db = true;
+            break;
+          }
+        }
+      }
+      if (eosd.has_db) {
+        cerr << "eosd.has_db is true" << endl;
+      }
+      aliases.push_back(eosd.name);
+      eosd.set_host (lhost);
+      if (eosd.has_db) {
+        cerr << "eosd.has_db is true" << endl;
+      }
+      lhost->instances.emplace_back(move(eosd));
+      if (lhost->instances.back().has_db) {
+        cerr << "has_db is true" << endl;
+      }
+      --ph_count;
+    }
+    bindings.emplace_back( move(*lhost) );
+    delete lhost;
+  }
 }
+
 
 void
 launcher_def::bind_nodes () {
+  if (servers.prod.size() > 0) {
+    prod_nodes = servers.prod.size();
+  }
+
   int per_node = producers / prod_nodes;
   int extra = producers % prod_nodes;
   int i = 0;
-  for (auto &h : host_map.bindings) {
-    for (auto &inst : h.second.instances) {
-      tn_node_def node;
-      node.name = inst.name;
-      node.instance = &inst;
-      keypair kp;
-      node.keys.emplace_back (move(kp));
-      if (i < prod_nodes) {
-        int count = per_node;
-        if (extra) {
-          ++count;
-          --extra;
+  for (auto &h : bindings) {
+    for (auto &inst : h.instances) {
+        tn_node_def node;
+        node.name = inst.name;
+        node.instance = &inst;
+        keypair kp;
+        node.keys.emplace_back (move(kp));
+        if (i < prod_nodes) {
+          int count = per_node;
+          if (extra) {
+            ++count;
+            --extra;
+          }
+          char ext = 'a' + i;
+          string pname = "init";
+          while (count--) {
+            node.producers.push_back(pname + ext);
+            ext += prod_nodes;
+          }
         }
-        char ext = 'a' + i;
-        string pname = "init";
-        while (count--) {
-          node.producers.push_back(pname + ext);
-          ext += prod_nodes;
-        }
+        network.nodes[node.name] = move(node);
+        inst.node = &network.nodes[inst.name];
+        i++;
       }
-      network.nodes[node.name] = move(node);
-      inst.node = &network.nodes[inst.name];
-      i++;
-    }
   }
 }
 
@@ -556,7 +663,17 @@ launcher_def::write_config_file (tn_node_def &node) {
   bf::path filename;
   boost::system::error_code ec;
   eosd_def &instance = *node.instance;
-  host_def *host = &host_map.bindings[instance.host];
+  host_def *host = 0;
+  for (auto &h : bindings) {
+    if (h.host_name == instance.host) {
+      host = &h;
+      break;
+    }
+  }
+  if (host == 0) {
+    cerr << "could not find host for " << instance.host << endl;
+    exit(-1);
+  }
   if (host->is_local()) {
     bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
     filename = dd / "config.ini";
@@ -757,8 +874,8 @@ void
 launcher_def::make_custom () {
   bf::path source = shape;
   fc::json::from_file(source).as<testnet_def>(network);
-  for (auto &h : host_map.bindings) {
-    for (auto &inst : h.second.instances) {
+  for (auto &h : bindings) {
+    for (auto &inst : h.instances) {
       tn_node_def *node = &network.nodes[inst.name];
       node->instance = &inst;
       inst.node = node;
@@ -792,7 +909,17 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 
 void
 launcher_def::prep_remote_config_dir (eosd_def &node) {
-  host_def* host = &host_map.bindings[node.host];
+  host_def* host = 0;
+  for (auto &h : bindings) {
+    if (h.host_name == node.host) {
+      host = &h;
+      break;
+    }
+  }
+  if (host == 0) {
+    cerr << "unable to locate binding for " << node.host << endl;
+    exit (-1);
+  }
   bf::path abs_data_dir = bf::path(host->eos_root_dir) / node.data_dir;
   string add = abs_data_dir.string();
   string cmd = "cd " + host->eos_root_dir;
@@ -827,7 +954,17 @@ launcher_def::launch (eosd_def &node, string &gts) {
   bf::path reerr = dd / "stderr.txt";
   bf::path pidf  = dd / "eosd.pid";
 
-  host_def* host = &host_map.bindings[node.host];
+  host_def* host = 0;
+  for (auto &h : bindings) {
+    if (h.host_name == node.host) {
+      host = &h;
+      break;
+    }
+  }
+  if (host == 0) {
+    cerr << "unable to locate binding for " << node.host << endl;
+    exit (-1);
+  }
 
   node_rt_info info;
   info.remote = !host->is_local();
@@ -923,10 +1060,10 @@ launcher_def::start_all (string &gts, launch_modes mode) {
   case LM_ALL:
   case LM_REMOTE:
   case LM_LOCAL: {
-    for (auto &h : host_map.bindings ) {
+    for (auto &h : bindings ) {
       if (mode == LM_ALL ||
-          (h.second.is_local() ? mode == LM_LOCAL : mode == LM_REMOTE)) {
-        for (auto &inst : h.second.instances) {
+          (h.is_local() ? mode == LM_LOCAL : mode == LM_REMOTE)) {
+        for (auto &inst : h.instances) {
           try {
             launch (inst, gts);
           } catch (...) {
@@ -1047,7 +1184,9 @@ FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
 
 FC_REFLECT( testnet_def, (ssh_helper)(nodes) )
 
-FC_REFLECT( host_map_def, (bindings) )
+FC_REFLECT( server_name_def, (ipaddr) (name) )
+
+FC_REFLECT( server_identities, (prod) (obsvr) (db) )
 
 FC_REFLECT( node_rt_info, (remote)(pid_file)(kill_cmd) )
 
