@@ -241,7 +241,7 @@ processed_transaction chain_controller::_push_transaction(const signed_transacti
    if (!_pending_tx_session.valid())
       _pending_tx_session = _db.start_undo_session(true);
 
-   FC_ASSERT( _pending_transactions.size() < 1000, "too many pending transactions, try again later" );
+   FC_ASSERT( _pending_transactions.size() < _pending_txn_depth_limit, "too many pending transactions, try again later" );
 
    auto temp_session = _db.start_undo_session(true);
    validate_referenced_accounts(trx);
@@ -323,7 +323,7 @@ signed_block chain_controller::_generate_block(
       pending_block.cycles[0].resize(1); // single thread
 
       for( const auto& pending_trx : _pending_transactions ) {
-         if( (fc::time_point::now() - start) > fc::milliseconds(200) ||
+         if( (fc::time_point::now() - start) > _gen_block_time_limit ||
              pending_block_size > gprops.configuration.max_blk_size)
          {
             pending.push_back(pending_trx);
@@ -1206,7 +1206,9 @@ chain_controller::chain_controller(database& database, fork_database& fork_db, b
      _per_auth_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_auth_account_txn_msg_rate_time_frame_sec),
      _per_auth_account_txn_msg_rate_limit(rate_limit.per_auth_account_txn_msg_rate),
      _per_code_account_txn_msg_rate_limit_time_frame_sec(rate_limit.per_code_account_txn_msg_rate_time_frame_sec),
-     _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account_txn_msg_rate) {
+     _per_code_account_txn_msg_rate_limit(rate_limit.per_code_account_txn_msg_rate),
+     _pending_txn_depth_limit(rate_limit.pending_txn_depth_limit),
+     _gen_block_time_limit(rate_limit.gen_block_time_limit) {
 
    if (applied_func)
       applied_irreversible_block.connect(*applied_func);
