@@ -380,9 +380,8 @@ signed_block chain_controller::_generate_block(
    _pending_transactions.clear();
    for( const auto& t : pending ) {
       try {
-         push_transaction( t );
-      } catch ( ... ) {
-      }
+         _push_transaction( t );
+      } FC_CAPTURE_AND_LOG( (t) )
    }
 
    // push_block( pending_block, skip );
