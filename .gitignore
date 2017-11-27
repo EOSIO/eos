@@ -74,3 +74,6 @@ build-debug/*
 tn_data_*
 .vscode
 .DS_Store
+
+tests/stress_test/node_modules/*
+tests/stress_test/stress_test_result_*.txt
