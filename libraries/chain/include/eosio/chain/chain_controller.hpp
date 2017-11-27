@@ -72,8 +72,9 @@ namespace eosio { namespace chain {
          chain_controller( const controller_config& cfg );
          ~chain_controller();
 
+
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         void push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         transaction_result push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
 
          /**
@@ -258,7 +259,7 @@ namespace eosio { namespace chain {
          const producer_object&                 get_producer(const account_name& ownername)const;
          const permission_object&               get_permission( const permission_level& level )const;
 
-       	 time_point           head_block_time()const;
+         time_point           head_block_time()const;
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
@@ -302,9 +303,9 @@ namespace eosio { namespace chain {
          //@}
 
 
-         void _push_transaction( const signed_transaction& trx );
+         transaction_result _push_transaction( const signed_transaction& trx );
          void _start_pending_block();
-         void _apply_transaction( const transaction& trx );
+         transaction_result _apply_transaction( const transaction& trx );
 
          void _finalize_block( const signed_block& b );
 

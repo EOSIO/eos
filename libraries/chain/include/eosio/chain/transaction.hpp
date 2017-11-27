@@ -152,6 +152,19 @@ namespace eosio { namespace chain {
       time_point_sec execute_after; /// delayed exeuction
    };
 
+   struct action_result {
+      account_name               receiver;
+      action                     act;
+      vector<string>             console;
+   };
+
+   struct transaction_result : transaction_receipt {
+      using transaction_receipt::transaction_receipt;
+
+      vector<action_result>         action_results;
+      vector<deferred_transaction>  deferred_transactions;
+   };
+
 } } // eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
@@ -160,5 +173,10 @@ FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (read_scope)(write_scope)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
+FC_REFLECT( eosio::chain::action_result, (receiver)(act)(console) )
+FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
+FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (generated)(executed)(soft_fail)(hard_fail))
+FC_REFLECT_DERIVED( eosio::chain::transaction_result, (eosio::chain::transaction_receipt), (action_results)(deferred_transactions) )
+
 
 

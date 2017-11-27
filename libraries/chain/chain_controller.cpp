@@ -243,7 +243,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-void chain_controller::push_transaction(const signed_transaction& trx, uint32_t skip)
+transaction_result chain_controller::push_transaction(const signed_transaction& trx, uint32_t skip)
 { try {
    return with_skip_flags(skip, [&]() {
       return _db.with_write_lock([&]() {
@@ -252,7 +252,7 @@ void chain_controller::push_transaction(const signed_transaction& trx, uint32_t 
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void chain_controller::_push_transaction(const signed_transaction& trx) {
+transaction_result chain_controller::_push_transaction(const signed_transaction& trx) {
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -276,7 +276,7 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
       bcycle.back().emplace_back( tid );
    }
 
-   _apply_transaction(trx);
+   auto result = _apply_transaction(trx);
    /** for now we will just shove everything into the first shard */
    _pending_block->input_transactions.push_back(trx);
 
@@ -284,7 +284,9 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
    temp_session.squash();
 
    // notify anyone listening to pending transactions
-   on_pending_transaction(trx); 
+   on_pending_transaction(trx);
+
+   return result;
 }
 
 
@@ -441,8 +443,29 @@ void chain_controller::__apply_block(const signed_block& next_block)
             if( receipt.status == transaction_receipt::executed ) {
                auto itr = trx_index.find(receipt.id);
                if( itr != trx_index.end() ) {
-                  _apply_transaction( *itr->second );
-               } 
+                  auto result = _apply_transaction( *itr->second );
+                  ///TODO: make more parallel accumulating shard output and reducing at cycle level
+                  for (const auto& dt: result.deferred_transactions) {
+                     _db.create<generated_transaction_object>([&](auto &obj) {
+                        obj.trx_id = dt.id();
+                        obj.sender = dt.sender;
+                        obj.sender_id = dt.sender_id;
+                        obj.expiration = dt.expiration;
+                        obj.delay_until = dt.execute_after;
+                        obj.packed_trx.resize(fc::raw::pack_size(dt));
+                        fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+                        fc::raw::pack(ds, dt);
+                     });
+                  }
+
+                  ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
+                  for (const auto& ar : result.action_results) {
+                     auto prefix = fc::format_string("[(${s},${a})->${r}](console): ", fc::mutable_variant_object()("s",ar.act.scope)("a", ar.act.name)("r", ar.receiver));
+                     for (const auto& msg: ar.console) {
+                        std::cerr << prefix << msg << std::endl;
+                     }
+                  }
+               }
                else 
                {
                   FC_ASSERT( !"deferred transactions not yet supported" );
@@ -1148,11 +1171,17 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
    _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
-void chain_controller::_apply_transaction( const transaction& trx ) {
+transaction_result chain_controller::_apply_transaction( const transaction& trx ) {
+   transaction_result result(trx.id());
+
    for( const auto& act : trx.actions ) {
-      apply_context context( *this, _db, trx, act, act.scope );
+      apply_context context( *this, _db, trx, act,  act.scope  );
       context.exec();
+      fc::move_append(result.action_results, std::move(context.results.applied_actions));
+      fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
    }
+
+   return result;
 }
 
 const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

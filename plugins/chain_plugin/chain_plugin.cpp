@@ -365,10 +365,10 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
    };
 
    abi_serializer::from_variant(params, pretty_input, resolver);
-   db.push_transaction(pretty_input, skip_flags);
+   auto result = db.push_transaction(pretty_input, skip_flags);
 #warning TODO: get transaction results asynchronously
    fc::variant pretty_output;
-   abi_serializer::to_variant(pretty_input, pretty_output, resolver);
+   abi_serializer::to_variant(result, pretty_output, resolver);
    return read_write::push_transaction_results{ pretty_input.id(), pretty_output };
 }
 

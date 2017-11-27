@@ -106,9 +106,9 @@ namespace eosio { namespace testing {
       control->push_transaction( trx );
    }
 
-   void tester::push_transaction( signed_transaction& trx ) {
+   transaction_result tester::push_transaction( signed_transaction& trx ) {
       set_tapos(trx);
-      control->push_transaction( trx );
+      return control->push_transaction( trx );
    }
 
    void tester::create_account( account_name a, string initial_balance, account_name creator ) {

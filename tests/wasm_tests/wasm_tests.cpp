@@ -62,7 +62,15 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
 
       set_tapos( trx );
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-      control->push_transaction( trx );
+      auto result = control->push_transaction( trx );
+      BOOST_CHECK_EQUAL(result.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(result.action_results.size(), 1);
+      BOOST_CHECK_EQUAL(result.action_results.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_results.at(0).act.scope.to_string(), name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_results.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_results.at(0).act.authorization.size(),  1 );
+      BOOST_CHECK_EQUAL(result.action_results.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_results.at(0).act.authorization.at(0).permission.to_string(),  name(config::active_name).to_string() );
       no_assert_id = trx.id();
    }
 
@@ -80,13 +88,15 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
 
       set_tapos( trx );
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-      BOOST_CHECK_THROW(control->push_transaction( trx ), fc::assert_exception);
       yes_assert_id = trx.id();
+
+      BOOST_CHECK_THROW(control->push_transaction( trx ), fc::assert_exception);
    }
 
    produce_blocks(1);
 
-   BOOST_REQUIRE_EQUAL(false, chain_has_transaction(yes_assert_id));
+   auto has_tx = chain_has_transaction(yes_assert_id);
+   BOOST_REQUIRE_EQUAL(false, has_tx);
 
 } FC_LOG_AND_RETHROW() /// basic_test
 
@@ -175,5 +185,8 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
 
+BOOST_FIXTURE_TEST_CASE( test_console, tester ) {
+
+}
 
 BOOST_AUTO_TEST_SUITE_END()
