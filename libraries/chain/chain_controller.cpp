@@ -380,7 +380,7 @@ signed_block chain_controller::_generate_block(
    _pending_transactions.clear();
    for( const auto& t : pending ) {
       try {
-         push_transaction( t );
+         _push_transaction( t );
       } catch ( ... ) {
       }
    }
