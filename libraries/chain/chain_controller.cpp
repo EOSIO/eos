@@ -381,8 +381,7 @@ signed_block chain_controller::_generate_block(
    for( const auto& t : pending ) {
       try {
          _push_transaction( t );
-      } catch ( ... ) {
-      }
+      } FC_CAPTURE_AND_LOG( (t) )
    }
 
    // push_block( pending_block, skip );
