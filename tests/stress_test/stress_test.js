@@ -8,11 +8,11 @@
  * equally distributed to each node in the testnet
  */
 
-const rp = require('request-promise');
-const _ = require('lodash');
-const assert = require('assert');
-const config = require('./config.json');
-const fs = require('fs');
+const rp = require("request-promise");
+const _ = require("lodash");
+const assert = require("assert");
+const config = require("./config.json");
+const fs = require("fs");
 
 // Check completeness of config
 assert(config.hasOwnProperty("testnetUris"), "missing testnet uris");
@@ -59,7 +59,7 @@ const accounts = [
 // Get request option for HTTP request
 const getRequestOptions = (nodeUri, path, param) => {
     return {
-        method: 'POST',
+        method: "POST",
         uri: nodeUri + path,
         body: param,
         json: true 
@@ -261,7 +261,7 @@ const getSignedTrxs = (serializedTrxs) => {
  */
 const pushTrxs = (signedTrxs) => {
 
-    const resultFileName = 'stress_test_result_'+new Date().getTime()+'.txt';
+    const resultFileName = "stress_test_result_"+new Date().getTime()+".txt";
     // Create one round promise
     // One round is defined to be set of requests that is limited by number of max parallel request at a time
     const oneRound = (signedTrxs, counter) => {
