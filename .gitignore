@@ -76,3 +76,4 @@ tn_data_*
 .DS_Store
 
 tests/stress_test/node_modules/*
+tests/stress_test/stress_test_result_*.txt
