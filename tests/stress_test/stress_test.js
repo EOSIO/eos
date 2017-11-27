@@ -12,6 +12,7 @@ const rp = require('request-promise');
 const _ = require('lodash');
 const assert = require('assert');
 const config = require('./config.json');
+const fs = require('fs');
 
 // Check completeness of config
 assert(config.hasOwnProperty("testnetUris"), "missing testnet uris");
@@ -189,7 +190,7 @@ const generateSerializedTrxs = (refBlockInfo) => {
             }
         }
 
-        const numOfCycleInOneRound = Math.floor(config.maxSimulHttpReqPerNode / accounts.length);
+        const numOfCycleInOneRound = Math.max(1, Math.floor(config.maxSimulHttpReqPerNode / accounts.length));
         for (let i = 0; i < numOfCycleInOneRound; i++) {
            oneCycle();
         }
@@ -201,7 +202,7 @@ const generateSerializedTrxs = (refBlockInfo) => {
         });
     }
 
-    const numOfTrxPerRound = Math.floor(config.maxSimulHttpReqPerNode / accounts.length) * accounts.length;
+    const numOfTrxPerRound = Math.max(accounts.length, Math.floor(config.maxSimulHttpReqPerNode / accounts.length) * accounts.length);
     const numOfRound = Math.ceil(config.minNumOfTrxToSend / numOfTrxPerRound);
 
     // Chain the promise, i.e. requests in series
@@ -259,7 +260,8 @@ const getSignedTrxs = (serializedTrxs) => {
  * @param signedTrxs signed transactions to be pushed
  */
 const pushTrxs = (signedTrxs) => {
-    
+
+    const resultFileName = 'stress_test_result_'+new Date().getTime()+'.txt';
     // Create one round promise
     // One round is defined to be set of requests that is limited by number of max parallel request at a time
     const oneRound = (signedTrxs, counter) => {
@@ -289,6 +291,15 @@ const pushTrxs = (signedTrxs) => {
             console.log(JSON.stringify(firstTx));
             console.log("Last trx of round " + counter + " ...");
             console.log(JSON.stringify(lastTx));
+
+            // Append result
+            fs.appendFile(resultFileName, JSON.stringify(result, null, 2), (error) => {
+                if (error) {
+                    console.error("Fail to write result to a file!");
+                } else {
+                    console.log("Result written to a file");
+                }
+            });
         });
     }
 
