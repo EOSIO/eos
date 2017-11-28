@@ -1228,7 +1228,8 @@ namespace eosio {
         });
     }
 
-    void net_plugin_impl::start_read_message( connection_ptr conn ) {
+  void
+  net_plugin_impl::start_read_message( connection_ptr conn ) {
       try {
         connection_wptr c( conn);
         conn->socket->async_read_some(
