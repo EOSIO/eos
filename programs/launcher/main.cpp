@@ -716,8 +716,7 @@ launcher_def::deploy_config_file (tn_node_def &node) {
            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
       exit (-1);
     }
-
-    bf::copy (source, filename);
+    bf::copy_file (source, filename, bf::copy_option::overwrite_if_exists);
   }
   else {
     prep_remote_config_dir (instance, host);
@@ -987,7 +986,6 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   bf::path pidf  = dd / "eosd.pid";
 
   host_def* host = deploy_config_file (*instance.node);
-
   node_rt_info info;
   info.remote = !host->is_local();
 
@@ -995,8 +993,12 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }
-  eosdcmd += eosd_extra_args + " ";
-  eosdcmd += "--enable-stale-production true ";
+  if (!eosd_extra_args.empty()) {
+    eosdcmd += eosd_extra_args + " ";
+  }
+  else {
+    eosdcmd += "--enable-stale-production true ";
+  }
   eosdcmd += "--data-dir " + instance.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
@@ -1077,6 +1079,10 @@ launcher_def::start_all (string &gts, launch_modes mode) {
     try {
       auto node = network.nodes.find(launch_name);
       launch(*node->second.instance, gts);
+    } catch (fc::exception& fce) {
+       cerr << "unable to launch " << launch_name << " fc::exception=" << fce.to_detail_string() << endl;
+    } catch (std::exception& stde) {
+       cerr << "unable to launch " << launch_name << " std::exception=" << stde.what() << endl;
     } catch (...) {
       cerr << "Unable to launch " << launch_name << endl;
       exit (-1);
@@ -1092,6 +1098,10 @@ launcher_def::start_all (string &gts, launch_modes mode) {
         for (auto &inst : h.instances) {
           try {
             launch (inst, gts);
+          } catch (fc::exception& fce) {
+             cerr << "unable to launch " << inst.name << " fc::exception=" << fce.to_detail_string() << endl;
+          } catch (std::exception& stde) {
+             cerr << "unable to launch " << inst.name << " std::exception=" << stde.what() << endl;
           } catch (...) {
             cerr << "unable to launch " << inst.name << endl;
           }
