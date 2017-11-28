@@ -156,7 +156,6 @@ namespace eosio {
     string                        user_agent_name;
     chain_plugin*                 chain_plug;
     size_t                        just_send_it_max;
-    bool                          send_whole_blocks;
     int                           started_sessions;
 
     node_transaction_index        local_txns;
@@ -203,7 +202,6 @@ namespace eosio {
     void handle_message( connection_ptr c, const notice_message &msg);
     void handle_message( connection_ptr c, const request_message &msg);
     void handle_message( connection_ptr c, const sync_request_message &msg);
-    void handle_message( connection_ptr c, const block_summary_message &msg);
     void handle_message( connection_ptr c, const signed_transaction &msg);
     void handle_message( connection_ptr c, const signed_block &msg);
 
@@ -270,7 +268,6 @@ namespace eosio {
   constexpr auto     def_resp_expected_wait = std::chrono::seconds (1);
   constexpr auto     def_sync_rec_span = 10;
   constexpr auto     def_max_just_send = 1300 * 3; // "mtu" * 3
-  constexpr auto     def_send_whole_blocks = true;
 
   constexpr auto     message_header_size = 4;
 
@@ -1556,117 +1553,6 @@ namespace eosio {
       }
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const block_summary_message &msg) {
-      fc_dlog(logger, "got a block_summary_message from ${p}", ("p",c->peer_name()));
-      fc_dlog(logger, "bsm header = ${h}",("h",msg.block_header));
-      fc_dlog(logger, "txn count = ${c}", ("c",msg.trx_ids.size()));
-
-      const auto& itr = c->block_state.get<by_id>();
-      auto bs = itr.find(msg.block_header.id());
-      if( bs == c->block_state.end()) {
-        c->block_state.insert( (block_state){msg.block_header.id(),true,true,fc::time_point()});
-        send_all( msg, [c](connection_ptr cptr) -> bool {
-            return cptr != c;
-          });
-      } else {
-        if( !bs->is_known) {
-          c->block_state.modify (bs, make_known());
-          send_all( msg, [c](connection_ptr cptr) -> bool {
-              return cptr != c;
-            });
-        }
-      }
-
-      signed_block sb;
-      bool fetch_error = false;
-      chain_controller &cc = chain_plug->chain();
-      if( !cc.is_known_block(msg.block_header.id()) ) {
-        sb.previous = msg.block_header.previous;
-        sb.timestamp = msg.block_header.timestamp;
-        sb.transaction_merkle_root = msg.block_header.transaction_merkle_root;
-        sb.producer_changes = msg.block_header.producer_changes;
-        sb.producer = msg.block_header.producer;
-        sb.producer_signature = msg.block_header.producer_signature;
-
-        for( auto &cyc : msg.trx_ids ) {
-          fc_dlog(logger, "cycle count = ${c}", ("c",cyc.size()));
-          if( cyc.size() == 0 ) {
-            continue;
-          }
-          sb.cycles.emplace_back( eosio::chain::cycle( ) );
-          eosio::chain::cycle &sbcycle = sb.cycles.back( );
-          for( auto &cyc_thr_id : cyc ) {
-            fc_dlog(logger, "cycle user theads count = ${c}", ("c",cyc_thr_id.user_trx.size()));
-            if (cyc_thr_id.user_trx.size() == 0) {
-              continue;
-            }
-            sbcycle.emplace_back( eosio::chain::thread( ) );
-            eosio::chain::thread &cyc_thr = sbcycle.back();
-            /*
-            for( auto &gt : cyc_thr_id.gen_trx ) {
-              try {
-                auto gen = cc.get_generated_transaction( gt );
-                cyc_thr.generated_input.push_back( processed_generated_transaction( gen ) );
-              } catch ( const exception &ex) {
-                fetch_error = true;
-                elog( "unable to retieve generated transaction, caught {ex}", ("ex",ex) );
-                break;
-              } catch ( ... ) {
-                fetch_error = true;
-                elog( "unable to retieve generated transaction" );
-                break;
-              }
-            }
-            */
-            /* Commented out when signed_transaction removed from transaction_object.
-               This code needs to be re-evaluated when block summaries are reworked.
-            for( auto &ut : cyc_thr_id.user_trx ) {
-              // auto ltxn = local_txns.get<by_id>().find(ut);
-
-              try {
-                processed_transaction pt(cc.get_recent_transaction(ut.id));
-                pt.output = ut.outmsgs;
-                cyc_thr.user_input.emplace_back(pt);
-
-                fc_dlog(logger, "Found the transaction");
-              } catch ( const exception &ex) {
-                fetch_error = true;
-                elog( "unable to retieve user transaction, caught {ex}", ("ex",ex) );
-                break;
-              } catch ( ... ) {
-                fetch_error = true;
-                elog( "unable to retieve user transaction" );
-                break;
-              }
-            }
-            */
-            if( fetch_error ){
-              break;
-            }
-          }
-          if( fetch_error ){
-            break;
-          }
-        }
-
-        try {
-          fc_dlog(logger, "calling accept block, fetcherror = ${fe}",("fe",fetch_error));
-          if( !fetch_error )
-            chain_plug->accept_block( sb, false );
-        } catch( const unlinkable_block_exception &ex) {
-          elog( "caught unlinkable block exception #${n}",("n",sb.block_num()));
-          c->enqueue( go_away_message( go_away_reason::unlinkable ));
-        } catch( const assert_exception &ex) {
-            // received a block due to out of sequence
-          elog( "caught assertion on block #${n} ${ex}",
-                ("n",sb.block_num())("ex",ex.what()));
-        } catch( ... ) {
-          elog( "unable to accept block, reason unknown" );
-        }
-      }
-    }
-
-
     void net_plugin_impl::handle_message( connection_ptr c, const signed_transaction &msg) {
       fc_dlog(logger, "got a signed transaction from ${p}", ("p",c->peer_name()));
       transaction_id_type txnid = msg.id();
@@ -1977,58 +1863,8 @@ namespace eosio {
     }
 
     void net_plugin_impl::broadcast_block_impl( const chain::signed_block &sb) {
-      if( send_whole_blocks) {
-        send_all( sb,[](connection_ptr c) -> bool { return true; });
-        return;
-      }
-
-      block_summary_message bsm = {sb, vector<cycle_ids>()};
-      vector<cycle_ids> &trxs = bsm.trx_ids;
-      if( !sb.cycles.empty()) {
-        for( const auto& cyc : sb.cycles) {
-          fc_dlog(logger, "cyc.size = ${cs}",( "cs", cyc.size()));
-          if( cyc.empty() ) {
-            continue;
-          }
-          trxs.emplace_back (cycle_ids());
-          cycle_ids &cycs = trxs.back();
-          fc_dlog(logger, "trxs.size = ${ts} cycles.size = ${cs}",("ts", trxs.size())("cs", cycs.size()));
-          for( const auto& thr : cyc) {
-            fc_dlog(logger, "user txns = ${ui} generated = ${gi}",("ui",thr.user_input.size( ))("gi",thr.generated_input.size( )));
-            if( thr.user_input.size( ) == 0 ) {
-              continue;
-            }
-            cycs.emplace_back (thread_ids());
-            thread_ids &thd_ids = cycs.back();
-
-            for( auto gi : thr.generated_input ) {
-              thd_ids.gen_trx.emplace_back( gi.id );
-            }
-
-            for( auto &ui : thr.user_input) {
-              processed_trans_summary pts ({ui.id( ),ui.output });
-              thd_ids.user_trx.emplace_back( pts );
-              fc_dlog(logger, "user txn has ${m} messages, summary has ${ms}", ("m",ui.output.size())("ms",pts.outmsgs.size()));
-            }
-          }
-        }
-      }
-
-      fc_dlog(logger, "sending bsm with ${c} transactions",("c",trxs.size()));
-      fc_dlog(logger, "bsm header = ${h} txns = ${t}",("h",bsm.block_header)("t",bsm.trx_ids.size()));
-      if (bsm.trx_ids.size() > 0) {
-        fc_dlog(logger, "cycles.size = ${cs}",("cs", bsm.trx_ids[0].size()));
-        if (bsm.trx_ids[0].size()) {
-        }
-      }
-      send_all( bsm,[sb](connection_ptr c) -> bool {
-          const auto& bs = c->block_state.find(sb.id());
-          if( bs == c->block_state.end()) {
-            c->block_state.insert( (block_state){sb.id(),true,true,fc::time_point()});
-            return true;
-          }
-          return false;
-        });
+      send_all( sb,[](connection_ptr c) -> bool { return true; });
+      return;
     }
 
     bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
@@ -2174,7 +2010,6 @@ namespace eosio {
      ( "public-endpoint", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to listen-endpoint.")
      ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple remote-endpoint options as needed to compose a network.")
      ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
-     ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
      ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"none"}, "none"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
      ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
      ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -2218,7 +2053,6 @@ namespace eosio {
     }
 
     my->network_version = (uint16_t)app().version_int();
-    my->send_whole_blocks = def_send_whole_blocks;
 
     my->sync_master.reset( new sync_manager( def_sync_rec_span ) );
 
@@ -2307,10 +2141,6 @@ namespace eosio {
                    ("key_string", key_id_to_wif_pair.second));
          my->private_keys[key_id_to_wif_pair.first] = *private_key;
       }
-    }
-
-    if( options.count( "send-whole-blocks")) {
-      my->send_whole_blocks = options.at( "send-whole-blocks" ).as<bool>();
     }
 
     my->chain_plug = app().find_plugin<chain_plugin>();

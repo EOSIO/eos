@@ -769,7 +769,6 @@ launcher_def::write_config_file (tn_node_def &node) {
   cfg << "genesis-json = " << host->genesis << "\n"
       << "block-log-dir = blocks\n"
       << "readonly = 0\n"
-      << "send-whole-blocks = true\n"
       << "shared-file-dir = blockchain\n"
       << "shared-file-size = " << instance.file_size << "\n"
       << "http-server-endpoint = " << host->host_name << ":" << instance.http_port << "\n"
