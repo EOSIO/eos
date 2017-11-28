@@ -145,6 +145,9 @@ const string get_controlled_accounts_func = account_history_func_base + "/get_co
 
 const string net_func_base = "/v1/net";
 const string net_connect = net_func_base + "/connect";
+const string net_disconnect = net_func_base + "/disconnect";
+const string net_status = net_func_base + "/status";
+const string net_connections = net_func_base + "/connections";
 
 
 const string wallet_func_base = "/v1/wallet";
@@ -828,6 +831,27 @@ int main( int argc, char** argv ) {
       const auto& v = call(host, port, net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
+
+   auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
+   disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
+   disconnect->set_callback([&] {
+      const auto& v = call(host, port, net_disconnect, new_host);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   auto status = net->add_subcommand("status", localized("status of existing connection"), false);
+   status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
+   status->set_callback([&] {
+      const auto& v = call(host, port, net_status, new_host);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
+   connections->set_callback([&] {
+      const auto& v = call(host, port, net_connections, new_host);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
 
 
    // Wallet subcommand

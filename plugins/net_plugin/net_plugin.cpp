@@ -135,6 +135,8 @@ namespace eosio {
     };
     possible_connections             allowed_connections{None};
 
+    connection_ptr find_connection( string host )const;
+
     std::set< connection_ptr >       connections;
     bool                             done = false;
     unique_ptr< sync_manager >       sync_master;
@@ -377,6 +379,15 @@ namespace eosio {
     unique_ptr<boost::asio::steady_timer> response_expected;
     optional<request_message> pending_fetch;
     go_away_reason         no_retry;
+
+    connection_status get_status()const {
+       connection_status stat;
+       stat.peer = peer_addr;
+       stat.connecting = connecting;
+       stat.syncing = syncing;
+       stat.last_handshake = last_handshake;
+       return stat;
+    }
 
     /** \name Peer Timestamps
      *  Time message handling
@@ -2377,9 +2388,45 @@ namespace eosio {
   /**
    *  Used to trigger a new connection from RPC API
    */
-  void net_plugin::connect( const string& host ) {
-      connection_ptr c = std::make_shared<connection>(host);
-      my->connections.insert( c );
-      my->connect( c );
+  string net_plugin::connect( const string& host ) {
+     if( my->find_connection( host ) )
+       return "already connected";
+
+     connection_ptr c = std::make_shared<connection>(host);
+     my->connections.insert( c );
+     my->connect( c );
+
+     return "added connection";
+  }
+
+  string net_plugin::disconnect( const string& host ) {
+     for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
+        if( (*itr)->peer_addr == host ) {
+           my->connections.erase(itr);
+           return "connection removed";
+        }
+     }
+     return "no known connection for host";
+  }
+
+  optional<connection_status> net_plugin::status( const string& host )const {
+     auto con = my->find_connection( host );
+     if( con )
+        return con->get_status();
+     return optional<connection_status>();
+  }
+
+  vector<connection_status> net_plugin::connections()const {
+     vector<connection_status> result;
+     result.reserve( my->connections.size() );
+     for( const auto& c : my->connections ) {
+        result.push_back( c->get_status() );
+     }
+     return result;
+  }
+  connection_ptr net_plugin_impl::find_connection( string host )const {
+     for( const auto& c : connections )
+        if( c->peer_addr == host ) return c;
+     return connection_ptr();
   }
 }
