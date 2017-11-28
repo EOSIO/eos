@@ -95,9 +95,9 @@ void net_api_plugin::plugin_initialize(const variables_map& options) {
          wlog("\n"
               "*************************************\n"
               "*                                   *\n"
-              "*  --   Wallet NOT on localhost  -- *\n"
-              "*  - Password and/or Private Keys - *\n"
-              "*  - are transferred unencrypted. - *\n"
+              "*  --  Net API NOT on localhost  -- *\n"
+              "*                                   *\n"
+              "*   this may be abused if exposed   *\n"
               "*                                   *\n"
               "*************************************\n");
       }
