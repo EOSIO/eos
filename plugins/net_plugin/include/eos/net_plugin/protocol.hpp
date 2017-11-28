@@ -113,22 +113,6 @@ namespace eosio {
     ordered_blk_ids req_blocks;
   };
 
-  struct processed_trans_summary {
-    transaction_id_type id;
-    vector<message_output> outmsgs;
-  };
-
-  struct thread_ids {
-    vector<transaction_id_type> gen_trx; // is this necessary to send?
-    vector<processed_trans_summary> user_trx;
-  };
-
-  using cycle_ids = vector<thread_ids>;
-   struct block_summary_message {
-      signed_block_header         block_header;
-      vector<cycle_ids>           trx_ids;
-   };
-
    struct sync_request_message {
       uint32_t start_block;
       uint32_t end_block;
@@ -140,7 +124,6 @@ namespace eosio {
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      block_summary_message,
                                       signed_transaction,
                                       signed_block>;
 
@@ -155,9 +138,6 @@ FC_REFLECT( eosio::handshake_message,
             (os)(agent)(generation) )
 FC_REFLECT( eosio::go_away_message, (reason)(node_id) )
 FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( eosio::processed_trans_summary, (id)(outmsgs) )
-FC_REFLECT( eosio::thread_ids, (gen_trx)(user_trx) )
-FC_REFLECT( eosio::block_summary_message, (block_header)(trx_ids) )
 FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
