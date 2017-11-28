@@ -1199,9 +1199,6 @@ namespace eosio {
                                        ( "peer", c->peer_name())("error",err.message()));
                                  c->connecting = false;
                                  c->close();
-                                 /*if(started_sessions == 0) {
-                                   connect(c);
-                                 }*/
                                }
                              }
                            } );
