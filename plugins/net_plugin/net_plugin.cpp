@@ -1240,7 +1240,6 @@ namespace eosio {
                 if (!conn) {
                   return;
                 }
-
                 FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
                 conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
                 while (conn->pending_message_buffer.bytes_to_read() > 0) {
@@ -1264,16 +1263,20 @@ namespace eosio {
                 }
                 start_read_message(conn);
               } else {
-                elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );
+                connection_ptr conn = c.lock();
+                elog( "Error reading message from ${p}: ${m}",("p",conn->peer_name())( "m", ec.message()) );
                 close( c.lock() );
               }
             } catch (...) {
+              connection_ptr conn = c.lock();
+              elog( "Error reading message from ${p}",("p",conn->peer_name()));
               close(c.lock());
             }
           }
         );
       } catch (...) {
-        close(conn);
+          elog( "Error reading message from ${p}",("p",conn->peer_name()));
+          close(conn);
       }
     }
 
