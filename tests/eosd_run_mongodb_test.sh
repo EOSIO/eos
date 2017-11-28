@@ -29,7 +29,7 @@ killAll()
 
 cleanup()
 {
- rm -rf tn_data_0
+ rm -rf tn_data_00
  rm -rf test_wallet_0
  INFO="$(echo 'db.dropDatabase()' | mongo $DB)"
 }
@@ -90,7 +90,7 @@ INITB_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 LOG_FILE=eosd_run_test.log
 
 # eosd
-programs/launcher/launcher --eosd "--plugin eosio::db_plugin --mongodb-uri $DB"
+programs/launcher/launcher --eosd "--enable-stale-production true --plugin eosio::db_plugin --mongodb-uri $DB"
 verifyErrorCode "launcher"
 sleep 60
 count=`grep -c "generated block" tn_data_00/stderr.txt`
