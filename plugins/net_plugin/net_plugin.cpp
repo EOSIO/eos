@@ -1185,9 +1185,9 @@ namespace eosio {
                                        ( "peer", c->peer_name())("error",err.message()));
                                  c->connecting = false;
                                  c->close();
-                                 if (started_sessions == 0) {
+                                 /*if (started_sessions == 0) {
                                    connect (c);
-                                 }
+                                 }*/
                                }
                              }
                            } );
@@ -1493,7 +1493,7 @@ namespace eosio {
           try {
             b = cc.fetch_block_by_id(blkid);
           } catch (const assert_exception &ex) {
-            elog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
+            elog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.to_string()));
             // keep going, client can ask another peer
           } catch (...) {
             elog( "failed to retrieve block for id");
@@ -1716,8 +1716,7 @@ namespace eosio {
         chain_plug->accept_transaction( msg );
         fc_dlog(logger, "chain accepted transaction" );
       } catch( const fc::exception &ex) {
-        // received a block due to out of sequence
-        elog( "accept txn threw  ${m}",("m",ex.what()));
+        elog( "accept txn threw ${m}",("m",ex.to_string()));
       }
       catch( ...) {
         elog( " caught something attempting to accept transaction");
@@ -1729,6 +1728,8 @@ namespace eosio {
     fc_dlog(logger, "got signed_block #${n} from ${p}", ("n",msg.block_num())("p",c->peer_name()));
     chain_controller &cc = chain_plug->chain();
     block_id_type blk_id = msg.id();
+    string bid = blk_id.str().substr(0,10);
+    bool forking = false;
     try {
       if( cc.is_known_block(blk_id)) {
         return;
@@ -1736,7 +1737,8 @@ namespace eosio {
     } catch( ...) {
     }
     if( cc.head_block_num() >= msg.block_num()) {
-      elog( "received forking block #${n}",( "n",msg.block_num()));
+      forking = true;
+      elog( "received forking block #${n}, ${bid} from ${p}",( "n",msg.block_num())("bid",bid)("p",c->peer_name()));
     }
     fc::microseconds age( fc::time_point::now() - msg.timestamp);
     fc_dlog(logger, "got signed_block #${n} from ${p} block age in secs = ${age}",("n",msg.block_num())("p",c->peer_name())("age",age.to_seconds()));
@@ -1770,12 +1772,12 @@ namespace eosio {
         chain_plug->accept_block(msg, syncing);
         accepted = true;
       } catch( const unlinkable_block_exception &ex) {
-        elog( "handle signed block: unlinkable_block_exception accept block #${n} syncing",("n",num));
+        elog( "handle signed block: unlinkable_block_exception accept block #${n} ${bid} syncing",("n",num)("bid",bid));
         c->enqueue( go_away_message( go_away_reason::unlinkable ));
       } catch( const assert_exception &ex) {
-        elog( "unable to accept block on assert exception ${n}",("n",ex.what()));
+        elog( "unable to accept block  #${n} ${bid} on assert exception ${x}",("x",ex.to_string())("n",num)("bid",bid));
       } catch( const fc::exception &ex) {
-        elog( "accept_block threw a non-assert exception ${x}",( "x",ex.what()));
+        elog( "accept_block threw a non-assert exception ${x}",( "x",ex.to_string()));
       } catch( ...) {
         elog( "handle sync block caught something else");
       }
