@@ -1079,6 +1079,10 @@ launcher_def::start_all (string &gts, launch_modes mode) {
     try {
       auto node = network.nodes.find(launch_name);
       launch(*node->second.instance, gts);
+    } catch (fc::exception& fce) {
+       cerr << "unable to launch " << launch_name << "fc::exception=" << fce.to_detail_string() << endl;
+    } catch (std::exception& stde) {
+       cerr << "unable to launch " << launch_name << "std::exception=" << stde.what() << endl;
     } catch (...) {
       cerr << "Unable to launch " << launch_name << endl;
       exit (-1);
@@ -1094,6 +1098,10 @@ launcher_def::start_all (string &gts, launch_modes mode) {
         for (auto &inst : h.instances) {
           try {
             launch (inst, gts);
+          } catch (fc::exception& fce) {
+             cerr << "unable to launch " << inst.name << "fc::exception=" << fce.to_detail_string() << endl;
+          } catch (std::exception& stde) {
+             cerr << "unable to launch " << inst.name << "std::exception=" << stde.what() << endl;
           } catch (...) {
             cerr << "unable to launch " << inst.name << endl;
           }
