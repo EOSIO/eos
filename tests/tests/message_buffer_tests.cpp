@@ -193,6 +193,50 @@ BOOST_AUTO_TEST_CASE(message_buffer_peek_read)
   FC_LOG_AND_RETHROW()
 }
 
+/// Test automatic allocation when advancing the read_ptr to the end.
+BOOST_AUTO_TEST_CASE(message_buffer_write_ptr_to_end)
+{
+  try {
+    {
+      const uint32_t small = 32;
+      eosio::message_buffer<small> mb;
+      BOOST_CHECK_EQUAL(mb.total_bytes(), small);
+      BOOST_CHECK_EQUAL(mb.bytes_to_write(), small);
+      BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+      BOOST_CHECK_EQUAL(mb.read_ptr(), mb.write_ptr());
+      BOOST_CHECK_EQUAL(mb.read_index().first, 0);
+      BOOST_CHECK_EQUAL(mb.read_index().second, 0);
+      BOOST_CHECK_EQUAL(mb.write_index().first, 0);
+      BOOST_CHECK_EQUAL(mb.write_index().second, 0);
+
+      char* write_ptr = mb.write_ptr();
+      for (char ind = 0; ind < small; ind++) {
+        *write_ptr = ind;
+        write_ptr++;
+      }
+      mb.advance_write_ptr(small);
+
+      BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * small);
+      BOOST_CHECK_EQUAL(mb.bytes_to_write(), small);
+      BOOST_CHECK_EQUAL(mb.bytes_to_read(), small);
+      BOOST_CHECK_NE((void*) mb.read_ptr(), (void*) mb.write_ptr());
+      BOOST_CHECK_EQUAL(mb.read_index().first, 0);
+      BOOST_CHECK_EQUAL(mb.read_index().second, 0);
+      BOOST_CHECK_EQUAL(mb.write_index().first, 1);
+      BOOST_CHECK_EQUAL(mb.write_index().second, 0);
+
+      auto mbs = mb.get_buffer_sequence_for_boost_async_read();
+      auto mbsi = mbs.begin();
+      BOOST_CHECK_EQUAL(boost::asio::detail::buffer_size_helper(*mbsi), small);
+      BOOST_CHECK_EQUAL(boost::asio::detail::buffer_cast_helper(*mbsi), mb.write_ptr());
+      BOOST_CHECK_EQUAL(mb.read_ptr()+small, mb.write_ptr());
+      mbsi++;
+      BOOST_CHECK(mbsi == mbs.end());
+    }
+  }
+  FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio

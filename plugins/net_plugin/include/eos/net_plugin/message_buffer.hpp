@@ -35,6 +35,13 @@ namespace eosio {
 
     message_buffer() : buffers{pool().malloc()}, read_ind{0,0}, write_ind{0,0} { }
 
+    ~message_buffer() {
+      while (buffers.size() > 0) {
+        pool().destroy(buffers.back());
+        buffers.pop_back();
+      }
+    }
+
     /*
      *  Returns the current read index referencing the byte in the buffer
      *  that is next to be read.
@@ -84,6 +91,19 @@ namespace eosio {
     }
 
     /*
+     *  Resets the message buffer to the initial state. Any unread data is
+     *  discarded.
+     */
+    void reset() {
+      read_ind = { 0, 0 };
+      write_ind = { 0, 0 };
+      while (buffers.size() > 1) {
+        pool().destroy(buffers.back());
+        buffers.pop_back();
+      }
+    }
+
+    /*
      *  Returns the current number of bytes remaining to be read.
      *  Logically, this is the different between where the read and write pointers are.
      */
@@ -119,12 +139,7 @@ namespace eosio {
     void advance_read_ptr(uint32_t bytes) {
       advance_index(read_ind, bytes);
       if (read_ind == write_ind) {
-        read_ind = { 0, 0 };
-        write_ind = { 0, 0 };
-        while (buffers.size() > 1) {
-          pool().destroy(buffers.back());
-          buffers.pop_back();
-        }
+        reset();
       } else if (read_ind.first > 0) {
         while (read_ind.first > 0) {
           pool().destroy(buffers.front());
@@ -141,6 +156,9 @@ namespace eosio {
      */
     void advance_write_ptr(uint32_t bytes) {
       advance_index(write_ind, bytes);
+      while (write_ind.first >= buffers.size()) {
+        buffers.push_back(pool().malloc());
+      }
     }
 
     /*
@@ -151,6 +169,7 @@ namespace eosio {
      */
     std::vector<boost::asio::mutable_buffer> get_buffer_sequence_for_boost_async_read() {
       std::vector<boost::asio::mutable_buffer> seq;
+      FC_ASSERT(write_ind.first < buffers.size());
       seq.push_back(boost::asio::buffer(&buffers[write_ind.first]->at(write_ind.second),
                                                 buffer_len - write_ind.second));
       for (std::size_t i = write_ind.first + 1; i < buffers.size(); i++) {
@@ -187,7 +206,7 @@ namespace eosio {
       if (bytes_to_read() < size) {
         return false;
       }
-      if (index.second + size < buffer_len) {
+      if (index.second + size <= buffer_len) {
         memcpy(s, get_ptr(index), size);
         advance_index(index, size);
       } else {
