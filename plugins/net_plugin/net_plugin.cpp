@@ -1368,22 +1368,26 @@ namespace eosio {
       uint32_t head = cc.head_block_num( );
       block_id_type head_id = cc.head_block_id();
 
-      if( msg.last_irreversible_block_num  > head || sync_master->syncing() ) {
+      if( peer_lib > head || sync_master->syncing() ) {
         sync_master->start_sync( c, peer_lib );
       }
       else if( msg.head_id != head_id ) {
         fc_dlog(logger, "msg.head_id = ${m} our head = ${h}",("m",msg.head_id)("h",head_id));
 
         notice_message note;
+        note.known_blocks.mode = id_list_modes::none;
         fc_dlog(logger, "msg head = ${mh} msg lib = ${ml} my head = ${h} my lib = ${l}",("mh",msg.head_num)("ml",msg.last_irreversible_block_num)("h",head)("l",lib_num));
         if( msg.head_num >= lib_num ) {
           note.known_blocks.mode = id_list_modes::catch_up;
           note.known_blocks.pending = head - lib_num;
+        } else {
+          note.known_blocks.mode = id_list_modes::last_irr_catch_up;
+          note.known_blocks.pending = lib_num;
         }
         note.known_trx.mode = id_list_modes::catch_up;
         note.known_trx.pending = local_txns.size(); // cc.pending().size();
         if( note.known_trx.pending > 0 || note.known_blocks.pending > 0) {
-          fc_dlog(logger, "sending catchup notice to ${n} about ${t} txns and ${b} blocks",("n",c->peer_name())("t",note.known_trx.pending)("b",note.known_blocks.pending));
+          fc_dlog(logger, "sending ${m} notice to ${n} about ${t} txns and ${b} blocks",("m",modes_str(note.known_blocks.mode))("n",c->peer_name())("t",note.known_trx.pending)("b",note.known_blocks.pending));
           c->enqueue( note );
           c->syncing = true;
         }
@@ -1469,8 +1473,13 @@ namespace eosio {
         }
       }
 
-      if( msg.known_blocks.mode == id_list_modes::catch_up )
-        {
+      fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_blocks.mode))("n",msg.known_blocks.pending));
+
+
+      if( msg.known_blocks.mode == id_list_modes::last_irr_catch_up ) {
+        sync_master->start_sync (c, msg.known_blocks.pending);
+      }
+      else if( msg.known_blocks.mode == id_list_modes::catch_up ) {
           req.req_blocks.mode = id_list_modes::catch_up;
           req.req_blocks.pending = msg.known_blocks.pending;
           send_req = true;
