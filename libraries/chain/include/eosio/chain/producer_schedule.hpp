@@ -21,13 +21,17 @@ namespace eosio { namespace chain {
    /**
     *  Defines both the order, account name, and signing keys of the active set of producers. 
     */
-   using producer_schedule_type = fc::array<producer_key,config::producer_count>;
+   struct producer_schedule_type {
+      uint32_t                                       version = 0; ///< sequentially incrementing version number
+      fc::array<producer_key,config::producer_count> producers;
+   };
 
 
    inline bool operator == ( const producer_schedule_type& a, const producer_schedule_type& b ) 
    {
-      for( uint32_t i = 0; i < a.size(); ++i )
-         if( a[i] != b[i] ) return false;
+      if( a.version != b.version ) return false;
+      for( uint32_t i = 0; i < a.producers.size(); ++i )
+         if( a.producers[i] != b.producers[i] ) return false;
       return true;
    }
    inline bool operator != ( const producer_schedule_type& a, const producer_schedule_type& b )
@@ -39,3 +43,4 @@ namespace eosio { namespace chain {
 } } /// eosio::chain
 
 FC_REFLECT( eosio::chain::producer_key, (producer_name)(block_signing_key) )
+FC_REFLECT( eosio::chain::producer_schedule_type, (version)(producers) )

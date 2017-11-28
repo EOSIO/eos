@@ -25,7 +25,7 @@ chain_config chain_initializer::get_chain_start_configuration() {
 
 producer_schedule_type chain_initializer::get_chain_start_producers() {
    producer_schedule_type result;
-   std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.begin(),
+   std::transform(genesis.initial_producers.begin(), genesis.initial_producers.end(), result.producers.begin(),
                   [](const auto& p) { return producer_key{p.owner_name,p.block_signing_key}; });
    return result;
 }

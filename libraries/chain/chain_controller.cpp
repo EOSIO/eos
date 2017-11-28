@@ -696,14 +696,18 @@ producer_schedule_type chain_controller::_calculate_producer_schedule()const {
    auto itr = producers_by_vote.begin();
    producer_schedule_type schedule;
    uint32_t count = 0;
-   while( itr != producers_by_vote.end() && count < schedule.size() ) {
-      schedule[count].producer_name = itr->owner_name;
-      schedule[count].block_signing_key = get_producer(itr->owner_name).signing_key;
+   while( itr != producers_by_vote.end() && count < schedule.producers.size() ) {
+      schedule.producers[count].producer_name = itr->owner_name;
+      schedule.producers[count].block_signing_key = get_producer(itr->owner_name).signing_key;
       ++itr;
-      if( schedule[count].block_signing_key != public_key_type() ) {
+      if( schedule.producers[count].block_signing_key != public_key_type() ) {
          ++count;
       }
    }
+   const auto& hps = _head_producer_schedule();
+   schedule.version = hps.version;
+   if( hps != schedule )
+      ++schedule.version;
    return schedule;
 }
 
@@ -724,10 +728,6 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       auto schedule = _calculate_producer_schedule();
       if( b.new_producers )
       {
-         for( uint32_t i = 0; i < schedule.size(); ++i ) {
-            idump((schedule[i])((*b.new_producers)[i]) );
-            FC_ASSERT( schedule[i] == (*b.new_producers)[i], "missmatch in expected producers", ("i", i) );
-         }
           FC_ASSERT( schedule == *b.new_producers, "pending producer set different than expected" );
       }
 
@@ -746,7 +746,7 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
 
 
       auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
-      for(auto& name : gpo.active_producers) {
+      for(auto& name : gpo.active_producers.producers ) {
          active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
       }
 
@@ -1011,9 +1011,9 @@ void chain_controller::update_last_irreversible_block()
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
    vector<const producer_object*> producer_objs;
-   producer_objs.reserve(gpo.active_producers.size());
+   producer_objs.reserve(gpo.active_producers.producers.size());
 
-   std::transform(gpo.active_producers.begin(), gpo.active_producers.end(), std::back_inserter(producer_objs),
+   std::transform(gpo.active_producers.producers.begin(), gpo.active_producers.producers.end(), std::back_inserter(producer_objs),
                   [this](const producer_key& pk) { return &get_producer(pk.producer_name); });
 
    static_assert(config::irreversible_threshold_percent > 0, "irreversible threshold must be nonzero");
@@ -1107,7 +1107,7 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    auto index = current_aslot % (config::blocks_per_round); //TODO configure number of repetitions by producer
    index /= config::producer_repititions;
 
-   return gpo.active_producers[index].producer_name;
+   return gpo.active_producers.producers[index].producer_name;
 }
 
 block_timestamp_type chain_controller::get_slot_time(uint32_t slot_num)const
