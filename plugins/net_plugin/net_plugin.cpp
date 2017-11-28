@@ -1186,9 +1186,6 @@ namespace eosio {
                                        ( "peer", c->peer_name())("error",err.message()));
                                  c->connecting = false;
                                  c->close();
-                                 if (started_sessions == 0) {
-                                   connect (c);
-                                 }
                                }
                              }
                            } );
@@ -2186,7 +2183,7 @@ namespace eosio {
      ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple remote-endpoint options as needed to compose a network.")
      ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
-     ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"none"}, "none"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
+     ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
      ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
      ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
        "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
