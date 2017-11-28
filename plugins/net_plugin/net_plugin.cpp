@@ -1864,7 +1864,6 @@ namespace eosio {
 
     void net_plugin_impl::broadcast_block_impl( const chain::signed_block &sb) {
       send_all( sb,[](connection_ptr c) -> bool { return true; });
-      return;
     }
 
     bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
