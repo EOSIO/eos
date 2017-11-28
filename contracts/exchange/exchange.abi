@@ -8,7 +8,7 @@
       "name": "order_id",
       "fields": {
         "name" : "account_name",
-        "id"   : "uint64"
+        "number"   : "uint64"
       }
     },{
       "name" : "bid",
@@ -49,22 +49,53 @@
     }
   ],
   "actions": [{
-      "action": "buy",
+      "action_name": "buy",
       "type": "buy_order"
     },{
-      "action": "sell",
+      "action_name": "sell",
       "type": "sell_order"
     },{
-      "action": "cancelbuy",
+      "action_name": "cancelbuy",
       "type": "order_id"
     },{
-      "action": "cancelsell",
+      "action_name": "cancelsell",
       "type": "order_id"
     }
   ],
-  "tables": [
-    {"table":"bids","type":"bid"},
-    {"table":"asks","type":"ask"},
-    {"table":"account","type":"account"}
+  "tables": [{
+      "table_name": "bid",
+      "index_type": "i128i128",
+      "key_names": [
+        "buyer",
+        "at_price"
+      ],
+      "key_types": [
+        "order_id",
+        "price"
+      ],
+      "type": "bid"
+    },{
+      "table_name": "ask",
+      "index_type": "i128i128",
+      "key_names": [
+        "seller",
+        "at_price"
+      ],
+      "key_types": [
+        "order_id",
+        "price"
+      ],
+      "type": "ask"
+    },{
+      "table_name": "account",
+      "index_type": "i64",
+      "key_names": [
+        "owner"
+      ],
+      "key_types": [
+        "account_name"
+      ],
+      "type": "account"
+    }
   ]
 }

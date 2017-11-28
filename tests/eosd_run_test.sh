@@ -70,7 +70,7 @@ killAll()
 
 cleanup()
 {
-  rm -rf tn_data_0
+  rm -rf tn_data_00
   rm -rf test_wallet_0
 }
 
@@ -275,8 +275,13 @@ fi
 
 # create another new account via initb
 ACCOUNT_INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 create account initb currency $PUB_KEY2 $PUB_KEY3)"
-verifyErrorCode "eosc create account"
+verifyErrorCode "eosc create account currency"
+
+# create another new account via inita
+ACCOUNT_INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 create account inita exchange $PUB_KEY2 $PUB_KEY3)"
+verifyErrorCode "eosc create account exchange"
 waitForNextBlock
+
 
 ## now transfer from testera to currency using keys from testera
 
@@ -379,7 +384,7 @@ fi
 
 # upload a contract
 INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract currency contracts/currency/currency.wast contracts/currency/currency.abi)"
-verifyErrorCode "eosc set contract testera"
+verifyErrorCode "eosc set contract currency"
 count=`echo $INFO | grep -c "processed"`
 if [ $count == 0 ]; then
   error "FAILURE - set contract failed: $INFO"
@@ -439,6 +444,20 @@ count=`echo $ACCOUNT_INFO | grep "balance" | grep -c "999999950"`
 if [ $count == 0 ]; then
   error "FAILURE - get table currency account failed: $ACCOUNT_INFO"
 fi
+
+#
+# Exchange Contract Tests
+#
+
+# upload exchange contract
+INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi)"
+verifyErrorCode "eosc set contract exchange"
+count=`echo $INFO | grep -c "processed"`
+if [ $count == 0 ]; then
+  error "FAILURE - set contract exchange failed: $INFO"
+fi
+getTransactionId "$INFO"
+
 
 #
 # Producer
