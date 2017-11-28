@@ -6,6 +6,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/record_functions.hpp>
 #include <fc/utility.hpp>
+#include <sstream>
 
 namespace chainbase { class database; }
 
@@ -102,12 +103,6 @@ class apply_context {
        */
       bool has_recipient(account_name account)const;
 
-      /**
-       * Append a statement printed from the contract to the output log
-       */
-      void append_console(const string&& output);
-
-
       bool                     all_authorizations_used()const;
       vector<permission_level> unused_authorizations()const;
 
@@ -189,7 +184,7 @@ class apply_context {
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
       map<uint32_t,deferred_transaction>  _pending_deferred_transactions; ///< deferred txs /// TODO specify when
-      vector<string>                      _pending_console_output;
+      std::ostringstream                  _pending_console_output;
 };
 
 using apply_handler = std::function<void(apply_context&)>;

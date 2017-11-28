@@ -23,8 +23,8 @@ void apply_context::exec_one()
    }
 
    // create a receipt for this
-   results.applied_actions.emplace_back(action_result {receiver, act, move(_pending_console_output)});
-   _pending_console_output.clear();
+   results.applied_actions.emplace_back(action_result {receiver, act, move(_pending_console_output.str())});
+   _pending_console_output = std::ostringstream();
 }
 
 void apply_context::exec()
@@ -145,10 +145,5 @@ void apply_context::deferred_transaction_send( uint32_t id ) {
 //   auto itr = _pending_deferred_transactions.find( id );
 //   _pending_deferred_transactions.erase(itr);
 }
-
-void apply_context::append_console(const string&& output) {
-   _pending_console_output.emplace_back(move(output));
-}
-
 
 } } /// eosio::chain

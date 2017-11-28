@@ -261,22 +261,33 @@ transaction_result chain_controller::_push_transaction(const signed_transaction&
 
    auto temp_session = _db.start_undo_session(true);
 
-   auto tid = trx.id();
+   // for now apply the transaction serially but schedule it according to those invariants
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
+   auto result = _apply_transaction(trx);
+
+   auto tid = trx.id();
 
    auto shardnum = _pending_cycle.schedule( trx );
    if( shardnum == -1 ) { /// schedule conflict start new cycle
+      _finalize_cycle();
       _start_cycle();
+      shardnum = _pending_cycle.schedule( trx );
    }
 
    auto& bcycle = _pending_block->cycles_summary.back();
    if( shardnum >= bcycle.size() ) {
       bcycle.resize( bcycle.size()+1 );
-      bcycle.back().emplace_back( tid );
    }
 
-   auto result = _apply_transaction(trx);
+   bcycle.at(shardnum).emplace_back( tid );
+
+
+   if (shardnum >= _pending_shard_results.size()) {
+      _pending_shard_results.resize(_pending_shard_results.size() + 1);
+   }
+   _pending_shard_results.at(shardnum).append(result);
+
    /** for now we will just shove everything into the first shard */
    _pending_block->input_transactions.push_back(trx);
 
@@ -297,9 +308,48 @@ transaction_result chain_controller::_push_transaction(const signed_transaction&
 void chain_controller::_start_cycle() {
    _pending_block->cycles_summary.resize( _pending_block->cycles_summary.size() + 1 );
    _pending_cycle = pending_cycle_state();
+   _pending_shard_results.clear();
 
    /// TODO: check for deferred transactions and schedule them
 } // _start_cycle
+
+void chain_controller::_finalize_cycle()
+{
+   for (const auto& res: _pending_shard_results) {
+      _apply_shard_results(res);
+   }
+}
+
+void chain_controller::_apply_shard_results( const shard_result& res )
+{
+   for (const auto& tr: res.transaction_results) {
+      for (const auto &dt: tr.deferred_transactions) {
+         _db.create<generated_transaction_object>([&](auto &obj) {
+            obj.trx_id = dt.id();
+            obj.sender = dt.sender;
+            obj.sender_id = dt.sender_id;
+            obj.expiration = dt.expiration;
+            obj.delay_until = dt.execute_after;
+            obj.packed_trx.resize(fc::raw::pack_size(dt));
+            fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+            fc::raw::pack(ds, dt);
+         });
+      }
+
+      ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
+      for (const auto &ar : tr.action_results) {
+         auto prefix = fc::format_string(
+            "[(${s},${a})->${r}]",
+            fc::mutable_variant_object()
+               ("s", ar.act.scope)
+               ("a", ar.act.name)
+               ("r", ar.receiver));
+         std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
+         std::cerr << ar.console
+         std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+      }
+   }
+}
 
 signed_block chain_controller::generate_block(
    block_timestamp_type when,
@@ -438,33 +488,17 @@ void chain_controller::__apply_block(const signed_block& next_block)
    }
    
    for (const auto& cycle : next_block.cycles_summary) {
+      vector<shard_result> results;
+      results.reserve(cycle.size());
       for (const auto& shard: cycle) {
+         results.emplace_back();
+         auto& result = results.back();
+
          for (const auto& receipt : shard) {
             if( receipt.status == transaction_receipt::executed ) {
                auto itr = trx_index.find(receipt.id);
                if( itr != trx_index.end() ) {
-                  auto result = _apply_transaction( *itr->second );
-                  ///TODO: make more parallel accumulating shard output and reducing at cycle level
-                  for (const auto& dt: result.deferred_transactions) {
-                     _db.create<generated_transaction_object>([&](auto &obj) {
-                        obj.trx_id = dt.id();
-                        obj.sender = dt.sender;
-                        obj.sender_id = dt.sender_id;
-                        obj.expiration = dt.expiration;
-                        obj.delay_until = dt.execute_after;
-                        obj.packed_trx.resize(fc::raw::pack_size(dt));
-                        fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-                        fc::raw::pack(ds, dt);
-                     });
-                  }
-
-                  ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
-                  for (const auto& ar : result.action_results) {
-                     auto prefix = fc::format_string("[(${s},${a})->${r}](console): ", fc::mutable_variant_object()("s",ar.act.scope)("a", ar.act.name)("r", ar.receiver));
-                     for (const auto& msg: ar.console) {
-                        std::cerr << prefix << msg << std::endl;
-                     }
-                  }
+                  result.append(move(_apply_transaction( *itr->second )));
                }
                else 
                {
@@ -477,6 +511,10 @@ void chain_controller::__apply_block(const signed_block& next_block)
             // check_transaction_authorization(trx, true);
          } /// for each transaction id
       } /// for each shard
+
+      for (const auto res: results) {
+         _apply_shard_results(res);
+      }
    } /// for each cycle
 
    _finalize_block( next_block );

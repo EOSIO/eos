@@ -155,7 +155,7 @@ namespace eosio { namespace chain {
    struct action_result {
       account_name               receiver;
       action                     act;
-      vector<string>             console;
+      string                     console;
    };
 
    struct transaction_result : transaction_receipt {

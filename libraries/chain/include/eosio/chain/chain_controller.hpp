@@ -286,7 +286,19 @@ namespace eosio { namespace chain {
                                    flat_set<account_name>    provided_accounts = flat_set<account_name>()
                                    )const;
 
-   private:
+      private:
+         struct shard_result {
+            vector<transaction_result> transaction_results;
+
+            void append(transaction_result &&res) {
+               transaction_results.emplace_back(move(res));
+            }
+
+            void append(const transaction_result &res) {
+               transaction_results.emplace_back(res);
+            }
+         };
+
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
 
 
@@ -308,6 +320,7 @@ namespace eosio { namespace chain {
          transaction_result _apply_transaction( const transaction& trx );
 
          void _finalize_block( const signed_block& b );
+         void _apply_shard_results( const shard_result& res );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
@@ -395,6 +408,8 @@ namespace eosio { namespace chain {
          void _spinup_db();
          void _spinup_fork_db();
          void _start_cycle();
+         void _append_shard_results(int shard_num, const transaction_result& result);
+         void _finalize_cycle();
 
  //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
@@ -406,6 +421,7 @@ namespace eosio { namespace chain {
          optional<signed_block>           _pending_block; 
          uint32_t                         _pending_transaction_count = 0; 
          pending_cycle_state              _pending_cycle;
+         vector<shard_result>             _pending_shard_results;
 
          bool                             _currently_applying_block = false;
          bool                             _currently_replaying_blocks = false;

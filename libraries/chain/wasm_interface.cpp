@@ -663,32 +663,32 @@ class console_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       void prints(const char *str) {
-         context.append_console(string(str));
+         context._pending_console_output << string(str) << std::endl;
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
-         context.append_console(string(str, str_len));
+         context._pending_console_output << string(str, str_len) << std::endl;
       }
 
       void printi(uint64_t val) {
-         context.append_console(to_string(val));
+         context._pending_console_output << to_string(val) << std::endl;
       }
 
       void printi128(const unsigned __int128& val) {
          fc::uint128_t v(val>>64, uint64_t(val) );
-         context.append_console(string(v));
+         context._pending_console_output << string(v) << std::endl;
       }
 
       void printd( wasm_double val ) {
-         context.append_console(string(val.str()));
+         context._pending_console_output << string(val.str()) << std::endl;
       }
 
       void printn(const name& value) {
-         context.append_console(value.to_string());
+         context._pending_console_output << value.to_string() << std::endl;
       }
 
       void printhex(array_ptr<const char> data, size_t data_len ) {
-         context.append_console(fc::to_hex(data, data_len));
+         context._pending_console_output << fc::to_hex(data, data_len) << std::endl;
       }
 };
 
