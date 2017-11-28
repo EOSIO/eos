@@ -119,8 +119,8 @@ namespace eosio {
     unique_ptr<tcp::acceptor>        acceptor;
     tcp::endpoint                    listen_endpoint;
     string                           p2p_address;
-    uint32_t                         max_client_count;
-    uint32_t                         num_clients;
+    uint32_t                         max_client_count = 0;
+    uint32_t                         num_clients = 0;
 
     vector<string>                   supplied_peers;
     vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
@@ -151,15 +151,16 @@ namespace eosio {
 
     const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
-    int16_t                       network_version;
+    int16_t                       network_version = 0;
+    bool                          network_version_match = false;
     chain_id_type                 chain_id;
     fc::sha256                    node_id;
 
     string                        user_agent_name;
     chain_plugin*                 chain_plug;
-    size_t                        just_send_it_max;
-    bool                          send_whole_blocks;
-    int                           started_sessions;
+    size_t                        just_send_it_max = 0;
+    bool                          send_whole_blocks = false;
+    int                           started_sessions = 0;
 
     node_transaction_index        local_txns;
     ordered_txn_ids               pending_notify;
@@ -1347,10 +1348,15 @@ namespace eosio {
           return;
         }
         if( msg.network_version != network_version) {
-          elog( "Peer network version does not match expected ${nv} but got ${mnv}",
-                ( "nv", network_version)("mnv",msg.network_version));
-          c->enqueue( go_away_message( go_away_reason::wrong_version ));
-          return;
+          if (network_version_match) {
+            elog("Peer network version does not match expected ${nv} but got ${mnv}",
+                 ("nv", network_version)("mnv", msg.network_version));
+            c->enqueue(go_away_message(go_away_reason::wrong_version));
+            return;
+          } else {
+            wlog("Peer network version does not match expected ${nv} but got ${mnv}",
+                 ("nv", network_version)("mnv", msg.network_version));
+          }
         }
 
         if(  c->node_id != msg.node_id) {
@@ -2202,6 +2208,8 @@ namespace eosio {
      ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
       ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
       ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
+      ( "network-version-match", bpo::value<bool>()->default_value(false),
+        "True to require exact match of peer network version.")
      ;
   }
 
@@ -2237,7 +2245,8 @@ namespace eosio {
       sync_manager::logger.set_log_level(logl);
     }
 
-    my->network_version = (uint16_t)app().version_int();
+    my->network_version = static_cast<uint16_t>(app().version_int());
+    my->network_version_match = options.at("network-version-match").as<bool>();
     my->send_whole_blocks = def_send_whole_blocks;
 
     my->sync_master.reset( new sync_manager( def_sync_rec_span ) );
