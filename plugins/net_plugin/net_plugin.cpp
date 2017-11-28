@@ -1233,10 +1233,10 @@ namespace eosio {
         conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
         [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
           connection_ptr conn = c.lock();
+          if (!conn) {
+            return;
+          }
           if( !ec ) {
-            if (!conn) {
-              return;
-            }
 
             FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
             conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
