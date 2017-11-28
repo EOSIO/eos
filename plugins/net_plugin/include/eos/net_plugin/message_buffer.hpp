@@ -141,6 +141,9 @@ namespace eosio {
      */
     void advance_write_ptr(uint32_t bytes) {
       advance_index(write_ind, bytes);
+      while (write_ind.first >= buffers.size()) {
+        buffers.push_back(pool().malloc());
+      }
     }
 
     /*
@@ -151,6 +154,7 @@ namespace eosio {
      */
     std::vector<boost::asio::mutable_buffer> get_buffer_sequence_for_boost_async_read() {
       std::vector<boost::asio::mutable_buffer> seq;
+      FC_ASSERT(write_ind.first < buffers.size());
       seq.push_back(boost::asio::buffer(&buffers[write_ind.first]->at(write_ind.second),
                                                 buffer_len - write_ind.second));
       for (std::size_t i = write_ind.first + 1; i < buffers.size(); i++) {
@@ -187,7 +191,7 @@ namespace eosio {
       if (bytes_to_read() < size) {
         return false;
       }
-      if (index.second + size < buffer_len) {
+      if (index.second + size <= buffer_len) {
         memcpy(s, get_ptr(index), size);
         advance_index(index, size);
       } else {
