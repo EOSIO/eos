@@ -78,6 +78,7 @@ namespace eosio {
   enum id_list_modes {
     none,
     catch_up,
+    last_irr_catch_up,
     normal
   };
 
@@ -85,6 +86,7 @@ namespace eosio {
     switch( m ) {
     case none : return "none";
     case catch_up : return "catch up";
+    case last_irr_catch_up : return "last irreversible";
     case normal : return "normal";
     default: return "undefined mode";
     }
