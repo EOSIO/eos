@@ -1232,8 +1232,8 @@ namespace eosio {
       conn->socket->async_read_some(
         conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
         [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+          connection_ptr conn = c.lock();
           if( !ec ) {
-            connection_ptr conn = c.lock();
             if (!conn) {
               return;
             }
@@ -1261,8 +1261,8 @@ namespace eosio {
             }
             start_read_message(conn);
           } else {
-            elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );
-            close( c.lock() );
+            elog( "Error reading message from ${p}: ${m}",( "m", ec.message())("p",conn->peer_name()) );
+            close( conn );
           }
         }
       );
