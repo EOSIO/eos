@@ -167,7 +167,7 @@ namespace eosio {
       if (bytes_to_read() < size) {
         return false;
       }
-      if (read_ind.second + size < buffer_len) {
+      if (read_ind.second + size <= buffer_len) {
         memcpy(s, read_ptr(), size);
         advance_read_ptr(size);
       } else {
