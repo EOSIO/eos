@@ -5,6 +5,7 @@
 #pragma once
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
+#include <eos/net_plugin/protocol.hpp>
 #include <chrono>
 
 namespace eosio {
@@ -43,7 +44,7 @@ namespace eosio {
     bad_transaction ///< the peer sent a transaction that failed verification
   };
 
-  const string reason_str( go_away_reason rsn ) {
+  constexpr auto reason_str( go_away_reason rsn ) {
     switch (rsn ) {
     case no_reason : return "no reason";
     case self : return "self connect";
@@ -82,7 +83,7 @@ namespace eosio {
     normal
   };
 
-  const string modes_str( id_list_modes m ) {
+  constexpr auto modes_str( id_list_modes m ) {
     switch( m ) {
     case none : return "none";
     case catch_up : return "catch up";

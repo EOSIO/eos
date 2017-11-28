@@ -33,7 +33,7 @@ target_link_libraries( eosiod
 #        PRIVATE account_history_api_plugin account_history_plugin db_plugin
         PRIVATE chain_api_plugin producer_plugin chain_plugin 
        PRIVATE  wallet_api_plugin
-#        PRIVATE net_plugin 
+#        PRIVATE net_plugin net_api_plugin
         PRIVATE http_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
