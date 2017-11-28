@@ -1234,37 +1234,41 @@ namespace eosio {
         conn->socket->async_read_some(
           conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
           [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-            if( !ec ) {
-              connection_ptr conn = c.lock();
-              if (!conn) {
-                return;
-              }
+            try {
+              if( !ec ) {
+                connection_ptr conn = c.lock();
+                if (!conn) {
+                  return;
+                }
 
-              FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
-              conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
-              while (conn->pending_message_buffer.bytes_to_read() > 0) {
-                uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
-                if (bytes_in_buffer < message_header_size) {
-                  break;
-                } else {
-                  uint32_t message_length;
-                  auto index = conn->pending_message_buffer.read_index();
-                  conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
-                  if (bytes_in_buffer >= message_length + message_header_size) {
-                    conn->pending_message_buffer.advance_read_ptr(message_header_size);
-                    if (!conn->process_next_message(*this, message_length)) {
-                      return;
-                    }
-                  } else {
-                    conn->pending_message_buffer.add_space(message_length - bytes_in_buffer);
+                FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
+                conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
+                while (conn->pending_message_buffer.bytes_to_read() > 0) {
+                  uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
+                  if (bytes_in_buffer < message_header_size) {
                     break;
+                  } else {
+                    uint32_t message_length;
+                    auto index = conn->pending_message_buffer.read_index();
+                    conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
+                    if (bytes_in_buffer >= message_length + message_header_size) {
+                      conn->pending_message_buffer.advance_read_ptr(message_header_size);
+                      if (!conn->process_next_message(*this, message_length)) {
+                        return;
+                      }
+                    } else {
+                      conn->pending_message_buffer.add_space(message_length - bytes_in_buffer);
+                      break;
+                    }
                   }
                 }
+                start_read_message(conn);
+              } else {
+                elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );
+                close( c.lock() );
               }
-              start_read_message(conn);
-            } else {
-              elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );
-              close( c.lock() );
+            } catch (...) {
+              close(c.lock());
             }
           }
         );
