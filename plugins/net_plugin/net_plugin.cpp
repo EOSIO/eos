@@ -1237,6 +1237,8 @@ namespace eosio {
             if (!conn) {
               return;
             }
+
+            FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
             conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
             while (conn->pending_message_buffer.bytes_to_read() > 0) {
               uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
