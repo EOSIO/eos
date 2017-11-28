@@ -29,7 +29,7 @@ killAll()
 
 cleanup()
 {
- rm -rf tn_data_0
+ rm -rf tn_data_00
  rm -rf test_wallet_0
  INFO="$(echo 'db.dropDatabase()' | mongo $DB)"
 }
