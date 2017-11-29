@@ -847,7 +847,7 @@ namespace eosio {
     fc::datastream<char*> ds( send_buffer.data(), buffer_size);
     ds.write( header, header_size );
     fc::raw::pack( ds, m );
-    connection_wptr c(this);
+    connection_wptr c(shared_from_this());
 
     boost::asio::async_write( *socket, boost::asio::buffer( send_buffer, buffer_size ),
                               [c]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
@@ -886,7 +886,7 @@ namespace eosio {
     elog("sending up to ${limit} pending transactions to ${p}",("limit",limit)("p",peer_name()));
 
     size_t count = 0;
-    connection_wptr c(this);
+    connection_wptr c(shared_from_this());
     for(size_t i = 0; i < limit; i++) {
       transaction_id_type id = txn_queue.front();
       const auto &tx = my_impl->local_txns.get<by_id>( ).find( id );
@@ -908,7 +908,7 @@ namespace eosio {
                                          return;
                                       }
 
-                                      conn->my_impl->local_txns.modify(tx, update_in_flight(-1));
+                                      my_impl->local_txns.modify(tx, update_in_flight(-1));
                                       if (ec) {
                                          elog("Error sending txn to ${p}: ${msg}", ("p", conn->peer_name())("msg", ec.message()));
                                       }
