@@ -843,6 +843,12 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
    EOS_ASSERT(head_block_time() < (fc::time_point)next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
+   if (next_block.timestamp > head_block_time() + block_interval()) {
+      elog("head_block_time ${h}, next_block ${t}, \"block_interval ${bi}",
+           ("h", head_block_time())("t", next_block.timestamp)("bi", block_interval()));
+      elog("Did not produce block within block_interval ${bi}, took ${t}ms)",
+           ("bi", block_interval())("t", (next_block.timestamp - head_block_time()).count() / 1000));
+   }
    if (next_block.block_num() % config::blocks_per_round != 0) {
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
