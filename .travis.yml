@@ -1,5 +1,4 @@
 language: cpp
-compiler: clang
 services: mongodb
 
 matrix:
@@ -7,6 +6,7 @@ matrix:
     - os: linux
       dist: trusty
       sudo: false
+      compiler: clang
       addons:
         apt:
           sources:
@@ -18,12 +18,30 @@ matrix:
             - g++-6
             - ninja-build
             - libgmp-dev
-            - libclang-4.0-dev
+      env: COMPILER=clang++-4.0
+    - os: linux
+      dist: trusty
+      sudo: false
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-4.0
+          packages:
+            - llvm-4.0-dev
+            - g++-7
+            - ninja-build
+            - libgmp-dev
+      env: COMPILER=g++-7
     - os: osx
       osx_image: xcode9.1
+      compiler: clang
+
 before_install:
   - |
     mkdir ext && cd ext
+    EOS_BUILD_OPTIONS=-j4
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
       brew install boost openssl llvm@4 gmp gettext ninja mongodb mongo-c-driver
       brew link gettext --force
@@ -38,17 +56,33 @@ before_install:
     else
       WASM_BRANCH=master
       CMAKE_DIR=$TRAVIS_BUILD_DIR/ext/cmake-3.9.0-Linux-x86_64/bin/
-      export CC=clang-4.0
-      export CXX=clang++-4.0
-      export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
-      MONGOCXX_CMAKE_OPTIONS="-DLIBBSON_DIR=$TRAVIS_BUILD_DIR/ext -DLIBMONGOC_DIR=$TRAVIS_BUILD_DIR/ext"
       EOS_CMAKE_OPTIONS="-DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext"
+      MONGOCXX_CMAKE_OPTIONS="-DLIBBSON_DIR=$TRAVIS_BUILD_DIR/ext -DLIBMONGOC_DIR=$TRAVIS_BUILD_DIR/ext"
+      if [ "$COMPILER" == "clang++-4.0" ]; then
+        export CC=clang-4.0
+        export CXX=clang++-4.0
+      else
+        export CC=gcc-7
+        export CXX=g++-7
+        EOS_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
+        MONGOCXX_CMAKE_OPTIONS+=" -DCMAKE_CXX_FLAGS=-Wno-ignored-attributes"
+        EOS_BUILD_OPTIONS=-j2
+      fi
+      export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
       wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
       tar xjf boost_1_64_0.tar.bz2
       cd boost_1_64_0
       ./bootstrap.sh --prefix=$TRAVIS_BUILD_DIR/ext
-      echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam
-      ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine toolset=clang link=static install
+      if [ "$COMPILER" == "clang++-4.0" ]; then
+        echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam
+        BOOST_TOOLSET=clang
+      else
+        echo 'using gcc : 7 : g++-7 ;' >> project-config.jam
+        BOOST_TOOLSET=gcc-7
+      fi
+      BOOST_LIBRARIES="chrono context coroutine date_time filesystem locale program_options serialization signals system test thread"
+      for libname in $BOOST_LIBRARIES; do boost_libs+=("--with-$libname"); done
+      ./b2 -d0 -j4 ${boost_libs[@]} toolset=$BOOST_TOOLSET link=static install
       cd $TRAVIS_BUILD_DIR/ext
       wget https://cmake.org/files/v3.9/cmake-3.9.0-Linux-x86_64.tar.gz
       tar xzf cmake-3.9.0-Linux-x86_64.tar.gz
@@ -69,13 +103,13 @@ before_install:
     git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver
     cd mongo-cxx-driver/build
     ${CMAKE_DIR}cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/ext $MONGOCXX_CMAKE_OPTIONS ..
-    ninja install
+    ninja -j2 install
     cd $TRAVIS_BUILD_DIR
 
 script:
   - mkdir build && cd build
   - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release $EOS_CMAKE_OPTIONS ..
-  - ninja -j4
+  - ninja $EOS_BUILD_OPTIONS
   - tests/eosd_run_test.sh --host=localhost --port=8888
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || EOSLIB=../contracts tests/chain_test'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/slow_test'
