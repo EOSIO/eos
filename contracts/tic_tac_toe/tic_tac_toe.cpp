@@ -189,15 +189,15 @@ extern "C" {
   }
 
   /// The apply method implements the dispatch of events to this contract
-  void apply( uint64_t code, uint64_t action ) {
+  void apply( uint64_t code, uint64_t action_name ) {
     if (code == N(tic.tac.toe)) {
-      if (action == N(create)) {
+      if (action_name == N(create)) {
         tic_tac_toe::apply_create(current_message<tic_tac_toe::create>());
-      } else if (action == N(restart)) {
+      } else if (action_name == N(restart)) {
         tic_tac_toe::apply_restart(current_message<tic_tac_toe::restart>());
-      } else if (action == N(close)) {
+      } else if (action_name == N(close)) {
         tic_tac_toe::apply_close(current_message<tic_tac_toe::close>());
-      } else if (action == N(move)) {
+      } else if (action_name == N(move)) {
         tic_tac_toe::apply_move(current_message<tic_tac_toe::move>());
       }
     }

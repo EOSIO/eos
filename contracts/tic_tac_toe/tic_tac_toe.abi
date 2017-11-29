@@ -1,5 +1,4 @@
 {
-  "types": [],
   "structs": [{
       "name": "game",
       "base": "",
