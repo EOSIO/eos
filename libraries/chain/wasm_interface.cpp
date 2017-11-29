@@ -379,7 +379,7 @@ namespace eosio { namespace chain {
          return;
       }
 
-      FC_ASSERT( getFunctionType(call)->parameters.size() == 2 );
+      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
       Runtime::invokeFunction(call,args);
@@ -663,32 +663,32 @@ class console_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       void prints(const char *str) {
-         context._pending_console_output << string(str) << std::endl;
+         context.console_append(str);
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
-         context._pending_console_output << string(str, str_len) << std::endl;
+         context.console_append(string(str, str_len));
       }
 
       void printi(uint64_t val) {
-         context._pending_console_output << to_string(val) << std::endl;
+         context.console_append(val);
       }
 
       void printi128(const unsigned __int128& val) {
          fc::uint128_t v(val>>64, uint64_t(val) );
-         context._pending_console_output << string(v) << std::endl;
+         context.console_append(fc::variant(v).get_string());
       }
 
       void printd( wasm_double val ) {
-         context._pending_console_output << string(val.str()) << std::endl;
+         context.console_append(val.str());
       }
 
       void printn(const name& value) {
-         context._pending_console_output << value.to_string() << std::endl;
+         context.console_append(value.to_string());
       }
 
       void printhex(array_ptr<const char> data, size_t data_len ) {
-         context._pending_console_output << fc::to_hex(data, data_len) << std::endl;
+         context.console_append(fc::to_hex(data, data_len));
       }
 };
 

@@ -54,25 +54,25 @@ namespace TOKEN_NAME {
       eosio::require_auth( link_to_set.owner );
       validate_ipfspath( link_to_set.ipfspath, ipfspathlen );
       validate_eospath( link_to_set.eospath, eospathlen );
-      ::store_str( current_code(), N(storage), link_to_set.eospath, eospathlen, (char*)&link_to_set, linklen );
+      ::store_str( current_receiver(), N(storage), link_to_set.eospath, eospathlen, (char*)&link_to_set, linklen );
    }
    
    void apply_storage_removelink( char* eospath, uint32_t eospathlen ) {
       char tmp[4098];
-      auto len = ::load_str( current_code(), current_code(), N(storage), eospath, eospathlen, tmp, 4098 );
+      auto len = ::load_str( current_receiver(), current_receiver(), N(storage), eospath, eospathlen, tmp, 4098 );
       TOKEN_NAME::link link_to_remove;
       uint32_t ipfspathlen;
       len = read_link_from_buffer( tmp, len, link_to_remove, eospathlen, ipfspathlen );
       eosio::require_auth( link_to_remove.owner );
       uint32_t stake = link_to_remove.stake;
-      ::remove_str( current_code(), N(storage), link_to_remove.eospath, eospathlen );
+      ::remove_str( current_receiver(), N(storage), link_to_remove.eospath, eospathlen );
       // Reduce Quota usage in account table
       // How does producer know to free cached file?
    }
    
    void apply_storage_createstore( char* eospath, uint32_t eospathlen ) {
       char tmp[4098];
-      auto len = ::load_str( current_code(), current_code(), N(storage), eospath, eospathlen, tmp, 4098 );
+      auto len = ::load_str( current_receiver(), current_receiver(), N(storage), eospath, eospathlen, tmp, 4098 );
       TOKEN_NAME::link link_to_create;
       uint32_t ipfspathlen;
       len = read_link_from_buffer( tmp, len, link_to_create, eospathlen, ipfspathlen );
@@ -81,19 +81,19 @@ namespace TOKEN_NAME {
       // How do we validate the require_auth() is a producer?
       // logic goes here to reduce number of tokens and increase quote used using bancor algorithm
       link_to_create.accept = 1;
-      ::store_str( current_code(), N(storage), link_to_create.eospath, eospathlen, (char*)&link_to_create, len );
+      ::store_str( current_receiver(), N(storage), link_to_create.eospath, eospathlen, (char*)&link_to_create, len );
    }
    
    void apply_storage_rejectstore( char* eospath, uint32_t eospathlen ) {
       char tmp[4098];
-      auto len = ::load_str( current_code(), current_code(), N(storage), eospath, eospathlen, tmp, 4098 );
+      auto len = ::load_str( current_receiver(), current_receiver(), N(storage), eospath, eospathlen, tmp, 4098 );
       TOKEN_NAME::link link_to_reject;
       uint32_t ipfspathlen;
       len = read_link_from_buffer( tmp, len, link_to_reject, eospathlen, ipfspathlen );
       // eosio::require_auth( producer )
       // How do we validate the require_auth() is a producer?
       link_to_reject.accept = 0;
-      ::store_str( current_code(), N(storage), link_to_reject.eospath, eospathlen, (char*)&link_to_reject, len );
+      ::store_str( current_receiver(), N(storage), link_to_reject.eospath, eospathlen, (char*)&link_to_reject, len );
    }
 }  // namespace TOKEN_NAME
 

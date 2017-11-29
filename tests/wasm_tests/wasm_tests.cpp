@@ -1,8 +1,11 @@
 #include <boost/test/unit_test.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
+
+#include <test_api/test_api.wast.hpp>
 
 #include <fc/variant_object.hpp>
 
@@ -38,6 +41,32 @@ struct provereset {
 };
 
 FC_REFLECT_EMPTY(provereset);
+
+constexpr uint32_t DJBH(const char* cp)
+{
+   uint32_t hash = 5381;
+   while (*cp)
+      hash = 33 * hash ^ (unsigned char) *cp++;
+   return hash;
+}
+
+constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
+   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
+}
+
+
+template<uint64_t NAME>
+struct test_api_action {
+   static scope_name get_scope() {
+      return N(tester);
+   }
+
+   static action_name get_name() {
+      return action_name(NAME);
+   }
+};
+FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL);
+
 
 BOOST_AUTO_TEST_SUITE(wasm_tests)
 
@@ -185,8 +214,57 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
 
-BOOST_FIXTURE_TEST_CASE( test_console, tester ) {
+struct assert_message_is {
+   assert_message_is(string expected)
+   :expected(expected)
+   {}
 
-}
+   bool operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at(0).get_message();
+      return boost::algorithm::ends_with(message, expected);
+   }
+
+   string expected;
+};
+
+BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(tester)} );
+   transfer( N(inita), N(tester), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(tester), test_api_wast);
+   produce_blocks(1);
+
+   // make sure asserts function as we are predicated on them
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_action", "assert_false")> {});
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      BOOST_CHECK_EXCEPTION(control->push_transaction(trx), fc::assert_exception, assert_message_is("test_action::assert_false"));
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
+   }
+
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_action", "assert_true")> {});
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      control->push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+      BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
+   }
+} FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -338,15 +338,17 @@ void chain_controller::_apply_shard_results( const shard_result& res )
 
       ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
       for (const auto &ar : tr.action_results) {
-         auto prefix = fc::format_string(
-            "[(${s},${a})->${r}]",
-            fc::mutable_variant_object()
-               ("s", ar.act.scope)
-               ("a", ar.act.name)
-               ("r", ar.receiver));
-         std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
-         std::cerr << ar.console
-         std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+         if (!ar.console.empty()) {
+            auto prefix = fc::format_string(
+               "[(${s},${a})->${r}]",
+               fc::mutable_variant_object()
+                  ("s", ar.act.scope)
+                  ("a", ar.act.name)
+                  ("r", ar.receiver));
+            std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
+            std::cerr << ar.console;
+            std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+         }
       }
    }
 }
@@ -380,6 +382,8 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    if( !_pending_block ) {
       _start_pending_block();
    }
+
+   _finalize_cycle();
 
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
@@ -418,9 +422,8 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
 void chain_controller::_start_pending_block() {
    FC_ASSERT( !_pending_block );
    _pending_block         = signed_block();
-   _pending_block->cycles_summary.resize(1);
-   _pending_block->cycles_summary[0].resize(1);
    _pending_block_session = _db.start_undo_session(true);
+   _start_cycle();
 }
 
 /**
@@ -498,7 +501,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
             if( receipt.status == transaction_receipt::executed ) {
                auto itr = trx_index.find(receipt.id);
                if( itr != trx_index.end() ) {
-                  result.append(move(_apply_transaction( *itr->second )));
+                  result.append(_apply_transaction( *itr->second ));
                }
                else 
                {

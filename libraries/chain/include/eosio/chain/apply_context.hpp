@@ -171,7 +171,12 @@ class apply_context {
          vector<deferred_transaction>  generated_transactions;
       };
 
-   apply_results results;
+      apply_results results;
+
+      template<typename T>
+      void console_append(T val) {
+         _pending_console_output << val << std::endl;
+      }
 
    private:
       void append_results(apply_results &&other) {
