@@ -844,7 +844,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    EOS_ASSERT(head_block_time() < (fc::time_point)next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
    if (((fc::time_point)next_block.timestamp) > head_block_time() + fc::microseconds(config::block_interval_ms*1000)) {
-      elog("head_block_time ${h}, next_block ${t}, \"block_interval ${bi}",
+      elog("head_block_time ${h}, next_block ${t}, "block_interval ${bi}",
            ("h", head_block_time())("t", next_block.timestamp)("bi", config::block_interval_ms));
       elog("Did not produce block within block_interval ${bi}ms, took ${t}ms)",
            ("bi", config::block_interval_ms)("t", (time_point(next_block.timestamp) - head_block_time()).count() / 1000));
