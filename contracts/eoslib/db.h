@@ -255,9 +255,12 @@ int32_t remove_i64( account_name scope, table_name table, void* data );
  *
  * @return 1 if a new record was created, 0 if an existing record was updated
  *
- * @pre datalen >= sizeof(uint64_t)
- * @pre data is a valid pointer to a range of memory at least datalen bytes long
- * @pre *((Name*)data) stores the primary key
+ * @pre keylen >= 0
+ * @pre key is a valid pointer to a range of memory at least keylen bytes long
+ * @pre the memory range [key...key+len) stores the primary key
+ * @pre valuelen >= 0
+ * @pre value is a valid pointer to a range of memory at least valuelen bytes long
+ * @pre the memory range [value...value+valuelen) stores the arbitrary binary data value
  * @pre scope is declared by the current transaction
  * @pre this method is being called from an apply context (not validate or precondition)
  *
@@ -268,30 +271,116 @@ int32_t remove_i64( account_name scope, table_name table, void* data );
  */
  int32_t store_str( account_name scope, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
- /**
-  * @return 1 if the record was updated, 0 if no record with key was found
-  */
+/**
+ * @param scope - the account scope that will be read, must exist in the transaction scopes list
+ * @param table - the ID/name of the table within the current scope/code context to modify
+ *
+ * @return 1 if the record was updated, 0 if no record with key was found
+ *
+ * @pre keylen >= 0
+ * @pre key is a valid pointer to a range of memory at least keylen bytes long
+ * @pre the memory range [key...key+len) stores the primary key
+ * @pre valuelen >= 0
+ * @pre value is a valid pointer to a range of memory at least valuelen bytes long
+ * @pre the memory range [value...value+valuelen) stores the arbitrary binary data value
+ * @pre scope is declared by the current transaction
+ * @pre this method is being called from an apply context (not validate or precondition)
+ *
+ * @post a record is either created or updated with the given scope and table.
+ *
+ * @throw if called with an invalid precondition execution will be aborted
+ *
+ */
  int32_t update_str( account_name scope, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
   *  @param code  - identifies the code that controls write-access to the data
   *  @param table - the ID/name of the table within the scope/code context to query
-  *  @param data  - location to copy the stored record, should be initialized with the key to get
-  *  @param datalen - the maximum length of data to read, must be greater than sizeof(uint64_t)
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
+  *  @param value  - location to copy the record value
+  *  @param valuelen - maximum length of the record value to read 
   *
   *  @return the number of bytes read or -1 if key was not found
   */
  int32_t load_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+
+ /**
+  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
+  *  @param code  - identifies the code that controls write-access to the data
+  *  @param table - the ID/name of the table within the scope/code context to query
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
+  *  @param value  - location to copy the front record value
+  *  @param valuelen - maximum length of the record value to read 
+  *  @return the number of bytes read or -1 if key was not found
+  */
  int32_t front_str( account_name scope, account_name code, table_name table, char* value, uint32_t valuelen );
+
+ /**
+  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
+  *  @param code  - identifies the code that controls write-access to the data
+  *  @param table - the ID/name of the table within the scope/code context to query
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
+  *  @param value  - location to copy the back record value
+  *  @param valuelen - maximum length of the record value to read 
+  *  @return the number of bytes read or -1 if key was not found
+  */
  int32_t back_str( account_name scope, account_name code, table_name table, char* value, uint32_t valuelen );
+
+ /**
+  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
+  *  @param code  - identifies the code that controls write-access to the data
+  *  @param table - the ID/name of the table within the scope/code context to query
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
+  *  @param value  - location to copy the next record value
+  *  @param valuelen - maximum length of the record value to read 
+  *  @return the number of bytes read or -1 if key was not found
+  */
  int32_t next_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+
+ /**
+  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
+  *  @param code  - identifies the code that controls write-access to the data
+  *  @param table - the ID/name of the table within the scope/code context to query
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
+  *  @param value  - location to copy the previous record value
+  *  @param valuelen - maximum length of the record value to read 
+  *  @return the number of bytes read or -1 if key was not found
+  */
  int32_t previous_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+
+ /**
+  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
+  *  @param code  - identifies the code that controls write-access to the data
+  *  @param table - the ID/name of the table within the scope/code context to query
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
+  *  @param value  - location to copy the lower bound record value
+  *  @param valuelen - maximum length of the record value to read
+  *  @return the number of bytes read or -1 if key was not found
+  */
  int32_t lower_bound_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
+
+ /**
+  *  @param scope - the account scope that will be read, must exist in the transaction scopes list
+  *  @param code  - identifies the code that controls write-access to the data
+  *  @param table - the ID/name of the table within the scope/code context to query
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
+  *  @param value  - location to copy the upper bound record value
+  *  @param valuelen - maximum length of the record value to read
+  *  @return the number of bytes read or -1 if key was not found
+  */
  int32_t upper_bound_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
  
  /**
-  *  @param data - must point to at lest 8 bytes containing primary key
+  *  @param key  - location of the record key
+  *  @param keylen - length of the record key
   *
   *  @return 1 if a record was removed, and 0 if no record with key was found
   */
@@ -669,7 +758,7 @@ int32_t update_i128i128( account_name scope, table_name table, const void* data,
  * @param len - length of record to copy
  * @return the number of bytes read, -1 if key was not found
  *
-  * @pre data is a valid pointer to a range of memory at least len bytes long
+ * @pre data is a valid pointer to a range of memory at least len bytes long
  * @pre *((uint64_t*)data) stores the primary key
  * @pre scope is declared by the current transaction
  * @pre this method is being called from an apply context (not validate or precondition)
@@ -841,7 +930,7 @@ int32_t lower_bound_secondary_i64i64i64( account_name scope, account_name code, 
  * @param len - length of record to copy
  * @return the number of bytes read, -1 if key was not found
  *
-  * @pre data is a valid pointer to a range of memory at least len bytes long
+ * @pre data is a valid pointer to a range of memory at least len bytes long
  * @pre *((uint64_t*)data) stores the tertiary key
  * @pre scope is declared by the current transaction
  * @pre this method is being called from an apply context (not validate or precondition)
