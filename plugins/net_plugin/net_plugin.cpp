@@ -60,6 +60,7 @@ namespace eosio {
     transaction_id_type id;
     fc::time_point      received;
     fc::time_point_sec  expires;
+    fc::time_point_sec  true_expires;
     vector<char>        packed_transaction; /// the received raw bundle
     uint32_t            block_num = -1; /// block transaction was included in
     bool                validated = false; /// whether or not our node has validated it
@@ -80,10 +81,21 @@ namespace eosio {
     void operator() (node_transaction_state& nts) {
       nts.received = fc::time_point::now();
       nts.validated = true;
-      size_t bufsiz = fc::raw::pack_size(txn);
+      size_t packsiz = fc::raw::pack_size(txn);
+      size_t bufsiz = packsiz + sizeof(packsiz);
       nts.packed_transaction.resize(bufsiz);
       fc::datastream<char*> ds( nts.packed_transaction.data(), bufsiz );
+      ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
       fc::raw::pack( ds, txn );
+    }
+  };
+
+  struct update_in_flight {
+    int32_t incr;
+    update_in_flight (int32_t delta) : incr (delta) {}
+    void operator() (node_transaction_state& nts) {
+      int32_t exp = nts.expires.sec_since_epoch();
+      nts.expires = fc::time_point_sec (exp + incr * 60);
     }
   };
 
@@ -366,8 +378,7 @@ namespace eosio {
     vector<char>            send_buffer;
     vector<char>            blk_buffer;
 
-    deque< vector<char> >   txn_queue;
-    size_t                  txn_in_flight;
+    deque< transaction_id_type > txn_queue;
     bool                    halt_txn_send;
 
     fc::sha256              node_id;
@@ -626,7 +637,7 @@ namespace eosio {
           }
         }
         if(!found) {
-          txn_queue.push_back( t.packed_transaction );
+          txn_queue.push_back( t.id );
         }
       }
     }
@@ -637,7 +648,7 @@ namespace eosio {
       auto n = my_impl->local_txns.get<by_id>().find(t);
       if(n != my_impl->local_txns.end() &&
           n->packed_transaction.size()) {
-        txn_queue.push_back( n->packed_transaction );
+        txn_queue.push_back( t );
       }
     }
   }
@@ -748,12 +759,7 @@ namespace eosio {
   }
 
   void connection::stop_send() {
-    if(txn_in_flight > 0) {
-      halt_txn_send = true;
-    }
-    else {
-      txn_queue.clear();
-    }
+    txn_queue.clear();
   }
 
     void connection::send_handshake( ) {
@@ -863,35 +869,34 @@ namespace eosio {
       return;
     }
 
-    ssize_t limit = 65535;
-    while(txn_in_flight < txn_queue.size() && limit > 0 ) {
-      limit -= txn_queue[txn_in_flight].size();
-      if(limit >= 0 || txn_in_flight == 0) {
-        txn_in_flight++;
+    size_t limit = min(txn_queue.size(),size_t(1000));
+    // we'll make this fc_dlog later
+    elog("sending up to ${limit} pending transactions to ${p}",("limit",limit)("p",peer_name()));
+
+    size_t count = 0;
+    for(size_t i = 0; i < limit; i++) {
+      transaction_id_type id = txn_queue.front();
+      const auto &tx = my_impl->local_txns.get<by_id>( ).find( id );
+      if( tx == my_impl->local_txns.end() ||
+          tx->true_expires <= time_point::now() ||
+          tx->packed_transaction.size() == 0 ) {
+        txn_queue.pop_front();
+        continue;
       }
-    }
-    for(size_t i = 0; i < txn_in_flight; i++) {
-      boost::asio::async_write( *socket, boost::asio::buffer(txn_queue[i], txn_queue[i].size()),
-                                [this, i]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
+      my_impl->local_txns.modify( tx,update_in_flight(1));
+      count++;
+      txn_queue.pop_front();
+      boost::asio::async_write( *socket, boost::asio::buffer(tx->packed_transaction, tx->packed_transaction.size()),
+                                [this, tx]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
+                                  my_impl->local_txns.modify( tx, update_in_flight(-1) );
                                   if( ec ) {
-                                    elog( "Error sending txn block: ${msg}", ("msg",ec.message() ) );
-                                  } else  {
-                                    if (i == txn_in_flight - 1) {
-                                      if (halt_txn_send) {
-                                        txn_queue.clear();
-                                        txn_in_flight = 0;
-                                        halt_txn_send = false;
-                                      }
-                                      else {
-                                        while (txn_in_flight-- > 0) {
-                                          txn_queue.pop_front();
-                                        }
-                                      }
-                                      send_next_message();
-                                    }
+                                    elog( "Error sending txn to ${p}: ${msg}",("p",peer_name())("msg",ec.message() ) );
                                   }
+                                  send_next_message();
                                 });
     }
+    // we'll make this fc_dlog later
+    elog("actually sent ${limit} pending transactions to ${p}",("limit",limit)("p",peer_name()));
   }
 
   void connection::sync_wait( ) {
@@ -1949,6 +1954,7 @@ namespace eosio {
 
       uint16_t bn = static_cast<uint16_t>(txn.ref_block_num);
       node_transaction_state nts = {txnid,time_point::now(),
+                                    txn.expiration,
                                     txn.expiration,
                                     buff,
                                     bn, true};
