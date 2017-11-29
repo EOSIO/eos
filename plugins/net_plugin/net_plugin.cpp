@@ -847,20 +847,32 @@ namespace eosio {
     fc::datastream<char*> ds( send_buffer.data(), buffer_size);
     ds.write( header, header_size );
     fc::raw::pack( ds, m );
+    connection_wptr c(this);
+
     boost::asio::async_write( *socket, boost::asio::buffer( send_buffer, buffer_size ),
-                              [this]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
-                                if( ec ) {
-                                  elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
-                                } else  {
-                                  if(out_queue.size()) {
-                                    if(out_queue.front().contains<go_away_message>()) {
-                                      close();
-                                      return;
+                              [c]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
+                                 try{
+                                    auto conn = c.lock();
+                                    if (!conn) {
+                                       // connection was destroyed before this lambda was delivered
+                                       return;
                                     }
-                                    out_queue.pop_front();
-                                  }
-                                  send_next_message();
-                                }
+
+                                    if( ec ) {
+                                       elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
+                                    } else  {
+                                       if(conn->out_queue.size()) {
+                                          if(conn->out_queue.front().contains<go_away_message>()) {
+                                             conn->close();
+                                            return;
+                                          }
+                                          conn->out_queue.pop_front();
+                                       }
+                                       conn->send_next_message();
+                                    }
+                                 } catch(...) {
+
+                                 }
                               });
   }
 
@@ -874,6 +886,7 @@ namespace eosio {
     elog("sending up to ${limit} pending transactions to ${p}",("limit",limit)("p",peer_name()));
 
     size_t count = 0;
+    connection_wptr c(this);
     for(size_t i = 0; i < limit; i++) {
       transaction_id_type id = txn_queue.front();
       const auto &tx = my_impl->local_txns.get<by_id>( ).find( id );
@@ -887,12 +900,22 @@ namespace eosio {
       count++;
       txn_queue.pop_front();
       boost::asio::async_write( *socket, boost::asio::buffer(tx->packed_transaction, tx->packed_transaction.size()),
-                                [this, tx]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
-                                  my_impl->local_txns.modify( tx, update_in_flight(-1) );
-                                  if( ec ) {
-                                    elog( "Error sending txn to ${p}: ${msg}",("p",peer_name())("msg",ec.message() ) );
-                                  }
-                                  send_next_message();
+                                [c, tx]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
+                                   try {
+                                      connection_ptr conn = c.lock();
+                                      if (!conn) {
+                                         // connection was destroyed before this lambda was delivered
+                                         return;
+                                      }
+
+                                      conn->my_impl->local_txns.modify(tx, update_in_flight(-1));
+                                      if (ec) {
+                                         elog("Error sending txn to ${p}: ${msg}", ("p", conn->peer_name())("msg", ec.message()));
+                                      }
+                                      conn->send_next_message();
+                                   } catch (...) {
+
+                                   }
                                 });
     }
     // we'll make this fc_dlog later
