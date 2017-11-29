@@ -80,7 +80,7 @@ namespace tic_tac_toe {
   /**
    * @brief Action to create new game
    */ 
-  struct Create {
+  struct create {
     account_name   challenger;
     account_name   host;
   };
@@ -88,7 +88,7 @@ namespace tic_tac_toe {
   /**
    * @brief Action to restart new game
    */ 
-  struct Restart {
+  struct restart {
     account_name   challenger;
     account_name   host;
     account_name   by; // the account who wants to restart the game
@@ -97,7 +97,7 @@ namespace tic_tac_toe {
   /**
    * @brief Action to close new game
    */ 
-  struct Close {
+  struct close {
     account_name   challenger;
     account_name   host;
   };
@@ -105,7 +105,7 @@ namespace tic_tac_toe {
   /**
    * @brief Data structure for movement
    */ 
-  struct Movement {
+  struct movement {
     uint32_t    row;
     uint32_t    column;
   };
@@ -113,11 +113,11 @@ namespace tic_tac_toe {
   /**
    * @brief Action to make movement
    */ 
-  struct Move {
+  struct move {
     account_name   challenger;
     account_name   host;
     account_name   by; // the account who wants to make the move
-    Movement       movement;
+    movement       mvt;
   };
 
   /**
