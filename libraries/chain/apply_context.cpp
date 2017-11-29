@@ -23,7 +23,7 @@ void apply_context::exec_one()
    }
 
    // create a receipt for this
-   results.applied_actions.emplace_back(action_trace {receiver, act, move(_pending_console_output.str())});
+   results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str()});
    _pending_console_output = std::ostringstream();
 }
 

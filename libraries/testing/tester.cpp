@@ -54,10 +54,12 @@ namespace eosio { namespace testing {
       control.reset( new chain_controller(cfg) );
       chain_transactions.clear();
       control->applied_block.connect([this]( const block_trace& trace ){
-         for( const auto& cycle : trace.block.cycles_summary ) {
-            for ( const auto& shard : cycle ) {
-               for( const auto& receipt: shard ) {
-                  chain_transactions.emplace(receipt.id, receipt);
+         for( const auto& region : trace.block.regions) {
+            for( const auto& cycle : region.cycles_summary ) {
+               for ( const auto& shard : cycle ) {
+                  for( const auto& receipt: shard ) {
+                     chain_transactions.emplace(receipt.id, receipt);
+                  }
                }
             }
          }

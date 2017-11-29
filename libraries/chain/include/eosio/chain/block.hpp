@@ -49,6 +49,13 @@ namespace eosio { namespace chain {
    };
 
 
+   typedef vector<transaction_receipt>   shard; /// new or generated transactions
+   typedef vector<shard>                 cycle;
+   struct region_summary {
+      uint16_t region = 0;
+      vector<cycle>    cycles_summary;
+   };
+
    /**
     *  The block_summary defines the set of transactions that were successfully applied as they
     *  are organized into cycles and shards. A shard contains the set of transactions IDs which
@@ -74,12 +81,9 @@ namespace eosio { namespace chain {
     *  tree of a block should be generated over a set of message IDs rather than a set of
     *  transaction ids. 
     */
-   typedef vector<transaction_receipt>   shard; /// new or generated transactions
-   typedef vector<shard>                 cycle;
    struct signed_block_summary : public signed_block_header {
-      vector<cycle>    cycles_summary;
-
-      checksum_type calculate_transaction_mroot()const;
+      vector<region_summary> regions;
+      checksum_type          calculate_transaction_mroot()const;
    };
 
    /**
@@ -91,7 +95,7 @@ namespace eosio { namespace chain {
     * transactions are not included.  
     */
    struct signed_block : public signed_block_summary {
-      digest_type   calculate_transaction_merkle_root()const;
+      digest_type                  calculate_transaction_merkle_root()const;
       vector<signed_transaction>   input_transactions; /// this is loaded and indexed into map<id,trx> that is referenced by summary
    };
 
@@ -117,13 +121,20 @@ namespace eosio { namespace chain {
       void calculate_root();
    };
 
+   struct region_trace {
+      digest_type                   region_root;
+      vector<cycle_trace>           cycle_traces;
+
+      void calculate_root();
+   };
+
    struct block_trace {
       block_trace(const signed_block& s)
       :block(s)
       {}
 
       const signed_block&     block;
-      vector<cycle_trace>     cycle_traces;
+      vector<region_trace>    region_traces;
       digest_type             calculate_action_merkle_root()const;
    };
 
@@ -135,8 +146,10 @@ FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
            (producer)(new_producers))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
-FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (cycles_summary))
+FC_REFLECT( eosio::chain::region_summary, (region)(cycles_summary) )
+FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (regions))
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (input_transactions))
 FC_REFLECT( eosio::chain::shard_trace, (shard_root)(transaction_traces))
 FC_REFLECT( eosio::chain::cycle_trace, (cycle_root)(shard_traces))
-FC_REFLECT( eosio::chain::block_trace, (cycle_traces))
+FC_REFLECT( eosio::chain::region_trace, (region_root)(cycle_traces))
+FC_REFLECT( eosio::chain::block_trace, (region_traces))

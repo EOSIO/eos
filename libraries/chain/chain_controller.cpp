@@ -276,7 +276,8 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
       shardnum = _pending_cycle.schedule( trx );
    }
 
-   auto& bcycle = _pending_block->cycles_summary.back();
+
+   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    if( shardnum >= bcycle.size() ) {
       _finalize_pending_shard();
       _start_pending_shard();
@@ -305,6 +306,8 @@ void chain_controller::_start_pending_block()
    _pending_block         = signed_block();
    _pending_block_trace   = block_trace(*_pending_block);
    _pending_block_session = _db.start_undo_session(true);
+   _pending_block->regions.resize(1);
+   _pending_block_trace->region_traces.resize(1);
    _start_pending_cycle();
 }
 
@@ -313,7 +316,7 @@ void chain_controller::_start_pending_block()
  *  executes any pending transactions
  */
 void chain_controller::_start_pending_cycle() {
-   _pending_block->cycles_summary.resize( _pending_block->cycles_summary.size() + 1 );
+   _pending_block->regions.back().cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
    _pending_cycle = pending_cycle_state();
    _pending_cycle_trace = cycle_trace();
    _start_pending_shard();
@@ -323,7 +326,7 @@ void chain_controller::_start_pending_cycle() {
 
 void chain_controller::_start_pending_shard()
 {
-   auto& bcycle = _pending_block->cycles_summary.back();
+   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    bcycle.resize( bcycle.size()+1 );
 
    _pending_cycle_trace->shard_traces.resize(_pending_cycle_trace->shard_traces.size() + 1 );
@@ -339,7 +342,7 @@ void chain_controller::_finalize_pending_cycle()
 {
    _pending_cycle_trace->calculate_root();
    _apply_cycle_trace(*_pending_cycle_trace);
-   _pending_block_trace->cycle_traces.emplace_back(std::move(*_pending_cycle_trace));
+   _pending_block_trace->region_traces.back().cycle_traces.emplace_back(std::move(*_pending_cycle_trace));
    _pending_cycle_trace.reset();
 }
 
@@ -527,6 +530,10 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
 
+   /// regions must be listed in order
+   for( uint32_t i = 1; i < next_block.regions.size(); ++i )
+      FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
+
 
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
@@ -536,39 +543,47 @@ void chain_controller::__apply_block(const signed_block& next_block)
    }
 
    block_trace next_block_trace(next_block);
-   next_block_trace.cycle_traces.reserve(next_block.cycles_summary.size());
+   next_block_trace.region_traces.reserve(next_block.regions.size());
 
-   for (const auto& cycle : next_block.cycles_summary) {
-      cycle_trace c_trace;
-      c_trace.shard_traces.reserve(cycle.size());
+   for( const auto& r : next_block.regions ) {
+      region_trace r_trace;
+      r_trace.cycle_traces.reserve(r.cycles_summary.size());
 
-      for (const auto& shard: cycle) {
-         shard_trace s_trace;
-         for (const auto& receipt : shard) {
-            if( receipt.status == transaction_receipt::executed ) {
-               auto itr = trx_index.find(receipt.id);
-               if( itr != trx_index.end() ) {
-                  s_trace.append(_apply_transaction( *itr->second ));
+      for (const auto& cycle : r.cycles_summary) {
+         cycle_trace c_trace;
+         c_trace.shard_traces.reserve(cycle.size());
+
+         for (const auto& shard: cycle) {
+            shard_trace s_trace;
+            for (const auto& receipt : shard) {
+               if( receipt.status == transaction_receipt::executed ) {
+                  auto itr = trx_index.find(receipt.id);
+                  if( itr != trx_index.end() ) {
+                     s_trace.append(_apply_transaction( *itr->second ));
+                  }
+                  else
+                  {
+                     FC_ASSERT( !"deferred transactions not yet supported" );
+                  }
                }
-               else 
-               {
-                  FC_ASSERT( !"deferred transactions not yet supported" );
-               }
-            }
-            // validate_referenced_accounts(trx);
-            // Check authorization, and allow irrelevant signatures.
-            // If the block producer let it slide, we'll roll with it.
-            // check_transaction_authorization(trx, true);
-         } /// for each transaction id
+               // validate_referenced_accounts(trx);
+               // Check authorization, and allow irrelevant signatures.
+               // If the block producer let it slide, we'll roll with it.
+               // check_transaction_authorization(trx, true);
+            } /// for each transaction id
 
-         s_trace.calculate_root();
-         c_trace.shard_traces.emplace_back(move(s_trace));
-      } /// for each shard
+            s_trace.calculate_root();
+            c_trace.shard_traces.emplace_back(move(s_trace));
+         } /// for each shard
 
-      _apply_cycle_trace(c_trace);
-      c_trace.calculate_root();
-      next_block_trace.cycle_traces.emplace_back(move(c_trace));
-   } /// for each cycle
+         _apply_cycle_trace(c_trace);
+         c_trace.calculate_root();
+         r_trace.cycle_traces.emplace_back(move(c_trace));
+      } /// for each cycle
+
+      r_trace.calculate_root();
+      next_block_trace.region_traces.emplace_back(move(r_trace));
+   } /// for each region
 
    FC_ASSERT(next_block.action_mroot == next_block_trace.calculate_action_merkle_root());
 

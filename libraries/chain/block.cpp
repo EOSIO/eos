@@ -84,16 +84,36 @@ namespace eosio { namespace chain {
       for (auto& s_trace :shard_traces) {
          shard_roots.emplace_back(s_trace.shard_root);
       }
+
       cycle_root = merkle(shard_roots);
    }
 
-   digest_type block_trace::calculate_action_merkle_root()const {
+   void region_trace::calculate_root() {
       vector<digest_type> cycle_roots;
       cycle_roots.reserve(cycle_traces.size());
-      for (auto& c_trace :cycle_traces) {
-         cycle_roots.emplace_back(c_trace.cycle_root);
+      for (uint32_t index; index < cycle_traces.size(); index++) {
+         const auto& c_trace = cycle_traces.at(index);
+
+         digest_type::encoder enc;
+         fc::raw::pack(enc, index);
+         fc::raw::pack(enc, c_trace.cycle_root);
+         cycle_roots.emplace_back(enc.result());
       }
-      return merkle(cycle_roots);
+      region_root = merkle(cycle_roots);
+   }
+
+   digest_type block_trace::calculate_action_merkle_root()const {
+      vector<digest_type> region_roots;
+      region_roots.reserve(region_traces.size());
+      for (uint32_t index; index < region_roots.size(); index++) {
+         const auto& r_trace = region_traces.at(index);
+
+         digest_type::encoder enc;
+         fc::raw::pack(enc, index);
+         fc::raw::pack(enc, r_trace.region_root);
+         region_roots.emplace_back(enc.result());
+      }
+      return merkle(region_roots);
    }
 
 } }
