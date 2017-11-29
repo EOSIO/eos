@@ -18,6 +18,7 @@ matrix:
             - g++-6
             - ninja-build
             - libgmp-dev
+            - libclang-4.0-dev
       env: COMPILER=clang++-4.0
     - os: linux
       dist: trusty
