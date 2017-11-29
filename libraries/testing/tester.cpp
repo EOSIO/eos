@@ -55,10 +55,12 @@ namespace eosio { namespace testing {
       chain_transactions.clear();
       // this will not index generated transactions
       control->applied_block.connect([this]( const signed_block& block ){
-         for( const auto& cycle : block.cycles_summary ) {
-            for ( const auto& shard : cycle ) {
-               for( const auto& receipt: shard ) {
-                  chain_transactions.emplace(receipt.id, receipt);
+         for( const auto& region : block.regions) {
+            for( const auto& cycle : region.cycles_summary ) {
+               for ( const auto& shard : cycle ) {
+                  for( const auto& receipt: shard ) {
+                     chain_transactions.emplace(receipt.id, receipt);
+                  }
                }
             }
          }

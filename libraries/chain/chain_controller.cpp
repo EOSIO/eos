@@ -270,13 +270,13 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
       _start_cycle();
    }
 
-   auto& bcycle = _pending_block->cycles_summary.back();
+
+   auto& bcycle = _pending_block->regions[0].cycles_summary.back();
    if( shardnum >= bcycle.size() ) {
       bcycle.resize( bcycle.size()+1 );
       bcycle.back().emplace_back( tid );
    }
 
-   _apply_transaction(trx);
    /** for now we will just shove everything into the first shard */
    _pending_block->input_transactions.push_back(trx);
 
@@ -293,7 +293,7 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
  *  executes any pending transactions 
  */
 void chain_controller::_start_cycle() {
-   _pending_block->cycles_summary.resize( _pending_block->cycles_summary.size() + 1 );
+   _pending_block->regions[0].cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
    _pending_cycle = pending_cycle_state();
 
    /// TODO: check for deferred transactions and schedule them
@@ -366,8 +366,9 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
 void chain_controller::_start_pending_block() {
    FC_ASSERT( !_pending_block );
    _pending_block         = signed_block();
-   _pending_block->cycles_summary.resize(1);
-   _pending_block->cycles_summary[0].resize(1);
+   _pending_block->regions.resize(1);
+   _pending_block->regions[0].cycles_summary.resize(1);
+   _pending_block->regions[0].cycles_summary[0].resize(1);
    _pending_block_session = _db.start_undo_session(true);
 }
 
@@ -434,27 +435,33 @@ void chain_controller::__apply_block(const signed_block& next_block)
    for( const auto& t : next_block.input_transactions ) {
       trx_index[t.id()] = &t;
    }
+
+   /// regions must be listed in order
+   for( uint32_t i = 1; i < next_block.regions.size(); ++i )
+      FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
    
-   for (const auto& cycle : next_block.cycles_summary) {
-      for (const auto& shard: cycle) {
-         for (const auto& receipt : shard) {
-            if( receipt.status == transaction_receipt::executed ) {
-               auto itr = trx_index.find(receipt.id);
-               if( itr != trx_index.end() ) {
-                  _apply_transaction( *itr->second );
-               } 
-               else 
-               {
-                  FC_ASSERT( !"deferred transactions not yet supported" );
+   for( const auto& r : next_block.regions ) {
+      for (const auto& cycle : r.cycles_summary) {
+         for (const auto& shard: cycle) {
+            for (const auto& receipt : shard) {
+               if( receipt.status == transaction_receipt::executed ) {
+                  auto itr = trx_index.find(receipt.id);
+                  if( itr != trx_index.end() ) {
+                     _apply_transaction( *itr->second );
+                  } 
+                  else 
+                  {
+                     FC_ASSERT( !"deferred transactions not yet supported" );
+                  }
                }
-            }
-            // validate_referenced_accounts(trx);
-            // Check authorization, and allow irrelevant signatures.
-            // If the block producer let it slide, we'll roll with it.
-            // check_transaction_authorization(trx, true);
-         } /// for each transaction id
-      } /// for each shard
-   } /// for each cycle
+               // validate_referenced_accounts(trx);
+               // Check authorization, and allow irrelevant signatures.
+               // If the block producer let it slide, we'll roll with it.
+               // check_transaction_authorization(trx, true);
+            } /// for each transaction id
+         } /// for each shard
+      } /// for each cycle
+   }
 
    _finalize_block( next_block );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
