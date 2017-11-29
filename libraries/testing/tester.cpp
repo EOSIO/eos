@@ -53,9 +53,8 @@ namespace eosio { namespace testing {
    void tester::open() {
       control.reset( new chain_controller(cfg) );
       chain_transactions.clear();
-      // this will not index generated transactions
-      control->applied_block.connect([this]( const signed_block& block ){
-         for( const auto& cycle : block.cycles_summary ) {
+      control->applied_block.connect([this]( const block_trace& trace ){
+         for( const auto& cycle : trace.block.cycles_summary ) {
             for ( const auto& shard : cycle ) {
                for( const auto& receipt: shard ) {
                   chain_transactions.emplace(receipt.id, receipt);
@@ -106,7 +105,7 @@ namespace eosio { namespace testing {
       control->push_transaction( trx );
    }
 
-   transaction_result tester::push_transaction( signed_transaction& trx ) {
+   transaction_trace tester::push_transaction( signed_transaction& trx ) {
       set_tapos(trx);
       return control->push_transaction( trx );
    }

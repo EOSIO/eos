@@ -94,8 +94,8 @@ namespace impl {
    template<typename T>
    constexpr bool single_type_requires_abi_v = std::is_base_of<transaction, T>::value ||
                                                std::is_same<T, action>::value ||
-                                               std::is_same<T, transaction_result>::value ||
-                                               std::is_same<T, action_result>::value;
+                                               std::is_same<T, transaction_trace>::value ||
+                                               std::is_same<T, action_trace>::value;
 
    /**
     * Basic constexpr for a type, aliases the basic check directly

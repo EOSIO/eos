@@ -68,10 +68,9 @@ namespace eosio { namespace chain {
     */
    struct transaction_receipt {
       enum status_enum {
-         generated = 0, ///< created, not yet known to be valid or invalid (no state transition)
-         executed  = 1, ///< succeed, no error handler executed
-         soft_fail = 2, ///< objectively failed (not executed), error handler executed 
-         hard_fail = 3  ///< objectively failed and error handler objectively failed thus no state change
+         executed  = 0, ///< succeed, no error handler executed
+         soft_fail = 1, ///< objectively failed (not executed), error handler executed
+         hard_fail = 2  ///< objectively failed and error handler objectively failed thus no state change
       };
 
       transaction_receipt( transaction_id_type tid ):status(executed),id(tid){}
@@ -152,16 +151,28 @@ namespace eosio { namespace chain {
       time_point_sec execute_after; /// delayed exeuction
    };
 
-   struct action_result {
+   struct data_access_info {
+      enum access_type {
+         read = 0, ///< scope was read by this action
+         write  = 1, ///< scope was (potentially) written to by this action
+      };
+
+      access_type                type;
+      scope_name                 scope;
+      uint64_t                   serial;
+   };
+
+   struct action_trace {
       account_name               receiver;
       action                     act;
       string                     console;
+      vector<data_access_info>   data_access;
    };
 
-   struct transaction_result : transaction_receipt {
+   struct transaction_trace : transaction_receipt {
       using transaction_receipt::transaction_receipt;
 
-      vector<action_result>         action_results;
+      vector<action_trace>          action_traces;
       vector<deferred_transaction>  deferred_transactions;
    };
 
@@ -173,10 +184,12 @@ FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (read_scope)(write_scope)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
-FC_REFLECT( eosio::chain::action_result, (receiver)(act)(console) )
+FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
+FC_REFLECT( eosio::chain::data_access_info, (type)(scope)(serial))
+FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
-FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (generated)(executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_result, (eosio::chain::transaction_receipt), (action_results)(deferred_transactions) )
+FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )
 
 
 

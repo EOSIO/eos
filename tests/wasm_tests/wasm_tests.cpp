@@ -93,13 +93,13 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
       auto result = control->push_transaction( trx );
       BOOST_CHECK_EQUAL(result.status, transaction_receipt::executed);
-      BOOST_CHECK_EQUAL(result.action_results.size(), 1);
-      BOOST_CHECK_EQUAL(result.action_results.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_results.at(0).act.scope.to_string(), name(N(asserter)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_results.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_results.at(0).act.authorization.size(),  1 );
-      BOOST_CHECK_EQUAL(result.action_results.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_results.at(0).act.authorization.at(0).permission.to_string(),  name(config::active_name).to_string() );
+      BOOST_CHECK_EQUAL(result.action_traces.size(), 1);
+      BOOST_CHECK_EQUAL(result.action_traces.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.scope.to_string(), name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.size(),  1 );
+      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.at(0).permission.to_string(),  name(config::active_name).to_string() );
       no_assert_id = trx.id();
    }
 

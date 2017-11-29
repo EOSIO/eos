@@ -167,7 +167,7 @@ class apply_context {
       */
 
       struct apply_results {
-         vector<action_result>         applied_actions;
+         vector<action_trace>         applied_actions;
          vector<deferred_transaction>  generated_transactions;
       };
 
@@ -175,7 +175,7 @@ class apply_context {
 
       template<typename T>
       void console_append(T val) {
-         _pending_console_output << val << std::endl;
+         _pending_console_output << val;
       }
 
    private:

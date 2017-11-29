@@ -3,7 +3,7 @@
 
 namespace eosio { namespace chain {
 
-   struct pending_cycle_state {
+   struct pending_cycle_state : cycle_trace {
       set<scope_name>          read_scopes;
       map<scope_name,uint32_t> write_scope_to_shard;
 

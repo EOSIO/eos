@@ -74,7 +74,7 @@ namespace eosio { namespace chain {
 
 
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         transaction_result push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         transaction_trace push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
 
          /**
@@ -85,7 +85,7 @@ namespace eosio { namespace chain {
           *  the write lock and may be in an "inconstant state" until after it is
           *  released.
           */
-         signal<void(const signed_block&)> applied_block;
+         signal<void(const block_trace&)> applied_block;
 
          /**
           *  This signal is emitted after irreversible block is written to disk.
@@ -287,18 +287,6 @@ namespace eosio { namespace chain {
                                    )const;
 
       private:
-         struct shard_result {
-            vector<transaction_result> transaction_results;
-
-            void append(transaction_result &&res) {
-               transaction_results.emplace_back(move(res));
-            }
-
-            void append(const transaction_result &res) {
-               transaction_results.emplace_back(res);
-            }
-         };
-
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
 
 
@@ -315,12 +303,8 @@ namespace eosio { namespace chain {
          //@}
 
 
-         transaction_result _push_transaction( const signed_transaction& trx );
-         void _start_pending_block();
-         transaction_result _apply_transaction( const transaction& trx );
-
-         void _finalize_block( const signed_block& b );
-         void _apply_shard_results( const shard_result& res );
+         transaction_trace _push_transaction( const signed_transaction& trx );
+         transaction_trace _apply_transaction( const transaction& trx );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
@@ -407,21 +391,28 @@ namespace eosio { namespace chain {
 
          void _spinup_db();
          void _spinup_fork_db();
-         void _start_cycle();
-         void _append_shard_results(int shard_num, const transaction_result& result);
-         void _finalize_cycle();
 
- //        producer_schedule_type calculate_next_round( const signed_block& next_block );
+         void _start_pending_block();
+         void _start_pending_cycle();
+         void _start_pending_shard();
+         void _finalize_pending_shard();
+         void _finalize_pending_cycle();
+         void _apply_cycle_trace( const cycle_trace& trace );
+         void _finalize_block( const block_trace& b );
+
+
+      //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
          database                         _db;
          fork_database                    _fork_db;
          block_log                        _block_log;
 
          optional<database::session>      _pending_block_session;
-         optional<signed_block>           _pending_block; 
+         optional<signed_block>           _pending_block;
+         optional<block_trace>            _pending_block_trace;
          uint32_t                         _pending_transaction_count = 0; 
          pending_cycle_state              _pending_cycle;
-         vector<shard_result>             _pending_shard_results;
+         optional<cycle_trace>            _pending_cycle_trace;
 
          bool                             _currently_applying_block = false;
          bool                             _currently_replaying_blocks = false;

@@ -57,4 +57,43 @@ namespace eosio { namespace chain {
       return merkle( std::move(ids) );
    }
 
+   void shard_trace::calculate_root() {
+      static const size_t GUESS_ACTS_PER_TX = 10;
+
+      vector<digest_type> action_roots;
+      action_roots.reserve(transaction_traces.size() * GUESS_ACTS_PER_TX);
+      for (const auto& tx :transaction_traces) {
+         for (const auto& at: tx.action_traces) {
+            digest_type::encoder enc;
+
+            fc::raw::pack(enc, at.receiver);
+            fc::raw::pack(enc, at.act.scope);
+            fc::raw::pack(enc, at.act.name);
+            fc::raw::pack(enc, at.act.data);
+            fc::raw::pack(enc, at.data_access);
+
+            action_roots.emplace_back(enc.result());
+         }
+      }
+      shard_root = merkle(action_roots);
+   }
+
+   void cycle_trace::calculate_root() {
+      vector<digest_type> shard_roots;
+      shard_roots.reserve(shard_traces.size());
+      for (auto& s_trace :shard_traces) {
+         shard_roots.emplace_back(s_trace.shard_root);
+      }
+      cycle_root = merkle(shard_roots);
+   }
+
+   digest_type block_trace::calculate_action_merkle_root()const {
+      vector<digest_type> cycle_roots;
+      cycle_roots.reserve(cycle_traces.size());
+      for (auto& c_trace :cycle_traces) {
+         cycle_roots.emplace_back(c_trace.cycle_root);
+      }
+      return merkle(cycle_roots);
+   }
+
 } }

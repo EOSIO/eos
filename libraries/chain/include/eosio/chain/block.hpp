@@ -19,7 +19,7 @@ namespace eosio { namespace chain {
       block_timestamp_type          timestamp;
 
       checksum_type                 transaction_mroot; /// mroot of cycles_summary
-      checksum_type                 message_mroot;
+      checksum_type                 action_mroot;
       checksum_type                 block_mroot;
 
       account_name                  producer;
@@ -95,13 +95,48 @@ namespace eosio { namespace chain {
       vector<signed_transaction>   input_transactions; /// this is loaded and indexed into map<id,trx> that is referenced by summary
    };
 
+   struct shard_trace {
+      digest_type                   shard_root;
+      vector<transaction_trace>     transaction_traces;
+
+      void append( transaction_trace&& res ) {
+         transaction_traces.emplace_back(move(res));
+      }
+
+      void append( const transaction_trace& res ) {
+         transaction_traces.emplace_back(res);
+      }
+
+      void calculate_root();
+   };
+
+   struct cycle_trace {
+      digest_type                   cycle_root;
+      vector<shard_trace>           shard_traces;
+
+      void calculate_root();
+   };
+
+   struct block_trace {
+      block_trace(const signed_block& s)
+      :block(s)
+      {}
+
+      const signed_block&     block;
+      vector<cycle_trace>     cycle_traces;
+      digest_type             calculate_action_merkle_root()const;
+   };
+
 
 } } // eosio::chain
 
 FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
-           (transaction_mroot)(message_mroot)(block_mroot)
+           (transaction_mroot)(action_mroot)(block_mroot)
            (producer)(new_producers))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
 FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (cycles_summary))
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (input_transactions))
+FC_REFLECT( eosio::chain::shard_trace, (shard_root)(transaction_traces))
+FC_REFLECT( eosio::chain::cycle_trace, (cycle_root)(shard_traces))
+FC_REFLECT( eosio::chain::block_trace, (cycle_traces))
