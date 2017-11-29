@@ -1020,7 +1020,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
              }
           }
           ilog("wasm_interface::load times llvm:${llvm} ms, init:${init} ms, abi:${abi} ms",
-               ("llvm",(llvm_time-start).count()/1000.0)("init",(init_time-llvm_time).count()/1000.0)("abi",(fc::time_point::now()-init_time).count()/1000.0));
+               ("llvm",(llvm_time-start).count()/1000)("init",(init_time-llvm_time).count()/1000)("abi",(fc::time_point::now()-init_time).count()/1000));
         }
         catch(Serialization::FatalSerializationException exception)
         {
