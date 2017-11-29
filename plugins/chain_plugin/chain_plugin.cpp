@@ -257,6 +257,7 @@ void chain_plugin::plugin_startup()
 } FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
+   my->chain.reset();
 }
 
 chain_apis::read_write chain_plugin::get_read_write_api() {
