@@ -924,14 +924,30 @@ namespace eosio {
 
   void connection::sync_wait( ) {
     response_expected->expires_from_now( my_impl->resp_expected_period);
-    response_expected->async_wait( boost::bind(&connection::sync_timeout,
-                                               this, boost::asio::placeholders::error));
+    connection_wptr c(shared_from_this());
+    response_expected->async_wait( [c]( boost::system::error_code ec){
+       connection_ptr conn = c.lock();
+       if (!conn) {
+         // connection was destroyed before this lambda was delivered
+         return;
+       }
+
+       conn->sync_timeout(ec);
+    } );
   }
 
   void connection::fetch_wait( ) {
     response_expected->expires_from_now( my_impl->resp_expected_period);
-    response_expected->async_wait( boost::bind(&connection::fetch_timeout,
-                                               this, boost::asio::placeholders::error));
+    connection_wptr c(shared_from_this());
+    response_expected->async_wait( [c]( boost::system::error_code ec){
+       connection_ptr conn = c.lock();
+       if (!conn) {
+         // connection was destroyed before this lambda was delivered
+         return;
+       }
+
+       conn->fetch_timeout(ec);
+    } );
   }
 
   void connection::sync_timeout( boost::system::error_code ec ) {
