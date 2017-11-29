@@ -893,8 +893,12 @@ void chain_controller::rate_limit_message(const message& message)
 } FC_CAPTURE_AND_RETHROW((message)) }
 
 void chain_controller::process_message(const transaction& trx, account_name code,
-                                       const message& message, message_output& output, apply_context* parent_context, int depth) {
+                                       const message& message, message_output& output,
+                                       apply_context* parent_context, int depth,
+                                       const fc::time_point& start_time ) {
    const blockchain_configuration& chain_configuration = get_global_properties().configuration;
+   EOS_ASSERT((fc::time_point::now() - start_time).count() < chain_configuration.max_trx_runtime, checktime_exceeded,
+      "Transaction message exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.max_trx_runtime));
    EOS_ASSERT(depth < chain_configuration.in_depth_limit, msg_resource_exhausted,
      "Message processing exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.in_depth_limit));
 
@@ -907,7 +911,7 @@ void chain_controller::process_message(const transaction& trx, account_name code
       try {
          auto notify_code = apply_ctx.notified[i];
          output.notify.push_back( {notify_code} );
-         process_message(trx, notify_code, message, output.notify.back().output, &apply_ctx, depth + 1);
+         process_message(trx, notify_code, message, output.notify.back().output, &apply_ctx, depth + 1, start_time );
       } FC_CAPTURE_AND_RETHROW((apply_ctx.notified[i]))
    }
 
@@ -1001,7 +1005,7 @@ typename T::processed chain_controller::process_transaction( const T& trx, int d
    for( uint32_t i = 0; i < trx.messages.size(); ++i ) {
       auto& output = ptrx.output[i];
       rate_limit_message(trx.messages[i]);
-      process_message(trx, trx.messages[i].code, trx.messages[i], output, 0);
+      process_message(trx, trx.messages[i].code, trx.messages[i], output, nullptr, 0, start_time);
       if (output.inline_trx.valid() ) {
          const transaction& trx = *output.inline_trx;
          output.inline_trx = process_transaction(pending_inline_transaction(trx), depth + 1, start_time);
