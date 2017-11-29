@@ -974,7 +974,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
         try
         {
 //          wlog( "LOADING CODE" );
- //         auto start = fc::time_point::now();
+          const auto start = fc::time_point::now();
           Serialization::MemoryInputStream stream((const U8*)recipient.code.data(),recipient.code.size());
           WASM::serializeWithInjection(stream,*state.module);
 
@@ -982,8 +982,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
           LinkResult linkResult = linkModule(*state.module,rootResolver);
           state.instance = instantiateModule( *state.module, std::move(linkResult.resolvedImports) );
           FC_ASSERT( state.instance );
-  //        auto end = fc::time_point::now();
- //         idump(( (end-start).count()/1000000.0) );
+          const auto llvm_time = fc::time_point::now();
 
           current_memory = Runtime::getDefaultMemory(state.instance);
             
@@ -1004,6 +1003,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
           //std::cerr <<"\n";
           state.code_version = recipient.code_version;
 //          idump((state.code_version));
+          const auto init_time = fc::time_point::now();
 
           types::abi abi;
           if( types::abi_serializer::to_abi(recipient.abi, abi) )
@@ -1019,6 +1019,8 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
                 state.table_key_types.emplace(std::make_pair(table.table_name, key_type));
              }
           }
+          ilog("wasm_interface::load times llvm:${llvm} ms, init:${init} ms, abi:${abi} ms",
+               ("llvm",(llvm_time-start).count()/1000.0)("init",(init_time-llvm_time).count()/1000.0)("abi",(fc::time_point::now()-init_time).count()/1000.0));
         }
         catch(Serialization::FatalSerializationException exception)
         {
