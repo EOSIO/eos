@@ -2243,7 +2243,7 @@ namespace eosio {
     cfg.add_options()
      ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
      ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
-     ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple remote-endpoint options as needed to compose a network.")
+     ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
      ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
      ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
@@ -2337,8 +2337,8 @@ namespace eosio {
       }
     }
 
-    if(options.count("remote-endpoint")) {
-      my->supplied_peers = options.at("remote-endpoint").as<vector<string> >();
+    if(options.count("p2p-peer-address")) {
+      my->supplied_peers = options.at("p2p-peer-address").as<vector<string> >();
     }
     if(options.count("agent-name")) {
       my->user_agent_name = options.at("agent-name").as<string>();

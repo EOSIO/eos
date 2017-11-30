@@ -790,7 +790,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     }
   }
   for (const auto &p : node.peers) {
-    cfg << "remote-endpoint = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
+    cfg << "p2p-peer-address = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
   if (node.producers.size()) {
     cfg << "required-participation = true\n";
