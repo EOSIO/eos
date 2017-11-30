@@ -622,6 +622,7 @@ namespace eosio {
       out_queue.clear();
       if(response_expected) {
         response_expected->cancel();
+        response_expected.reset();
       }
       pending_message_buffer.reset();
     }
@@ -863,7 +864,7 @@ namespace eosio {
                                     } else  {
                                        if(conn->out_queue.size()) {
                                           if(conn->out_queue.front().contains<go_away_message>()) {
-                                             conn->close();
+                                             my_impl->close(conn);
                                             return;
                                           }
                                           conn->out_queue.pop_front();
@@ -1242,7 +1243,7 @@ namespace eosio {
                                  elog( "connection failed to ${peer}: ${error}",
                                        ( "peer", c->peer_name())("error",err.message()));
                                  c->connecting = false;
-                                 c->close();
+                                 my_impl->close(c);
                                }
                              }
                            } );
@@ -1285,17 +1286,11 @@ namespace eosio {
     void net_plugin_impl::start_read_message( connection_ptr conn ) {
 
       try {
-        connection_wptr c( conn);
         conn->socket->async_read_some(
           conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
-          [this,c]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+          [this,conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
             try {
               if( !ec ) {
-                connection_ptr conn = c.lock();
-                if (!conn) {
-                  return;
-                }
-
                 FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
                 conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
                 while (conn->pending_message_buffer.bytes_to_read() > 0) {
@@ -1320,15 +1315,15 @@ namespace eosio {
                 start_read_message(conn);
               } else {
                 elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );
-                close( c.lock() );
+                close( conn );
               }
             } catch (...) {
-              close(c.lock());
+              close( conn );
             }
           }
         );
       } catch (...) {
-        close(conn);
+        close( conn );
       }
     }
 
@@ -1966,7 +1961,7 @@ namespace eosio {
       if( discards.size( ) ) {
         for( auto &c : discards) {
           connections.erase( c );
-          c.reset( );
+          c.reset();
         }
       }
     }
@@ -2427,7 +2422,6 @@ namespace eosio {
         ilog( "close ${s} connections",( "s",my->connections.size()) );
         auto cons = my->connections;
         for( auto con : cons ) {
-          con->socket->close();
           my->close( con);
         }
 
@@ -2462,6 +2456,8 @@ namespace eosio {
   string net_plugin::disconnect( const string& host ) {
      for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
         if( (*itr)->peer_addr == host ) {
+           (*itr)->reset();
+           my->close(*itr);
            my->connections.erase(itr);
            return "connection removed";
         }
