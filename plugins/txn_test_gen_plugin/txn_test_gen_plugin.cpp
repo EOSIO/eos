@@ -187,6 +187,7 @@ struct txn_test_gen_plugin_impl {
       }
       catch(fc::exception e) {
          elog("pushing transaction failed: ${e}", ("e", e.to_detail_string()));
+         stop_generation();
       }
 
       //make transaction b->a
@@ -206,6 +207,7 @@ struct txn_test_gen_plugin_impl {
       }
       catch(fc::exception e) {
          elog("pushing transaction failed: ${e}", ("e", e.to_detail_string()));
+         stop_generation();
       }
    }
 
