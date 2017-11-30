@@ -5,6 +5,9 @@ Simple and fast setup of EOS on Docker is also available.
 ## Install Dependencies
  - [Docker](https://docs.docker.com) Docker 17.05 or higher is required
 
+## Docker Requirement
+ - At least 8GB RAM (Docker -> Preferences -> Advanced -> Memory -> 8GB or above)
+ 
 ## Build eos image
 
 ```bash
