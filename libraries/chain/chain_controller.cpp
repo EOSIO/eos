@@ -119,7 +119,7 @@ const generated_transaction& chain_controller::get_generated_transaction( const 
  */
 bool chain_controller::push_block(const signed_block& new_block, uint32_t skip)
 { try {
-   return with_skip_flags( skip, [&](){
+   return with_skip_flags( skip | received_block, [&](){
       return without_pending_transactions( [&]() {
          return _db.with_write_lock( [&]() {
             return _push_block(new_block);
@@ -228,7 +228,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
  */
 processed_transaction chain_controller::push_transaction(const signed_transaction& trx, uint32_t skip)
 { try {
-   return with_skip_flags(skip, [&]() {
+   return with_skip_flags(skip|pushed_transaction, [&]() {
       return _db.with_write_lock([&]() {
          return _push_transaction(trx);
       });
@@ -897,8 +897,10 @@ void chain_controller::process_message(const transaction& trx, account_name code
                                        apply_context* parent_context, int depth,
                                        const fc::time_point& start_time ) {
    const blockchain_configuration& chain_configuration = get_global_properties().configuration;
-   EOS_ASSERT((fc::time_point::now() - start_time).count() < chain_configuration.max_trx_runtime, checktime_exceeded,
-      "Transaction message exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.max_trx_runtime));
+   if( is_producing() ) {
+      EOS_ASSERT((fc::time_point::now() - start_time).count() < chain_configuration.max_trx_runtime, checktime_exceeded,
+         "Transaction message exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.max_trx_runtime));
+   }
    EOS_ASSERT(depth < chain_configuration.in_depth_limit, msg_resource_exhausted,
      "Message processing exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.in_depth_limit));
 
@@ -971,8 +973,7 @@ void chain_controller::apply_message(apply_context& context)
              : _skip_flags & created_block
                ? _create_block_txn_execution_time
                : _txn_execution_time;
-       const bool is_received_block = _skip_flags & received_block;
-       wasm_interface::get().apply(context, execution_time, is_received_block);
+       wasm_interface::get().apply(context, execution_time, is_producing() );
     }
 
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
