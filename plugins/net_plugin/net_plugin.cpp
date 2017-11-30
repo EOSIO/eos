@@ -82,12 +82,13 @@ namespace eosio {
     void operator() (node_transaction_state& nts) {
       nts.received = fc::time_point::now();
       nts.validated = true;
-      size_t packsiz = fc::raw::pack_size(txn);
-      size_t bufsiz = packsiz + sizeof(packsiz);
+      net_message msg(txn);
+      uint32_t packsiz = fc::raw::pack_size(msg);
+      uint32_t bufsiz = packsiz + sizeof(packsiz);
       nts.packed_transaction.resize(bufsiz);
       fc::datastream<char*> ds( nts.packed_transaction.data(), bufsiz );
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
-      fc::raw::pack( ds, txn );
+      fc::raw::pack( ds, msg );
     }
   };
 
@@ -1006,10 +1007,16 @@ namespace eosio {
     try {
       // If it is a signed_block, then save the raw message for the cache
       // This must be done before we unpack the message.
-      unsigned_int which;
+      // This code is copied from fc::io::unpack(..., unsigned_int)
       auto index = pending_message_buffer.read_index();
-      pending_message_buffer.peek(&which, sizeof(unsigned_int), index);
-      if(which == uint32_t(net_message::tag<signed_block>::value)) {
+      uint64_t which = 0; char b = 0; uint8_t by = 0;
+      do {
+        pending_message_buffer.peek(&b, 1, index);
+        which |= uint32_t(uint8_t(b) & 0x7f) << by;
+        by += 7;
+      } while( uint8_t(b) & 0x80 );
+
+      if (which == uint64_t(net_message::tag<signed_block>::value)) {
         blk_buffer.resize(message_length);
         auto index = pending_message_buffer.read_index();
         pending_message_buffer.peek(blk_buffer.data(), message_length, index);
@@ -1978,13 +1985,14 @@ namespace eosio {
 
   size_t net_plugin_impl::cache_txn(const transaction_id_type txnid,
                                      const signed_transaction& txn ) {
-      size_t packsiz = fc::raw::pack_size(txn);
-      size_t bufsiz = packsiz + sizeof(packsiz);
+      net_message msg(txn);
+      uint32_t packsiz = fc::raw::pack_size(msg);
+      uint32_t bufsiz = packsiz + sizeof(packsiz);
       vector<char> buff(bufsiz);
       fc::datastream<char*> ds( buff.data(), bufsiz);
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
 
-      fc::raw::pack( ds, txn );
+      fc::raw::pack( ds, msg );
 
       uint16_t bn = static_cast<uint16_t>(txn.ref_block_num);
       node_transaction_state nts = {txnid,time_point::now(),
