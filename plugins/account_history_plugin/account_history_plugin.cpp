@@ -301,6 +301,10 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
             if (check_relevance && !is_scope_relevant(trx.scope))
                continue;
 
+            auto trx_obj_ptr = db.find<transaction_history_object, by_trx_id>(trx.id());
+            if (trx_obj_ptr != nullptr)
+               continue; // on restart may already have block
+
             db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
                transaction_history.block_id = block_id;
                transaction_history.transaction_id = trx.id();
@@ -308,10 +312,10 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
 
             for (const auto& account_name : trx.scope)
             {
-               db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
-                  account_transaction_history.name = account_name;
-                  account_transaction_history.transaction_id = trx.id();
-               });
+              db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
+                account_transaction_history.name = account_name;
+                account_transaction_history.transaction_id = trx.id();
+              });
             }
 
             for (const chain::message& msg : trx.messages)
