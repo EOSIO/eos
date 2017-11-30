@@ -772,7 +772,7 @@ launcher_def::write_config_file (tn_node_def &node) {
       << "shared-file-dir = blockchain\n"
       << "shared-file-size = " << instance.file_size << "\n"
       << "http-server-endpoint = " << host->host_name << ":" << instance.http_port << "\n"
-      << "listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n"
+      << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n"
       << "public-endpoint = " << host->public_name << ":" << instance.p2p_port << "\n";
   if (allowed_connections & PC_ANY) {
     cfg << "allowed-connection = any\n";
