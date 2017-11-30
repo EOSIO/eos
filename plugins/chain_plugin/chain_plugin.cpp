@@ -317,7 +317,7 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
     return r;
   };
    return {
-      itoh(static_cast<uint32_t>(app().version_int())),
+      itoh(static_cast<uint32_t>(app().version())),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.head_block_id(),

@@ -2296,7 +2296,7 @@ namespace eosio {
       sync_manager::logger.set_log_level(logl);
     }
 
-    my->network_version = static_cast<uint16_t>(app().version_int());
+    my->network_version = static_cast<uint16_t>(app().version());
     my->network_version_match = options.at("network-version-match").as<bool>();
     my->send_whole_blocks = def_send_whole_blocks;
 
