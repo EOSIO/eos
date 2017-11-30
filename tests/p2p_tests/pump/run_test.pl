@@ -102,11 +102,11 @@ sub write_config {
     print $cfg "readonly = 0\n";
     print $cfg "shared-file-dir = blockchain\n";
     print $cfg "shared-file-size = 64\n";
-    print $cfg "http-server-endpoint = 127.0.0.1:$http_port[$i]\n";
-    print $cfg "listen-endpoint = 0.0.0.0:$p2p_port[$i]\n";
-    print $cfg "public-endpoint = $hostname:$p2p_port[$i]\n";
+    print $cfg "http-server-address = 127.0.0.1:$http_port[$i]\n";
+    print $cfg "p2p-listen-endpoint = 0.0.0.0:$p2p_port[$i]\n";
+    print $cfg "p2p-server-address = $hostname:$p2p_port[$i]\n";
     foreach my $peer (@peers) {
-        print $cfg "remote-endpoint = $peer\n";
+        print $cfg "p2p-peer-address = $peer\n";
     }
 
     if (defined $producer) {
