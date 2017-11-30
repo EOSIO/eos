@@ -1,6 +1,10 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <fc/network/udp_socket.hpp>
 #include <fc/network/ip.hpp>
-#include <fc/fwd_impl.hpp>
+
 
 namespace fc
 {
@@ -47,8 +51,9 @@ namespace fc
         throw;
     }
 
-    my->_sock->async_send_to(boost::asio::buffer(buffer, length), to,
-                             [this](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
+    auto send_buffer_ptr = std::make_shared<std::vector<char>>(buffer, buffer+length);
+    my->_sock->async_send_to(boost::asio::buffer(send_buffer_ptr.get(), length), to,
+                             [send_buffer_ptr](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
     {
       // Swallow errors.  Currently only used for GELF logging, so depend on local
       // log to catch anything that doesn't make it across the network.
@@ -68,8 +73,9 @@ namespace fc
         throw;
     }
 
-    my->_sock->async_send_to(boost::asio::buffer(buffer.get(), length), to,
-                             [this](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
+    auto preserved_buffer_ptr = buffer;
+    my->_sock->async_send_to(boost::asio::buffer(preserved_buffer_ptr.get(), length), to,
+                             [preserved_buffer_ptr](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
     {
       // Swallow errors.  Currently only used for GELF logging, so depend on local
       // log to catch anything that doesn't make it across the network.
