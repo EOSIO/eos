@@ -17,7 +17,6 @@ matrix:
             - clang-4.0
             - g++-6
             - ninja-build
-            - libgmp-dev
             - libclang-4.0-dev
       env: COMPILER=clang++-4.0
     - os: linux
@@ -33,7 +32,7 @@ matrix:
             - llvm-4.0-dev
             - g++-7
             - ninja-build
-            - libgmp-dev
+            - libclang-4.0-dev
       env: COMPILER=g++-7
     - os: osx
       osx_image: xcode9.1
