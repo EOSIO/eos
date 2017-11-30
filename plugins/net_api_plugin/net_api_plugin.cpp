@@ -88,8 +88,8 @@ void net_api_plugin::plugin_startup() {
 }
 
 void net_api_plugin::plugin_initialize(const variables_map& options) {
-   if (options.count("http-server-endpoint")) {
-      const auto& lipstr = options.at("http-server-endpoint").as<string>();
+   if (options.count("http-server-address")) {
+      const auto& lipstr = options.at("http-server-address").as<string>();
       const auto& host = lipstr.substr(0, lipstr.find(':'));
       if (host != "localhost" && host != "127.0.0.1") {
          wlog("\n"
