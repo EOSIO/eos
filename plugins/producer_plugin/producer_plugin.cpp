@@ -209,8 +209,10 @@ void producer_plugin_impl::schedule_production_loop() {
    // If we would wait less than 50ms, wait for the whole second.
    fc::time_point now = fc::time_point::now();
    int64_t time_to_next_second = 1000000 - (now.time_since_epoch().count() % 1000000);
-   if(time_to_next_second < 50000)      // we must sleep for at least 50ms
-       time_to_next_second += 1000000;
+   if(time_to_next_second < 50000) {     // we must sleep for at least 50ms
+      wlog("Less than 50ms to next second, time_to_next_second ${s}ms", ("s", time_to_next_second/1000));
+      time_to_next_second += 1000000;
+   }
 
    _timer.expires_from_now(boost::posix_time::microseconds(time_to_next_second));
    _timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));

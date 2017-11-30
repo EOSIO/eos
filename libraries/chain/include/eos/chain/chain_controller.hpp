@@ -389,7 +389,8 @@ namespace eosio { namespace chain {
          void rate_limit_message(const message& message);
 
          void process_message(const transaction& trx, account_name code, const message& message,
-                              message_output& output, apply_context* parent_context = nullptr, int depth = 0);
+                              message_output& output, apply_context* parent_context = nullptr,
+                              int depth = 0, const fc::time_point& start_time = fc::time_point::now());
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }

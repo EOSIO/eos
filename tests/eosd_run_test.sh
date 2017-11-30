@@ -70,7 +70,9 @@ killAll()
 
 cleanup()
 {
-  rm -rf tn_data_00
+  if [ "$SERVER" == "localhost" ]; then
+    rm -rf tn_data_00
+  fi
   rm -rf test_wallet_0
 }
 

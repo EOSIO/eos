@@ -4,8 +4,8 @@
  */
 #include <tic_tac_toe.hpp>
 
+using namespace eosio;
 namespace tic_tac_toe {
-  using namespace eosio;
   /**
    * @brief Check if cell is empty
    * @param cell - value of the cell (should be either 0, 1, or 2)
@@ -22,8 +22,8 @@ namespace tic_tac_toe {
    * @param game - the game on which the movement is being made
    * @return true if movement is valid
    */
-  bool is_valid_movement(const Movement& movement, const game& game_for_movement) {
-    uint32_t movement_location = movement.row * 3 + movement.column;
+  bool is_valid_movement(const movement& mvt, const game& game_for_movement) {
+    uint32_t movement_location = mvt.row * 3 + mvt.column;
     bool is_valid = movement_location < game_for_movement.board_len && is_empty_cell(game_for_movement.board[movement_location]);
     return is_valid;
   }
@@ -87,33 +87,33 @@ namespace tic_tac_toe {
    * @brief Apply create action
    * @param create - action to be applied
    */
-  void apply_create(const Create& create) {
-    require_auth(create.host);
-    assert(create.challenger != create.host, "challenger shouldn't be the same as host");
+  void apply_create(const create& c) {
+    require_auth(c.host);
+    assert(c.challenger != c.host, "challenger shouldn't be the same as host");
 
     // Check if game already exists
     game existing_game;
-    bool game_exists = Games::get(create.challenger, existing_game, create.host);
+    bool game_exists = Games::get(c.challenger, existing_game, c.host);
     assert(game_exists == false, "game already exists");
 
-    game game_to_create(create.challenger, create.host);
-    Games::store(game_to_create, create.host);
+    game game_to_create(c.challenger, c.host);
+    Games::store(game_to_create, c.host);
   }
 
   /**
    * @brief Apply restart action
    * @param restart - action to be applied
    */
-  void apply_restart(const Restart& restart) {
-    require_auth(restart.by);
+  void apply_restart(const restart& r) {
+    require_auth(r.by);
 
     // Check if game exists
     game game_to_restart;
-    bool game_exists = Games::get(restart.challenger, game_to_restart, restart.host);
+    bool game_exists = Games::get(r.challenger, game_to_restart, r.host);
     assert(game_exists == true, "game doesn't exist!");
 
     // Check if this game belongs to the message sender
-    assert(restart.by == game_to_restart.host || restart.by == game_to_restart.challenger, "this is not your game!");
+    assert(r.by == game_to_restart.host || r.by == game_to_restart.challenger, "this is not your game!");
 
     // Reset game
     game_to_restart.reset_game();
@@ -125,12 +125,12 @@ namespace tic_tac_toe {
    * @brief Apply close action
    * @param close - action to be applied
    */
-  void apply_close(const Close& close) {
-    require_auth(close.host);
+  void apply_close(const close& c) {
+    require_auth(c.host);
 
     // Check if game exists
     game game_to_close;
-    bool game_exists = Games::get(close.challenger, game_to_close, close.host);
+    bool game_exists = Games::get(c.challenger, game_to_close, c.host);
     assert(game_exists == true, "game doesn't exist!");
 
     Games::remove(game_to_close, game_to_close.host);
@@ -140,32 +140,32 @@ namespace tic_tac_toe {
    * @brief Apply move action
    * @param move - action to be applied
    */
-  void apply_move(const Move& move) {
-    require_auth(move.by);
+  void apply_move(const move& m) {
+    require_auth(m.by);
 
     // Check if game exists
     game game_to_move;
-    bool game_exists = Games::get(move.challenger, game_to_move, move.host);
+    bool game_exists = Games::get(m.challenger, game_to_move, m.host);
     assert(game_exists == true, "game doesn't exist!");
 
     // Check if this game hasn't ended yet
     assert(game_to_move.winner == N(none), "the game has ended!");
     // Check if this game belongs to the message sender
-    assert(move.by == game_to_move.host || move.by == game_to_move.challenger, "this is not your game!");
+    assert(m.by == game_to_move.host || m.by == game_to_move.challenger, "this is not your game!");
     // Check if this is the  message sender's turn
-    assert(move.by == game_to_move.turn, "it's not your turn yet!");
+    assert(m.by == game_to_move.turn, "it's not your turn yet!");
 
 
     // Check if user makes a valid movement
-    assert(is_valid_movement(move.movement, game_to_move), "not a valid movement!");
+    assert(is_valid_movement(m.mvt, game_to_move), "not a valid movement!");
 
     // Fill the cell, 1 for host, 2 for challenger
-    bool is_movement_by_host = move.by == game_to_move.host;
+    bool is_movement_by_host = m.by == game_to_move.host;
     if (is_movement_by_host) {
-      game_to_move.board[move.movement.row * 3 + move.movement.column] = 1;
+      game_to_move.board[m.mvt.row * 3 + m.mvt.column] = 1;
       game_to_move.turn = game_to_move.challenger;
     } else {
-      game_to_move.board[move.movement.row * 3 + move.movement.column] = 2;
+      game_to_move.board[m.mvt.row * 3 + m.mvt.column] = 2;
       game_to_move.turn = game_to_move.host;
     }
     // Update winner
@@ -175,8 +175,6 @@ namespace tic_tac_toe {
 
 
 }
-
-using namespace tic_tac_toe;
 
 /**
 *  The init() and apply() methods must have C calling convention so that the blockchain can lookup and
@@ -191,16 +189,16 @@ extern "C" {
   }
 
   /// The apply method implements the dispatch of events to this contract
-  void apply( uint64_t code, uint64_t action ) {
+  void apply( uint64_t code, uint64_t action_name ) {
     if (code == N(tic.tac.toe)) {
-      if (action == N(create)) {
-        tic_tac_toe::apply_create(current_message<tic_tac_toe::Create>());
-      } else if (action == N(restart)) {
-        tic_tac_toe::apply_restart(current_message<tic_tac_toe::Restart>());
-      } else if (action == N(close)) {
-        tic_tac_toe::apply_close(current_message<tic_tac_toe::Close>());
-      } else if (action == N(move)) {
-        tic_tac_toe::apply_move(current_message<tic_tac_toe::Move>());
+      if (action_name == N(create)) {
+        tic_tac_toe::apply_create(current_message<tic_tac_toe::create>());
+      } else if (action_name == N(restart)) {
+        tic_tac_toe::apply_restart(current_message<tic_tac_toe::restart>());
+      } else if (action_name == N(close)) {
+        tic_tac_toe::apply_close(current_message<tic_tac_toe::close>());
+      } else if (action_name == N(move)) {
+        tic_tac_toe::apply_move(current_message<tic_tac_toe::move>());
       }
     }
   }

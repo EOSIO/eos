@@ -40,13 +40,12 @@ using account_transaction_history_multi_index = chainbase::shared_multi_index_co
    account_transaction_history_object,
    indexed_by<
       ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_transaction_history_object, account_transaction_history_object::id_type, id)>,
-      hashed_non_unique<tag<by_account_name>, BOOST_MULTI_INDEX_MEMBER(account_transaction_history_object, account_name, name), std::hash<account_name>>,
-      hashed_unique<tag<by_account_name_trx_id>,
+      ordered_non_unique<tag<by_account_name>, BOOST_MULTI_INDEX_MEMBER(account_transaction_history_object, account_name, name)>,
+      ordered_unique<tag<by_account_name_trx_id>,
          composite_key< account_transaction_history_object,
             member<account_transaction_history_object, account_name, &account_transaction_history_object::name>,
             member<account_transaction_history_object, transaction_id_type, &account_transaction_history_object::transaction_id>
-         >,
-         composite_key_hash< std::hash<account_name>, std::hash<transaction_id_type> >
+         >
       >
    >
 >;

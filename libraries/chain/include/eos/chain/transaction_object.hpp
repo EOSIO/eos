@@ -8,7 +8,6 @@
 #include <eos/chain/transaction.hpp>
 #include <fc/uint128.hpp>
 
-#include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
 #include "multi_index_includes.hpp"
@@ -38,7 +37,7 @@ namespace eosio { namespace chain {
       transaction_object,
       indexed_by<
          ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_object::id_type, id)>,
-         hashed_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id), std::hash<transaction_id_type>>,
+         ordered_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id)>,
          ordered_non_unique<tag<by_expiration>, const_mem_fun<transaction_object, time_point_sec, &transaction_object::get_expiration>>
       >
    >;
