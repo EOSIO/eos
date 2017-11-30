@@ -850,8 +850,11 @@ namespace eosio {
     fc::raw::pack( ds, m );
     connection_wptr c(shared_from_this());
 
-    boost::asio::async_write( *socket, boost::asio::buffer( send_buffer, buffer_size ),
-                              [c]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
+    // create copy of send_buffer for async_write
+    auto send_buffer_ptr = std::make_shared<vector<char>>(send_buffer);
+
+    boost::asio::async_write( *socket, boost::asio::buffer( *send_buffer_ptr, buffer_size ),
+                              [c, send_buffer_ptr]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
                                  try{
                                     auto conn = c.lock();
                                     if (!conn) {
