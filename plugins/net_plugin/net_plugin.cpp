@@ -382,6 +382,12 @@ namespace eosio {
     deque< transaction_id_type > txn_queue;
     bool                    halt_txn_send;
 
+    struct queued_write {
+      std::shared_ptr<vector<char>> buff;
+      std::function<void(boost::system::error_code, std::size_t)> cb;
+    };
+    deque<queued_write>     write_queue;
+
     fc::sha256              node_id;
     handshake_message       last_handshake;
     int16_t                 sent_handshake_count;
@@ -470,6 +476,9 @@ namespace eosio {
     void fetch_wait();
     void sync_timeout(boost::system::error_code ec);
     void fetch_timeout(boost::system::error_code ec);
+
+    void queue_write(std::shared_ptr<vector<char>> buff, std::function<void(boost::system::error_code, std::size_t)> cb);
+    void do_queue_write();
 
     /** \brief Process the next message from the pending message buffer
      *
@@ -805,6 +814,38 @@ namespace eosio {
     }
   }
 
+  void connection::queue_write(std::shared_ptr<vector<char>> buff, std::function<void(boost::system::error_code, std::size_t)> cb) {
+      write_queue.push_back({buff, cb});
+      if(write_queue.size() == 1)
+         do_queue_write();
+  }
+
+  void connection::do_queue_write() {
+     if(write_queue.empty())
+         return;
+      
+      connection_wptr c(shared_from_this());
+      boost::asio::async_write(*socket, boost::asio::buffer(*write_queue.front().buff), [c](boost::system::error_code ec, std::size_t w) {
+         try {
+            auto conn = c.lock();
+            if(!conn)
+               return;
+            if(ec) {
+               elog("Error sending to connection: ${i}", ("i", ec.message()));
+               my_impl->close(conn);
+               conn->write_queue.clear();
+               return;
+            }
+            conn->write_queue.front().cb(ec, w);
+            conn->write_queue.pop_front();
+            conn->do_queue_write();
+         }
+         catch(...) {
+            elog("Exception in do_queue_write");
+         }
+      });
+  }
+
   bool connection::enqueue_sync_block( ) {
     chain_controller& cc = app().find_plugin<chain_plugin>()->chain();
     uint32_t num = ++sync_requested->last;
@@ -849,36 +890,18 @@ namespace eosio {
     fc::datastream<char*> ds( send_buffer.data(), buffer_size);
     ds.write( header, header_size );
     fc::raw::pack( ds, m );
-    connection_wptr c(shared_from_this());
 
-    // create copy of send_buffer for async_write
-    auto send_buffer_ptr = std::make_shared<vector<char>>(send_buffer);
-
-    boost::asio::async_write( *socket, boost::asio::buffer( *send_buffer_ptr, buffer_size ),
-                              [c, send_buffer_ptr]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
-                                 try{
-                                    auto conn = c.lock();
-                                    if (!conn) {
-                                       // connection was destroyed before this lambda was delivered
-                                       return;
-                                    }
-
-                                    if( ec ) {
-                                       elog( "Error sending message: ${msg}", ("msg",ec.message() ) );
-                                    } else  {
-                                       if(conn->out_queue.size()) {
-                                          if(conn->out_queue.front().contains<go_away_message>()) {
-                                             my_impl->close(conn);
-                                            return;
-                                          }
-                                          conn->out_queue.pop_front();
-                                       }
-                                       conn->send_next_message();
-                                    }
-                                 } catch(...) {
-
-                                 }
-                              });
+    queue_write(std::make_shared<vector<char>>(send_buffer.begin(), send_buffer.begin()+buffer_size), 
+      [this](boost::system::error_code ec, std::size_t ) {
+         if(out_queue.size()) {
+            if(out_queue.front().contains<go_away_message>()) {
+                  my_impl->close(shared_from_this());
+                  return;
+            }
+            out_queue.pop_front();
+         }
+         send_next_message();
+      });
   }
 
   void connection::send_next_txn() {
@@ -904,24 +927,12 @@ namespace eosio {
       my_impl->local_txns.modify( tx,update_in_flight(1));
       count++;
       txn_queue.pop_front();
-      boost::asio::async_write( *socket, boost::asio::buffer(tx->packed_transaction, tx->packed_transaction.size()),
-                                [c, tx]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
-                                   try {
-                                      connection_ptr conn = c.lock();
-                                      if (!conn) {
-                                         // connection was destroyed before this lambda was delivered
-                                         return;
-                                      }
 
-                                      my_impl->local_txns.modify(tx, update_in_flight(-1));
-                                      if (ec) {
-                                         elog("Error sending txn to ${p}: ${msg}", ("p", conn->peer_name())("msg", ec.message()));
-                                      }
-                                      conn->send_next_message();
-                                   } catch (...) {
-
-                                   }
-                                });
+      queue_write(std::make_shared<vector<char>>(tx->packed_transaction), 
+        [this, tx](boost::system::error_code ec, std::size_t ) {
+            my_impl->local_txns.modify(tx, update_in_flight(-1));
+            send_next_message();
+        });
     }
     // we'll make this fc_dlog later
     elog("actually sent ${limit} pending transactions to ${p}",("limit",limit)("p",peer_name()));
@@ -1791,7 +1802,7 @@ namespace eosio {
         fc_dlog(logger, "chain accepted transaction" );
       } catch( const fc::exception &ex) {
         // received a block due to out of sequence
-        elog( "accept txn threw  ${m}",("m",ex.what()));
+        elog( "accept txn threw  ${m}",("m",ex.to_detail_string()));
       }
       catch( ...) {
         elog( " caught something attempting to accept transaction");
