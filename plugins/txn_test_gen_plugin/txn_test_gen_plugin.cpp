@@ -155,7 +155,14 @@ struct txn_test_gen_plugin_impl {
       timer.async_wait([this](auto ec) {
          if(ec)
             return;
-         send_transaction();
+         try {
+            send_transaction();
+         }
+         catch(fc::exception e) {
+            elog("pushing transaction failed: ${e}", ("e", e.to_detail_string()));
+            stop_generation();
+            return;
+         }
          arm_timer(timer.expires_at());
       });
    }
@@ -182,13 +189,7 @@ struct txn_test_gen_plugin_impl {
 
       fc::ecc::private_key creator_priv_key = fc::ecc::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       trx.sign(creator_priv_key, chainid);
-      try {
-         cc.push_transaction(trx);
-      }
-      catch(fc::exception e) {
-         elog("pushing transaction failed: ${e}", ("e", e.to_detail_string()));
-         stop_generation();
-      }
+      cc.push_transaction(trx);
 
       //make transaction b->a
       trx.clear();
@@ -202,13 +203,7 @@ struct txn_test_gen_plugin_impl {
 
       fc::ecc::private_key b_priv_key = fc::ecc::private_key::regenerate(fc::sha256(std::string(64, 'b')));
       trx.sign(b_priv_key, chainid);
-      try {
-         cc.push_transaction(trx);
-      }
-      catch(fc::exception e) {
-         elog("pushing transaction failed: ${e}", ("e", e.to_detail_string()));
-         stop_generation();
-      }
+      cc.push_transaction(trx);
    }
 
    void stop_generation() {
