@@ -14,6 +14,7 @@
 #include <eos/account_history_api_plugin/account_history_api_plugin.hpp>
 #include <eos/wallet_api_plugin/wallet_api_plugin.hpp>
 #include <eos/net_api_plugin/net_api_plugin.hpp>
+#include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
@@ -36,6 +37,7 @@ int main(int argc, char** argv)
       app().register_plugin<producer_plugin>();
       app().register_plugin<account_history_api_plugin>();
       app().register_plugin<db_plugin>();
+      app().register_plugin<txn_test_gen_plugin>();
       if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
          return -1;
       app().startup();
