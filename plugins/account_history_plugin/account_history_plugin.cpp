@@ -301,17 +301,23 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
             if (check_relevance && !is_scope_relevant(trx.scope))
                continue;
 
-            db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
-               transaction_history.block_id = block_id;
-               transaction_history.transaction_id = trx.id();
-            });
+            // TODO: Find a better way of avoiding duplicates on restart. For now swallow exception.
+            try {
+              db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
+                 transaction_history.block_id = block_id;
+                 transaction_history.transaction_id = trx.id();
+              });
+            } catch (std::logic_error&) { }
 
             for (const auto& account_name : trx.scope)
             {
-               db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
+              // TODO: Find a better way of avoiding duplicates on restart. For now swallow exception.
+              try {
+                db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
                   account_transaction_history.name = account_name;
                   account_transaction_history.transaction_id = trx.id();
-               });
+                });
+              } catch (std::logic_error&) { }
             }
 
             for (const chain::message& msg : trx.messages)
