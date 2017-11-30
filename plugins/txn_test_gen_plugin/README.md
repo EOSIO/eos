@@ -3,6 +3,7 @@
 This plugin provides a way to generate a given amount of test transactions per second. It runs internally to eosd to reduce overhead.
 
 ##Setup
+
 Create the two accounts used for transactions. Must give account & private key used for creation.
 
 ```
@@ -16,6 +17,7 @@ curl --data-binary '["inita", "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvF
 ```
 
 ##Starting/Stopping
+
 Start generation:
 
 ```
