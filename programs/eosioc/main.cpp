@@ -1036,10 +1036,11 @@ int main( int argc, char** argv ) {
             trx.set_reference_block( info.head_block_id);
 
             batch.emplace_back(trx);
-            if( batch.size() == 600 ) {
+            if( batch.size() == 40 ) {
                auto result = call( push_txns_func, batch );
                //std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);
+	       info = get_info();
             }
          }
          if( !loop ) break;
