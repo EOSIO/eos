@@ -276,6 +276,7 @@ void apply_eos_setproducer(apply_context& context) {
 
 
 void apply_eos_okproducer(apply_context& context) {
+   FC_ASSERT(false, "voting for producers is disabled for this test network");
    auto approve = context.msg.as<types::okproducer>();
    EOS_ASSERT(approve.approve == 0 || approve.approve == 1, message_validate_exception,
               "Unknown approval value: ${val}; must be either 0 or 1", ("val", approve.approve));
