@@ -338,6 +338,7 @@ struct launcher_def {
   last_run_def last_run;
   int start_delay;
   bool nogen;
+  bool add_enable_stale_production;
   string launch_name;
   string launch_time;
   server_identities servers;
@@ -409,6 +410,7 @@ launcher_def::initialize (const variables_map &vmap) {
         exit (-1);
       }
     }
+    add_enable_stale_production = true;
   }
 
   using namespace std::chrono;
@@ -571,6 +573,7 @@ launcher_def::define_network () {
   }
   stage /= bf::path("staging");
   bf::create_directory (stage);
+  cout << "staging path = " << stage << endl;
 
   if (per_host == 0) {
     host_def local_host;
@@ -728,6 +731,7 @@ launcher_def::deploy_config_file (tn_node_def &node) {
            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
       exit (-1);
     }
+    cout << "copying " << source << " to " << filename << endl;
     bf::copy_file (source, filename, bf::copy_option::overwrite_if_exists);
   }
   else {
@@ -804,7 +808,7 @@ launcher_def::write_config_file (tn_node_def &node) {
   for (const auto &p : node.peers) {
     cfg << "remote-endpoint = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
-  if (node.producers.size()) {
+  if (instance.has_db || node.producers.size()) {
     cfg << "required-participation = true\n";
     for (const auto &kp : node.keys ) {
       cfg << "private-key = [\"" << kp.public_key
@@ -816,9 +820,6 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::producer_plugin\n";
   }
   if( instance.has_db ) {
-    if( !node.producers.size() ) {
-      cfg << "plugin = eosio::producer_plugin\n";
-    }
     cfg << "plugin = eosio::db_plugin\n";
   }
   cfg << "plugin = eosio::chain_api_plugin\n"
@@ -1008,9 +1009,12 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   if (!eosd_extra_args.empty()) {
     eosdcmd += eosd_extra_args + " ";
   }
-  else {
+
+  if( add_enable_stale_production ) {
     eosdcmd += "--enable-stale-production true ";
+    add_enable_stale_production = false;
   }
+
   eosdcmd += "--data-dir " + instance.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
