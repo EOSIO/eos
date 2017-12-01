@@ -1509,6 +1509,7 @@ namespace eosio {
       // notices of previously unknown blocks or txns,
       //
       fc_dlog(logger, "got a notice_message from ${p}", ("p",c->peer_name()));
+      bool can_fwd = false;
       notice_message fwd;
       request_message req;
       bool send_req = false;
@@ -1545,15 +1546,22 @@ namespace eosio {
       fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_blocks.mode))("n",msg.known_blocks.pending));
 
 
-      if( msg.known_blocks.mode == id_list_modes::last_irr_catch_up ) {
-        sync_master->start_sync(c, msg.known_blocks.pending);
+      switch (msg.known_blocks.mode) {
+      case id_list_modes::none : {
+        elog( "got a block notice message with a mode of none from ${p}",("p",c->peer_name()));
+        return;
       }
-      else if( msg.known_blocks.mode == id_list_modes::catch_up ) {
-          req.req_blocks.mode = id_list_modes::catch_up;
-          req.req_blocks.pending = msg.known_blocks.pending;
-          send_req = true;
-        }
-      else {
+      case id_list_modes::last_irr_catch_up : {
+        sync_master->start_sync(c, msg.known_blocks.pending);
+        break;
+      }
+      case id_list_modes::catch_up : {
+        req.req_blocks.mode = id_list_modes::catch_up;
+        req.req_blocks.pending = msg.known_blocks.pending;
+        send_req = true;
+        break;
+      }
+      case id_list_modes::normal : {
         req.req_blocks.mode = normal;
         for( const auto& blkid : msg.known_blocks.ids) {
           optional<signed_block> b;
@@ -1572,9 +1580,15 @@ namespace eosio {
             req.req_blocks.ids.push_back(blkid);
           }
         }
+        break;
       }
-      if( msg.known_trx.pending == 0 && (fwd.known_trx.ids.size() > 0 ||
-                                         fwd.known_blocks.ids.size() > 0) ) {
+      default: {
+        elog( "received a bogus known_blocks.mode ${m} from ${p}",("m",static_cast<uint32_t>(msg.known_blocks.mode))("p",c->peer_name()));
+        close(c);
+      }
+      }
+
+      if( can_fwd ) {
         send_all( fwd, [c,fwd](connection_ptr cptr) -> bool {
             return cptr != c;
           });
@@ -1742,6 +1756,10 @@ namespace eosio {
           fc_dlog(logger, "the txnid is known and validated, so short circuit" );
           return;
         }
+      }
+      if( sync_master->syncing() ) {
+        fc_dlog(logger, "got a txn during sync - dropping");
+        return;
       }
 
       try {
@@ -2020,6 +2038,7 @@ namespace eosio {
       }
       else {
         fc_dlog(logger, "pending_notify, mode = ${m}, pending count = ${p}",("m",modes_str(pending_notify.mode))("p",pending_notify.pending));
+        pending_notify.mode = normal;
         pending_notify.ids.push_back( txnid );
         notice_message nm = { pending_notify, ordered_blk_ids( ) };
         send_all( nm, [txn, txnid](connection_ptr c) -> bool {
