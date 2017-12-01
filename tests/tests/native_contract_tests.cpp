@@ -278,6 +278,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_1, testing_fixture) {
          BOOST_CHECK_EQUAL(joeVotes.get_votes(), 0);
       }
 
+#warning TODO: Approving producers currently not supported
       BOOST_FAIL("voting was disabled, now it is working, remove this catch to not miss it being turned off again");
    } catch (const fc::assert_exception& ex) {
       BOOST_CHECK(ex.to_detail_string().find("voting") != std::string::npos);
@@ -329,6 +330,7 @@ BOOST_FIXTURE_TEST_CASE(producer_voting_2, testing_fixture) {
          BOOST_CHECK_EQUAL(joeVotes.get_votes(), 0);
       }
 
+#warning TODO: Approving producers currently not supported
       BOOST_FAIL("voting was disabled, now it is working, remove this catch to not miss it being turned off again");
    } catch (const fc::assert_exception& ex) {
       BOOST_CHECK(ex.to_detail_string().find("voting") != std::string::npos);
