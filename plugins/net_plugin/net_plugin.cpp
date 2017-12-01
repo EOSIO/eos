@@ -852,7 +852,7 @@ namespace eosio {
     connection_wptr c(shared_from_this());
 
     // create copy of send_buffer for async_write
-    auto send_buffer_ptr = std::make_shared<vector<char>>(send_buffer);
+    auto send_buffer_ptr = std::make_shared<vector<char>>(send_buffer.begin(), send_buffer.begin()+buffer_size);
 
     boost::asio::async_write( *socket, boost::asio::buffer( *send_buffer_ptr, buffer_size ),
                               [c, send_buffer_ptr]( boost::system::error_code ec, std::size_t /*bytes_transferred*/ ) {
