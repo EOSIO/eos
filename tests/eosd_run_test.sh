@@ -155,7 +155,7 @@ fi
 #
 
 # walletd
-programs/eos-walletd/eos-walletd --data-dir test_wallet_0 --http-server-endpoint=127.0.0.1:8899 > test_walletd_output.log 2>&1 &
+programs/eos-walletd/eos-walletd --data-dir test_wallet_0 --http-server-address=127.0.0.1:8899 > test_walletd_output.log 2>&1 &
 verifyErrorCode "eos-walletd"
 WALLETD_PROC_ID=$!
 sleep 3
