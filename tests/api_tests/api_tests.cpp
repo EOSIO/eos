@@ -639,6 +639,8 @@ BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                        
    }                                                                                                      \
 }
 
+#warning TODO  Tests design no longer consistent with ABI Table validation only on block generation after commit to prevent ABI Table verification on pushed transactions. Need to restructure considerably
+
 //TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_str_with_i64, strnoti, table_abi_test_wast, table_abi_test_abi)
 
 //TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i64_with_i128i128, inotii, table_abi_test_wast, table_abi_test_abi)
