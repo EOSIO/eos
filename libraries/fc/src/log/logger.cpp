@@ -82,8 +82,6 @@ namespace fc {
     }
 
     logger logger::get( const fc::string& s ) {
-       //static fc::spin_lock logger_spinlock;
-       //scoped_lock<spin_lock> lock(logger_spinlock);
        return get_logger_map()[s];
     }
 
@@ -95,7 +93,7 @@ namespace fc {
 
     void logger::add_appender( const fc::shared_ptr<appender>& a )
     { my->_appenders.push_back(a); }
-    
+
 //    void logger::remove_appender( const fc::shared_ptr<appender>& a )
  //   { my->_appenders.erase(a); }
 

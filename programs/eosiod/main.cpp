@@ -16,6 +16,7 @@
 #include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
+#include <fc/log/appender.hpp>
 #include <fc/exception/exception.hpp>
 
 #include <boost/exception/diagnostic_information.hpp>
@@ -25,9 +26,23 @@
 using namespace appbase;
 using namespace eosio;
 
+namespace fc {
+   std::unordered_map<std::string,appender::ptr>& get_appender_map();
+}
+
+void initialize_logging()
+{
+  auto config_path = app().get_logging_conf();
+  if(fc::exists(config_path))
+    fc::configure_logging(config_path);
+  for(auto iter : fc::get_appender_map())
+    iter.second->initialize(app().get_io_service());
+}
+
 int main(int argc, char** argv)
 {
    try {
+      initialize_logging();
       app().set_version(eosio::eosiod::config::version);
       ilog("eosiod version ${ver}", ("ver", eosio::eosiod::config::itoh(static_cast<uint32_t>(app().version()))));
       app().register_plugin<chain_api_plugin>();

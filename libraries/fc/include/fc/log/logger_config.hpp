@@ -5,7 +5,7 @@ namespace fc {
    class path;
    struct appender_config {
       appender_config(const string& name = "",
-                      const string& type = "", 
+                      const string& type = "",
                       variant args = variant()) :
         name(name),
         type(type),
@@ -41,9 +41,6 @@ namespace fc {
 
    void configure_logging( const fc::path& log_config );
    bool configure_logging( const logging_config& l );
-
-   void set_thread_name( const string& name );
-   const string& get_thread_name();
 }
 
 #include <fc/reflect/reflect.hpp>

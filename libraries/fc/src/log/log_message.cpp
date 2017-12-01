@@ -51,7 +51,7 @@ namespace fc
       my->line        = line;
       my->method      = method;
       my->timestamp   = time_point::now();
-      my->thread_name = fc::get_thread_name();
+      my->thread_name = std::string(); //fc::get_thread_name();
    }
 
    log_context::log_context( const variant& v )
