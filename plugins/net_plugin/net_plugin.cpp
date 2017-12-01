@@ -1311,6 +1311,11 @@ namespace eosio {
                     uint32_t message_length;
                     auto index = conn->pending_message_buffer.read_index();
                     conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
+                    if(message_length > def_send_buffer_size*2) {
+                        elog("incoming message length unexpected (${i})", ("i", message_length));
+                        close(conn);
+                        return;
+                    }
                     if (bytes_in_buffer >= message_length + message_header_size) {
                       conn->pending_message_buffer.advance_read_ptr(message_header_size);
                       if (!conn->process_next_message(*this, message_length)) {
