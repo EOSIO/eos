@@ -98,7 +98,7 @@ namespace eosio {
 
    void http_plugin::set_program_options(options_description&, options_description& cfg) {
       cfg.add_options()
-            ("http-server-endpoint", bpo::value<string>()->default_value("127.0.0.1:8888"),
+            ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:8888"),
              "The local IP and port to listen for incoming http connections.")
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
@@ -124,15 +124,15 @@ namespace eosio {
    }
 
    void http_plugin::plugin_initialize(const variables_map& options) {
-      if(options.count("http-server-endpoint")) {
+      if(options.count("http-server-address")) {
         #if 0
-         auto lipstr = options.at("http-server-endpoint").as< string >();
+         auto lipstr = options.at("http-server-address").as< string >();
          auto fcep = fc::ip::endpoint::from_string(lipstr);
          my->listen_endpoint = tcp::endpoint(boost::asio::ip::address_v4::from_string((string)fcep.get_address()), fcep.port());
         #endif
          auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
-         if( options.count( "http-server-endpoint" ) ) {
-           auto lipstr =  options.at("http-server-endpoint").as< string >();
+         if( options.count( "http-server-address" ) ) {
+           auto lipstr =  options.at("http-server-address").as< string >();
            auto host = lipstr.substr( 0, lipstr.find(':') );
            auto port = lipstr.substr( host.size()+1, lipstr.size() );
            idump((host)(port));
