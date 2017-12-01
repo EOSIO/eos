@@ -486,16 +486,18 @@ verifyErrorCode "eosc wallet lock_all"
 echo $PASSWORD_INITA | programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 wallet unlock --name inita
 verifyErrorCode "eosc wallet unlock inita"
 
+# TODO: Approving producers currently not supported
 # approve producer
-INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
-verifyErrorCode "eosc approve producer"
+# INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
+# verifyErrorCode "eosc approve producer"
 
 ACCOUNT_INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 get account inita)"
 verifyErrorCode "eosc get account"
 
+# TODO: Unapproving producers currently not supported
 # unapprove producer
-INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
-verifyErrorCode "eosc unapprove producer"
+# INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
+# verifyErrorCode "eosc unapprove producer"
 
 #
 # Proxy
