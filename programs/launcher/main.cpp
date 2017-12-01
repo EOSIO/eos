@@ -187,6 +187,18 @@ class tn_node_def;
 
 class eosd_def {
 public:
+  eosd_def()
+    : data_dir (),
+      p2p_port(),
+      http_port(),
+      file_size(),
+      has_db(false),
+      name(),
+      node(),
+      host(),
+      p2p_endpoint() {}
+
+
   string       data_dir;
   uint16_t     p2p_port;
   uint16_t     http_port;
@@ -1136,7 +1148,7 @@ int main (int argc, char *argv[]) {
   opts.add_options()
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
+    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill to each.")
     ("version,v", "print version information")
     ("help,h","print this list");
 
