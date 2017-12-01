@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <math.h>
-#include <strstream>
+#include <sstream>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -392,6 +392,8 @@ launcher_def::initialize (const variables_map &vmap) {
         allowed_connections |= PC_PRODUCERS;
       else if (boost::iequals(m, "specified"))
         allowed_connections |= PC_SPECIFIED;
+      else if (boost::iequals(m, "none"))
+        allowed_connections = PC_NONE;
       else {
         cerr << "unrecognized connection mode: " << m << endl;
         exit (-1);
@@ -402,8 +404,8 @@ launcher_def::initialize (const variables_map &vmap) {
   using namespace std::chrono;
   system_clock::time_point now = system_clock::now();
   std::time_t now_c = system_clock::to_time_t(now);
-  ostrstream dstrm;
-  dstrm <<   std::put_time(std::localtime(&now_c), "%Y_%m_%d_%H_%M_%S") << ends;
+  ostringstream dstrm;
+  dstrm << std::put_time(std::localtime(&now_c), "%Y_%m_%d_%H_%M_%S") << ends;
   launch_time = dstrm.str();
 
   if ( ! (shape.empty() ||
@@ -641,7 +643,7 @@ void
 launcher_def::bind_nodes () {
   int per_node = producers / prod_nodes;
   int extra = producers % prod_nodes;
-  int i = 0;
+  unsigned int i = 0;
   for (auto &h : bindings) {
     for (auto &inst : h.instances) {
         tn_node_def node;
@@ -748,7 +750,6 @@ launcher_def::deploy_config_file (tn_node_def &node) {
 void
 launcher_def::write_config_file (tn_node_def &node) {
   bf::path filename;
-  boost::system::error_code ec;
   eosd_def &instance = *node.instance;
   host_def *host = find_host (instance.host);
 
@@ -776,6 +777,9 @@ launcher_def::write_config_file (tn_node_def &node) {
       << "public-endpoint = " << host->public_name << ":" << instance.p2p_port << "\n";
   if (allowed_connections & PC_ANY) {
     cfg << "allowed-connection = any\n";
+  }
+  else if (allowed_connections == PC_NONE) {
+    cfg << "allowed-connection = none\n";
   }
   else
   {
