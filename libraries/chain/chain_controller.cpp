@@ -348,6 +348,10 @@ signed_block chain_controller::_generate_block(
             edump((e.to_detail_string()));
          }
       }
+
+      // need to clean up if none of the pending transactions were accepted
+      if (!pending_block.cycles[0][0].user_input.size())
+         pending_block.cycles.clear();
    }
 
    if( pending.size() )
