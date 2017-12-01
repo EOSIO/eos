@@ -12,12 +12,25 @@ import re
 import random
 import string
 
+###############################################################
+# Test for transfering currency across multiple accounts in a EOS cluster.
+# Nodes can be producing or non-producing.
+# -p <producing nodes count>
+# -n <total nodes>
+# -s <topology>
+# -d <delay between nodes startup>
+###############################################################
+
 DEBUG=False
 FNULL = open(os.devnull, 'w')
 ADMIN_ACCOUNT="inita"
+INITA_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+
+AccountInfo=namedtuple("AccountInfo", "name ownerPrivate ownerPublic activePrivate activePublic")
 
 def killall():
-    subprocess.call(["programs/launcher/launcher", "-k", "15"])
+    if 0 != subprocess.call(["programs/launcher/launcher", "-k", "15"]):
+        print("ERROR: Launcher failed to shut down eos cluster.")
 
 def cleanup():
     for f in glob.glob("tn_data_*"):
@@ -25,11 +38,9 @@ def cleanup():
 
 def errorExit(msg="", errorCode=1):
     print("ERROR:", msg)
-    #killall()
     exit(errorCode)
 
 def waitForCluserStability (ports=[], timeout=60):
-
     startTime=time.time()
     while time.time()-startTime < timeout:
         stable=True
@@ -37,7 +48,7 @@ def waitForCluserStability (ports=[], timeout=60):
             DEBUG and print("Request block 1 from node on port", port)
             if 0 != subprocess.call(["programs/eosc/eosc", "--port", str(port), "get", "block", "1"],
                                         stdout=FNULL, stderr=FNULL):
-                DEBUG and print("Block 1 request failed: ", e)
+                DEBUG and print("ERROR: Block 1 request failed: ", e)
                 stable=False
                 break
  
@@ -48,8 +59,6 @@ def waitForCluserStability (ports=[], timeout=60):
 
     return False
 
-AccountInfo=namedtuple("AccountInfo", "name ownerPrivate ownerPublic activePrivate activePublic")
-
 def createAccountInfos(count):
     accountInfos=[]
     p = re.compile('Private key: (.+)\nPublic key: (.+)\n', re.MULTILINE)
@@ -58,7 +67,7 @@ def createAccountInfos(count):
             keyStr=subprocess.check_output(["programs/eosc/eosc", "create", "key"]).decode("utf-8")
             m=p.match(keyStr)
             if m is None:
-                print("Owner key creation regex mismatch")
+                print("ERROR: Owner key creation regex mismatch")
                 break
             
             ownerPrivate=m.group(1)
@@ -67,7 +76,7 @@ def createAccountInfos(count):
             keyStr=subprocess.check_output(["programs/eosc/eosc", "create", "key"]).decode("utf-8")
             m=p.match(keyStr)
             if m is None:
-                print("Owner key creation regex mismatch")
+                print("ERROR: Owner key creation regex mismatch")
                 break
             
             activePrivate=m.group(1)
@@ -77,8 +86,11 @@ def createAccountInfos(count):
             accountInfos.append(AccountInfo(name, ownerPrivate, ownerPublic, activePrivate, activePublic))
 
         except Exception as e:
-            print("Exception during key creation:", e)
+            print("ERROR: Exception during key creation:", e)
             break
+
+    if count != len(accountInfos):
+        return []
 
     return accountInfos
 
@@ -86,24 +98,24 @@ def createAccountInfos(count):
 def createWallet(INITA_PRV_KEY, accountInfos):
 
     if 0 != subprocess.call(["programs/eosc/eosc", "wallet", "create", "--name", ADMIN_ACCOUNT], stdout=FNULL):
-        print("Failed to create inita account.")
+        print("ERROR: Failed to create inita account.")
         return False
 
     if 0 != subprocess.call(["programs/eosc/eosc", "wallet", "import", "--name", ADMIN_ACCOUNT, INITA_PRV_KEY],
                             stdout=FNULL):
-        print("Failed to import account inita key.")
+        print("ERROR: Failed to import account inita key.")
         return False
 
     for accountInfo in accountInfos:
         #print("Private: ", key.private)
         if 0 != subprocess.call(["programs/eosc/eosc", "wallet", "import", "--name", ADMIN_ACCOUNT,
                                  accountInfo.ownerPrivate], stdout=FNULL):
-            print("Failed to import account owner key.")
+            print("ERROR: Failed to import account owner key.")
             return False
 
         if 0 != subprocess.call(["programs/eosc/eosc", "wallet", "import", "--name", ADMIN_ACCOUNT,
                                  accountInfo.activePrivate], stdout=FNULL):
-            print("Failed to import account active key.")
+            print("ERROR: Failed to import account active key.")
             return False
 
     return True
@@ -117,14 +129,14 @@ def getHeadBlockNum(port):
         p=re.compile('\n\s+\"head_block_num\"\:\s+(\d+),\n', re.MULTILINE)
         m=p.search(ret)
         if m is None:
-            print("Failed to parse head block num.")
+            print("ERROR: Failed to parse head block num.")
             return -1
 
         s=m.group(1)
         num=int(s)
 
     except Exception as e:
-        print("Exception during block number retrieval.", e)
+        print("ERROR: Exception during block number retrieval.", e)
         return -1
 
     return num
@@ -140,7 +152,7 @@ def waitForNextBlock(port=8888):
 def transferFunds(source, destination, amount, port=8888):
     if 0 != subprocess.call(["programs/eosc/eosc", "--port", str(port), "transfer", source, destination,
                              str(amount), "memo"], stdout=FNULL):
-        print("Failed to transfer funds", amount, "from account "+ source+ " to "+ destination)
+        print("ERROR: Failed to transfer funds", amount, "from account "+ source+ " to "+ destination)
         return False
 
     return True
@@ -203,7 +215,7 @@ def getAccountBalance(name):
         m=p.search(ret)
         if m is None:
             msg="Failed to parse account balance."
-            print(msg)
+            print("ERROR: "+ msg)
             raise Exception(msg)
 
         s=m.group(1)
@@ -212,14 +224,14 @@ def getAccountBalance(name):
         return int(balance)
 
     except Exception as e:
-        print("Exception during account balance retrieval.", e)
+        print("ERROR: Exception during account balance retrieval.", e)
         raise
 
     
 def createAccount(accountInfo):
     
     if 0 != subprocess.call(["programs/eosc/eosc", "create", "account", ADMIN_ACCOUNT, accountInfo.name, accountInfo.ownerPublic, accountInfo.activePublic], stdout=FNULL):
-        print("Failed to create inita account.")
+        print("ERROR: Failed to create inita account.")
         return False
 
     # wait for next block
@@ -231,17 +243,16 @@ def createAccount(accountInfo):
         p=re.compile('\n\s+\"staked_balance\"\:\s+\"\d+.\d+\s+EOS\",\n', re.MULTILINE)
         m=p.search(ret)
         if m is None:
-            print("Failed to validate account creation.", accountInfo.name)
+            print("ERROR: Failed to validate account creation.", accountInfo.name)
             return False
     except Exception as e:
-        print("Exception during account creation validation:", e)
+        print("ERROR: Exception during account creation validation:", e)
         return False
     
     return True
     
 
 parser = argparse.ArgumentParser()
-
 parser.add_argument("-p", type=int, help="producing nodes count", default=1)
 parser.add_argument("-n", type=int, help="total nodes", default=0)
 parser.add_argument("-d", type=int, help="delay between nodes startup", default=1)
@@ -253,20 +264,21 @@ topo=args.s
 delay=args.d
 total_nodes = pnodes if args.n == 0 else args.n
 
-
 print ("producing nodes:", pnodes, ", non-producing nodes: ", total_nodes-pnodes,
        ", topology:", topo, ", delay between nodes launch(seconds):", delay)
 
-INITA_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+
 
 cleanup()
+random.seed(1) # Use a fixed seed for repeatability.
 
 try:
     launcherOpts="-p {0} -n {1} -s {2} -d {3}".format(pnodes, total_nodes, topo, delay)
     print ("launcher options:", launcherOpts)
 
-    subprocess.call(["programs/launcher/launcher", "-p", str(pnodes), "-n", str(total_nodes), "-d",
-                     str(delay), "-s", topo])
+    if 0 != subprocess.call(["programs/launcher/launcher", "-p", str(pnodes), "-n", str(total_nodes), "-d",
+                             str(delay), "-s", topo]):
+        errorExit("Launcher failed to stand up eos cluster.")
 
     ports=[]
     for i in range(0, total_nodes):
