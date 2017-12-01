@@ -639,21 +639,21 @@ BOOST_FIXTURE_TEST_CASE(test_case_name, testing_fixture)                        
    }                                                                                                      \
 }
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_str_with_i64, strnoti, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_str_with_i64, strnoti, table_abi_test_wast, table_abi_test_abi)
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i64_with_i128i128, inotii, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i64_with_i128i128, inotii, table_abi_test_wast, table_abi_test_abi)
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i128i128_with_i64i64i64, iinotiii, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i128i128_with_i64i64i64, iinotiii, table_abi_test_wast, table_abi_test_abi)
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i64i64i64_with_str, iiinotstr, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_store_fail_i64i64i64_with_str, iiinotstr, table_abi_test_wast, table_abi_test_abi)
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_str_with_i64, ldstrnoti, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_str_with_i64, ldstrnoti, table_abi_test_wast, table_abi_test_abi)
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64_with_i128i128, ldinotii, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64_with_i128i128, ldinotii, table_abi_test_wast, table_abi_test_abi)
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i128i128_with_i64i64i64, ldiinotiii, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i128i128_with_i64i64i64, ldiinotiii, table_abi_test_wast, table_abi_test_abi)
 
-TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64i64i64_with_str, ldiiinotstr, table_abi_test_wast, table_abi_test_abi)
+//TEST_CASE_TABLE_TYPE_FAILURE(test_table_load_fail_i64i64i64_with_str, ldiiinotstr, table_abi_test_wast, table_abi_test_abi)
 
 #define VERIFY_DB_KEY_TYPES(KEY_TYPE) \
 { try { \
