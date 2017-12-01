@@ -487,15 +487,15 @@ echo $PASSWORD_INITA | programs/eosc/eosc --host $SERVER --port $PORT --wallet-p
 verifyErrorCode "eosc wallet unlock inita"
 
 # approve producer
-INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
-verifyErrorCode "eosc approve producer"
+# INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
+# verifyErrorCode "eosc approve producer"
 
 ACCOUNT_INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 get account inita)"
 verifyErrorCode "eosc get account"
 
 # unapprove producer
-INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
-verifyErrorCode "eosc unapprove producer"
+# INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
+# verifyErrorCode "eosc unapprove producer"
 
 #
 # Proxy
