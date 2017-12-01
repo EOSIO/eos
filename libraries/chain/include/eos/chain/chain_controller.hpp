@@ -268,7 +268,8 @@ namespace eosio { namespace chain {
          const chainbase::database& get_database() const { return _db; }
          chainbase::database& get_mutable_database() { return _db; }
 
-         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
+         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);                     }
+         bool is_producing()const                            { return _skip_flags & (received_block | pushed_transaction); }
 
 
          const deque<signed_transaction>&  pending()const { return _pending_transactions; }

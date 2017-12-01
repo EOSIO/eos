@@ -1,6 +1,9 @@
 #pragma once
+#include <fc/any.hpp>
 #include <fc/shared_ptr.hpp>
 #include <fc/string.hpp>
+
+namespace boost { namespace asio { class io_service; } }
 
 namespace fc {
    class appender;
@@ -38,6 +41,7 @@ namespace fc {
          static appender::ptr get( const fc::string& name );
          static bool          register_appender( const fc::string& type, const appender_factory::ptr& f );
 
+         virtual void initialize( boost::asio::io_service& io_service ) = 0;
          virtual void log( const log_message& m ) = 0;
    };
 }
