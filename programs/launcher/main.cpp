@@ -327,6 +327,7 @@ struct launcher_def {
   bf::path server_ident_file;
   bf::path stage;
 
+  string erd;
   string data_dir_base;
   bool skip_transaction_signatures = false;
   string eosd_extra_args;
@@ -455,9 +456,22 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
+  char * erd = getenv ("EOS_ROOT_DIR");
+  if (erd == 0) {
+    erd = getenv ("PWD");
+  }
+  stage = bf::path(erd);
+  if (!bf::exists(stage)) {
+    cerr << erd << " is not a valid path" << endl;
+    exit (-1);
+  }
+  stage /= bf::path("staging");
+  bf::create_directory (stage);
+
   if (bindings.empty()) {
     define_network ();
   }
+
 }
 
 void
@@ -561,19 +575,6 @@ launcher_def::write_dot_file () {
 
 void
 launcher_def::define_network () {
-
-  char * erd = getenv ("EOS_ROOT_DIR");
-  if (erd == 0) {
-    erd = getenv ("PWD");
-  }
-  stage = bf::path(erd);
-  if (!bf::exists(stage)) {
-    cerr << erd << " is not a valid path" << endl;
-    exit (-1);
-  }
-  stage /= bf::path("staging");
-  bf::create_directory (stage);
-  cout << "staging path = " << stage << endl;
 
   if (per_host == 0) {
     host_def local_host;
@@ -731,7 +732,6 @@ launcher_def::deploy_config_file (tn_node_def &node) {
            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
       exit (-1);
     }
-    cout << "copying " << source << " to " << filename << endl;
     bf::copy_file (source, filename, bf::copy_option::overwrite_if_exists);
   }
   else {
@@ -1060,26 +1060,48 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   last_run.running_nodes.emplace_back (move(info));
 }
 
+#if 0
+void
+launcher_def::kill_instance(eosd_def, string sig_opt) {
+}
+#endif
+
 void
 launcher_def::kill (launch_modes mode, string sig_opt) {
-  if (mode == LM_NONE) {
+  switch (mode) {
+  case LM_NONE:
     return;
+  case LM_VERIFY:
+    // no-op
+    return;
+  case LM_NAMED: {
+    cerr << "feature not yet implemented " << endl;
+    #if 0
+      auto node = network.nodes.find(launch_name);
+      kill_instance (node.second.instance, sig_opt);
+      #endif
+    break;
   }
-  bf::path source = "last_run.json";
-  fc::json::from_file(source).as<last_run_def>(last_run);
-  for (auto &info : last_run.running_nodes) {
-    if (mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
-        (!info.remote && mode == LM_LOCAL)) {
-      if (info.pid_file.length()) {
-        string pid;
-        fc::json::from_file(info.pid_file).as<string>(pid);
-        string kill_cmd = "kill " + sig_opt + " " + pid;
-        boost::process::system (kill_cmd);
-      }
-      else {
-        boost::process::system (info.kill_cmd);
+  case LM_ALL:
+  case LM_LOCAL:
+  case LM_REMOTE : {
+    bf::path source = "last_run.json";
+    fc::json::from_file(source).as<last_run_def>(last_run);
+    for (auto &info : last_run.running_nodes) {
+      if (mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
+          (!info.remote && mode == LM_LOCAL)) {
+        if (info.pid_file.length()) {
+          string pid;
+          fc::json::from_file(info.pid_file).as<string>(pid);
+          string kill_cmd = "kill " + sig_opt + " " + pid;
+          boost::process::system (kill_cmd);
+        }
+        else {
+          boost::process::system (info.kill_cmd);
+        }
       }
     }
+  }
   }
 }
 
@@ -1093,6 +1115,7 @@ launcher_def::start_all (string &gts, launch_modes mode) {
     return;
   case LM_NAMED : {
     try {
+      add_enable_stale_production = false;
       auto node = network.nodes.find(launch_name);
       launch(*node->second.instance, gts);
     } catch (fc::exception& fce) {
@@ -1187,8 +1210,6 @@ int main (int argc, char *argv[]) {
       else {
         mode = LM_NAMED;
         top.launch_name = l;
-        cerr << "unrecognized launch mode: " << l << endl;
-        exit (-1);
       }
     }
     else {
