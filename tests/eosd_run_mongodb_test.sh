@@ -90,7 +90,7 @@ INITB_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 LOG_FILE=eosd_run_test.log
 
 # eosd
-programs/launcher/launcher --eosd "--enable-stale-production true --plugin eosio::db_plugin --mongodb-uri $DB"
+programs/launcher/launcher --eosd "--plugin eosio::db_plugin --mongodb-uri $DB"
 verifyErrorCode "launcher"
 sleep 60
 count=`grep -c "generated block" tn_data_00/stderr.txt`
@@ -124,7 +124,7 @@ fi
 #
 
 # walletd
-programs/eos-walletd/eos-walletd --data-dir test_wallet_0 --http-server-endpoint=127.0.0.1:8899 > test_walletd_output.log 2>&1 &
+programs/eos-walletd/eos-walletd --data-dir test_wallet_0 --http-server-address=127.0.0.1:8899 > test_walletd_output.log 2>&1 &
 verifyErrorCode "eos-walletd"
 WALLETD_PROC_ID=$!
 sleep 3
@@ -400,33 +400,6 @@ count=`echo $ACCOUNT_INFO | grep "balance" | grep -c "999999950"`
 if [ $count == 0 ]; then
   error "FAILURE - get table currency account failed: $ACCOUNT_INFO"
 fi
-
-#
-# Producer
-#
-
-INFO="$(programs/eosc/eosc --wallet-port 8899 create producer testera $PUB_KEY1)"
-verifyErrorCode "eosc create producer"
-getTransactionId "$INFO"
-
-# lock via lock_all
-programs/eosc/eosc --wallet-port 8899 wallet lock_all
-verifyErrorCode "eosc wallet lock_all"
-
-# unlock wallet inita
-echo $PASSWORD_INITA | programs/eosc/eosc --wallet-port 8899 wallet unlock --name inita
-verifyErrorCode "eosc wallet unlock inita"
-
-# approve producer
-INFO="$(programs/eosc/eosc --wallet-port 8899 set producer inita testera approve)"
-verifyErrorCode "eosc approve producer"
-
-ACCOUNT_INFO="$(programs/eosc/eosc --wallet-port 8899 get account inita)"
-verifyErrorCode "eosc get account"
-
-# unapprove producer
-INFO="$(programs/eosc/eosc --wallet-port 8899 set producer inita testera unapprove)"
-verifyErrorCode "eosc unapprove producer"
 
 #
 # Proxy
