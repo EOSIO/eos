@@ -53,21 +53,12 @@ signature_type eosio::chain::signed_transaction::sign(const private_key_type& ke
 
 flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
 { try {
-   using boost::adaptors::transformed;
-
-   ///Warning: This "leaks" as we never clean up old entries in the cache. Next release will have a more 
-   //          proper implementation.
-   static std::map<transaction_id_type, flat_set<public_key_type>> pub_key_cache;
-   std::map<transaction_id_type, flat_set<public_key_type>>::iterator it = pub_key_cache.find(id());
-   if(it != pub_key_cache.end())
-      return it->second;
-
-   auto SigToKey = transformed([digest = sig_digest(chain_id)](const fc::ecc::compact_signature& signature) {
-      return public_key_type(fc::ecc::public_key(signature, digest));
-   });
-   auto keyRange = signatures | SigToKey;
-   it = pub_key_cache.emplace(id(), flat_set<public_key_type>{keyRange.begin(), keyRange.end()}).first;
-   return it->second;
+      using boost::adaptors::transformed;
+      auto SigToKey = transformed([digest = sig_digest(chain_id)](const fc::ecc::compact_signature& signature) {
+         return public_key_type(fc::ecc::public_key(signature, digest));
+      });
+      auto keyRange = signatures | SigToKey;
+      return {keyRange.begin(), keyRange.end()};
    } FC_CAPTURE_AND_RETHROW() }
 
 eosio::chain::digest_type signed_transaction::merkle_digest() const {
