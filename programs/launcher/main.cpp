@@ -187,6 +187,18 @@ class tn_node_def;
 
 class eosd_def {
 public:
+  eosd_def()
+    : data_dir (),
+      p2p_port(),
+      http_port(),
+      file_size(),
+      has_db(false),
+      name(),
+      node(),
+      host(),
+      p2p_endpoint() {}
+
+
   string       data_dir;
   uint16_t     p2p_port;
   uint16_t     http_port;
@@ -315,6 +327,7 @@ struct launcher_def {
   bf::path server_ident_file;
   bf::path stage;
 
+  string erd;
   string data_dir_base;
   bool skip_transaction_signatures = false;
   string eosd_extra_args;
@@ -322,10 +335,11 @@ struct launcher_def {
   string alias_base;
   vector <string> aliases;
   vector <host_def> bindings;
-  int per_host;
+  int per_host = 0;
   last_run_def last_run;
-  int start_delay;
+  int start_delay = 0;
   bool nogen;
+  bool add_enable_stale_production = false;
   string launch_name;
   string launch_time;
   server_identities servers;
@@ -399,6 +413,7 @@ launcher_def::initialize (const variables_map &vmap) {
         exit (-1);
       }
     }
+    add_enable_stale_production = true;
   }
 
   using namespace std::chrono;
@@ -443,9 +458,22 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
+  char * erd = getenv ("EOS_ROOT_DIR");
+  if (erd == 0) {
+    erd = getenv ("PWD");
+  }
+  stage = bf::path(erd);
+  if (!bf::exists(stage)) {
+    cerr << erd << " is not a valid path" << endl;
+    exit (-1);
+  }
+  stage /= bf::path("staging");
+  bf::create_directory (stage);
+
   if (bindings.empty()) {
     define_network ();
   }
+
 }
 
 void
@@ -549,18 +577,6 @@ launcher_def::write_dot_file () {
 
 void
 launcher_def::define_network () {
-
-  char * erd = getenv ("EOS_ROOT_DIR");
-  if (erd == 0) {
-    erd = getenv ("PWD");
-  }
-  stage = bf::path(erd);
-  if (!bf::exists(stage)) {
-    cerr << erd << " is not a valid path" << endl;
-    exit (-1);
-  }
-  stage /= bf::path("staging");
-  bf::create_directory (stage);
 
   if (per_host == 0) {
     host_def local_host;
@@ -796,7 +812,7 @@ launcher_def::write_config_file (tn_node_def &node) {
   for (const auto &p : node.peers) {
     cfg << "p2p-peer-address = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
-  if (node.producers.size()) {
+  if (instance.has_db || node.producers.size()) {
     cfg << "required-participation = true\n";
     for (const auto &kp : node.keys ) {
       cfg << "private-key = [\"" << kp.public_key
@@ -808,9 +824,6 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::producer_plugin\n";
   }
   if( instance.has_db ) {
-    if( !node.producers.size() ) {
-      cfg << "plugin = eosio::producer_plugin\n";
-    }
     cfg << "plugin = eosio::db_plugin\n";
   }
   cfg << "plugin = eosio::chain_api_plugin\n"
@@ -1000,9 +1013,12 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   if (!eosd_extra_args.empty()) {
     eosdcmd += eosd_extra_args + " ";
   }
-  else {
+
+  if( add_enable_stale_production ) {
     eosdcmd += "--enable-stale-production true ";
+    add_enable_stale_production = false;
   }
+
   eosdcmd += "--data-dir " + instance.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
@@ -1048,26 +1064,48 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   last_run.running_nodes.emplace_back (move(info));
 }
 
+#if 0
+void
+launcher_def::kill_instance(eosd_def, string sig_opt) {
+}
+#endif
+
 void
 launcher_def::kill (launch_modes mode, string sig_opt) {
-  if (mode == LM_NONE) {
+  switch (mode) {
+  case LM_NONE:
     return;
+  case LM_VERIFY:
+    // no-op
+    return;
+  case LM_NAMED: {
+    cerr << "feature not yet implemented " << endl;
+    #if 0
+      auto node = network.nodes.find(launch_name);
+      kill_instance (node.second.instance, sig_opt);
+      #endif
+    break;
   }
-  bf::path source = "last_run.json";
-  fc::json::from_file(source).as<last_run_def>(last_run);
-  for (auto &info : last_run.running_nodes) {
-    if (mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
-        (!info.remote && mode == LM_LOCAL)) {
-      if (info.pid_file.length()) {
-        string pid;
-        fc::json::from_file(info.pid_file).as<string>(pid);
-        string kill_cmd = "kill " + sig_opt + " " + pid;
-        boost::process::system (kill_cmd);
-      }
-      else {
-        boost::process::system (info.kill_cmd);
+  case LM_ALL:
+  case LM_LOCAL:
+  case LM_REMOTE : {
+    bf::path source = "last_run.json";
+    fc::json::from_file(source).as<last_run_def>(last_run);
+    for (auto &info : last_run.running_nodes) {
+      if (mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
+          (!info.remote && mode == LM_LOCAL)) {
+        if (info.pid_file.length()) {
+          string pid;
+          fc::json::from_file(info.pid_file).as<string>(pid);
+          string kill_cmd = "kill " + sig_opt + " " + pid;
+          boost::process::system (kill_cmd);
+        }
+        else {
+          boost::process::system (info.kill_cmd);
+        }
       }
     }
+  }
   }
 }
 
@@ -1081,6 +1119,7 @@ launcher_def::start_all (string &gts, launch_modes mode) {
     return;
   case LM_NAMED : {
     try {
+      add_enable_stale_production = false;
       auto node = network.nodes.find(launch_name);
       launch(*node->second.instance, gts);
     } catch (fc::exception& fce) {
@@ -1140,7 +1179,7 @@ int main (int argc, char *argv[]) {
   opts.add_options()
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill signal to each.")
+    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill to each.")
     ("version,v", "print version information")
     ("help,h","print this list");
 
@@ -1175,8 +1214,6 @@ int main (int argc, char *argv[]) {
       else {
         mode = LM_NAMED;
         top.launch_name = l;
-        cerr << "unrecognized launch mode: " << l << endl;
-        exit (-1);
       }
     }
     else {
