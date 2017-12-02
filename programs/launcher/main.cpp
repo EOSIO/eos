@@ -335,11 +335,11 @@ struct launcher_def {
   string alias_base;
   vector <string> aliases;
   vector <host_def> bindings;
-  int per_host;
+  int per_host = 0;
   last_run_def last_run;
-  int start_delay;
+  int start_delay = 0;
   bool nogen;
-  bool add_enable_stale_production;
+  bool add_enable_stale_production = false;
   string launch_name;
   string launch_time;
   server_identities servers;
