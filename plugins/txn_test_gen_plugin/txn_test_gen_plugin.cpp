@@ -127,14 +127,14 @@ struct txn_test_gen_plugin_impl {
          if(ec)
             return;
          try {
-            send_transaction();
+            this->send_transaction();
          }
          catch(fc::exception e) {
             elog("pushing transaction failed: ${e}", ("e", e.to_detail_string()));
-            stop_generation();
+            this->stop_generation();
             return;
          }
-         arm_timer(timer.expires_at());
+         this->arm_timer(timer.expires_at());
       });
    }
 
