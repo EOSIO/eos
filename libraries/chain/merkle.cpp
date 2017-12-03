@@ -23,6 +23,15 @@ digest_type make_canonical_right(const digest_type& val) {
    return canonical_r;
 }
 
+bool is_canonical_left(const digest_type& val) {
+   return (val._hash[0] & 0x0000000000000080ULL) == 0;
+}
+
+bool is_canonical_right(const digest_type& val) {
+   return (val._hash[0] & 0x0000000000000080ULL) != 0;
+}
+
+
 digest_type merkle(vector<digest_type> ids) {
    if( 0 == ids.size() ) { return digest_type(); }
 

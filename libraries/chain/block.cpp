@@ -105,7 +105,7 @@ namespace eosio { namespace chain {
    digest_type block_trace::calculate_action_merkle_root()const {
       vector<digest_type> region_roots;
       region_roots.reserve(region_traces.size());
-      for (uint32_t index = 0; index < region_roots.size(); index++) {
+      for (uint32_t index = 0; index < region_traces.size(); index++) {
          const auto& r_trace = region_traces.at(index);
 
          digest_type::encoder enc;

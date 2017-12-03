@@ -279,7 +279,6 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
 
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    if( shardnum >= bcycle.size() ) {
-      _finalize_pending_shard();
       _start_pending_shard();
    }
 
@@ -332,14 +331,12 @@ void chain_controller::_start_pending_shard()
    _pending_cycle_trace->shard_traces.resize(_pending_cycle_trace->shard_traces.size() + 1 );
 }
 
-void chain_controller::_finalize_pending_shard()
-{
-   auto& shard = _pending_cycle_trace->shard_traces.back();
-   shard.calculate_root();
-}
-
 void chain_controller::_finalize_pending_cycle()
 {
+   for( auto& shard : _pending_cycle_trace->shard_traces ) {
+      shard.calculate_root();
+   }
+
    _pending_cycle_trace->calculate_root();
    _apply_cycle_trace(*_pending_cycle_trace);
    _pending_block_trace->region_traces.back().cycle_traces.emplace_back(std::move(*_pending_cycle_trace));
@@ -397,7 +394,7 @@ void chain_controller::_finalize_block( const block_trace& trace ) { try {
    create_block_summary(b);
    clear_expired_transactions();
 
-   applied_block( b ); //emit
+   applied_block( trace ); //emit
    if (_currently_replaying_blocks)
      applied_irreversible_block(b);
 
@@ -433,8 +430,8 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       _start_pending_block();
    }
 
-   _finalize_pending_shard();
    _finalize_pending_cycle();
+   _pending_block_trace->region_traces.back().calculate_root();
 
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
@@ -456,7 +453,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    if( !(skip & skip_producer_signature) )
       _pending_block->sign( block_signing_key );
 
-   _finalize_block( *_pending_block );
+   _finalize_block( *_pending_block_trace );
 
    _pending_block_session->push();
 
