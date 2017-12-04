@@ -2,7 +2,7 @@
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/scope_serial_object.hpp>
+#include <eosio/chain/scope_sequence_object.hpp>
 
 namespace eosio { namespace chain {
 void apply_context::exec_one()
@@ -28,21 +28,21 @@ void apply_context::exec_one()
    data_access.reserve(trx.write_scope.size() + trx.read_scope.size());
    for (const auto& scope: trx.write_scope) {
       auto key = boost::make_tuple(scope, receiver);
-      const auto& scope_serial = mutable_controller.get_database().find<scope_serial_object, by_scope_receiver>(key);
-      if (scope_serial == nullptr) {
+      const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
+      if (scope_sequence == nullptr) {
          try {
-            mutable_controller.get_mutable_database().create<scope_serial_object>([&](scope_serial_object &ss) {
+            mutable_controller.get_mutable_database().create<scope_sequence_object>([&](scope_sequence_object &ss) {
                ss.scope = scope;
                ss.receiver = receiver;
-               ss.serial = 1;
+               ss.sequence = 1;
             });
          } FC_CAPTURE_AND_RETHROW((scope)(receiver));
          data_access.emplace_back(data_access_info{data_access_info::write, scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::write, scope, scope_serial->serial});
+         data_access.emplace_back(data_access_info{data_access_info::write, scope, scope_sequence->sequence});
          try {
-            mutable_controller.get_mutable_database().modify(*scope_serial, [&](scope_serial_object& ss) {
-               ss.serial += 1;
+            mutable_controller.get_mutable_database().modify(*scope_sequence, [&](scope_sequence_object& ss) {
+               ss.sequence += 1;
             });
          } FC_CAPTURE_AND_RETHROW((scope)(receiver));
       }
@@ -50,11 +50,11 @@ void apply_context::exec_one()
 
    for (const auto& scope: trx.read_scope) {
       auto key = boost::make_tuple(scope, receiver);
-      const auto& scope_serial = mutable_controller.get_database().find<scope_serial_object, by_scope_receiver>(key);
-      if (scope_serial == nullptr) {
+      const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
+      if (scope_sequence == nullptr) {
          data_access.emplace_back(data_access_info{data_access_info::read, scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::read, scope, scope_serial->serial});
+         data_access.emplace_back(data_access_info{data_access_info::read, scope, scope_sequence->sequence});
       }
    }
 

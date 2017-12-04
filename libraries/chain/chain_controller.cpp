@@ -16,7 +16,7 @@
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/producer_objects.hpp>
-#include <eosio/chain/scope_serial_object.hpp>
+#include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
 #include <eosio/chain/wasm_interface.hpp>
@@ -938,7 +938,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<transaction_multi_index>();
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
-   _db.add_index<scope_serial_multi_index>();
+   _db.add_index<scope_sequence_multi_index>();
 }
 
 void chain_controller::_initialize_chain(contracts::chain_initializer& starter)

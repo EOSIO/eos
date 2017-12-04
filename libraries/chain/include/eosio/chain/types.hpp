@@ -137,7 +137,7 @@ namespace eosio { namespace chain {
       proxy_vote_object_type, ///< Defined by native_contract library
       key64x64x64_value_object_type,
       keystr_value_object_type,
-      scope_serial_object_type,
+      scope_sequence_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -186,7 +186,7 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (proxy_vote_object_type)
                 (key64x64x64_value_object_type)
                 (keystr_value_object_type)
-                (scope_serial_object_type)
+                (scope_sequence_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )
