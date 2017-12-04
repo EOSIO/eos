@@ -1,9 +1,10 @@
 var searchData=
 [
-  ['tablename',['TableName',['../group__types.html#ga1d259d7ad615daec723290ee9f766dc5',1,'types.h']]],
-  ['time',['Time',['../group__types.html#ga2518c21789dfad901bbf283f9ea4247f',1,'types.h']]],
-  ['tokenname',['TokenName',['../group__types.html#ga619dcf2195dd83ea4fc9aa62c92ec437',1,'types.h']]],
-  ['tokens',['Tokens',['../group__tokens.html#gad7688ac4dfe873f7c66e2664bbd861f9',1,'eos']]],
-  ['transactionhandle',['TransactionHandle',['../group__transactioncapi.html#ga7a095ea0165891d5ee1dbd8ee40e32cb',1,'transaction.h']]],
-  ['type',['type',['../structeos_1_1remove__reference.html#acfd17788f4908fa7276ade978a94f2b9',1,'eosio::remove_reference::type()'],['../structeos_1_1remove__reference_3_01_t_01_6_01_4.html#ac7a78aa04a58d44d919f666b49cd6709',1,'eosio::remove_reference&lt; T &amp; &gt;::type()'],['../structeos_1_1remove__reference_3_01const_01_t_01_6_01_4.html#a9a1d54d331794296bf736eb59f051eef',1,'eosio::remove_reference&lt; const T &amp; &gt;::type()']]]
+  ['table_5fname',['table_name',['../group__types.html#ga330cbf48637c876c57f78d03fd4730bb',1,'types.h']]],
+  ['time',['time',['../group__types.html#ga44479e2657d126b44ca53d30c3e670d8',1,'types.h']]],
+  ['token_5fname',['token_name',['../group__types.html#gab67cbd4d66fcef4ed4b5f131f4d59a94',1,'types.h']]],
+  ['tokens',['tokens',['../group__tokens.html#ga82e00c544558c53136ec43178a0ca5a0',1,'eosio']]],
+  ['transaction_5fhandle',['transaction_handle',['../group__transactioncapi.html#gaab096f894fc4b848e8bf87fa82535f4c',1,'transaction.h']]],
+  ['type',['type',['../structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef',1,'eosio::remove_reference::type()'],['../structeosio_1_1remove__reference_3_01_t_01_6_01_4.html#a84338716fa336eb52db929386eaedf3b',1,'eosio::remove_reference&lt; T &amp; &gt;::type()'],['../structeosio_1_1remove__reference_3_01const_01_t_01_6_01_4.html#af13043fb80b04fae97c34165eae92e4b',1,'eosio::remove_reference&lt; const T &amp; &gt;::type()']]],
+  ['type_5fname',['type_name',['../group__types.html#ga59d314407ccb1b5c6e6b9b3c75f01d67',1,'types.h']]]
 ];

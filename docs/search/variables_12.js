@@ -8,6 +8,6 @@ var searchData=
   ['test2',['test2',['../test__crypto_8cpp.html#a5c0b0a4d5ca0593870b708343c3eb6c9',1,'test_crypto.cpp']]],
   ['test2_5fok',['test2_ok',['../test__crypto_8cpp.html#a6a58953140719f1c7c3f0636d0a5f4b8',1,'test_crypto.cpp']]],
   ['test_5fapi_5fwast',['test_api_wast',['../test__api_8wast_8hpp.html#a7fd80d079f32dfa845fd2edb2dd63db2',1,'test_api.wast.hpp']]],
-  ['to',['to',['../group__currencyapi.html#ga75350616e02bd681c0e8b12ca4cf7a38',1,'TOKEN_NAME::Transfer::to()'],['../structinfinite_1_1_transfer.html#a51fc76c45adc5b7e002593649529c218',1,'infinite::Transfer::to()']]],
-  ['total_5fvotes',['total_votes',['../struct_post_record.html#aca901b24573f6a0bf3e1058b197b6174',1,'PostRecord']]]
+  ['to',['to',['../group__currencyapi.html#ga2465adec996f6c6bf45f450043b45c95',1,'TOKEN_NAME::transfer::to()'],['../structinfinite_1_1transfer.html#a9a61c1d9e877eb8602ee2cd05409ef86',1,'infinite::transfer::to()']]],
+  ['total_5fvotes',['total_votes',['../structpost__record.html#a580585c2172c68521e806129bef13814',1,'post_record']]]
 ];

@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['quantity',['quantity',['../group__currencyapi.html#ga2892db9fb7756afd55846ef6979406e4',1,'TOKEN_NAME::Transfer::quantity()'],['../structeos_1_1token.html#a3daddb64094c45d8f51897aabd44ba3d',1,'eosio::token::quantity()'],['../structinfinite_1_1_transfer.html#a7bb1f54a3a58f42f067d9a020c900ddf',1,'infinite::Transfer::quantity()'],['../group__storageapi.html#ga459112cbf883226edcb02b35a674ddcd',1,'TOKEN_NAME::Transfer::quantity()']]]
+  ['quantity',['quantity',['../group__currencyapi.html#ga637bc5a749449e7f478f6620160f4795',1,'TOKEN_NAME::transfer::quantity()'],['../structeosio_1_1token.html#a9849d728bf72ca934962865f0d9881d2',1,'eosio::token::quantity()'],['../structinfinite_1_1transfer.html#a2b72eb47bcc8f3221dd5a622c0169e63',1,'infinite::transfer::quantity()'],['../group__storageapi.html#gaa19dbd7b8beace25c91d274519166a37',1,'TOKEN_NAME::transfer::quantity()']]],
+  ['quote',['quote',['../structprice.html#ad266b6515f7c10c3bf8ad1f17261163c',1,'price']]]
 ];

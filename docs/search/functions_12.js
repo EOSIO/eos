@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['validate_5feospath',['validate_eospath',['../namespace_t_o_k_e_n___n_a_m_e.html#a53c86f810197659cf9e744fbdb77d20a',1,'TOKEN_NAME']]],
-  ['validate_5fipfspath',['validate_ipfspath',['../namespace_t_o_k_e_n___n_a_m_e.html#a18486d4da268752899c650597706531b',1,'TOKEN_NAME']]]
+  ['write',['write',['../classeosio_1_1datastream.html#a1e42133f6f57a8c89e1db04abe44b342',1,'eosio::datastream::write()'],['../classeosio_1_1datastream_3_01size__t_01_4.html#a3c2ca245c9f33549505ea7886a1d3ecf',1,'eosio::datastream&lt; size_t &gt;::write()']]]
 ];
