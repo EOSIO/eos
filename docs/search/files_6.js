@@ -1,7 +1,6 @@
 var searchData=
 [
-  ['print_2eh',['print.h',['../print_8h.html',1,'']]],
-  ['print_2ehpp',['print.hpp',['../print_8hpp.html',1,'']]],
-  ['proxy_2ecpp',['proxy.cpp',['../proxy_8cpp.html',1,'']]],
-  ['proxy_2ehpp',['proxy.hpp',['../proxy_8hpp.html',1,'']]]
+  ['infinite_2ecpp',['infinite.cpp',['../infinite_8cpp.html',1,'']]],
+  ['infinite_2ehpp',['infinite.hpp',['../infinite_8hpp.html',1,'']]],
+  ['infinite_2ewast_2ehpp',['infinite.wast.hpp',['../infinite_8wast_8hpp.html',1,'']]]
 ];

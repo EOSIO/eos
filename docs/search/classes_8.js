@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['offerbet',['OfferBet',['../structdice_1_1_offer_bet.html',1,'dice']]],
-  ['offerprimarykey',['OfferPrimaryKey',['../structdice_1_1_offer_primary_key.html',1,'dice']]],
-  ['orderid',['OrderID',['../structexchange_1_1_order_i_d.html',1,'exchange']]]
+  ['memory_5fmanager',['memory_manager',['../classeosio_1_1memory__manager.html',1,'eosio']]],
+  ['message',['message',['../classeosio_1_1message.html',1,'eosio']]],
+  ['move',['move',['../structtic__tac__toe_1_1move.html',1,'tic_tac_toe']]],
+  ['movement',['movement',['../structtic__tac__toe_1_1movement.html',1,'tic_tac_toe']]]
 ];

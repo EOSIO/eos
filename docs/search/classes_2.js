@@ -1,8 +1,10 @@
 var searchData=
 [
-  ['canceloffer',['CancelOffer',['../structdice_1_1_cancel_offer.html',1,'dice']]],
-  ['claimexpired',['ClaimExpired',['../structdice_1_1_claim_expired.html',1,'dice']]],
-  ['close',['Close',['../structtic__tac__toe_1_1_close.html',1,'tic_tac_toe']]],
+  ['cancel_5foffer',['cancel_offer',['../structdice_1_1cancel__offer.html',1,'dice']]],
+  ['checksum',['checksum',['../structchecksum.html',1,'']]],
+  ['claim_5fexpired',['claim_expired',['../structdice_1_1claim__expired.html',1,'dice']]],
+  ['close',['close',['../structtic__tac__toe_1_1close.html',1,'tic_tac_toe']]],
+  ['complex_5ftype',['complex_type',['../structcomplex__type.html',1,'']]],
   ['contract',['contract',['../structnative_1_1contract.html',1,'native']]],
-  ['create',['Create',['../structtic__tac__toe_1_1_create.html',1,'tic_tac_toe']]]
+  ['create',['create',['../structtic__tac__toe_1_1create.html',1,'tic_tac_toe']]]
 ];
