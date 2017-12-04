@@ -46,15 +46,17 @@ namespace eosio { namespace chain {
          if( current_shard == -1 ) {
             shards.resize( shards.size()+1 );
             current_shard = shards.size() - 1;
-
-            for( auto ws : trx.write_scope )
-            {
-               shards.back().write_scopes.insert( ws );
-               write_scope_to_shard[ws] = current_shard;
-            }
-            for( auto rs : trx.read_scope ) 
-               read_scopes.insert(rs);
          }
+
+         for( auto ws : trx.write_scope )
+         {
+            shards.back().write_scopes.insert( ws );
+            write_scope_to_shard[ws] = current_shard;
+         }
+
+         for( auto rs : trx.read_scope )
+            read_scopes.insert(rs);
+
          return current_shard;
       } /// schedule
 
