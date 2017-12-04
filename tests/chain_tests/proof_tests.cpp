@@ -298,13 +298,13 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
       std::cout << "Action Hex: " << fc::to_hex(action_data) << std::endl;
       std::cout << "Action Hash: " << (std::string)nodes[ai.action_leaf].digest << std::endl;
 
-      std::cout << "Block Path: ";
+      std::cout << "Action Path: ";
       for (const auto& p: block_path) {
          std::cout << (std::string)p << " ";
       }
       std::cout << std::endl;
 
-      std::cout << "Chain Path: ";
+      std::cout << "Block Path: ";
       for (const auto& p: chain_path) {
          std::cout << (std::string)p << " ";
       }
