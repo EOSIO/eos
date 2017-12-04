@@ -28,7 +28,7 @@ There is a crude check to print an error if attempting to execute an unsigned `a
 an application that is invalidly signed. An application that is invalidly signed and attempts to use the Secure Enclave
 can experience some unhelpful error messages.
 
-##Personal Signing
+## Personal Signing
 If you have access to the Apple Developer Program it is possible to use the developer portal to download a provisioning
 profile and/or create a developer certificate if you do not already have one.
 
@@ -42,8 +42,8 @@ and certificate if you do not already have one. You may have to manually look at
 Remember that the TeamID plus the Bundle ID that you fill out in XCode gate access to the Secure Enclave. Changing either
 of these values will cause the application to be unable to see keys generated with previous values.
 
-#Usage
-##Generate Private Key
+# Usage
+## Generate Private Key
 First, create a private key inside of the secure enclave. This application supports creating the key in a few different manners
 (see `--help`) that control the level of security the key is protected with. In this example, the key will be created in a way
 that requires usage of a fingerprint when signing a digest (such a signing a transaction).
@@ -54,7 +54,7 @@ public_key(EOSR17iKCZrb1JqSjUncCbDGQenzSqyuNmPU8iUA15efNW5KD1iHd9x)
 ```
 The public key for the private key is printed; note it somewhere. It is possible to ask the Secure Enclave to
 create multiple private keys and assign labels to them but this application only allows a single key at once.
-##Create A Digest and Sign It
+## Create A Digest and Sign It
 EOSIO uses SHA256 digests to sign transactions, create a simple SHA256 digest from a small string:
 ```
 $ echo 'Hello world!' | shasum -a 256
@@ -66,7 +66,7 @@ generated until a valid fingerprint is used.
 $ applesedemo.app/Contents/MacOS/applesedemo --sign 0ba904eae8773b70c75333db4de2f3ac45a8ad4ddba1b242f0b3cfc199391dd8
 signature(EOSR1Jx4sBidhFV6PSvS8hWbG5oh77HKud8xpkoHLvWaZVaBeWttRpyEjaGbPRVEKu3JePTyVjANmP4GKFtG2DAuB4MTVqsdC9W)
 ```
-##Key Recovery
+## Key Recovery
 Given the signature and digest, we must be able to correlate that with the public key that signed the digest.
 ```
 $ applesedemo.app/Contents/MacOS/applesedemo --recover 0ba904eae8773b70c75333db4de2f3ac45a8ad4ddba1b242f0b3cfc199391dd8 \
