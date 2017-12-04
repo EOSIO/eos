@@ -159,7 +159,7 @@ namespace eosio { namespace chain {
 
       access_type                type;
       scope_name                 scope;
-      uint64_t                   serial;
+      uint64_t                   sequence;
    };
 
    struct action_trace {
@@ -187,7 +187,7 @@ FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
 FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
-FC_REFLECT( eosio::chain::data_access_info, (type)(scope)(serial))
+FC_REFLECT( eosio::chain::data_access_info, (type)(scope)(sequence))
 FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
