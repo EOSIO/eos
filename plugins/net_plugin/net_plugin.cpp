@@ -2343,7 +2343,6 @@ namespace eosio {
     my->just_send_it_max = def_max_just_send;
     my->max_client_count = options.at("max-clients").as<int>();
 
-    my->max_client_count = def_max_clients;
     my->num_clients = 0;
     my->started_sessions = 0;
 
