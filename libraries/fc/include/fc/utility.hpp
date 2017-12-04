@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <new>
+#include <vector>
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4482) // nonstandard extension used enum Name::Val, standard in C++11
@@ -58,7 +59,18 @@ namespace fc {
 
     return 1 + const_strlen(str+1);
   }
+
+
+  template<typename T>
+  void move_append(std::vector<T> &dest, std::vector<T>&& src ) {
+    if (dest.empty()) {
+      dest = std::move(src);
+    } else {
+      dest.insert(std::end(dest), std::make_move_iterator(std::begin(src)), std::make_move_iterator(std::end(src)));
+    }
+  }
 }
+
   // outside of namespace fc becuase of VC++ conflict with std::swap
   template<typename T>
   void fc_swap( T& a, T& b ) {     

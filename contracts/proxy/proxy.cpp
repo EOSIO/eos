@@ -10,7 +10,7 @@ namespace proxy {
 
    template<typename T>
    void apply_transfer(account_name code, const T& transfer) {
-      const auto self = current_code();
+      const auto self = current_receiver();
       config code_config;
       assert(configs::get(code_config, self), "Attempting to use unconfigured proxy");
       if (transfer.from == self) {
@@ -31,7 +31,7 @@ namespace proxy {
    }
 
    void apply_setowner(set_owner params) {
-      const auto self = current_code();
+      const auto self = current_receiver();
       config code_config;
       configs::get(code_config, self);
       code_config.owner = params.owner;

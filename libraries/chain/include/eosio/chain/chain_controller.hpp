@@ -72,8 +72,9 @@ namespace eosio { namespace chain {
          chain_controller( const controller_config& cfg );
          ~chain_controller();
 
+
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         void push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         transaction_trace push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
 
          /**
@@ -84,7 +85,7 @@ namespace eosio { namespace chain {
           *  the write lock and may be in an "inconstant state" until after it is
           *  released.
           */
-         signal<void(const signed_block&)> applied_block;
+         signal<void(const block_trace&)> applied_block;
 
          /**
           *  This signal is emitted after irreversible block is written to disk.
@@ -258,7 +259,7 @@ namespace eosio { namespace chain {
          const producer_object&                 get_producer(const account_name& ownername)const;
          const permission_object&               get_permission( const permission_level& level )const;
 
-       	 time_point           head_block_time()const;
+         time_point           head_block_time()const;
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
@@ -285,7 +286,7 @@ namespace eosio { namespace chain {
                                    flat_set<account_name>    provided_accounts = flat_set<account_name>()
                                    )const;
 
-   private:
+      private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
 
 
@@ -302,11 +303,8 @@ namespace eosio { namespace chain {
          //@}
 
 
-         void _push_transaction( const signed_transaction& trx );
-         void _start_pending_block();
-         void _apply_transaction( const transaction& trx );
-
-         void _finalize_block( const signed_block& b );
+         transaction_trace _push_transaction( const signed_transaction& trx );
+         transaction_trace _apply_transaction( const transaction& trx, uint32_t region_id, uint32_t cycle_index );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
@@ -393,18 +391,27 @@ namespace eosio { namespace chain {
 
          void _spinup_db();
          void _spinup_fork_db();
-         void _start_cycle();
 
- //        producer_schedule_type calculate_next_round( const signed_block& next_block );
+         void _start_pending_block();
+         void _start_pending_cycle();
+         void _start_pending_shard();
+         void _finalize_pending_cycle();
+         void _apply_cycle_trace( const cycle_trace& trace );
+         void _finalize_block( const block_trace& b );
+
+
+      //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
          database                         _db;
          fork_database                    _fork_db;
          block_log                        _block_log;
 
          optional<database::session>      _pending_block_session;
-         optional<signed_block>           _pending_block; 
+         optional<signed_block>           _pending_block;
+         optional<block_trace>            _pending_block_trace;
          uint32_t                         _pending_transaction_count = 0; 
          pending_cycle_state              _pending_cycle;
+         optional<cycle_trace>            _pending_cycle_trace;
 
          bool                             _currently_applying_block = false;
          bool                             _currently_replaying_blocks = false;

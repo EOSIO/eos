@@ -4,14 +4,6 @@
  */
 #pragma once
 
-#define WASM_TEST_ERROR_CODE *((unsigned int *)((1<<16) - 2*sizeof(unsigned int)))
-#define WASM_TEST_ERROR_MESSAGE *((unsigned int *)((1<<16) - 1*sizeof(unsigned int)))
-
-#define WASM_TEST_FAIL 0xDEADBEEF
-#define WASM_TEST_PASS 0xB0CABACA
-
-#define WASM_ASSERT(m, message) if(!(m)) { WASM_TEST_ERROR_MESSAGE=(unsigned int)message; return WASM_TEST_FAIL; }
-
 typedef unsigned long long u64;
 typedef unsigned int u32;
 static constexpr u32 DJBH(const char* cp)
@@ -29,7 +21,7 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
 
 #define WASM_TEST_HANDLER(CLASS, METHOD) \
   if( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \
-     WASM_TEST_ERROR_CODE = CLASS::METHOD(); \
+     CLASS::METHOD(); \
      return; \
   }
 
@@ -56,10 +48,10 @@ struct test_types {
 };
 
 struct test_print {
-  static unsigned int test_prints();
-  static unsigned int test_printi();
-  static unsigned int test_printi128();
-  static unsigned int test_printn();
+  static void test_prints();
+  static void test_printi();
+  static void test_printi128();
+  static void test_printn();
 };
 
 #define DUMMY_MESSAGE_DEFAULT_A 0x45
@@ -68,13 +60,13 @@ struct test_print {
 
 struct test_action {
 
-  static unsigned int read_action_normal();
-  static unsigned int read_action_to_0();
-  static unsigned int read_action_to_64k();
+  static void read_action_normal();
+  static void read_action_to_0();
+  static void read_action_to_64k();
   static unsigned int require_notice();
   static unsigned int require_auth();
-  static unsigned int assert_false();
-  static unsigned int assert_true();
+  static void assert_false();
+  static void assert_true();
   static unsigned int now();
 
 };

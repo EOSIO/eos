@@ -58,11 +58,11 @@ extern "C" {
     * require_auth(N(inita)); // Do nothing since inita exists in the auth list
     * require_auth(N(initb)); // Throws an exception
     *
-    * account_name code = current_code();
+    * account_name code = current_receiver();
     * print(Name(code)); // Output: eos
     *
-    * assert(Name(current_code()) === "eos", "This message expects to be received by eos"); // Do nothing
-    * assert(Name(current_code()) === "inita", "This message expects to be received by inita"); // Throws exception and roll back transfer transaction
+    * assert(Name(current_receiver()) === "eos", "This message expects to be received by eos"); // Do nothing
+    * assert(Name(current_receiver()) === "inita", "This message expects to be received by inita"); // Throws exception and roll back transfer transaction
     *
     * print(now()); // Output: timestamp of last accepted block
     *
@@ -108,7 +108,7 @@ extern "C" {
     *  @brief Get the account which specifies the code that is being run
     *  @return the account which specifies the code that is being run
     */
-   account_name current_code();
+   account_name current_receiver();
 
    ///@ } messagecapi
 }

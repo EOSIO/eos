@@ -379,7 +379,7 @@ namespace eosio { namespace chain {
          return;
       }
 
-      FC_ASSERT( getFunctionType(call)->parameters.size() == 2 );
+      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
       Runtime::invokeFunction(call,args);
@@ -617,12 +617,30 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
    #undef assert
 #endif
 
-class intrinsics {
+class context_aware_api {
    public:
-      intrinsics(wasm_interface& wasm)
-      :wasm(wasm)
-      ,context(intrinsics_accessor::get_context(wasm).context)
+      context_aware_api(wasm_interface& wasm)
+      :context(intrinsics_accessor::get_context(wasm).context)
       {}
+
+   protected:
+      apply_context& context;
+};
+
+class system_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert(bool condition, const char* str) {
+         std::string message( str );
+         if( !condition ) edump((message));
+         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+      }
+};
+
+class action_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
 
       int read_action(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
@@ -631,17 +649,75 @@ class intrinsics {
          return minlen;
       }
 
-      void assert(bool condition, char* str) {
-         std::string message( str );
-         if( !condition ) edump((message));
-         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+      int action_size() {
+         return context.act.data.size();
       }
 
-   private:
-      wasm_interface& wasm;
-      apply_context& context;
+      const name& current_receiver() {
+         return context.receiver;
+      }
 };
 
-REGISTER_INTRINSICS(intrinsics, (read_action)(assert));
+class console_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void prints(const char *str) {
+         context.console_append(str);
+      }
+
+      void prints_l(array_ptr<const char> str, size_t str_len ) {
+         context.console_append(string(str, str_len));
+      }
+
+      void printi(uint64_t val) {
+         context.console_append(val);
+      }
+
+      void printi128(const unsigned __int128& val) {
+         fc::uint128_t v(val>>64, uint64_t(val) );
+         context.console_append(fc::variant(v).get_string());
+      }
+
+      void printd( wasm_double val ) {
+         context.console_append(val.str());
+      }
+
+      void printn(const name& value) {
+         context.console_append(value.to_string());
+      }
+
+      void printhex(array_ptr<const char> data, size_t data_len ) {
+         context.console_append(fc::to_hex(data, data_len));
+      }
+};
+
+REGISTER_INTRINSICS(system_api,
+   (assert,      void(int, int))
+);
+
+REGISTER_INTRINSICS(action_api,
+   (read_action,            int(int, int)  )
+   (action_size,            int()          )
+   (current_receiver,   int64_t()          )
+);
+
+REGISTER_INTRINSICS(apply_context,
+   (require_write_scope,   void(int64_t)   )
+   (require_read_scope,    void(int64_t)   )
+   (require_recipient,     void(int64_t)   )
+   (require_authorization, void(int64_t), "require_authorization", void(apply_context::*)(const account_name&)const)
+);
+
+REGISTER_INTRINSICS(console_api,
+   (prints,                void(int)       )
+   (prints_l,              void(int, int)  )
+   (printi,                void(int64_t)   )
+   (printi128,             void(int)       )
+   (printd,                void(int64_t)   )
+   (printn,                void(int64_t)   )
+   (printhex,              void(int, int)  )
+);
+
 
 } } /// eosio::chain

@@ -16,6 +16,8 @@
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/producer_objects.hpp>
+#include <eosio/chain/scope_serial_object.hpp>
+#include <eosio/chain/merkle.hpp>
 
 #include <eosio/chain/wasm_interface.hpp>
 
@@ -243,7 +245,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-void chain_controller::push_transaction(const signed_transaction& trx, uint32_t skip)
+transaction_trace chain_controller::push_transaction(const signed_transaction& trx, uint32_t skip)
 { try {
    return with_skip_flags(skip, [&]() {
       return _db.with_write_lock([&]() {
@@ -252,7 +254,7 @@ void chain_controller::push_transaction(const signed_transaction& trx, uint32_t 
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void chain_controller::_push_transaction(const signed_transaction& trx) {
+transaction_trace chain_controller::_push_transaction(const signed_transaction& trx) {
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -261,21 +263,35 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
 
    auto temp_session = _db.start_undo_session(true);
 
-   auto tid = trx.id();
+   // for now apply the transaction serially but schedule it according to those invariants
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
 
    auto shardnum = _pending_cycle.schedule( trx );
+   auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
+   if (shardnum == -1) {
+      cyclenum += 1;
+   }
+
+   auto result = _apply_transaction(trx, _pending_block->regions.back().region, cyclenum);
+
+
    if( shardnum == -1 ) { /// schedule conflict start new cycle
-      _start_cycle();
+      _finalize_pending_cycle();
+      _start_pending_cycle();
+      shardnum = _pending_cycle.schedule( trx );
    }
 
 
-   auto& bcycle = _pending_block->regions[0].cycles_summary.back();
+   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    if( shardnum >= bcycle.size() ) {
-      bcycle.resize( bcycle.size()+1 );
-      bcycle.back().emplace_back( tid );
+      _start_pending_shard();
    }
+
+
+   auto tid = trx.id();
+   bcycle.at(shardnum).emplace_back( tid );
+   _pending_cycle_trace->shard_traces.at(shardnum).append(result);
 
    /** for now we will just shove everything into the first shard */
    _pending_block->input_transactions.push_back(trx);
@@ -284,20 +300,112 @@ void chain_controller::_push_transaction(const signed_transaction& trx) {
    temp_session.squash();
 
    // notify anyone listening to pending transactions
-   on_pending_transaction(trx); 
+   on_pending_transaction(trx);
+
+   return result;
 }
 
 
+
+void chain_controller::_start_pending_block()
+{
+   FC_ASSERT( !_pending_block );
+   _pending_block         = signed_block();
+   _pending_block_trace   = block_trace(*_pending_block);
+   _pending_block_session = _db.start_undo_session(true);
+   _pending_block->regions.resize(1);
+   _pending_block_trace->region_traces.resize(1);
+   _start_pending_cycle();
+}
+
 /**
  *  Wraps up all work for current shards, starts a new cycle, and
- *  executes any pending transactions 
+ *  executes any pending transactions
  */
-void chain_controller::_start_cycle() {
-   _pending_block->regions[0].cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
+void chain_controller::_start_pending_cycle() {
+   _pending_block->regions.back().cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
    _pending_cycle = pending_cycle_state();
+   _pending_cycle_trace = cycle_trace();
+   _start_pending_shard();
 
    /// TODO: check for deferred transactions and schedule them
-} // _start_cycle
+} // _start_pending_cycle
+
+void chain_controller::_start_pending_shard()
+{
+   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
+   bcycle.resize( bcycle.size()+1 );
+
+   _pending_cycle_trace->shard_traces.resize(_pending_cycle_trace->shard_traces.size() + 1 );
+}
+
+void chain_controller::_finalize_pending_cycle()
+{
+   for( auto& shard : _pending_cycle_trace->shard_traces ) {
+      shard.calculate_root();
+   }
+
+   _apply_cycle_trace(*_pending_cycle_trace);
+   _pending_block_trace->region_traces.back().cycle_traces.emplace_back(std::move(*_pending_cycle_trace));
+   _pending_cycle_trace.reset();
+}
+
+void chain_controller::_apply_cycle_trace( const cycle_trace& res )
+{
+   for (const auto&st: res.shard_traces) {
+      for (const auto &tr: st.transaction_traces) {
+         for (const auto &dt: tr.deferred_transactions) {
+            _db.create<generated_transaction_object>([&](auto &obj) {
+               obj.trx_id = dt.id();
+               obj.sender = dt.sender;
+               obj.sender_id = dt.sender_id;
+               obj.expiration = dt.expiration;
+               obj.delay_until = dt.execute_after;
+               obj.packed_trx.resize(fc::raw::pack_size(dt));
+               fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+               fc::raw::pack(ds, dt);
+            });
+         }
+
+         ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
+         for (const auto &ar : tr.action_traces) {
+            if (!ar.console.empty()) {
+               auto prefix = fc::format_string(
+                  "[(${s},${a})->${r}]",
+                  fc::mutable_variant_object()
+                     ("s", ar.act.scope)
+                     ("a", ar.act.name)
+                     ("r", ar.receiver));
+               std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
+               std::cerr << ar.console;
+               std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+            }
+         }
+      }
+   }
+}
+
+/**
+ *  After applying all transactions successfully we can update
+ *  the current block time, block number, producer stats, etc
+ */
+void chain_controller::_finalize_block( const block_trace& trace ) { try {
+   const auto& b = trace.block;
+   const producer_object& signing_producer = validate_block_header(_skip_flags, b);
+
+   update_global_properties( b );
+   update_global_dynamic_data( b );
+   update_signing_producer(signing_producer, b);
+   update_last_irreversible_block();
+
+   create_block_summary(b);
+   clear_expired_transactions();
+
+   applied_block( trace ); //emit
+   if (_currently_replaying_blocks)
+     applied_irreversible_block(b);
+
+} FC_CAPTURE_AND_RETHROW( (trace.block) ) }
 
 signed_block chain_controller::generate_block(
    block_timestamp_type when,
@@ -329,16 +437,20 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       _start_pending_block();
    }
 
+   _finalize_pending_cycle();
+
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
 
-   _pending_block->timestamp   = when;
-   _pending_block->producer    = producer_obj.owner;
-   _pending_block->previous    = head_block_id();
-   _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-   _pending_block->transaction_mroot = _pending_block->calculate_transaction_merkle_root();
+      _pending_block->timestamp   = when;
+      _pending_block->producer    = producer_obj.owner;
+      _pending_block->previous    = head_block_id();
+      _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
+      _pending_block->transaction_mroot = _pending_block->calculate_transaction_merkle_root();
+      _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
 
-   if( is_start_of_round( _pending_block->block_num() ) ) {
+
+      if( is_start_of_round( _pending_block->block_num() ) ) {
       auto latest_producer_schedule = _calculate_producer_schedule();
       if( latest_producer_schedule != _head_producer_schedule() )
          _pending_block->new_producers = latest_producer_schedule;
@@ -347,12 +459,13 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    if( !(skip & skip_producer_signature) )
       _pending_block->sign( block_signing_key );
 
-   _finalize_block( *_pending_block );
+   _finalize_block( *_pending_block_trace );
 
    _pending_block_session->push();
 
    auto result = move( *_pending_block );
 
+   _pending_block_trace.reset();
    _pending_block.reset();
    _pending_block_session.reset();
 
@@ -362,15 +475,6 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    return result;
 
 } FC_CAPTURE_AND_RETHROW( (producer) ) }
-
-void chain_controller::_start_pending_block() {
-   FC_ASSERT( !_pending_block );
-   _pending_block         = signed_block();
-   _pending_block->regions.resize(1);
-   _pending_block->regions[0].cycles_summary.resize(1);
-   _pending_block->regions[0].cycles_summary[0].resize(1);
-   _pending_block_session = _db.start_undo_session(true);
-}
 
 /**
  * Removes the most recent block from the database and undoes any changes it made.
@@ -388,6 +492,7 @@ void chain_controller::pop_block()
 
 void chain_controller::clear_pending()
 { try {
+   _pending_block_trace.reset();
    _pending_block.reset();
    _pending_block_session.reset();
 } FC_CAPTURE_AND_RETHROW() }
@@ -428,6 +533,10 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
 
+   /// regions must be listed in order
+   for( uint32_t i = 1; i < next_block.regions.size(); ++i )
+      FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
+
 
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
@@ -436,20 +545,27 @@ void chain_controller::__apply_block(const signed_block& next_block)
       trx_index[t.id()] = &t;
    }
 
-   /// regions must be listed in order
-   for( uint32_t i = 1; i < next_block.regions.size(); ++i )
-      FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
-   
+   block_trace next_block_trace(next_block);
+   next_block_trace.region_traces.reserve(next_block.regions.size());
+
    for( const auto& r : next_block.regions ) {
-      for (const auto& cycle : r.cycles_summary) {
+      region_trace r_trace;
+      r_trace.cycle_traces.reserve(r.cycles_summary.size());
+
+      for (uint32_t cycle_index; cycle_index < r.cycles_summary.size(); cycle_index++) {
+         const auto& cycle = r.cycles_summary.at(cycle_index);
+         cycle_trace c_trace;
+         c_trace.shard_traces.reserve(cycle.size());
+
          for (const auto& shard: cycle) {
+            shard_trace s_trace;
             for (const auto& receipt : shard) {
                if( receipt.status == transaction_receipt::executed ) {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     _apply_transaction( *itr->second );
-                  } 
-                  else 
+                     s_trace.append(_apply_transaction( *itr->second, r.region, cycle_index));
+                  }
+                  else
                   {
                      FC_ASSERT( !"deferred transactions not yet supported" );
                   }
@@ -459,35 +575,24 @@ void chain_controller::__apply_block(const signed_block& next_block)
                // If the block producer let it slide, we'll roll with it.
                // check_transaction_authorization(trx, true);
             } /// for each transaction id
-         } /// for each shard
-      } /// for each cycle
-   }
 
-   _finalize_block( next_block );
+            s_trace.calculate_root();
+            c_trace.shard_traces.emplace_back(move(s_trace));
+         } /// for each shard
+
+         _apply_cycle_trace(c_trace);
+         r_trace.cycle_traces.emplace_back(move(c_trace));
+      } /// for each cycle
+
+      next_block_trace.region_traces.emplace_back(move(r_trace));
+   } /// for each region
+
+   FC_ASSERT(next_block.action_mroot == next_block_trace.calculate_action_merkle_root());
+
+   _finalize_block( next_block_trace );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-/**
- *  After applying all transactions successfully we can update
- *  the current block time, block number, producer stats, etc
- */
-void chain_controller::_finalize_block( const signed_block& b ) { try {
-   const producer_object& signing_producer = validate_block_header(_skip_flags, b);
-
-   update_global_properties( b );
-   update_global_dynamic_data( b );
-   update_signing_producer(signing_producer, b);
-   update_last_irreversible_block();
-
-   create_block_summary(b);
-   clear_expired_transactions();
-
-   applied_block( b ); //emit
-   if (_currently_replaying_blocks)
-     applied_irreversible_block(b);
-
-} FC_CAPTURE_AND_RETHROW( (b) ) }
-
-flat_set<public_key_type> chain_controller::get_required_keys(const signed_transaction& trx, 
+flat_set<public_key_type> chain_controller::get_required_keys(const signed_transaction& trx,
                                                               const flat_set<public_key_type>& candidate_keys)const 
 {
    auto checker = make_auth_checker( [&](auto p){ return get_permission(p).auth; }, 
@@ -833,6 +938,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<transaction_multi_index>();
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
+   _db.add_index<scope_serial_multi_index>();
 }
 
 void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
@@ -868,7 +974,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          ilog( "applying genesis transaction" );
          with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
          [&](){ 
-            _apply_transaction( genesis_setup_transaction );
+            _apply_transaction( genesis_setup_transaction, 0, 0 );
          });
 
       });
@@ -1155,11 +1261,22 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
    _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
-void chain_controller::_apply_transaction( const transaction& trx ) {
+transaction_trace chain_controller::_apply_transaction( const transaction& trx, uint32_t region_id, uint32_t cycle_index ) {
+   transaction_trace result(trx.id());
+
    for( const auto& act : trx.actions ) {
-      apply_context context( *this, _db, trx, act, act.scope );
+      apply_context context( *this, _db, trx, act,  act.scope  );
       context.exec();
+      fc::move_append(result.action_traces, std::move(context.results.applied_actions));
+      fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
    }
+
+   for (auto& at: result.action_traces) {
+      at.region_id = region_id;
+      at.cycle_index = cycle_index;
+   }
+
+   return result;
 }
 
 const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

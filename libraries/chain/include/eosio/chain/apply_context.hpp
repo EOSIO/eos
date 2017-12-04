@@ -5,6 +5,8 @@
 #pragma once
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/record_functions.hpp>
+#include <fc/utility.hpp>
+#include <sstream>
 
 namespace chainbase { class database; }
 
@@ -16,9 +18,9 @@ class apply_context {
 
    public:
       apply_context(chain_controller& con, chainbase::database& db,
-                    const transaction& t, const action& a, account_name recv, apply_context* parent = nullptr )
+                    const transaction& t, const action& a, account_name recv)
       :controller(con), db(db), trx(t), act(a), receiver(recv), mutable_controller(con),
-       mutable_db(db), used_authorizations(act.authorization.size(), false), _parent(parent){}
+       mutable_db(db), used_authorizations(act.authorization.size(), false){}
 
       void exec();
 
@@ -85,8 +87,8 @@ class apply_context {
        *
        * @throws tx_missing_auth If no sufficient permission was found
        */
-      void require_authorization(const account_name& account);
-      void require_authorization(const account_name& account, const permission_name& permission);
+      void require_authorization(const account_name& account)const;
+      void require_authorization(const account_name& account, const permission_name& permission)const;
       void require_write_scope(const account_name& account)const;
       void require_read_scope(const account_name& account)const;
 
@@ -100,7 +102,6 @@ class apply_context {
        * delivered to the specified account.
        */
       bool has_recipient(account_name account)const;
-
 
       bool                     all_authorizations_used()const;
       vector<permission_level> unused_authorizations()const;
@@ -165,11 +166,30 @@ class apply_context {
       void release_pending_message(pending_message::handle_type handle);
       */
 
+      struct apply_results {
+         vector<action_trace>          applied_actions;
+         vector<deferred_transaction>  generated_transactions;
+      };
+
+      apply_results results;
+
+      template<typename T>
+      void console_append(T val) {
+         _pending_console_output << val;
+      }
+
    private:
+      void append_results(apply_results &&other) {
+         fc::move_append(results.applied_actions, move(other.applied_actions));
+         fc::move_append(results.generated_transactions, move(other.generated_transactions));
+      }
+
+      void exec_one();
+   
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
       map<uint32_t,deferred_transaction>  _pending_deferred_transactions; ///< deferred txs /// TODO specify when
-      apply_context*                      _parent = nullptr;
+      std::ostringstream                  _pending_console_output;
 };
 
 using apply_handler = std::function<void(apply_context&)>;
