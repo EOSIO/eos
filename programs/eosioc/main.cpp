@@ -378,7 +378,7 @@ struct set_account_permission_subcommand {
             }
 
             name parent;
-            if (parentStr.size() == 0) {
+            if (parentStr.size() == 0 && permissionStr != "owner") {
                // see if we can auto-determine the proper parent
                const auto account_result = call(get_account_func, fc::mutable_variant_object("account_name", accountStr));
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
@@ -394,6 +394,7 @@ struct set_account_permission_subcommand {
                } else {
                   // if this is a new permission and there is no parent we default to "active"
                   parent = name("active");
+
                }
             } else {
                parent = name(parentStr);
