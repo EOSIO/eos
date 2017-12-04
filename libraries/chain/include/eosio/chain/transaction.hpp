@@ -166,6 +166,8 @@ namespace eosio { namespace chain {
       account_name               receiver;
       action                     act;
       string                     console;
+      uint32_t                   region_id;
+      uint32_t                   cycle_index;
       vector<data_access_info>   data_access;
    };
 
@@ -186,7 +188,7 @@ FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
 FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
 FC_REFLECT( eosio::chain::data_access_info, (type)(scope)(serial))
-FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(data_access) )
+FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
 FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )

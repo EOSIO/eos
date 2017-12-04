@@ -70,6 +70,8 @@ namespace eosio { namespace chain {
             fc::raw::pack(enc, at.act.scope);
             fc::raw::pack(enc, at.act.name);
             fc::raw::pack(enc, at.act.data);
+            fc::raw::pack(enc, at.region_id);
+            fc::raw::pack(enc, at.cycle_index);
             fc::raw::pack(enc, at.data_access);
 
             action_roots.emplace_back(enc.result());
@@ -78,42 +80,17 @@ namespace eosio { namespace chain {
       shard_root = merkle(action_roots);
    }
 
-   void cycle_trace::calculate_root() {
-      vector<digest_type> shard_roots;
-      shard_roots.reserve(shard_traces.size());
-      for (auto& s_trace :shard_traces) {
-         shard_roots.emplace_back(s_trace.shard_root);
-      }
-
-      cycle_root = merkle(shard_roots);
-   }
-
-   void region_trace::calculate_root() {
-      vector<digest_type> cycle_roots;
-      cycle_roots.reserve(cycle_traces.size());
-      for (uint32_t index = 0; index < cycle_traces.size(); index++) {
-         const auto& c_trace = cycle_traces.at(index);
-
-         digest_type::encoder enc;
-         fc::raw::pack(enc, index);
-         fc::raw::pack(enc, c_trace.cycle_root);
-         cycle_roots.emplace_back(enc.result());
-      }
-      region_root = merkle(cycle_roots);
-   }
-
    digest_type block_trace::calculate_action_merkle_root()const {
-      vector<digest_type> region_roots;
-      region_roots.reserve(region_traces.size());
-      for (uint32_t index = 0; index < region_traces.size(); index++) {
-         const auto& r_trace = region_traces.at(index);
-
-         digest_type::encoder enc;
-         fc::raw::pack(enc, index);
-         fc::raw::pack(enc, r_trace.region_root);
-         region_roots.emplace_back(enc.result());
+      vector<digest_type> shard_roots;
+      shard_roots.reserve(1024);
+      for(const auto& rt: region_traces ) {
+         for(const auto& ct: rt.cycle_traces ) {
+            for(const auto& st: ct.shard_traces) {
+               shard_roots.emplace_back(st.shard_root);
+            }
+         }
       }
-      return merkle(region_roots);
+      return merkle(shard_roots);
    }
 
 } }

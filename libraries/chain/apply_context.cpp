@@ -2,6 +2,7 @@
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/scope_serial_object.hpp>
 
 namespace eosio { namespace chain {
 void apply_context::exec_one()
@@ -23,7 +24,41 @@ void apply_context::exec_one()
    }
 
    // create a receipt for this
-   results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str()});
+   vector<data_access_info> data_access;
+   data_access.reserve(trx.write_scope.size() + trx.read_scope.size());
+   for (const auto& scope: trx.write_scope) {
+      auto key = boost::make_tuple(scope, receiver);
+      const auto& scope_serial = mutable_controller.get_database().find<scope_serial_object, by_scope_receiver>(key);
+      if (scope_serial == nullptr) {
+         try {
+            mutable_controller.get_mutable_database().create<scope_serial_object>([&](scope_serial_object &ss) {
+               ss.scope = scope;
+               ss.receiver = receiver;
+               ss.serial = 1;
+            });
+         } FC_CAPTURE_AND_RETHROW((scope)(receiver));
+         data_access.emplace_back(data_access_info{data_access_info::write, scope, 0});
+      } else {
+         data_access.emplace_back(data_access_info{data_access_info::write, scope, scope_serial->serial});
+         try {
+            mutable_controller.get_mutable_database().modify(*scope_serial, [&](scope_serial_object& ss) {
+               ss.serial += 1;
+            });
+         } FC_CAPTURE_AND_RETHROW((scope)(receiver));
+      }
+   }
+
+   for (const auto& scope: trx.read_scope) {
+      auto key = boost::make_tuple(scope, receiver);
+      const auto& scope_serial = mutable_controller.get_database().find<scope_serial_object, by_scope_receiver>(key);
+      if (scope_serial == nullptr) {
+         data_access.emplace_back(data_access_info{data_access_info::read, scope, 0});
+      } else {
+         data_access.emplace_back(data_access_info{data_access_info::read, scope, scope_serial->serial});
+      }
+   }
+
+   results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str(), 0, 0, move(data_access)});
    _pending_console_output = std::ostringstream();
 }
 

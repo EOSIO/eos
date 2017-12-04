@@ -167,7 +167,7 @@ class apply_context {
       */
 
       struct apply_results {
-         vector<action_trace>         applied_actions;
+         vector<action_trace>          applied_actions;
          vector<deferred_transaction>  generated_transactions;
       };
 

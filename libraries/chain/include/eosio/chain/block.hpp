@@ -115,17 +115,11 @@ namespace eosio { namespace chain {
    };
 
    struct cycle_trace {
-      digest_type                   cycle_root;
       vector<shard_trace>           shard_traces;
-
-      void calculate_root();
    };
 
    struct region_trace {
-      digest_type                   region_root;
       vector<cycle_trace>           cycle_traces;
-
-      void calculate_root();
    };
 
    struct block_trace {
@@ -150,6 +144,6 @@ FC_REFLECT( eosio::chain::region_summary, (region)(cycles_summary) )
 FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (regions))
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (input_transactions))
 FC_REFLECT( eosio::chain::shard_trace, (shard_root)(transaction_traces))
-FC_REFLECT( eosio::chain::cycle_trace, (cycle_root)(shard_traces))
-FC_REFLECT( eosio::chain::region_trace, (region_root)(cycle_traces))
+FC_REFLECT( eosio::chain::cycle_trace, (shard_traces))
+FC_REFLECT( eosio::chain::region_trace, (cycle_traces))
 FC_REFLECT( eosio::chain::block_trace, (region_traces))

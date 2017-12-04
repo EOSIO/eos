@@ -16,6 +16,7 @@
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/producer_objects.hpp>
+#include <eosio/chain/scope_serial_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
 #include <eosio/chain/wasm_interface.hpp>
@@ -265,11 +266,16 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
    // for now apply the transaction serially but schedule it according to those invariants
    validate_referenced_accounts(trx);
    check_transaction_authorization(trx);
-   auto result = _apply_transaction(trx);
-
-   auto tid = trx.id();
 
    auto shardnum = _pending_cycle.schedule( trx );
+   auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
+   if (shardnum == -1) {
+      cyclenum += 1;
+   }
+
+   auto result = _apply_transaction(trx, _pending_block->regions.back().region, cyclenum);
+
+
    if( shardnum == -1 ) { /// schedule conflict start new cycle
       _finalize_pending_cycle();
       _start_pending_cycle();
@@ -282,6 +288,8 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
       _start_pending_shard();
    }
 
+
+   auto tid = trx.id();
    bcycle.at(shardnum).emplace_back( tid );
    _pending_cycle_trace->shard_traces.at(shardnum).append(result);
 
@@ -337,7 +345,6 @@ void chain_controller::_finalize_pending_cycle()
       shard.calculate_root();
    }
 
-   _pending_cycle_trace->calculate_root();
    _apply_cycle_trace(*_pending_cycle_trace);
    _pending_block_trace->region_traces.back().cycle_traces.emplace_back(std::move(*_pending_cycle_trace));
    _pending_cycle_trace.reset();
@@ -431,7 +438,6 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
    }
 
    _finalize_pending_cycle();
-   _pending_block_trace->region_traces.back().calculate_root();
 
    if( !(skip & skip_producer_signature) )
       FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
@@ -546,7 +552,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
       region_trace r_trace;
       r_trace.cycle_traces.reserve(r.cycles_summary.size());
 
-      for (const auto& cycle : r.cycles_summary) {
+      for (uint32_t cycle_index; cycle_index < r.cycles_summary.size(); cycle_index++) {
+         const auto& cycle = r.cycles_summary.at(cycle_index);
          cycle_trace c_trace;
          c_trace.shard_traces.reserve(cycle.size());
 
@@ -556,7 +563,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                if( receipt.status == transaction_receipt::executed ) {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     s_trace.append(_apply_transaction( *itr->second ));
+                     s_trace.append(_apply_transaction( *itr->second, r.region, cycle_index));
                   }
                   else
                   {
@@ -574,11 +581,9 @@ void chain_controller::__apply_block(const signed_block& next_block)
          } /// for each shard
 
          _apply_cycle_trace(c_trace);
-         c_trace.calculate_root();
          r_trace.cycle_traces.emplace_back(move(c_trace));
       } /// for each cycle
 
-      r_trace.calculate_root();
       next_block_trace.region_traces.emplace_back(move(r_trace));
    } /// for each region
 
@@ -933,6 +938,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<transaction_multi_index>();
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
+   _db.add_index<scope_serial_multi_index>();
 }
 
 void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
@@ -968,7 +974,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          ilog( "applying genesis transaction" );
          with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
          [&](){ 
-            _apply_transaction( genesis_setup_transaction );
+            _apply_transaction( genesis_setup_transaction, 0, 0 );
          });
 
       });
@@ -1255,7 +1261,7 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
    _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
-transaction_trace chain_controller::_apply_transaction( const transaction& trx ) {
+transaction_trace chain_controller::_apply_transaction( const transaction& trx, uint32_t region_id, uint32_t cycle_index ) {
    transaction_trace result(trx.id());
 
    for( const auto& act : trx.actions ) {
@@ -1263,6 +1269,11 @@ transaction_trace chain_controller::_apply_transaction( const transaction& trx )
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
+   }
+
+   for (auto& at: result.action_traces) {
+      at.region_id = region_id;
+      at.cycle_index = cycle_index;
    }
 
    return result;

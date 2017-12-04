@@ -8,6 +8,18 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::testing;
 
+struct action_proof_data {
+   account_name              receiver;
+   scope_name                scope;
+   action_name               name;
+   bytes                     data;
+   uint32_t                  region_id;
+   uint32_t                  cycle_index;
+   vector<data_access_info>  data_access;
+};
+FC_REFLECT(action_proof_data, (receiver)(scope)(name)(data)(region_id)(cycle_index)(data_access));
+
+
 struct merkle_node {
    digest_type                   digest;
    optional<size_t>              left;
@@ -160,9 +172,6 @@ struct action_proof_info {
    action_trace trace;
 
    size_t action_leaf;
-   size_t shard_leaf;
-   size_t cycle_leaf;
-   size_t region_leaf;
    size_t block_leaf;
 
    uint32_t cycle_index;
@@ -186,63 +195,46 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
       nodes.emplace_back(merkle_node{bt.block.id()});
       size_t block_leaf = nodes.size() - 1;
       block_leaves.push_back(block_leaf);
-      vector<size_t> region_leaves;
+      vector<size_t> shard_leaves;
 
       for (uint32_t r_idx = 0; r_idx < bt.region_traces.size(); r_idx++) {
          const auto& rt = bt.region_traces.at(r_idx);
-         nodes.emplace_back(merkle_node());
-         size_t region_leaf = nodes.size() - 1;
-         vector<size_t> cycle_leaves;
-
          for (uint32_t c_idx = 0; c_idx < rt.cycle_traces.size(); c_idx++) {
             const auto& ct = rt.cycle_traces.at(c_idx);
-            nodes.emplace_back(merkle_node());
-            size_t cycle_leaf = nodes.size() - 1;
-            vector<size_t> shard_leaves;
 
             for (const auto& st: ct.shard_traces) {
-               nodes.emplace_back(merkle_node());
-               size_t shard_leaf = nodes.size() - 1;
                vector<size_t> action_leaves;
 
                for (const auto& tt: st.transaction_traces) {
                   for (const auto& at: tt.action_traces) {
                      digest_type::encoder enc;
 
-                     fc::raw::pack(enc, at.receiver);
-                     fc::raw::pack(enc, at.act.scope);
-                     fc::raw::pack(enc, at.act.name);
-                     fc::raw::pack(enc, at.act.data);
-                     fc::raw::pack(enc, at.data_access);
-
+                     auto a_data = action_proof_data {
+                        at.receiver,
+                        at.act.scope,
+                        at.act.name,
+                        at.act.data,
+                        at.region_id,
+                        at.cycle_index,
+                        at.data_access
+                     };
+                     fc::raw::pack(enc, a_data);
                      nodes.emplace_back(merkle_node{enc.result()});
                      size_t action_leaf = nodes.size() - 1;
-                     known_actions.emplace_back(action_proof_info{at, action_leaf, shard_leaf, cycle_leaf, region_leaf, block_leaf, c_idx, r_idx });
+                     known_actions.emplace_back(action_proof_info{at, action_leaf, block_leaf, c_idx, r_idx });
                      action_leaves.emplace_back(action_leaf);
                   }
                }
 
-               nodes[shard_leaf].digest = process_merkle(nodes, move(action_leaves));
-               shard_leaves.emplace_back(shard_leaf);
+               if (action_leaves.size() > 0) {
+                  process_merkle(nodes, move(action_leaves));
+                  shard_leaves.emplace_back(nodes.size() - 1);
+               }
             }
-
-            digest_type cycle_root = process_merkle(nodes, move(shard_leaves));
-            digest_type::encoder enc;
-            fc::raw::pack(enc, c_idx);
-            fc::raw::pack(enc, cycle_root);
-            nodes[cycle_leaf].digest = enc.result();
-            cycle_leaves.emplace_back(cycle_leaf);
          }
-
-         digest_type region_root = process_merkle(nodes, move(cycle_leaves));
-         digest_type::encoder enc;
-         fc::raw::pack(enc, r_idx);
-         fc::raw::pack(enc, region_root);
-         nodes[region_leaf].digest = enc.result();
-         region_leaves.emplace_back(region_leaf);
       }
 
-      digest_type action_mroot = process_merkle(nodes, move(region_leaves));
+      digest_type action_mroot = process_merkle(nodes, move(shard_leaves));
       BOOST_REQUIRE_EQUAL((std::string)bt.block.action_mroot, (std::string)action_mroot);
 
       last_block_header = bt.block;
@@ -264,65 +256,47 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
    produce_block();
    BOOST_REQUIRE_EQUAL((std::string)block_mroot, (std::string)last_block_header.block_mroot);
 
+   /* UNCOMMENT TO PRODUCE PROOFS TO STDOUT
    std::cout << "Best Block ID: " << (std::string)last_block_id << std::endl;
    std::cout << "  Merkle Root: " << (std::string)last_block_header.block_mroot << std::endl;
 
    for(const auto& ai : known_actions) {
-      auto shard_path = get_proof_path(nodes, ai.action_leaf);
-      auto cycle_path = get_proof_path(nodes, ai.shard_leaf);
-      auto region_path = get_proof_path(nodes, ai.cycle_leaf);
-      auto block_path = get_proof_path(nodes, ai.region_leaf);
+      auto block_path = get_proof_path(nodes, ai.action_leaf);
       auto chain_path = get_proof_path(nodes, ai.block_leaf);
 
-      // prove action in shard
-      auto shard_root = apply_path(nodes[ai.action_leaf].digest, shard_path);
-      BOOST_REQUIRE_EQUAL((std::string)shard_root, (std::string)nodes[ai.shard_leaf].digest);
-
-      // prove its in the cycle
-      auto cycle_root = apply_path(shard_root, cycle_path);
-      auto cycle_digest = digest_type::hash(std::make_pair(ai.cycle_index, cycle_root));
-      BOOST_REQUIRE_EQUAL((std::string)cycle_digest, (std::string)nodes[ai.cycle_leaf].digest);
-
-      // prove that cycle is in the region
-      auto region_root = apply_path(cycle_digest, region_path);
-      auto region_digest = digest_type::hash(std::make_pair(ai.region_id, region_root));
-      BOOST_REQUIRE_EQUAL((std::string)region_digest, (std::string)nodes[ai.region_leaf].digest);
-
-      // prove that region is in the correct blocks action_mroot
-      auto action_mroot = apply_path(region_digest, block_path);
-      BOOST_REQUIRE_EQUAL((std::string)action_mroot, (std::string)block_action_mroots[nodes[ai.block_leaf].digest]);
+      // prove action in block
+      auto shard_root = apply_path(nodes[ai.action_leaf].digest, block_path);
+      BOOST_REQUIRE_EQUAL((std::string)shard_root, (std::string)block_action_mroots[nodes[ai.block_leaf].digest]);
 
       // prove that block is part of the chain
       auto expected_block_mroot = apply_path(nodes[ai.block_leaf].digest, chain_path);
       BOOST_REQUIRE_EQUAL((std::string)expected_block_mroot, (std::string)last_block_header.block_mroot);
 
       std::cout << "Proof for Action:" << std::endl;
-      std::cout << std::setw(10) << "reciever" << ":" << (std::string) ai.trace.receiver << std::endl;
-      std::cout << std::setw(10) << "scope" << ":" << (std::string) ai.trace.act.scope << std::endl;
-      std::cout << std::setw(10) << "name" << ":" << (std::string) ai.trace.act.name << std::endl;
-      std::cout << std::setw(10) << "data" << ":" << fc::json::to_string(ai.trace.act.as<contracts::transfer>()) << std::endl;
-      std::cout << std::setw(10) << "block" << ":" << (std::string)nodes[ai.block_leaf].digest << std::endl;
-      std::cout << std::setw(10) << "region" << ":" << ai.region_id << std::endl;
-      std::cout << std::setw(10) << "cycle" << ":" << ai.cycle_index << std::endl;
+      std::cout << std::setw(14) << "reciever" << ":" << (std::string) ai.trace.receiver << std::endl;
+      std::cout << std::setw(14) << "scope" << ":" << (std::string) ai.trace.act.scope << std::endl;
+      std::cout << std::setw(14) << "name" << ":" << (std::string) ai.trace.act.name << std::endl;
+      std::cout << std::setw(14) << "data" << ":" << fc::json::to_string(ai.trace.act.as<contracts::transfer>()) << std::endl;
+      std::cout << std::setw(14) << "data_access" << ":" << fc::json::to_string(ai.trace.data_access) << std::endl;
+      std::cout << std::setw(14) << "region" << ":" << ai.region_id << std::endl;
+      std::cout << std::setw(14) << "cycle" << ":" << ai.cycle_index << std::endl;
+      std::cout << std::setw(14) << "block" << ":" << (std::string)nodes[ai.block_leaf].digest << std::endl;
+      std::cout << std::setw(14) << "am_root" << ":" << (std::string)block_action_mroots[nodes[ai.block_leaf].digest] << std::endl;
       std::cout << std::endl;
+
+      auto a_data = action_proof_data {
+         ai.trace.receiver,
+         ai.trace.act.scope,
+         ai.trace.act.name,
+         ai.trace.act.data,
+         ai.trace.region_id,
+         ai.trace.cycle_index,
+         ai.trace.data_access
+      };
+      auto action_data = fc::raw::pack(a_data);
+
+      std::cout << "Action Hex: " << fc::to_hex(action_data) << std::endl;
       std::cout << "Action Hash: " << (std::string)nodes[ai.action_leaf].digest << std::endl;
-      std::cout << "Shard Path: ";
-      for (const auto& p: shard_path) {
-         std::cout << (std::string)p << " ";
-      }
-      std::cout << std::endl;
-
-      std::cout << "Cycle Path: ";
-      for (const auto& p: cycle_path) {
-         std::cout << (std::string)p << " ";
-      }
-      std::cout << std::endl;
-
-      std::cout << "Region Path: ";
-      for (const auto& p: region_path) {
-         std::cout << (std::string)p << " ";
-      }
-      std::cout << std::endl;
 
       std::cout << "Block Path: ";
       for (const auto& p: block_path) {
@@ -335,7 +309,7 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
          std::cout << (std::string)p << " ";
       }
       std::cout << std::endl;
-   }
+   }*/
 
 
 } FC_LOG_AND_RETHROW() }
