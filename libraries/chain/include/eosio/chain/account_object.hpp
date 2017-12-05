@@ -23,7 +23,6 @@ namespace eosio { namespace chain {
       block_timestamp_type creation_date;
 
       shared_vector<char>  code;
-
       shared_vector<char>  abi;
 
       void set_abi( const eosio::chain::contracts::abi_def& a ) {
@@ -47,6 +46,5 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
 
-FC_REFLECT(chainbase::oid<eosio::chain::account_object>, (_id))
 
-FC_REFLECT(eosio::chain::account_object, (id)(name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))

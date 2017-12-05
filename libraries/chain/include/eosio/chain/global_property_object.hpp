@@ -14,6 +14,8 @@
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
+#include <eosio/chain/rate_limiting.hpp>
+
 namespace eosio { namespace chain {
 
    /**
@@ -88,6 +90,12 @@ namespace eosio { namespace chain {
         uint64_t recent_slots_filled;
         
         uint32_t last_irreversible_block_num = 0;
+
+        /**
+         * Track the average blocksize over the past 60 seconds and use it to adjust the
+         * reserve ratio for bandwidth rate limiting calclations.
+         */ 
+        average_accumulator<config::blocksize_average_window_ms> averge_block_size;
 
         /** 
          * Used to calculate the merkle root over all blocks

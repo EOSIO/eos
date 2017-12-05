@@ -10,6 +10,7 @@ add_library( eosio_chain
              wast_to_wasm.cpp
              wasm_interface.cpp
              apply_context.cpp
+             rate_limiting.cpp
 
              fork_database.cpp
              get_config.cpp

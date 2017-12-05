@@ -125,7 +125,6 @@ namespace eosio { namespace chain {
       generated_transaction_object_type,
       producer_object_type,
       chain_property_object_type,
-      rate_limiting_object_type,
       account_control_history_object_type, ///< Defined by account_history_plugin
       account_transaction_history_object_type, ///< Defined by account_history_plugin
       transaction_history_object_type, ///< Defined by account_history_plugin
@@ -138,6 +137,8 @@ namespace eosio { namespace chain {
       key64x64x64_value_object_type,
       keystr_value_object_type,
       scope_sequence_object_type,
+      bandwidth_usage_object_type,
+      compute_usage_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -174,7 +175,6 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (generated_transaction_object_type)
                 (producer_object_type)
                 (chain_property_object_type)
-                (rate_limiting_object_type)
                 (account_control_history_object_type)
                 (account_transaction_history_object_type)
                 (transaction_history_object_type)
@@ -187,6 +187,8 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (key64x64x64_value_object_type)
                 (keystr_value_object_type)
                 (scope_sequence_object_type)
+                (bandwidth_usage_object_type)
+                (compute_usage_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )
