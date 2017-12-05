@@ -60,7 +60,7 @@ if [ $ARCH == "ubuntu" ]; then
 fi
 
 if [ $ARCH == "darwin" ]; then
-    DEPS="git automake libtool boost openssl llvm@4 gmp wget cmake gettext"
+    DEPS="git cmake automake libtool boost openssl llvm@4 gmp wget cmake gettext libmongoc mongo-cxx-driver doxygen"
     brew update
     brew install --force $DEPS
     brew unlink $DEPS && brew link --force $DEPS
@@ -82,9 +82,10 @@ if [ $ARCH == "darwin" ]; then
     cd binaryen
     git checkout tags/1.37.14
     cmake . && make
+    [ -d /usr/local/binaryen ] && sudo rm -r /usr/local/binaryen
     sudo mkdir /usr/local/binaryen
     sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-    sudo ln -s /usr/local/binaryen/bin/* /usr/local
+    sudo ln -sf /usr/local/binaryen/bin/* /usr/local/bin
     sudo rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/usr/local/binaryen/bin/
 
