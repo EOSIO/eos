@@ -8,7 +8,7 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/chain_api_plugin/chain_api_plugin.hpp>
-#include <eosio/net_plugin/net_plugin.hpp>
+#include <eos/net_plugin/net_plugin.hpp>
 //#include <eosio/account_history_plugin/account_history_plugin.hpp>
 //#include <eosio/account_history_api_plugin/account_history_api_plugin.hpp>
 #include <eosio/wallet_api_plugin/wallet_api_plugin.hpp>
