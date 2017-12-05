@@ -458,8 +458,8 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
-  char * erd = getenv ("EOS_ROOT_DIR");
-  if (erd == 0) {
+  erd = getenv ("EOS_ROOT_DIR");
+  if (erd.empty()) {
     erd = getenv ("PWD");
   }
   stage = bf::path(erd);
