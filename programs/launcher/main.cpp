@@ -420,7 +420,7 @@ launcher_def::initialize (const variables_map &vmap) {
   system_clock::time_point now = system_clock::now();
   std::time_t now_c = system_clock::to_time_t(now);
   ostringstream dstrm;
-  dstrm << std::put_time(std::localtime(&now_c), "%Y_%m_%d_%H_%M_%S") << ends;
+  dstrm << std::put_time(std::localtime(&now_c), "%Y_%m_%d_%H_%M_%S");
   launch_time = dstrm.str();
 
   if ( ! (shape.empty() ||
@@ -458,10 +458,17 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
-  char * erd = getenv ("EOS_ROOT_DIR");
-  if (erd == 0) {
-    erd = getenv ("PWD");
+  char* erd_env_var = getenv ("EOS_ROOT_DIR");
+  if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
+     erd_env_var = getenv ("PWD");
   }
+
+  if (erd_env_var != nullptr) {
+     erd = erd_env_var;
+  } else {
+     erd.clear();
+  }
+
   stage = bf::path(erd);
   if (!bf::exists(stage)) {
     cerr << erd << " is not a valid path" << endl;
