@@ -284,7 +284,7 @@ namespace eosio {
   constexpr auto     def_conn_retry_wait = 30;
   constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds(1);
-  constexpr auto     def_sync_rec_span = 100;
+  constexpr auto     def_sync_fetch_span = 100;
   constexpr auto     def_max_just_send = 1300 * 3; // "mtu" * 3
   constexpr auto     def_send_whole_blocks = true;
 
@@ -734,14 +734,6 @@ namespace eosio {
       enqueue(note);
       return;
     }
-#if 0
-    rbtree<block_id_type> sorted_ids ;
-    if(!ids.empty()) {
-      for(const auto & exclude : ids) {
-        sorted_ids.insert(exclude);
-      }
-    }
-#endif
     uint32_t count = send_branch(cc, head_id, lib_num, lib_id);
     fc_dlog(logger, "Sent ${n} blocks on my fork",("n",count));
     syncing = false;
@@ -1563,7 +1555,7 @@ namespace eosio {
 
       switch (msg.known_blocks.mode) {
       case id_list_modes::none : {
-        elog( "got a block notice message with a mode of none from ${p}",("p",c->peer_name()));
+
         return;
       }
       case id_list_modes::last_irr_catch_up : {
@@ -1655,6 +1647,7 @@ namespace eosio {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const block_summary_message &msg) {
+#if 0 // function is obsolete
       fc_dlog(logger, "got a block_summary_message from ${p}", ("p",c->peer_name()));
       fc_dlog(logger, "bsm header = ${h}",("h",msg.block_header));
       fc_dlog(logger, "txn count = ${c}", ("c",msg.trx_ids.size()));
@@ -1694,13 +1687,13 @@ namespace eosio {
           sb.cycles.emplace_back( eosio::chain::cycle( ) );
           eosio::chain::cycle &sbcycle = sb.cycles.back( );
           for( auto &cyc_thr_id : cyc ) {
+            /*
             fc_dlog(logger, "cycle user theads count = ${c}", ("c",cyc_thr_id.user_trx.size()));
             if(cyc_thr_id.user_trx.size() == 0) {
               continue;
             }
             sbcycle.emplace_back( eosio::chain::thread( ) );
             eosio::chain::thread &cyc_thr = sbcycle.back();
-            /*
             for( auto &gt : cyc_thr_id.gen_trx ) {
               try {
                 auto gen = cc.get_generated_transaction( gt );
@@ -1759,6 +1752,7 @@ namespace eosio {
           elog( "unable to accept block, reason unknown" );
         }
       }
+      #endif
     }
 
 
@@ -2284,6 +2278,7 @@ namespace eosio {
       ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
       ( "network-version-match", bpo::value<bool>()->default_value(false),
         "True to require exact match of peer network version.")
+      ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
      ;
   }
 
@@ -2323,7 +2318,7 @@ namespace eosio {
     my->network_version_match = options.at("network-version-match").as<bool>();
     my->send_whole_blocks = def_send_whole_blocks;
 
-    my->sync_master.reset( new sync_manager( def_sync_rec_span ) );
+    my->sync_master.reset( new sync_manager(options.at("sync-fetch-span").as<uint32_t>() ) );
 
     my->connector_period = std::chrono::seconds(options.at("connection-cleanup-period").as<int>());
     my->txn_exp_period = def_txn_expire_wait;
@@ -2433,6 +2428,7 @@ namespace eosio {
       my->acceptor->set_option(tcp::acceptor::reuse_address(true));
       my->acceptor->bind(my->listen_endpoint);
       my->acceptor->listen();
+      ilog("starting listener, max clients is ${mc}",("mc",my->max_client_count));
       my->start_listen_loop();
     }
 
