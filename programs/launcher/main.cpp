@@ -21,6 +21,7 @@
 #include <fc/io/json.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/reflect/variant.hpp>
+#include <fc/log/logger_config.hpp>
 #include <ifaddrs.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -353,8 +354,11 @@ struct launcher_def {
   void define_network ();
   void bind_nodes ();
   host_def *find_host (const string &name);
-  host_def *deploy_config_file (tn_node_def &node);
+  host_def *deploy_config_files (tn_node_def &node);
+  string compose_scp_command (const host_def &host, const bf::path &source,
+                              const bf::path &destination);
   void write_config_file (tn_node_def &node);
+  void write_logging_config_file (tn_node_def &node);
   void make_ring ();
   void make_star ();
   void make_mesh ();
@@ -537,6 +541,7 @@ launcher_def::generate () {
   if( !nogen ) {
     for (auto &node : network.nodes) {
       write_config_file(node.second);
+      write_logging_config_file(node.second);
     }
   }
   write_dot_file ();
@@ -712,13 +717,14 @@ launcher_def::find_host (const string &name)
 }
 
 host_def *
-launcher_def::deploy_config_file (tn_node_def &node) {
+launcher_def::deploy_config_files (tn_node_def &node) {
   bf::path filename;
   boost::system::error_code ec;
   eosd_def &instance = *node.instance;
   host_def *host = find_host (instance.host);
 
   bf::path source = stage / instance.data_dir / "config.ini";
+  bf::path logging_source = stage / instance.data_dir / "logging.json";
   if (host->is_local()) {
     bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
     filename = dd / "config.ini";
@@ -741,24 +747,15 @@ launcher_def::deploy_config_file (tn_node_def &node) {
            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
       exit (-1);
     }
+    bf::copy_file (logging_source, bf::path(host->eos_root_dir) / "logging.json", bf::copy_option::overwrite_if_exists);
     bf::copy_file (source, filename, bf::copy_option::overwrite_if_exists);
   }
   else {
     prep_remote_config_dir (instance, host);
-    string scp_cmd_line = network.ssh_helper.scp_cmd + " ";
-    const string &args = host->ssh_args.length() ? host->ssh_args : network.ssh_helper.ssh_args;
-    if (args.length()) {
-      scp_cmd_line += args + " ";
-    }
-    scp_cmd_line += source.string() + " ";
-
-    const string &uid = host->ssh_identity.length() ? host->ssh_identity : network.ssh_helper.ssh_identity;
-    if (uid.length()) {
-      scp_cmd_line += uid + "@";
-    }
 
     bf::path dpath = bf::path (host->eos_root_dir) / instance.data_dir / "config.ini";
-    scp_cmd_line += host->host_name + ":" + dpath.string();
+
+    auto scp_cmd_line = compose_scp_command(*host, source, dpath);
 
     cerr << "cmdline = " << scp_cmd_line << endl;
     int res = boost::process::system (scp_cmd_line);
@@ -766,8 +763,37 @@ launcher_def::deploy_config_file (tn_node_def &node) {
       cerr << "unable to scp config file to host " << host->host_name << endl;
       exit(-1);
     }
+
+    dpath = bf::path (host->eos_root_dir) / "logging.json";
+
+    scp_cmd_line = compose_scp_command(*host, logging_source, dpath);
+
+    res = boost::process::system (scp_cmd_line);
+    if (res != 0) {
+      cerr << "unable to scp logging config file to host " << host->host_name << endl;
+      exit(-1);
+    }
   }
   return host;
+}
+
+string
+launcher_def::compose_scp_command (const host_def& host, const bf::path& source, const bf::path& destination) {
+  string scp_cmd_line = network.ssh_helper.scp_cmd + " ";
+  const string &args = host.ssh_args.length() ? host.ssh_args : network.ssh_helper.ssh_args;
+  if (args.length()) {
+    scp_cmd_line += args + " ";
+  }
+  scp_cmd_line += source.string() + " ";
+
+  const string &uid = host.ssh_identity.length() ? host.ssh_identity : network.ssh_helper.ssh_identity;
+  if (uid.length()) {
+    scp_cmd_line += uid + "@";
+  }
+
+  scp_cmd_line += host.host_name + ":" + destination.string();
+
+  return scp_cmd_line;
 }
 
 void
@@ -837,6 +863,38 @@ launcher_def::write_config_file (tn_node_def &node) {
       << "plugin = eosio::wallet_api_plugin\n"
       << "plugin = eosio::account_history_plugin\n"
       << "plugin = eosio::account_history_api_plugin\n";
+  cfg.close();
+}
+
+void
+launcher_def::write_logging_config_file(tn_node_def &node) {
+  bf::path filename;
+  eosd_def &instance = *node.instance;
+
+  bf::path dd = stage/ instance.data_dir;
+  if (!bf::exists(dd)) {
+    bf::create_directory(dd);
+  }
+
+  filename = dd / "logging.json";
+
+  bf::ofstream cfg(filename);
+  if (!cfg.good()) {
+    cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
+    exit (9);
+  }
+
+  auto log_config = fc::logging_config::default_config();
+  log_config.appenders.push_back(
+        fc::appender_config( "net", "gelf",
+            fc::mutable_variant_object()
+                ( "endpoint", "10.160.11.21:12201" )
+                ( "host", instance.name )
+           ) );
+  log_config.loggers.front().appenders.push_back("net");
+
+  auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );
+  cfg.write( str.c_str(), str.size() );
   cfg.close();
 }
 
@@ -1009,7 +1067,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   bf::path reerr = dd / reerr_base;
   bf::path pidf  = dd / "eosd.pid";
 
-  host_def* host = deploy_config_file (*instance.node);
+  host_def* host = deploy_config_files (*instance.node);
   node_rt_info info;
   info.remote = !host->is_local();
 
