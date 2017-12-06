@@ -4,7 +4,7 @@
 # Go into cmd loop: sudo ./eosc.sh
 # Run single cmd:  sudo ./eosc.sh <eosc paramers>
 
-PREFIX="docker exec docker_eos_1 eosc"
+PREFIX="docker exec docker_eosd_1 eosc"
 if [ -z $1 ] ; then
   while :
   do
