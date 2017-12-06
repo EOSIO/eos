@@ -458,10 +458,17 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
-  erd = getenv ("EOS_ROOT_DIR");
-  if (erd.empty()) {
-    erd = getenv ("PWD");
+  char* erd_env_var = getenv ("EOS_ROOT_DIR");
+  if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
+     erd_env_var = getenv ("PWD");
   }
+
+  if (erd_env_var != nullptr) {
+     erd = erd_env_var;
+  } else {
+     erd.clear();
+  }
+
   stage = bf::path(erd);
   if (!bf::exists(stage)) {
     cerr << erd << " is not a valid path" << endl;
