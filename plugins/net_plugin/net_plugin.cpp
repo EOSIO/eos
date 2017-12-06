@@ -284,7 +284,7 @@ namespace eosio {
   constexpr auto     def_conn_retry_wait = 30;
   constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds(1);
-  constexpr auto     def_sync_rec_span = 10;
+  constexpr auto     def_sync_rec_span = 100;
   constexpr auto     def_max_just_send = 1300 * 3; // "mtu" * 3
   constexpr auto     def_send_whole_blocks = true;
 
@@ -631,7 +631,6 @@ namespace eosio {
       out_queue.clear();
       if(response_expected) {
         response_expected->cancel();
-        response_expected.reset();
       }
       pending_message_buffer.reset();
     }
@@ -822,7 +821,7 @@ namespace eosio {
   void connection::do_queue_write() {
      if(write_queue.empty())
          return;
-      
+
       connection_wptr c(shared_from_this());
       boost::asio::async_write(*socket, boost::asio::buffer(*write_queue.front().buff), [c](boost::system::error_code ec, std::size_t w) {
          try {
@@ -890,7 +889,7 @@ namespace eosio {
     ds.write( header, header_size );
     fc::raw::pack( ds, m );
 
-    queue_write(std::make_shared<vector<char>>(send_buffer.begin(), send_buffer.begin()+buffer_size), 
+    queue_write(std::make_shared<vector<char>>(send_buffer.begin(), send_buffer.begin()+buffer_size),
       [this](boost::system::error_code ec, std::size_t ) {
          if(out_queue.size()) {
             if(out_queue.front().contains<go_away_message>()) {
@@ -927,7 +926,7 @@ namespace eosio {
       count++;
       txn_queue.pop_front();
 
-      queue_write(std::make_shared<vector<char>>(tx->packed_transaction), 
+      queue_write(std::make_shared<vector<char>>(tx->packed_transaction),
         [this, tx](boost::system::error_code ec, std::size_t ) {
             my_impl->local_txns.modify(tx, update_in_flight(-1));
             send_next_message();
