@@ -100,7 +100,11 @@ namespace eosio { namespace client { namespace help {
 
 bool print_help_text(const fc::exception& e) {
    bool result = false;
+   // Large input strings to std::regex can cause SIGSEGV, this is a known bug in libstdc++.
+   // See https://stackoverflow.com/questions/36304204/%D0%A1-regex-segfault-on-long-sequences
    auto detail_str = e.to_detail_string();
+   // 2048 nice round number. Picked for no particular reason. Bug above was reported for 22K+ strings.
+   if (detail_str.size() > 2048) return result;
    try {
       for (const auto& candidate : error_help_text) {
          auto expr = std::regex {candidate.first};
