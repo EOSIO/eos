@@ -9,7 +9,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/key_value_object.hpp>
+#include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
@@ -181,13 +181,13 @@ public:
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
 
-   void copy_row(const chain::key_value_object& obj, vector<char>& data)const {
+   void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data)const {
       data.resize( sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::keystr_value_object& obj, vector<char>& data)const {
+   void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data)const {
       data.resize( obj.primary_key.size() + obj.value.size() + 8 );
       fc::datastream<char*> ds(data.data(), data.size());
       fc::raw::pack(ds, obj.primary_key);
@@ -195,14 +195,14 @@ public:
       data.resize(ds.tellp());
    }
 
-   void copy_row(const chain::key128x128_value_object& obj, vector<char>& data)const {
+   void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data)const {
       data.resize( 2*sizeof(uint128_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint128_t) );
       memcpy( data.data()+sizeof(uint128_t), &obj.secondary_key, sizeof(uint128_t) );
       memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::key64x64x64_value_object& obj, vector<char>& data)const {
+   void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data)const {
       data.resize( 3*sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
@@ -217,39 +217,44 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi);
-   
-      const auto& idx = d.get_index<IndexType, Scope>();
-      auto lower = idx.lower_bound( boost::make_tuple(p.scope, p.code, p.table   ) );
-      auto upper = idx.upper_bound( boost::make_tuple(p.scope, p.code, name(uint64_t(p.table)+1) ) );
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_scope_code_table>(boost::make_tuple(p.scope, p.code, p.table));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<IndexType, Scope>();
+         decltype(t_id->id) next_tid(t_id->id._id + 1);
+         auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
+         auto upper = idx.lower_bound(boost::make_tuple(next_tid));
 
-      if( p.lower_bound.size() ) {
-         lower = idx.lower_bound(boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.lower_bound).as<typename IndexType::value_type::key_type>()));
-      }
-      if( p.upper_bound.size() ) {
-         upper = idx.lower_bound(boost::make_tuple(p.scope, p.code, p.table, fc::variant(p.upper_bound).as<typename IndexType::value_type::key_type>()));
-      }
-   
-      vector<char> data;
-   
-      auto end   = fc::time_point::now() + fc::microseconds( 1000*10 ); /// 10ms max time
-   
-      unsigned int count = 0;
-      auto itr = lower;
-      for( itr = lower; itr != upper && itr->table == p.table; ++itr ) {
-         copy_row(*itr, data);
-   
-         if( p.json ) {
-            result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data) );
-         } else {
-            result.rows.emplace_back(fc::variant(data));
+         if (p.lower_bound.size()) {
+            lower = idx.lower_bound(boost::make_tuple(t_id->id, fc::variant(
+               p.lower_bound).as<typename IndexType::value_type::key_type>()));
+         }
+         if (p.upper_bound.size()) {
+            upper = idx.lower_bound(boost::make_tuple(t_id->id, fc::variant(
+               p.upper_bound).as<typename IndexType::value_type::key_type>()));
          }
 
-         if( ++count == p.limit || fc::time_point::now() > end ) {
-            break;
+         vector<char> data;
+
+         auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+
+         unsigned int count = 0;
+         auto itr = lower;
+         for (itr = lower; itr != upper; ++itr) {
+            copy_row(*itr, data);
+
+            if (p.json) {
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data));
+            } else {
+               result.rows.emplace_back(fc::variant(data));
+            }
+
+            if (++count == p.limit || fc::time_point::now() > end) {
+               break;
+            }
          }
-      }
-      if( itr != upper ) {
-         result.more = true;
+         if (itr != upper) {
+            result.more = true;
+         }
       }
       return result;
    }

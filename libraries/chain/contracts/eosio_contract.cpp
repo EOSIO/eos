@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/contracts/eos_contract.hpp>
+#include <eosio/chain/contracts/contract_table_objects.hpp>
 
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/apply_context.hpp>
@@ -10,7 +11,6 @@
 #include <eosio/chain/exceptions.hpp>
 
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/contracts/balance_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -25,6 +25,47 @@
 #include <eosio/chain/rate_limiting.hpp>
 
 namespace eosio { namespace chain { namespace contracts {
+
+void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens) {
+   const auto& t_id = db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
+      t_id.scope = system_account;
+      t_id.code = config::system_account_name;
+      t_id.table = N(currency);
+   });
+
+   db.create<key_value_object>([&](key_value_object &o){
+      o.t_id = t_id.id;
+      o.primary_key = N(account);
+      o.value.insert(0, reinterpret_cast<const char *>(&initial_tokens), sizeof(share_type));
+   });
+}
+
+static void modify_eosio_balance( apply_context& context, const account_name& account, share_type amt) {
+   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(currency));
+   uint64_t key = N(account);
+   share_type balance = 0;
+   context.front_record<key_value_index, by_scope_primary>(t_id, &key, (char *)&balance, sizeof(balance));
+
+   balance += amt;
+
+   context.store_record<key_value_object>(t_id, &key, (const char *)&balance, sizeof(balance));
+}
+
+share_type get_eosio_balance( const chainbase::database& db, const account_name &account ) {
+   const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(account, config::system_account_name, N(currency)));
+   if (!t_id) {
+      return share_type(0);
+   }
+
+   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+   auto itr = idx.lower_bound(boost::make_tuple(t_id->id));
+   if ( itr == idx.end() || itr->t_id != t_id->id ) {
+      return share_type(0);
+   }
+
+   FC_ASSERT(itr->value.size() == sizeof(share_type), "Invalid data in EOSIO balance table");
+   return *reinterpret_cast<const share_type *>(itr->value.data());
+}
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
@@ -78,20 +119,13 @@ void apply_eosio_newaccount(apply_context& context) {
       p.auth = std::move(create.active);
    });
 
-   const auto& creator_balance = context.mutable_db.get<balance_object, by_owner_name>(create.creator);
+   share_type creator_balance = get_eosio_balance(context.db, create.creator);
 
-   EOS_ASSERT(creator_balance.balance >= create.deposit.amount, action_validate_exception,
+   EOS_ASSERT(creator_balance >= create.deposit.amount, action_validate_exception,
               "Creator '${c}' has insufficient funds to make account creation deposit of ${a}",
               ("c", create.creator)("a", create.deposit));
 
-   context.mutable_db.modify(creator_balance, [&create](balance_object& b) {
-      b.balance -= create.deposit.amount;
-   });
-
-   context.mutable_db.create<balance_object>([&create](balance_object& b) {
-      b.owner_name = create.name;
-      b.balance = 0; //create.deposit.amount; TODO: make sure we credit this in @staked
-   });
+   modify_eosio_balance(context, create.creator, -create.deposit.amount);
 
    context.mutable_db.create<staked_balance_object>([&]( staked_balance_object& sbo) {
       sbo.owner_name = create.name;
@@ -127,18 +161,14 @@ void apply_eosio_transfer(apply_context& context) {
 
    try {
       auto& db = context.mutable_db;
-      const auto& from = db.get<balance_object, by_owner_name>(transfer.from);
+      share_type from_balance = get_eosio_balance(db, transfer.from);
 
-      EOS_ASSERT(from.balance >= transfer.amount, action_validate_exception, "Insufficient Funds",
-                 ("from.balance",from.balance)("transfer.amount",transfer.amount));
+      EOS_ASSERT(from_balance >= transfer.amount, action_validate_exception, "Insufficient Funds",
+                 ("from_balance", from_balance)("transfer.amount",transfer.amount));
 
-      const auto& to = db.get<balance_object, by_owner_name>(transfer.to);
-      db.modify(from, [&](balance_object& a) {
-         a.balance -= share_type(transfer.amount);
-      });
-      db.modify(to, [&](balance_object& a) {
-         a.balance += share_type(transfer.amount);
-      });
+      modify_eosio_balance(context, transfer.from, - share_type(transfer.amount) );
+      modify_eosio_balance(context, transfer.to,     share_type(transfer.amount) );
+
    } FC_CAPTURE_AND_RETHROW( (transfer) ) 
 }
 ///@}
@@ -160,14 +190,12 @@ void apply_eosio_lock(apply_context& context) {
    context.require_recipient(lock.to);
    context.require_recipient(lock.from);
 
-   const auto& locker = context.db.get<balance_object, by_owner_name>(lock.from);
+   share_type locker_balance = get_eosio_balance(context.db, lock.from);
 
-   EOS_ASSERT( locker.balance >= lock.amount, action_validate_exception, 
-              "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount)("available",locker.balance) );
+   EOS_ASSERT( locker_balance >= lock.amount, action_validate_exception,
+              "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount)("available",locker_balance) );
 
-   context.mutable_db.modify(locker, [&lock](balance_object& a) {
-      a.balance -= lock.amount;
-   });
+   modify_eosio_balance(context, lock.from, -share_type(lock.amount));
 
    const auto& balance = context.db.get<staked_balance_object, by_owner_name>(lock.to);
    balance.stake_tokens(lock.amount, context.mutable_db);
@@ -261,10 +289,7 @@ void apply_eosio_claim(apply_context& context) {
    const auto& staked_balance = context.db.get<staked_balance_object, by_owner_name>(claim.account);
    staked_balance.finish_unstaking_tokens(claim.amount, context.mutable_db);
 
-   const auto& liquid_balance = context.db.get<balance_object, by_owner_name>(claim.account);
-   context.mutable_db.modify(liquid_balance, [&claim](balance_object& a) {
-      a.balance += claim.amount;
-   });
+   modify_eosio_balance(context, claim.account, share_type(claim.amount));
 }
 
 

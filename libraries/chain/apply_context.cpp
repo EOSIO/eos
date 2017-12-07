@@ -181,4 +181,25 @@ void apply_context::deferred_transaction_send( uint32_t id ) {
 //   _pending_deferred_transactions.erase(itr);
 }
 
+
+const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
+   require_read_scope(scope);
+   return db.find<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+}
+
+const contracts::table_id_object& apply_context::find_or_create_table( name scope, name code, name table ) {
+   require_read_scope(scope);
+   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   if (existing_tid != nullptr) {
+      return *existing_tid;
+   }
+
+   require_write_scope(scope);
+   return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
+      t_id.scope = scope;
+      t_id.code = code;
+      t_id.table = table;
+   });
+}
+
 } } /// eosio::chain
