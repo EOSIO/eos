@@ -4,8 +4,8 @@
  */
 #include <eosio/chain/types.hpp>
 
-#include <eosio/net_plugin/net_plugin.hpp>
-#include <eosio/net_plugin/protocol.hpp>
+#include <eos/net_plugin/net_plugin.hpp>
+#include <eos/net_plugin/protocol.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
