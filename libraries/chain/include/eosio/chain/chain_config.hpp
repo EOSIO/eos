@@ -17,9 +17,13 @@ namespace eosio { namespace chain {
  */
 struct chain_config {
 
-   uint32_t   target_block_size;
    share_type producer_pay;
+   uint32_t   target_block_size;
    uint32_t   max_block_size;
+
+   uint32_t   target_block_acts_per_scope;
+   uint32_t   max_block_acts_per_scope;
+
    uint64_t   max_storage_size;
    uint32_t   max_transaction_lifetime;
    uint16_t   max_authority_depth;
@@ -37,7 +41,11 @@ inline bool operator!=(const chain_config& a, const chain_config& b) { return !(
 } } // namespace eosio::chain
 
 FC_REFLECT(eosio::chain::chain_config, 
-           (target_block_size)(producer_pay)
-           (max_block_size)(max_storage_size)
+           (producer_pay)
+           (target_block_size)
+           (max_block_size)
+           (target_block_acts_per_scope)
+           (max_block_acts_per_scope)
+           (max_storage_size)
            (max_transaction_lifetime)(max_authority_depth)(max_transaction_exec_time)
            (max_inline_depth)(max_inline_action_size)(max_generated_transaction_size) )

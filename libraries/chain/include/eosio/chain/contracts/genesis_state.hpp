@@ -43,9 +43,11 @@ struct genesis_state_type {
    };
 
    chain_config   initial_configuration = {
-      .target_block_size              = config::default_target_block_size,
       .producer_pay                   = config::default_elected_pay,
+      .target_block_size              = config::default_target_block_size,
       .max_block_size                 = config::default_max_block_size,
+      .target_block_acts_per_scope    = config::default_target_block_acts_per_scope,
+      .max_block_acts_per_scope       = config::default_max_block_acts_per_scope,
       .max_storage_size               = config::default_max_storage_size,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,
       .max_authority_depth            = config::default_max_auth_depth,
