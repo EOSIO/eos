@@ -23,8 +23,6 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
 
-#include <eosio/chain/contracts/types.hpp>
-
 namespace eosio {
   using std::vector;
 
@@ -37,8 +35,6 @@ namespace eosio {
   using fc::time_point_sec;
   using eosio::chain::transaction_id_type;
   namespace bip = boost::interprocess;
-
-  using chain::contracts::uint16;
 
   class connection;
   class sync_manager;
@@ -1538,7 +1534,6 @@ namespace eosio {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const block_summary_message &msg) {
-#if 0
       fc_dlog(logger, "got a block_summary_message from ${p}", ("p",c->peer_name()));
       fc_dlog(logger, "bsm header = ${h}",("h",msg.block_header));
       fc_dlog(logger, "txn count = ${c}", ("c",msg.trx_ids.size()));
@@ -1565,8 +1560,8 @@ namespace eosio {
       if( !cc.is_known_block(msg.block_header.id()) ) {
         sb.previous = msg.block_header.previous;
         sb.timestamp = msg.block_header.timestamp;
-        sb.transaction_mroot = msg.block_header.transaction_mroot;
-        sb.new_producers = msg.block_header.new_producers;
+        sb.transaction_merkle_root = msg.block_header.transaction_merkle_root;
+        sb.producer_changes = msg.block_header.producer_changes;
         sb.producer = msg.block_header.producer;
         sb.producer_signature = msg.block_header.producer_signature;
 
@@ -1575,15 +1570,15 @@ namespace eosio {
           if( cyc.size() == 0 ) {
             continue;
           }
-          sb.cycles_summary.emplace_back( eosio::chain::cycle( ) );
-          eosio::chain::cycle &sbcycle = sb.cycles_summary.back( );
+          sb.cycles.emplace_back( eosio::chain::cycle( ) );
+          eosio::chain::cycle &sbcycle = sb.cycles.back( );
           for( auto &cyc_thr_id : cyc ) {
             fc_dlog(logger, "cycle user theads count = ${c}", ("c",cyc_thr_id.user_trx.size()));
             if (cyc_thr_id.user_trx.size() == 0) {
               continue;
             }
-            sbcycle.emplace_back( eosio::chain::shard( ) );
-            eosio::chain::shard &cyc_thr = sbcycle.back();
+            sbcycle.emplace_back( eosio::chain::thread( ) );
+            eosio::chain::thread &cyc_thr = sbcycle.back();
             /*
             for( auto &gt : cyc_thr_id.gen_trx ) {
               try {
@@ -1601,10 +1596,22 @@ namespace eosio {
             }
             */
             for( auto &ut : cyc_thr_id.user_trx ) {
-              if(cc.is_known_transaction(ut.id) == false) {
-                 elog( "unable to retieve user transaction" );
-                 fetch_error = true;
-                 break;
+              // auto ltxn = local_txns.get<by_id>().find(ut);
+
+              try {
+                processed_transaction pt(cc.get_recent_transaction(ut.id));
+                pt.output = ut.outmsgs;
+                cyc_thr.user_input.emplace_back(pt);
+
+                fc_dlog(logger, "Found the transaction");
+              } catch ( const exception &ex) {
+                fetch_error = true;
+                elog( "unable to retieve user transaction, caught {ex}", ("ex",ex) );
+                break;
+              } catch ( ... ) {
+                fetch_error = true;
+                elog( "unable to retieve user transaction" );
+                break;
               }
             }
             if( fetch_error ){
@@ -1631,7 +1638,6 @@ namespace eosio {
           elog( "unable to accept block, reason unknown" );
         }
       }
-#endif
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const signed_transaction &msg) {
@@ -1947,11 +1953,11 @@ namespace eosio {
         send_all( sb,[](connection_ptr c) -> bool { return true; });
         return;
       }
-#if 0
+
       block_summary_message bsm = {sb, vector<cycle_ids>()};
       vector<cycle_ids> &trxs = bsm.trx_ids;
-      if( !sb.cycles_summary.empty()) {
-        for( const auto& cyc : sb.cycles_summary) {
+      if( !sb.cycles.empty()) {
+        for( const auto& cyc : sb.cycles) {
           fc_dlog(logger, "cyc.size = ${cs}",( "cs", cyc.size()));
           if( cyc.empty() ) {
             continue;
@@ -1959,7 +1965,7 @@ namespace eosio {
           trxs.emplace_back (cycle_ids());
           cycle_ids &cycs = trxs.back();
           fc_dlog(logger, "trxs.size = ${ts} cycles.size = ${cs}",("ts", trxs.size())("cs", cycs.size()));
-          for( const shard& shrd : cyc) {
+          for( const auto& thr : cyc) {
             fc_dlog(logger, "user txns = ${ui} generated = ${gi}",("ui",thr.user_input.size( ))("gi",thr.generated_input.size( )));
             if( thr.user_input.size( ) == 0 ) {
               continue;
@@ -1995,7 +2001,6 @@ namespace eosio {
           }
           return false;
         });
-#endif
     }
 
   void
@@ -2055,9 +2060,7 @@ namespace eosio {
      ( "remote-endpoint", bpo::value< vector<string> >()->composing(), "The IP address and port of a remote peer to sync with.")
      ( "public-endpoint", bpo::value<string>(), "Overrides the advertised listen endpointlisten ip address.")
      ( "agent-name", bpo::value<string>()->default_value("EOS Test Agent"), "The name supplied to identify this node amongst the peers.")
-#if 0
-     ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
-#endif
+      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
      ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
       ;
   }
