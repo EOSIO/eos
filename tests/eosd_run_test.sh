@@ -460,6 +460,16 @@ if [ $count == 0 ]; then
 fi
 getTransactionId "$INFO"
 
+#
+# Setting simpledb contract without simpledb account was causing core dump in eosc.
+# Verify eosc generates an error, but does not core dump.
+#
+
+INFO="$( { programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract simpledb contracts/simpledb/simpledb.wast contracts/simpledb/simpledb.abi ; } 2>&1 )"
+rc=$?
+if [ $rc -eq 0 ] || [ $rc -eq 139 ]; then # 139 SIGSEGV
+  error "FAILURE - $1 returned error code $rc, should have failed to execute."
+fi
 
 #
 # Producer
