@@ -65,6 +65,7 @@ Options:
 #include <string>
 #include <vector>
 #include <boost/asio.hpp>
+#include <boost/format.hpp>
 #include <iostream>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -708,7 +709,7 @@ int main( int argc, char** argv ) {
    auto producerSubcommand = setSubcommand->add_subcommand("producer", localized("Approve/unapprove producer"));
    producerSubcommand->require_subcommand();
    auto approveCommand = producerSubcommand->add_subcommand("approve", localized("Approve producer"));
-   auto unapproveCommand = producerSubcommand->add_subcommand("unapprove", localized("Unapprove producer"));
+   producerSubcommand->add_subcommand("unapprove", localized("Unapprove producer"));
    producerSubcommand->add_option("user-name", account_name, localized("The name of the account approving"))->required();
    producerSubcommand->add_option("producer-name", producer, localized("The name of the producer to approve"))->required();
    producerSubcommand->add_option("-p,--permission", permissions,
@@ -942,15 +943,33 @@ int main( int argc, char** argv ) {
    uint64_t number_of_accounts = 2;
    benchmark_setup->add_option("accounts", number_of_accounts, localized("the number of accounts in transfer among"))->required();
    add_standard_transaction_options(benchmark_setup);
+
    benchmark_setup->set_callback([&]{
+      auto controlling_account_arg = fc::mutable_variant_object( "controlling_account", string("inita"));
+      auto response_servants = call(get_controlled_accounts_func, controlling_account_arg);
+      fc::variant_object response_var;
+      fc::from_variant(response_servants, response_var);
+      std::vector<std::string> controlled_accounts_vec;
+      fc::from_variant(response_var["controlled_accounts"], controlled_accounts_vec);
+       long num_existing_accounts = std::count_if(controlled_accounts_vec.begin(),
+                   		            controlled_accounts_vec.end(),
+					[](auto const &s) { return s.find("benchmark") != std::string::npos;});
+      boost::format fmter("%1% accounts already exist");
+      fmter % num_existing_accounts;
+      EOSC_ASSERT( number_of_accounts > num_existing_accounts, fmter.str().c_str());
+
+      number_of_accounts -= num_existing_accounts;
       std::cerr << localized("Creating ${number_of_accounts} accounts with initial balances", ("number_of_accounts",number_of_accounts)) << std::endl;
-      EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
+
+      if (num_existing_accounts == 0) {
+      	EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
+      }   
 
       auto info = get_info();
 
       vector<signed_transaction> batch;
       batch.reserve( number_of_accounts );
-      for( uint32_t i = 0; i < number_of_accounts; ++i ) {
+      for( uint32_t i = num_existing_accounts; i < num_existing_accounts + number_of_accounts; ++i ) {
         name newaccount( name("benchmark").value + i );
         public_key_type owner, active;
         name creator("inita" );
@@ -969,6 +988,7 @@ int main( int argc, char** argv ) {
         trx.expiration = info.head_block_time + tx_expiration; 
         trx.set_reference_block(info.head_block_id);
         batch.emplace_back(trx);
+	info = get_info();
       }
       auto result = call( push_txns_func, batch );
       std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -1044,6 +1064,13 @@ int main( int argc, char** argv ) {
 	            info = get_info();
             }
          }
+
+	 if (batch.size() > 0) {
+	       auto result = call( push_txns_func, batch );
+               std::cout << fc::json::to_pretty_string(result) << std::endl;
+               batch.resize(0);
+               info = get_info();
+	 }
          if( !loop ) break;
       }
    });
