@@ -1140,7 +1140,7 @@ int main( int argc, char** argv ) {
          }
       } else {
          // attempt to extract the error code if one is present
-         if (!print_help_text(e) || verbose_errors) {
+         if (verbose_errors || !print_help_text(e)) {
             elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
          }
       }
