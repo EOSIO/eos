@@ -64,7 +64,7 @@ void apply_context::exec_one()
 
 void apply_context::exec()
 {
-   exec_one();
+   _notified.push_back(act.scope);
 
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
@@ -72,7 +72,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i], _inline_actions[i].scope );
+      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i]);
       ncontext.exec();
       append_results(move(ncontext.results));
    }

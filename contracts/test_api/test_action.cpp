@@ -44,9 +44,9 @@ void test_action::read_action_to_64k() {
 
 //unsigned int test_action::require_notice() {
 //   if( current_receiver() == N(testapi) ) {
-//      eosio::require_notice( N(acc1) );
-//      eosio::require_notice( N(acc2) );
-//      eosio::require_notice( N(acc1), N(acc2) );
+//      eosio::require_recipient( N(acc1) );
+//      eosio::require_recipient( N(acc2) );
+//      eosio::require_recipient( N(acc1), N(acc2) );
 //      return WASM_TEST_FAIL;
 //   } else if ( current_receiver() == N(acc1) || current_receiver() == N(acc2) ) {
 //      return WASM_TEST_PASS;

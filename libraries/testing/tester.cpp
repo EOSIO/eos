@@ -200,7 +200,7 @@ namespace eosio { namespace testing {
       auto wasm = assemble(wast);
 
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope};
+      trx.write_scope = {config::eosio_auth_scope, account};
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setcode{
                                    .account    = account,

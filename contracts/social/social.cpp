@@ -76,7 +76,7 @@ void apply_social_post() {
  */
 void apply_social_vote() {
    const auto& vote  = current_action<vote_action>();
-   require_notice( vote.voter, vote.author );
+   require_recipient( vote.voter, vote.author );
    disable_context_code( vote.author() ); /// prevent the author's code from rejecting the potentially negative vote
 
    auto context = current_context();

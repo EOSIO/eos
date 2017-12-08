@@ -1297,7 +1297,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
 
 
    for( const auto& act : meta.trx.actions ) {
-      apply_context context( *this, _db, meta.trx, act,  act.scope  );
+      apply_context context( *this, _db, trx, act );
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));

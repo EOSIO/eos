@@ -18,8 +18,8 @@ class apply_context {
 
    public:
       apply_context(chain_controller& con, chainbase::database& db,
-                    const transaction& t, const action& a, account_name recv)
-      :controller(con), db(db), trx(t), act(a), receiver(recv), mutable_controller(con),
+                    const transaction& t, const action& a)
+      :controller(con), db(db), trx(t), act(a), mutable_controller(con),
        mutable_db(db), used_authorizations(act.authorization.size(), false){}
 
       void exec();

@@ -240,12 +240,8 @@ void apply_eosio_setcode(apply_context& context) {
 
    });
 
-   // create an apply context for initialization
-   apply_context init_context( context.mutable_controller, context.mutable_db, context.trx, context.act, act.account );
-
-   // get code from cache
-   auto code = context.mutable_controller.get_wasm_cache().checkout_scoped(code_id, act.code.data(), act.code.size());
-   wasm_interface::get().init( code, init_context );
+   // make sure the code gets a chance to initialize itself
+   context.require_recipient(act.account);
 }
 
 void apply_eosio_setabi(apply_context& context) {

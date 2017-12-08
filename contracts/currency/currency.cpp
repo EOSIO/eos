@@ -20,7 +20,7 @@ namespace TOKEN_NAME {
    }
 
    void apply_currency_transfer( const TOKEN_NAME::transfer& transfer_msg ) {
-      require_notice( transfer_msg.to, transfer_msg.from );
+      require_recipient( transfer_msg.to, transfer_msg.from );
       require_auth( transfer_msg.from );
 
       auto from = get_account( transfer_msg.from );

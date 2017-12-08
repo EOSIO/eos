@@ -403,15 +403,14 @@ namespace eosio { namespace chain {
       return *single;
    }
 
-
-   void wasm_interface::init( wasm_cache::entry& code, apply_context& context ) {
-      my->call("init", {}, code, context);
-   }
-
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = { Value(uint64_t(context.act.scope)),
-                             Value(uint64_t(context.act.name)) };
-      my->call("apply", args, code, context);
+      if (context.act.scope == config::system_account_name && context.act.name == N(setcode)) {
+         my->call("init", {}, code, context);
+      } else {
+         vector<Value> args = {Value(uint64_t(context.act.scope)),
+                               Value(uint64_t(context.act.name))};
+         my->call("apply", args, code, context);
+      }
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
@@ -799,7 +798,7 @@ REGISTER_INTRINSICS(apply_context,
    (require_write_scope,   void(int64_t)   )
    (require_read_scope,    void(int64_t)   )
    (require_recipient,     void(int64_t)   )
-   (require_authorization, void(int64_t), "require_authorization", void(apply_context::*)(const account_name&)const)
+   (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
 );
 
 REGISTER_INTRINSICS(console_api,
@@ -848,7 +847,7 @@ REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_INDEX_METHOD_SEQ(primary_i64i64i64));
-REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(primary_i64i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(secondary_i64i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_INDEX_METHOD_SEQ(tertiary_i64i64i64));
 
 

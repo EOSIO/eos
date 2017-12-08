@@ -44,7 +44,7 @@ namespace eosio {
    }
 
    using ::require_auth;
-   using ::require_notice;
+   using ::require_recipient;
 
    /**
     *  All of the listed accounts will be added to the set of accounts to be notified
@@ -58,13 +58,13 @@ namespace eosio {
     *
     *  Example:
     *  @code
-    *  require_notice(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
+    *  require_recipient(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
     *  @endcode
     */
    template<typename... accounts>
-   void require_notice( account_name name, accounts... remaining_accounts ){
-      require_notice( name );
-      require_notice( remaining_accounts... );
+   void require_recipient( account_name name, accounts... remaining_accounts ){
+      require_recipient( name );
+      require_recipient( remaining_accounts... );
    }
 
 

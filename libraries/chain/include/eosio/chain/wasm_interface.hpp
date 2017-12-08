@@ -100,16 +100,8 @@ namespace eosio { namespace chain {
       public:
          static wasm_interface& get();
 
-          /**
-          * Calls the init() method on the currently loaded code
-          *
-          * @param context - the interface by which the contract can interact
-          * with blockchain state.
-          */
-         void init( wasm_cache::entry& code, apply_context& context );
-
          /**
-          * Calls the apply() method on the currently loaded code
+          * Calls the apply an action through the given code
           *
           * @param context - the interface by which the contract can interact
           * with blockchain state.
