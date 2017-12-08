@@ -2380,16 +2380,11 @@ namespace eosio {
     if(options.count("peer-private-key"))
     {
       const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
-#if 0  ///XXX fix me when doing more fc::ecc -> fc::crypto stuf
       for(const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
       {
          auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
-         fc::optional<fc::ecc::private_key> private_key = eosio::utilities::wif_to_key(key_id_to_wif_pair.second);
-         FC_ASSERT(private_key, "Invalid WIF-format private key ${key_string}",
-                   ("key_string", key_id_to_wif_pair.second));
-         my->private_keys[key_id_to_wif_pair.first] = *private_key;
+         my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key(key_id_to_wif_pair.second);
       }
-#endif
     }
 
     if( options.count( "send-whole-blocks")) {
