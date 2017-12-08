@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
-
+#include <eos/net_plugin/net_plugin.hpp>
 #include <eosio/chain/producer_object.hpp>
 
 #include <fc/io/json.hpp>
@@ -320,6 +320,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
    capture("n", block.block_num())("t", block.timestamp)("c", now)("count",block.input_transactions.size())("id",string(block.id()).substr(8,8));
 
+   app().get_plugin<net_plugin>().broadcast_block(block);
    return block_production_condition::produced;
 }
 
