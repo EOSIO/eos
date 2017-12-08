@@ -43,9 +43,7 @@ void initialize_logging()
 int main(int argc, char** argv)
 {
    try {
-      initialize_logging();
       app().set_version(eosio::eosd::config::version);
-      ilog("eosd version ${ver}", ("ver", eosio::eosd::config::itoh(static_cast<uint32_t>(app().version()))));
       app().register_plugin<net_api_plugin>();
       app().register_plugin<chain_api_plugin>();
       app().register_plugin<wallet_api_plugin>();
@@ -55,6 +53,8 @@ int main(int argc, char** argv)
       app().register_plugin<txn_test_gen_plugin>();
       if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
          return -1;
+      initialize_logging();
+      ilog("eosd version ${ver}", ("ver", eosio::eosd::config::itoh(static_cast<uint32_t>(app().version()))));
       app().startup();
       app().exec();
    } catch (const fc::exception& e) {
