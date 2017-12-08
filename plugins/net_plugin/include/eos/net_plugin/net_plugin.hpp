@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <eos/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eos/net_plugin/protocol.hpp>
 
 namespace eosio {

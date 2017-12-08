@@ -10,9 +10,9 @@
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
-#include <eos/chain/producer_object.hpp>
-#include <eos/producer_plugin/producer_plugin.hpp>
+#include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eos/utilities/key_conversion.hpp>
+#include <eosio/chain/contracts/types.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/json.hpp>
@@ -44,6 +44,7 @@ namespace eosio {
   using fc::time_point_sec;
   using eosio::chain::transaction_id_type;
   namespace bip = boost::interprocess;
+  using chain::contracts::uint16;
 
   class connection;
   class sync_manager;
@@ -137,7 +138,7 @@ namespace eosio {
     vector<string>                   supplied_peers;
     vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
     std::map<chain::public_key_type,
-             fc::ecc::private_key>   private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
+             chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
 
     enum possible_connections : char {
       None = 0,
@@ -259,7 +260,7 @@ namespace eosio {
      *
      * If there are no configured private keys, returns an empty signature.
      */
-    fc::ecc::compact_signature sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
+    chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
     static const fc::string logger_name;
     static fc::logger logger;
   };
@@ -2048,7 +2049,7 @@ namespace eosio {
         send_all( sb,[](connection_ptr c) -> bool { return true; });
         return;
       }
-
+#if 0 //disabling block summary support
       block_summary_message bsm = {sb, vector<cycle_ids>()};
       vector<cycle_ids> &trxs = bsm.trx_ids;
       if( !sb.cycles.empty()) {
@@ -2096,6 +2097,7 @@ namespace eosio {
           }
           return false;
         });
+#endif
     }
 
     bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
@@ -2128,16 +2130,16 @@ namespace eosio {
         return false;
       }
 
-      if(msg.sig != ecc::compact_signature() && msg.token != sha256()) {
+      if(msg.sig != chain::signature_type() && msg.token != sha256()) {
         sha256 hash = fc::sha256::hash(msg.time);
         if(hash != msg.token) {
           elog( "Peer ${peer} sent a handshake with an invalid token.",
                 ("peer", msg.p2p_address));
           return false;
         }
-        types::public_key peer_key;
+        chain::public_key_type peer_key;
         try {
-          peer_key = ecc::public_key(msg.sig, msg.token, true);
+          peer_key = crypto::public_key(msg.sig, msg.token, true);
         }
         catch (fc::exception& /*e*/) {
           elog( "Peer ${peer} sent a handshake with an unrecoverable key.",
@@ -2161,20 +2163,20 @@ namespace eosio {
       if(!private_keys.empty())
         return private_keys.begin()->first;
       producer_plugin* pp = app().find_plugin<producer_plugin>();
-      if(pp != nullptr)
+      if(pp != nullptr && pp->get_state() == abstract_plugin::started)
         return pp->first_producer_public_key();
       return chain::public_key_type();
     }
 
-    fc::ecc::compact_signature net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
+    chain::signature_type net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
     {
       auto private_key_itr = private_keys.find(signer);
       if(private_key_itr != private_keys.end())
-        return private_key_itr->second.sign_compact(digest);
+        return private_key_itr->second.sign(digest);
       producer_plugin* pp = app().find_plugin<producer_plugin>();
-      if(pp != nullptr)
+      if(pp != nullptr && pp->get_state() == abstract_plugin::started)
         return pp->sign_compact(signer, digest);
-      return ecc::compact_signature();
+      return chain::signature_type();
     }
 
   void
@@ -2187,7 +2189,7 @@ namespace eosio {
     hello.token = fc::sha256::hash(hello.time);
     hello.sig = my_impl->sign_compact(hello.key, hello.token);
     // If we couldn't sign, don't send a token.
-    if(hello.sig == ecc::compact_signature())
+    if(hello.sig == chain::signature_type())
       hello.token = sha256();
     hello.p2p_address = my_impl->p2p_address;
 #if defined( __APPLE__ )
@@ -2240,7 +2242,9 @@ namespace eosio {
      ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
      ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
      ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
+#if 0 //disabling block summary support
      ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
+#endif
      ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
      ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
      ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -2368,6 +2372,7 @@ namespace eosio {
     if(options.count("peer-private-key"))
     {
       const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+#if 0  ///XXX fix me when doing more fc::ecc -> fc::crypto stuf
       for(const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
       {
          auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
@@ -2376,6 +2381,7 @@ namespace eosio {
                    ("key_string", key_id_to_wif_pair.second));
          my->private_keys[key_id_to_wif_pair.first] = *private_key;
       }
+#endif
     }
 
     if( options.count( "send-whole-blocks")) {

@@ -5,7 +5,7 @@
 #pragma once
 
 #include <eos/net_plugin/net_plugin.hpp>
-#include <eos/http_plugin/http_plugin.hpp>
+#include <eosio/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
 

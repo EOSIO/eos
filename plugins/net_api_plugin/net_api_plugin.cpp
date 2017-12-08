@@ -3,8 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/net_api_plugin/net_api_plugin.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
