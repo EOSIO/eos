@@ -127,10 +127,11 @@ void apply_eosio_newaccount(apply_context& context) {
 
    modify_eosio_balance(context, create.creator, -create.deposit.amount);
 
-   context.mutable_db.create<staked_balance_object>([&]( staked_balance_object& sbo) {
+   auto& sbo = context.mutable_db.create<staked_balance_object>([&]( staked_balance_object& sbo) {
       sbo.owner_name = create.name;
-      sbo.stake_tokens( create.deposit.amount, context.mutable_db );
+      sbo.staked_balance = 0;
    });
+   sbo.stake_tokens(create.deposit.amount, context.mutable_db);
 
    db.create<bandwidth_usage_object>([&]( auto& bu ) { bu.owner = create.name; });
 
