@@ -1126,9 +1126,11 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
          dgp.recent_slots_filled <<= 1;
          dgp.recent_slots_filled += 1;
          dgp.recent_slots_filled <<= missed_blocks;
-      } else {
-         dgp.recent_slots_filled = 0;
-      }
+      } else
+         if(config::percent_100 * get_global_properties().active_producers.producers.size() / config::blocks_per_round > config::required_producer_participation)
+            dgp.recent_slots_filled = uint64_t(-1);
+         else
+            dgp.recent_slots_filled = 0;
       dgp.block_merkle_root.append( head_block_id() ); 
    });
 

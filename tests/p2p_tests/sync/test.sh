@@ -46,7 +46,12 @@ fi
 total_nodes="${total_nodes:-`echo $pnodes`}"
 
 rm -rf tn_data_*
-programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo -d $delay
+if [ "$delay" == 0 ]; then
+    programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo
+else
+    programs/launcher/launcher -p $pnodes -n $total_nodes -s $topo -d $delay
+fi
+
 sleep 7
 echo "start" > test.out
 port=8888
@@ -94,9 +99,9 @@ fi
 echo ERROR: $lines reports out of $total_nodes and prods = $prodsfound
 programs/launcher/launcher -k 15
 echo =================================================================
-echo Contents of tn_data_0/config.ini:
-cat tn_data_0/config.ini
+echo Contents of tn_data_00/config.ini:
+cat tn_data_00/config.ini
 echo =================================================================
-echo Contents of tn_data_0/stderr.txt:
-cat tn_data_0/stderr.txt
+echo Contents of tn_data_00/stderr.txt:
+cat tn_data_00/stderr.txt
 exit 1

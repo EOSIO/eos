@@ -36,6 +36,8 @@ const static uint32_t fixed_bandwidth_overhead_per_transaction = 100; // 100 byt
 const static int percent_100 = 10000;
 const static int percent_1   = 100;
 
+const static uint32_t  required_producer_participation = 33 * config::percent_1;
+
 static const uint32_t bandwidth_average_window_ms   = 24*60*60*1000l;
 static const uint32_t compute_average_window_ms     = 24*60*60*1000l;
 static const uint32_t blocksize_average_window_ms   = 60*1000l;

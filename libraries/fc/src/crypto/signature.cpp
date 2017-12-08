@@ -45,6 +45,10 @@ namespace fc { namespace crypto {
       return eq_comparator<signature::storage_type>::apply(p1._storage, p2._storage);
    }
 
+   bool operator != ( const signature& p1, const signature& p2) {
+      return !eq_comparator<signature::storage_type>::apply(p1._storage, p2._storage);
+   }
+
    bool operator < ( const signature& p1, const signature& p2)
    {
       return less_comparator<signature::storage_type>::apply(p1._storage, p2._storage);

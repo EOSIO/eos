@@ -2,8 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/wallet_api_plugin/wallet_api_plugin.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
+#include <eos/net_api_plugin/net_api_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
 
@@ -13,10 +12,10 @@
 #include <chrono>
 
 namespace eosio { namespace detail {
-  struct wallet_api_plugin_empty {};
+  struct net_api_plugin_empty {};
 }}
 
-FC_REFLECT(eosio::detail::wallet_api_plugin_empty, );
+FC_REFLECT(eosio::detail::net_api_plugin_empty, );
 
 namespace eosio {
 
@@ -53,50 +52,42 @@ using namespace eosio;
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     eosio::detail::wallet_api_plugin_empty result;
+     eosio::detail::net_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     eosio::detail::wallet_api_plugin_empty result;
+     eosio::detail::net_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
-     eosio::detail::wallet_api_plugin_empty result;
+     eosio::detail::net_api_plugin_empty result;
 
 
-void wallet_api_plugin::plugin_startup() {
-   ilog("starting wallet_api_plugin");
+void net_api_plugin::plugin_startup() {
+   ilog("starting net_api_plugin");
    // lifetime of plugin is lifetime of application
-   auto& wallet_mgr = app().get_plugin<wallet_plugin>().get_wallet_manager();
+   auto& net_mgr = app().get_plugin<net_plugin>();
 
    app().get_plugin<http_plugin>().add_api({
-       CALL(wallet, wallet_mgr, set_timeout,
-            INVOKE_V_R(wallet_mgr, set_timeout, int64_t), 200),
-       CALL(wallet, wallet_mgr, sign_transaction,
-            INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
-       CALL(wallet, wallet_mgr, create,
-            INVOKE_R_R(wallet_mgr, create, std::string), 201),
-       CALL(wallet, wallet_mgr, open,
-            INVOKE_V_R(wallet_mgr, open, std::string), 200),
-       CALL(wallet, wallet_mgr, lock_all,
-            INVOKE_V_V(wallet_mgr, lock_all), 200),
-       CALL(wallet, wallet_mgr, lock,
-            INVOKE_V_R(wallet_mgr, lock, std::string), 200),
-       CALL(wallet, wallet_mgr, unlock,
-            INVOKE_V_R_R(wallet_mgr, unlock, std::string, std::string), 200),
-       CALL(wallet, wallet_mgr, import_key,
-            INVOKE_V_R_R(wallet_mgr, import_key, std::string, std::string), 201),
-       CALL(wallet, wallet_mgr, list_wallets,
-            INVOKE_R_V(wallet_mgr, list_wallets), 200),
-       CALL(wallet, wallet_mgr, list_keys,
-            INVOKE_R_V(wallet_mgr, list_keys), 200),
-       CALL(wallet, wallet_mgr, get_public_keys,
-            INVOKE_R_V(wallet_mgr, get_public_keys), 200)
+    //   CALL(net, net_mgr, set_timeout,
+    //        INVOKE_V_R(net_mgr, set_timeout, int64_t), 200),
+    //   CALL(net, net_mgr, sign_transaction,
+    //        INVOKE_R_R_R_R(net_mgr, sign_transaction, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
+       CALL(net, net_mgr, connect,
+            INVOKE_R_R(net_mgr, connect, std::string), 201),
+       CALL(net, net_mgr, disconnect,
+            INVOKE_R_R(net_mgr, disconnect, std::string), 201),
+       CALL(net, net_mgr, status,
+            INVOKE_R_R(net_mgr, status, std::string), 201),
+       CALL(net, net_mgr, connections,
+            INVOKE_R_V(net_mgr, connections), 201),
+    //   CALL(net, net_mgr, open,
+    //        INVOKE_V_R(net_mgr, open, std::string), 200),
    });
 }
 
-void wallet_api_plugin::plugin_initialize(const variables_map& options) {
+void net_api_plugin::plugin_initialize(const variables_map& options) {
    if (options.count("http-server-address")) {
       const auto& lipstr = options.at("http-server-address").as<string>();
       const auto& host = lipstr.substr(0, lipstr.find(':'));
@@ -104,9 +95,9 @@ void wallet_api_plugin::plugin_initialize(const variables_map& options) {
          wlog("\n"
               "*************************************\n"
               "*                                   *\n"
-              "*  --   Wallet NOT on localhost  -- *\n"
-              "*  - Password and/or Private Keys - *\n"
-              "*  - are transferred unencrypted. - *\n"
+              "*  --  Net API NOT on localhost  -- *\n"
+              "*                                   *\n"
+              "*   this may be abused if exposed   *\n"
               "*                                   *\n"
               "*************************************\n");
       }

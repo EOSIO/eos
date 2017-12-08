@@ -5,24 +5,32 @@
 #pragma once
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
+#include <eos/net_plugin/protocol.hpp>
 #include <chrono>
 
 namespace eosio {
    using namespace chain;
    using namespace fc;
 
-  struct handshake_message {
-      int16_t         network_version = 0; ///< derived from git commit hash, not sequential
-      chain_id_type   chain_id; ///< used to identify chain
-      fc::sha256      node_id; ///< used to identify peers and prevent self-connect
-      string          p2p_address;
-      uint32_t        last_irreversible_block_num = 0;
-      block_id_type   last_irreversible_block_id;
-      uint32_t        head_num = 0;
-      block_id_type   head_id;
-      string          os;
-      string          agent;
-      int16_t         generation;
+   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
+   typedef std::chrono::system_clock::duration::rep tstamp;
+
+   struct handshake_message {
+      int16_t                    network_version = 0; ///< derived from git commit hash, not sequential
+      chain_id_type              chain_id; ///< used to identify chain
+      fc::sha256                 node_id; ///< used to identify peers and prevent self-connect
+      chain::public_key_type     key; ///< authentication key; may be a producer or peer key, or empty
+      tstamp                     time;
+      fc::sha256                 token; ///< digest of time to prove we own the private key of the key above
+      chain::signature_type      sig; ///< signature for the digest
+      string                     p2p_address;
+      uint32_t                   last_irreversible_block_num = 0;
+      block_id_type              last_irreversible_block_id;
+      uint32_t                   head_num = 0;
+      block_id_type              head_id;
+      string                     os;
+      string                     agent;
+      int16_t                    generation;
    };
 
   enum go_away_reason {
@@ -36,7 +44,7 @@ namespace eosio {
     bad_transaction ///< the peer sent a transaction that failed verification
   };
 
-  const string reason_str( go_away_reason rsn ) {
+  constexpr auto reason_str( go_away_reason rsn ) {
     switch (rsn ) {
     case no_reason : return "no reason";
     case self : return "self connect";
@@ -71,13 +79,15 @@ namespace eosio {
   enum id_list_modes {
     none,
     catch_up,
+    last_irr_catch_up,
     normal
   };
 
-  const string modes_str( id_list_modes m ) {
+  constexpr auto modes_str( id_list_modes m ) {
     switch( m ) {
     case none : return "none";
     case catch_up : return "catch up";
+    case last_irr_catch_up : return "last irreversible";
     case normal : return "normal";
     default: return "undefined mode";
     }
@@ -104,7 +114,7 @@ namespace eosio {
     ordered_blk_ids req_blocks;
   };
 
-#if 0
+#if 0 //disabling block summary support
   struct processed_trans_summary {
     transaction_id_type id;
     vector<message_output> outmsgs;
@@ -114,11 +124,12 @@ namespace eosio {
     vector<transaction_id_type> gen_trx; // is this necessary to send?
     vector<processed_trans_summary> user_trx;
   };
+
   using cycle_ids = vector<thread_ids>;
-#endif
+  #endif
    struct block_summary_message {
       signed_block_header         block_header;
-#if 0
+#if 0 //disabling block summary support
       vector<cycle_ids>           trx_ids;
 #endif
    };
@@ -142,14 +153,14 @@ namespace eosio {
 
 FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )
 FC_REFLECT( eosio::handshake_message,
-            (network_version)(chain_id)(node_id)
-            (p2p_address)
+            (network_version)(chain_id)(node_id)(key)
+            (time)(token)(sig)(p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
             (os)(agent)(generation) )
 FC_REFLECT( eosio::go_away_message, (reason)(node_id) )
 FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
-#if 0
+#if 0 //disabling block summary support
 FC_REFLECT( eosio::processed_trans_summary, (id)(outmsgs) )
 FC_REFLECT( eosio::thread_ids, (gen_trx)(user_trx) )
 #endif
