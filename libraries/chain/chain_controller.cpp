@@ -4,6 +4,7 @@
  */
 
 #include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/contracts/staked_balance_objects.hpp>
 
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -274,7 +275,11 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
    }
 
 
-   auto result = _apply_transaction(trx, _pending_block->regions.back().region, cyclenum);
+   /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
+   /// the transaction first so that there is nothing to undo... this only works because things are currently
+   /// single threaded
+   transaction_metadata   mtrx( trx, get_chain_id(), _pending_block->regions.back().region, cyclenum, 0 );
+   auto result = _apply_transaction( mtrx );
 
 
    if( shardnum == -1 ) { /// schedule conflict start new cycle
@@ -553,18 +558,20 @@ void chain_controller::__apply_block(const signed_block& next_block)
       region_trace r_trace;
       r_trace.cycle_traces.reserve(r.cycles_summary.size());
 
-      for (uint32_t cycle_index; cycle_index < r.cycles_summary.size(); cycle_index++) {
+      for (uint32_t cycle_index = 0; cycle_index < r.cycles_summary.size(); cycle_index++) {
          const auto& cycle = r.cycles_summary.at(cycle_index);
          cycle_trace c_trace;
          c_trace.shard_traces.reserve(cycle.size());
 
+         uint32_t shard_index = 0;
          for (const auto& shard: cycle) {
             shard_trace s_trace;
             for (const auto& receipt : shard) {
                if( receipt.status == transaction_receipt::executed ) {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     s_trace.append(_apply_transaction( *itr->second, r.region, cycle_index));
+                     transaction_metadata mtrx( *itr->second, get_chain_id(), r.region, cycle_index, shard_index );
+                     s_trace.append( _apply_transaction( mtrx ) );
                   }
                   else
                   {
@@ -577,6 +584,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                // check_transaction_authorization(trx, true);
             } /// for each transaction id
 
+            ++shard_index;
             s_trace.calculate_root();
             c_trace.shard_traces.emplace_back(move(s_trace));
          } /// for each shard
@@ -665,6 +673,21 @@ void chain_controller::validate_scope( const transaction& trx )const {
       EOS_ASSERT( trx.write_scope[i-1] < trx.write_scope[i], transaction_exception, 
                   "Scopes must be sorted and unique" );
    }
+
+   /**
+    * We need to verify that all authorizing accounts have write scope because write
+    * access is necessary to update bandwidth usage.
+    */
+   ///{
+   auto has_write_scope = [&]( auto s ) { return std::binary_search( trx.write_scope.begin(),
+                                                                     trx.write_scope.end(),
+                                                                     s ); };
+   for( const auto& a : trx.actions ) {
+      for( const auto& auth : a.authorization ) {
+         FC_ASSERT( has_write_scope( auth.actor ), "write scope of the authorizing account is required" );
+      }
+   }
+   ///@}
 
    vector<account_name> intersection;
    std::set_intersection( trx.read_scope.begin(), trx.read_scope.end(),
@@ -977,7 +1000,8 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          ilog( "applying genesis transaction" );
          with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
          [&](){ 
-            _apply_transaction( genesis_setup_transaction, 0, 0 );
+            transaction_metadata tmeta( genesis_setup_transaction );
+            _apply_transaction( tmeta );
          });
 
       });
@@ -1265,38 +1289,54 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
    _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
-transaction_trace chain_controller::_apply_transaction( const transaction& trx, uint32_t region_id, uint32_t cycle_index ) {
-   transaction_trace result(trx.id());
+transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) { 
+   transaction_trace result(meta.id);
 
    set<account_name> authorizing_accounts;
 
 
-   for( const auto& act : trx.actions ) {
-      apply_context context( *this, _db, trx, act,  act.scope  );
+   for( const auto& act : meta.trx.actions ) {
+      apply_context context( *this, _db, meta.trx, act,  act.scope  );
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
    }
 
    for( auto& at: result.action_traces ) {
-      at.region_id = region_id;
-      at.cycle_index = cycle_index;
+      at.region_id = meta.region_id;
+      at.cycle_index = meta.cycle_index;
    }
 
 
-   for( const auto& act : trx.actions )
+   for( const auto& act : meta.trx.actions )
       for( const auto& auth : act.authorization )
          authorizing_accounts.insert( auth.actor );
 
-   auto trx_size = fc::raw::pack_size(trx) + config::fixed_bandwidth_overhead_per_transaction;
+   auto trx_size = meta.bandwidth_usage + config::fixed_bandwidth_overhead_per_transaction;
+
+   const auto& dgpo = get_dynamic_global_properties();
 
    auto head_time = head_block_time();
    for( const auto& authaccnt : authorizing_accounts ) {
-      _db.modify( _db.get<bandwidth_usage_object,by_owner>( authaccnt ), [&]( auto& bu ){
+      const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt );
+      _db.modify( buo, [&]( auto& bu ){
           bu.bytes.add_usage( trx_size, head_time );
       });
-   }
+      const auto& sbo = _db.get<contracts::staked_balance_object, contracts::by_owner_name>(authaccnt);
+#if 0 // TODO enable this after fixing divide by 0 with virtual_max_block_size and total_staked_tokens
+      /// note: buo.bytes.value is in ubytes and virtual_max_block_size is in bytes, so
+      //  we convert to fixed int uin128_t with 60 bits of precision, divide by rate limiting precision
+      //  then divide by virtual max_block_size which gives us % of virtual max block size in fixed width
+      auto used_percent  = (((uint128_t(buo.bytes.value) << 60) / config::rate_limiting_precision))  
+                         / dgpo.virtual_max_block_size;
 
+      /// percent of stake used in fixed width
+      auto stake_percent = (uint128_t( sbo.staked_balance ) << 60)  
+                         / dgpo.total_staked_tokens;
+
+      FC_ASSERT( used_percent < stake_percent, "authorizing account has inusfficient stake for this transaction, try again later" );
+#endif
+   }
 
    return result;
 }

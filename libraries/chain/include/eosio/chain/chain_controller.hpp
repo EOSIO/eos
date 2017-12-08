@@ -119,6 +119,7 @@ namespace eosio { namespace chain {
          bool is_applying_block()const { return _currently_applying_block; }
 
 
+         chain_id_type get_chain_id()const { return chain_id_type(); } /// TODO: make this hash of constitution
 
 
          /**
@@ -304,7 +305,7 @@ namespace eosio { namespace chain {
 
 
          transaction_trace _push_transaction( const signed_transaction& trx );
-         transaction_trace _apply_transaction( const transaction& trx, uint32_t region_id, uint32_t cycle_index );
+         transaction_trace _apply_transaction( transaction_metadata& data );//const transaction& trx, uint32_t region_id, uint32_t cycle_index );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();

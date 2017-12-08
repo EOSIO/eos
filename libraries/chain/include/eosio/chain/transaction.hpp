@@ -178,6 +178,25 @@ namespace eosio { namespace chain {
       vector<deferred_transaction>  deferred_transactions;
    };
 
+   struct transaction_metadata {
+      transaction_metadata( const transaction& t )
+      :trx(t),id(trx.id()){}
+
+      transaction_metadata( const signed_transaction& t, chain_id_type chainid, uint32_t region, uint32_t cycle, uint32_t shard  )
+      :trx( t ),
+       id( trx.id() ),
+       region_id(region),cycle_index(cycle),shard_index(shard),
+       bandwidth_usage( fc::raw::pack_size(t) ){ }
+
+      const transaction&                    trx;
+      transaction_id_type                   id;
+      optional<flat_set<public_key_type>>   signing_keys;
+      uint32_t                              region_id       = 0;
+      uint32_t                              cycle_index     = 0;
+      uint32_t                              shard_index     = 0;
+      uint32_t                              bandwidth_usage = 0;
+   };
+
 } } // eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )

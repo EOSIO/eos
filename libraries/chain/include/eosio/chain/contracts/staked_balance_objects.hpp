@@ -50,6 +50,8 @@ class staked_balance_object : public chainbase::object<staked_balance_object_typ
    share_type unstaking_balance = 0;
    time_point last_unstaking_time = time_point::maximum();
 
+   uint128_t   staked_balance_percent = 0;
+
    /// The account's vote on producers. This may either be a list of approved producers, or an account to proxy vote to
    fc::static_variant<producer_slate, account_name> producer_votes = producer_slate{};
 

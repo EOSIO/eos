@@ -63,6 +63,8 @@ namespace eosio { namespace chain {
         time_point           time;
         account_name         current_producer;
         uint32_t             accounts_registered_this_interval = 0;
+
+        share_type           total_staked_tokens;
         
         /**
          * The current absolute slot number.  Equal to the total
@@ -96,6 +98,15 @@ namespace eosio { namespace chain {
          * reserve ratio for bandwidth rate limiting calclations.
          */ 
         average_accumulator<config::blocksize_average_window_ms> averge_block_size;
+
+        /**
+         * Increases when average_block_size < target_block_size, decreases when
+         * average_block_size > target_block_size, with a cap at 1000x max_block_size
+         * and a floor at max_block_size;  This means that the most an account
+         * can consume during idle periods is 1000x the bandwidth it is gauranteed
+         * under congestion.
+         */
+        uint64_t virtual_max_block_size = 0;
 
         /** 
          * Used to calculate the merkle root over all blocks

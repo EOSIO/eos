@@ -54,6 +54,7 @@ const static uint32_t   default_max_inline_action_size = 4 * 1024;
 const static uint32_t   default_max_gen_trx_size       = 64 * 1024; /// 
 const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
 const static uint32_t   producers_authority_threshold  = 14;
+const static uint32_t   rate_limiting_precision        = 1000*1000;
 
 const static share_type default_elected_pay            = asset(100).amount;
 const static share_type default_min_eos_balance        = asset(100).amount;
