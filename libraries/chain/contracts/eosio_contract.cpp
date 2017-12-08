@@ -93,10 +93,10 @@ void apply_eosio_newaccount(apply_context& context) {
       b.balance = 0; //create.deposit.amount; TODO: make sure we credit this in @staked
    });
 
-   context.mutable_db.create<staked_balance_object>([&]( staked_balance_object& sbo) {
+   const auto& sbo = context.mutable_db.create<staked_balance_object>([&]( staked_balance_object& sbo) {
       sbo.owner_name = create.name;
-      sbo.stake_tokens( create.deposit.amount, context.mutable_db );
    });
+   sbo.stake_tokens( create.deposit.amount, context.mutable_db );
 
    db.create<bandwidth_usage_object>([&]( auto& bu ) { bu.owner = create.name; });
 
