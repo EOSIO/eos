@@ -1,6 +1,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/contracts/types.hpp>
+#include <eosio/chain/contracts/eos_contract.hpp>
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
@@ -199,7 +200,7 @@ namespace eosio { namespace testing {
       auto wasm = assemble(wast);
 
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope};
+      trx.write_scope = {config::eosio_auth_scope, account};
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setcode{
                                    .account    = account,
@@ -234,6 +235,11 @@ namespace eosio { namespace testing {
 
    const transaction_receipt& tester::get_transaction_receipt( const transaction_id_type& txid ) const {
       return chain_transactions.at(txid);
+   }
+
+   share_type tester::get_balance( const account_name& account ) const {
+      const auto& db = control->get_database();
+      return contracts::get_eosio_balance(db, account);
    }
 
 

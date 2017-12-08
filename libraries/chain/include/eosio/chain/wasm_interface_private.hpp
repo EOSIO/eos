@@ -7,40 +7,39 @@
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
-namespace eosio { namespace chain {
-
 using namespace IR;
 using namespace Runtime;
 using namespace fc;
 
+namespace eosio { namespace chain {
+
 using wasm_double = boost::multiprecision::cpp_dec_float_50;
 
 struct wasm_cache::entry {
-   entry(ModuleInstance* instance, Module* module)
-   :instance(instance)
-   ,module(module)
-   {}
+   entry(ModuleInstance *instance, Module *module)
+      : instance(instance), module(module) {}
 
-   ModuleInstance*    instance;
-   Module*            module;
+   ModuleInstance *instance;
+   Module *module;
 };
 
 struct wasm_context {
-   wasm_cache::entry&   code;
-   apply_context&       context;
+   wasm_cache::entry &code;
+   apply_context &context;
 };
 
 struct wasm_interface_impl {
    optional<wasm_context> current_context;
-   void call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context);
+
+   void call(const string &entry_point, const vector <Value> &args, wasm_cache::entry &code, apply_context &context);
 };
 
 class intrinsics_accessor {
    public:
-      static wasm_context& get_context(wasm_interface& wasm) {
-         FC_ASSERT(wasm.my->current_context.valid());
-         return *wasm.my->current_context;
-      }
+   static wasm_context &get_context(wasm_interface &wasm) {
+      FC_ASSERT(wasm.my->current_context.valid());
+      return *wasm.my->current_context;
+   }
 };
 
 template<typename T>
@@ -50,7 +49,7 @@ struct class_from_wasm {
     * @param wasm - the wasm_interface to use
     * @return
     */
-   static auto value(wasm_interface& wasm) {
+   static auto value(wasm_interface &wasm) {
       return T(wasm);
    }
 };
@@ -62,7 +61,7 @@ struct class_from_wasm<apply_context> {
     * @param wasm
     * @return
     */
-   static auto& value(wasm_interface &wasm) {
+   static auto &value(wasm_interface &wasm) {
       return intrinsics_accessor::get_context(wasm).context;
    }
 };
@@ -79,16 +78,16 @@ struct array_ptr {
       return *value;
    }
 
-   T* operator->() const noexcept {
+   T *operator->() const noexcept {
       return value;
    }
 
    template<typename U>
-   operator U*() const {
-      return static_cast<U*>(value);
+   operator U *() const {
+      return static_cast<U *>(value);
    }
 
-   T* value;
+   T *value;
 };
 
 
@@ -105,21 +104,45 @@ struct native_to_wasm {
  * specialization for maping pointers to int32's
  */
 template<typename T>
-struct native_to_wasm<T*> {
+struct native_to_wasm<T *> {
    using type = I32;
 };
 
 /**
  * Mappings for native types
  */
-template<> struct native_to_wasm<int32_t>     { using type = I32; };
-template<> struct native_to_wasm<uint32_t>    { using type = I32; };
-template<> struct native_to_wasm<int64_t>     { using type = I64; };
-template<> struct native_to_wasm<uint64_t>    { using type = I64; };
-template<> struct native_to_wasm<bool>        { using type = I32; };
-template<> struct native_to_wasm<const name&> { using type = I64; };
-template<> struct native_to_wasm<name>        { using type = I64; };
-template<> struct native_to_wasm<wasm_double> { using type = I64; };
+template<>
+struct native_to_wasm<int32_t> {
+   using type = I32;
+};
+template<>
+struct native_to_wasm<uint32_t> {
+   using type = I32;
+};
+template<>
+struct native_to_wasm<int64_t> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<uint64_t> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<bool> {
+   using type = I32;
+};
+template<>
+struct native_to_wasm<const name &> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<name> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<wasm_double> {
+   using type = I64;
+};
 
 
 // convenience alias
@@ -131,8 +154,8 @@ auto convert_native_to_wasm(T val) {
    return native_to_wasm_t<T>(val);
 }
 
-auto convert_native_to_wasm(const name& val) {
-   return native_to_wasm_t<const name&>(val.value);
+auto convert_native_to_wasm(const name &val) {
+   return native_to_wasm_t<const name &>(val.value);
 }
 
 template<typename T>
@@ -142,31 +165,53 @@ auto convert_wasm_to_native(native_to_wasm_t<T> val) {
 
 template<>
 auto convert_wasm_to_native<wasm_double>(I64 val) {
-   return wasm_double(*reinterpret_cast<wasm_double*>(&val));
+   return wasm_double(*reinterpret_cast<wasm_double *>(&val));
 }
 
 template<typename T>
 struct wasm_to_value_type;
 
-template<> struct wasm_to_value_type<I32>  { static constexpr auto value = ValueType::i32; };
-template<> struct wasm_to_value_type<I64>  { static constexpr auto value = ValueType::i64; };
+template<>
+struct wasm_to_value_type<I32> {
+   static constexpr auto value = ValueType::i32;
+};
+template<>
+struct wasm_to_value_type<I64> {
+   static constexpr auto value = ValueType::i64;
+};
 
 template<typename T>
 constexpr auto wasm_to_value_type_v = wasm_to_value_type<T>::value;
 
 template<typename T>
 struct wasm_to_rvalue_type;
-template<> struct wasm_to_rvalue_type<I32>         { static constexpr auto value = ResultType::i32; };
-template<> struct wasm_to_rvalue_type<I64>         { static constexpr auto value = ResultType::i64; };
-template<> struct wasm_to_rvalue_type<void>        { static constexpr auto value = ResultType::none; };
-template<> struct wasm_to_rvalue_type<const name&> { static constexpr auto value = ResultType::i64; };
-template<> struct wasm_to_rvalue_type<name>        { static constexpr auto value = ResultType::i64; };
+template<>
+struct wasm_to_rvalue_type<I32> {
+   static constexpr auto value = ResultType::i32;
+};
+template<>
+struct wasm_to_rvalue_type<I64> {
+   static constexpr auto value = ResultType::i64;
+};
+template<>
+struct wasm_to_rvalue_type<void> {
+   static constexpr auto value = ResultType::none;
+};
+template<>
+struct wasm_to_rvalue_type<const name &> {
+   static constexpr auto value = ResultType::i64;
+};
+template<>
+struct wasm_to_rvalue_type<name> {
+   static constexpr auto value = ResultType::i64;
+};
 
 
 template<typename T>
 constexpr auto wasm_to_rvalue_type_v = wasm_to_rvalue_type<T>::value;
 
-struct void_type{};
+struct void_type {
+};
 
 /**
  * Forward declaration of provider for FunctionType given a desired C ABI signature
@@ -179,8 +224,8 @@ struct wasm_function_type_provider;
  */
 template<typename Ret, typename ...Args>
 struct wasm_function_type_provider<Ret(Args...)> {
-   static const FunctionType* type() {
-      return FunctionType::get(wasm_to_rvalue_type_v<Ret>, { wasm_to_value_type_v<Args> ...  });
+   static const FunctionType *type() {
+      return FunctionType::get(wasm_to_rvalue_type_v<Ret>, {wasm_to_value_type_v<Args> ...});
    }
 };
 
@@ -202,11 +247,11 @@ struct intrinsic_invoker_impl;
  */
 template<typename Ret, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
-   using next_method_type        = Ret (*)(wasm_interface&, Translated...);
+   using next_method_type        = Ret (*)(wasm_interface &, Translated...);
 
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
-      wasm_interface& wasm = wasm_interface::get();
+      wasm_interface &wasm = wasm_interface::get();
       return convert_native_to_wasm(Method(wasm, translated...));
    }
 
@@ -222,11 +267,11 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
  */
 template<typename ...Translated>
 struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>> {
-   using next_method_type        = void_type (*)(wasm_interface&, Translated...);
+   using next_method_type        = void_type (*)(wasm_interface &, Translated...);
 
    template<next_method_type Method>
    static void invoke(Translated... translated) {
-      wasm_interface& wasm = wasm_interface::get();
+      wasm_interface &wasm = wasm_interface::get();
       Method(wasm, translated...);
    }
 
@@ -247,10 +292,10 @@ template<typename Ret, typename Input, typename... Inputs, typename... Translate
 struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Translated...>> {
    using translated_type = native_to_wasm_t<Input>;
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., translated_type>>;
-   using then_type = Ret (*)(wasm_interface&, Input, Inputs..., Translated...);
+   using then_type = Ret (*)(wasm_interface &, Input, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, translated_type last) {
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, translated_type last) {
       auto native = convert_wasm_to_native<Input>(last);
       return Then(wasm, native, rest..., translated...);
    };
@@ -273,13 +318,13 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
-   using then_type = Ret(*)(wasm_interface&, array_ptr<T>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, size_t, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       size_t length = size_t(size);
-      T* base = memoryArrayPtr<T>( mem, ptr, length );
+      T *base = memoryArrayPtr<T>(mem, ptr, length);
       return Then(wasm, array_ptr<T>{base}, length, rest..., translated...);
    };
 
@@ -299,14 +344,14 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<T*, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret (*)(wasm_interface&, T*, Inputs..., Translated...);
+   using then_type = Ret (*)(wasm_interface &, T *, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr) {
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      T* base = memoryArrayPtr<T>( mem, ptr, 1 );
+      T *base = memoryArrayPtr<T>(mem, ptr, 1);
       return Then(wasm, base, rest..., translated...);
    };
 
@@ -326,12 +371,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T*, Inputs...>, std::tuple<Transla
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<const name &, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I64 >>;
-   using then_type = Ret (*)(wasm_interface&, const name&, Inputs..., Translated...);
+   using then_type = Ret (*)(wasm_interface &, const name &, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I64 name_value) {
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I64 name_value) {
       auto value = name(name_value);
       return Then(wasm, value, rest..., translated...);
    }
@@ -353,16 +398,16 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tupl
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<T&, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret (*)(wasm_interface&, T&, Inputs..., Translated...);
+   using then_type = Ret (*)(wasm_interface &, T &, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface& wasm, Inputs... rest, Translated... translated, I32 ptr) {
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
       // references cannot be created for null pointers
       FC_ASSERT(ptr != 0);
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      T& base = memoryRef<T>( mem, ptr );
+      T &base = memoryRef<T>(mem, ptr);
       return Then(wasm, base, rest..., translated...);
    }
 
@@ -379,15 +424,16 @@ template<typename WasmSig, typename Ret, typename MethodSig, typename Cls, typen
 struct intrinsic_function_invoker {
    using impl = intrinsic_invoker_impl<Ret, std::tuple<Params...>, std::tuple<>>;
 
-   template< MethodSig Method >
-   static Ret wrapper(wasm_interface& wasm, Params... params) {
+   template<MethodSig Method>
+   static Ret wrapper(wasm_interface &wasm, Params... params) {
       return (class_from_wasm<Cls>::value(wasm).*Method)(params...);
    }
 
-   template< MethodSig Method >
-   static const WasmSig* fn() {
+   template<MethodSig Method>
+   static const WasmSig *fn() {
       auto fn = impl::template fn<wrapper<Method>>();
-      static_assert(std::is_same<WasmSig*, decltype(fn)>::value, "Intrinsic function signature does not match the ABI");
+      static_assert(std::is_same<WasmSig *, decltype(fn)>::value,
+                    "Intrinsic function signature does not match the ABI");
       return fn;
    }
 };
@@ -396,16 +442,17 @@ template<typename WasmSig, typename MethodSig, typename Cls, typename... Params>
 struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    using impl = intrinsic_invoker_impl<void_type, std::tuple<Params...>, std::tuple<>>;
 
-   template< MethodSig Method >
-   static void_type wrapper(wasm_interface& wasm, Params... params) {
+   template<MethodSig Method>
+   static void_type wrapper(wasm_interface &wasm, Params... params) {
       (class_from_wasm<Cls>::value(wasm).*Method)(params...);
       return void_type();
    }
 
-   template< MethodSig Method >
-   static const WasmSig* fn() {
+   template<MethodSig Method>
+   static const WasmSig *fn() {
       auto fn = impl::template fn<wrapper<Method>>();
-      static_assert(std::is_same<WasmSig*, decltype(fn)>::value, "Intrinsic function signature does not match the ABI");
+      static_assert(std::is_same<WasmSig *, decltype(fn)>::value,
+                    "Intrinsic function signature does not match the ABI");
       return fn;
    }
 };
@@ -414,22 +461,22 @@ template<typename, typename>
 struct intrinsic_function_invoker_wrapper;
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...)>  {
+struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...)> {
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const>  {
+struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const> {
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) volatile>  {
+struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) volatile> {
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const volatile>  {
+struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const volatile> {
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
 
@@ -476,4 +523,4 @@ struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const
 #define REGISTER_INTRINSICS(CLS, MEMBERS)\
    BOOST_PP_SEQ_FOR_EACH(_REGISTER_INTRINSIC, CLS, _WRAPPED_SEQ(MEMBERS))
 
-} };
+} } // eosio::chain

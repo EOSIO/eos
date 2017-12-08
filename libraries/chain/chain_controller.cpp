@@ -8,7 +8,7 @@
 
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/key_value_object.hpp>
+#include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain/action_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
@@ -951,10 +951,11 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<permission_index>();
    _db.add_index<permission_link_index>();
    _db.add_index<action_permission_index>();
-   _db.add_index<key_value_index>();
-   _db.add_index<keystr_value_index>();
-   _db.add_index<key128x128_value_index>();
-   _db.add_index<key64x64x64_value_index>();
+   _db.add_index<contracts::table_id_multi_index>();
+   _db.add_index<contracts::key_value_index>();
+   _db.add_index<contracts::keystr_value_index>();
+   _db.add_index<contracts::key128x128_value_index>();
+   _db.add_index<contracts::key64x64x64_value_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();
@@ -1296,7 +1297,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
 
 
    for( const auto& act : meta.trx.actions ) {
-      apply_context context( *this, _db, meta.trx, act,  act.scope  );
+      apply_context context( *this, _db, meta.trx, act );
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));

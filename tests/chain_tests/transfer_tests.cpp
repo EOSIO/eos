@@ -1,7 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 
-#include <eosio/chain/contracts/balance_object.hpp>
 #include <eosio/chain/contracts/staked_balance_objects.hpp>
 
 
@@ -9,7 +8,6 @@ using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
-
 
 BOOST_AUTO_TEST_SUITE(transfer_tests)
 
@@ -23,15 +21,15 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
   test.transfer( N(inita), N(dan), "10.0000 EOS", "memo" );
 
   {
-     const auto& dans_balance = test.get<balance_object,by_owner_name>( N(dan) );
-     FC_ASSERT( dans_balance.balance == asset::from_string("10.0000 EOS") );
+     const auto& dans_balance = test.get_balance( N(dan) );
+     FC_ASSERT( dans_balance == asset::from_string("10.0000 EOS") );
   }
 
   test.produce_block();
 
   {
-     const auto& dans_balance = test.get<balance_object,by_owner_name>( N(dan) );
-     FC_ASSERT( dans_balance.balance == asset::from_string("10.0000 EOS") );
+     const auto& dans_balance = test.get_balance( N(dan) );
+     FC_ASSERT( dans_balance == asset::from_string("10.0000 EOS") );
   }
 
   /// insufficient funds
@@ -42,13 +40,13 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
 
 
   /// verify that bart now has 10.000
-  const auto& barts_balance = test.get<balance_object,by_owner_name>( N(bart) );
-  FC_ASSERT( barts_balance.balance == asset::from_string("10.0000 EOS") );
+  const auto& barts_balance = test.get_balance( N(bart) );
+  FC_ASSERT( barts_balance == asset::from_string("10.0000 EOS") );
 
   {
      /// verify that dan now has 0.000
-     const auto& dans_balance = test.get<balance_object,by_owner_name>( N(dan) );
-     FC_ASSERT( dans_balance.balance == asset::from_string("0.0000 EOS") );
+     const auto& dans_balance = test.get_balance( N(dan) );
+     FC_ASSERT( dans_balance == asset::from_string("0.0000 EOS") );
   }
 
 

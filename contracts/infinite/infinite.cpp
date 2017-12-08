@@ -19,7 +19,7 @@ namespace infinite {
    }
 
    void apply_currency_transfer( const infinite::transfer& transfer ) {
-      require_notice( transfer.to, transfer.from );
+      require_recipient( transfer.to, transfer.from );
       require_auth( transfer.from );
 
       auto from = get_account( transfer.from );

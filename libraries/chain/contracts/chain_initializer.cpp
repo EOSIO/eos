@@ -37,8 +37,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    db.add_index<proxy_vote_multi_index>();
    db.add_index<producer_schedule_multi_index>();
 
-   db.add_index<balance_multi_index>();
-
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
@@ -196,6 +194,10 @@ abi_def chain_initializer::eos_contract_abi()
    return eos_abi;
 }
 
+// forward declared method from eosio contract
+void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens);
+
+
 std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
    std::vector<action> messages_to_process;
@@ -224,10 +226,7 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
          p.name = "active";
          p.auth.threshold = 1;
       });
-      db.create<balance_object>([&name, liquid_balance]( auto& b) {
-         b.owner_name = name;
-         b.balance = liquid_balance;
-      });
+      intialize_eosio_tokens(db, name, liquid_balance);
       db.create<staked_balance_object>([&](auto& sb) { sb.owner_name = name; });
       idump(("create bandwidth_usage_object")(name));
       db.create<bandwidth_usage_object>([&](auto& sb) { sb.owner = name; });

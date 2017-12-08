@@ -14,7 +14,7 @@ namespace TOKEN_NAME {
    }
 
    void apply_storage_transfer( const TOKEN_NAME::transfer& transfer_storage ) {
-      eosio::require_notice( transfer_storage.to, transfer_storage.from );
+      eosio::require_recipient( transfer_storage.to, transfer_storage.from );
       eosio::require_auth( transfer_storage.from );
 
       account from = get_account( transfer_storage.from );
@@ -50,7 +50,7 @@ namespace TOKEN_NAME {
       char tmp[4098];
       auto bufferlen = read_action(tmp, 4098);
       auto linklen = read_link_from_buffer( tmp, bufferlen, link_to_set, eospathlen, ipfspathlen );
-      eosio::require_notice( link_to_set.owner );
+      eosio::require_recipient( link_to_set.owner );
       eosio::require_auth( link_to_set.owner );
       validate_ipfspath( link_to_set.ipfspath, ipfspathlen );
       validate_eospath( link_to_set.eospath, eospathlen );

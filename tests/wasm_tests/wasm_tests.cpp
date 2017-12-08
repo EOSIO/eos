@@ -7,6 +7,9 @@
 
 #include <test_api/test_api.wast.hpp>
 
+#include <currency/currency.wast.hpp>
+#include <currency/currency.abi.hpp>
+
 #include <fc/variant_object.hpp>
 
 using namespace eosio;
@@ -266,5 +269,92 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
       BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
    }
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
+
+BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(currency), N(alice), N(bob)} );
+   transfer( N(inita), N(currency), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(currency), currency_wast);
+   set_abi(N(currency), currency_abi);
+   produce_blocks(1);
+
+   const auto& accnt  = control->get_database().get<account_object,by_name>( N(currency) );
+   abi_def abi;
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+   abi_serializer abi_ser(abi);
+
+   // make a transfer from the contract to a user
+   {
+      signed_transaction trx;
+      trx.write_scope = {N(currency),N(alice)};
+      action transfer_act;
+      transfer_act.scope = N(currency);
+      transfer_act.name = N(transfer);
+      transfer_act.authorization = vector<permission_level>{{N(currency), config::active_name}};
+      transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
+         ("from", "currency")
+         ("to",   "alice")
+         ("quantity", 100)
+      );
+      trx.actions.emplace_back(std::move(transfer_act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(currency), "active"), chain_id_type());
+      control->push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   // Overspend!
+   {
+      signed_transaction trx;
+      trx.write_scope = {N(alice),N(bob)};
+      action transfer_act;
+      transfer_act.scope = N(currency);
+      transfer_act.name = N(transfer);
+      transfer_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+      transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
+         ("from", "alice")
+         ("to",   "bob")
+         ("quantity", 101)
+      );
+      trx.actions.emplace_back(std::move(transfer_act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
+      BOOST_CHECK_EXCEPTION(control->push_transaction(trx), fc::assert_exception, assert_message_is("integer underflow subtracting token balance"));
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
+   }
+
+   // Full spend
+   {
+      signed_transaction trx;
+      trx.write_scope = {N(alice),N(bob)};
+      action transfer_act;
+      transfer_act.scope = N(currency);
+      transfer_act.name = N(transfer);
+      transfer_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+      transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
+         ("from", "alice")
+         ("to",   "bob")
+         ("quantity", 100)
+      );
+      trx.actions.emplace_back(std::move(transfer_act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
+      control->push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+} FC_LOG_AND_RETHROW() /// test_currency
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -14,8 +14,8 @@
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/staked_balance_objects.hpp>
-#include <eosio/chain/contracts/balance_object.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
+#include <eosio/chain/contracts/eos_contract.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
@@ -312,21 +312,21 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    auto table_key = PRIMARY;
 
    if( table_type == KEYi64 ) {
-      return get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
+      return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
    } else if( table_type == KEYstr ) {
-      return get_table_rows_ex<keystr_value_index, by_scope_primary>(p,abi);
+      return get_table_rows_ex<contracts::keystr_value_index, contracts::by_scope_primary>(p,abi);
    } else if( table_type == KEYi128i128 ) { 
       if( table_key == PRIMARY )
-         return get_table_rows_ex<key128x128_value_index, by_scope_primary>(p,abi);
+         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_primary>(p,abi);
       if( table_key == SECONDARY )
-         return get_table_rows_ex<key128x128_value_index, by_scope_secondary>(p,abi);
+         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_secondary>(p,abi);
    } else if( table_type == KEYi64i64i64 ) {
       if( table_key == PRIMARY )
-         return get_table_rows_ex<key64x64x64_value_index, by_scope_primary>(p,abi);
+         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_primary>(p,abi);
       if( table_key == SECONDARY )
-         return get_table_rows_ex<key64x64x64_value_index, by_scope_secondary>(p,abi);
+         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_secondary>(p,abi);
       if( table_key == TERTIARY )
-         return get_table_rows_ex<key64x64x64_value_index, by_scope_tertiary>(p,abi);
+         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_tertiary>(p,abi);
    }
    FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
 }
@@ -414,10 +414,10 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.account_name = params.account_name;
 
    const auto& d = db.get_database();
-   const auto& balance        = d.get<balance_object,by_owner_name>( params.account_name );
+   share_type  balance        = contracts::get_eosio_balance(d, params.account_name );
    const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.account_name );
 
-   result.eos_balance          = asset(balance.balance, EOS_SYMBOL);
+   result.eos_balance          = asset(balance, EOS_SYMBOL);
    result.staked_balance       = asset(staked_balance.staked_balance);
    result.unstaking_balance    = asset(staked_balance.unstaking_balance);
    result.last_unstaking_time  = staked_balance.last_unstaking_time;

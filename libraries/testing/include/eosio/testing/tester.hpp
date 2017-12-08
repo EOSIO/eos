@@ -54,6 +54,7 @@ namespace eosio { namespace testing {
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
 
+         share_type                    get_balance( const account_name& account ) const;
 
       private:
          fc::temp_directory                            tempdir;

@@ -64,7 +64,7 @@ void apply_context::exec_one()
 
 void apply_context::exec()
 {
-   exec_one();
+   _notified.push_back(act.scope);
 
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
@@ -72,7 +72,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i], _inline_actions[i].scope );
+      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i]);
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -179,6 +179,27 @@ void apply_context::deferred_transaction_send( uint32_t id ) {
 //   controller.check_authorization( dt, flat_set<public_key_type>(), false, {receiver} );
 //   auto itr = _pending_deferred_transactions.find( id );
 //   _pending_deferred_transactions.erase(itr);
+}
+
+
+const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
+   require_read_scope(scope);
+   return db.find<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+}
+
+const contracts::table_id_object& apply_context::find_or_create_table( name scope, name code, name table ) {
+   require_read_scope(scope);
+   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   if (existing_tid != nullptr) {
+      return *existing_tid;
+   }
+
+   require_write_scope(scope);
+   return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
+      t_id.scope = scope;
+      t_id.code = code;
+      t_id.table = table;
+   });
 }
 
 } } /// eosio::chain

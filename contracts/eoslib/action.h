@@ -53,7 +53,7 @@ extern "C" {
     * uint32_t msgsize = action_size();
     * print(msgsize); // Output: size of the above message's data field
     *
-    * require_notice(N(initc)); // initc account will be notified for this message
+    * require_recipient(N(initc)); // initc account will be notified for this message
     *
     * require_auth(N(inita)); // Do nothing since inita exists in the auth list
     * require_auth(N(initb)); // Throws an exception
@@ -94,7 +94,7 @@ extern "C" {
     *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
-   void require_notice( account_name name );
+   void require_recipient( account_name name );
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a message. Throws if not found

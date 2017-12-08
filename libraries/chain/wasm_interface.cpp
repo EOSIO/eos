@@ -9,12 +9,12 @@
 #include "IR/Module.h"
 #include "Platform/Platform.h"
 #include "WAST/WAST.h"
-#include "Runtime/Runtime.h"
-#include "Runtime/Linker.h"
-#include "Runtime/Intrinsics.h"
 #include "IR/Operators.h"
 #include "IR/Validate.h"
 #include "IR/Types.h"
+#include "Runtime/Runtime.h"
+#include "Runtime/Linker.h"
+#include "Runtime/Intrinsics.h"
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -63,6 +63,7 @@ using boost::asio::io_service;
 #endif
 
 namespace eosio { namespace chain {
+   using namespace contracts;
 
    /**
     * Integration with the WASM Linker to resolve our intrinsics
@@ -402,15 +403,14 @@ namespace eosio { namespace chain {
       return *single;
    }
 
-
-   void wasm_interface::init( wasm_cache::entry& code, apply_context& context ) {
-      my->call("init", {}, code, context);
-   }
-
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = { Value(uint64_t(context.act.scope)),
-                             Value(uint64_t(context.act.name)) };
-      my->call("apply", args, code, context);
+      if (context.act.scope == config::system_account_name && context.act.name == N(setcode)) {
+         my->call("init", {}, code, context);
+      } else {
+         vector<Value> args = {Value(uint64_t(context.act.scope)),
+                               Value(uint64_t(context.act.name))};
+         my->call("apply", args, code, context);
+      }
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
@@ -692,6 +692,98 @@ class console_api : public context_aware_api {
       }
 };
 
+template<typename ObjectType>
+class db_api : public context_aware_api {
+   using KeyType = typename ObjectType::key_type;
+   static constexpr int KeyCount = ObjectType::number_of_keys;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, const KeyType*, const char*, size_t);
+
+   private:
+      int call(ContextMethodType method, const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+         FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
+         const KeyType* keys = reinterpret_cast<const KeyType *>((const char *)data);
+
+         const char* record_data =  ((const char*)data) + sizeof(KeyArrayType);
+         size_t record_len = data_len - sizeof(KeyArrayType);
+         return (context.*(method))(t_id, keys, record_data, record_len);
+      }
+
+   public:
+      using context_aware_api::context_aware_api;
+
+      int store(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
+         return call(&apply_context::store_record<ObjectType>, scope, table, data, data_len);
+      }
+
+      int update(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
+         return call(&apply_context::update_record<ObjectType>, scope, table, data, data_len);
+      }
+
+      int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
+         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+         return context.remove_record<ObjectType>(t_id, keys);
+      }
+};
+
+template<typename IndexType, typename Scope>
+class db_index_api : public context_aware_api {
+   using KeyType = typename IndexType::value_type::key_type;
+   static constexpr int KeyCount = IndexType::value_type::number_of_keys;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, KeyType*, char*, size_t);
+
+
+   int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+      auto maybe_t_id = context.find_table(scope, context.receiver, table);
+      if (maybe_t_id == nullptr) {
+         return 0;
+      }
+
+      const auto& t_id = *maybe_t_id;
+      FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
+      KeyType* keys = reinterpret_cast<KeyType *>((char *)data);
+
+      char* record_data =  ((char*)data) + sizeof(KeyArrayType);
+      size_t record_len = data_len - sizeof(KeyArrayType);
+
+      return (context.*(method))(t_id, keys, record_data, record_len);
+   }
+
+   public:
+      using context_aware_api::context_aware_api;
+
+      int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+      int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::front_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+      int back(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+      int next(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+      int previous(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+      int lower_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::lower_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+      int upper_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+};
+
 REGISTER_INTRINSICS(system_api,
    (assert,      void(int, int))
 );
@@ -706,7 +798,7 @@ REGISTER_INTRINSICS(apply_context,
    (require_write_scope,   void(int64_t)   )
    (require_read_scope,    void(int64_t)   )
    (require_recipient,     void(int64_t)   )
-   (require_authorization, void(int64_t), "require_authorization", void(apply_context::*)(const account_name&)const)
+   (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
 );
 
 REGISTER_INTRINSICS(console_api,
@@ -718,6 +810,45 @@ REGISTER_INTRINSICS(console_api,
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
 );
+
+#define DB_METHOD_SEQ(SUFFIX) \
+   (store,        int32_t(int64_t, int64_t, int, int),            "store_"#SUFFIX )\
+   (update,       int32_t(int64_t, int64_t, int, int),            "update_"#SUFFIX )\
+   (remove,       int32_t(int64_t, int64_t, int),                 "remove_"#SUFFIX )
+
+#define DB_INDEX_METHOD_SEQ(SUFFIX)\
+   (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\
+   (front,        int32_t(int64_t, int64_t, int64_t, int, int),   "front_"#SUFFIX )\
+   (back,         int32_t(int64_t, int64_t, int64_t, int, int),   "back_"#SUFFIX )\
+   (next,         int32_t(int64_t, int64_t, int64_t, int, int),   "next_"#SUFFIX )\
+   (previous,     int32_t(int64_t, int64_t, int64_t, int, int),   "previous_"#SUFFIX )\
+   (lower_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "lower_bound_"#SUFFIX )\
+   (upper_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "upper_bound_"#SUFFIX )\
+
+using db_api_key_value_object                                 = db_api<key_value_object>;
+using db_api_keystr_value_object                              = db_api<keystr_value_object>;
+using db_api_key128x128_value_object                          = db_api<key128x128_value_object>;
+using db_api_key64x64x64_value_object                         = db_api<key64x64x64_value_object>;
+using db_index_api_key_value_index_by_scope_primary           = db_index_api<key_value_index,by_scope_primary>;
+using db_index_api_keystr_value_index_by_scope_primary        = db_index_api<keystr_value_index,by_scope_primary>;
+using db_index_api_key128x128_value_index_by_scope_primary    = db_index_api<key128x128_value_index,by_scope_primary>;
+using db_index_api_key128x128_value_index_by_scope_secondary  = db_index_api<key128x128_value_index,by_scope_secondary>;
+using db_index_api_key64x64x64_value_index_by_scope_primary   = db_index_api<key64x64x64_value_index,by_scope_primary>;
+using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key64x64x64_value_index,by_scope_secondary>;
+using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
+
+REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
+REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
+REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
+REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
+
+REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
+REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
+REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
+REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
+REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_INDEX_METHOD_SEQ(primary_i64i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(secondary_i64i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_INDEX_METHOD_SEQ(tertiary_i64i64i64));
 
 
 } } /// eosio::chain
