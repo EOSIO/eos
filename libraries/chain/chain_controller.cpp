@@ -273,6 +273,7 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
       cyclenum += 1;
    }
 
+
    auto result = _apply_transaction(trx, _pending_block->regions.back().region, cyclenum);
 
 
@@ -939,6 +940,8 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
    _db.add_index<scope_sequence_multi_index>();
+   _db.add_index<bandwidth_usage_index>();
+   _db.add_index<compute_usage_index>();
 }
 
 void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
@@ -1091,6 +1094,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.time = b.timestamp;
       dgp.current_producer = b.producer;
       dgp.current_absolute_slot += missed_blocks+1;
+      dgp.averge_block_size.add_usage( fc::raw::pack_size(b), b.timestamp );
 
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
       if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
@@ -1266,6 +1270,9 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
 transaction_trace chain_controller::_apply_transaction( const transaction& trx, uint32_t region_id, uint32_t cycle_index ) {
    transaction_trace result(trx.id());
 
+   set<account_name> authorizing_accounts;
+
+
    for( const auto& act : trx.actions ) {
       apply_context context( *this, _db, trx, act,  act.scope  );
       context.exec();
@@ -1273,10 +1280,25 @@ transaction_trace chain_controller::_apply_transaction( const transaction& trx, 
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
    }
 
-   for (auto& at: result.action_traces) {
+   for( auto& at: result.action_traces ) {
       at.region_id = region_id;
       at.cycle_index = cycle_index;
    }
+
+
+   for( const auto& act : trx.actions )
+      for( const auto& auth : act.authorization )
+         authorizing_accounts.insert( auth.actor );
+
+   auto trx_size = fc::raw::pack_size(trx) + config::fixed_bandwidth_overhead_per_transaction;
+
+   auto head_time = head_block_time();
+   for( const auto& authaccnt : authorizing_accounts ) {
+      _db.modify( _db.get<bandwidth_usage_object,by_owner>( authaccnt ), [&]( auto& bu ){
+          bu.bytes.add_usage( trx_size, head_time );
+      });
+   }
+
 
    return result;
 }

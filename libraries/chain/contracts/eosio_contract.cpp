@@ -22,6 +22,8 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
+#include <eosio/chain/rate_limiting.hpp>
+
 namespace eosio { namespace chain { namespace contracts {
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
@@ -36,8 +38,9 @@ void validate_authority_precondition( const apply_context& context, const author
  *  deduct the balance of the account creator by deposit, this deposit is supposed to be
  *  credited to the staked balance the new account in the @staked contract.
  */
-void apply_eosio_newaccount(apply_context& context) {
+void apply_eosio_newaccount(apply_context& context) { 
    auto create = context.act.as<newaccount>();
+   try {
    context.require_authorization(create.creator);
    context.require_write_scope( config::eosio_auth_scope );
 
@@ -60,6 +63,7 @@ void apply_eosio_newaccount(apply_context& context) {
       a.name = create.name;
       a.creation_date = db.get(dynamic_global_property_object::id_type()).time;
    });
+
 
    const auto& owner_permission = db.create<permission_object>([&create, &new_account](permission_object& p) {
       p.name = "owner";
@@ -93,7 +97,10 @@ void apply_eosio_newaccount(apply_context& context) {
       sbo.owner_name = create.name;
       sbo.staked_balance = create.deposit.amount;
    });
-}
+
+   db.create<bandwidth_usage_object>([&]( auto& bu ) { bu.owner = create.name; });
+
+} FC_CAPTURE_AND_RETHROW( (create) ) }
 
 /**
  *
