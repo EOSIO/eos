@@ -17,7 +17,7 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
   tester test;
   test.produce_blocks(2);
 
-  test.create_accounts( {N(dan), N(bart)} );
+  test.create_accounts( {N(dan), N(bart)}, asset::from_string("10.0000 EOS") );
   test.transfer( N(inita), N(dan), "10.0000 EOS", "memo" );
 
   {
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
 BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
    tester test;
    test.produce_blocks(2);
-   test.create_accounts( {N(dan),N(bart),N(trust)} );
+   test.create_accounts( {N(dan),N(bart),N(trust)}, asset::from_string("10.0000 EOS") );
    test.transfer( N(inita), N(dan), "10.0000 EOS" );
    test.transfer( N(inita), N(trust), "10.0000 EOS" );
    test.transfer( N(trust), N(dan), "1.0000 EOS" );
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
    const auto& trustauth = test.control->get_permission( permission_level{N(trust),config::active_name} );
 
 
-   test.produce_block();
+   test.produce_block( fc::hours(2) ); ///< skip 2 hours 
 
   /// execute a transfer from dan to bart signed by trust
   {
@@ -162,6 +162,7 @@ BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
 
       test.set_tapos( trx );
       trx.sign( test.get_private_key( N(trust), "active" ), chain_id_type()  ); 
+      wdump((fc::raw::pack_size(trx)));
 
       /// action not provided from authority
       test.control->push_transaction( trx );

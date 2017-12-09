@@ -97,16 +97,38 @@ namespace eosio { namespace chain {
          * Track the average blocksize over the past 60 seconds and use it to adjust the
          * reserve ratio for bandwidth rate limiting calclations.
          */ 
-        average_accumulator<config::blocksize_average_window_ms> averge_block_size;
+        average_accumulator<config::blocksize_average_window_ms> average_block_size;
 
         /**
+         * Track the average actions per block over the past 60 seconds and use it to
+         * adjust hte reserve ration for action rate limiting calculations
+         */
+        average_accumulator<config::blocksize_average_window_ms> average_block_acts;
+
+        void update_virtual_net_bandwidth( const chain_config& cfg );
+        void update_virtual_act_bandwidth( const chain_config& cfg );
+
+        /**
+         * The virtual number of bytes that would be consumed over blocksize_average_window_ms
+         * if all blocks were at their maximum virtual size. This is virtual because the
+         * real maximum block is less, this virtual number is only used for rate limiting users.
+         *
+         * It's lowest possible value is max_block_size * blocksize_average_window_ms / block_interval
+         * It's highest possible value is 1000 times its lowest possible value
+         *
+         * This means that the most an account can consume during idle periods is 1000x the bandwidth 
+         * it is gauranteed under congestion.
+         *
          * Increases when average_block_size < target_block_size, decreases when
          * average_block_size > target_block_size, with a cap at 1000x max_block_size
-         * and a floor at max_block_size;  This means that the most an account
-         * can consume during idle periods is 1000x the bandwidth it is gauranteed
-         * under congestion.
+         * and a floor at max_block_size;           
+         **/
+        uint64_t virtual_net_bandwidth = 0;
+
+        /**
+         *  Increases when average_bloc
          */
-        uint64_t virtual_max_block_size = 0;
+        uint64_t virtual_act_bandwidth = 0;
 
         /** 
          * Used to calculate the merkle root over all blocks

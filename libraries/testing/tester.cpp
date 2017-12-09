@@ -22,6 +22,7 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_accounts.resize( config::producer_count );
       cfg.genesis.initial_producers.resize( config::producer_count );
 
+
      // uint64_t init_name = N(inita);
       string init_name = "inita";
       for( uint32_t i = 0; i < config::producer_count; ++i ) {
@@ -36,6 +37,7 @@ namespace eosio { namespace testing {
 
          init_name[4]++;
       }
+
       open();
    }
 

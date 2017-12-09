@@ -978,7 +978,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
                     "Genesis timestamp must be divisible by config::block_interval_ms" );
 
          // Create global properties
-         _db.create<global_property_object>([&starter](global_property_object& p) {
+         const auto& gp = _db.create<global_property_object>([&starter](global_property_object& p) {
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
          });
@@ -986,6 +986,8 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
             p.time = initial_timestamp;
             p.recent_slots_filled = uint64_t(-1);
+            p.virtual_net_bandwidth = gp.configuration.max_block_size * (config::blocksize_average_window_ms / config::block_interval_ms );
+            p.virtual_act_bandwidth = gp.configuration.max_block_acts * (config::blocksize_average_window_ms / config::block_interval_ms );
          });
 
          // Initialize block summary index
@@ -999,11 +1001,12 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          genesis_setup_transaction.actions = move(acts);
 
          ilog( "applying genesis transaction" );
-         with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block, 
+         with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block | genesis_setup, 
          [&](){ 
             transaction_metadata tmeta( genesis_setup_transaction );
             _apply_transaction( tmeta );
          });
+         ilog( "done applying genesis transaction" );
 
       });
    }
@@ -1112,6 +1115,8 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       }
    }
 
+   const auto& props = get_global_properties();
+
    // dynamic global properties updating
    _db.modify( _dgp, [&]( dynamic_global_property_object& dgp ){
       dgp.head_block_number = b.block_num();
@@ -1119,7 +1124,11 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.time = b.timestamp;
       dgp.current_producer = b.producer;
       dgp.current_absolute_slot += missed_blocks+1;
-      dgp.averge_block_size.add_usage( fc::raw::pack_size(b), b.timestamp );
+      dgp.average_block_size.add_usage( fc::raw::pack_size(b), b.timestamp );
+
+      dgp.update_virtual_net_bandwidth( props.configuration );
+      dgp.update_virtual_act_bandwidth( props.configuration );
+
 
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
       if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
@@ -1295,7 +1304,6 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
 transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) { 
    transaction_trace result(meta.id);
 
-   set<account_name> authorizing_accounts;
 
 
    for( const auto& act : meta.trx.actions ) {
@@ -1305,11 +1313,30 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
    }
 
+   uint32_t act_usage = result.action_traces.size();
+
    for( auto& at: result.action_traces ) {
       at.region_id = meta.region_id;
       at.cycle_index = meta.cycle_index;
+      if( at.receiver == config::system_account_name &&
+          at.act.scope == config::system_account_name &&
+          at.act.name  == N(setcode) )
+      {
+         act_usage += config::setcode_act_usage;
+      }
    }
 
+   update_usage( meta, act_usage );
+
+   return result;
+}
+
+/**
+ *  @param act_usage The number of "actions" delivered directly or indirectly by applying meta.trx
+ */
+void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_usage )
+{
+   set<account_name> authorizing_accounts;
 
    for( const auto& act : meta.trx.actions )
       for( const auto& auth : act.authorization )
@@ -1319,29 +1346,51 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
 
    const auto& dgpo = get_dynamic_global_properties();
 
+   if( meta.signing_keys ) {
+      act_usage += meta.signing_keys->size();
+   }
+
    auto head_time = head_block_time();
    for( const auto& authaccnt : authorizing_accounts ) {
       const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt );
       _db.modify( buo, [&]( auto& bu ){
           bu.bytes.add_usage( trx_size, head_time );
+          bu.acts.add_usage( act_usage, head_time );
       });
       const auto& sbo = _db.get<contracts::staked_balance_object, contracts::by_owner_name>(authaccnt);
-#if 0 // TODO enable this after fixing divide by 0 with virtual_max_block_size and total_staked_tokens
-      /// note: buo.bytes.value is in ubytes and virtual_max_block_size is in bytes, so
+      // TODO enable this after fixing divide by 0 with virtual_net_bandwidth and total_staked_tokens
+      /// note: buo.bytes.value is in ubytes and virtual_net_bandwidth is in bytes, so
       //  we convert to fixed int uin128_t with 60 bits of precision, divide by rate limiting precision
       //  then divide by virtual max_block_size which gives us % of virtual max block size in fixed width
-      auto used_percent  = (((uint128_t(buo.bytes.value) << 60) / config::rate_limiting_precision))  
-                         / dgpo.virtual_max_block_size;
 
-      /// percent of stake used in fixed width
-      auto stake_percent = (uint128_t( sbo.staked_balance ) << 60)  
-                         / dgpo.total_staked_tokens;
-
-      FC_ASSERT( used_percent < stake_percent, "authorizing account has inusfficient stake for this transaction, try again later" );
-#endif
+      uint128_t  used_ubytes        = buo.bytes.value;
+      uint128_t  used_uacts         = buo.acts.value;
+      uint128_t  virtual_max_ubytes = dgpo.virtual_net_bandwidth * config::rate_limiting_precision;
+      uint128_t  virtual_max_uacts  = dgpo.virtual_act_bandwidth * config::rate_limiting_precision;
+      uint64_t   user_stake         = sbo.staked_balance;
+      
+      if( !(_skip_flags & genesis_setup) ) {
+         FC_ASSERT( (used_ubytes * dgpo.total_staked_tokens) <=  (user_stake * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
+                    ("n",name(authaccnt))
+                    ("used_bytes",double(used_ubytes)/1000000.)
+                    ("user_stake",user_stake)
+                    ("virtual_max_bytes", double(virtual_max_ubytes)/1000000. )
+                    ("total_staked_tokens", dgpo.total_staked_tokens)
+                    );
+         FC_ASSERT( (used_uacts * dgpo.total_staked_tokens)  <=  (user_stake * virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
+                    ("n",name(authaccnt))
+                    ("used_acts",double(used_uacts)/1000000.)
+                    ("user_stake",user_stake)
+                    ("virtual_max_uacts", double(virtual_max_uacts)/1000000. )
+                    ("total_staked_tokens", dgpo.total_staked_tokens)
+                    );
+      }
    }
 
-   return result;
+   _db.modify( dgpo, [&]( auto& props ) {
+      props.average_block_acts.add_usage( act_usage, head_time );
+   });
+
 }
 
 const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_SUITE(wasm_tests)
 BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)} );
+   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
    transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
    produce_block();
 
@@ -138,7 +138,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
 BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)} );
+   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
    transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
    produce_block();
 
@@ -169,7 +169,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
 BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)} );
+   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
    transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
    produce_block();
 
@@ -233,7 +233,7 @@ struct assert_message_is {
 BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(tester)} );
+   create_accounts( {N(tester)}, asset::from_string("1000.0000 EOS") );
    transfer( N(inita), N(tester), "10.0000 EOS", "memo" );
    produce_block();
 
@@ -273,7 +273,7 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(currency), N(alice), N(bob)} );
+   create_accounts( {N(currency), N(alice), N(bob)}, asset::from_string("1000.0000 EOS") );
    transfer( N(inita), N(currency), "10.0000 EOS", "memo" );
    produce_block();
 

@@ -24,6 +24,11 @@ struct chain_config {
    uint32_t   target_block_acts_per_scope;
    uint32_t   max_block_acts_per_scope;
 
+   uint32_t   target_block_acts; ///< regardless of the amount of parallelism, this defines target compute time per block
+   uint32_t   max_block_acts; ///< regardless of the amount of parallelism, this maximum compute time per block
+
+   uint64_t   real_threads; ///< the number of real threads the producers are using
+
    uint64_t   max_storage_size;
    uint32_t   max_transaction_lifetime;
    uint16_t   max_authority_depth;
@@ -46,6 +51,9 @@ FC_REFLECT(eosio::chain::chain_config,
            (max_block_size)
            (target_block_acts_per_scope)
            (max_block_acts_per_scope)
+           (target_block_acts)
+           (max_block_acts)
+           (real_threads)
            (max_storage_size)
            (max_transaction_lifetime)(max_authority_depth)(max_transaction_exec_time)
            (max_inline_depth)(max_inline_action_size)(max_generated_transaction_size) )

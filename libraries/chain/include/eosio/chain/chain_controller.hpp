@@ -51,7 +51,8 @@ namespace eosio { namespace chain {
       skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
       pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
       created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
-      received_block              = 1 << 16  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
+      received_block              = 1 << 16,  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
+      genesis_setup               = 1 << 17  ///< used to indicate that the origination of the call was for a genesis transaction
    };
 
 
@@ -385,6 +386,7 @@ namespace eosio { namespace chain {
 
          void update_global_properties(const signed_block& b);
          void update_global_dynamic_data(const signed_block& b);
+         void update_usage( transaction_metadata&, uint32_t act_usage );
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();

@@ -22,6 +22,11 @@ namespace eosio { namespace chain {
       time_point last_update;
       uint64_t   value = 0;
 
+      /**
+       * return the average value in rate_limiting_precision
+       */
+      uint64_t average()const { return value / WindowMs; }
+
       void add_usage( uint64_t units, time_point now )
       {
          if( now != last_update ) {
@@ -34,7 +39,7 @@ namespace eosio { namespace chain {
             }
             last_update    = now;
          }
-         value         += units * Precision;
+         value += units * Precision;
       }
    };
 
@@ -51,6 +56,13 @@ namespace eosio { namespace chain {
       account_name     owner; 
 
       average_accumulator<config::bandwidth_average_window_ms> bytes;
+      average_accumulator<config::compute_average_window_ms>   acts; ///< tracks a logical number of actions processed
+
+      /**
+       *  If 'owner' is a smart contract, then all increases / decreases in storage by that executing code should
+       *  update this value.
+       */
+      uint64_t                                                 db_usage = 0;
    };
 
    /**
@@ -68,6 +80,7 @@ namespace eosio { namespace chain {
 
       void add_usage( uint32_t actions, time_point now );
    };
+
 
    struct by_owner;
    using bandwidth_usage_index = chainbase::shared_multi_index_container<

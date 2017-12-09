@@ -18,6 +18,7 @@ add_library( eosio_chain
              asset.cpp
 
 
+             global_property_object.cpp
              chain_controller.cpp
 
              contracts/eosio_contract.cpp

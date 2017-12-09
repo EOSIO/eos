@@ -23,8 +23,8 @@ namespace eosio { namespace testing {
          transaction_trace push_transaction( signed_transaction& trx );
          void              set_tapos( signed_transaction& trx );
 
-         void              create_accounts( vector<account_name> names ) { 
-            for( auto n : names ) create_account(n, asset()); 
+         void              create_accounts( vector<account_name> names, asset init_bal ) { 
+            for( auto n : names ) create_account(n, init_bal ); 
          }
 
 

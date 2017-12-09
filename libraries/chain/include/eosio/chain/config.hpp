@@ -43,10 +43,15 @@ static const uint32_t compute_average_window_ms     = 24*60*60*1000l;
 static const uint32_t blocksize_average_window_ms   = 60*1000l;
 
 
-const static uint32_t   default_target_block_size           = 128 * 1024;
-const static uint32_t   default_max_block_size              = 5 * 1024 * 1024;
+const static uint32_t   default_max_block_size              = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables 10,000 TPS burst
+const static uint32_t   default_target_block_size           = default_max_block_size / 10; /// we target 1000 TPS burst
 const static uint32_t   default_target_block_acts_per_scope  = 1000;
 const static uint32_t   default_max_block_acts_per_scope     = default_target_block_acts_per_scope*10;
+
+const static uint32_t   default_target_block_acts  = 2000;
+const static uint32_t   default_max_block_acts     = default_target_block_acts*100;
+const static uint32_t   setcode_act_usage          = 100;
+
 const static uint64_t   default_max_storage_size       = 10 * 1024;
 const static uint32_t   default_max_trx_lifetime       = 60*60;
 const static uint16_t   default_max_auth_depth         = 6;

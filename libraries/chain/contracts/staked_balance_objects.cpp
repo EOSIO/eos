@@ -17,11 +17,9 @@ void staked_balance_object::stake_tokens(share_type new_stake, chainbase::databa
       sbo.staked_balance += new_stake;
    });
 
-   /*
    db.modify( db.get<dynamic_global_property_object>(), [&]( auto& dgpo ){
       dgpo.total_staked_tokens += new_stake;
    });
-   */
 
    propagate_votes(new_stake, db);
 }

@@ -228,7 +228,6 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
       });
       intialize_eosio_tokens(db, name, liquid_balance);
       db.create<staked_balance_object>([&](auto& sb) { sb.owner_name = name; });
-      idump(("create bandwidth_usage_object")(name));
       db.create<bandwidth_usage_object>([&](auto& sb) { sb.owner = name; });
    };
    create_native_account(config::system_account_name, config::initial_token_supply);

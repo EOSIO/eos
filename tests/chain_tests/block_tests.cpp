@@ -30,8 +30,7 @@ BOOST_AUTO_TEST_CASE( schedule_test ) { try {
 
   FC_ASSERT( rhead == lib );
 
-  ilog("producing 100 blocks" );
-  for( uint32_t i = 0; i < 100; ++i )
+  for( uint32_t i = 0; i < 1000; ++i )
      test.produce_block();
   ilog("exiting");
 } FC_LOG_AND_RETHROW() }/// schedule_test
