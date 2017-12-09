@@ -7,7 +7,7 @@
 
 extern "C" {
    /**
-    * @defgroup messageapi message API
+    * @defgroup messageapi Message API
     * @ingroup contractdev
     * @brief Define API for querying message properties
     *

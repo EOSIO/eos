@@ -7,7 +7,7 @@
 
 extern "C" {
    /**
-    * @defgroup transactionapi transaction API
+    * @defgroup transactionapi Transaction API
     * @ingroup contractdev
     * @brief Define API for sending transactions and inline messages
     *
