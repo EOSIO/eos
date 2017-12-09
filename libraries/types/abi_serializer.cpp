@@ -5,6 +5,7 @@
 #include <eos/types/abi_serializer.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <fc/io/varint.hpp>
 
 using namespace boost;
 
@@ -237,7 +238,7 @@ namespace eosio { namespace types {
          return btype->second.first(stream, is_array(rtype));
       }
       if ( is_array(rtype) ) {
-        unsigned int size;
+        fc::unsigned_int size;
         fc::raw::unpack(stream, size);
         vector<fc::variant> vars;
         vars.resize(size);
@@ -266,7 +267,7 @@ namespace eosio { namespace types {
          btype->second.second(var, ds, is_array(rtype));
       } else if ( is_array(rtype) ) {
          vector<fc::variant> vars = var.get_array();
-         fc::raw::pack(ds, (unsigned int)vars.size());
+         fc::raw::pack(ds, (fc::unsigned_int)vars.size());
          for (const auto& var : vars) {
            variant_to_binary(array_type(rtype), var, ds);
          }
