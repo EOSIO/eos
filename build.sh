@@ -102,4 +102,4 @@ cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER
 make -j4
 
 # Install to the systems (in order to run eoscpp globally)
-sudo make install 
+# sudo make install 
