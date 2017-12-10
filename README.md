@@ -96,6 +96,10 @@ cd eos
 ./build.sh darwin
 ```
 
+Optional: copy binaries to system `/usr/local/folder` make convenient for `eoscpp`
+```
+sudo install make
+```
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="runanode"></a>
