@@ -10,7 +10,6 @@
 #include <array>
 
 namespace eosio {
-
   template <uint32_t buffer_len>
   class mb_datastream;
 
@@ -33,7 +32,7 @@ namespace eosio {
      */
     typedef std::pair<uint32_t, uint32_t> index_t;
 
-    message_buffer() : buffers{pool().malloc()}, read_ind{0,0}, write_ind{0,0} { }
+    message_buffer() : buffers{pool().malloc()}, read_ind{0,0}, write_ind{0,0}, sanity_check (1) { }
 
     ~message_buffer() {
       while (buffers.size() > 0) {
@@ -75,6 +74,8 @@ namespace eosio {
      *  Does not affect the read or write pointer.
      */
     void add_buffer_to_chain() {
+      elog ("adding a buffer,  = ${s}. buff.size = ${b}",("s",sanity_check)("b",buffers.size()));
+      sanity_check++;
       buffers.push_back(pool().malloc());
     }
 
@@ -85,7 +86,12 @@ namespace eosio {
      */
     void add_space(uint32_t bytes) {
       int buffers_to_add = bytes / buffer_len + 1;
+      if (write_ind.first >= buffers.size()) {
+        elog ("growing buffer, from ${bs} (sanity ${s}) adding ${bta} ",("bs",buffers.size())("bta",buffers_to_add)("s",sanity_check));
+      }
+
       for (int i = 0; i < buffers_to_add; i++) {
+        sanity_check++;
         buffers.push_back(pool().malloc());
       }
     }
@@ -95,12 +101,19 @@ namespace eosio {
      *  discarded.
      */
     void reset() {
-      read_ind = { 0, 0 };
-      write_ind = { 0, 0 };
+      elog ("read_ind = ${r1}, ${r2} write_ind = ${w1}, ${w2}, buff.size = ${bs}, sanity = ${s}",
+            ("r1",read_ind.first)("r2",read_ind.second)("w1",write_ind.first)("w2",write_ind.second)("bs",buffers.size())("s",sanity_check));
+      if( buffers.size() != sanity_check) {
+        exit(0);
+      }
       while (buffers.size() > 1) {
+        sanity_check--;
         pool().destroy(buffers.back());
         buffers.pop_back();
       }
+
+      read_ind = { 0, 0 };
+      write_ind = { 0, 0 };
     }
 
     /*
@@ -139,11 +152,14 @@ namespace eosio {
     void advance_read_ptr(uint32_t bytes) {
       advance_index(read_ind, bytes);
       if (read_ind == write_ind) {
+        ilog("calling reset");
         reset();
       } else if (read_ind.first > 0) {
+        elog ("shrinking buffer, from ${bs} (sanity = ${s}) by ${r1}",("bs",buffers.size())("r1",read_ind.first)("s",sanity_check));
         while (read_ind.first > 0) {
           pool().destroy(buffers.front());
           buffers.pop_front();
+          sanity_check--;
           read_ind.first--;
           write_ind.first--;
         }
@@ -156,7 +172,11 @@ namespace eosio {
      */
     void advance_write_ptr(uint32_t bytes) {
       advance_index(write_ind, bytes);
+      if (write_ind.first >= buffers.size()) {
+        elog ("growing buffer, from ${bs} (sanity = ${s}) to ${w1}",("bs",buffers.size())("w1",write_ind.first+1)("s",sanity_check));
+      }
       while (write_ind.first >= buffers.size()) {
+        sanity_check++;
         buffers.push_back(pool().malloc());
       }
     }
@@ -249,6 +269,7 @@ namespace eosio {
     std::deque<std::array<char, buffer_len>* > buffers;
     index_t read_ind;
     index_t write_ind;
+    size_t sanity_check;
   };
 
 
@@ -286,4 +307,3 @@ namespace eosio {
   }
 
 } // namespace eosio
-
