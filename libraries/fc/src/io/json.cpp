@@ -96,9 +96,8 @@ namespace fc
                                             "Expected '\"' but read '${char}'",
                                             ("char", string(&c, (&c) + 1) ) );
          in.get();
-         while( true )
+         while( !in.eof() )
          {
-
             switch( c = in.peek() )
             {
                case '\\':
@@ -128,7 +127,7 @@ namespace fc
       {
          char c = in.peek();
 
-         while( true )
+         while( !in.eof() )
          {
             switch( c = in.peek() )
             {
@@ -359,7 +358,7 @@ namespace fc
         return variant();
       if( str == "true" )
         return true;
-      if( str == "false" ) 
+      if( str == "false" )
         return false;
       else
       {
@@ -453,7 +452,7 @@ namespace fc
          FC_ASSERT( open_object < 100 && open_array < 100, "object graph too deep", ("object depth",open_object)("array depth", open_array) );
       }
    }
-   
+
    variant json::from_string( const std::string& utf8_str, parse_type ptype )
    { try {
       check_string_depth( utf8_str );
