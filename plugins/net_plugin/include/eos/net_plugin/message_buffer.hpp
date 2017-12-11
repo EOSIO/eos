@@ -10,7 +10,6 @@
 #include <array>
 
 namespace eosio {
-
   template <uint32_t buffer_len>
   class mb_datastream;
 
@@ -33,7 +32,7 @@ namespace eosio {
      */
     typedef std::pair<uint32_t, uint32_t> index_t;
 
-    message_buffer() : buffers{pool().malloc()}, read_ind{0,0}, write_ind{0,0} { }
+    message_buffer() : buffers{pool().malloc()}, read_ind{0,0}, write_ind{0,0}, sanity_check (1) { }
 
     ~message_buffer() {
       while (buffers.size() > 0) {
@@ -75,6 +74,7 @@ namespace eosio {
      *  Does not affect the read or write pointer.
      */
     void add_buffer_to_chain() {
+      sanity_check++;
       buffers.push_back(pool().malloc());
     }
 
@@ -86,6 +86,7 @@ namespace eosio {
     void add_space(uint32_t bytes) {
       int buffers_to_add = bytes / buffer_len + 1;
       for (int i = 0; i < buffers_to_add; i++) {
+        sanity_check++;
         buffers.push_back(pool().malloc());
       }
     }
@@ -95,12 +96,23 @@ namespace eosio {
      *  discarded.
      */
     void reset() {
-      read_ind = { 0, 0 };
-      write_ind = { 0, 0 };
+      // some condition exists that can send *both* buffers.size() and sanity_check to well over 10^6.
+      // this seems to be related to some sort of memory overrun possibly. By forcing an exit here, an
+      // external watchdog can be used to restart the process and avoid hanging.
+      if( buffers.size() != sanity_check || buffers.size() > 1000000) {
+        elog ("read_ind = ${r1}, ${r2} write_ind = ${w1}, ${w2}, buff.size = ${bs}, sanity = ${s}",
+              ("r1",read_ind.first)("r2",read_ind.second)("w1",write_ind.first)("w2",write_ind.second)("bs",buffers.size())("s",sanity_check));
+        elog("Buffer manager overwrite detected. Terminating to allow external restart");
+        exit(1);
+      }
       while (buffers.size() > 1) {
+        sanity_check--;
         pool().destroy(buffers.back());
         buffers.pop_back();
       }
+
+      read_ind = { 0, 0 };
+      write_ind = { 0, 0 };
     }
 
     /*
@@ -144,6 +156,7 @@ namespace eosio {
         while (read_ind.first > 0) {
           pool().destroy(buffers.front());
           buffers.pop_front();
+          sanity_check--;
           read_ind.first--;
           write_ind.first--;
         }
@@ -157,6 +170,7 @@ namespace eosio {
     void advance_write_ptr(uint32_t bytes) {
       advance_index(write_ind, bytes);
       while (write_ind.first >= buffers.size()) {
+        sanity_check++;
         buffers.push_back(pool().malloc());
       }
     }
@@ -249,9 +263,9 @@ namespace eosio {
     std::deque<std::array<char, buffer_len>* > buffers;
     index_t read_ind;
     index_t write_ind;
+    size_t sanity_check;
+
   };
-
-
 
   /*
    *  @brief datastream adapter that adapts message_buffer for use with fc unpack
@@ -286,4 +300,3 @@ namespace eosio {
   }
 
 } // namespace eosio
-
