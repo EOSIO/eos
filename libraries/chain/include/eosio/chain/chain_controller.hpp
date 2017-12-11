@@ -359,7 +359,7 @@ namespace eosio { namespace chain {
          void validate_referenced_accounts(const transaction& trx)const;
          void validate_expiration(const transaction& trx) const;
          void validate_scope(const transaction& trx) const;
-         void record_transaction(const signed_transaction& trx);
+         void record_transaction(const transaction& trx);
          /// @}
 
          /**

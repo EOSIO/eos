@@ -724,7 +724,7 @@ void chain_controller::validate_uniqueness( const signed_transaction& trx )const
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
 }
 
-void chain_controller::record_transaction(const signed_transaction& trx) {
+void chain_controller::record_transaction(const transaction& trx) {
    //Insert transaction into unique transactions database.
     _db.create<transaction_object>([&](transaction_object& transaction) {
         transaction.trx_id = trx.id(); 
@@ -1327,6 +1327,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
    }
 
    update_usage( meta, act_usage );
+   record_transaction(meta.trx);
 
    return result;
 }
