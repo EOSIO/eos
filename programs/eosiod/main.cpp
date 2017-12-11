@@ -37,7 +37,7 @@ int main(int argc, char** argv)
       app().register_plugin<net_api_plugin>();
       app().register_plugin<txn_test_gen_plugin>();
       app().register_plugin<wallet_api_plugin>();
-      if(!app().initialize<chain_plugin, http_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
          return -1;
       app().startup();
       app().exec();
