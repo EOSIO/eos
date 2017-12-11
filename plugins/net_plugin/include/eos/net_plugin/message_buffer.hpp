@@ -103,7 +103,7 @@ namespace eosio {
         elog ("read_ind = ${r1}, ${r2} write_ind = ${w1}, ${w2}, buff.size = ${bs}, sanity = ${s}",
               ("r1",read_ind.first)("r2",read_ind.second)("w1",write_ind.first)("w2",write_ind.second)("bs",buffers.size())("s",sanity_check));
         elog("Buffer manager overwrite detected. Terminating to allow external restart");
-        exit(0);
+        exit(1);
       }
       while (buffers.size() > 1) {
         sanity_check--;
