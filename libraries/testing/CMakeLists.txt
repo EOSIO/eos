@@ -24,6 +24,3 @@ INSTALL( TARGETS
    ARCHIVE DESTINATION lib
 )
 INSTALL( FILES ${HEADERS} DESTINATION "include/eos/chain" )
-
-add_executable( runtest main.cpp )
-target_link_libraries( runtest eosio_testing ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
