@@ -96,9 +96,13 @@ namespace eosio {
      *  discarded.
      */
     void reset() {
-      //dlog ("read_ind = ${r1}, ${r2} write_ind = ${w1}, ${w2}, buff.size = ${bs}, sanity = ${s}",
-      // ("r1",read_ind.first)("r2",read_ind.second)("w1",write_ind.first)("w2",write_ind.second)("bs",buffers.size())("s",sanity_check));
-      if( buffers.size() != sanity_check) {
+      // some condition exists that can send *both* buffers.size() and sanity_check to well over 10^6.
+      // this seems to be related to some sort of memory overrun possibly. By forcing an exit here, an
+      // external watchdog can be used to restart the process and avoid hanging.
+      if( buffers.size() != sanity_check || buffers.size() > 1000000) {
+        elog ("read_ind = ${r1}, ${r2} write_ind = ${w1}, ${w2}, buff.size = ${bs}, sanity = ${s}",
+              ("r1",read_ind.first)("r2",read_ind.second)("w1",write_ind.first)("w2",write_ind.second)("bs",buffers.size())("s",sanity_check));
+        elog("Buffer manager overwrite detected. Terminating to allow external restart");
         exit(0);
       }
       while (buffers.size() > 1) {
