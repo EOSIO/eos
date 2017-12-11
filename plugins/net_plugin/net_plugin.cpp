@@ -1383,7 +1383,7 @@ namespace eosio {
                         return;
                       }
                     } else {
-                      conn->pending_message_buffer.add_space(message_length - bytes_in_buffer);
+                      conn->pending_message_buffer.add_space(message_length + message_header_size - bytes_in_buffer);
                       break;
                     }
                   }
