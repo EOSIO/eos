@@ -73,6 +73,7 @@ namespace eosio { namespace chain {
          hard_fail = 2  ///< objectively failed and error handler objectively failed thus no state change
       };
 
+      transaction_receipt() : status(hard_fail) {}
       transaction_receipt( transaction_id_type tid ):status(executed),id(tid){}
 
       fc::enum_type<uint8_t,status_enum>  status;
