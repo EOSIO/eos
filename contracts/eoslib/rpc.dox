@@ -1,5 +1,5 @@
 /**
-@defgroup eosiorpc eosd RPC Interface
+@defgroup eosiorpc RPC Interface
 @brief Describes how to interface with eosd over HTTP RPC
 
 @section tableofcontent Table Of Contents
@@ -15,23 +15,32 @@
   - [push_transaction](#v1chainpushtransaction)
   - [push_transactions](#v1chainpushtransactions)
   - [get_required_keys](#v1chaingetrequiredkeys)
+- [Wallet API](#walletrpc)
+  - [wallet_create](#v1walletcreate)
+  - [wallet_open](#v1walletopen)
+  - [wallet_lock](#v1walletlock)
+  - [wallet_lock_all](#v1walletlockall)
+  - [wallet_import_key](#v1walletimportkey)
+  - [wallet_list](#v1walletlist)
+  - [wallet_list_keys](#v1walletlistkeys)
+  - [wallet_get_public_keys](#v1walletgetpublickeys)
+  - [wallet_set_timeout](#v1walletsettimeout)
+  - [wallet_sign_trx](#v1walletsigntrx)
 
 @section configuration Configuration
 
 `eosd` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
 will explain how to use some of the APIs to get information about the blockchain and send transactions.
 
-Before you can query `eosd` you must first enable an API plugin. To do this add the following line to your `config.ini`
+Before you can query `eosd` you must first enable the necessary API plugin(s). Depending on which API you want to enable, add the following line to your `eosd`'s `config.ini`:
+```
+plugin = eosio::chain_api_plugin // Enable Chain API
+plugin = eosio::wallet_api_plugin // Enable Wallet API
+```
+Alternatively, for Wallet API, you can also have the wallet functionality separate from `eosd`, by running `eos-walletd` separately.
 
-```
-plugin = eosio::chain_api_plugin
-```
+For the following guide, we will assume that we have `eosd` running on `127.0.0.1:8888` (Chain API Plugin enabled, Wallet API Plugin disabled) and `eos-walletd` running on `127.0.0.1:8889`.
 
-By default an HTTP server will start on `127.0.0.1:8888`; however, you can also change this with the following configuration line in your `config.ini`:
-
-```
-http-server-endpoint = 127.0.0.1:8888
-```
 ===
 
 @section chainrpc Chain API
@@ -39,25 +48,28 @@ http-server-endpoint = 127.0.0.1:8888
 
 @subsection v1chaingetinfo get_info
 
-The `get_info` RPC command can be found at:
+Get latest information related to a node
+
+@subsubsection examplegetinfo  Example get_info Usage
 
 ```
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-And it should return something like:
+@subsubsection examplegetinforesult  Example get_info Result
+
 ```
 {
-  "head_block_num":449,
-  "last_irreversible_block_num": 434,
-  "head_block_id":"000001c1a0f072a5ca76831ac6c6e2988efcf162e953eb40046ec2ceca817a9f",
-  "head_block_time":"2017-07-18T21:02:24",
-  "head_block_producer":"initd",
-  "recent_slots":"0000000000000000000000000000000000000000000000000000000000001111",
-  "participation_rate":"0.06250000000000000"
+  "server_version": "b2eb1667",
+  "head_block_num": 259590,
+  "last_irreversible_block_num": 259573,
+  "head_block_id": "0003f60677f3707f0704f16177bf5f007ebd45eb6efbb749fb1c468747f72046",
+  "head_block_time": "2017-12-10T17:05:36",
+  "head_block_producer": "initp",
+  "recent_slots": "1111111111111111111111111111111111111111111111111111111111111111",
+  "participation_rate": "1.00000000000000000"
 }
 ```
-
 
 @subsection v1chaingetblock get_block
 
@@ -65,8 +77,8 @@ Get information related to a block.
 
 @subsubsection examplegetblock  Example get_block Usage
 ```
-curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":5}'
-curl  http://localhost:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":5}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_block -X POST -d '{"block_num_or_id":0000000445a9f27898383fd7de32835d5d6a978cc14ce40d9f327b5329de796b}'
 ```
 
 @subsubsection examplegetblockresult  Example get_block Result
@@ -92,7 +104,7 @@ Get information related to an account.
 
 @subsubsection examplegetaccount  Example get_account Usage
 ```
-curl  http://localhost:8888/v1/chain/get_account -X POST -d '{"name":"inita"}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_account -X POST -d '{"name":"inita"}'
 ```
 
 @subsubsection examplegetaccountresult  Example get_account Result
@@ -143,7 +155,7 @@ Fetch smart contract code.
 
 @subsubsection examplegetcode Example get_code Usage
 ```
-curl  http://localhost:8888/v1/chain/get_code -X POST -d '{"name":"currency"}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_code -X POST -d '{"account_name":"currency"}'
 ```
 
 @subsubsection examplegetcoderesult  Example get_code Result
@@ -151,51 +163,53 @@ curl  http://localhost:8888/v1/chain/get_code -X POST -d '{"name":"currency"}'
 {
   "name":"currency",
   "code_hash":"a1c8c84b4700c09c8edb83522237439e33cf011a4d7ace51075998bd002e04c9",
-  "wast":"(module\n  (type $0 (func (param i64 i64 i32) (result i32)))\n ...",
+  "wast":"(module\n  (type $0 (func (param i64 i64 i32) (result i32)))\n ...truncated",
   "abi": {
-   "types": [
-     {
-       "new_type_name": "account_name",
-       "type": "name"
-     }
-   ],
-   "structs": [
-     {
-       "name": "transfer",
-       "base": "",
-       "fields": {
-         "from": "account_name",
-         "to": "account_name",
-         "amount": "uint64"
-       }
-     },
-     {
-       "name": "account",
-       "base": "",
-       "fields": {
-         "account": "name",
-         "balance": "uint64"
-       }
-     }
-   ],
-   "actions": [
-     {
-       "action_name": "transfer",
-       "type": "transfer"
-     }
-   ],
-   "tables": [
-     {
-       "table_name": "account",
-       "index_type": "i64",
-       "key_names": [
-         "account"
-       ],
-       "keytype": [],
-       "type": "account"
-     }
-   ]
- }
+    "types": [
+      {
+        "new_type_name": "account_name",
+        "type": "name"
+      }
+    ],
+    "structs": [
+      {
+        "name": "transfer",
+        "base": "",
+        "fields": {
+          "from": "account_name",
+          "to": "account_name",
+          "quantity": "uint64"
+        }
+      },
+      {
+        "name": "account",
+        "base": "",
+        "fields": {
+          "key": "name",
+          "balance": "uint64"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "action_name": "transfer",
+        "type": "transfer"
+      }
+    ],
+    "tables": [
+      {
+        "table_name": "account",
+        "index_type": "i64",
+        "key_names": [
+          "key"
+        ],
+        "key_types": [
+          "name"
+        ],
+        "type": "account"
+      }
+    ]
+  }
 }
 ```
 
@@ -206,8 +220,8 @@ Fetch smart contract data from an account.
 
 @subsubsection examplegettablerows get_table_rows Usage
 ```
-curl  http://localhost:8888/v1/chain/get_table_rows -X POST -d '{"scope":"inita", "code":"currency", "table":"account", "json": true}'
-curl  http://localhost:8888/v1/chain/get_table_rows -X POST -d '{"scope":"inita", "code":"currency", "table":"account", "json": true, "lower_bound":0, "upper_bound":-1, "limit":10}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_table_rows -X POST -d '{"scope":"inita", "code":"currency", "table":"account", "json": true}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_table_rows -X POST -d '{"scope":"inita", "code":"currency", "table":"account", "json": true, "lower_bound":0, "upper_bound":-1, "limit":10}'
 ```
 
 @subsubsection examplegettablerowsresult  Example get_table_rows Result
@@ -230,13 +244,13 @@ Serialize json to binary hex. The resulting binary hex is usually used for the d
 
 @subsubsection exampleabijsontobin Example abi_json_to_bin Usage
 ```
-curl  http://localhost:8888/v1/chain/abi_json_to_bin -X POST -d '{"code":"currency", "action":"transfer", "args":{"from":"initb", "to":"initc", "amount":1000}}'
+$ curl  http://127.0.0.1:8888/v1/chain/abi_json_to_bin -X POST -d '{"code":"currency", "action":"transfer", "args":{"from":"initb", "to":"initc", "quantity":1000}}'
 ```
 
 @subsubsection exampleabijsontobinresult  Example abi_json_to_bin Result
 ```
 {
-  "binargs": "000000000041934b000000008041934be803000000000000",
+  "binargs": "000000008093dd74000000000094dd74e803000000000000",
   "required_scope": [],
   "required_auth": []
 }
@@ -249,7 +263,7 @@ Serialize back binary hex to json.
 
 @subsubsection exampleabibintojson Example abi_bin_to_json Usage
 ```
-curl  http://localhost:8888/v1/chain/abi_bin_to_json -X POST -d '{"code":"currency", "action":"transfer", "binargs":"000000000041934b000000008041934be803000000000000"}'
+$ curl  http://127.0.0.1:8888/v1/chain/abi_bin_to_json -X POST -d '{"code":"currency", "action":"transfer", "binargs":"000000008093dd74000000000094dd74e803000000000000"}'
 ```
 
 @subsubsection exampleabibintojsonresult  Example abi_bin_to_json Result
@@ -258,7 +272,7 @@ curl  http://localhost:8888/v1/chain/abi_bin_to_json -X POST -d '{"code":"curren
   "args": {
     "from": "initb",
     "to": "initc",
-    "amount": 1000
+    "quantity": 1000
   },
   "required_scope": [],
   "required_auth": []
@@ -302,9 +316,10 @@ Content-Length: 1466
 ```
 
 @subsubsection examplepushtrx Example push_transaction Usage
-This example assumes a transfer operation. The `ref_block_num` and `ref_block_prefix` are provided as a result of `/v1/chain/get_block`.
+This example assumes a transfer operation. The `ref_block_num` and `ref_block_prefix` here are provided as a result of `/v1/chain/get_block` of the last_irreversible_block.
+You also need to use /v1/wallet/sign_transaction to get the right signature.
 ```
-curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '{"ref_block_num":"100","ref_block_prefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}'
+$ curl  http://127.0.0.1:8888/v1/chain/push_transaction -X POST -d '{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":["1f393cc5ce6a6951fb53b11812345bcf14ffd978b07be386fd639eaf440bca7dca16b14833ec661ca0703d15e55a2a599a36d55ce78c4539433f6ce8bcee0158c3"]}'
 ```
 
 
@@ -314,7 +329,7 @@ This method push multiple transactions at once.
 
 @subsubsection examplepushtrxs Example push_transactions Usage
 ```
-curl  http://localhost:8888/v1/chain/push_transaction -X POST -d '[{"ref_block_num":"101","ref_block_prefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, {"ref_block_num":"101","ref_block_prefix":"4159312339","expiration":"2017-09-25T06:28:49","scope":["inita","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["inita","initc"],"authorization":[{"account":"inita","permission":"active"}],"data":"000000008040934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}]'
+$ curl  http://127.0.0.1:8888/v1/chain/push_transaction -X POST -d '[{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":["1f393cc5ce6a6951fb53b11812345bcf14ffd978b07be386fd639eaf440bca7dca16b14833ec661ca0703d15e55a2a599a36d55ce78c4539433f6ce8bcee0158c3"]},...]'
 ```
 
 
@@ -324,7 +339,7 @@ Get required keys to sign a transaction from list of your keys.
 
 @subsubsection examplegetrequiredkeys  Example get_required_keys Usage
 ```
-curl  http://localhost:8888/v1/chain/get_required_keys -X POST -d '{"transaction": {"ref_block_num":"100","ref_block_prefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, "available_keys":["EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq","EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_required_keys -X POST -d '{"transaction": {"ref_block_num":"100","ref_block_prefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"messages":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, "available_keys":["EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq","EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]}'
 ```
 
 @subsubsection examplegetrequiredkeysresult  Example get_required_keys Result
@@ -332,6 +347,190 @@ curl  http://localhost:8888/v1/chain/get_required_keys -X POST -d '{"transaction
 {
   "required_keys": [
     "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+  ]
+}
+```
+
+@section walletrpc Wallet API
+
+@subsection v1walletcreate wallet_create
+
+Create a new wallet with the given name
+
+@subsubsection examplewalletcreate Example wallet_create Usage
+```
+$ curl http://localhost:8889/v1/wallet/create -X POST -d '"default"'
+```
+
+@subsubsection examplewalletcreateresult  Example wallet_create Result
+This command will return the password that can be used to unlock the wallet in the future
+```
+PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX
+```
+
+@subsection v1walletopen wallet_open
+
+Open an existing wallet of the given name
+
+@subsubsection examplewalletopen Example wallet_open Usage
+```
+$ curl http://localhost:8889/v1/wallet/open -X POST -d '"default"'
+```
+
+@subsubsection examplewalletopenresult  Example wallet_open Result
+```
+{}
+```
+
+
+@subsection v1walletlock wallet_lock
+
+Lock a wallet of the given name
+
+@subsubsection examplewalletlock Example wallet_lock Usage
+```
+$ curl http://localhost:8889/v1/wallet/lock -X POST -d '"default"'
+```
+
+@subsubsection examplewalletlockresult  Example wallet_lock Result
+```
+{}
+```
+
+
+@subsection v1walletlockall wallet_lock_all
+
+Lock all wallets
+
+@subsubsection examplewalletlockall Example wallet_lock_all Usage
+```
+$ curl http://localhost:8889/v1/wallet/lock_all 
+```
+
+@subsubsection examplewalletlockallresult  Example wallet_lock_all Result
+```
+{}
+```
+
+@subsection v1walletunlock wallet_unlock
+
+Unlock a wallet with the given name and password
+
+@subsubsection examplewalletunlock Example wallet_unlock Usage
+```
+$ curl http://localhost:8889/v1/wallet/unlock -X POST -d '["default", "PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX"]'
+```
+
+@subsubsection examplewalletunlockresult  Example wallet_unlock Result
+```
+{}
+```
+
+@subsection v1walletimport wallet_import_key
+
+Import a private key to the wallet of the given name
+
+@subsubsection examplewalletimport Example wallet_import_key Usage
+```
+$ curl http://localhost:8889/v1/wallet/import_key -X POST -d '["default","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]'
+```
+
+@subsubsection examplewalletimportresult  Example wallet_import_key Result
+```
+{}
+```
+
+@subsection v1walletlist wallet_list
+
+List all wallets
+
+@subsubsection examplewalletlist Example wallet_list Usage
+```
+$ curl http://localhost:8889/v1/wallet/list_wallets
+```
+
+@subsubsection examplewalletlistresult  Example wallet_list Result
+```
+["default *"]
+```
+
+@subsection v1walletlistkeys wallet_list_keys
+
+List all key pairs across all wallets
+
+@subsubsection examplewalletlistkeys Example wallet_list_keys Usage
+```
+$ curl http://localhost:8889/v1/wallet/list_keys
+```
+
+@subsubsection examplewalletlistkeysresult  Example wallet_list_keys Result
+```
+[["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]]
+```
+
+@subsection v1walletgetpublickeys wallet_get_public_keys
+
+List all public keys across all wallets
+
+@subsubsection examplewalletgetpublickeys Example wallet_get_public_keys Usage
+```
+$ curl http://localhost:8889/v1/wallet/get_public_keys 
+```
+
+@subsubsection examplewallegetpublickeysresult  Example wallet_get_public_keys Result
+```
+["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+```
+
+@subsection v1walletsettimeout wallet_set_timeout
+
+Set wallet auto lock timeout (in seconds)
+
+@subsubsection examplewalletsettimeout Example wallet_set_timeout Usage
+```
+$ curl http://localhost:8889/v1/wallet/set_timeout -X POST -d '10'
+```
+
+@subsubsection examplewalletsettimeoutresult  Example wallet_set_timeout Result
+```
+{}
+```
+
+@subsection v1walletsigntrx wallet_sign_trx
+
+Sign transaction given an array of transaction, require public keys, and chain id
+
+@subsubsection examplewalletsigntrx Example wallet_sign_trx Usage
+```
+$ curl http://localhost:8889/v1/wallet/sign_transaction -X POST -d '[{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":[]}, ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"], ""]'
+```
+
+@subsubsection examplewalletsigntrxresult  Example wallet_sign_trx Result
+```
+{
+  "ref_block_num": 21453,
+  "ref_block_prefix": 3165644999,
+  "expiration": "2017-12-08T10:28:49",
+  "scope": [
+    "initb",
+    "initc"
+  ],
+  "read_scope": [],
+  "messages": [
+    {
+      "code": "currency",
+      "type": "transfer",
+      "authorization": [
+        {
+          "account": "initb",
+          "permission": "active"
+        }
+      ],
+      "data": "000000008093dd74000000000094dd74e803000000000000"
+    }
+  ],
+  "signatures": [
+    "1f393cc5ce6a6951fb53b11812345bcf14ffd978b07be386fd639eaf440bca7dca16b14833ec661ca0703d15e55a2a599a36d55ce78c4539433f6ce8bcee0158c3"
   ]
 }
 ```
