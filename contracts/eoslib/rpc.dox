@@ -1,5 +1,5 @@
 /**
-@defgroup eosiorpc eosd RPC Interface
+@defgroup eosiorpc RPC Interface
 @brief Describes how to interface with eosd over HTTP RPC
 
 @section tableofcontent Table Of Contents
@@ -15,23 +15,32 @@
   - [push_transaction](#v1chainpushtransaction)
   - [push_transactions](#v1chainpushtransactions)
   - [get_required_keys](#v1chaingetrequiredkeys)
+- [Wallet API](#walletrpc)
+  - [wallet_create](#v1walletcreate)
+  - [wallet_open](#v1walletopen)
+  - [wallet_lock](#v1walletlock)
+  - [wallet_lock_all](#v1walletlockall)
+  - [wallet_import_key](#v1walletimportkey)
+  - [wallet_list](#v1walletlist)
+  - [wallet_list_keys](#v1walletlistkeys)
+  - [wallet_get_public_keys](#v1walletgetpublickeys)
+  - [wallet_set_timeout](#v1walletsettimeout)
+  - [wallet_sign_trx](#v1walletsigntrx)
 
 @section configuration Configuration
 
 `eosd` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
 will explain how to use some of the APIs to get information about the blockchain and send transactions.
 
-Before you can query `eosd` you must first enable an API plugin. To do this add the following line to your `config.ini`
+Before you can query `eosd` you must first enable the necessary API plugin(s). Depending on which API you want to enable, add the following line to your `eosd`'s `config.ini`:
+```
+plugin = eosio::chain_api_plugin // Enable Chain API
+plugin = eosio::wallet_api_plugin // Enable Wallet API
+```
+Alternatively, for Wallet API, you can also have the wallet functionality separate from `eosd`, by running `eos-walletd` separately.
 
-```
-plugin = eosio::chain_api_plugin
-```
+For the following guide, we will assume that we have `eosd` running on `127.0.0.1:8888` (Chain API Plugin enabled, Wallet API Plugin disabled) and `eos-walletd` running on `127.0.0.1:8889`.
 
-By default an HTTP server will start on `127.0.0.1:8888`; however, you can also change this with the following configuration line in your `config.ini`:
-
-```
-http-server-endpoint = 127.0.0.1:8888
-```
 ===
 
 @section chainrpc Chain API
@@ -39,21 +48,24 @@ http-server-endpoint = 127.0.0.1:8888
 
 @subsection v1chaingetinfo get_info
 
-The `get_info` RPC command can be found at:
+Get latest information related to a node
+
+@subsubsection examplegetinfo  Example get_info Usage
 
 ```
-$ curl http://127.0.0.1:8888/v1/chain/get_info
+curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-And it should return something like:
+@subsubsection examplegetinforesult  Example get_info Result
+
 ```
 {
-  "server_version": "7451e092",
-  "head_block_num": 20561,
-  "last_irreversible_block_num": 20545,
-  "head_block_id": "0000505180a0a5fcb6a8e1efbe4cdacc83ec11613fbc8db34d7b2a0b2b483b97",
-  "head_block_time": "2017-12-08T08:46:18",
-  "head_block_producer": "initr",
+  "server_version": "b2eb1667",
+  "head_block_num": 259590,
+  "last_irreversible_block_num": 259573,
+  "head_block_id": "0003f60677f3707f0704f16177bf5f007ebd45eb6efbb749fb1c468747f72046",
+  "head_block_time": "2017-12-10T17:05:36",
+  "head_block_producer": "initp",
   "recent_slots": "1111111111111111111111111111111111111111111111111111111111111111",
   "participation_rate": "1.00000000000000000"
 }
@@ -338,6 +350,190 @@ $ curl  http://127.0.0.1:8888/v1/chain/get_required_keys -X POST -d '{"transacti
 {
   "required_keys": [
     "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+  ]
+}
+```
+
+@section walletrpc Wallet API
+
+@subsection v1walletcreate wallet_create
+
+Create a new wallet with the given name
+
+@subsubsection examplewalletcreate Example wallet_create Usage
+```
+$ curl http://localhost:8889/v1/wallet/create -X POST -d '"default"'
+```
+
+@subsubsection examplewalletcreateresult  Example wallet_create Result
+This command will return the password that can be used to unlock the wallet in the future
+```
+PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX
+```
+
+@subsection v1walletopen wallet_open
+
+Open an existing wallet of the given name
+
+@subsubsection examplewalletopen Example wallet_open Usage
+```
+$ curl http://localhost:8889/v1/wallet/open -X POST -d '"default"'
+```
+
+@subsubsection examplewalletopenresult  Example wallet_open Result
+```
+{}
+```
+
+
+@subsection v1walletlock wallet_lock
+
+Lock a wallet of the given name
+
+@subsubsection examplewalletlock Example wallet_lock Usage
+```
+$ curl http://localhost:8889/v1/wallet/lock -X POST -d '"default"'
+```
+
+@subsubsection examplewalletlockresult  Example wallet_lock Result
+```
+{}
+```
+
+
+@subsection v1walletlockall wallet_lock_all
+
+Lock all wallets
+
+@subsubsection examplewalletlockall Example wallet_lock_all Usage
+```
+$ curl http://localhost:8889/v1/wallet/lock_all 
+```
+
+@subsubsection examplewalletlockallresult  Example wallet_lock_all Result
+```
+{}
+```
+
+@subsection v1walletunlock wallet_unlock
+
+Unlock a wallet with the given name and password
+
+@subsubsection examplewalletunlock Example wallet_unlock Usage
+```
+$ curl http://localhost:8889/v1/wallet/unlock -X POST -d '["default", "PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX"]'
+```
+
+@subsubsection examplewalletunlockresult  Example wallet_unlock Result
+```
+{}
+```
+
+@subsection v1walletimport wallet_import_key
+
+Import a private key to the wallet of the given name
+
+@subsubsection examplewalletimport Example wallet_import_key Usage
+```
+$ curl http://localhost:8889/v1/wallet/import_key -X POST -d '["default","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]'
+```
+
+@subsubsection examplewalletimportresult  Example wallet_import_key Result
+```
+{}
+```
+
+@subsection v1walletlist wallet_list
+
+List all wallets
+
+@subsubsection examplewalletlist Example wallet_list Usage
+```
+$ curl http://localhost:8889/v1/wallet/list_wallets
+```
+
+@subsubsection examplewalletlistresult  Example wallet_list Result
+```
+["default *"]
+```
+
+@subsection v1walletlistkeys wallet_list_keys
+
+List all key pairs across all wallets
+
+@subsubsection examplewalletlistkeys Example wallet_list_keys Usage
+```
+$ curl http://localhost:8889/v1/wallet/list_keys
+```
+
+@subsubsection examplewalletlistkeysresult  Example wallet_list_keys Result
+```
+[["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]]
+```
+
+@subsection v1walletgetpublickeys wallet_get_public_keys
+
+List all public keys across all wallets
+
+@subsubsection examplewalletgetpublickeys Example wallet_get_public_keys Usage
+```
+$ curl http://localhost:8889/v1/wallet/get_public_keys 
+```
+
+@subsubsection examplewallegetpublickeysresult  Example wallet_get_public_keys Result
+```
+["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+```
+
+@subsection v1walletsettimeout wallet_set_timeout
+
+Set wallet auto lock timeout (in seconds)
+
+@subsubsection examplewalletsettimeout Example wallet_set_timeout Usage
+```
+$ curl http://localhost:8889/v1/wallet/set_timeout -X POST -d '10'
+```
+
+@subsubsection examplewalletsettimeoutresult  Example wallet_set_timeout Result
+```
+{}
+```
+
+@subsection v1walletsigntrx wallet_sign_trx
+
+Sign transaction given an array of transaction, require public keys, and chain id
+
+@subsubsection examplewalletsigntrx Example wallet_sign_trx Usage
+```
+$ curl http://localhost:8889/v1/wallet/sign_transaction -X POST -d '[{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":[]}, ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"], ""]'
+```
+
+@subsubsection examplewalletsigntrxresult  Example wallet_sign_trx Result
+```
+{
+  "ref_block_num": 21453,
+  "ref_block_prefix": 3165644999,
+  "expiration": "2017-12-08T10:28:49",
+  "scope": [
+    "initb",
+    "initc"
+  ],
+  "read_scope": [],
+  "messages": [
+    {
+      "code": "currency",
+      "type": "transfer",
+      "authorization": [
+        {
+          "account": "initb",
+          "permission": "active"
+        }
+      ],
+      "data": "000000008093dd74000000000094dd74e803000000000000"
+    }
+  ],
+  "signatures": [
+    "1f393cc5ce6a6951fb53b11812345bcf14ffd978b07be386fd639eaf440bca7dca16b14833ec661ca0703d15e55a2a599a36d55ce78c4539433f6ce8bcee0158c3"
   ]
 }
 ```
