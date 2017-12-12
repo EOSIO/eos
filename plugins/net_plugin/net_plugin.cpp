@@ -1065,6 +1065,9 @@ namespace eosio {
 
   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
     try {
+      if (response_expected) {
+        response_expected->cancel();
+      }
       // If it is a signed_block, then save the raw message for the cache
       // This must be done before we unpack the message.
       // This code is copied from fc::io::unpack(..., unsigned_int)
@@ -1121,7 +1124,8 @@ namespace eosio {
 
   bool sync_manager::syncing( ) {
     fc_dlog(logger, "ours = ${ours} known = ${known} head = ${head}",("ours",sync_last_requested_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).head_block_num( )));
-    return( sync_last_requested_num != sync_known_lib_num ||
+
+    return( sync_last_requested_num < sync_known_lib_num ||
             chain_plug->chain( ).head_block_num( ) < sync_last_requested_num );
   }
 
@@ -1329,6 +1333,16 @@ namespace eosio {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
           if( !ec ) {
+            int visitors = 0;
+            for (auto &conn : connections) {
+              if(conn->current() && conn->peer_addr.empty()) {
+                visitors++;
+              }
+            }
+            if (num_clients != visitors) {
+              ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
+              num_clients = visitors;
+            }
             if( max_client_count == 0 || num_clients < max_client_count ) {
               ++num_clients;
               connection_ptr c = std::make_shared<connection>( socket );
