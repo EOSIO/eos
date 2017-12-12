@@ -784,6 +784,34 @@ class db_index_api : public context_aware_api {
 
 };
 
+class transaction_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void send_inline( array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+
+         action act;
+         fc::raw::unpack<action>(data, data_len, act);
+         context.execute_inline(std::move(act));
+      }
+
+
+      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_gen_trx_size, "generated transaction too big" );
+
+         deferred_transaction dtrx;
+         fc::raw::unpack<transaction>(data, data_len, dtrx);
+         dtrx.sender = context.receiver;
+         dtrx.sender_id = sender_id;
+         dtrx.execute_after = execute_after;
+         context.execute_deferred(std::move(dtrx));
+      }
+
+};
+
 REGISTER_INTRINSICS(system_api,
    (assert,      void(int, int))
 );
@@ -810,6 +838,12 @@ REGISTER_INTRINSICS(console_api,
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
 );
+
+REGISTER_INTRINSICS(transaction_api,
+   (send_inline,           void(int, int)  )
+   (send_deferred,         void(int, int, int, int)  )
+);
+
 
 #define DB_METHOD_SEQ(SUFFIX) \
    (store,        int32_t(int64_t, int64_t, int, int),            "store_"#SUFFIX )\

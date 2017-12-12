@@ -282,11 +282,13 @@ namespace eosio { namespace chain {
           *
           * @return true if the provided keys and accounts are sufficient to authorize actions of the transaction
           */
-         void check_authorization( const transaction& trx, 
+         void check_authorization( const vector<action>& actions,
                                    flat_set<public_key_type> provided_keys,
                                    bool                      allow_unused_signatures = false,
                                    flat_set<account_name>    provided_accounts = flat_set<account_name>()
                                    )const;
+
+
 
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;

@@ -3,6 +3,9 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
+#include <boost/container/flat_set.hpp>
+
+using boost::container::flat_set;
 
 namespace eosio { namespace chain {
 void apply_context::exec_one()
@@ -130,57 +133,35 @@ void apply_context::require_recipient( account_name code ) {
       _notified.push_back(code);
 }
 
-void apply_context::deferred_transaction_start( uint32_t id, 
-                                 uint16_t region,
-                                 vector<scope_name> write_scopes, 
-                                 vector<scope_name> read_scopes,
-                                 time_point_sec     execute_after,
-                                 time_point_sec     execute_before
-                               ) {
-   FC_ASSERT( execute_before > (controller.head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
+void apply_context::execute_inline( action &&a ) {
+   controller.check_authorization( {a}, flat_set<public_key_type>(), false, {receiver} );
+   _inline_actions.emplace_back( move(a) );
+}
+
+void apply_context::execute_deferred( deferred_transaction&& trx ) {
+   FC_ASSERT( trx.expiration > (controller.head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
                                 "transaction is expired when created" );
-   FC_ASSERT( execute_after < execute_before );
+
+   FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
 
    /// TODO: make default_max_gen_trx_count a producer parameter
    FC_ASSERT( _pending_deferred_transactions.size() < config::default_max_gen_trx_count );
 
-   auto itr = _pending_deferred_transactions.find( id );
-   FC_ASSERT( itr == _pending_deferred_transactions.end(), "pending transaction with ID ${id} already started", ("id",id) );
-   auto& trx = _pending_deferred_transactions[id];
-   trx.region        = region;
-   trx.write_scope   = move( write_scopes );
-   trx.read_scope    = move( read_scopes );
-   trx.expiration    = execute_before;
-   trx.execute_after = execute_after;
-   trx.sender        = receiver; ///< sender is the receiver of the current action
-   trx.sender_id     = id;
+   FC_ASSERT( trx.actions.empty(), "transaction must have at least one action");
+
+   controller.check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
 
    controller.validate_scope( trx );
 
+   trx.sender = receiver; //  "Attempting to send from another account"
+   trx.set_reference_block(controller.head_block_id());
+
+   auto itr = _pending_deferred_transactions.find( trx.sender_id );
+   FC_ASSERT( itr == _pending_deferred_transactions.end(), "pending transaction with ID ${id} already exists", ("id",trx.sender_id) );
+
    /// TODO: make sure there isn't already a deferred transaction with this ID
+   _pending_deferred_transactions.emplace(std::piecewise_construct, std::forward_as_tuple(trx.sender_id), std::forward_as_tuple(move(trx)));
 }
-
-deferred_transaction& apply_context::get_deferred_transaction( uint32_t id ) {
-   auto itr = _pending_deferred_transactions.find( id );
-   FC_ASSERT( itr != _pending_deferred_transactions.end(), "attempt to reference unknown pending deferred transaction" );
-   return itr->second;
-}
-
-void apply_context::deferred_transaction_append( uint32_t id, action a ) {
-//   auto& dt = get_deferred_transaction(id);
-//   dt.actions.emplace_back( move(a) );
-//
-//   /// TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-//   FC_ASSERT( fc::raw::pack_size( dt ) < config::default_max_gen_trx_size, "generated transaction too big" );
-}
-void apply_context::deferred_transaction_send( uint32_t id ) {
-//   auto& dt = get_deferred_transaction(id);
-//   FC_ASSERT( dt.actions.size(), "transaction must contain at least one action" );
-//   controller.check_authorization( dt, flat_set<public_key_type>(), false, {receiver} );
-//   auto itr = _pending_deferred_transactions.find( id );
-//   _pending_deferred_transactions.erase(itr);
-}
-
 
 const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
    require_read_scope(scope);

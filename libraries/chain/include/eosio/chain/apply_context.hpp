@@ -24,18 +24,8 @@ class apply_context {
 
       void exec();
 
-      void execute_inline( action a ) { _inline_actions.emplace_back( move(a) ); }
-
-      deferred_transaction& get_deferred_transaction( uint32_t id );
-      void deferred_transaction_start( uint32_t id, 
-                                       uint16_t region,
-                                       vector<scope_name> write_scopes, 
-                                       vector<scope_name> read_scopes,
-                                       time_point_sec     execute_after,
-                                       time_point_sec     execute_before
-                                     );
-      void deferred_transaction_append( uint32_t id, action a );
-      void deferred_transaction_send( uint32_t id );
+      void execute_inline( action &&a );
+      void execute_deferred( deferred_transaction &&trx );
 
       using table_id_object = contracts::table_id_object;
       const table_id_object* find_table( name scope, name code, name table );

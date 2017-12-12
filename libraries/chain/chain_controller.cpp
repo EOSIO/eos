@@ -621,7 +621,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const signed_trans
    return checker.used_keys();
 }
 
-void chain_controller::check_authorization( const transaction& trx, 
+void chain_controller::check_authorization( const vector<action>& actions,
                                             flat_set<public_key_type> provided_keys,
                                             bool allow_unused_signatures,
                                             flat_set<account_name>    provided_accounts  )const
@@ -631,7 +631,7 @@ void chain_controller::check_authorization( const transaction& trx,
                                      provided_keys, provided_accounts );
 
 
-   for( const auto& act : trx.actions ) {
+   for( const auto& act : actions ) {
       for( const auto& declared_auth : act.authorization ) {
 
          const auto& min_permission = lookup_minimum_permission(declared_auth.actor, 
@@ -661,7 +661,7 @@ void chain_controller::check_authorization( const transaction& trx,
 void chain_controller::check_transaction_authorization(const signed_transaction& trx, 
                                                        bool allow_unused_signatures)const 
 {
-   check_authorization( trx, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
+   check_authorization( trx.actions, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
 }
 
 void chain_controller::validate_scope( const transaction& trx )const {
