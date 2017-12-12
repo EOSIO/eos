@@ -9,7 +9,7 @@
 namespace eosio {
 
    /**
-    * @defgroup transactioncppapi transaction C++ API
+    * @defgroup transactioncppapi Transaction C++ API
     * @ingroup transactionapi
     * @brief Type-safe C++ wrappers for transaction C API
     *
@@ -17,8 +17,13 @@ namespace eosio {
     *
     * @{ 
     */
-
+   
    class transaction;
+
+   /**
+    * @brief Message
+    * 
+    */
    class message {
    public:
       template<typename Payload, typename ...Permissions>
@@ -81,6 +86,10 @@ namespace eosio {
 
    };
 
+    /**
+    * @brief Transaction, which contains one or multiple messages
+    * 
+    */
    class transaction {
    public:
       transaction()
