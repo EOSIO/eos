@@ -318,6 +318,7 @@ enum allowed_connection : char {
 };
 
 struct launcher_def {
+  bool force_overwrite;
   size_t producers;
   size_t total_nodes;
   size_t prod_nodes;
@@ -378,6 +379,7 @@ struct launcher_def {
 void
 launcher_def::set_options (bpo::options_description &cli) {
   cli.add_options()
+    ("force,f", bpo::bool_switch(&force_overwrite)->default_value(false), "Force overwrite of existing configuration files and erase blockchain")
     ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
     ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that are producers")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
@@ -733,19 +735,24 @@ launcher_def::deploy_config_files (tn_node_def &node) {
   if (host->is_local()) {
     bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
     if (bf::exists (dd)) {
-      int64_t count =  bf::remove_all (dd / "blocks", ec);
-      if (ec.value() != 0) {
-        cerr << "count = " << count << " could not remove old directory: " << dd
-             << " " << strerror(ec.value()) << endl;
+      if (force_overwrite) {
+        int64_t count =  bf::remove_all (dd / "blocks", ec);
+        if (ec.value() != 0) {
+          cerr << "count = " << count << " could not remove old directory: " << dd
+               << " " << strerror(ec.value()) << endl;
+          exit (-1);
+        }
+        count = bf::remove_all (dd / "blockchain", ec);
+        if (ec.value() != 0) {
+          cerr << "count = " << count << " could not remove old directory: " << dd
+               << " " << strerror(ec.value()) << endl;
+          exit (-1);
+        }
+      }
+      else {
+        cerr << dd << " already exists.  Use -f/--force to overwrite configuration and erase blockchain" << endl;
         exit (-1);
       }
-      count = bf::remove_all (dd / "blockchain", ec);
-      if (ec.value() != 0) {
-        cerr << "count = " << count << " could not remove old directory: " << dd
-             << " " << strerror(ec.value()) << endl;
-        exit (-1);
-      }
-
     } else if (!bf::create_directory (instance.data_dir, ec) && ec.value()) {
       cerr << "could not create new directory: " << instance.data_dir
            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
@@ -1046,10 +1053,16 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
   }
   cmd = "cd " + add;
   if (do_ssh(cmd,host->host_name)) {
-    cmd = "rm -rf " + add + "/block*";
-    if (!do_ssh (cmd, host->host_name)) {
-      cerr << "Unable to remove old data directories on host "
-           << host->host_name << endl;
+    if(force_overwrite) {
+      cmd = "rm -rf " + add + "/block*";
+      if (!do_ssh (cmd, host->host_name)) {
+        cerr << "Unable to remove old data directories on host "
+             << host->host_name << endl;
+        exit (-1);
+      }
+    }
+    else {
+      cerr << add << " already exists on host " << host->host_name << ".  Use -f/--force to overwrite configuration and erase blockchain" << endl;
       exit (-1);
     }
   }
@@ -1329,7 +1342,7 @@ FC_REFLECT( eosd_def,
 
 FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
 
-FC_REFLECT( testnet_def, (ssh_helper)(nodes) )
+FC_REFLECT( testnet_def, (name)(ssh_helper)(nodes) )
 
 FC_REFLECT( server_name_def, (ipaddr) (name) (instances) )
 
