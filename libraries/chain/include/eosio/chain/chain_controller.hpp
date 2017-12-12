@@ -308,7 +308,10 @@ namespace eosio { namespace chain {
 
 
          transaction_trace _push_transaction( const signed_transaction& trx );
+         transaction_trace _push_transaction( transaction_metadata& data );
          transaction_trace _apply_transaction( transaction_metadata& data );//const transaction& trx, uint32_t region_id, uint32_t cycle_index );
+         transaction_trace _apply_error( transaction_metadata& data );
+         void _push_deferred_transactions( bool force_new_cycle = false );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
