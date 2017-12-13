@@ -52,9 +52,7 @@ int main(int argc, char** argv)
       app().register_plugin<account_history_api_plugin>();
       app().register_plugin<db_plugin>();
       app().register_plugin<txn_test_gen_plugin>();
-      wlog("adding faucet_testnet_plugin");
       app().register_plugin<faucet_testnet_plugin>();
-      wlog("adding faucet_testnet_plugin done");
       if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
          return -1;
       initialize_logging();
