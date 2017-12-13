@@ -711,6 +711,49 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    BOOST_CHECK_EQUAL( generate_abi(full_table_decl, full_table_decl_abi), true );
 
+   const char* str_table_decl = R"=====(
+   #include <eoslib/types.hpp>
+   #include <eoslib/string.hpp>
+
+   //@abi table
+   class Table1 {
+   public:
+      eosio::string name;
+      uint32_t age;
+   };
+
+   )=====";
+
+   const char* str_table_decl_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "Table1",
+         "base": "",
+         "fields": {
+           "name": "string",
+           "age": "uint32"
+         }
+       }
+     ],
+     "actions": [],
+     "tables": [{
+         "table_name": "table1",
+         "index_type": "str",
+         "key_names": [
+           "name"
+         ],
+         "key_types": [
+           "string"
+         ],
+         "type": "Table1"
+       }
+     ]
+   }
+   )=====";
+
+   BOOST_CHECK_EQUAL( generate_abi(full_table_decl, full_table_decl_abi), true );
+
    const char* union_table = R"=====(
    #include <eoslib/types.h>
 
