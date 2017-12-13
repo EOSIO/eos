@@ -99,6 +99,7 @@ namespace detail {
             : permission_to_authority(permission_to_authority),
               recursion_depth_limit(recursion_depth_limit),
               signing_keys(signing_keys.begin(), signing_keys.end()),
+              _provided_auths(provided_auths.begin(), provided_auths.end()),
               _used_keys(signing_keys.size(), false)
          {}
 

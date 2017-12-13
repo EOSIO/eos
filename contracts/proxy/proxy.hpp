@@ -13,10 +13,11 @@ namespace proxy {
    };
 
    //@abi table
-   struct PACKED( config ) {
-      config( account_name o = account_name() ):owner(o){}
-      const uint64_t     key = N(config);
-      account_name        owner;
+   struct config {
+      config(){}
+      const uint64_t      key = N(config);
+      account_name        owner = 0;
+      uint32_t            next_id = 0;
    };
 
    using configs = eosio::table<N(proxy),N(proxy),N(configs),config,uint64_t>;

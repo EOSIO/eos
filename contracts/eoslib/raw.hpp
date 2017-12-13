@@ -205,6 +205,7 @@ namespace eosio {
       if( size ) s.write( v.str, size );
    }
 
+
   /**
    *  Deserialize a fixed_string16 from a stream
    *  @param s stream to read
@@ -255,6 +256,16 @@ namespace eosio {
       eosio::raw::unpack(s, v.amount);
       eosio::raw::unpack(s, v.symbol);
    }
+
+   template<typename Stream> inline void pack(Stream &s, const account_permission &pe) {
+      eosio::raw::pack(s, pe.account);
+      eosio::raw::pack(s, pe.permission);
+   }
+
+   template<typename Stream> inline void unpack(Stream &s, account_permission &pe) {
+      eosio::raw::unpack(s, pe.account);
+      eosio::raw::unpack(s, pe.permission);
+   }
   /**
    *  Serialize a bool into a stream
    *  @param s stream to write
@@ -263,6 +274,48 @@ namespace eosio {
    template<typename Stream> inline void pack( Stream& s, const bool& v ) { eosio::raw::pack( s, uint8_t(v) );             }
 
   /**
+   *  Serialize an array of types into a stream
+   *  @param s stream to write
+   *  @param varr array of values to be serialized
+   *  @param count the number of values to be serialized
+   */
+   template<typename Stream, typename T> inline void pack( Stream& s, const T* varr, size_t count ) {
+      eosio::raw::pack( s, unsigned_int(count) );
+      for (size_t idx = 0; idx < count; idx++) {
+         eosio::raw::pack( s, varr[idx] );
+      }
+   }
+
+   template<typename Stream, typename T> inline void unpack( Stream& s, T* varr, size_t &count, size_t max_count ) {
+      unsigned_int packed_count;
+      eosio::raw::unpack( s, packed_count );
+      count = packed_count.value;
+      assert(count <= max_count, "array too large to read");
+
+      for (size_t idx = 0; idx < count; idx++) {
+         eosio::raw::unpack( s, varr[idx] );
+      }
+   }
+
+
+   template<typename Stream> inline void pack( Stream& s, const char *str, size_t len ) {
+     eosio::raw::pack( s, unsigned_int(len) );
+     if( len )
+        s.write( str, len );
+   }
+
+   template<typename Stream> inline void unpack( Stream& s, char *str, size_t &len, size_t max_len ) {
+      unsigned_int packed_len;
+      eosio::raw::unpack( s, packed_len );
+      len = packed_len.value;
+      assert(len <= max_len, "raw string too large to read");
+      if( len )
+         s.read( str, len );
+   }
+
+
+
+    /**
    *  Deserialize a bool from a stream
    *  @param s stream to read
    *  @param v destination of deserialized value

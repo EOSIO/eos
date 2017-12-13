@@ -160,9 +160,7 @@ void chain_controller::push_block(const signed_block& new_block, uint32_t skip)
    with_skip_flags( skip, [&](){ 
       return without_pending_transactions( [&]() {
          return _db.with_write_lock( [&]() {
-            auto block_result =  _push_block(new_block);
-            _push_deferred_transactions();
-            return block_result;
+            return _push_block(new_block);
          } );
       });
    });
@@ -252,9 +250,7 @@ transaction_trace chain_controller::push_transaction(const signed_transaction& t
 { try {
    return with_skip_flags(skip, [&]() {
       return _db.with_write_lock([&]() {
-         auto result = _push_transaction(trx);
-         _push_deferred_transactions(true);
-         return result;
+         return _push_transaction(trx);
       });
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
@@ -277,6 +273,7 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
 transaction_trace chain_controller::_push_transaction( transaction_metadata& data )
 {
    const transaction& trx = data.trx;
+   bool force_new_cycle = false;
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -288,12 +285,18 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata& dat
    // for now apply the transaction serially but schedule it according to those invariants
    validate_referenced_accounts(trx);
 
-   auto shardnum = _pending_cycle.schedule( trx );
+   auto shardnum = 0;
    auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
-   if (shardnum == -1) {
-      cyclenum += 1;
-   }
+   bool new_cycle = false;
 
+   if (!force_new_cycle) {
+      shardnum = _pending_cycle.schedule( trx );
+   }
+   if (shardnum == -1 || force_new_cycle) {
+      cyclenum += 1;
+      shardnum = 0;
+      new_cycle = true;
+   }
 
    /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
    /// the transaction first so that there is nothing to undo... this only works because things are currently
@@ -304,11 +307,10 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata& dat
    data.shard_index = shardnum;
    auto result = _apply_transaction( data );
 
-
-   if( shardnum == -1 ) { /// schedule conflict start new cycle
+   if( new_cycle ) { /// schedule conflict start new cycle
       _finalize_pending_cycle();
       _start_pending_cycle();
-      shardnum = _pending_cycle.schedule( trx );
+      FC_ASSERT(_pending_cycle.schedule( trx ) == shardnum);
    }
 
 
@@ -582,25 +584,26 @@ void chain_controller::__apply_block(const signed_block& next_block)
          for (const auto& shard: cycle) {
             shard_trace s_trace;
             for (const auto& receipt : shard) {
-               transaction_metadata mtrx;
-
-               if( receipt.status != transaction_receipt::hard_fail ) {
+                auto make_metadata = [&](){
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     mtrx = transaction_metadata( *itr->second, get_chain_id() );
+                     return transaction_metadata( *itr->second, get_chain_id() );
                   } else {
-                     const auto& gtrx = _db.get<generated_transaction_object,by_id>(receipt.id);
+                     const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
                      auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     mtrx = transaction_metadata(trx, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
+                     return transaction_metadata(trx, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
                   }
+               };
 
-                  mtrx.region_id = r.region;
-                  mtrx.cycle_index = cycle_index;
-                  mtrx.shard_index = shard_index;
+               auto mtrx = make_metadata();
+               mtrx.region_id = r.region;
+               mtrx.cycle_index = cycle_index;
+               mtrx.shard_index = shard_index;
 
-                  s_trace.transaction_traces.emplace_back(_apply_transaction(mtrx));
+               s_trace.transaction_traces.emplace_back(_apply_transaction(mtrx));
 
-               }
+               FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
+
                // validate_referenced_accounts(trx);
                // Check authorization, and allow irrelevant signatures.
                // If the block producer let it slide, we'll roll with it.
@@ -1329,7 +1332,7 @@ static void rethrow_subjective_errors(const transaction& trx) {
       throw;
    } catch (const checktime_exceeded&) {
       throw;
-   } FC_CAPTURE_AND_LOG("Transaction resulted in exception, attempting error handling", ("trx",trx));
+   } FC_CAPTURE_AND_LOG((trx));
 }
 
 transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) { 
@@ -1406,38 +1409,49 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    return result;
 }
 
-void chain_controller::_push_deferred_transactions( bool force_new_cycle )
+void chain_controller::push_deferred_transactions( bool flush )
 {
-   bool pushed_any = false;
+   if (flush && _pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
+      // TODO: when we go multithreaded this will need a better way to see if there are flushable
+      // deferred transactions in the shards
+      auto maybe_start_new_cycle = [&]() {
+         for (const auto &st: _pending_cycle_trace->shard_traces) {
+            for (const auto &tr: st.transaction_traces) {
+               for (const auto &dt: tr.deferred_transactions) {
+                  if (fc::time_point(dt.execute_after) <= head_block_time()) {
+                     // force a new cycle and break out
+                     _finalize_pending_cycle();
+                     _start_pending_cycle();
+                     return;
+                  }
+               }
+            }
+         }
+      };
+
+      maybe_start_new_cycle();
+   }
 
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   const auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
+   auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
+   vector<const generated_transaction_object*> candidates;
 
-   bool empty_cycle = !_pending_block ||
-      _pending_block->regions.back().cycles_summary.size() == 0 ||
-      _pending_block->regions.back().cycles_summary.back().size() == 0 ||
-      (
-         _pending_block->regions.back().cycles_summary.back().size() == 1 &&
-         _pending_block->regions.back().cycles_summary.back().back().size() == 0
-      );
+   for( auto itr = generated_index.rbegin(); itr != generated_index.rend() && (head_block_time() >= itr->delay_until); ++itr) {
+      const auto &gtrx = *itr;
+      candidates.emplace_back(&gtrx);
+   }
 
-   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->delay_until) ) {
-      if (force_new_cycle && !pushed_any && !empty_cycle ) {
-         _finalize_pending_cycle();
-         _start_pending_cycle();
+   for (const auto* trx_p: candidates) {
+      if (!is_known_transaction(trx_p->trx_id)) {
+         try {
+            auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
+            transaction_metadata mtrx (trx, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
+            _push_transaction(mtrx);
+            generated_transaction_idx.remove(*trx_p);
+         } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
+      } else {
+         generated_transaction_idx.remove(*trx_p);
       }
-
-      const auto &gtrx = *generated_index.rbegin();
-      try {
-         auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.base(), gtrx.packed_trx.size());
-         auto mtrx = transaction_metadata(trx, trx.sender, trx.sender_id, gtrx.packed_trx.base(), gtrx.packed_trx.size());
-         _push_transaction(mtrx);
-
-      } FC_CAPTURE_AND_LOG("Failed to process generated transaction with id: ${id} from ${sender}", ("id", gtrx.trx_id)("sender", gtrx.sender));
-
-
-      generated_transaction_idx.remove(*generated_index.rbegin());
-      pushed_any = true;
    }
 }
 

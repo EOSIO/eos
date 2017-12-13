@@ -10,21 +10,24 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 void apply_context::exec_one()
 {
-   auto native = mutable_controller.find_apply_handler( receiver, act.scope, act.name );
-   if( native ) {
-      (*native)(*this);
-   } else {
-      const auto& a = mutable_controller.get_database().get<account_object,by_name>(receiver);
+   try {
+      auto native = mutable_controller.find_apply_handler(receiver, act.scope, act.name);
+      if (native) {
+         (*native)(*this);
+      } else {
+         const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
 
-      if (a.code.size() > 0) {
-         // get code from cache
-         auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(), a.code.size());
+         if (a.code.size() > 0) {
+            // get code from cache
+            auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
+                                                                            a.code.size());
 
-         // get wasm_interface
-         auto& wasm = wasm_interface::get();
-         wasm.apply(code, *this);
+            // get wasm_interface
+            auto &wasm = wasm_interface::get();
+            wasm.apply(code, *this);
+         }
       }
-   }
+   } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
    // create a receipt for this
    vector<data_access_info> data_access;
@@ -139,28 +142,27 @@ void apply_context::execute_inline( action &&a ) {
 }
 
 void apply_context::execute_deferred( deferred_transaction&& trx ) {
-   FC_ASSERT( trx.expiration > (controller.head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
-                                "transaction is expired when created" );
+   try {
+      FC_ASSERT( trx.expiration > (controller.head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
+                                   "transaction is expired when created" );
 
-   FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
+      FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
 
-   /// TODO: make default_max_gen_trx_count a producer parameter
-   FC_ASSERT( _pending_deferred_transactions.size() < config::default_max_gen_trx_count );
+      /// TODO: make default_max_gen_trx_count a producer parameter
+      FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
 
-   FC_ASSERT( trx.actions.empty(), "transaction must have at least one action");
+      FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
-   controller.check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
+      controller.check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
 
-   controller.validate_scope( trx );
+      controller.validate_scope( trx );
 
-   trx.sender = receiver; //  "Attempting to send from another account"
-   trx.set_reference_block(controller.head_block_id());
+      trx.sender = receiver; //  "Attempting to send from another account"
+      trx.set_reference_block(controller.head_block_id());
 
-   auto itr = _pending_deferred_transactions.find( trx.sender_id );
-   FC_ASSERT( itr == _pending_deferred_transactions.end(), "pending transaction with ID ${id} already exists", ("id",trx.sender_id) );
-
-   /// TODO: make sure there isn't already a deferred transaction with this ID
-   _pending_deferred_transactions.emplace(std::piecewise_construct, std::forward_as_tuple(trx.sender_id), std::forward_as_tuple(move(trx)));
+      /// TODO: make sure there isn't already a deferred transaction with this ID or senderID?
+      results.generated_transactions.emplace_back(move(trx));
+   } FC_CAPTURE_AND_RETHROW((trx));
 }
 
 const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {

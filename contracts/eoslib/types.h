@@ -37,7 +37,9 @@ typedef uint64_t permission_name;
 typedef uint64_t token_name;
 typedef uint64_t table_name;
 typedef uint32_t time;
-typedef uint64_t func_name;
+typedef uint64_t scope_name;
+typedef uint64_t action_name;
+typedef uint16_t region_id;
 
 typedef uint64_t asset_symbol;
 typedef int64_t share_type;
@@ -85,6 +87,10 @@ struct bytes {
    uint8_t* data;
 };
 
+struct account_permission {
+   account_name account;
+   permission_name permission;
+};
 
 } /// extern "C"
 /// @}

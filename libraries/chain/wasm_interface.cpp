@@ -1,5 +1,6 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
@@ -636,6 +637,10 @@ class system_api : public context_aware_api {
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
       }
+
+      fc::time_point_sec now() {
+         return context.controller.head_block_time();
+      }
 };
 
 class action_api : public context_aware_api {
@@ -707,14 +712,17 @@ class db_api : public context_aware_api {
 
          const char* record_data =  ((const char*)data) + sizeof(KeyArrayType);
          size_t record_len = data_len - sizeof(KeyArrayType);
-         return (context.*(method))(t_id, keys, record_data, record_len);
+         return (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
       }
 
    public:
       using context_aware_api::context_aware_api;
 
       int store(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
-         return call(&apply_context::store_record<ObjectType>, scope, table, data, data_len);
+         auto res = call(&apply_context::store_record<ObjectType>, scope, table, data, data_len);
+         //ilog("STORE [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",context.receiver)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
+         return res;
+
       }
 
       int update(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
@@ -748,14 +756,16 @@ class db_index_api : public context_aware_api {
       char* record_data =  ((char*)data) + sizeof(KeyArrayType);
       size_t record_len = data_len - sizeof(KeyArrayType);
 
-      return (context.*(method))(t_id, keys, record_data, record_len);
+      return (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
    }
 
    public:
       using context_aware_api::context_aware_api;
 
       int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
+         auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
+         //ilog("LOAD [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",code)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
+         return res;
       }
 
       int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
@@ -784,6 +794,24 @@ class db_index_api : public context_aware_api {
 
 };
 
+class memory_api {
+   public:
+      memory_api(wasm_interface&){}
+
+      char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
+         return (char *)::memcpy(dest, src, length);
+      }
+
+      int memcmp( array_ptr<const char> dest, array_ptr<const char> src, size_t length) {
+         return ::memcmp(dest, src, length);
+      }
+
+      void memset( array_ptr<char> dest, int value, size_t length ) {
+         ::memset(dest, value, length);
+      }
+
+};
+
 class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -799,21 +827,24 @@ class transaction_api : public context_aware_api {
 
 
       void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_gen_trx_size, "generated transaction too big" );
+         try {
+            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
 
-         deferred_transaction dtrx;
-         fc::raw::unpack<transaction>(data, data_len, dtrx);
-         dtrx.sender = context.receiver;
-         dtrx.sender_id = sender_id;
-         dtrx.execute_after = execute_after;
-         context.execute_deferred(std::move(dtrx));
+            deferred_transaction dtrx;
+            fc::raw::unpack<transaction>(data, data_len, dtrx);
+            dtrx.sender = context.receiver;
+            dtrx.sender_id = sender_id;
+            dtrx.execute_after = execute_after;
+            context.execute_deferred(std::move(dtrx));
+         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
 };
 
 REGISTER_INTRINSICS(system_api,
    (assert,      void(int, int))
+   (now,          int())
 );
 
 REGISTER_INTRINSICS(action_api,
@@ -837,6 +868,12 @@ REGISTER_INTRINSICS(console_api,
    (printd,                void(int64_t)   )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
+);
+
+REGISTER_INTRINSICS(memory_api,
+   (memcpy,                 int(int, int, int)  )
+   (memcmp,                 int(int, int, int)  )
+   (memset,                void(int, int, int)  )
 );
 
 REGISTER_INTRINSICS(transaction_api,

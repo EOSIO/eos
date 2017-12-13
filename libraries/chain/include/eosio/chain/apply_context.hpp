@@ -172,7 +172,6 @@ class apply_context {
    
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
-      map<uint32_t,deferred_transaction>  _pending_deferred_transactions; ///< deferred txs /// TODO specify when
       std::ostringstream                  _pending_console_output;
 };
 
@@ -606,3 +605,5 @@ using apply_handler = std::function<void(apply_context&)>;
    }
 
 } } // namespace eosio::chain
+
+FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(generated_transactions));

@@ -41,7 +41,15 @@ namespace eosio { namespace chain {
 
       action(){}
 
-      template<typename T>
+      template<typename T, std::enable_if_t<std::is_base_of<bytes, T>::value, int> = 1>
+      action( vector<permission_level> auth, const T& value ) {
+         scope       = T::get_scope();
+         name        = T::get_name();
+         authorization = move(auth);
+         data.assign(value.data(), value.data() + value.size());
+      }
+
+      template<typename T, std::enable_if_t<!std::is_base_of<bytes, T>::value, int> = 1>
       action( vector<permission_level> auth, const T& value ) {
          scope       = T::get_scope();
          name        = T::get_name();
@@ -180,6 +188,10 @@ namespace eosio { namespace chain {
    };
 
    struct transaction_metadata {
+      transaction_metadata( const transaction& t )
+      :trx(t)
+      ,id(trx.id()) {}
+
       transaction_metadata( const transaction& t, const account_name& sender, uint32_t sender_id, const char* generated_data, size_t generated_size )
       :trx(t)
       ,id(trx.id())
@@ -187,9 +199,9 @@ namespace eosio { namespace chain {
       {}
 
       transaction_metadata( const signed_transaction& t, chain_id_type chainid )
-      :trx( t ),
-       id( trx.id() ),
-       bandwidth_usage( fc::raw::pack_size(t) ){ }
+      :trx(t)
+      ,id(trx.id())
+      ,bandwidth_usage( fc::raw::pack_size(t) ){ }
 
       const transaction&                    trx;
       transaction_id_type                   id;
