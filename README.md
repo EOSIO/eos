@@ -38,9 +38,10 @@ develop applications (smart contracts).
 	5. [Pushing a message to a sample contract](#pushamessage)
 	6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
-6. [Doxygen documentation](#doxygen)
-7. [Running EOS in Docker](#docker)
-8. [Manual installation of the dependencies](#manualdep)
+6. [Running a node on the public testnet](#publictestnet)
+7. [Doxygen documentation](#doxygen)
+8. [Running EOS in Docker](#docker)
+9. [Manual installation of the dependencies](#manualdep)
    1. [Clean install Ubuntu 16.10](#ubuntu)
    2. [MacOS Sierra 10.12.6](#macos)
 
@@ -400,7 +401,7 @@ cp ../genesis.json ./
 
 This command will generate 2 data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
 
-You should see a following response:
+You should see the following response:
 
 ```bash
 adding hostname ip-XXX-XXX-XXX
@@ -417,9 +418,54 @@ To confirm the nodes are running, run following `eosc` commands:
 ./eosc -p 8889 get info
 ```
 
-For each you should get a json with a blockchain information.
+For each command you should get a json with blockchain information.
 
 You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
+
+<a name="publictestnet"></a>
+## Running a local node connected to the public testnet
+
+To run a local node connected to the public testnet operated by block.one, a script is provided.
+
+```bash
+cd ~/eos/build/scripts
+./start_npnode.sh
+```
+
+This command will use the data folder provided for the instance called `testnet_np`.
+
+You should see the following response:
+
+```bash
+Launched eosd.
+See testnet_np/stderr.txt for eosd output.
+Synching requires at least 8 minutes, depending on network conditions.
+```
+
+To confirm eosd operation and synchronization:
+
+```bash
+tail -F testnet_np/stderr.txt
+```
+
+To exit tail, use Ctrl-C.  During synchronization, you will see log messages similar to:
+
+```bash
+3439731ms            chain_plugin.cpp:272          accept_block         ] Syncing Blockchain --- Got block: #200000 time: 2017-12-09T07:56:32 producer: initu
+3454532ms            chain_plugin.cpp:272          accept_block         ] Syncing Blockchain --- Got block: #210000 time: 2017-12-09T13:29:52 producer: initc
+```
+
+Synchronization is complete when you see log messages similar to:
+
+```bash
+42467ms            net_plugin.cpp:1245           start_sync           ] Catching up with chain, our last req is 351734, theirs is 351962 peer ip-10-160-11-116:9876
+42792ms            chain_controller.cpp:208      _push_block          ] initt #351947 @2017-12-12T22:59:44  | 0 trx, 0 pending, exectime_ms=0
+42793ms            chain_controller.cpp:208      _push_block          ] inito #351948 @2017-12-12T22:59:46  | 0 trx, 0 pending, exectime_ms=0
+42793ms            chain_controller.cpp:208      _push_block          ] initd #351949 @2017-12-12T22:59:48  | 0 trx, 0 pending, exectime_ms=0
+```
+
+This eosd instance listens on 127.0.0.1:8888 for http requests, on all interfaces at port 9877
+for p2p requests, and includes the wallet plugins.
 
 <a name="doxygen"></a>
 ## Doxygen documentation 

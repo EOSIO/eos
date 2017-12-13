@@ -179,6 +179,7 @@ endif()
 add_subdirectory( libraries )
 add_subdirectory( programs )
 add_subdirectory( plugins )
+add_subdirectory( scripts )
 add_subdirectory( tests )
 add_subdirectory( tools )
 
