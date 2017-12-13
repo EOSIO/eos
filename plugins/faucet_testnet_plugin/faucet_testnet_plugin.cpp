@@ -164,33 +164,15 @@ struct faucet_testnet_plugin_impl {
       const char init_char = '1';
    };
 
-   struct alternates {
-      alternates(uint32_t time_limit_microseconds, uint32_t num_to_return)
-      : time_limit_microseconds(time_limit_microseconds)
-      , num_to_return(num_to_return)
-      {
-      }
-
-      bool done() {
-         return names.size() >= num_to_return ||
-                (fc::time_point::now() - start).count() > time_limit_microseconds;
-      }
-
-      const fc::time_point start = fc::time_point::now();
-      const uint32_t time_limit_microseconds;
-      const uint32_t num_to_return;
-      std::vector<account_name> names;
-   };
-
    results_pair find_alternates(const std::string& new_account_name) {
-      alternates alts(_create_alternates_time_limit_msec * 1000, _create_alternates_to_return);
+      std::vector<account_name> names;
       std::string suggestion = new_account_name;
-      while (!alts.done() &&
+      while (names.size() < _default_create_alternates_to_return &&
              !suggestion.empty()) {
          const int32_t extension_capacity = extension::max_allowed_name_length - suggestion.length();
          if (extension_capacity > 0) {
             extension ext(extension_capacity);
-            while(!alts.done() && ext.increment()) {
+            while(names.size() < _default_create_alternates_to_return && ext.increment()) {
                chain::account_name alt;
                // not externalizing all the name struct encoding, so need to handle cases where we
                // construct an invalid encoded name
@@ -201,7 +183,7 @@ struct faucet_testnet_plugin_impl {
                }
                const account_object* const obj = database().find<account_object, by_name>(alt);
                if (obj == nullptr) {
-                  alts.names.push_back(alt);
+                  names.push_back(alt);
                }
             }
          }
@@ -210,7 +192,7 @@ struct faucet_testnet_plugin_impl {
       }
 
       const eosio::detail::faucet_testnet_create_account_alternates_response response{
-         alts.names, "Account name is already in use."};
+         names, "Account name is already in use."};
       return { conflict_with_alternates, fc::variant(response) };
    }
 
@@ -289,10 +271,7 @@ struct faucet_testnet_plugin_impl {
 
    static const uint32_t _default_create_interval_msec;
    uint32_t _create_interval_msec;
-   static const uint32_t _default_create_alternates_time_limit_msec;
-   uint32_t _create_alternates_time_limit_msec;
    static const uint32_t _default_create_alternates_to_return;
-   uint32_t _create_alternates_to_return;
    static const std::string _default_create_account_name;
    chain::account_name _create_account_name;
    static const key_pair _default_key_pair;
@@ -301,9 +280,9 @@ struct faucet_testnet_plugin_impl {
 };
 
 const uint32_t faucet_testnet_plugin_impl::_default_create_interval_msec = 1000;
-const uint32_t faucet_testnet_plugin_impl::_default_create_alternates_time_limit_msec = 5;
 const uint32_t faucet_testnet_plugin_impl::_default_create_alternates_to_return = 3;
 const std::string faucet_testnet_plugin_impl::_default_create_account_name = "faucet";
+// defaults to the public/private key of init accounts in private testnet genesis.json
 const key_pair faucet_testnet_plugin_impl::_default_key_pair = {"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"};
 
 
@@ -318,10 +297,6 @@ void faucet_testnet_plugin::set_program_options(options_description&, options_de
    cfg.add_options()
          ("faucet-create-interval-ms", bpo::value<uint32_t>()->default_value(faucet_testnet_plugin_impl::_default_create_interval_msec),
           "Time to wait, in milliseconds, between creating next faucet created account.")
-         ("faucet-alternates-time-limit-ms", bpo::value<uint32_t>()->default_value(faucet_testnet_plugin_impl::_default_create_alternates_time_limit_msec),
-          "Time to allow alternate account name suggestions before returning.")
-         ("faucet-alternates-to-return", bpo::value<uint32_t>()->default_value(faucet_testnet_plugin_impl::_default_create_alternates_to_return),
-          "Number of alternate account names to try to discover for already used account name.")
          ("faucet-name", bpo::value<std::string>()->default_value(faucet_testnet_plugin_impl::_default_create_account_name),
           "Name to use as creator for faucet created accounts.")
          ("faucet-private-key", boost::program_options::value<std::string>()->default_value(fc::json::to_string(faucet_testnet_plugin_impl::_default_key_pair)),
@@ -331,8 +306,6 @@ void faucet_testnet_plugin::set_program_options(options_description&, options_de
 
 void faucet_testnet_plugin::plugin_initialize(const variables_map& options) {
    my->_create_interval_msec = options.at("faucet-create-interval-ms").as<uint32_t>();
-   my->_create_alternates_time_limit_msec = options.at("faucet-alternates-time-limit-ms").as<uint32_t>();
-   my->_create_alternates_to_return = options.at("faucet-alternates-to-return").as<uint32_t>();
    my->_create_account_name = options.at("faucet-name").as<std::string>();
 
    auto faucet_key_pair = fc::json::from_string(options.at("faucet-private-key").as<std::string>()).as<key_pair>();
