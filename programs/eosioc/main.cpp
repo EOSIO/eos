@@ -903,7 +903,7 @@ int main( int argc, char** argv ) {
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       /*const auto& v = */call(wallet_host, wallet_port, wallet_unlock, vs);
       std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      std::cout << fc::json::to_pretty_string(vs) << std::endl;
+      //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // import keys into wallet
