@@ -642,7 +642,6 @@ namespace fc {
     { try {
       datastream<const char*>  ds( d, s );
       fc::raw::unpack(ds,v);
-      return v;
     } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) ) }
 
    template<typename Stream>

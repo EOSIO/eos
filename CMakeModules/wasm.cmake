@@ -91,7 +91,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
-      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding
+      COMMAND ${WASM_CLANG} -emit-llvm -O0 --std=c++14 --target=wasm32 -ffreestanding
               -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS}
               -c ${infile} -o ${outfile}.bc 
       IMPLICIT_DEPENDS CXX ${infile}
@@ -124,7 +124,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND ${BINARYEN_BIN}/s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 1024 ${target}.s
+    COMMAND ${BINARYEN_BIN}/s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 4096 ${target}.s
 
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

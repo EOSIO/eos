@@ -76,9 +76,11 @@ namespace eosio { namespace chain {
 
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          transaction_trace push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         void push_deferred_transactions( bool flush = false );
 
 
-         /**
+
+      /**
           *  This signal is emitted after all operations and virtual operation for a
           *  block have been applied but before the get_applied_operations() are cleared.
           *
@@ -282,11 +284,13 @@ namespace eosio { namespace chain {
           *
           * @return true if the provided keys and accounts are sufficient to authorize actions of the transaction
           */
-         void check_authorization( const transaction& trx, 
+         void check_authorization( const vector<action>& actions,
                                    flat_set<public_key_type> provided_keys,
                                    bool                      allow_unused_signatures = false,
                                    flat_set<account_name>    provided_accounts = flat_set<account_name>()
                                    )const;
+
+
 
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
@@ -306,7 +310,9 @@ namespace eosio { namespace chain {
 
 
          transaction_trace _push_transaction( const signed_transaction& trx );
+         transaction_trace _push_transaction( transaction_metadata& data );
          transaction_trace _apply_transaction( transaction_metadata& data );//const transaction& trx, uint32_t region_id, uint32_t cycle_index );
+         transaction_trace _apply_error( transaction_metadata& data );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();

@@ -367,6 +367,18 @@ struct unlinkauth {
    }
 };
 
+struct onerror : bytes {
+   using bytes::bytes;
+
+   static scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(onerror);
+   }
+};
+
 using nonce_type = name;
 struct nonce {
    nonce_type value;

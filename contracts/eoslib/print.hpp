@@ -83,6 +83,10 @@ namespace eosio {
       printn(name.value);
    }
 
+   inline void print( bool val ) {
+      prints(val?"true":"false");
+   }
+
    template<typename T>
    inline void print( T&& t ) {
       t.print();

@@ -10,6 +10,10 @@
 #include <currency/currency.wast.hpp>
 #include <currency/currency.abi.hpp>
 
+#include <proxy/proxy.wast.hpp>
+#include <proxy/proxy.abi.hpp>
+
+
 #include <fc/variant_object.hpp>
 
 using namespace eosio;
@@ -354,6 +358,52 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
+
+} FC_LOG_AND_RETHROW() /// test_currency
+
+BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
+   produce_blocks(2);
+
+   create_account( N(proxy), asset::from_string("10000.0000 EOS") );
+   create_accounts( {N(alice), N(bob)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(proxy), proxy_wast);
+   set_abi(N(proxy), proxy_abi);
+   produce_blocks(1);
+
+   const auto& accnt  = control->get_database().get<account_object,by_name>( N(proxy) );
+   abi_def abi;
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+   abi_serializer abi_ser(abi);
+
+   // set up proxy owner
+   {
+      signed_transaction trx;
+      trx.write_scope = {N(proxy)};
+      action setowner_act;
+      setowner_act.scope = N(proxy);
+      setowner_act.name = N(setowner);
+      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
+      setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
+         ("owner", "bob")
+      );
+      trx.actions.emplace_back(std::move(setowner_act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
+      control->push_transaction(trx);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   transfer(N(alice), N(proxy), "5.0000 EOS");
+   control->push_deferred_transactions(true);
+
+   BOOST_CHECK_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
+   BOOST_CHECK_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
+   BOOST_CHECK_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
 
 } FC_LOG_AND_RETHROW() /// test_currency
 

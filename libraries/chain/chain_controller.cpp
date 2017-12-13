@@ -256,6 +256,24 @@ transaction_trace chain_controller::push_transaction(const signed_transaction& t
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 transaction_trace chain_controller::_push_transaction(const signed_transaction& trx) {
+   check_transaction_authorization(trx);
+   transaction_metadata   mtrx( trx, get_chain_id());
+
+   auto result = _push_transaction(mtrx);
+
+   _pending_block->input_transactions.push_back(trx);
+
+   // notify anyone listening to pending transactions
+   on_pending_transaction(trx);
+
+   return result;
+
+}
+
+transaction_trace chain_controller::_push_transaction( transaction_metadata& data )
+{
+   const transaction& trx = data.trx;
+   bool force_new_cycle = false;
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -266,26 +284,33 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
 
    // for now apply the transaction serially but schedule it according to those invariants
    validate_referenced_accounts(trx);
-   check_transaction_authorization(trx);
 
-   auto shardnum = _pending_cycle.schedule( trx );
+   auto shardnum = 0;
    auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
-   if (shardnum == -1) {
-      cyclenum += 1;
-   }
+   bool new_cycle = false;
 
+   if (!force_new_cycle) {
+      shardnum = _pending_cycle.schedule( trx );
+   }
+   if (shardnum == -1 || force_new_cycle) {
+      cyclenum += 1;
+      shardnum = 0;
+      new_cycle = true;
+   }
 
    /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
    /// the transaction first so that there is nothing to undo... this only works because things are currently
    /// single threaded
-   transaction_metadata   mtrx( trx, get_chain_id(), _pending_block->regions.back().region, cyclenum, 0 );
-   auto result = _apply_transaction( mtrx );
+   // set cycle, shard, region etc
+   data.region_id = 0;
+   data.cycle_index = cyclenum;
+   data.shard_index = shardnum;
+   auto result = _apply_transaction( data );
 
-
-   if( shardnum == -1 ) { /// schedule conflict start new cycle
+   if( new_cycle ) { /// schedule conflict start new cycle
       _finalize_pending_cycle();
       _start_pending_cycle();
-      shardnum = _pending_cycle.schedule( trx );
+      FC_ASSERT(_pending_cycle.schedule( trx ) == shardnum);
    }
 
 
@@ -299,19 +324,11 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
    bcycle.at(shardnum).emplace_back( tid );
    _pending_cycle_trace->shard_traces.at(shardnum).append(result);
 
-   /** for now we will just shove everything into the first shard */
-   _pending_block->input_transactions.push_back(trx);
-
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
 
-   // notify anyone listening to pending transactions
-   on_pending_transaction(trx);
-
    return result;
 }
-
-
 
 void chain_controller::_start_pending_block()
 {
@@ -567,17 +584,26 @@ void chain_controller::__apply_block(const signed_block& next_block)
          for (const auto& shard: cycle) {
             shard_trace s_trace;
             for (const auto& receipt : shard) {
-               if( receipt.status == transaction_receipt::executed ) {
+                auto make_metadata = [&](){
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     transaction_metadata mtrx( *itr->second, get_chain_id(), r.region, cycle_index, shard_index );
-                     s_trace.append( _apply_transaction( mtrx ) );
+                     return transaction_metadata( *itr->second, get_chain_id() );
+                  } else {
+                     const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
+                     auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
+                     return transaction_metadata(trx, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
                   }
-                  else
-                  {
-                     FC_ASSERT( !"deferred transactions not yet supported" );
-                  }
-               }
+               };
+
+               auto mtrx = make_metadata();
+               mtrx.region_id = r.region;
+               mtrx.cycle_index = cycle_index;
+               mtrx.shard_index = shard_index;
+
+               s_trace.transaction_traces.emplace_back(_apply_transaction(mtrx));
+
+               FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
+
                // validate_referenced_accounts(trx);
                // Check authorization, and allow irrelevant signatures.
                // If the block producer let it slide, we'll roll with it.
@@ -621,7 +647,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const signed_trans
    return checker.used_keys();
 }
 
-void chain_controller::check_authorization( const transaction& trx, 
+void chain_controller::check_authorization( const vector<action>& actions,
                                             flat_set<public_key_type> provided_keys,
                                             bool allow_unused_signatures,
                                             flat_set<account_name>    provided_accounts  )const
@@ -631,7 +657,7 @@ void chain_controller::check_authorization( const transaction& trx,
                                      provided_keys, provided_accounts );
 
 
-   for( const auto& act : trx.actions ) {
+   for( const auto& act : actions ) {
       for( const auto& declared_auth : act.authorization ) {
 
          const auto& min_permission = lookup_minimum_permission(declared_auth.actor, 
@@ -661,7 +687,7 @@ void chain_controller::check_authorization( const transaction& trx,
 void chain_controller::check_transaction_authorization(const signed_transaction& trx, 
                                                        bool allow_unused_signatures)const 
 {
-   check_authorization( trx, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
+   check_authorization( trx.actions, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
 }
 
 void chain_controller::validate_scope( const transaction& trx )const {
@@ -1239,14 +1265,14 @@ void chain_controller::clear_expired_transactions()
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
    while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.rbegin()->expiration) )
       transaction_idx.remove(*dedupe_index.rbegin());
-
+      */
    //Look for expired transactions in the pending generated list, and remove them.
    //transactions must have expired by at least two forking windows in order to be removed.
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   const auto& generated_index = generated_transaction_idx.indices().get<generated_transaction_object::by_expiration>();
-   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->trx.expiration) )
+   const auto& generated_index = generated_transaction_idx.indices().get<by_expiration>();
+   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->expiration) )
       generated_transaction_idx.remove(*generated_index.rbegin());
-      */
+
 } FC_CAPTURE_AND_RETHROW() }
 
 using boost::container::flat_set;
@@ -1301,36 +1327,134 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
    _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
+static void rethrow_subjective_errors(const transaction& trx) {
+   try {
+      throw;
+   } catch (const checktime_exceeded&) {
+      throw;
+   } FC_CAPTURE_AND_LOG((trx));
+}
+
 transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) { 
+   try {
+      transaction_trace result(meta.id);
+      for (const auto &act : meta.trx.actions) {
+         apply_context context(*this, _db, meta.trx, act);
+         context.exec();
+         fc::move_append(result.action_traces, std::move(context.results.applied_actions));
+         fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
+      }
+
+      uint32_t act_usage = result.action_traces.size();
+
+      for (auto &at: result.action_traces) {
+         at.region_id = meta.region_id;
+         at.cycle_index = meta.cycle_index;
+         if (at.receiver == config::system_account_name &&
+             at.act.scope == config::system_account_name &&
+             at.act.name == N(setcode)) {
+            act_usage += config::setcode_act_usage;
+         }
+      }
+
+      update_usage(meta, act_usage);
+      return result;
+
+   } catch (...) {
+      // if there is no sender, there is no error handling possible, rethrow
+      if (meta.sender.empty()) {
+         throw;
+      }
+      // always rethrow subjective errors
+      rethrow_subjective_errors(meta.trx);
+
+      return _apply_error( meta );
+   }
+}
+
+transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
+   result.status = transaction_trace::soft_fail;
 
+   transaction etrx;
+   etrx.read_scope = meta.trx.read_scope;
+   etrx.write_scope = meta.trx.write_scope;
+   etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
+                             contracts::onerror(meta.generated_data, meta.generated_data + meta.generated_size) );
 
-
-   for( const auto& act : meta.trx.actions ) {
-      apply_context context( *this, _db, meta.trx, act );
+   try {
+      apply_context context(*this, _db, etrx, etrx.actions.front());
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
-   }
 
-   uint32_t act_usage = result.action_traces.size();
+      uint32_t act_usage = result.action_traces.size();
 
-   for( auto& at: result.action_traces ) {
-      at.region_id = meta.region_id;
-      at.cycle_index = meta.cycle_index;
-      if( at.receiver == config::system_account_name &&
-          at.act.scope == config::system_account_name &&
-          at.act.name  == N(setcode) )
-      {
-         act_usage += config::setcode_act_usage;
+      for (auto &at: result.action_traces) {
+         at.region_id = meta.region_id;
+         at.cycle_index = meta.cycle_index;
       }
+
+      update_usage(meta, act_usage);
+      record_transaction(meta.trx);
+      return result;
+
+   } catch (...) {
+      // always rethrow subjective errors
+      rethrow_subjective_errors(etrx);
    }
 
-   update_usage( meta, act_usage );
-   record_transaction(meta.trx);
-
+   // if we have an objective error, on an error handler, we return hard fail for the trx
+   result.status = transaction_trace::hard_fail;
    return result;
 }
+
+void chain_controller::push_deferred_transactions( bool flush )
+{
+   if (flush && _pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
+      // TODO: when we go multithreaded this will need a better way to see if there are flushable
+      // deferred transactions in the shards
+      auto maybe_start_new_cycle = [&]() {
+         for (const auto &st: _pending_cycle_trace->shard_traces) {
+            for (const auto &tr: st.transaction_traces) {
+               for (const auto &dt: tr.deferred_transactions) {
+                  if (fc::time_point(dt.execute_after) <= head_block_time()) {
+                     // force a new cycle and break out
+                     _finalize_pending_cycle();
+                     _start_pending_cycle();
+                     return;
+                  }
+               }
+            }
+         }
+      };
+
+      maybe_start_new_cycle();
+   }
+
+   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
+   vector<const generated_transaction_object*> candidates;
+
+   for( auto itr = generated_index.rbegin(); itr != generated_index.rend() && (head_block_time() >= itr->delay_until); ++itr) {
+      const auto &gtrx = *itr;
+      candidates.emplace_back(&gtrx);
+   }
+
+   for (const auto* trx_p: candidates) {
+      if (!is_known_transaction(trx_p->trx_id)) {
+         try {
+            auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
+            transaction_metadata mtrx (trx, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
+            _push_transaction(mtrx);
+            generated_transaction_idx.remove(*trx_p);
+         } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
+      } else {
+         generated_transaction_idx.remove(*trx_p);
+      }
+   }
+}
+
 
 /**
  *  @param act_usage The number of "actions" delivered directly or indirectly by applying meta.trx

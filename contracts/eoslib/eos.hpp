@@ -7,7 +7,6 @@
 #include <eoslib/action.hpp>
 #include <eoslib/print.hpp>
 #include <eoslib/math.hpp>
-#include <eoslib/transaction.hpp>
 
 
 

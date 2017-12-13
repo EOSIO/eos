@@ -143,19 +143,37 @@ template<>
 struct native_to_wasm<wasm_double> {
    using type = I64;
 };
+template<>
+struct native_to_wasm<const fc::time_point_sec &> {
+   using type = I32;
+};
 
+template<>
+struct native_to_wasm<fc::time_point_sec> {
+   using type = I32;
+};
 
 // convenience alias
 template<typename T>
 using native_to_wasm_t = typename native_to_wasm<T>::type;
 
 template<typename T>
-auto convert_native_to_wasm(T val) {
+auto convert_native_to_wasm(const wasm_interface &wasm, T val) {
    return native_to_wasm_t<T>(val);
 }
 
-auto convert_native_to_wasm(const name &val) {
+auto convert_native_to_wasm(const wasm_interface &wasm, const name &val) {
    return native_to_wasm_t<const name &>(val.value);
+}
+
+auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_point_sec &val) {
+   return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
+}
+
+auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
+   auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
+   char* base = &memoryRef<char>(mem, 0);
+   return (int)(ptr - base);
 }
 
 template<typename T>
@@ -198,7 +216,7 @@ struct wasm_to_rvalue_type<void> {
    static constexpr auto value = ResultType::none;
 };
 template<>
-struct wasm_to_rvalue_type<const name &> {
+struct wasm_to_rvalue_type<const name&> {
    static constexpr auto value = ResultType::i64;
 };
 template<>
@@ -206,9 +224,39 @@ struct wasm_to_rvalue_type<name> {
    static constexpr auto value = ResultType::i64;
 };
 
+template<>
+struct wasm_to_rvalue_type<char*> {
+   static constexpr auto value = ResultType::i32;
+};
+
+template<>
+struct wasm_to_rvalue_type<fc::time_point_sec> {
+   static constexpr auto value = ResultType::i32;
+};
+
 
 template<typename T>
 constexpr auto wasm_to_rvalue_type_v = wasm_to_rvalue_type<T>::value;
+
+template<typename T>
+struct is_reference_from_value {
+   static constexpr bool value = false;
+};
+
+template<>
+struct is_reference_from_value<name> {
+   static constexpr bool value = true;
+};
+
+template<>
+struct is_reference_from_value<fc::time_point_sec> {
+   static constexpr bool value = true;
+};
+
+template<typename T>
+constexpr bool is_reference_from_value_v = is_reference_from_value<T>::value;
+
+
 
 struct void_type {
 };
@@ -252,7 +300,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
       wasm_interface &wasm = wasm_interface::get();
-      return convert_native_to_wasm(Method(wasm, translated...));
+      return convert_native_to_wasm(wasm, Method(wasm, translated...));
    }
 
    template<next_method_type Method>
@@ -335,6 +383,61 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
 };
 
 /**
+ * Specialization for transcribing  a pair of array_ptr types in the native method signature that share size
+ * This type transcribes into 3 wasm parameters: 2 pointers and length and checks the validity of those memory
+ * ranges before dispatching to the native method
+ *
+ * @tparam Ret - the return type of the native method
+ * @tparam Inputs - the remaining native parameters to transcribe
+ * @tparam Translated - the list of transcribed wasm parameters
+ */
+template<typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
+   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
+
+   template<then_type Then>
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
+      auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
+      size_t length = size_t(size);
+      T *base_t = memoryArrayPtr<T>(mem, ptr_t, length);
+      U *base_u = memoryArrayPtr<U>(mem, ptr_u, length);
+      return Then(wasm, array_ptr<T>{base_t}, array_ptr<U>{base_u}, length, rest..., translated...);
+   };
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
+
+/**
+ * Specialization for transcribing memset parameters
+ *
+ * @tparam Ret - the return type of the native method
+ * @tparam Inputs - the remaining native parameters to transcribe
+ * @tparam Translated - the list of transcribed wasm parameters
+ */
+template<>
+struct intrinsic_invoker_impl<void_type, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
+   using next_step = intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<I32, I32, I32>>;
+   using then_type = void_type(*)(wasm_interface &, array_ptr<char>, int, size_t);
+
+   template<then_type Then>
+   static void_type translate_one(wasm_interface &wasm, I32 ptr, I32 value, I32 size) {
+      auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
+      size_t length = size_t(size);
+      char *base = memoryArrayPtr<char>(mem, ptr, length);
+      return Then(wasm, array_ptr<char>{base}, value, length);
+   };
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
+
+/**
  * Specialization for transcribing  a pointer type in the native method signature
  * This type transcribes into an int32  pointer checks the validity of that memory
  * range before dispatching to the native method
@@ -362,22 +465,48 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
 };
 
 /**
- * Specialization for transcribing a reference to a name in the native method signature
- *    This type transcribes into an int64 which is loaded by value into a
- *    name on the stack and then passed by to the reference.
+ * Specialization for transcribing a reference to a name which can be passed as a native value
+ *    This type transcribes into a native type which is loaded by value into a
+ *    variable on the stack and then passed by reference to the intrinsic.
  *
  * @tparam Ret - the return type of the native method
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<const name &, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I64 >>;
-   using then_type = Ret (*)(wasm_interface &, const name &, Inputs..., Translated...);
+struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const name&> >>;
+   using then_type = Ret (*)(wasm_interface &, const name&, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I64 name_value) {
-      auto value = name(name_value);
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, native_to_wasm_t<const name&> wasm_value) {
+      auto value = name(wasm_value);
+      return Then(wasm, value, rest..., translated...);
+   }
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
+
+/**
+ * Specialization for transcribing a reference to a fc::time_point_sec which can be passed as a native value
+ *    This type transcribes into a native type which is loaded by value into a
+ *    variable on the stack and then passed by reference to the intrinsic.
+ *
+ * @tparam Ret - the return type of the native method
+ * @tparam Inputs - the remaining native parameters to transcribe
+ * @tparam Translated - the list of transcribed wasm parameters
+ */
+template<typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const fc::time_point_sec&> >>;
+   using then_type = Ret (*)(wasm_interface &, const fc::time_point_sec&, Inputs..., Translated...);
+
+   template<then_type Then>
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, native_to_wasm_t<const fc::time_point_sec&> wasm_value) {
+      auto value = fc::time_point_sec(wasm_value);
       return Then(wasm, value, rest..., translated...);
    }
 
