@@ -223,7 +223,7 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const price& v )  {
+   template<typename Stream> inline void pack( Stream& s, const ::price& v )  {
       eosio::raw::pack(s, v.base);
       eosio::raw::pack(s, v.quote);
    }
@@ -233,7 +233,7 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, price& v)  {
+   template<typename Stream> inline void unpack( Stream& s, ::price& v)  {
       eosio::raw::unpack(s, v.base);
       eosio::raw::unpack(s, v.quote);
    }
@@ -242,7 +242,7 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const asset& v )  {
+   template<typename Stream> inline void pack( Stream& s, const ::asset& v )  {
       eosio::raw::pack(s, v.amount);
       eosio::raw::pack(s, v.symbol);
    }
@@ -252,17 +252,17 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, asset& v)  {
+   template<typename Stream> inline void unpack( Stream& s, ::asset& v)  {
       eosio::raw::unpack(s, v.amount);
       eosio::raw::unpack(s, v.symbol);
    }
 
-   template<typename Stream> inline void pack(Stream &s, const account_permission &pe) {
+   template<typename Stream> inline void pack(Stream &s, const ::account_permission &pe) {
       eosio::raw::pack(s, pe.account);
       eosio::raw::pack(s, pe.permission);
    }
 
-   template<typename Stream> inline void unpack(Stream &s, account_permission &pe) {
+   template<typename Stream> inline void unpack(Stream &s, ::account_permission &pe) {
       eosio::raw::unpack(s, pe.account);
       eosio::raw::unpack(s, pe.permission);
    }

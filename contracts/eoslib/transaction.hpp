@@ -6,6 +6,7 @@
 #include <eoslib/transaction.h>
 #include <eoslib/print.hpp>
 #include <eoslib/string.hpp>
+#include <eoslib/types.hpp>
 #include <eoslib/raw.hpp>
 
 namespace eosio {

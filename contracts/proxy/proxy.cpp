@@ -4,6 +4,7 @@
  */
 #include <proxy/proxy.hpp>
 #include <currency/currency.hpp>
+#include <eoslib/transaction.hpp>
 
 namespace proxy {
    using namespace eosio;
