@@ -48,6 +48,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( msg_resource_exhausted,            eosio::chain::transaction_exception, 3030021, "message exhausted allowed resources" )
    FC_DECLARE_DERIVED_EXCEPTION( api_not_supported,                 eosio::chain::transaction_exception, 3030022, "API not currently supported" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::message_precondition_exception, 3050001, "account name already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eosio::chain::utility_exception, 3060001, "invalid pts address" )
    FC_DECLARE_DERIVED_EXCEPTION( insufficient_feeds,                eosio::chain::chain_exception, 37006, "insufficient feeds" )
 

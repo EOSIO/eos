@@ -51,7 +51,7 @@ void apply_eos_newaccount(apply_context& context) {
    auto& db = context.mutable_db;
 
    auto existing_account = db.find<account_object, by_name>(create.name);
-   EOS_ASSERT(existing_account == nullptr, message_precondition_exception,
+   EOS_ASSERT(existing_account == nullptr, account_name_exists_exception,
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
