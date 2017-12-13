@@ -388,6 +388,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
       setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
       setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
+         ("delay", 10)
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -398,12 +399,22 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
 
+   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
+   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
    transfer(N(alice), N(proxy), "5.0000 EOS");
-   control->push_deferred_transactions(true);
 
-   BOOST_CHECK_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-   BOOST_CHECK_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
-   BOOST_CHECK_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
+   while(control->head_block_time() < expected_delivery) {
+      control->push_deferred_transactions(true);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
+      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 EOS").amount);
+      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
+   }
+
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
+   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
+   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
 
 } FC_LOG_AND_RETHROW() /// test_currency
 

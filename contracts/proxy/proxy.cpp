@@ -32,7 +32,7 @@ namespace proxy {
          out.add_action(out_act);
          out.add_write_scope(self);
          out.add_write_scope(code_config.owner);
-         out.send(id);
+         out.send(id, now() + code_config.delay);
       }
    }
 
@@ -41,6 +41,7 @@ namespace proxy {
       config code_config;
       configs::get(code_config, self);
       code_config.owner = params.owner;
+      code_config.delay = params.delay;
       configs::store(code_config, self);
    }
 
