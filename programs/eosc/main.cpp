@@ -1060,13 +1060,14 @@ int main( int argc, char** argv ) {
 
             trx.expiration = info.head_block_time + tx_expiration;
             transaction_set_reference_block(trx, info.head_block_id);
+
             sign_transaction(trx);
             batch.emplace_back(trx);
             if( batch.size() == 40 ) {
                auto result = call( push_txns_func, batch );
                std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);
-               info = get_info();
+	       info = get_info();
             }
          }
          if( !loop ) break;
