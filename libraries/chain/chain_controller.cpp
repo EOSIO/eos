@@ -975,6 +975,7 @@ uint32_t chain_controller::last_irreversible_block_num() const {
 void chain_controller::_initialize_indexes() {
    _db.add_index<account_index>();
    _db.add_index<permission_index>();
+   _db.add_index<permission_usage_index>();
    _db.add_index<permission_link_index>();
    _db.add_index<action_permission_index>();
    _db.add_index<contracts::table_id_multi_index>();
@@ -1472,11 +1473,11 @@ void chain_controller::push_deferred_transactions( bool flush )
  */
 void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_usage )
 {
-   set<account_name> authorizing_accounts;
+   set<std::pair<account_name, permission_name>> authorizing_accounts;
 
    for( const auto& act : meta.trx.actions )
       for( const auto& auth : act.authorization )
-         authorizing_accounts.insert( auth.actor );
+         authorizing_accounts.emplace( auth.actor, auth.permission );
 
    auto trx_size = meta.bandwidth_usage + config::fixed_bandwidth_overhead_per_transaction;
 
@@ -1488,12 +1489,12 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
 
    auto head_time = head_block_time();
    for( const auto& authaccnt : authorizing_accounts ) {
-      const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt );
+      const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt.first );
       _db.modify( buo, [&]( auto& bu ){
           bu.bytes.add_usage( trx_size, head_time );
           bu.acts.add_usage( act_usage, head_time );
       });
-      const auto& sbo = _db.get<contracts::staked_balance_object, contracts::by_owner_name>(authaccnt);
+      const auto& sbo = _db.get<contracts::staked_balance_object, contracts::by_owner_name>(authaccnt.first);
       // TODO enable this after fixing divide by 0 with virtual_net_bandwidth and total_staked_tokens
       /// note: buo.bytes.value is in ubytes and virtual_net_bandwidth is in bytes, so
       //  we convert to fixed int uin128_t with 60 bits of precision, divide by rate limiting precision
@@ -1507,19 +1508,27 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
       
       if( !(_skip_flags & genesis_setup) ) {
          FC_ASSERT( (used_ubytes * dgpo.total_staked_tokens) <=  (user_stake * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
-                    ("n",name(authaccnt))
+                    ("n",name(authaccnt.first))
                     ("used_bytes",double(used_ubytes)/1000000.)
                     ("user_stake",user_stake)
                     ("virtual_max_bytes", double(virtual_max_ubytes)/1000000. )
                     ("total_staked_tokens", dgpo.total_staked_tokens)
                     );
          FC_ASSERT( (used_uacts * dgpo.total_staked_tokens)  <=  (user_stake * virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
-                    ("n",name(authaccnt))
+                    ("n",name(authaccnt.first))
                     ("used_acts",double(used_uacts)/1000000.)
                     ("user_stake",user_stake)
                     ("virtual_max_uacts", double(virtual_max_uacts)/1000000. )
                     ("total_staked_tokens", dgpo.total_staked_tokens)
                     );
+      }
+
+      // for any transaction not sent by code, update the affirmative last time a given permission was used
+      if (!meta.sender) {
+         const auto &puo = _db.get<permission_usage_object, by_account_permission>(boost::make_tuple(authaccnt.first, authaccnt.second));
+         _db.modify(puo, [this](auto &pu) {
+            pu.last_used = head_block_time();
+         });
       }
    }
 
