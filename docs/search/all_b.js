@@ -30,7 +30,7 @@ var searchData=
   ['message_5frequire_5fpermission',['message_require_permission',['../group__transactioncapi.html#ga991711ff7c3569a3d3c6cd73dfe61420',1,'transaction.h']]],
   ['message_5fsend',['message_send',['../group__transactioncapi.html#gad76e0f13f4df1c6687f0eaea6379bd00',1,'transaction.h']]],
   ['message_5fsize',['message_size',['../group__messagecapi.html#ga4ebf6b7927fc900ae1fa8e06ceb5a16b',1,'message.h']]],
-  ['message_20api',['message API',['../group__messageapi.html',1,'']]],
+  ['message_20api',['Message API',['../group__messageapi.html',1,'']]],
   ['message_20c_20api',['message C API',['../group__messagecapi.html',1,'']]],
   ['message_20c_2b_2b_20api',['Message C++ API',['../group__messagecppapi.html',1,'']]],
   ['min',['min',['../group__mathcppapi.html#gac459e1d6c24d9178441fed9163accc79',1,'eosio']]],

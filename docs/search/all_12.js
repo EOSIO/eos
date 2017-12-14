@@ -93,7 +93,7 @@ var searchData=
   ['transaction_5fhandle',['transaction_handle',['../group__transactioncapi.html#gaab096f894fc4b848e8bf87fa82535f4c',1,'transaction.h']]],
   ['transaction_5frequire_5fscope',['transaction_require_scope',['../group__transactioncapi.html#gadbeefdb977e06363af03ada627ca18b4',1,'transaction.h']]],
   ['transaction_5fsend',['transaction_send',['../group__transactioncapi.html#ga91eadf9af6a7bceae96e7c798776f9b9',1,'transaction.h']]],
-  ['transaction_20api',['transaction API',['../group__transactionapi.html',1,'']]],
+  ['transaction_20api',['Transaction API',['../group__transactionapi.html',1,'']]],
   ['transaction_20c_20api',['transaction C API',['../group__transactioncapi.html',1,'']]],
   ['transaction_20c_2b_2b_20api',['transaction C++ API',['../group__transactioncppapi.html',1,'']]],
   ['transfer',['transfer',['../struct_t_o_k_e_n___n_a_m_e_1_1transfer.html',1,'TOKEN_NAME::transfer'],['../structinfinite_1_1transfer.html',1,'infinite::transfer'],['../structeosio_1_1transfer.html',1,'eosio::transfer'],['../structnative_1_1eos.html#a431e5dbd7faeb5dee21978d48126f197',1,'native::eos::transfer()']]],
