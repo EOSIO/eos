@@ -28,7 +28,6 @@ var searchData=
   ['construct_5fwith_5fdata_5fpartially',['construct_with_data_partially',['../structtest__string.html#ac24a5db094956d97086947b306179107',1,'test_string']]],
   ['construct_5fwith_5fsize',['construct_with_size',['../structtest__string.html#af463e5d41672359e74b685ff7af34a02',1,'test_string']]],
   ['contract',['contract',['../structnative_1_1contract.html',1,'native']]],
-  ['contracts_2edox',['contracts.dox',['../contracts_8dox.html',1,'']]],
   ['copy_5fconstructor',['copy_constructor',['../structtest__string.html#a73ec8baa3460858dadeb60497865186d',1,'test_string']]],
   ['create',['create',['../structtic__tac__toe_1_1create.html',1,'tic_tac_toe']]],
   ['create_5finstances',['create_instances',['../structtest__fixedpoint.html#a852f2dd4018f32d6f8cd947e624d2133',1,'test_fixedpoint::create_instances()'],['../structtest__real.html#aca579342d00f60a8401dc397badd0d5a',1,'test_real::create_instances()']]],
