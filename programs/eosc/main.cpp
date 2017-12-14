@@ -23,12 +23,19 @@ Usage: ./eosc [OPTIONS] SUBCOMMAND
 Options:
   -h,--help                   Print this help message and exit
   -H,--host TEXT=localhost    the host where eosd is running
-  -p,--permission             the permission of a specified ${account} in the scope of the contract 
-  -S,--scope                  the scope of ${account} the contract
-  --password                  the master password to skip the prompt, [WARNING: your master password will be visible in the console history]
+  -p,--port UINT=8888         the port where eosd is running
   --wallet-host TEXT=localhost
                               the host where eos-walletd is running
   --wallet-port UINT=8888     the port where eos-walletd is running
+  
+Subcommands:
+  create                      Create various items, on and off the blockchain
+  get                         Retrieve various items and information from the blockchain
+  set                         Set or update blockchain state
+  transfer                    Transfer EOS from account to account
+  wallet                      Interact with local wallet
+  benchmark                   Configure and execute benchmarks
+  push                        Push arbitrary transactions to the blockchain
 
 Subcommands:
   create                      Create various items, on and off the blockchain
@@ -50,6 +57,7 @@ Subcommands:
   key                         Create a new keypair and print the public and private keys
   account                     Create a new account on the blockchain
 
+
 $ ./eosc create account
 Create a new account on the blockchain
 Usage: ./eosc create account [OPTIONS] creator name OwnerKey ActiveKey
@@ -62,6 +70,19 @@ Positionals:
 
 Options:
   -s,--skip-signature         Specify that unlocked wallet keys should not be used to sign transaction
+  
+  
+   $ ./eosc set contract ${account} xxx.wast xxx.abi
+Deploy the contract to a specified account
+
+
+ $ ./eosc push message ${dest_account} ${action} ${data}  -S ${scope} -p ${account}@${permission}
+Push message to dest_account by specify action 
+
+  Options:
+    -p,--permission           An account and permission level to authorize, as in 'account@permission
+    -s, --scope               An comma separated list of accounts in scope for this operation
+    -s, --skip-sign           Specify that unlocked wallet keys should not be used to sign transaction
 ```
 */
 #include <string>
