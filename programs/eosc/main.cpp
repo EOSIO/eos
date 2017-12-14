@@ -48,6 +48,7 @@ Subcommands:
   key                         Create a new keypair and print the public and private keys
   account                     Create a new account on the blockchain
 
+
 $ ./eosc create account
 Create a new account on the blockchain
 Usage: ./eosc create account [OPTIONS] creator name OwnerKey ActiveKey
@@ -60,6 +61,19 @@ Positionals:
 
 Options:
   -s,--skip-signature         Specify that unlocked wallet keys should not be used to sign transaction
+
+
+ $ ./eosc set contract ${account} xxx.wast xxx.abi
+Deploy the contract to a specified account
+
+
+ $ ./eosc push message ${dest_account} ${action} ${data}  -S ${scope} -p ${account}@${permission}
+Push message to dest_account by specify action 
+
+  Options:
+    -p,--permission           An account and permission level to authorize, as in 'account@permission
+    -s, --scope               An comma separated list of accounts in scope for this operation
+    -s, --skip-sign           Specify that unlocked wallet keys should not be used to sign transaction
 ```
 */
 #include <string>
