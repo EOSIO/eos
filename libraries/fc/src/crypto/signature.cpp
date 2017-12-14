@@ -3,6 +3,15 @@
 #include <fc/exception/exception.hpp>
 
 namespace fc { namespace crypto {
+   struct hash_visitor : public fc::visitor<size_t> {
+      template<typename SigType>
+      size_t operator()(const SigType& sig) const {
+         static_assert(sizeof(sig._data.data) == 65, "sig size is expected to be 65");
+         //signatures are two bignums: r & s. Just add up least significant digits of the two
+         return *(size_t*)&sig._data.data[32-sizeof(size_t)] + *(size_t*)&sig._data.data[64-sizeof(size_t)];
+      }
+   };
+
    static signature::storage_type parse_base58(const std::string& base58str)
    {
       constexpr auto prefix = config::signature_base_prefix;
@@ -52,6 +61,10 @@ namespace fc { namespace crypto {
    bool operator < ( const signature& p1, const signature& p2)
    {
       return less_comparator<signature::storage_type>::apply(p1._storage, p2._storage);
+   }
+
+   size_t hash_value(const signature& b) {
+       return b._storage.visit(hash_visitor());
    }
 } } // eosio::blockchain
 

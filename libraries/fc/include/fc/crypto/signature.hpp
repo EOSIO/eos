@@ -38,6 +38,7 @@ namespace fc { namespace crypto {
          friend bool operator == ( const signature& p1, const signature& p2);
          friend bool operator != ( const signature& p1, const signature& p2);
          friend bool operator < ( const signature& p1, const signature& p2);
+         friend std::size_t hash_value(const signature& b); //not cryptographic; for containers
          friend struct reflector<signature>;
          friend class private_key;
          friend class public_key;
