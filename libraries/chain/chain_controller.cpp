@@ -257,7 +257,7 @@ transaction_trace chain_controller::push_transaction(const signed_transaction& t
 
 transaction_trace chain_controller::_push_transaction(const signed_transaction& trx) {
    check_transaction_authorization(trx);
-   transaction_metadata   mtrx( trx, get_chain_id());
+   transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
 
    auto result = _push_transaction(mtrx);
 
@@ -320,8 +320,7 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata& dat
    }
 
 
-   auto tid = trx.id();
-   bcycle.at(shardnum).emplace_back( tid );
+   bcycle.at(shardnum).emplace_back( result );
    _pending_cycle_trace->shard_traces.at(shardnum).append(result);
 
    // The transaction applied successfully. Merge its changes into the pending block session.
@@ -384,6 +383,7 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                obj.sender_id = dt.sender_id;
                obj.expiration = dt.expiration;
                obj.delay_until = dt.execute_after;
+               obj.published = head_block_time();
                obj.packed_trx.resize(fc::raw::pack_size(dt));
                fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
                fc::raw::pack(ds, dt);
@@ -587,11 +587,11 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&](){
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     return transaction_metadata( *itr->second, get_chain_id() );
+                     return transaction_metadata( *itr->second, get_chain_id(), next_block.timestamp );
                   } else {
                      const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
                      auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     return transaction_metadata(trx, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
+                     return transaction_metadata(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
                   }
                };
 
@@ -1030,10 +1030,9 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block | genesis_setup, 
          [&](){ 
             transaction_metadata tmeta( genesis_setup_transaction );
-            _apply_transaction( tmeta );
+            __apply_transaction( tmeta );
          });
          ilog( "done applying genesis transaction" );
-
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
@@ -1327,7 +1326,7 @@ void chain_controller::_set_apply_handler( account_name contract, scope_name sco
    _apply_handlers[contract][make_pair(scope,action)] = v;
 }
 
-static void rethrow_subjective_errors(const transaction& trx) {
+static void log_handled_exceptions(const transaction& trx) {
    try {
       throw;
    } catch (const checktime_exceeded&) {
@@ -1335,38 +1334,44 @@ static void rethrow_subjective_errors(const transaction& trx) {
    } FC_CAPTURE_AND_LOG((trx));
 }
 
-transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) { 
+transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
+   transaction_trace result(meta.id);
+   for (const auto &act : meta.trx.actions) {
+      apply_context context(*this, _db, meta.trx, act, meta.published, meta.sender);
+      context.exec();
+      fc::move_append(result.action_traces, std::move(context.results.applied_actions));
+      fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
+   }
+
+   uint32_t act_usage = result.action_traces.size();
+
+   for (auto &at: result.action_traces) {
+      at.region_id = meta.region_id;
+      at.cycle_index = meta.cycle_index;
+      if (at.receiver == config::system_account_name &&
+          at.act.scope == config::system_account_name &&
+          at.act.name == N(setcode)) {
+         act_usage += config::setcode_act_usage;
+      }
+   }
+
+   update_usage(meta, act_usage);
+   return result;
+}
+
+transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) {
    try {
-      transaction_trace result(meta.id);
-      for (const auto &act : meta.trx.actions) {
-         apply_context context(*this, _db, meta.trx, act);
-         context.exec();
-         fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-         fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
-      }
-
-      uint32_t act_usage = result.action_traces.size();
-
-      for (auto &at: result.action_traces) {
-         at.region_id = meta.region_id;
-         at.cycle_index = meta.cycle_index;
-         if (at.receiver == config::system_account_name &&
-             at.act.scope == config::system_account_name &&
-             at.act.name == N(setcode)) {
-            act_usage += config::setcode_act_usage;
-         }
-      }
-
-      update_usage(meta, act_usage);
+      auto temp_session = _db.start_undo_session(true);
+      auto result = __apply_transaction(meta);
+      temp_session.squash();
       return result;
-
    } catch (...) {
       // if there is no sender, there is no error handling possible, rethrow
-      if (meta.sender.empty()) {
+      if (!meta.sender) {
          throw;
       }
-      // always rethrow subjective errors
-      rethrow_subjective_errors(meta.trx);
+      // log exceptions we can handle with the error handle, throws otherwise
+      log_handled_exceptions(meta.trx);
 
       return _apply_error( meta );
    }
@@ -1383,7 +1388,9 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
                              contracts::onerror(meta.generated_data, meta.generated_data + meta.generated_size) );
 
    try {
-      apply_context context(*this, _db, etrx, etrx.actions.front());
+      auto temp_session = _db.start_undo_session(true);
+
+      apply_context context(*this, _db, etrx, etrx.actions.front(), meta.published, meta.sender);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
@@ -1397,11 +1404,15 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
       update_usage(meta, act_usage);
       record_transaction(meta.trx);
+
+      temp_session.squash();
       return result;
 
    } catch (...) {
-      // always rethrow subjective errors
-      rethrow_subjective_errors(etrx);
+      // log exceptions we can handle with the error handle, throws otherwise
+      log_handled_exceptions(etrx);
+
+      // fall through to marking this tx as hard-failing
    }
 
    // if we have an objective error, on an error handler, we return hard fail for the trx
@@ -1445,7 +1456,7 @@ void chain_controller::push_deferred_transactions( bool flush )
       if (!is_known_transaction(trx_p->trx_id)) {
          try {
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            transaction_metadata mtrx (trx, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
+            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
             _push_transaction(mtrx);
             generated_transaction_idx.remove(*trx_p);
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));

@@ -55,6 +55,7 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eosio, eosio, linkauth, eosio );
    SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio );
    SET_APP_HANDLER( eosio, eosio, nonce, eosio );
+   SET_APP_HANDLER( eosio, eosio, onerror, eosio );
 }
 
 

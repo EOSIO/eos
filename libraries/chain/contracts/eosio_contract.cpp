@@ -533,4 +533,10 @@ void apply_eosio_nonce(apply_context&) {
    /// do nothing
 }
 
+void apply_eosio_onerror(apply_context& context) {
+   assert(context.sender);
+   context.require_recipient(*context.sender);
+}
+
+
 } } } // namespace eosio::chain::contracts
