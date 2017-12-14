@@ -27,15 +27,6 @@ Options:
   --wallet-host TEXT=localhost
                               the host where eos-walletd is running
   --wallet-port UINT=8888     the port where eos-walletd is running
-  
-Subcommands:
-  create                      Create various items, on and off the blockchain
-  get                         Retrieve various items and information from the blockchain
-  set                         Set or update blockchain state
-  transfer                    Transfer EOS from account to account
-  wallet                      Interact with local wallet
-  benchmark                   Configure and execute benchmarks
-  push                        Push arbitrary transactions to the blockchain
 
 Subcommands:
   create                      Create various items, on and off the blockchain
@@ -70,9 +61,9 @@ Positionals:
 
 Options:
   -s,--skip-signature         Specify that unlocked wallet keys should not be used to sign transaction
-  
-  
-   $ ./eosc set contract ${account} xxx.wast xxx.abi
+
+
+ $ ./eosc set contract ${account} xxx.wast xxx.abi
 Deploy the contract to a specified account
 
 
