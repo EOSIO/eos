@@ -192,16 +192,19 @@ namespace eosio { namespace chain {
       :trx(t)
       ,id(trx.id()) {}
 
-      transaction_metadata( const transaction& t, const account_name& sender, uint32_t sender_id, const char* generated_data, size_t generated_size )
+      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint32_t sender_id, const char* generated_data, size_t generated_size )
       :trx(t)
       ,id(trx.id())
+      ,published(published)
       ,sender(sender),sender_id(sender_id),generated_data(generated_data),generated_size(generated_size)
       {}
 
-      transaction_metadata( const signed_transaction& t, chain_id_type chainid )
+      transaction_metadata( const signed_transaction& t, chain_id_type chainid, const time_point& published )
       :trx(t)
       ,id(trx.id())
-      ,bandwidth_usage( fc::raw::pack_size(t) ){ }
+      ,bandwidth_usage( fc::raw::pack_size(t) )
+      ,published(published)
+      { }
 
       const transaction&                    trx;
       transaction_id_type                   id;
@@ -210,9 +213,10 @@ namespace eosio { namespace chain {
       uint32_t                              cycle_index     = 0;
       uint32_t                              shard_index     = 0;
       uint32_t                              bandwidth_usage = 0;
+      time_point                            published;
 
       // things for processing deferred transactions
-      account_name                          sender;
+      optional<account_name>                sender;
       uint32_t                              sender_id = 0;
       const char*                           generated_data = nullptr;
       size_t                                generated_size = 0;

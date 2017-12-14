@@ -18,9 +18,10 @@ class apply_context {
 
    public:
       apply_context(chain_controller& con, chainbase::database& db,
-                    const transaction& t, const action& a)
+                    const transaction& t, const action& a, const time_point& published, const optional<account_name>& sender)
       :controller(con), db(db), trx(t), act(a), mutable_controller(con),
-       mutable_db(db), used_authorizations(act.authorization.size(), false){}
+       mutable_db(db), used_authorizations(act.authorization.size(), false),
+       published(published), sender(sender) {}
 
       void exec();
 
@@ -104,6 +105,9 @@ class apply_context {
 
       ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
       vector<bool> used_authorizations;
+
+      const time_point&             published;
+      const optional<account_name>& sender;
 
       ///< pending transaction construction
      /*

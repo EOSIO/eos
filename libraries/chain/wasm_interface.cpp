@@ -661,6 +661,18 @@ class action_api : public context_aware_api {
       const name& current_receiver() {
          return context.receiver;
       }
+
+      fc::time_point_sec publication_time() {
+         return context.published;
+      }
+
+      name current_sender() {
+         if (context.sender) {
+            return *context.sender;
+         } else {
+            return name();
+         }
+      }
 };
 
 class console_api : public context_aware_api {
@@ -851,6 +863,8 @@ REGISTER_INTRINSICS(action_api,
    (read_action,            int(int, int)  )
    (action_size,            int()          )
    (current_receiver,   int64_t()          )
+   (publication_time,   int32_t()          )
+   (current_sender,     int64_t()          )
 );
 
 REGISTER_INTRINSICS(apply_context,

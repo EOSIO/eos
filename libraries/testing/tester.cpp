@@ -120,10 +120,10 @@ namespace eosio { namespace testing {
    }
    
 
-   void tester::transfer( account_name from, account_name to, string amount, string memo ) {
-      transfer( from, to, asset::from_string(amount), memo );
+   transaction_trace tester::transfer( account_name from, account_name to, string amount, string memo ) {
+      return transfer( from, to, asset::from_string(amount), memo );
    }
-   void tester::transfer( account_name from, account_name to, asset amount, string memo ) {
+   transaction_trace tester::transfer( account_name from, account_name to, asset amount, string memo ) {
       signed_transaction trx;
       trx.write_scope = {from,to};
       trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
@@ -135,7 +135,7 @@ namespace eosio { namespace testing {
                                 } );
 
       trx.sign( get_private_key( from, "active" ), chain_id_type()  ); 
-      control->push_transaction( trx );
+      return control->push_transaction( trx );
    }
 
    void tester::set_authority( account_name account,

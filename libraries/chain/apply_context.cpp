@@ -78,7 +78,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i]);
+      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i], published, sender);
       ncontext.exec();
       append_results(move(ncontext.results));
    }

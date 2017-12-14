@@ -32,6 +32,7 @@ namespace eosio { namespace chain {
          uint32_t                      sender_id = 0; /// ID given this transaction by the sender
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
+         time_point                    published;
          shared_vector<char>           packed_trx;
    };
 

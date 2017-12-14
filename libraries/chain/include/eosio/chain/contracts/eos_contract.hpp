@@ -25,6 +25,7 @@ namespace eosio { namespace chain { namespace contracts {
    void apply_eosio_linkauth(apply_context&);
    void apply_eosio_unlinkauth(apply_context&);
    void apply_eosio_nonce(apply_context&);
+   void apply_eosio_onerror(apply_context&);
 
    share_type get_eosio_balance( const chainbase::database& db, const account_name& account );
 

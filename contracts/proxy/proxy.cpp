@@ -32,7 +32,7 @@ namespace proxy {
          out.add_action(out_act);
          out.add_write_scope(self);
          out.add_write_scope(code_config.owner);
-         out.send(id);
+         out.send(id, now() + code_config.delay);
       }
    }
 
@@ -41,6 +41,8 @@ namespace proxy {
       config code_config;
       configs::get(code_config, self);
       code_config.owner = params.owner;
+      code_config.delay = params.delay;
+      eosio::print("Setting owner to: ", name(params.owner), " with delay: ", params.delay, "\n");
       configs::store(code_config, self);
    }
 
@@ -54,7 +56,7 @@ namespace proxy {
       configs::store(code_config, self);
 
       eosio::print("Resending Transaction: ", failed_dtrx._sender_id, " as ", id, "\n");
-      failed_dtrx.send(id);
+      failed_dtrx.send(id, now() + code_config.delay);
    }
 }
 
@@ -74,14 +76,12 @@ extern "C" {
        } else if ( code == N(eosio) ) {
           if( action == N(transfer) ) {
              apply_transfer(code, current_action<eosio::transfer>());
+          } else if ( action == N(onerror)) {
+             apply_onerror(deferred_transaction<>::from_current_action());
           }
-       } else if (code == N(proxy) ) {
+       } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {
              apply_setowner(current_action<set_owner>());
-          }
-       } else if (code == N(eosio) ) {
-          if ( action == N(onerror)) {
-             apply_onerror(deferred_transaction<>::from_current_action());
           }
        }
     }
