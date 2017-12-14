@@ -1067,7 +1067,7 @@ int main( int argc, char** argv ) {
                auto result = call( push_txns_func, batch );
                std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);
-         info = get_info();
+               info = get_info();
             }
          }
          if( !loop ) break;
