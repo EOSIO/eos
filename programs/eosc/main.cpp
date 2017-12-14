@@ -23,7 +23,9 @@ Usage: ./eosc [OPTIONS] SUBCOMMAND
 Options:
   -h,--help                   Print this help message and exit
   -H,--host TEXT=localhost    the host where eosd is running
-  -p,--port UINT=8888         the port where eosd is running
+  -p,--permission             the permission of a specified ${account} in the scope of the contract 
+  -S,--scope                  the scope of ${account} the contract
+  --password                  the master password to skip the prompt, [WARNING: your master password will be visible in the console history]
   --wallet-host TEXT=localhost
                               the host where eos-walletd is running
   --wallet-port UINT=8888     the port where eos-walletd is running
@@ -1065,7 +1067,7 @@ int main( int argc, char** argv ) {
                auto result = call( push_txns_func, batch );
                std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);
-	       info = get_info();
+         info = get_info();
             }
          }
          if( !loop ) break;
