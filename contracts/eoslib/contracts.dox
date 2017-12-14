@@ -1,0 +1,65 @@
+/**
+  @defgroup contractdev Smart Contract API Reference
+  @brief Introduction to writing contracts for EOS.IO
+
+  @section background Background 
+
+  EOS.IO contracts (aka applications) are deployed to a blockchain as pre-compiled Web Assembly (aka WASM). WASM is compiled
+  from C/C++ using LLVM and clang, which means that you will require knowledge of C/C++ in order to develop your blockchain
+  applications.  While it is possible to develop in C, we strongly recommend that all developers use the EOS.IO C++ API which
+  provides much stronger type safety and is generally easier to read.
+
+  @section programstructure Application Structure
+
+  EOS.IO applications are designed around event (aka message) handlers that respond to user actions. For example,
+  a user might transfer tokens to another user. This event can be processed and potentially rejected by the sender,
+  the receiver, and the currency application itself.
+
+  As an application developer you get to decide what actions users can take and which handlers may or must be called
+  in response to those events.
+
+
+  @subsection programentry Entry Points
+
+  EOS.IO applications have a `apply` which is like `main` in traditional applications:
+
+  ```
+  extern "C" {
+     void init();
+     void apply( uint64_t code, uint64_t action );
+  }
+  ```
+
+  `apply` is give the arguments `code` and `action` which uniquely identify every event in
+  the system. For example, `code` could be a *currency* contract and `action` could be *transfer*.  This event (code,action)
+  may be passed to several contracts including the `sender` and `receiver`.  It is up to your application to figure
+  out what to do in response to such an event.
+
+  `init` is another entry point that is called once immediately after loading the code. It is where you should perform
+  one-time initialization of state.
+
+
+### Example Apply Entry Handler
+
+  Generally speaking, you should use your entry handler to dispatch events to functions that implement the majority
+  of your logic and optionally reject events that your contract is unable or unwilling to accept. 
+
+  ```
+  extern "C" {
+     void apply( uint64_t code, uint64_t action ) {
+        if( code == N(currency) ) {
+           if( action == N(transfer) ) 
+              currency::apply_currency_transfer( current_message< currency::transfer >() );
+        } else {
+           assert( false, "rejecting unexpected event" );
+        }
+     }
+  }
+  ```
+
+  @note When defining your entry points it is required that they are placed in an `extern "C"` code block so that
+  c++ name mangling does not get applied to the function.
+
+
+
+*/

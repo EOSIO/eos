@@ -10,467 +10,95 @@
 namespace eosio {
 
 /**
- *  @ingroup databaseCpp
- *  Cpp implementation of database API. It is based on pimpl idiom.
- *  @see table class and table_impl and table_impl_str class
+ *  @defgroup databaseCpp Database C++ API
+ *  @brief C++ APIs for interfacing with the database. It is based on pimpl idiom.
+ *  @ingroup database
  */
+
 
 template<typename T>
 struct table_impl_obj {};
 
-template<>
-struct table_impl_obj<char*> {
-    
-    static int32_t store( account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return store_str( scope, table_n, key, keylen, data, datalen );
-    }
-
-    static int32_t update( account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return update_str( scope, table_n, key, keylen, data, datalen );
-    }
-
-    static int32_t front( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
-        return front_str( scope, code, table_n, data, len );
-    }
-
-    static int32_t back( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
-        return back_str( scope, code, table_n, data, len );
-    }
-
-    static int32_t load( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return load_str( scope, code, table_n, key, keylen, data, datalen );
-    }
-
-    static int32_t next( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return next_str( scope, code, table_n, key, keylen, data, datalen );
-    }
-
-    static int32_t previous( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return previous_str( scope, code, table_n, key, keylen, data, datalen );
-    }
-
-    static int32_t lower_bound( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return lower_bound_str( scope, code, table_n, key, keylen, data, datalen );
-    }
-
-    static int32_t upper_bound( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return upper_bound_str( scope, code, table_n, key, keylen, data, datalen );
-    }
-
-    static int32_t remove( account_name scope, table_name table_n, char* key, uint32_t keylen ) {
-        return remove_str( scope, table_n, key, keylen );
-    }
-};
-
-
-template<account_name scope, account_name code, table_name table_n, typename PrimaryType>
-struct var_table {
-    private:
-    typedef table_impl_obj<PrimaryType> impl;
-
-    public:
-    typedef PrimaryType primary;
-
-    int32_t store( primary key, uint32_t keylen, char* record, uint32_t len ) {
-        return impl::store( scope, table_n, key, keylen, record, len );
-    }
-
-    int32_t update( primary key, uint32_t keylen, char* record, uint32_t len ) {
-        return impl::update( scope, table_n, key, keylen, record, len );
-    }
-   
-    int32_t front( char* record, uint32_t len ) {
-        return impl::front( scope, code, table_n, record, len );
-    }
-
-    int32_t back( char* record, uint32_t len ) {
-        return impl::back( scope, code, table_n, record, len );
-    }
-
-    int32_t load( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::load( scope, code, table_n, key, keylen, record, len );
-    } 
-
-    int32_t next( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::next( scope, code, table_n, key, keylen, record, len );
-    }
-    
-    int32_t previous( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::previous( scope, code, table_n, key, keylen, record, len );
-    }
-
-    int32_t lower_bound( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::lower_bound( scope, code, table_n, key, keylen, record, len );
-    }
-
-    int32_t upper_bound( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::upper_bound( scope, code, table_n, key, keylen, record, len );
-    }
-
-    int32_t remove( primary key, uint32_t keylen ) {
-       return impl::remove( scope, table_n, key, keylen );
-    }
-};
 
 template<int Primary, int Secondary>
 struct table_impl{};
 
+
 template<>
 struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
 
-   /**
-   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-   *  @param code  - identifies the code that controls write-access to the data
-   *  @param table_n - the ID/name of the table within the scope/code context to query
-   *  @param data  - location to copy the front record based on primary index.
-   *  @param len - the maximum length of data to read
-   *
-   *  @return the number of bytes read or -1 if no record found
-   */
     static int32_t front_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return front_primary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the back record based on primary index.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t back_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return back_primary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the data; must be initialized with the primary key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return load_primary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the data; must be initialized with the primary key to fetch next record.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t next_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return next_primary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the record; must be initialized with the primary key to fetch previous record.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t previous_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return previous_primary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the record. must be initialized with the primary key to fetch upper bound of.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t upper_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return upper_bound_primary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the record. must be initialized with the primary key to fetch lower bound of.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t lower_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return lower_bound_primary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the front record based on secondary index.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t front_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return front_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the back record based on secondary index.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t back_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return back_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the record based on secondary index; must be initialized with secondary key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t load_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return load_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the next record based on secondary index; must be initialized with a key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t next_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return next_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the previous record; must be initialized with a key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t previous_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return previous_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the upper bound record; must be initialized with a key to find the upper bound.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t upper_bound_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return upper_bound_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the lower bound record; must be initialized with a key to find the lower bound.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
     static int32_t lower_bound_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return lower_bound_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - must be initialized with the key (primary, secondary) of the record to remove.
-    *
-    *  @return 1 if  remove successful else -1
-    */
     static int32_t remove( uint64_t scope, uint64_t table_n, const void* data ) {
        return remove_i128i128( scope, table_n, data );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - must be initialized with the data to be stored.
-    *  @param len - the maximum length of data to be be stored.
-    *
-    *  @return 1 if store successful else -1
-    */
     static int32_t store( account_name scope, table_name table_n, const void* data, uint32_t len ) {
        return store_i128i128( scope, table_n, data, len );
     }
 
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - must be initialized with the data to be updated.
-    *  @param len   - the maximum length of data to be updated.
-    *
-    *  @return 1 if update successful else -1
-    */
     static int32_t update( account_name scope, table_name table_n, const void* data, uint32_t len ) {
        return update_i128i128( scope, table_n, data, len );
     }
 };
 
-template<>
-struct table_impl<sizeof(uint64_t),0> {
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the front record based on primary index (only index).
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
-    static int32_t front_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return front_i64( scope, code, table_n, data, len );
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the back record based on primary index (only index).
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
-    static int32_t back_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return back_i64( scope, code, table_n, data, len );
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the record; must be initialized with a key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
-    static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return load_i64( scope, code, table_n, data, len );
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the next record; must be initialized with a key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
-    static int32_t next_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return next_i64( scope, code, table_n, data, len );
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the previous record; must be initialized with a key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
-    static int32_t previous_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return previous_i64( scope, code, table_n, data, len );
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the lower bound; must be initialized with a key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
-    static int32_t lower_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return lower_bound_i64( scope, code, table_n, data, len );
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param code  - identifies the code that controls write-access to the data
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - location to copy the upper bound; must be initialized with a key.
-    *  @param len - the maximum length of data to read
-    *
-    *  @return the number of bytes read or -1 if no record found
-    */
-
-    static int32_t upper_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-        return upper_bound_i64(scope, code, table_n, data, len);
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - must be initialized with the key of record to remove from table.
-    *
-    *  @return 1 if successful else -1
-    */
-    static int32_t remove( uint64_t scope, uint64_t table_n, const void* data ) {
-       return remove_i64( scope, table_n, (uint64_t*)data);
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param table_n - the ID/name of the table within the scope/code context to query
-    *  @param data  - must be initialized with the data to be stored.
-    *  @param len - the maximum length of data
-    *
-    *  @return 1 if successful else -1
-    */
-    static int32_t store( account_name scope, table_name table_n, const void* data, uint32_t len ) {
-       return store_i64( scope, table_n, data, len );
-    }
-
-    /**
-    *  @param scope - the account scope that will be read, must exist in the transaction scopes list
-    *  @param table_name_name - the ID/name of the table within the scope/code context to query
-    *  @param data  - must be initialized with the data to be updated.
-    *  @param len - the maximum length of data
-    *
-    *  @return 1 if successful else -1
-    */
-    static int32_t update( account_name scope, table_name table_n, const void* data, uint32_t len ) {
-       return update_i64( scope, table_n, data, len );
-    }
-};
-
-
 /**
- *  @class table
- *  @defgroup dualIndexTable Dual Index table
- *  @brief defines a type-safe C++ wrapper around the @ref databaseC
+ *  @defgroup dualindextable Dual Index Table
+ *  @brief Defines a type-safe C++ wrapper around the C Dual Index Table
  *
  *  @tparam scope         - the default account name/scope that this table is located within
  *  @tparam code          - the code account name which has write permission to this table
@@ -558,9 +186,8 @@ struct table {
    typedef SecondaryType secondary;
 
     /**
-     * @brief The primary Index
-    */
-
+     * @brief Primary Index of the Table
+     */
    struct primary_index {
       /**
       *  @param r - reference to a record to store the front record based on primary index.
@@ -647,9 +274,8 @@ struct table {
       }
    };
 
-
-     /**
-     * @brief The Secondary Index
+   /**
+     * @brief Secondary Index of the Table
      */
 
    struct secondary_index {
@@ -738,8 +364,9 @@ struct table {
        }
     };
 
-
     /**
+    *  @brief Fetches a record from the table.
+    *  @details Fetches a record from the table. 
     *  @param p - reference to primary key to retrieve
     *  @param r - reference to a record to load the value to.
     *  @param s - account scope. default is current scope of the class
@@ -753,6 +380,8 @@ struct table {
     }
 
      /**
+     *  @brief Store a record in the table.
+     *  @details Store a record in the table. 
      *  @param r - reference to a record to store.
      *  @param s - account scope. default is current scope of the class
      *
@@ -764,6 +393,8 @@ struct table {
     }
 
     /**
+    *  @brief Update a record in the table.
+    *  @details Update a record in the table. 
     *  @param r - reference to a record to update.
     *  @param s - account scope. default is current scope of the class
     *
@@ -775,6 +406,8 @@ struct table {
     }
 
     /**
+    *  @brief Remove a record from the table.
+    *  @details Remove a record from the table. 
     *  @param r - reference to a record to remove.
     *  @param s - account scope. default is current scope of the class
     *
@@ -786,9 +419,53 @@ struct table {
  };
 /// @}
 
+template<>
+struct table_impl<sizeof(uint64_t),0> {
+ 
+    static int32_t front_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+       return front_i64( scope, code, table_n, data, len );
+    }
+
+    static int32_t back_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+       return back_i64( scope, code, table_n, data, len );
+    }
+
+    static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+       return load_i64( scope, code, table_n, data, len );
+    }
+
+    static int32_t next_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+       return next_i64( scope, code, table_n, data, len );
+    }
+
+    static int32_t previous_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+       return previous_i64( scope, code, table_n, data, len );
+    }
+
+    static int32_t lower_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+       return lower_bound_i64( scope, code, table_n, data, len );
+    }
+
+    static int32_t upper_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
+        return upper_bound_i64(scope, code, table_n, data, len);
+    }
+
+    static int32_t remove( uint64_t scope, uint64_t table_n, const void* data ) {
+       return remove_i64( scope, table_n, (uint64_t*)data);
+    }
+
+    static int32_t store( account_name scope, table_name table_n, const void* data, uint32_t len ) {
+       return store_i64( scope, table_n, data, len );
+    }
+
+    static int32_t update( account_name scope, table_name table_n, const void* data, uint32_t len ) {
+       return update_i64( scope, table_n, data, len );
+    }
+};
+
  /**
-  * @defgroup Singleindextable Single Index table
-  *  @brief this specialization of table is for single-index tables
+  *  @defgroup singleindextable Single Index Table
+  *  @brief Defines a type-safe C++ wrapper around the C Single Index Table
   *
   *  @tparam scope - the default account name scope that this table is located within
   *  @tparam code  - the code account name which has write permission to this table
@@ -852,10 +529,9 @@ struct table {
   *
   *  @endcode
   *  @ingroup databaseCpp
-  * @{
+  *  @{
   */
-
- template<uint64_t scope, uint64_t code, uint64_t table_n, typename Record, typename PrimaryType>
+template<uint64_t scope, uint64_t code, uint64_t table_n, typename Record, typename PrimaryType>
 struct table<scope,code,table_n,Record,PrimaryType,void> {
    private:
    typedef table_impl<sizeof( PrimaryType ),0> impl;
@@ -864,7 +540,7 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    public:
    typedef PrimaryType primary;
     /**
-     * @brief primary Index of table
+     * @brief Primary Index of the Table
      */
    struct primary_index {
        /**
@@ -943,22 +619,26 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
       }
    };
 
+
     /**
-    * fetches the front of the table
+    * @brief Fetches the front of the table
+    * @details Fetches the front of the table
     * @param  r - reference to hold the value
     * @return true if successfully retrieved the front
     */
     static bool front( Record& r ) { return primary_index::front(r); }
 
     /**
-    * fetches the back of the table
+    * @brief Fetches the back of the table
+    * @details Fetches the back of the table
     * @param  r - reference to hold the value
     * @return true if successfully retrieved the back
     */
     static bool back( Record& r )  { return primary_index::back(r);  }
 
     /**
-     * retrieves the record for the specified primary key
+     * @brief Retrieves the record for the specified primary key
+     * @details Retrieves the record for the specified primary key
      * @param p - the primary key of the record to fetch
      * @param r - reference of record to hold return value
      * @param s - scope; defaults to scope of the class.
@@ -970,7 +650,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    }
 
    /**
-    * retrieves a record based on initialized primary key value
+    * @brief Retrieves a record based on initialized primary key value
+    * @details Retrieves a record based on initialized primary key value
     * @param r - reference of a record to hold return value; must be initialized to the primary key to be fetched.
     * @param s - scope; defaults to scope of the class.
     * @return true if get succeeds.
@@ -980,7 +661,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    }
 
     /**
-     * store a record to the table
+     * @brief Store a record to the table
+     * @details Store a record to the table
      * @param r - the record to be stored.
      * @param s - scope; defaults to scope of the class.
      * @return true if store succeeds.
@@ -990,7 +672,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    }
 
     /**
-     * update a record in the table.
+     * @brief Update a record in the table.
+     * @details Update a record in the table.
      * @param r - the record to be updated including the updated values (cannot update the index).
      * @param s - scope; defaults to scope of the class.
      * @return true if update succeeds.
@@ -1000,7 +683,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    }
 
     /**
-     * remove a record from the table.
+     * @brief Remove a record from the table.
+     * @details Remove a record from the table.
      * @param r - the record to be removed.
      * @param s - scope; defaults to scope of the class.
      * @return true if remove succeeds.
@@ -1008,7 +692,206 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    static bool remove( const Record& r, uint64_t s = scope ) {
       return impl::remove( s, table_n, &r ) != 0;
    }
-}; /// @}
+}; /// @} singleindextable
+
+template<>
+struct table_impl_obj<char*> {
+    
+    static int32_t store( account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return store_str( scope, table_n, key, keylen, data, datalen );
+    }
+
+    static int32_t update( account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return update_str( scope, table_n, key, keylen, data, datalen );
+    }
+
+    static int32_t front( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
+        return front_str( scope, code, table_n, data, len );
+    }
+
+    static int32_t back( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
+        return back_str( scope, code, table_n, data, len );
+    }
+
+    static int32_t load( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return load_str( scope, code, table_n, key, keylen, data, datalen );
+    }
+
+    static int32_t next( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return next_str( scope, code, table_n, key, keylen, data, datalen );
+    }
+
+    static int32_t previous( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return previous_str( scope, code, table_n, key, keylen, data, datalen );
+    }
+
+    static int32_t lower_bound( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return lower_bound_str( scope, code, table_n, key, keylen, data, datalen );
+    }
+
+    static int32_t upper_bound( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+        return upper_bound_str( scope, code, table_n, key, keylen, data, datalen );
+    }
+
+    static int32_t remove( account_name scope, table_name table_n, char* key, uint32_t keylen ) {
+        return remove_str( scope, table_n, key, keylen );
+    }
+};
+
+/**
+  *  @defgroup singlevarindextable Single Variable Length Index Table
+  *  @brief Defines a type-safe C++ wrapper around the C Single Variable Length Index Table (e.g. string index)
+  *
+  *  @tparam scope - the default account name scope that this table is located within
+  *  @tparam code  - the code account name which has write permission to this table
+  *  @tparam table_n - a unique identifier (name) for this table
+  *  @tparam PrimaryType - the type of the first field stored in @ref Record
+  *
+  *  @ingroup databaseCpp
+  *  @{
+  */
+
+template<account_name scope, account_name code, table_name table_n, typename PrimaryType>
+struct var_table {
+    private:
+    typedef table_impl_obj<PrimaryType> impl;
+
+    public:
+    typedef PrimaryType primary;
+
+    /**
+     * @brief Store a record to the table
+     * @details Store a record to the table
+     * @param key - key of the data to be stored
+     * @param keylen - length of the key
+     * @param record - data to be stored
+     * @param len - length of data to be stored
+     * @return 1 if a new record was created, 0 if an existing record was updated
+     */
+    int32_t store( primary key, uint32_t keylen, char* record, uint32_t len ) {
+        return impl::store( scope, table_n, key, keylen, record, len );
+    }
+
+    /**
+     * @brief Update a record in the table
+     * @details Update a record to the table
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return 1 if the record was updated, 0 if no record with key was found
+     */
+    int32_t update( primary key, uint32_t keylen, char* record, uint32_t len ) {
+        return impl::update( scope, table_n, key, keylen, record, len );
+    }
+    
+    /**
+     * @brief Fetches the front of the table
+     * @details Fetches the front of the table
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return the number of bytes read or -1 if key was not found
+     */
+    int32_t front( char* record, uint32_t len ) {
+        return impl::front( scope, code, table_n, record, len );
+    }
+
+     /**
+     * @brief Fetches the back of the table
+     * @details Fetches the back of the table
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return the number of bytes read or -1 if key was not found
+     */
+    int32_t back( char* record, uint32_t len ) {
+        return impl::back( scope, code, table_n, record, len );
+    }
+
+    /**
+     * @brief Fetches a record from the table
+     * @details Fetches a record from the table
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return the number of bytes read or -1 if key was not found
+     */
+    int32_t load( primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::load( scope, code, table_n, key, keylen, record, len );
+    } 
+
+    /**
+     * @brief Fetches a record which key is next of the given key
+     * @details Fetches a record which key is next of the given key
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return the number of bytes read or -1 if key was not found
+     */
+    int32_t next( primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::next( scope, code, table_n, key, keylen, record, len );
+    }
+    
+    /**
+     * @brief Fetches a record which key is previous of the given key
+     * @details Fetches a record which key is previous of the given key
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return the number of bytes read or -1 if key was not found
+     */
+    int32_t previous( primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::previous( scope, code, table_n, key, keylen, record, len );
+    }
+
+    /**
+     * @brief Fetches a record which key is the nearest larger than or equal to the given key
+     * @details Fetches a record which key is the nearest larger than or equal to the given key
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return the number of bytes read or -1 if key was not found
+     */
+    int32_t lower_bound( primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::lower_bound( scope, code, table_n, key, keylen, record, len );
+    }
+
+    /**
+     * @brief Fetches a record which key is the nearest larger than the given key
+     * @details Fetches a record which key is the nearest larger than the given key
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return the number of bytes read or -1 if key was not found
+     */
+    int32_t upper_bound( primary key, uint32_t keylen, char* record, uint32_t len ) {
+       return impl::upper_bound( scope, code, table_n, key, keylen, record, len );
+    }
+
+    /**
+     * @brief Remove a record from the table.
+     * @details Remove a record from the table.
+     * @param key - key of the data to be updated
+     * @param keylen - length of the key
+     * @param record - data to be updated
+     * @param len - length of data to be updated
+     * @return 1 if a record was removed, and 0 if no record with key was found
+     */
+    int32_t remove( primary key, uint32_t keylen ) {
+       return impl::remove( scope, table_n, key, keylen );
+    }
+};
+
+/// @} singlevarindextable
+
 
 } // namespace eosio
 

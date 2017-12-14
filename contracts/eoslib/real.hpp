@@ -4,9 +4,9 @@
 
 namespace eosio {
     /**
-    *  @defgroup real data type representation for eos
-    *  @brief real data type with basic operators. Contract developers need not use the math APIs
-    *  @ingroup mathapi
+    *  @defgroup real Real number
+    *  @ingroup mathcppapi
+    *  @brief Real number data type with basic operators. Wrap double class of Math C API.
     *
     * Example:
     * @code
@@ -19,13 +19,17 @@ namespace eosio {
     * if(a > b) {}
     * if(a < b) {}
     * auto val = d.value();
+    * @endcode
+    * @{
     */
     class real {
     private:
         uint64_t val;
     public:
         /**
-        * Constructor to double object from uint64 value
+        * @brief Constructor to double object from uint64 value
+        *
+        * @details Constructor to double object from uint64 value
         * @param val    data
         */
         real(const uint64_t &_val) : val(_val) {}
@@ -49,7 +53,9 @@ namespace eosio {
     };
 
     /**
-     * Add two real variables
+     * @brief Add two real variables
+     * 
+     * @details Add two real variables
      * @param rhs    double variable to be added with this
      * @return the sum of this and rhs
      */
@@ -59,7 +65,9 @@ namespace eosio {
     }
 
     /**
-     * Multiply two real variables
+     * @brief Multiply two real variables
+     * 
+     * @details Multiply two real variables
      * @param rhs    double variable to be multiplied with this
      * @return the result after multiplication
      */
@@ -69,7 +77,9 @@ namespace eosio {
     }
 
     /**
-     * Division between two real varialbles
+     * @brief Division between two real variables
+     * 
+     * @details Division between two real variables
      * @param rhs    double variable to be multiplied with this
      * @return the result after division
      */
@@ -79,7 +89,9 @@ namespace eosio {
     }
 
     /**
-     * Compares two double variables c1 and c2
+     * @brief Compares two double variables c1 and c2
+     * 
+     * @details Compares two double variables c1 and c2
      * @param c1
      * @param c2
      * @return if c1 == c2, return true, otherwise false
@@ -90,7 +102,9 @@ namespace eosio {
     }
 
     /**
-     * Compares two double variables c1 and c2
+     * @brief Compares two double variables c1 and c2
+     * 
+     * @details Compares two double variables c1 and c2
      * @param c1
      * @param c2
      * @return if c1 > c2, return true, otherwise false
@@ -101,7 +115,9 @@ namespace eosio {
     }
 
     /**
-     * Compares two double variables c1 and c2
+     * @brief Compares two double variables c1 and c2
+     * 
+     * @details Compares two double variables c1 and c2
      * @param c1
      * @param c2
      * @return if c1 < c2, return true, otherwise false
@@ -110,4 +126,5 @@ namespace eosio {
         auto res = double_lt(c1.value(), c2.value());
         return (res == 1);
     }
+   /// @} real
 }

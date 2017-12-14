@@ -11,18 +11,15 @@
 
 namespace eosio { namespace account {
   /**
-  *  @defgroup account Account API
-  *  @brief Defines the ABI for interfacing with account balances.
-  *  @ingroup contractdev
+  *  @defgroup accountcppapi Account C++ API
+  *  @brief C++ API for querying account data, e.g. account balance
+  *  @ingroup accountapi
   *
   * @{
   */
 
 /**
-*  @struct eosio::account_balance (must match account_balance defined in wasm_interface.cpp)
 *  @brief The binary structure expected and populated by native balance function.
-*  @ingroup account
-*
 *  @details
 *  Example:
 *  @code
@@ -35,35 +32,42 @@ namespace eosio { namespace account {
 *  @endcode
 *  @{
 */
-struct PACKED (account_balance) {
+struct PACKED(account_balance) {
   /**
-  * Name of the account who's balance this is
+  * @brief Name of the account who's balance this is
+  * @details Name of the account who's balance this is
   */
   account_name account;
 
   /**
-  * Balance for this account
+  * @brief Balance for this account
+  * @details Balance for this account
   */
   asset eos_balance;
 
   /**
-  * Staked balance for this account
+  * @brief Staked balance for this account
+  * @details Staked balance for this account
   */
   asset staked_balance;
 
   /**
-  * Unstaking balance for this account
+  * @brief Unstaking balance for this account
+  * @details Unstaking balance for this account
   */
   asset unstaking_balance;
 
   /**
-  * Time at which last unstaking occurred for this account
+  * @brief Time at which last unstaking occurred for this account
+  * @details Time at which last unstaking occurred for this account
   */
   time last_unstaking_time;
 };
+/// @} account_balance
 
 /**
- *  Retrieve a populated balance structure
+ *  @brief Retrieve a populated balance structure
+ *  @details Retrieve a populated balance structure
  *  @param account_balance    stream to write
  *  @ret true if account's balance is found
  */
@@ -73,4 +77,5 @@ bool get(account_balance& b)
    return account_balance_get(&b, sizeof(account_balance));
 }
 
+/// @}  eosio
 } }

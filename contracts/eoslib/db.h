@@ -49,12 +49,6 @@ extern "C" {
  */
 
 /**
- *  @defgroup databaseCpp Database C++ API
- *  @brief C++ APIs for interfacing with the database.
- *  @ingroup database
- */
-
-/**
  * @defgroup dbi64  Single 64 bit Index table
  * @brief These methods interface with a simple table with 64 bit unique primary key and arbitrary binary data value.
  * @ingroup databaseC
