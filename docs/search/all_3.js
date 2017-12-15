@@ -10,6 +10,7 @@ var searchData=
   ['db_2eh',['db.h',['../db_8h.html',1,'']]],
   ['db_2ehpp',['db.hpp',['../db_8hpp.html',1,'']]],
   ['dual_20128_20bit_20index_20table',['Dual 128 bit Index table',['../group__dbi128i128.html',1,'']]],
+  ['deadline',['deadline',['../structdice_1_1game.html#a69897749820384435a1585eff6502fa7',1,'dice::game']]],
   ['dice',['dice',['../namespacedice.html',1,'']]],
   ['dice_2ecpp',['dice.cpp',['../dice_8cpp.html',1,'']]],
   ['dice_2ehpp',['dice.hpp',['../dice_8hpp.html',1,'']]],
@@ -22,14 +23,11 @@ var searchData=
   ['double_5flt',['double_lt',['../group__mathcapi.html#ga68d359e670da751723bf3d78ff759614',1,'math.h']]],
   ['double_5fmult',['double_mult',['../group__mathcapi.html#ga6390d36d23bd89bcd9bcf52385ba88f2',1,'math.h']]],
   ['double_5fto_5fi64',['double_to_i64',['../group__mathcapi.html#ga1388e46084036133e57508c18590b1ed',1,'math.h']]],
-  ['dual_20index_20table',['Dual Index table',['../group__dual_index_table.html',1,'']]],
-  ['dummy_2ewast_2ehpp',['dummy.wast.hpp',['../dummy_8wast_8hpp.html',1,'']]],
+  ['dual_20index_20table',['Dual Index Table',['../group__dualindextable.html',1,'']]],
   ['dummy_5fmessage',['dummy_message',['../structdummy__message.html',1,'']]],
   ['dummy_5fmessage_5fdefault_5fa',['DUMMY_MESSAGE_DEFAULT_A',['../test__api_8hpp.html#a5e433756dd4c8a2f61db21799a2f64a4',1,'test_api.hpp']]],
   ['dummy_5fmessage_5fdefault_5fb',['DUMMY_MESSAGE_DEFAULT_B',['../test__api_8hpp.html#ac57a64f6d53bebcbdaa9f8f012022047',1,'test_api.hpp']]],
   ['dummy_5fmessage_5fdefault_5fc',['DUMMY_MESSAGE_DEFAULT_C',['../test__api_8hpp.html#a700d88c2445988c3928fa65cfb33e51f',1,'test_api.hpp']]],
-  ['dummy_5fwast',['dummy_wast',['../dummy_8wast_8hpp.html#a9ee2305f59b81b25f957f0deb431cf89',1,'dummy.wast.hpp']]],
   ['dump',['dump',['../namespaceeosio.html#ab036afc426b8e39242e7f0e1355220f2',1,'eosio::dump(const record1 &amp;value, int tab=0)'],['../namespaceeosio.html#a78fb6930b2a022b5f0e575684da3c018',1,'eosio::dump(const record2 &amp;value, int tab=0)'],['../namespaceeosio.html#a1bc83607c4fb84dad0a04d30d75af684',1,'eosio::dump(const record3 &amp;value, int tab=0)'],['../namespaceeosio.html#a235ead622a8bdba00157e95b93307804',1,'eosio::dump(const key_value1 &amp;value, int tab=0)'],['../namespaceeosio.html#a9a12f835b793a2540871669ac2e1d7ea',1,'eosio::dump(const complex_type &amp;value, int tab=0)'],['../namespaceeosio.html#a73cdeb68b2c3de651896a3e653af3ad2',1,'eosio::dump(const key_value2 &amp;value, int tab=0)']]],
-  ['dice',['DICE',['../md_contracts_dice__r_e_a_d_m_e.html',1,'']]],
-  ['developing_20smart_20contracts_20_2f_20decentralized_20applications_20with_20eos_2eio',['Developing Smart Contracts / Decentralized Applications with EOS.IO',['../md_contracts_eoslib_tutorial.html',1,'']]]
+  ['dice',['DICE',['../md_contracts_dice__r_e_a_d_m_e.html',1,'']]]
 ];

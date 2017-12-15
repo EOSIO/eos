@@ -1,8 +1,6 @@
 var searchData=
 [
   ['mainpage_2emd',['mainpage.md',['../mainpage_8md.html',1,'']]],
-  ['malicious_2ewast_2ehpp',['malicious.wast.hpp',['../malicious_8wast_8hpp.html',1,'']]],
-  ['malicious_5fwast',['malicious_wast',['../malicious_8wast_8hpp.html#a8e7e92904cf9e8997658cd4a062287dd',1,'malicious.wast.hpp']]],
   ['malloc',['malloc',['../classeosio_1_1memory__manager.html#a8704c31c2d7a73953f3c1c320447c24a',1,'eosio::memory_manager::malloc()'],['../group__memorycppapi.html#gac4387e5dad9585f885c0c0bf8d353739',1,'eosio::malloc()']]],
   ['match',['match',['../namespaceexchange.html#a15c24418c4ed503becae07191757dee2',1,'exchange']]],
   ['math_2eh',['math.h',['../math_8h.html',1,'']]],
@@ -13,6 +11,7 @@ var searchData=
   ['max',['max',['../group__mathcppapi.html#ga29bcc1fa0b9eaa7667a68a2e135dd8bd',1,'eosio']]],
   ['memcmp',['memcmp',['../group__memorycapi.html#ga174f86fdde222a278e5524a8aea63da9',1,'memory.h']]],
   ['memcpy',['memcpy',['../group__memorycapi.html#ga59ed1449718a3c27f7622cb3efb845af',1,'memory.h']]],
+  ['memo_5flength',['memo_length',['../structeosio_1_1transfer.html#a35d0dfbad6eac71d0575a3de88ca4926',1,'eosio::transfer']]],
   ['memory_2eh',['memory.h',['../memory_8h.html',1,'']]],
   ['memory_2ehpp',['memory.hpp',['../memory_8hpp.html',1,'']]],
   ['memory_5fheap',['memory_heap',['../group__memorycppapi.html#ga92fafed038dc971cb8742fce00f27b61',1,'eosio']]],
@@ -31,7 +30,7 @@ var searchData=
   ['message_5fsend',['message_send',['../group__transactioncapi.html#gad76e0f13f4df1c6687f0eaea6379bd00',1,'transaction.h']]],
   ['message_5fsize',['message_size',['../group__messagecapi.html#ga4ebf6b7927fc900ae1fa8e06ceb5a16b',1,'message.h']]],
   ['message_20api',['Message API',['../group__messageapi.html',1,'']]],
-  ['message_20c_20api',['message C API',['../group__messagecapi.html',1,'']]],
+  ['message_20c_20api',['Message C API',['../group__messagecapi.html',1,'']]],
   ['message_20c_2b_2b_20api',['Message C++ API',['../group__messagecppapi.html',1,'']]],
   ['min',['min',['../group__mathcppapi.html#gac459e1d6c24d9178441fed9163accc79',1,'eosio']]],
   ['modify_5faccount',['modify_account',['../namespaceexchange.html#a13d8f4e165215611a7879766e215b855',1,'exchange']]],

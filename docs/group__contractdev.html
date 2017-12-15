@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: How To Write Contracts</title>
+<title>EOS.IO: Smart Contract API Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.0</span>
+   &#160;<span id="projectnumber">DAWN2.0.1</span>
    </div>
   </td>
  </tr>
@@ -63,7 +63,7 @@ $(function() {
   <div class="summary">
 <a href="#groups">Modules</a>  </div>
   <div class="headertitle">
-<div class="title">How To Write Contracts</div>  </div>
+<div class="title">Smart Contract API Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 
@@ -72,23 +72,14 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="groups"></a>
 Modules</h2></td></tr>
-<tr class="memitem:group__accountcapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__accountcapi.html">Account API</a></td></tr>
-<tr class="memdesc:group__accountcapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for querying account data. <br /></td></tr>
+<tr class="memitem:group__accountapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__accountapi.html">Account API</a></td></tr>
+<tr class="memdesc:group__accountapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for querying account data. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__account"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__account.html">Account API</a></td></tr>
-<tr class="memdesc:group__account"><td class="mdescLeft">&#160;</td><td class="mdescRight">Defines the ABI for interfacing with account balances. <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__chaincapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__chaincapi.html">Chain API</a></td></tr>
-<tr class="memdesc:group__chaincapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for querying internal chain state. <br /></td></tr>
+<tr class="memitem:group__chainapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__chainapi.html">Chain API</a></td></tr>
+<tr class="memdesc:group__chainapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for querying internal chain state. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__database"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__database.html">Database API</a></td></tr>
-<tr class="memdesc:group__database"><td class="mdescLeft">&#160;</td><td class="mdescRight">APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following broad structure: <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__fixed__point"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__fixed__point.html">Template classes for Fixed Point representaton</a></td></tr>
-<tr class="memdesc:group__fixed__point"><td class="mdescLeft">&#160;</td><td class="mdescRight">32,64,128,256 bits version of Fixed Point variables <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__fixed"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__fixed.html">point Fixed Point generic class</a></td></tr>
-<tr class="memdesc:group__fixed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Implementation of fixed point template class. <br /></td></tr>
+<tr class="memdesc:group__database"><td class="mdescLeft">&#160;</td><td class="mdescRight">APIs that store and retrieve data on the blockchain. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__mathapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__mathapi.html">Math API</a></td></tr>
 <tr class="memdesc:group__mathapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Defines common math functions. <br /></td></tr>
@@ -96,7 +87,7 @@ Modules</h2></td></tr>
 <tr class="memitem:group__memoryapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memoryapi.html">Memory API</a></td></tr>
 <tr class="memdesc:group__memoryapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Defines common memory functions. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__messageapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messageapi.html">message API</a></td></tr>
+<tr class="memitem:group__messageapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messageapi.html">Message API</a></td></tr>
 <tr class="memdesc:group__messageapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for querying message properties. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__consoleapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consoleapi.html">Console API</a></td></tr>
@@ -108,7 +99,7 @@ Modules</h2></td></tr>
 <tr class="memitem:group__tokens"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__tokens.html">Token API</a></td></tr>
 <tr class="memdesc:group__tokens"><td class="mdescLeft">&#160;</td><td class="mdescRight">Defines the ABI for interfacing with standard-compatible token messages and database tables. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__transactionapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactionapi.html">transaction API</a></td></tr>
+<tr class="memitem:group__transactionapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactionapi.html">Transaction API</a></td></tr>
 <tr class="memdesc:group__transactionapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for sending transactions and inline messages. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__types"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html">Builtin Types</a></td></tr>
