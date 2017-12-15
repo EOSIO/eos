@@ -89,6 +89,9 @@ namespace fc { namespace crypto { namespace r1 {
         int n = 0;
         int i = recid / 2;
 
+        const BIGNUM *r, *s;
+        ECDSA_SIG_get0(ecsig, &r, &s);
+
         const EC_GROUP *group = EC_KEY_get0_group(eckey);
         if ((ctx = BN_CTX_new()) == NULL) { ret = -1; goto err; }
         BN_CTX_start(ctx);
@@ -97,7 +100,7 @@ namespace fc { namespace crypto { namespace r1 {
         x = BN_CTX_get(ctx);
         if (!BN_copy(x, order)) { ret=-1; goto err; }
         if (!BN_mul_word(x, i)) { ret=-1; goto err; }
-        if (!BN_add(x, x, ecsig->r)) { ret=-1; goto err; }
+        if (!BN_add(x, x, r)) { ret=-1; goto err; }
         field = BN_CTX_get(ctx);
         if (!EC_GROUP_get_curve_GFp(group, field, NULL, NULL, ctx)) { ret=-2; goto err; }
         if (BN_cmp(x, field) >= 0) { ret=0; goto err; }
@@ -118,9 +121,9 @@ namespace fc { namespace crypto { namespace r1 {
         if (!BN_zero(zero)) { ret=-1; goto err; }
         if (!BN_mod_sub(e, zero, e, order, ctx)) { ret=-1; goto err; }
         rr = BN_CTX_get(ctx);
-        if (!BN_mod_inverse(rr, ecsig->r, order, ctx)) { ret=-1; goto err; }
+        if (!BN_mod_inverse(rr, r, order, ctx)) { ret=-1; goto err; }
         sor = BN_CTX_get(ctx);
-        if (!BN_mod_mul(sor, ecsig->s, rr, order, ctx)) { ret=-1; goto err; }
+        if (!BN_mod_mul(sor, s, rr, order, ctx)) { ret=-1; goto err; }
         eor = BN_CTX_get(ctx);
         if (!BN_mod_mul(eor, e, rr, order, ctx)) { ret=-1; goto err; }
         if (!EC_POINT_mul(group, Q, eor, R, sor, ctx)) { ret=-2; goto err; }
@@ -487,8 +490,10 @@ namespace fc { namespace crypto { namespace r1 {
             FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
 
         ecdsa_sig sig = ECDSA_SIG_new();
-        BN_bin2bn(&c.data[1],32,sig->r);
-        BN_bin2bn(&c.data[33],32,sig->s);
+        BIGNUM *r = BN_new(), *s = BN_new();
+        BN_bin2bn(&c.data[1],32,r);
+        BN_bin2bn(&c.data[33],32,s);
+	     ECDSA_SIG_set0(sig, r, s);
 
         my->_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
 
@@ -496,7 +501,7 @@ namespace fc { namespace crypto { namespace r1 {
         ssl_bignum order, halforder;
         EC_GROUP_get_order(group, order, nullptr);
         BN_rshift1(halforder, order);
-        if(BN_cmp(sig->s, halforder) > 0)
+        if(BN_cmp(s, halforder) > 0)
            FC_THROW_EXCEPTION( exception, "invalid high s-value encountered in r1 signature" );
 
         if (nV >= 31)
@@ -521,18 +526,23 @@ namespace fc { namespace crypto { namespace r1 {
         if (sig==nullptr)
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
 
+        const BIGNUM *r, *sig_s;
+	     ssl_bignum s;
+        ECDSA_SIG_get0(sig, &r, &sig_s);
+	     BN_copy(s, sig_s);
+
         //want to always use the low S value
         const EC_GROUP* group = EC_KEY_get0_group(my->_key);
         ssl_bignum order, halforder;
         EC_GROUP_get_order(group, order, nullptr);
         BN_rshift1(halforder, order);
-        if(BN_cmp(sig->s, halforder) > 0)
-           BN_sub(sig->s, order, sig->s);
+        if(BN_cmp(s, halforder) > 0)
+           BN_sub(s, order, s);
 
         compact_signature csig;
 
-        int nBitsR = BN_num_bits(sig->r);
-        int nBitsS = BN_num_bits(sig->s);
+        int nBitsR = BN_num_bits(r);
+        int nBitsS = BN_num_bits(s);
         if(nBitsR > 256 || nBitsS > 256)
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
         
@@ -554,8 +564,8 @@ namespace fc { namespace crypto { namespace r1 {
           FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
 
         csig.data[0] = nRecId+27+4;
-        BN_bn2bin(sig->r,&csig.data[33-(nBitsR+7)/8]);
-        BN_bn2bin(sig->s,&csig.data[65-(nBitsS+7)/8]);
+        BN_bn2bin(r,&csig.data[33-(nBitsR+7)/8]);
+        BN_bn2bin(s,&csig.data[65-(nBitsS+7)/8]);
         
         return csig;
       } FC_RETHROW_EXCEPTIONS( warn, "sign ${digest}", ("digest", digest)("private_key",*this) );
