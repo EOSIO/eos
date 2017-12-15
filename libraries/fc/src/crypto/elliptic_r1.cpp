@@ -493,7 +493,7 @@ namespace fc { namespace crypto { namespace r1 {
         BIGNUM *r = BN_new(), *s = BN_new();
         BN_bin2bn(&c.data[1],32,r);
         BN_bin2bn(&c.data[33],32,s);
-	     ECDSA_SIG_set0(sig, r, s);
+        ECDSA_SIG_set0(sig, r, s);
 
         my->_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
 
@@ -527,9 +527,9 @@ namespace fc { namespace crypto { namespace r1 {
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
 
         const BIGNUM *r, *sig_s;
-	     ssl_bignum s;
+        ssl_bignum s;
         ECDSA_SIG_get0(sig, &r, &sig_s);
-	     BN_copy(s, sig_s);
+        BN_copy(s, sig_s);
 
         //want to always use the low S value
         const EC_GROUP* group = EC_KEY_get0_group(my->_key);
