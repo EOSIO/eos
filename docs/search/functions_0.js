@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['account',['account',['../group__currencyapi.html#gaa648707be79dc2cb4f7306ed1b5e374c',1,'TOKEN_NAME::account::account()'],['../structinfinite_1_1account.html#abd9362b588e409e7a8f7e0050cb45eab',1,'infinite::account::account()']]],
-  ['account_5fbalance_5fget',['account_balance_get',['../account_8h.html#abc0d83c30cea31ccd9c5155f5292eab7',1,'account.h']]],
+  ['account',['account',['../group__currencyapi.html#gaa648707be79dc2cb4f7306ed1b5e374c',1,'TOKEN_NAME::account::account()'],['../structdice_1_1account.html#a6cf8226422ed2b164524e87a0ced94ed',1,'dice::account::account()'],['../structexchange_1_1account.html#a2bdad696d66826e43c79ca120bc548c4',1,'exchange::account::account()'],['../structinfinite_1_1account.html#abd9362b588e409e7a8f7e0050cb45eab',1,'infinite::account::account()'],['../group__storageapi.html#ga178ce3b03e0fcd2ee52df57dbf14302d',1,'TOKEN_NAME::account::account()']]],
+  ['account_5fbalance_5fget',['account_balance_get',['../group__accountcapi.html#gabc0d83c30cea31ccd9c5155f5292eab7',1,'account.h']]],
   ['add_5fmessage',['add_message',['../classeosio_1_1transaction.html#a67f65f5b6701db79031a4e30e187f443',1,'eosio::transaction']]],
   ['add_5fpermissions',['add_permissions',['../classeosio_1_1message.html#aad585c683bba06889eeeb4126f56cac5',1,'eosio::message::add_permissions(account_name account, permission_name permission)'],['../classeosio_1_1message.html#ad304e555d132377ee2ec576ebabf1fb6',1,'eosio::message::add_permissions(account_name account, permission_name permission, Permissions... permissions)']]],
   ['add_5fscope',['add_scope',['../classeosio_1_1transaction.html#acf114f2834a42483978b8207e3b0fa2e',1,'eosio::transaction']]],
@@ -38,6 +38,6 @@ var searchData=
   ['assert_5fsha256',['assert_sha256',['../crypto_8h.html#af1fb7c5914f9197de520f2bd3db48335',1,'crypto.h']]],
   ['assert_5ftrue',['assert_true',['../structtest__message.html#a320d2a806fd9602395b25f5361eb10ad',1,'test_message']]],
   ['assign',['assign',['../classeosio_1_1string.html#aaed931c80e0dd8542e19b211f9dc7e73',1,'eosio::string::assign()'],['../structtest__string.html#a4f529b030a8f30a315dbdb3181937327',1,'test_string::assign()']]],
-  ['assignhelper',['assignHelper',['../group__fixed.html#ga68c90c18b96d6e1789a567b16a7cdf2f',1,'eosio']]],
+  ['assignhelper',['assignHelper',['../group__fixedpoint.html#ga68c90c18b96d6e1789a567b16a7cdf2f',1,'eosio']]],
   ['assignment_5foperator',['assignment_operator',['../structtest__string.html#ad757ea5ecb3cee2f3aa83799e81f7d16',1,'test_string']]]
 ];
