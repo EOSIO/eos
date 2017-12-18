@@ -148,8 +148,8 @@ namespace eosio { namespace testing {
                                 contracts::updateauth{
                                    .account    = account,
                                    .permission = perm,
-                                   .authority  = move(auth),
-                                   .parent     = parent
+                                   .parent     = parent,
+                                   .data       = move(auth),
                                 });
 
       set_tapos( trx );

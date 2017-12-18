@@ -92,33 +92,48 @@ namespace impl {
     * @tparam T - the type to check
     */
    template<typename T>
-   constexpr bool single_type_requires_abi_v = std::is_base_of<transaction, T>::value ||
-                                               std::is_same<T, action>::value ||
-                                               std::is_same<T, transaction_trace>::value ||
-                                               std::is_same<T, action_trace>::value;
+   constexpr bool single_type_requires_abi_v() {
+      return std::is_base_of<transaction, T>::value ||
+             std::is_same<T, action>::value ||
+             std::is_same<T, transaction_trace>::value ||
+             std::is_same<T, action_trace>::value;
+   }
 
    /**
     * Basic constexpr for a type, aliases the basic check directly
     * @tparam T - the type to check
     */
    template<typename T>
-   constexpr bool type_requires_abi_v = single_type_requires_abi_v<T>;
+   struct type_requires_abi {
+      static constexpr bool value() {
+         return single_type_requires_abi_v<T>();
+      }
+   };
 
    /**
     * specialization that catches common container patterns and checks their contained-type
     * @tparam Container - a templated container type whose first argument is the contained type
     */
    template<template<typename ...> class Container, typename T, typename ...Args >
-   constexpr bool type_requires_abi_v<Container<T, Args...>> = single_type_requires_abi_v<T>;
+   struct type_requires_abi<Container<T, Args...>> {
+      static constexpr bool value() {
+         return single_type_requires_abi_v<T>();
+      }
+   };
+
+   template<typename T>
+   constexpr bool type_requires_abi_v() {
+      return type_requires_abi<T>::value();
+   }
 
    /**
     * convenience aliases for creating overload-guards based on whether the type contains ABI related info
     */
    template<typename T>
-   using not_require_abi_t = std::enable_if_t<!type_requires_abi_v<T>, int>;
+   using not_require_abi_t = std::enable_if_t<!type_requires_abi_v<T>(), int>;
 
    template<typename T>
-   using require_abi_t = std::enable_if_t<type_requires_abi_v<T>, int>;
+   using require_abi_t = std::enable_if_t<type_requires_abi_v<T>(), int>;
 
    /**
     * Reflection visitor that uses a resolver to resolve ABIs for nested types

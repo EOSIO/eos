@@ -353,7 +353,7 @@ public:
     bool contains() const { return which() == tag<X>::value; }
 
     template<typename X>
-    static constexpr int position = impl::position<X, Types...>::pos;
+    static constexpr int position() { return impl::position<X, Types...>::pos; }
 
     template<int Pos, std::enable_if_t<Pos < impl::type_info<Types...>::size,int> = 1>
     using type_at = typename impl::type_at<Pos, Types...>::type;

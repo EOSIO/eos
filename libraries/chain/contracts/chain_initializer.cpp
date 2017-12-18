@@ -147,7 +147,7 @@ abi_def chain_initializer::eos_contract_abi()
          {"account", "account_name"},
          {"permission", "permission_name"},
          {"parent", "permission_name"},
-         {"authority", "authority"},
+         {"data", "authority"},
       }
    });
 

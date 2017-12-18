@@ -299,7 +299,7 @@ struct updateauth {
    account_name                      account;
    permission_name                   permission;
    permission_name                   parent;
-   authority                         authority;
+   authority                         data;
 
    static scope_name get_scope() {
       return config::system_account_name;
@@ -410,7 +410,7 @@ FC_REFLECT( eosio::chain::contracts::setabi                           , (account
 FC_REFLECT( eosio::chain::contracts::setproducer                      , (name)(key)(configuration) )
 FC_REFLECT( eosio::chain::contracts::okproducer                       , (voter)(producer)(approve) )
 FC_REFLECT( eosio::chain::contracts::setproxy                         , (stakeholder)(proxy) )
-FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(authority) )
+FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data) )
 FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account)(code)(type) )

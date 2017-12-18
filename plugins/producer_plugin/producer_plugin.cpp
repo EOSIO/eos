@@ -184,7 +184,7 @@ void producer_plugin_impl::schedule_production_loop() {
    //_timer.expires_from_now(boost::posix_time::microseconds(time_to_next_block_time));
    _timer.expires_from_now( boost::posix_time::microseconds(time_to_next_block_time) );
    //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
-   _timer.async_wait( [&](auto){ block_production_loop(); } );
+   _timer.async_wait( [&](const boost::system::error_code&){ block_production_loop(); } );
 }
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::block_production_loop() {
