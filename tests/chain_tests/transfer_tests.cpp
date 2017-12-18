@@ -15,9 +15,9 @@ BOOST_AUTO_TEST_SUITE(transfer_tests)
 
 BOOST_AUTO_TEST_CASE( transfer_test ) { try {
   tester test;
-  test.produce_blocks(2);
+  test.produce_blocks(1000);
 
-  test.create_accounts( {N(dan), N(bart)}, asset::from_string("10.0000 EOS") );
+  test.create_accounts( {N(dan), N(bart)}, asset::from_string("100.0000 EOS") );
   test.transfer( N(inita), N(dan), "10.0000 EOS", "memo" );
 
   {
@@ -123,8 +123,8 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
  */
 BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
    tester test;
-   test.produce_blocks(2);
-   test.create_accounts( {N(dan),N(bart),N(trust)}, asset::from_string("10.0000 EOS") );
+   test.produce_blocks(1000);
+   test.create_accounts( {N(dan),N(bart),N(trust)}, asset::from_string("100.0000 EOS") );
    test.transfer( N(inita), N(dan), "10.0000 EOS" );
    test.transfer( N(inita), N(trust), "10.0000 EOS" );
    test.transfer( N(trust), N(dan), "1.0000 EOS" );
