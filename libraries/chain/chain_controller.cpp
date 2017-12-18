@@ -377,7 +377,7 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
    for (const auto&st: res.shard_traces) {
       for (const auto &tr: st.transaction_traces) {
          for (const auto &dt: tr.deferred_transactions) {
-            _db.create<generated_transaction_object>([&](auto &obj) {
+            _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
                obj.trx_id = dt.id();
                obj.sender = dt.sender;
                obj.sender_id = dt.sender_id;
@@ -630,7 +630,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
 flat_set<public_key_type> chain_controller::get_required_keys(const signed_transaction& trx,
                                                               const flat_set<public_key_type>& candidate_keys)const 
 {
-   auto checker = make_auth_checker( [&](auto p){ return get_permission(p).auth; }, 
+   auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      get_global_properties().configuration.max_authority_depth,
                                      candidate_keys);
 
@@ -652,7 +652,7 @@ void chain_controller::check_authorization( const vector<action>& actions,
                                             bool allow_unused_signatures,
                                             flat_set<account_name>    provided_accounts  )const
 {
-   auto checker = make_auth_checker( [&](auto p){ return get_permission(p).auth; }, 
+   auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      get_global_properties().configuration.max_authority_depth,
                                      provided_keys, provided_accounts );
 

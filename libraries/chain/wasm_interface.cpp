@@ -130,6 +130,10 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
+         code_info( size_t mem_end, vector<char>&& mem_image )
+         :mem_end(mem_end),mem_image(std::forward<vector<char>>(mem_image))
+         {}
+
          // a clean image of the memory used to sanitize things on checkin
          size_t mem_start           = 0;
          size_t mem_end             = 1<<16;
@@ -249,10 +253,7 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock([&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info {
-                        .mem_end = mem_end,
-                        .mem_image = std::move(mem_image)
-                     }).first;
+                     auto iter = _cache.emplace(code_id, std::move(code_info(mem_end, std::move(mem_image)))).first;
 
                      iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());

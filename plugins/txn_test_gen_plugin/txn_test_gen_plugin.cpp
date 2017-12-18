@@ -144,7 +144,7 @@ struct txn_test_gen_plugin_impl {
 
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
       timer.expires_at(s + std::chrono::milliseconds(timer_timeout));
-      timer.async_wait([this](auto ec) {
+      timer.async_wait([this](const boost::system::error_code& ec) {
          if(ec)
             return;
          try {

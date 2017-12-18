@@ -415,8 +415,8 @@ void apply_eosio_updateauth(apply_context& context) {
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT(update.permission != update.parent, action_validate_exception,
               "Cannot set an authority as its own parent");
-   EOS_ASSERT(validate(update.authority), action_validate_exception,
-              "Invalid authority: ${auth}", ("auth", update.authority));
+   EOS_ASSERT(validate(update.data), action_validate_exception,
+              "Invalid authority: ${auth}", ("auth", update.data));
    if (update.permission == "active")
       EOS_ASSERT(update.parent == "owner", action_validate_exception, "Cannot change active authority's parent from owner", ("update.parent", update.parent) );
    if (update.permission == "owner")
@@ -426,7 +426,7 @@ void apply_eosio_updateauth(apply_context& context) {
    context.require_authorization(update.account);
 
    db.get<account_object, by_name>(update.account);
-   validate_authority_precondition(context, update.authority);
+   validate_authority_precondition(context, update.data);
 
    auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
    
@@ -443,7 +443,7 @@ void apply_eosio_updateauth(apply_context& context) {
       // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
       // permission satisfies the permission we want to modify?
       db.modify(*permission, [&update, &parent_id](permission_object& po) {
-         po.auth = update.authority;
+         po.auth = update.data;
          po.parent = parent_id;
       });
    }  else {
@@ -452,7 +452,7 @@ void apply_eosio_updateauth(apply_context& context) {
       db.create<permission_object>([&update, &parent_id](permission_object& po) {
          po.name = update.permission;
          po.owner = update.account;
-         po.auth = update.authority;
+         po.auth = update.data;
          po.parent = parent_id;
       });
    }
