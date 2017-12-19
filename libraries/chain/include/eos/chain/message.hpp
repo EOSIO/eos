@@ -1,8 +1,12 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <eos/chain/types.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 /**
  * @brief The message struct defines a blockchain message
@@ -19,28 +23,28 @@ namespace eos { namespace chain {
  * @ref data, whose type is determined by @ref type, which is 
  * dynamic and defined by the scripting language.
  */
-struct Message : public types::Message {
-   Message() = default;
+struct message : public types::message {
+   message() = default;
    template<typename T>
-   Message(const AccountName& code, const vector<types::AccountPermission>& authorization, const types::FuncName& type, T&& value)
-      :types::Message(code, type, authorization, Bytes()) {
+   message(const account_name& code, const vector<types::account_permission>& authorization, const types::func_name& type, T&& value)
+      :types::message(code, type, authorization, bytes()) {
       set<T>(type, std::forward<T>(value));
    }
 
-   Message(const AccountName& code, const vector<types::AccountPermission>& authorization, const types::FuncName& type)
-      :types::Message(code, type, authorization, Bytes()) {}
+   message(const account_name& code, const vector<types::account_permission>& authorization, const types::func_name& type)
+      :types::message(code, type, authorization, bytes()) {}
 
-   Message(const types::Message& m) : types::Message(m) {}
+   message(const types::message& m) : types::message(m) {}
 
    template<typename T>
-   void set_packed(const types::FuncName& t, const T& value) {
+   void set_packed(const types::func_name& t, const T& value) {
       type = t;
       data.resize(sizeof(value));
       memcpy( data.data(), &value, sizeof(value) );
    }
 
    template<typename T>
-   void set(const types::FuncName& t, const T& value) {
+   void set(const types::func_name& t, const T& value) {
       type = t;
       data = fc::raw::pack(value);
    }
@@ -52,6 +56,6 @@ struct Message : public types::Message {
 
 
 
-} } // namespace eos::chain
+} } // namespace eosio::chain
 
-FC_REFLECT_DERIVED(eos::chain::Message, (eos::types::Message), )
+FC_REFLECT_DERIVED(eosio::chain::message, (eosio::types::message), )

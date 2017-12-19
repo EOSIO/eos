@@ -93,7 +93,7 @@ namespace fc  {
   {
     try
     {
-      return boost::lexical_cast<int64_t>(i.c_str());
+      return boost::lexical_cast<int64_t>(i.c_str(), i.size());
     }
     catch( const boost::bad_lexical_cast& e )
     {
@@ -106,7 +106,7 @@ namespace fc  {
   { try {
     try
     {
-      return boost::lexical_cast<uint64_t>(i.c_str());
+      return boost::lexical_cast<uint64_t>(i.c_str(), i.size());
     }
     catch( const boost::bad_lexical_cast& e )
     {
@@ -119,7 +119,7 @@ namespace fc  {
   {
     try
     {
-      return boost::lexical_cast<double>(i.c_str());
+      return boost::lexical_cast<double>(i.c_str(), i.size());
     }
     catch( const boost::bad_lexical_cast& e )
     {

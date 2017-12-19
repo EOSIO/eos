@@ -1,0 +1,7 @@
+<map id="Database C API" name="Database C API">
+<area shape="rect" id="node1" href="$group__dbstr.html" title="These methods interface with a simple table with String unique primary key and arbitrary binary data ..." alt="" coords="324,5,456,47"/>
+<area shape="rect" id="node4" href="$group__dbi64.html" title="These methods interface with a simple table with 64 bit unique primary key and arbitrary binary data ..." alt="" coords="325,71,455,112"/>
+<area shape="rect" id="node5" href="$group__dbi128i128.html" title="Interface to a database table with 128 bit primary and secondary keys and arbitary binary data value..." alt="" coords="326,136,454,177"/>
+<area shape="rect" id="node6" href="$group__dbi64i64i64.html" title="Interface to a database table with 64 bit primary, secondary and tertiary keys and arbitrary binary d..." alt="" coords="327,201,453,243"/>
+<area shape="rect" id="node3" href="$group__database.html" title="APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following b..." alt="" coords="5,111,109,138"/>
+</map>

@@ -197,6 +197,7 @@ namespace Runtime
 	}
 
 	MemoryInstance* getDefaultMemory(ModuleInstance* moduleInstance) { return moduleInstance->defaultMemory; }
+	uint64_t getDefaultMemorySize(ModuleInstance* moduleInstance) { return moduleInstance->defaultMemory->numPages << IR::numBytesPerPageLog2; }
 	TableInstance* getDefaultTable(ModuleInstance* moduleInstance) { return moduleInstance->defaultTable; }
 	
 	ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name)

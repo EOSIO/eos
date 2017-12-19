@@ -1,10 +1,14 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 extern "C" {
 typedef long long    uint64_t;
 typedef unsigned int uint32_t;
 typedef uint64_t     AccountName;
 int load( const void* keyptr, int keylen, void* valueptr, int valuelen );
 void store( const void* keyptr, int keylen, const void* valueptr, int valuelen );
-int readMessage( void* dest, int destsize );
+int read_message( void* dest, int destsize );
 int remove( const void* key, int keyLength );
 void printi( uint64_t );
 void print( const char* str );
@@ -31,19 +35,19 @@ void store( const Key& key, const Value& v ) { store( &key, sizeof(key), &v, siz
 template<typename Key>
 void remove( const Key& key ) { remove( &key, sizeof(key) );  }
 template<typename Message>
-void readMessage( Message& m ) { readMessage( &m, sizeof(Message) ); }
+void read_message( Message& m ) { read_message( &m, sizeof(Message) ); }
 /// END BUILT IN LIBRARY.... everything below this is "user contract"
 
 
 extern "C" {
-struct Transfer {
+struct transfer {
   uint64_t    from;
   uint64_t    to;
   uint64_t    amount;
   char        memo[];
 };
 
-static_assert( sizeof(Transfer) == 3*sizeof(uint64_t), "unexpected padding" );
+static_assert( sizeof(transfer) == 3*sizeof(uint64_t), "unexpected padding" );
 
 struct Balance {
   uint64_t    balance;
@@ -58,12 +62,12 @@ void init() {
 }
 
 void apply_simplecoin_transfer() {
-   static Transfer message;
+   static transfer message;
    static Balance from_balance;
    static Balance to_balance;
    to_balance.balance = 0;
 
-   readMessage( message  );
+   read_message( message  );
    load( message.from, from_balance );
    load( message.to, to_balance );
 

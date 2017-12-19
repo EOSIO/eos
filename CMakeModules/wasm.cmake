@@ -58,10 +58,12 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
   set(WASM_TOOLCHAIN TRUE)
 endif()
 
-macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
+macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
-  set(outfiles "")
-  foreach(srcfile ${SOURCE_FILES})
+  # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
+  # linking ${target}.bc's rule 
+  set(SOURCE_FILE ${target}.cpp)
+  foreach(srcfile ${SOURCE_FILE})
     
     get_filename_component(outfile ${srcfile} NAME)
     get_filename_component(infile ${srcfile} ABSOLUTE)
@@ -86,17 +88,18 @@ macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
 
     # -fno-exceptions
     #   Disable the generation of extra code needed to propagate exceptions
-
+  
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
-      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS} -c ${infile} -o ${outfile}.bc
+      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding
+              -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS}
+              -c ${infile} -o ${outfile}.bc 
       IMPLICIT_DEPENDS CXX ${infile}
       COMMENT "Building LLVM bitcode ${outfile}.bc"
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
       VERBATIM
     )
     set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${outfile}.bc)
-
     list(APPEND outfiles ${outfile}.bc)
 
   endforeach(srcfile)
@@ -121,13 +124,14 @@ macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND ${BINARYEN_BIN}/s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 16384  ${target}.s
+    COMMAND ${BINARYEN_BIN}/s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 1024 ${target}.s
+
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.wast)
-
+  
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast.hpp
     DEPENDS ${DESTINATION_FOLDER}/${target}.wast
     COMMAND echo "const char* ${target}_wast = R\"=====("  > ${DESTINATION_FOLDER}/${target}.wast.hpp
@@ -136,9 +140,41 @@ macro(add_wast_target target SOURCE_FILES INCLUDE_FOLDERS DESTINATION_FOLDER)
     COMMENT "Generating ${target}.wast.hpp"
     VERBATIM
   )
+  
+  if (EXISTS ${DESTINATION_FOLDER}/${target}.abi )
+    add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
+      DEPENDS ${DESTINATION_FOLDER}/${target}.abi
+      COMMAND echo "const char* ${target}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
+      COMMAND cat ${DESTINATION_FOLDER}/${target}.abi >> ${DESTINATION_FOLDER}/${target}.abi.hpp
+      COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.abi.hpp
+      COMMENT "Generating ${target}.abi.hpp"
+      VERBATIM
+    )
+    set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.abi.hpp)
+  else()
+  endif()
+  
+  
+  add_custom_target(${target} ALL DEPENDS ${DESTINATION_FOLDER}/${target}.wast.hpp ${extra_target_dependency})
+  
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${DESTINATION_FOLDER}/${target}.wast.hpp)
 
-  add_custom_target(${target} ALL DEPENDS ${DESTINATION_FOLDER}/${target}.wast.hpp)
   set_property(TARGET ${target} PROPERTY INCLUDE_DIRECTORIES ${INCLUDE_FOLDERS})
 
+  set(extra_target_dependency)
 
 endmacro(add_wast_target)
+
+function(add_wast_abi_target target INCLUDE_FOLDERS SOURCE_FOLDER DESTINATION_FOLDER)
+  add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
+    DEPENDS ${SOURCE_FOLDER}/${target}.abi
+    COMMAND echo "const char* ${target}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
+    COMMAND cat ${SOURCE_FOLDER}/${target}.abi >> ${DESTINATION_FOLDER}/${target}.abi.hpp
+    COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.abi.hpp
+    COMMENT "Generating ${target}.abi.hpp"
+    VERBATIM
+  )
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.abi.hpp)
+  set(extra_target_dependency   ${DESTINATION_FOLDER}/${target}.abi.hpp)
+  add_wast_target(${target} "${INCLUDE_FOLDERS}" ${CMAKE_CURRENT_BINARY_DIR})
+endfunction(add_wast_abi_target)

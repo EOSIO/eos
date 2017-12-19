@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <eos/chain/message.hpp>
@@ -7,7 +11,7 @@
 
 namespace chainbase { class database; }
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 class chain_controller;
 
@@ -15,26 +19,27 @@ class apply_context {
 public:
    apply_context(chain_controller& con,
                  chainbase::database& db,
-                 const chain::Transaction& t,
-                 const chain::Message& m,
-                 const types::AccountName& code)
+                 const chain::transaction& t,
+                 const chain::message& m,
+                 const types::account_name& code)
       : controller(con), db(db), trx(t), msg(m), code(code), mutable_controller(con),
         mutable_db(db), used_authorizations(msg.authorization.size(), false),
-        next_pending_transaction_serial(0){}
+        next_pending_transaction_serial(0), next_pending_message_serial(0){}
 
    template <typename ObjectType>
-   int32_t store_record( Name scope, Name code, Name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t store_record( name scope, name code, name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
       auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
       const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
 
       if( obj ) {
+         const int32_t previous_size = obj->value.size();
          //wlog( "modify" );
          mutable_db.modify( *obj, [&]( auto& o ) {
             o.value.assign(value, valuelen);
          });
-         return 0;
+         return previous_size;
       } else {
          //wlog( "new" );
          mutable_db.create<ObjectType>( [&](auto& o) {
@@ -44,20 +49,22 @@ public:
             key_helper<ObjectType>::set(o, keys);
             o.value.insert( 0, value, valuelen );
          });
-         return 1;
+         return -1;
       }
    }
 
    template <typename ObjectType>
-   int32_t update_record( Name scope, Name code, Name table, typename ObjectType::key_type *keys, char* value, uint32_t valuelen ) {
+   int32_t update_record( name scope, name code, name table, typename ObjectType::key_type *keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
       
       auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
       const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
 
       if( !obj ) {
-         return 0;
+         return -1;
       }
+
+      const int32_t previous_size = obj->value.size();
 
       mutable_db.modify( *obj, [&]( auto& o ) {
          if( valuelen > o.value.size() ) {
@@ -66,24 +73,25 @@ public:
          memcpy(o.value.data(), value, valuelen);
       });
 
-      return 1;
+      return previous_size;
    }
 
    template <typename ObjectType>
-   int32_t remove_record( Name scope, Name code, Name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t remove_record( name scope, name code, name table, typename ObjectType::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
       auto tuple = find_tuple<ObjectType>::get(scope, code, table, keys);
       const auto* obj = db.find<ObjectType, by_scope_primary>(tuple);
       if( obj ) {
+         const int32_t previous_size = obj->value.size();
          mutable_db.remove( *obj );
-         return 1;
+         return previous_size;
       }
-      return 0;
+      return -1;
    }
 
    template <typename IndexType, typename Scope>
-   int32_t load_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t load_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
@@ -106,7 +114,7 @@ public:
    }
 
    template <typename IndexType, typename Scope>
-   int32_t front_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t front_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
@@ -128,12 +136,12 @@ public:
    }
 
    template <typename IndexType, typename Scope>
-   int32_t back_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t back_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = back_record_tuple<typename IndexType::value_type>::get(scope, code, table);
-      auto itr = idx.upper_bound(tuple);
+      auto tuple = boost::make_tuple( account_name(scope), account_name(code), account_name(uint64_t(table)+1) );
+      auto itr = idx.lower_bound(tuple);
 
       if( std::distance(idx.begin(), itr) == 0 ) return -1;
 
@@ -153,13 +161,21 @@ public:
    }
 
    template <typename IndexType, typename Scope>
-   int32_t next_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t next_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
-      const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = next_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
+      const auto& pidx = db.get_index<IndexType, by_scope_primary>();
+      
+      auto tuple = next_record_tuple<typename IndexType::value_type>::get(scope, code, table, keys);
+      auto pitr = pidx.find(tuple);
 
-      auto itr = idx.lower_bound(tuple);
+      if(pitr == pidx.end())
+        return -1;
+
+      const auto& fidx = db.get_index<IndexType>();
+      auto itr = fidx.indicies().template project<Scope>(pitr);
+
+      const auto& idx = db.get_index<IndexType, Scope>();
 
       if( itr == idx.end() ||
           itr->scope != scope ||
@@ -188,12 +204,21 @@ public:
    }
 
    template <typename IndexType, typename Scope>
-   int32_t previous_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t previous_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
+      const auto& pidx = db.get_index<IndexType, by_scope_primary>();
+      
+      auto tuple = next_record_tuple<typename IndexType::value_type>::get(scope, code, table, keys);
+      auto pitr = pidx.find(tuple);
+
+      if(pitr == pidx.end())
+        return -1;
+
+      const auto& fidx = db.get_index<IndexType>();
+      auto itr = fidx.indicies().template project<Scope>(pitr);
+
       const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = next_record_tuple<typename IndexType::value_type, Scope>::get(scope, code, table, keys);
-      auto itr = idx.lower_bound(tuple);
       
       if( itr == idx.end() ||
           itr == idx.begin() ||
@@ -218,7 +243,7 @@ public:
    }
 
    template <typename IndexType, typename Scope>
-   int32_t lower_bound_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t lower_bound_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
@@ -240,7 +265,7 @@ public:
    }
 
    template <typename IndexType, typename Scope>
-   int32_t upper_bound_record( Name scope, Name code, Name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
+   int32_t upper_bound_record( name scope, name code, name table, typename IndexType::value_type::key_type* keys, char* value, uint32_t valuelen ) {
       require_scope( scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
@@ -270,37 +295,39 @@ public:
     *
     * @throws tx_missing_auth If no sufficient permission was found
     */
-   void require_authorization(const types::AccountName& account);
-   void require_authorization(const types::AccountName& account, const types::PermissionName& permission);
-   void require_scope(const types::AccountName& account)const;
-   void require_recipient(const types::AccountName& account);
+   void require_authorization(const types::account_name& account);
+   void require_authorization(const types::account_name& account, const types::permission_name& permission);
+   void require_scope(const types::account_name& account)const;
+   void require_recipient(const types::account_name& account);
 
    bool all_authorizations_used() const;
-   vector<types::AccountPermission> unused_authorizations() const;
+   vector<types::account_permission> unused_authorizations() const;
+
+   void get_active_producers(types::account_name* producers, uint32_t len);
 
    const chain_controller&      controller;
    const chainbase::database&   db;  ///< database where state is stored
-   const chain::Transaction&    trx; ///< used to gather the valid read/write scopes
-   const chain::Message&        msg; ///< message being applied
-   types::AccountName           code; ///< the code that is currently running
+   const chain::transaction&    trx; ///< used to gather the valid read/write scopes
+   const chain::message&        msg; ///< message being applied
+   types::account_name          code; ///< the code that is currently running
 
    chain_controller&    mutable_controller;
    chainbase::database& mutable_db;
 
-   std::deque<AccountName>              notified;
-   std::vector<types::Message>          inline_messages; ///< queued inline messages
-   std::vector<types::Transaction>      deferred_transactions; ///< deferred txs
+   std::deque<account_name>             notified;
+   std::vector<types::message>          inline_messages; ///< queued inline messages
+   std::vector<types::transaction>      deferred_transactions; ///< deferred txs
 
    ///< Parallel to msg.authorization; tracks which permissions have been used while processing the message
    vector<bool> used_authorizations;
 
    ///< pending transaction construction
    typedef uint32_t pending_transaction_handle;
-   struct pending_transaction : public types::Transaction {
+   struct pending_transaction : public types::transaction {
       typedef uint32_t handle_type;
       
-      pending_transaction(const handle_type& _handle, const apply_context& _context, const UInt16& block_num, const UInt32& block_ref, const Time& expiration )
-         : types::Transaction(block_num, block_ref, expiration, vector<types::AccountName>(),  vector<types::AccountName>(), vector<types::Message>())
+      pending_transaction(const handle_type& _handle, const apply_context& _context, const uint16& block_num, const uint32& block_ref, const time& expiration )
+         : types::transaction(block_num, block_ref, expiration, vector<types::account_name>(),  vector<types::account_name>(), vector<types::message>())
          , handle(_handle)
          , context(_context) {}
       
@@ -320,11 +347,11 @@ public:
 
    ///< pending message construction
    typedef uint32_t pending_message_handle;
-   struct pending_message : public types::Message {
+   struct pending_message : public types::message {
       typedef uint32_t handle_type;
       
-      pending_message(const handle_type& _handle, const AccountName& code, const FuncName& type, const Bytes& data)
-         : types::Message(code, type, vector<types::AccountPermission>(), data)
+      pending_message(const handle_type& _handle, const account_name& code, const func_name& type, const bytes& data)
+         : types::message(code, type, vector<types::account_permission>(), data)
          , handle(_handle) {}
 
       handle_type handle;
@@ -334,10 +361,10 @@ public:
    vector<pending_message> pending_messages;
 
    pending_message& get_pending_message(pending_message::handle_type handle);
-   pending_message& create_pending_message(const AccountName& code, const FuncName& type, const Bytes& data);
+   pending_message& create_pending_message(const account_name& code, const func_name& type, const bytes& data);
    void release_pending_message(pending_message::handle_type handle);
 };
 
 using apply_handler = std::function<void(apply_context&)>;
 
-} } // namespace eos::chain
+} } // namespace eosio::chain

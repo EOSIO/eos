@@ -1,9 +1,13 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <appbase/application.hpp>
 
 #include <chainbase/chainbase.hpp>
 
-namespace eos {
+namespace eosio {
 using namespace appbase;
 
 /**

@@ -1,7 +1,11 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eoslib/math.h>
 
-namespace eos {
+namespace eosio {
 
   /**
    *  @defgroup mathapi Math API

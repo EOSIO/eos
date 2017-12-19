@@ -1,32 +1,13 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 #include <eos/chain/authority.hpp>
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    /**
     * @brief The permission_link_object class assigns permission_objects to message types
     *
@@ -51,14 +32,14 @@ namespace eos { namespace chain {
 
       id_type        id;
       /// The account which is defining its permission requirements
-      AccountName    account;
+      account_name   account;
       /// The contract which account requires @ref required_permission to invoke
-      AccountName    code;
+      account_name   code;
       /// The message type which account requires @ref required_permission to invoke
       /// May be empty; if so, it sets a default @ref required_permission for all messages to @ref code
-      FuncName       message_type;
+      func_name      message_type;
       /// The permission level which @ref account requires for the specified message types
-      PermissionName required_permission;
+      permission_name required_permission;
    };
 
    struct by_message_type;
@@ -71,23 +52,23 @@ namespace eos { namespace chain {
          >,
          ordered_unique<tag<by_message_type>,
             composite_key<permission_link_object,
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, account),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, code),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, FuncName, message_type)
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, func_name, message_type)
             >
          >,
          ordered_unique<tag<by_permission_name>,
             composite_key<permission_link_object,
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, account),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, PermissionName, required_permission),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, AccountName, code),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, FuncName, message_type)
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_name, required_permission),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, func_name, message_type)
             >
          >
       >
    >;
-} } // eos::chain
+} } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::permission_link_object, eos::chain::permission_link_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_index)
 
-FC_REFLECT(eos::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))
+FC_REFLECT(eosio::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))

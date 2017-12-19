@@ -1,37 +1,37 @@
 {
   "types": [{
-      "newTypeName": "AccountName",
-      "type": "Name"
+      "new_type_name": "account_name",
+      "type": "name"
     }
   ],
   "structs": [{
       "name": "transfer",
       "base": "",
       "fields": {
-        "from": "AccountName",
-        "to": "AccountName",
-        "amount": "UInt64"
+        "from": "account_name",
+        "to": "account_name",
+        "quantity": "uint64"
       }
     },{
       "name": "account",
       "base": "",
       "fields": {
-        "account": "Name",
-        "balance": "UInt64"
+        "key": "name",
+        "balance": "uint64"
       }
     }
   ],
   "actions": [{
-      "action": "transfer",
+      "action_name": "transfer",
       "type": "transfer"
     }
   ],
   "tables": [{
-      "table": "account",
+      "table_name": "account",
       "type": "account",
-      "indextype": "i64",
-      "keynames" : ["account"],
-      "keytypes" : ["Name"]
+      "index_type": "i64",
+      "key_names" : ["key"],
+      "key_types" : ["name"]
     }
   ]
 }

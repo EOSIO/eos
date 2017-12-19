@@ -1,9 +1,13 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #ifndef RAND_HPP
 #define RAND_HPP 1
 
 #include <algorithm>
 
-namespace eos { namespace utilities { namespace rand {
+namespace eosio { namespace utilities { namespace rand {
 
 /// High performance random generator
 /// http://xorshift.di.unimi.it/
@@ -35,6 +39,6 @@ public:
     }
 };
 
-} } } //eos::utilities::rand
+} } } //eosio::utilities::rand
 
 #endif // RAND_HPP

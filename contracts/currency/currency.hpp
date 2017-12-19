@@ -1,6 +1,19 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #include <eoslib/eos.hpp>
 #include <eoslib/token.hpp>
 #include <eoslib/db.hpp>
+
+/**
+ *  @defgroup examplecontract Example Contract
+ *  @brief Example Contract
+ *  @ingroup contractapi
+ *
+ */
+
 
 /**
  * Make it easy to change the account name the currency is deployed to.
@@ -12,9 +25,9 @@
 namespace TOKEN_NAME {
 
   /**
-   *  @defgroup currencyapi Currency Contract API
-   *  @brief Defines the curency contract
-   *  @ingroup contractapi
+   *  @defgroup currencyapi Currency Contract
+   *  @brief Defines the curency contract example
+   *  @ingroup examplecontract
    *
    *  @{
    */
@@ -22,80 +35,81 @@ namespace TOKEN_NAME {
    /**
    * Defines a currency token
    */
-   typedef eos::token<uint64_t,N(currency)> CurrencyTokens;
+   typedef eosio::token<uint64_t,N(currency)> currency_tokens;
 
    /**
-    *  Transfer requires that the sender and receiver be the first two
+    *  transfer requires that the sender and receiver be the first two
     *  accounts notified and that the sender has provided authorization.
+    *  @abi action
     */
-   struct Transfer {
+   struct transfer {
       /**
-      * Account to transfer from
+      * account to transfer from
       */
-      AccountName       from;
+      account_name       from;
       /**
-      * Account to transfer to
+      * account to transfer to
       */
-      AccountName       to;
+      account_name       to;
       /**
       *  quantity to transfer
       */
-      CurrencyTokens    quantity;
+      currency_tokens    quantity;
    };
 
    /**
-    *  @brief row in Account table stored within each scope
+    *  @brief row in account table stored within each scope
+    *  @abi table
     */
-   struct Account {
+   struct account {
       /**
       Constructor with default zero quantity (balance).
       */
-      Account( CurrencyTokens b = CurrencyTokens() ):balance(b){}
+      account( currency_tokens b = currency_tokens() ):balance(b){}
 
       /**
        *  The key is constant because there is only one record per scope/currency/accounts
        */
       const uint64_t     key = N(account);
-      
+
       /**
       * Balance number of tokens in account
       **/
-      CurrencyTokens     balance;
+      currency_tokens     balance;
 
       /**
       Method to check if accoutn is empty.
-      @return true if account balance is zero.      
+      @return true if account balance is zero.
       **/
-      bool  isEmpty()const  { return balance.quantity == 0; }
+      bool  is_empty()const  { return balance.quantity == 0; }
    };
 
    /**
-   Assert statement to verify structure packing for Account
+   Assert statement to verify structure packing for account
    **/
-   static_assert( sizeof(Account) == sizeof(uint64_t)+sizeof(CurrencyTokens), "unexpected packing" );
+   static_assert( sizeof(account) == sizeof(uint64_t)+sizeof(currency_tokens), "unexpected packing" );
 
    /**
-   Defines the database table for Account information
+   Defines the database table for account information
    **/
-   using Accounts = Table<N(currency),N(currency),N(account),Account,uint64_t>;
+   using accounts = eosio::table<N(defaultscope),N(currency),N(account),account,uint64_t>;
 
    /**
-    *  Accounts information for owner is stored:
+    *  accounts information for owner is stored:
     *
-    *  owner/TOKEN_NAME/account/account -> Account
+    *  owner/TOKEN_NAME/account/account -> account
     *
     *  This API is made available for 3rd parties wanting read access to
     *  the users balance. If the account doesn't exist a default constructed
     *  account will be returned.
     *  @param owner The account owner
-    *  @return Account instance
+    *  @return account instance
     */
-   inline Account getAccount( AccountName owner ) {
-      Account account;
+   inline account get_account( account_name owner ) {
+      account owned_account;
       ///      scope, record
-      Accounts::get( account, owner );
-      return account;
+      accounts::get( owned_account, owner );
+      return owned_account;
    }
 
 } /// @} /// currencyapi
-

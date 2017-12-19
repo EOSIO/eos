@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 
 #include <eos/chain/chain_controller.hpp>
@@ -33,7 +14,7 @@
 
 #include "../common/database_fixture.hpp"
 
-namespace eos {
+namespace eosio {
 using namespace chain;
 namespace bfs = boost::filesystem;
 
@@ -79,7 +60,7 @@ BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
       // Check the last irreversible block number is set correctly
       BOOST_CHECK_EQUAL(chain.last_irreversible_block_num(), 6);
       // Check that block 21 cannot be found (only 20 blocks exist)
-      BOOST_CHECK_THROW(chain.get_block_id_for_num(21), eos::chain::unknown_block_exception);
+      BOOST_CHECK_THROW(chain.get_block_id_for_num(21), eosio::chain::unknown_block_exception);
 
         chain.produce_blocks();
       // Check the last irreversible block number is updated correctly
@@ -87,4 +68,4 @@ BOOST_FIXTURE_TEST_CASE(get_blocks, testing_fixture)
       // Check that block 21 can now be found
       BOOST_CHECK_EQUAL(chain.get_block_id_for_num(21), chain.head_block_id());
 } FC_LOG_AND_RETHROW() }
-} // namespace eos
+} // namespace eosio

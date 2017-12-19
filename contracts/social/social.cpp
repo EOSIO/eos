@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos.hpp>
 
 /**
@@ -9,40 +13,40 @@
  *  be easily integrated with an exchange contract.
  */
 
-struct PostAction {
-   AccountName author;
-   PostName    postid;
-   AccountName reply_to_author;
-   int32_t     reply_to_id;
-   uint8_t     author; /// index in notify list
-   char[]      data; /// ignored, title is embedded within
+struct post_action {
+   account_name author;
+   post_name    postid;
+   account_name reply_to_author;
+   int32_t      reply_to_id;
+   uint8_t      author; /// index in notify list
+   char[]       data; /// ignored, title is embedded within
 
-   AccountName getAuthor()const { return getNotify(author); }
+   account_name get_author()const { return get_notify(author); }
 };
 
-struct VoteAction {
-   AccountName voter;
-   AccountName author;
-   PostName    postid;
-   int32_t     vote_power;
+struct vote_action {
+   account_name voter;
+   account_name author;
+   post_name    postid;
+   int32_t      vote_power;
 };
 
-struct PostRecord {
+struct post_record {
    uint64_t total_votes   = 0;
    uint64_t claimed_votes = 0;
    uint32_t created;
 
-   PostRecord( uint32_t c = now() ):created(c){}
-   static Name tableId() { return Name("post"); }
+   post_record( uint32_t c = now() ):created(c){}
+   static Name table_id() { return Name("post"); }
 };
 
-struct Account {
+struct account {
    uint64_t social       = 0;
    uint64_t social_power = 0;
    int32_t  vote_power   = 0;
    uint32_t last_vote    = 0;
 
-   static Name tableId() { return Name("account"); }
+   static Name table_id() { return Name("account"); }
 };
 
 
@@ -55,14 +59,14 @@ struct Account {
  * any other contexts are notified 
  */
 void apply_social_post() {
-   const auto& post   = currentMessage<PostAction>();
-   requireAuth( post.author );
+   const auto& post   = current_message<post_action>();
+   require_auth( post.author );
 
-   assert( currentContext() == post.author, "cannot call from any other context" );
+   assert( current_context() == post.author, "cannot call from any other context" );
    
-   static PostRecord& existing;
+   static post_record& existing;
    if( !Db::get( post.postid, existing ) )
-      Db::store( post.postid, PostRecord( now() ) );
+      Db::store( post.postid, post_record( now() ) );
 }
 
 /**
@@ -71,31 +75,31 @@ void apply_social_post() {
  * updates the vote total.  When executed 
  */
 void apply_social_vote() {
-   const auto& vote  = currentMessage<VoteAction>();
-   requireNotice( vote.voter, vote.author );
-   disableContextCode( vote.author() ); /// prevent the author's code from rejecting the potentially negative vote
+   const auto& vote  = current_message<vote_action>();
+   require_notice( vote.voter, vote.author );
+   disable_context_code( vote.author() ); /// prevent the author's code from rejecting the potentially negative vote
 
-   auto context = currentContext();
+   auto context = current_context();
    auto voter = vote.getVoter();
 
    if( context == vote.author ) {
-      static PostRecord post;
+      static post_record post;
       assert( Db::get( vote.postid, post ) > 0, "unable to find post" );
       assert( now() - post.created < days(7), "cannot vote after 7 days" );
       post.votes += vote.vote_power;
       Db::store( vote.postid, post );
    } 
    else if( context == vote.voter ) {
-      static Account account;
-      Db::get( "account", account );
+      static account vote_account;
+      Db::get( "account", vote_account );
       auto abs_vote = abs(vote.vote_power);
-      account.vote_power = max( account.social_power, 
-                                account.vote_power + (account.social_power * (now()-last_vote)) / days(7));
-      assert( abs_vote <= account.vote_power, "insufficient vote power" );
+      vote_account.vote_power = min( vote_account.social_power,
+                                     vote_account.vote_power + (vote_account.social_power * (now()-last_vote)) / days(7));
+      assert( abs_vote <= vote_account.vote_power, "insufficient vote power" );
       post.votes += vote.vote_power;
-      account.vote_power -= abs_vote;
-      account.last_vote  = now();
-      Db::store( "account", account );
+      vote_account.vote_power -= abs_vote;
+      vote_account.last_vote  = now();
+      Db::store( "account", vote_account );
    } else {
       assert( false, "invalid context for execution of this vote" );
    }

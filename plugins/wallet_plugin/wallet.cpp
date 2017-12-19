@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/wallet_plugin/wallet.hpp>
 #include <eos/utilities/key_conversion.hpp>
 
@@ -23,9 +27,9 @@
 # include <sys/stat.h>
 #endif
 
-using namespace eos::utilities;
+using namespace eosio::utilities;
 
-namespace eos { namespace wallet {
+namespace eosio { namespace wallet {
 
 namespace detail {
 
@@ -140,7 +144,7 @@ public:
       fc::optional<fc::ecc::private_key> optional_private_key = wif_to_key(wif_key);
       if (!optional_private_key)
          FC_THROW("Invalid private key");
-      eos::chain::public_key_type wif_pub_key = optional_private_key->get_public_key();
+      eosio::chain::public_key_type wif_pub_key = optional_private_key->get_public_key();
 
       auto itr = _keys.find(wif_pub_key);
       if( itr == _keys.end() ) {
@@ -220,11 +224,11 @@ public:
    const string _wallet_filename_extension = ".wallet";
 };
 
-} } } // eos::wallet::detail
+} } } // eosio::wallet::detail
 
 
 
-namespace eos { namespace wallet {
+namespace eosio { namespace wallet {
 
 wallet_api::wallet_api(const wallet_data& initial_data)
    : my(new detail::wallet_api_impl(*this, initial_data))
@@ -340,5 +344,5 @@ void wallet_api::set_wallet_filename(string wallet_filename)
    my->_wallet_filename = wallet_filename;
 }
 
-} } // eos::wallet
+} } // eosio::wallet
 

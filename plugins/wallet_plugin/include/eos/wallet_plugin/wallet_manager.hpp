@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eos/chain/transaction.hpp>
 #include <eos/wallet_plugin/wallet.hpp>
@@ -6,7 +10,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
 namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.
@@ -42,7 +46,7 @@ public:
    /// @param id the chain_id to sign transaction with.
    /// @return txn signed
    /// @throws fc::exception if corresponding private keys not found in unlocked wallets
-   chain::SignedTransaction sign_transaction(const chain::SignedTransaction& txn, const flat_set<public_key_type>& keys,
+   chain::signed_transaction sign_transaction(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
                                              const chain::chain_id_type& id);
 
    /// Create a new wallet.
@@ -107,6 +111,6 @@ private:
 };
 
 } // namespace wallet
-} // namespace eos
+} // namespace eosio
 
 

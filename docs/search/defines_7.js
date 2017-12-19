@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['table1_5fassert',['TABLE1_ASSERT',['../test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae',1,'test_db.cpp']]],
-  ['table2',['TABLE2',['../db_8hpp.html#a12e5fe301df20780085295196f30edc1',1,'db.hpp']]],
-  ['token_5fname',['TOKEN_NAME',['../currency_8hpp.html#a2bf6bf152ba93be8cace72c5d55abc71',1,'currency.hpp']]]
+  ['prev',['PREV',['../test__db_8cpp.html#a86e923d8be4eac12d223202fd64260d5',1,'test_db.cpp']]],
+  ['prev_5fall',['PREV_ALL',['../test__db_8cpp.html#a6c9058e1fee174e1ed090868c4884847',1,'test_db.cpp']]]
 ];

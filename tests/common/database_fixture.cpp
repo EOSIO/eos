@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
@@ -28,6 +9,7 @@
 #include <eos/chain/account_object.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/authority_checker.hpp>
+#include <eos/producer_plugin/producer_plugin.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -37,6 +19,13 @@
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
+
+#include <Inline/BasicTypes.h>
+#include <IR/Module.h>
+#include <IR/Validate.h>
+#include <WAST/WAST.h>
+#include <WASM/WASM.h>
+#include <Runtime/Runtime.h>
 
 #include <boost/range/adaptor/map.hpp>
 
@@ -48,13 +37,11 @@
 
 uint32_t EOS_TESTING_GENESIS_TIMESTAMP = 1431700005;
 
-namespace eos { namespace chain {
-   using namespace native::eos;
-   using namespace native;
+namespace eosio { namespace chain {
 
 testing_fixture::testing_fixture() {
    default_genesis_state.initial_timestamp = fc::time_point_sec(EOS_TESTING_GENESIS_TIMESTAMP);
-   for (int i = 0; i < config::BlocksPerRound; ++i) {
+   for (int i = 0; i < config::blocks_per_round; ++i) {
       auto name = std::string("inita"); name.back()+=i;
       auto private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(name));
       public_key_type public_key = private_key.get_public_key();
@@ -103,8 +90,34 @@ flat_set<public_key_type> testing_fixture::available_keys() const {
 }
 
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                                   chain_initializer_interface& initializer, testing_fixture& fixture)
-   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator()),
+                                       chain_initializer_interface& initializer, testing_fixture& fixture)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
+                      config::default_block_interval_seconds,
+                      ::eosio::chain_plugin::default_transaction_execution_time * 1000,
+                      ::eosio::chain_plugin::default_received_block_transaction_execution_time * 1000,
+                      ::eosio::chain_plugin::default_create_block_transaction_execution_time * 1000,
+                      chain_controller::txn_msg_limits{ fc::time_point_sec(30),
+                                                        100000,
+                                                        fc::time_point_sec(30),
+                                                        100000,
+                                                        config::default_pending_txn_depth_limit,
+                                                        config::default_gen_block_time_limit
+                                                      }),
+     db(db),
+     fixture(fixture) {}
+
+testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                                       chain_initializer_interface& initializer, testing_fixture& fixture,
+                                       uint32_t transaction_execution_time_msec,
+                                       uint32_t received_block_execution_time_msec,
+                                       uint32_t create_block_execution_time_msec,
+                                       const chain_controller::txn_msg_limits& rate_limits)
+   : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
+                      config::default_block_interval_seconds,
+                      transaction_execution_time_msec * 1000,
+                      received_block_execution_time_msec * 1000,
+                      create_block_execution_time_msec * 1000,
+                      rate_limits),
      db(db),
      fixture(fixture) {}
 
@@ -116,8 +129,8 @@ void testing_blockchain::produce_blocks(uint32_t count, uint32_t blocks_to_miss)
       auto slot = blocks_to_miss + 1;
       auto producer = get_producer(get_scheduled_producer(slot));
       auto private_key = fixture.get_private_key(producer.signing_key);
-      generate_block(get_slot_time(slot), producer.owner, private_key, block_schedule::in_single_thread, 
-                     skip_trx_sigs? chain_controller::skip_transaction_signatures : 0);
+      generate_block(get_slot_time(slot), producer.owner, private_key, block_schedule::in_single_thread,
+                     chain_controller::created_block | (skip_trx_sigs? chain_controller::skip_transaction_signatures : 0));
    }
 }
 
@@ -133,7 +146,7 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
       for (int i = 1; i <= a.head_block_num(); ++i) {
          auto block = a.fetch_block_by_number(i);
          if (block && !b.is_known_block(block->id())) {
-            b.push_block(*block);
+            b.push_block(*block, chain_controller::validation_steps::created_block);
          }
       }
    };
@@ -142,32 +155,32 @@ void testing_blockchain::sync_with(testing_blockchain& other) {
    sync_dbs(other, *this);
 }
 
-types::Asset testing_blockchain::get_liquid_balance(const types::AccountName& account) {
-   return get_database().get<BalanceObject, native::eos::byOwnerName>(account).balance;
+types::asset testing_blockchain::get_liquid_balance(const types::account_name& account) {
+   return get_database().get<balance_object, eosio::chain::by_owner_name>(account).balance;
 }
 
-types::Asset testing_blockchain::get_staked_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).stakedBalance;
+types::asset testing_blockchain::get_staked_balance(const types::account_name& account) {
+   return get_database().get<staked_balance_object, eosio::chain::by_owner_name>(account).staked_balance;
 }
 
-types::Asset testing_blockchain::get_unstaking_balance(const types::AccountName& account) {
-   return get_database().get<StakedBalanceObject, native::eos::byOwnerName>(account).unstakingBalance;
+types::asset testing_blockchain::get_unstaking_balance(const types::account_name& account) {
+   return get_database().get<staked_balance_object, eosio::chain::by_owner_name>(account).unstaking_balance;
 }
 
-std::set<types::AccountName> testing_blockchain::get_approved_producers(const types::AccountName& account) {
-   const auto& sbo = get_database().get<StakedBalanceObject, byOwnerName>(account);
-   if (sbo.producerVotes.contains<ProducerSlate>()) {
-      auto range = sbo.producerVotes.get<ProducerSlate>().range();
+std::set<types::account_name> testing_blockchain::get_approved_producers(const types::account_name& account) {
+   const auto& sbo = get_database().get<staked_balance_object, by_owner_name>(account);
+   if (sbo.producer_votes.contains<producer_slate>()) {
+      auto range = sbo.producer_votes.get<producer_slate>().range();
       return {range.begin(), range.end()};
    }
    return {};
 }
 
-types::PublicKey testing_blockchain::get_block_signing_key(const types::AccountName& producerName) {
+types::public_key testing_blockchain::get_block_signing_key(const types::account_name& producerName) {
    return get_database().get<producer_object, by_owner>(producerName).signing_key;
 }
 
-void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
+void testing_blockchain::sign_transaction(signed_transaction& trx) const {
    auto keys = get_required_keys(trx, fixture.available_keys());
    for (const auto& k : keys) {
       // TODO: Use a real chain_id here
@@ -175,7 +188,7 @@ void testing_blockchain::sign_transaction(SignedTransaction& trx) const {
    }
 }
 
-fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTransaction trx, uint32_t skip_flags) {
+fc::optional<processed_transaction> testing_blockchain::push_transaction(signed_transaction trx, uint32_t skip_flags) {
    if (skip_trx_sigs)
       skip_flags |= chain_controller::skip_transaction_signatures;
 
@@ -187,15 +200,50 @@ fc::optional<ProcessedTransaction> testing_blockchain::push_transaction(SignedTr
       review_storage = std::make_pair(trx, skip_flags);
       return {};
    }
-   return chain_controller::push_transaction(trx, skip_flags);
+   return chain_controller::push_transaction(trx, skip_flags | chain_controller::pushed_transaction);
 }
+
+vector<uint8_t> testing_blockchain::assemble_wast( const std::string& wast ) {
+   //   std::cout << "\n" << wast << "\n";
+   IR::Module module;
+   std::vector<WAST::Error> parseErrors;
+   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
+   if(parseErrors.size())
+   {
+      // Print any parse errors;
+      std::cerr << "Error parsing WebAssembly text file:" << std::endl;
+      for(auto& error : parseErrors)
+      {
+         std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
+         std::cerr << error.locus.sourceLine << std::endl;
+         std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
+      }
+      FC_ASSERT( !"error parsing wast" );
+   }
+
+   try
+   {
+      // Serialize the WebAssembly module.
+      Serialization::ArrayOutputStream stream;
+      WASM::serialize(stream,module);
+      return stream.getBytes();
+   }
+   catch(Serialization::FatalSerializationException exception)
+   {
+      std::cerr << "Error serializing WebAssembly binary file:" << std::endl;
+      std::cerr << exception.message << std::endl;
+      throw;
+   }
+}
+
+
 
 void testing_network::connect_blockchain(testing_blockchain& new_database) {
    if (blockchains.count(&new_database))
       return;
 
    // If the network isn't empty, sync the new database with one of the old ones. The old ones are already in sync with
-   // eachother, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
+   // each other, so just grab one arbitrarily. The old databases are connected to the propagation signals, so when one
    // of them gets synced, it will propagate blocks to the others as well.
    if (!blockchains.empty()) {
         blockchains.begin()->first->sync_with(new_database);
@@ -219,8 +267,8 @@ void testing_network::propagate_block(const signed_block& block, const testing_b
    for (const auto& pair : blockchains) {
       if (pair.first == &skip_db) continue;
       boost::signals2::shared_connection_block blocker(pair.second);
-      pair.first->push_block(block);
+      pair.first->push_block(block, chain_controller::created_block);
    }
 }
 
-} } // eos::chain
+} } // eosio::chain

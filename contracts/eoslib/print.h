@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 extern "C" {
@@ -10,8 +14,8 @@ extern "C" {
 
    /**
     *  @defgroup consolecapi Console C API
+    *  @brief C API to log/print text messages
     *  @ingroup consoleapi
-    *
     *  @{
     */
 
@@ -26,6 +30,19 @@ extern "C" {
     *  @endcode
     */
    void prints( const char* cstr );
+
+   /**
+    *  Prints string up to given length
+    *  @brief Prints string
+    *  @param cstr - pointer to string
+    *  @param len - len of string to be printed
+    *
+    *  Example:
+    *  @code
+    *  prints_l("Hello World!", 5); // Output: Hello
+    *  @endcode
+    */
+   void prints_l( const char* cstr, uint32_t len);
 
    /**
     * Prints value as a 64 bit unsigned integer
@@ -76,5 +93,9 @@ extern "C" {
     * @endcode
     */
    void printn( uint64_t name );
+
+   /**
+    */
+   void printhex( void* data, uint32_t datalen );
    /// @}
 }

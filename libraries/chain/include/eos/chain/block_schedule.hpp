@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 #include <eos/chain/global_property_object.hpp>
@@ -28,8 +9,8 @@
 #include <random>
 #include <set>
 
-namespace eos { namespace chain {
-   using pending_transaction = static_variant<std::reference_wrapper<const SignedTransaction>, std::reference_wrapper<const GeneratedTransaction>>;
+namespace eosio { namespace chain {
+   using pending_transaction = static_variant<std::reference_wrapper<const signed_transaction>, std::reference_wrapper<const generated_transaction>>;
 
    struct thread_schedule {
       vector<pending_transaction> transactions;
@@ -69,16 +50,16 @@ namespace eos { namespace chain {
      
    };
 
-   struct scope_extracting_visitor : public fc::visitor<std::set<AccountName>> {
+   struct scope_extracting_visitor : public fc::visitor<std::set<account_name>> {
       template <typename T>
-      std::set<AccountName> operator()(std::reference_wrapper<const T> trx) const {
+      std::set<account_name> operator()(std::reference_wrapper<const T> trx) const {
          const auto& t = trx.get();
-         std::set<AccountName> unique_names(t.scope.begin(), t.scope.end());
+         std::set<account_name> unique_names(t.scope.begin(), t.scope.end());
          return unique_names;
       }
    };
 
-} } // eos::chain
+} } // eosio::chain
 
-FC_REFLECT(eos::chain::thread_schedule, (transactions))
-FC_REFLECT(eos::chain::block_schedule, (cycles))
+FC_REFLECT(eosio::chain::thread_schedule, (transactions))
+FC_REFLECT(eosio::chain::block_schedule, (cycles))

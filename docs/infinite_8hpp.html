@@ -20,8 +20,10 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
+   &#160;<span id="projectnumber">DAWN2.0.1</span>
    </div>
   </td>
  </tr>
@@ -79,10 +81,10 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinfinite_1_1_transfer.html">infinite::Transfer</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinfinite_1_1transfer.html">infinite::transfer</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinfinite_1_1_account.html">infinite::Account</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">row in <a class="el" href="structinfinite_1_1_account.html" title="row in Account table stored within each scope ">Account</a> table stored within each scope  <a href="structinfinite_1_1_account.html#details">More...</a><br /></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinfinite_1_1account.html">infinite::account</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">row in account table stored within each scope  <a href="structinfinite_1_1account.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
@@ -93,17 +95,19 @@ Namespaces</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:af2b1a7bf54ff8a0a2072831d4a7b28d5"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceinfinite.html#af2b1a7bf54ff8a0a2072831d4a7b28d5">infinite::CurrencyTokens</a></td></tr>
-<tr class="separator:af2b1a7bf54ff8a0a2072831d4a7b28d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a131577f948cd080aa51959041b19f7df"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceinfinite.html#a131577f948cd080aa51959041b19f7df">infinite::Accounts</a> = <a class="el" href="struct_table.html">Table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account), <a class="el" href="struct_account.html">Account</a>, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
-<tr class="separator:a131577f948cd080aa51959041b19f7df"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a178bfd89741210daf785c0d820a70fe8"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceinfinite.html#a178bfd89741210daf785c0d820a70fe8">infinite::currency_tokens</a></td></tr>
+<tr class="separator:a178bfd89741210daf785c0d820a70fe8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a247d38a8fa9638b2221442d0dd932774"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceinfinite.html#a247d38a8fa9638b2221442d0dd932774">infinite::accounts</a> = <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(<a class="el" href="structaccount.html">account</a>), <a class="el" href="structaccount.html">account</a>, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
+<tr class="separator:a247d38a8fa9638b2221442d0dd932774"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a248659d196148021650fcab73a44cb21"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_account.html">Account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceinfinite.html#a248659d196148021650fcab73a44cb21">infinite::getAccount</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> owner)</td></tr>
-<tr class="separator:a248659d196148021650fcab73a44cb21"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af0a30f8ccb62a1a5ff5851fe0c740e39"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structaccount.html">account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceinfinite.html#af0a30f8ccb62a1a5ff5851fe0c740e39">infinite::get_account</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> owner)</td></tr>
+<tr class="separator:af0a30f8ccb62a1a5ff5851fe0c740e39"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-</div><!-- contents -->
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>
+</div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

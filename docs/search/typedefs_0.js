@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['accountname',['AccountName',['../types_8h.html#ad67b43dc23285b01176f4c181c59fc23',1,'types.h']]],
-  ['accounts',['Accounts',['../namespace_t_o_k_e_n___n_a_m_e.html#a90f15481940a6f47f7f86fe0ab21bda4',1,'TOKEN_NAME::Accounts()'],['../namespacedice.html#a9cd405289e076229c908b10f3777a442',1,'dice::Accounts()'],['../namespaceexchange.html#a3e8714151a75109ae4a632aca1f17f4f',1,'exchange::Accounts()'],['../namespaceinfinite.html#a131577f948cd080aa51959041b19f7df',1,'infinite::Accounts()']]]
+  ['account_5fname',['account_name',['../group__types.html#ga3b44deb4b3b8d6ebab339d1263692117',1,'types.h']]],
+  ['accounts',['accounts',['../group__currencyapi.html#ga3dca1e3911b059d636a8e14a0f167f1d',1,'TOKEN_NAME::accounts()'],['../namespacedice.html#ac6fcf433d5a29141110b932a34f28383',1,'dice::accounts()'],['../namespaceexchange.html#adb41f4587cd9eff3c812296383babc40',1,'exchange::accounts()'],['../namespaceinfinite.html#a247d38a8fa9638b2221442d0dd932774',1,'infinite::accounts()']]],
+  ['asset_5fsymbol',['asset_symbol',['../group__types.html#ga020a456ef8f905c10ca9b2a8685b261c',1,'types.h']]]
 ];

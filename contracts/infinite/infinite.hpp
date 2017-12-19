@@ -1,53 +1,57 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eoslib/eos.hpp>
 #include <eoslib/token.hpp>
 #include <eoslib/db.hpp>
 
 namespace infinite {
 
-   typedef eos::token<uint64_t,N(currency)> CurrencyTokens;
+   typedef eosio::token<uint64_t,N(currency)> currency_tokens;
 
    /**
-    *  Transfer requires that the sender and receiver be the first two
+    *  transfer requires that the sender and receiver be the first two
     *  accounts notified and that the sender has provided authorization.
     */
-   struct Transfer {
-      AccountName       from;
-      AccountName       to;
-      CurrencyTokens    quantity;
+   struct transfer {
+      account_name       from;
+      account_name       to;
+      currency_tokens    quantity;
    };
 
    /**
-    *  @brief row in Account table stored within each scope
+    *  @brief row in account table stored within each scope
     */
-   struct Account {
-      Account( CurrencyTokens b = CurrencyTokens() ):balance(b){}
+   struct account {
+      account( currency_tokens b = currency_tokens() ):balance(b){}
 
       /**
        *  The key is constant because there is only one record per scope/currency/accounts
        */
       const uint64_t     key = N(account);
-      CurrencyTokens     balance;
+      currency_tokens    balance;
 
-      bool  isEmpty()const  { return balance.quantity == 0; }
+      bool  is_empty()const  { return balance.quantity == 0; }
    };
-   static_assert( sizeof(Account) == sizeof(uint64_t)+sizeof(CurrencyTokens), "unexpected packing" );
+   static_assert( sizeof(account) == sizeof(uint64_t)+sizeof(currency_tokens), "unexpected packing" );
 
-   using Accounts = Table<N(currency),N(currency),N(account),Account,uint64_t>;
+   using accounts = eosio::table<N(currency),N(currency),N(account),account,uint64_t>;
 
    /**
-    *  Accounts information for owner is stored:
+    *  accounts information for owner is stored:
     *
-    *  owner/infinite/account/account -> Account
+    *  owner/infinite/account/account -> account
     *
     *  This API is made available for 3rd parties wanting read access to
     *  the users balance. If the account doesn't exist a default constructed
     *  account will be returned.
     */
-   inline Account getAccount( AccountName owner ) {
-      Account account;
+   inline account get_account( account_name owner ) {
+      account owned_account;
       ///      scope, record
-      Accounts::get( account, owner );
-      return account;
+      accounts::get( owned_account, owner );
+      return owned_account;
    }
 
 } /// namespace infinite

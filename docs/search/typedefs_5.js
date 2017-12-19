@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['int128_5ft',['int128_t',['../types_8h.html#a811ec3b3c805bfd6b8ec302d59fc5a94',1,'types.h']]],
-  ['int32_5ft',['int32_t',['../types_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60',1,'types.h']]],
-  ['int64_5ft',['int64_t',['../types_8h.html#a996e72f71b11a5bb8b3b7b6936b1516d',1,'types.h']]]
+  ['games',['Games',['../namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989',1,'tic_tac_toe']]],
+  ['global_5fdices',['global_dices',['../namespacedice.html#a94d807a8b3909ac9587169845f671951',1,'dice']]]
 ];

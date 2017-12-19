@@ -1,9 +1,13 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eoslib/print.h>
 #include <eoslib/types.hpp>
 #include <eoslib/math.hpp>
 
-namespace eos {
+namespace eosio {
 
    static_assert( sizeof(long) == sizeof(int), "unexpected size difference" );
 
@@ -75,7 +79,7 @@ namespace eos {
     * @brief Prints a 64 bit names as base32 encoded string
     * @param Value of 64 bit names to be printed
     */
-   inline void print( Name name ) {
+   inline void print( name name ) {
       printn(name.value);
    }
 
@@ -90,7 +94,7 @@ namespace eos {
     *  @ingroup consoleapi
     *  @brief C++ wrapper for Console C API
     *
-    *  This API uses C++ varidic templates and type detection to
+    *  This API uses C++ variadic templates and type detection to
     *  make it easy to print any native type. You can even overload
     *  the `print()` method for your own custom types.
     *
@@ -148,7 +152,7 @@ namespace eos {
     *  uint128_t unsigned_128_bit_int (87654323456);
     *  uint64_t string_as_unsigned_64_bit = N(abcde);
     *  std::out << s << " " << unsigned_64_bit_int << " "  << unsigned_128_bit_int << " " << string_as_unsigned_64_bit);
-    *  // Ouput: Hello World! 1000000000000000000 87654323456 abcde
+    *  // Output: Hello World! 1000000000000000000 87654323456 abcde
     *  @endcode
     */
    template<typename T>

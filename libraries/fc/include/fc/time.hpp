@@ -27,6 +27,7 @@ namespace fc {
         microseconds& operator-=(const microseconds& c) { _count -= c._count; return *this; }
         int64_t count()const { return _count; }
         int64_t to_seconds()const { return _count/1000000; }
+        int64_t to_milliseconds()const { return _count/1000; }
     private:
         friend class time_point;
         int64_t      _count;

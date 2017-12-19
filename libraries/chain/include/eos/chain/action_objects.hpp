@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 #include <eos/chain/types.hpp>
@@ -27,7 +8,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    /**
     *  Maps the permission level on the code to the permission level specififed by owner, when specifying a contract the
@@ -57,7 +38,7 @@ namespace eos { namespace chain {
       OBJECT_CTOR(action_permission_object)
 
       id_type                        id;
-      AccountName                    owner; ///< the account whose permission we seek
+      account_name                   owner; ///< the account whose permission we seek
       permission_object::id_type     scope_permission; ///< the scope permission defined by the contract for the action
       permission_object::id_type     owner_permission; ///< the owner permission that is required
    };
@@ -69,15 +50,15 @@ namespace eos { namespace chain {
          ordered_unique<tag<by_id>, member<action_permission_object, action_permission_object::id_type, &action_permission_object::id>>,
          ordered_unique<tag<by_owner_scope>, 
             composite_key< action_permission_object,
-               member<action_permission_object, AccountName, &action_permission_object::owner>,
+               member<action_permission_object, account_name, &action_permission_object::owner>,
                member<action_permission_object, permission_object::id_type, &action_permission_object::scope_permission>
             >
          >
       >
    >;
 
-} } // eos::chain
+} } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::action_permission_object, eos::chain::action_permission_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::action_permission_object, eosio::chain::action_permission_index)
 
-FC_REFLECT(eos::chain::action_permission_object, (id)(owner)(owner_permission)(scope_permission) )
+FC_REFLECT(eosio::chain::action_permission_object, (id)(owner)(owner_permission)(scope_permission) )

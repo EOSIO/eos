@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain/block_log.hpp>
 #include <fstream>
 #include <fc/io/raw.hpp>
@@ -5,7 +9,7 @@
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    namespace detail {
       class block_log_impl {
@@ -92,7 +96,7 @@ namespace eos { namespace chain {
       my->index_write = true;
 
       /* On startup of the block log, there are several states the log file and the index file can be
-       * in relation to eachother.
+       * in relation to each other.
        *
        *                          Block Log
        *                     Exists       Is New

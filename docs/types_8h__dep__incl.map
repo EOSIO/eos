@@ -1,0 +1,47 @@
+<map id="contracts/eoslib/types.h" name="contracts/eoslib/types.h">
+<area shape="rect" id="node2" href="$chain_8h.html" title="contracts/eoslib/chain.h" alt="" coords="1661,155,1821,181"/>
+<area shape="rect" id="node5" href="$crypto_8h.html" title="contracts/eoslib/crypto.h" alt="" coords="60,319,225,345"/>
+<area shape="rect" id="node7" href="$db_8h.html" title="Defines C API for interfacing with blockchain database. " alt="" coords="1611,393,1754,420"/>
+<area shape="rect" id="node26" href="$memory_8h.html" title="contracts/eoslib/memory.h" alt="" coords="224,80,400,107"/>
+<area shape="rect" id="node30" href="$system_8h.html" title="contracts/eoslib/system.h" alt="" coords="690,80,862,107"/>
+<area shape="rect" id="node45" href="$transaction_8h.html" title="contracts/eoslib/transaction.h" alt="" coords="384,319,578,345"/>
+<area shape="rect" id="node46" href="$types_8hpp.html" title="contracts/eoslib/types.hpp" alt="" coords="851,237,1026,263"/>
+<area shape="rect" id="node3" href="$test__chain_8cpp.html" title="contracts/test_api\l/test_chain.cpp" alt="" coords="1678,229,1804,271"/>
+<area shape="rect" id="node4" href="$test__api_8cpp.html" title="contracts/test_api\l/test_api.cpp" alt="" coords="728,647,855,688"/>
+<area shape="rect" id="node6" href="$test__crypto_8cpp.html" title="contracts/test_api\l/test_crypto.cpp" alt="" coords="46,557,172,599"/>
+<area shape="rect" id="node8" href="$db_8hpp.html" title="contracts/eoslib/db.hpp" alt="" coords="1529,475,1686,502"/>
+<area shape="rect" id="node23" href="$test__db_8cpp.html" title="contracts/test_api\l/test_db.cpp" alt="" coords="2250,557,2376,599"/>
+<area shape="rect" id="node9" href="$currency_8hpp.html" title="contracts/currency\l/currency.hpp" alt="" coords="1733,557,1864,599"/>
+<area shape="rect" id="node14" href="$infinite_8hpp.html" title="contracts/infinite\l/infinite.hpp" alt="" coords="1887,557,2006,599"/>
+<area shape="rect" id="node16" href="$proxy_8hpp.html" title="contracts/proxy/proxy.hpp" alt="" coords="1536,565,1709,591"/>
+<area shape="rect" id="node17" href="$simpledb_8hpp.html" title="contracts/simpledb\l/simpledb.hpp" alt="" coords="1379,557,1511,599"/>
+<area shape="rect" id="node19" href="$skeleton_8hpp.html" title="contracts/skeleton\l/skeleton.hpp" alt="" coords="1056,557,1186,599"/>
+<area shape="rect" id="node21" href="$storage_8hpp.html" title="contracts/storage/storage.hpp" alt="" coords="2030,565,2225,591"/>
+<area shape="rect" id="node24" href="$tic__tac__toe_8hpp.html" title="contracts/tic_tac_toe\l/tic_tac_toe.hpp" alt="" coords="1210,557,1354,599"/>
+<area shape="rect" id="node10" href="$currency_8cpp.html" title="contracts/currency\l/currency.cpp" alt="" coords="1892,647,2022,688"/>
+<area shape="rect" id="node11" href="$exchange_8hpp.html" title="contracts/exchange\l/exchange.hpp" alt="" coords="1732,647,1868,688"/>
+<area shape="rect" id="node13" href="$proxy_8cpp.html" title="contracts/proxy/proxy.cpp" alt="" coords="1534,654,1708,681"/>
+<area shape="rect" id="node12" href="$exchange_8cpp.html" title="defines an example exchange contract " alt="" coords="836,736,972,777"/>
+<area shape="rect" id="node15" href="$infinite_8cpp.html" title="contracts/infinite\l/infinite.cpp" alt="" coords="2046,647,2164,688"/>
+<area shape="rect" id="node18" href="$simpledb_8cpp.html" title="contracts/simpledb\l/simpledb.cpp" alt="" coords="1378,647,1510,688"/>
+<area shape="rect" id="node20" href="$skeleton_8cpp.html" title="contracts/skeleton\l/skeleton.cpp" alt="" coords="1055,647,1184,688"/>
+<area shape="rect" id="node22" href="$storage_8cpp.html" title="contracts/storage/storage.cpp" alt="" coords="2189,654,2384,681"/>
+<area shape="rect" id="node25" href="$tic__tac__toe_8cpp.html" title="contracts/tic_tac_toe\l/tic_tac_toe.cpp" alt="" coords="1209,647,1353,688"/>
+<area shape="rect" id="node27" href="$memory_8hpp.html" title="contracts/eoslib/memory.hpp" alt="" coords="435,393,626,420"/>
+<area shape="rect" id="node28" href="$string_8hpp.html" title="contracts/eoslib/string.hpp" alt="" coords="310,475,484,502"/>
+<area shape="rect" id="node29" href="$test__string_8cpp.html" title="contracts/test_api\l/test_string.cpp" alt="" coords="196,557,323,599"/>
+<area shape="rect" id="node31" href="$math_8h.html" title="contracts/eoslib/math.h" alt="" coords="846,155,1004,181"/>
+<area shape="rect" id="node44" href="$message_8h.html" title="contracts/eoslib/message.h" alt="" coords="1330,155,1512,181"/>
+<area shape="rect" id="node32" href="$math_8hpp.html" title="contracts/eoslib/math.hpp" alt="" coords="1063,237,1235,263"/>
+<area shape="rect" id="node33" href="$eos_8hpp.html" title="contracts/eoslib/eos.hpp" alt="" coords="963,475,1127,502"/>
+<area shape="rect" id="node37" href="$print_8hpp.html" title="contracts/eoslib/print.hpp" alt="" coords="842,319,1010,345"/>
+<area shape="rect" id="node39" href="$test__math_8cpp.html" title="contracts/test_api\l/test_math.cpp" alt="" coords="1310,468,1436,509"/>
+<area shape="rect" id="node42" href="$token_8hpp.html" title="Defines types and ABI for standard token messages and database tables. " alt="" coords="1711,475,1886,502"/>
+<area shape="rect" id="node34" href="$social_8cpp.html" title="contracts/social/social.cpp" alt="" coords="399,565,576,591"/>
+<area shape="rect" id="node35" href="$test__print_8cpp.html" title="contracts/test_api\l/test_print.cpp" alt="" coords="652,557,779,599"/>
+<area shape="rect" id="node36" href="$test__types_8cpp.html" title="contracts/test_api\l/test_types.cpp" alt="" coords="803,557,930,599"/>
+<area shape="rect" id="node38" href="$message_8hpp.html" title="contracts/eoslib/message.hpp" alt="" coords="1136,393,1332,420"/>
+<area shape="rect" id="node43" href="$transaction_8hpp.html" title="contracts/eoslib/transaction.hpp" alt="" coords="752,393,959,420"/>
+<area shape="rect" id="node40" href="$test__message_8cpp.html" title="contracts/test_api\l/test_message.cpp" alt="" coords="1152,468,1285,509"/>
+<area shape="rect" id="node41" href="$test__transaction_8cpp.html" title="contracts/test_api\l/test_transaction.cpp" alt="" coords="784,468,928,509"/>
+</map>

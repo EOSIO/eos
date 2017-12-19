@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/utilities/key_conversion.hpp>
 #include <eos/utilities/rand.hpp>
 #include <eos/wallet_plugin/wallet.hpp>
@@ -5,7 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-namespace eos {
+namespace eosio {
 
 BOOST_AUTO_TEST_SUITE(wallet_tests)
 
@@ -13,8 +17,8 @@ BOOST_AUTO_TEST_SUITE(wallet_tests)
 /// Test creating the wallet
 BOOST_AUTO_TEST_CASE(wallet_test)
 { try {
-   using namespace eos::wallet;
-   using namespace eos::utilities;
+   using namespace eosio::wallet;
+   using namespace eosio::utilities;
 
    wallet_data d;
    wallet_api wallet(d);
@@ -63,7 +67,7 @@ BOOST_AUTO_TEST_CASE(wallet_test)
 /// Test wallet manager
 BOOST_AUTO_TEST_CASE(wallet_manager_test)
 { try {
-   using namespace eos::wallet;
+   using namespace eosio::wallet;
 
    if (fc::exists("test.wallet")) fc::remove("test.wallet");
    if (fc::exists("test2.wallet")) fc::remove("test2.wallet");
@@ -126,12 +130,12 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    fc::optional<fc::ecc::private_key> optional_private_key2 = utilities::wif_to_key(key2);
    fc::optional<fc::ecc::private_key> optional_private_key3 = utilities::wif_to_key(key3);
 
-   chain::SignedTransaction trx;
-   Name sender("billgates");
-   Name recipient("kevinheifner");
+   chain::signed_transaction trx;
+   name sender("billgates");
+   name recipient("kevinheifner");
    uint64_t amount = 100000000;
    trx.scope = {sender,recipient};
-   transaction_emplace_message(trx,config::EosContractName, vector<types::AccountPermission>{{sender,"active"}}, "transfer",
+   transaction_emplace_message(trx,config::eos_contract_name, vector<types::account_permission>{{sender,"active"}}, "transfer",
                          types::transfer{sender, recipient, amount, "deposit"});
    trx = wm.sign_transaction(trx,
                              { optional_private_key1->get_public_key(), optional_private_key2->get_public_key(), optional_private_key3->get_public_key()},

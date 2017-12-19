@@ -1,12 +1,16 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
-#include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/blockchain_configuration.hpp>
 #include <eos/chain/types.hpp>
 #include <eos/chain/message.hpp>
 
 namespace chainbase { class database; }
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 class chain_controller;
 
 /**
@@ -18,11 +22,11 @@ public:
    virtual ~chain_initializer_interface();
 
    /// Retrieve the timestamp to use as the blockchain start time
-   virtual types::Time get_chain_start_time() = 0;
+   virtual types::time get_chain_start_time() = 0;
    /// Retrieve the BlockchainConfiguration to use at blockchain start
-   virtual BlockchainConfiguration get_chain_start_configuration() = 0;
+   virtual blockchain_configuration get_chain_start_configuration() = 0;
    /// Retrieve the first round of block producers
-   virtual std::array<AccountName, config::BlocksPerRound> get_chain_start_producers() = 0;
+   virtual std::array<account_name, config::blocks_per_round> get_chain_start_producers() = 0;
 
    /**
     * @brief Install necessary indices and message handlers that chain_controller doesn't know about
@@ -55,7 +59,7 @@ public:
     * chain state the controller does understand, including the initial round of block producers, the initial chain
     * time, and the initial @ref BlockchainConfiguration.
     */
-   virtual vector<Message> prepare_database(chain_controller& chain, chainbase::database& db) = 0;
+   virtual vector<message> prepare_database(chain_controller& chain, chainbase::database& db) = 0;
 };
 
-} } // namespace eos::chain
+} } // namespace eosio::chain

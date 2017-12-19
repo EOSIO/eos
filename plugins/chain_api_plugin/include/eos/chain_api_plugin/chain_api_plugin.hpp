@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/http_plugin/http_plugin.hpp>
@@ -5,8 +9,8 @@
 #include <appbase/application.hpp>
 #include <eos/chain/chain_controller.hpp>
 
-namespace eos {
-   using eos::chain::chain_controller;
+namespace eosio {
+   using eosio::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
 

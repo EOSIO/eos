@@ -1,22 +1,33 @@
-#include <fc/asio.hpp>
-#include <fc/network/ip.hpp>
-#include <fc/log/logger.hpp>
+#include <boost/asio.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace fc
 {
-  std::vector<fc::ip::endpoint> resolve( const fc::string& host, uint16_t port )
+  std::vector<boost::asio::ip::udp::endpoint> resolve(boost::asio::io_service& io_service,
+                                                     const std::string& host, uint16_t port)
   {
-    auto ep = fc::asio::tcp::resolve( host, std::to_string(uint64_t(port)) );
-    std::vector<fc::ip::endpoint> eps;
-    eps.reserve(ep.size());
-    for( auto itr = ep.begin(); itr != ep.end(); ++itr )
+    using q = boost::asio::ip::udp::resolver::query;
+    using b = boost::asio::ip::resolver_query_base;
+    boost::asio::ip::udp::resolver res(io_service);
+    boost::system::error_code ec;
+    auto ep = res.resolve(q(host, std::to_string(uint64_t(port)),
+                            b::address_configured | b::numeric_service), ec);
+    if(!ec)
     {
-      if( itr->address().is_v4() )
+      std::vector<boost::asio::ip::udp::endpoint> eps;
+      while(ep != boost::asio::ip::udp::resolver::iterator())
       {
-       eps.push_back( fc::ip::endpoint(itr->address().to_v4().to_ulong(), itr->port()) );
+        if(ep->endpoint().address().is_v4())
+        {
+         eps.push_back(*ep);
+        }
+        // TODO: add support for v6
+        ++ep;
       }
-      // TODO: add support for v6 
+      return eps;
     }
-    return eps;
+    FC_THROW_EXCEPTION(unknown_host_exception,
+                       "name resolution failed: ${reason}",
+                       ("reason", ec.message()));
   }
 }

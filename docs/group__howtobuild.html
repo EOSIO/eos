@@ -20,8 +20,10 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
+   &#160;<span id="projectnumber">DAWN2.0.0</span>
    </div>
   </td>
  </tr>
@@ -65,38 +67,7 @@ $(function() {
 
 <p>Describes how to download, compile, and configure an EOS.IO node.  
 <a href="#details">More...</a></p>
-<p>The following instructions overview the process of getting the software, building it, and running a simple test network that produces blocks.</p>
-<h3>Setting up a build/development environment</h3>
-<p>This project is written primarily in C++14 and uses CMake as its build system. An up-to-date C++ toolchain (such as Clang or GCC) and the latest version of CMake is recommended. At the time of this writing, Nathan uses clang 4.0.0 and CMake 3.8.0.</p>
-<h3>Installing Dependencies</h3>
-<p>Eos has the following external dependencies, which must be installed on your system:</p><ul>
-<li>Boost 1.64</li>
-<li>OpenSSL</li>
-<li>LLVM 4.0</li>
-<li><a href="https://github.com/cryptonomex/secp256k1-zkp.git">secp256k1-zkp (Cryptonomex branch)</a></li>
-</ul>
-<div class="fragment"><div class="line">git clone https:<span class="comment">//github.com/cryptonomex/secp256k1-zkp.git</span></div><div class="line">cd secp256k1-zkp</div><div class="line">./autogen.sh</div><div class="line">./configure</div><div class="line">make</div><div class="line">sudo make install</div></div><!-- fragment --><h3>How to Build LLVM and clang for WASM</h3>
-<p>By default LLVM and clang do not include the WASM build target, so you will have to build it yourself. Note that following these instructions will create a version of LLVM that can only build WASM targets.</p>
-<div class="fragment"><div class="line">mkdir  ~/wasm-compiler</div><div class="line">cd ~/wasm-compiler</div><div class="line">git clone --depth 1 --single-branch --branch release_40 https:<span class="comment">//github.com/llvm-mirror/llvm.git</span></div><div class="line">cd llvm/tools</div><div class="line">git clone --depth 1 --single-branch --branch release_40 https:<span class="comment">//github.com/llvm-mirror/clang.git</span></div><div class="line">cd ..</div><div class="line">mkdir build</div><div class="line">cd build</div><div class="line">cmake -G <span class="stringliteral">&quot;Unix Makefiles&quot;</span> -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../</div><div class="line">make -j4 install</div></div><!-- fragment --><p>Also, to use the WASM compiler, eos has an external dependency on</p><ul>
-<li><a href="https://github.com/WebAssembly/binaryen.git">binaryen</a> need to checkout tag 1.37.14 also need to run "make install" if installed in a location outside of PATH, need to set BINARYEN_ROOT to cmake</li>
-</ul>
-<h3>Getting the code</h3>
-<p>To download all of the code, download Eos and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:</p>
-<p><code>git clone <a href="https://github.com/eosio/eos">https://github.com/eosio/eos</a> --recursive</code></p>
-<p>If a repo is cloned without the <code>--recursive</code> flag, the submodules can be retrieved after the fact by running this command from within the repo:</p>
-<p><code>git submodule update --init --recursive</code></p>
-<h3>Configuring and building</h3>
-<p>To do an in-source build, simply run <code>cmake .</code> from the top level directory. Out-of-source builds are also supported. To override clang's default choice in compiler, add these flags to the CMake command:</p>
-<p><code>-DCMAKE_CXX_COMPILER=/path/to/c++ -DCMAKE_C_COMPILER=/path/to/cc</code></p>
-<p>For a debug build, add <code>-DCMAKE_BUILD_TYPE=Debug</code>. Other common build types include <code>Release</code> and <code>RelWithDebInfo</code>.</p>
-<p>After successfully running cmake, simply run <code>make</code> to build everything. To run the test suite after building, run the <code>chain_test</code> executable in the <code>tests</code> folder.</p>
-<h3>Using the WASM compiler to perform a full build of the project</h3>
-<p>The WASM_LLVM_CONFIG environment variable is used to find our recently built WASM compiler. This is needed to compile the example contracts insde eos/contracts folder and their respective tests.</p>
-<div class="fragment"><div class="line">git clone https:<span class="comment">//github.com/eosio/eos --recursive</span></div><div class="line">mkdir -p <a class="code" href="namespaceeos.html">eos</a>/build &amp;&amp; cd <a class="code" href="namespaceeos.html">eos</a>/build</div><div class="line">export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config </div><div class="line">cmake ..</div><div class="line">make -j4</div></div><!-- fragment --><p>If you are doing active development on EOS.IO software you may want to add WASM_LLVM_CONFIG to your <code>.bash_profile</code></p>
-<h3>Creating and launching a single-node testnet</h3>
-<p>After successfully building the project, the <code>eosd</code> binary should be present in the <code>programs/eosd</code> directory. Go ahead and run <code>eosd</code> &ndash; it will probably exit with an error, but if not, close it immediately with Ctrl-C. Note that <code>eosd</code> will have created a directory named <code>data-dir</code> containing the default configuration (<code>config.ini</code>) and some other internals. This default data storage path can be overridden by passing <code>--data-dir /path/to/data</code> to <code>eosd</code>.</p>
-<p>Edit the <code>config.ini</code> file, adding the following settings to the defaults already in place:</p>
-<div class="fragment"><div class="line"><span class="preprocessor"># Load the testnet genesis state, which creates some initial block producers with the default key</span></div><div class="line">genesis-json = /path/to/<a class="code" href="namespaceeos.html">eos</a>/source/genesis.json</div><div class="line"><span class="preprocessor"># Enable production on a stale chain, since a single-node test chain is pretty much always stale</span></div><div class="line">enable-stale-production = <span class="keyword">true</span></div><div class="line"><span class="preprocessor"># Enable block production with the testnet producers</span></div><div class="line">producer-name = inita</div><div class="line">producer-name = initb</div><div class="line">producer-name = initc</div><div class="line">producer-name = initd</div><div class="line">producer-name = inite</div><div class="line">producer-name = initf</div><div class="line">producer-name = initg</div><div class="line">producer-name = inith</div><div class="line">producer-name = initi</div><div class="line">producer-name = initj</div><div class="line">producer-name = initk</div><div class="line">producer-name = initl</div><div class="line">producer-name = initm</div><div class="line">producer-name = initn</div><div class="line">producer-name = inito</div><div class="line">producer-name = initp</div><div class="line">producer-name = initq</div><div class="line">producer-name = initr</div><div class="line">producer-name = inits</div><div class="line">producer-name = initt</div><div class="line">producer-name = initu</div><div class="line"><span class="preprocessor"># Load the block producer plugin, so we can produce blocks</span></div><div class="line"><span class="preprocessor">plugin = eos::producer_plugin</span></div></div><!-- fragment --><p>Now it should be possible to run <code>eosd</code> and see it begin producing blocks. At present, the P2P code is not implemented, so only single-node configurations are possible. When the P2P networking is implemented, these instructions will be updated to show how to create an example multi-node testnet. </p>
+<p><a href="https://github.com/EOSIO/eos#building-eos-and-running-a-node">Check the latest instructions to build EOS.IO in Github!</a> </p>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

@@ -1,0 +1,4 @@
+<map id="dice::OfferBet" name="dice::OfferBet">
+<area shape="rect" id="node2" href="$structuint256.html" title="uint256" alt="" coords="5,13,69,39"/>
+<area shape="rect" id="node3" href="$structeos_1_1token.html" title="eosio::token\&lt; uint64\l_t, N(eos)\&gt;" alt="" coords="93,5,224,47"/>
+</map>

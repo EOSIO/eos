@@ -1,5 +1,22 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eoslib/eos.hpp>
 #include "test_api.hpp"
+
+#include "test_account.cpp"
+#include "test_chain.cpp"
+#include "test_crypto.cpp"
+#include "test_db.cpp"
+#include "test_math.cpp"
+#include "test_message.cpp"
+#include "test_print.cpp"
+#include "test_string.cpp"
+#include "test_fixedpoint.cpp"
+#include "test_real.cpp"
+#include "test_transaction.cpp"
+#include "test_types.cpp"
 
 extern "C" {
 
@@ -9,7 +26,7 @@ extern "C" {
 
    void apply( unsigned long long code, unsigned long long action ) {
 
-      //eos::print("==> CONTRACT: ", code, " ", action, "\n");
+      //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
 
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
@@ -18,7 +35,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_types, name_class);
 
       //test_message
-      WASM_TEST_HANDLER(test_message, read_message);
+      WASM_TEST_HANDLER(test_message, read_message_normal);
       WASM_TEST_HANDLER(test_message, read_message_to_0);
       WASM_TEST_HANDLER(test_message, read_message_to_64k);
       WASM_TEST_HANDLER(test_message, require_notice);
@@ -52,6 +69,28 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64_front_back);
       WASM_TEST_HANDLER(test_db, key_i64i64i64_general);
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
+      WASM_TEST_HANDLER(test_db, key_str_general);
+      WASM_TEST_HANDLER(test_db, key_str_table);
+      WASM_TEST_HANDLER(test_db, key_str_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_str_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_str_under_limit);
+      WASM_TEST_HANDLER(test_db, key_str_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_str_another_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64_another_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i128i128_another_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_setup_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_min_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_available_space_exceed_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_another_under_limit);
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_sha256);
@@ -71,7 +110,49 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_max);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
-      
+
+      //test chain
+      WASM_TEST_HANDLER(test_chain, test_activeprods);
+
+      // test string
+      WASM_TEST_HANDLER(test_string, construct_with_size);
+      WASM_TEST_HANDLER(test_string, construct_with_data);
+      WASM_TEST_HANDLER(test_string, construct_with_data_copied);
+      WASM_TEST_HANDLER(test_string, construct_with_data_partially);
+      WASM_TEST_HANDLER(test_string, copy_constructor);
+      WASM_TEST_HANDLER(test_string, assignment_operator);
+      WASM_TEST_HANDLER(test_string, index_operator);
+      WASM_TEST_HANDLER(test_string, index_out_of_bound);
+      WASM_TEST_HANDLER(test_string, substring);
+      WASM_TEST_HANDLER(test_string, substring_out_of_bound);
+      WASM_TEST_HANDLER(test_string, concatenation_null_terminated);
+      WASM_TEST_HANDLER(test_string, concatenation_non_null_terminated);
+      WASM_TEST_HANDLER(test_string, assign);
+      WASM_TEST_HANDLER(test_string, comparison_operator);
+      WASM_TEST_HANDLER(test_string, print_null_terminated);
+      WASM_TEST_HANDLER(test_string, print_non_null_terminated);
+      WASM_TEST_HANDLER(test_string, print_unicode);
+      WASM_TEST_HANDLER(test_string, valid_utf8);
+      WASM_TEST_HANDLER(test_string, invalid_utf8);
+      WASM_TEST_HANDLER(test_string, string_literal);
+
+      // test fixed_point
+      WASM_TEST_HANDLER(test_fixedpoint, create_instances);
+      WASM_TEST_HANDLER(test_fixedpoint, test_addition);
+      WASM_TEST_HANDLER(test_fixedpoint, test_subtraction);
+      WASM_TEST_HANDLER(test_fixedpoint, test_multiplication);
+      WASM_TEST_HANDLER(test_fixedpoint, test_division);
+
+
+      // test double
+      WASM_TEST_HANDLER(test_real, create_instances);
+      WASM_TEST_HANDLER(test_real, test_addition);
+      WASM_TEST_HANDLER(test_real, test_multiplication);
+      WASM_TEST_HANDLER(test_real, test_division);
+
+      // test account
+      WASM_TEST_HANDLER(test_account, test_balance_acc1);
+
       //unhandled test call
       WASM_TEST_ERROR_CODE = WASM_TEST_FAIL;
    }

@@ -73,6 +73,7 @@ set( fc_sources
      src/log/logger.cpp
      src/log/appender.cpp
      src/log/console_appender.cpp
+     src/log/gelf_appender.cpp
      src/log/logger_config.cpp
      src/crypto/_digest_common.cpp
      src/crypto/openssl.cpp
@@ -97,6 +98,8 @@ set( fc_sources
      src/crypto/elliptic_${ECC_IMPL}.cpp
      src/crypto/rand.cpp
      src/network/ip.cpp
+     src/network/resolve.cpp
+     src/network/udp_socket.cpp
      src/network/url.cpp
      src/compress/smaz.cpp
      src/compress/zlib.cpp

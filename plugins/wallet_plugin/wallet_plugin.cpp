@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/wallet_plugin/wallet_plugin.hpp>
 #include <eos/wallet_plugin/wallet_manager.hpp>
 #include <boost/filesystem/path.hpp>
@@ -5,7 +9,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
 
 wallet_plugin::wallet_plugin()
   : wallet_manager_ptr(new wallet_manager()) {
@@ -42,4 +46,4 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
       wallet_manager_ptr->set_timeout(t);
    }
 }
-} // namespace eos
+} // namespace eosio

@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #define WASM_TEST_ERROR_CODE *((unsigned int *)((1<<16) - 2*sizeof(unsigned int)))
@@ -64,7 +68,7 @@ struct test_print {
 
 struct test_message {
 
-  static unsigned int read_message();
+  static unsigned int read_message_normal();
   static unsigned int read_message_to_0();
   static unsigned int read_message_to_64k();
   static unsigned int require_notice();
@@ -95,6 +99,32 @@ struct test_db {
 
    static unsigned int key_i128i128_general();
    static unsigned int key_i64i64i64_general();
+   static unsigned int key_str_general();
+   static unsigned int key_str_table();
+
+   static unsigned int key_str_setup_limit();
+   static unsigned int key_str_min_exceed_limit();
+   static unsigned int key_str_under_limit();
+   static unsigned int key_str_available_space_exceed_limit();
+   static unsigned int key_str_another_under_limit();
+
+   static unsigned int key_i64_setup_limit();
+   static unsigned int key_i64_min_exceed_limit();
+   static unsigned int key_i64_under_limit();
+   static unsigned int key_i64_available_space_exceed_limit();
+   static unsigned int key_i64_another_under_limit();
+
+   static unsigned int key_i128i128_setup_limit();
+   static unsigned int key_i128i128_min_exceed_limit();
+   static unsigned int key_i128i128_under_limit();
+   static unsigned int key_i128i128_available_space_exceed_limit();
+   static unsigned int key_i128i128_another_under_limit();
+
+   static unsigned int key_i64i64i64_setup_limit();
+   static unsigned int key_i64i64i64_min_exceed_limit();
+   static unsigned int key_i64i64i64_under_limit();
+   static unsigned int key_i64i64i64_available_space_exceed_limit();
+   static unsigned int key_i64i64i64_another_under_limit();
 };
 
 struct test_crypto {
@@ -117,4 +147,50 @@ struct test_transaction {
   static unsigned int send_transaction_empty();
   static unsigned int send_transaction_max();
   static unsigned int send_transaction_large();
+};
+
+struct test_chain {
+  static unsigned int test_activeprods();
+};
+
+struct test_string {
+  static unsigned int construct_with_size();
+  static unsigned int construct_with_data();
+  static unsigned int construct_with_data_copied();
+  static unsigned int construct_with_data_partially();
+  static unsigned int copy_constructor();
+  static unsigned int assignment_operator();
+  static unsigned int index_operator();
+  static unsigned int index_out_of_bound();
+  static unsigned int substring();
+  static unsigned int substring_out_of_bound();
+  static unsigned int concatenation_null_terminated();
+  static unsigned int concatenation_non_null_terminated();
+  static unsigned int assign();
+  static unsigned int comparison_operator();
+  static unsigned int print_null_terminated();
+  static unsigned int print_non_null_terminated();
+  static unsigned int print_unicode();
+  static unsigned int valid_utf8();
+  static unsigned int invalid_utf8();
+  static unsigned int string_literal();
+};
+
+struct test_fixedpoint {
+   static unsigned int create_instances();
+   static unsigned int test_addition();
+   static unsigned int test_subtraction();
+   static unsigned int test_multiplication();
+   static unsigned int test_division();
+};
+
+struct test_real {
+   static unsigned int create_instances();
+   static unsigned int test_addition();
+   static unsigned int test_multiplication();
+   static unsigned int test_division();
+};
+
+struct test_account {
+   static unsigned int test_balance_acc1();
 };

@@ -1,0 +1,12 @@
+<map id="How To Write Contracts" name="How To Write Contracts">
+<area shape="rect" id="node1" href="$group__tokens.html" title="Defines the ABI for interfacing with standard&#45;compatible token messages and database tables..." alt="" coords="233,5,317,32"/>
+<area shape="rect" id="node3" href="$group__systemapi.html" title="Define API for interating with system level intrinsics. " alt="" coords="229,56,322,83"/>
+<area shape="rect" id="node4" href="$group__consoleapi.html" title="Enables applications to log/print text messages. " alt="" coords="227,107,323,133"/>
+<area shape="rect" id="node5" href="$group__database.html" title="APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following b..." alt="" coords="223,157,327,184"/>
+<area shape="rect" id="node6" href="$group__memoryapi.html" title="Defines common memory functions. " alt="" coords="228,208,323,235"/>
+<area shape="rect" id="node7" href="$group__chaincapi.html" title="Define API for querying internal chain state. " alt="" coords="234,259,317,285"/>
+<area shape="rect" id="node8" href="$group__types.html" title="Specifies typedefs and aliases. " alt="" coords="226,309,325,336"/>
+<area shape="rect" id="node9" href="$group__transactionapi.html" title="Define API for sending transactions and inline messages. " alt="" coords="217,360,333,387"/>
+<area shape="rect" id="node10" href="$group__messageapi.html" title="Define API for querying message properties. " alt="" coords="225,411,326,437"/>
+<area shape="rect" id="node11" href="$group__mathapi.html" title="Defines common math functions. " alt="" coords="237,461,314,488"/>
+</map>

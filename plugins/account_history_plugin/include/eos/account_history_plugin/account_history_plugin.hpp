@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <appbase/application.hpp>
 
@@ -5,11 +9,11 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
    using chain::transaction_id_type;
    using std::shared_ptr;
    using namespace appbase;
-   using chain::Name;
+   using chain::name;
    using fc::optional;
    using chain::uint128_t;
 
@@ -38,7 +42,7 @@ public:
 
 
    struct get_transactions_params {
-      chain::AccountName  account_name;
+      name                account_name;
       optional<uint32_t>  skip_seq;
       optional<uint32_t>  num_seq;
    };
@@ -59,16 +63,16 @@ public:
       chain::public_key_type     public_key;
    };
    struct get_key_accounts_results {
-      vector<chain::AccountName> account_names;
+      vector<name> account_names;
    };
    get_key_accounts_results get_key_accounts(const get_key_accounts_params& params) const;
 
 
    struct get_controlled_accounts_params {
-      chain::AccountName     controlling_account;
+      name     controlling_account;
    };
    struct get_controlled_accounts_results {
-      vector<chain::AccountName> controlled_accounts;
+      vector<name> controlled_accounts;
    };
    get_controlled_accounts_results get_controlled_accounts(const get_controlled_accounts_params& params) const;
 };
@@ -103,13 +107,13 @@ private:
 
 }
 
-FC_REFLECT(eos::account_history_apis::empty, )
-FC_REFLECT(eos::account_history_apis::read_only::get_transaction_params, (transaction_id) )
-FC_REFLECT(eos::account_history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
-FC_REFLECT(eos::account_history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
-FC_REFLECT(eos::account_history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
-FC_REFLECT(eos::account_history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
-FC_REFLECT(eos::account_history_apis::read_only::get_key_accounts_params, (public_key) )
-FC_REFLECT(eos::account_history_apis::read_only::get_key_accounts_results, (account_names) )
-FC_REFLECT(eos::account_history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
-FC_REFLECT(eos::account_history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
+FC_REFLECT(eosio::account_history_apis::empty, )
+FC_REFLECT(eosio::account_history_apis::read_only::get_transaction_params, (transaction_id) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
+FC_REFLECT(eosio::account_history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_key_accounts_params, (public_key) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_key_accounts_results, (account_names) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )

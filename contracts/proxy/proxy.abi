@@ -1,29 +1,35 @@
 {
   "types": [{
-      "newTypeName": "AccountName",
-      "type": "Name"
+      "new_type_name": "account_name",
+      "type": "name"
     }
   ],
   "structs": [{
       "name": "config",
       "base": "",
       "fields": {
-        "key": "Name",
-        "owner": "Name"
+        "key": "name",
+        "owner": "name"
+      }
+    },{
+      "name": "setowner",
+      "base": "",
+      "fields": {
+        "owner": "name"
       }
     }
   ],
   "actions": [{
-      "action": "setowner",
-      "type": "Name"
+      "action_name": "setowner",
+      "type": "setowner"
     }
   ],
   "tables": [{
-      "table": "configs",
+      "table_name": "configs",
       "type": "config",
-      "indextype": "i64",
-      "keynames" : ["key"],
-      "keytypes" : ["Name"]
+      "index_type": "i64",
+      "key_names" : ["key"],
+      "key_types" : ["name"]
     }
   ]
 }

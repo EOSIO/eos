@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 
 #include <boost/test/unit_test.hpp>
@@ -43,7 +24,7 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 
@@ -59,7 +40,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
  *
  *  This simple single threaded algorithm sorts 3M transactions each of which
  *  requires scope of 2 accounts chosen with a normal probability distribution
- *  amoung a set of 2 million accounts.
+ *  among a set of 2 million accounts.
  *
  *  This algorithm executes in less than 0.5 seconds on a 4Ghz Core i7 and could
  *  potentially take just .05 seconds with 10+ CPU cores. Future improvements might
@@ -75,7 +56,7 @@ struct Location {
       return *this;
    }
 };
-struct ExTransaction : public Transaction {
+struct ExTransaction : public transaction {
    Location location;
 };
 
@@ -141,13 +122,13 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
   
    try {
    Make_Blockchain(chain)
-   Name from("from"), to("to");
+   name from("from"), to("to");
    uint64_t amount = 10;
 
-   eos::chain::ProcessedTransaction trx;
+   eosio::chain::processed_transaction trx;
    trx.scope = sort_names({from,to});
    transaction_emplace_message(trx, "eos", 
-                      vector<types::AccountPermission>{ {from,"active"} },
+                      vector<types::account_permission>{ {from,"active"} },
                       "transfer", types::transfer{from, to, amount, ""});
    trx.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(trx, chain.head_block_id());
@@ -164,7 +145,7 @@ BOOST_FIXTURE_TEST_CASE(trx_variant, testing_fixture) {
    idump((original));
    idump((_process));
    */
-   FC_ASSERT( original == _process, "Transaction seralization not reversible" );
+   FC_ASSERT( original == _process, "Transaction serialization not reversible" );
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
       throw;
@@ -177,9 +158,9 @@ BOOST_FIXTURE_TEST_CASE(irrelevant_auth, testing_fixture) {
    Make_Account(chain, joe);
    chain.produce_blocks();
 
-   ProcessedTransaction trx;
+   processed_transaction trx;
    trx.scope = sort_names({"joe", "inita"});
-   transaction_emplace_message(trx, config::EosContractName, vector<types::AccountPermission>{{"inita", "active"}},
+   transaction_emplace_message(trx, config::eos_contract_name, vector<types::account_permission>{{"inita", "active"}},
                       "transfer", types::transfer{"inita", "joe", 50,""});
    trx.expiration = chain.head_block_time() + 100;
    transaction_set_reference_block(trx, chain.head_block_id());
@@ -189,20 +170,20 @@ BOOST_FIXTURE_TEST_CASE(irrelevant_auth, testing_fixture) {
    chain.push_transaction(trx, chain_controller::skip_transaction_signatures);
    chain.clear_pending();
 
-   trx.messages.front().authorization.emplace_back(types::AccountPermission{"initb", "active"});
+   trx.messages.front().authorization.emplace_back(types::account_permission{"initb", "active"});
    BOOST_CHECK_THROW(chain.push_transaction(trx, chain_controller::skip_transaction_signatures), tx_irrelevant_auth);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(name_test) {
-   using eos::types::Name;
-   Name temp;
+   using eosio::types::name;
+   name temp;
    temp = "temp";
-   BOOST_CHECK_EQUAL( String("temp"), String(temp) );
-   BOOST_CHECK_EQUAL( String("temp.temp"), String(Name("temp.temp")) );
-   BOOST_CHECK_EQUAL( String(""), String(Name()) );
-   BOOST_REQUIRE_EQUAL( String("hello"), String(Name("hello")) );
-   BOOST_REQUIRE_EQUAL( Name(-1), Name(String(Name(-1))) );
-   BOOST_REQUIRE_EQUAL( String(Name(-1)), String(Name(String(Name(-1)))) );
+   BOOST_CHECK_EQUAL( string("temp"), string(temp) );
+   BOOST_CHECK_EQUAL( string("temp.temp"), string(name("temp.temp")) );
+   BOOST_CHECK_EQUAL( string(""), string(name()) );
+   BOOST_REQUIRE_EQUAL( string("hello"), string(name("hello")) );
+   BOOST_REQUIRE_EQUAL( name(-1), name(string(name(-1))) );
+   BOOST_REQUIRE_EQUAL( string(name(-1)), string(name(string(name(-1)))) );
 }
 
 // Simple test of block production and head_block_num tracking
@@ -225,10 +206,10 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       Make_Account(chain, newguy);
       chain.produce_blocks(10);
 
-      Transfer_Asset(chain, inita, newguy, Asset(100));
-      Transfer_Asset(chain, newguy, inita, Asset(1));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
+      Transfer_Asset(chain, inita, newguy, asset(100));
+      Transfer_Asset(chain, newguy, inita, asset(1));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), asset(99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000-199));
       chain.produce_blocks();
 
       BOOST_CHECK_EQUAL(chain.head_block_num(), 11);
@@ -236,8 +217,8 @@ BOOST_FIXTURE_TEST_CASE(order_dependent_transactions, testing_fixture)
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.empty());
       BOOST_CHECK(!chain.fetch_block_by_number(11)->cycles.front().empty());
       BOOST_CHECK_EQUAL(chain.fetch_block_by_number(11)->cycles.front().front().user_input.size(), 2);
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(99));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-199));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), asset(99));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000-199));
 } FC_LOG_AND_RETHROW() }
 
 // Simple test of block production when a block is missed
@@ -248,9 +229,9 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       chain.produce_blocks();
       BOOST_CHECK_EQUAL(chain.head_block_num(), 1);
 
-      AccountName skipped_producers[3] = {chain.get_scheduled_producer(1),
-                                          chain.get_scheduled_producer(2),
-                                          chain.get_scheduled_producer(3)};
+      account_name skipped_producers[3] = {chain.get_scheduled_producer(1),
+                                           chain.get_scheduled_producer(2),
+                                           chain.get_scheduled_producer(3)};
       auto next_block_time = chain.get_slot_time(4);
       auto next_producer = chain.get_scheduled_producer(4);
 
@@ -266,7 +247,7 @@ BOOST_FIXTURE_TEST_CASE(missed_blocks, testing_fixture)
       }
 } FC_LOG_AND_RETHROW() }
 
-// Simple sanity test of test network: if databases aren't connected to the network, they don't sync to eachother
+// Simple sanity test of test network: if databases aren't connected to the network, they don't sync to each other
 BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
 { try {
       Make_Blockchains((chain1)(chain2));
@@ -281,7 +262,7 @@ BOOST_FIXTURE_TEST_CASE(no_network, testing_fixture)
       BOOST_CHECK_EQUAL(chain2.head_block_num(), 5);
 } FC_LOG_AND_RETHROW() }
 
-// Test that two databases on the same network do sync to eachother
+// Test that two databases on the same network do sync to each other
 BOOST_FIXTURE_TEST_CASE(simple_network, testing_fixture)
 { try {
       Make_Blockchains((chain1)(chain2))
@@ -357,13 +338,13 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 
       auto pct = []( uint32_t x ) -> uint32_t
       {
-         return uint64_t( config::Percent100 ) * x / 64;
+         return uint64_t( config::percent100 ) * x / 64;
       };
 
       BOOST_CHECK_EQUAL( rsf(),
          "1111111111111111111111111111111111111111111111111111111111111111"
       );
-      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), config::Percent100 );
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), config::percent100 );
 
       chain.produce_blocks(1, 1);
       BOOST_CHECK_EQUAL( rsf(),
@@ -433,9 +414,9 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 
       chain.produce_blocks(1, 64);
       BOOST_CHECK_EQUAL( rsf(),
-         "0000000000000000000000000000000000000000000000000000000000000000"
-      );
-      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), pct(0) );
+         "1111111111111111111111111111111111111111111111111111111111111111"
+      ); // For very small producer nets.  All zeros otherwise.
+      BOOST_CHECK_EQUAL( chain.producer_participation_rate(), config::percent100 );
 
       chain.produce_blocks(1, 63);
       BOOST_CHECK_EQUAL( rsf(),
@@ -453,7 +434,7 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, testing_fixture )
 // Check that a db rewinds to the LIB after being closed and reopened
 BOOST_FIXTURE_TEST_CASE(restart_db, testing_fixture)
 { try {
-      auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
+      auto lag = eos_percent(config::blocks_per_round, config::irreversible_threshold_percent);
       {
          Make_Blockchain(chain, x);
 
@@ -480,7 +461,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
       Make_Blockchain(producer)
       Make_Network(net, (producer))
 
-      auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
+      auto lag = eos_percent(config::blocks_per_round, config::irreversible_threshold_percent);
       producer.produce_blocks(20);
 
       {
@@ -510,7 +491,7 @@ BOOST_FIXTURE_TEST_CASE(sleepy_db, testing_fixture)
 // Test reindexing the blockchain
 BOOST_FIXTURE_TEST_CASE(reindex, testing_fixture)
 { try {
-      auto lag = EOS_PERCENT(config::BlocksPerRound, config::IrreversibleThresholdPercent);
+      auto lag = eos_percent(config::blocks_per_round, config::irreversible_threshold_percent);
       {
          chainbase::database db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE);
          block_log log(get_temp_dir("log"));
@@ -585,12 +566,12 @@ BOOST_FIXTURE_TEST_CASE(irrelevant_sig_soft_check, testing_fixture) {
       // Make an account, but add an extra signature to the transaction
       Make_Account(chain, alice);
       // Check that it throws for irrelevant signatures
-      BOOST_CHECK_THROW(chain.review_transaction([](SignedTransaction& trx, auto) {
+      BOOST_CHECK_THROW(chain.review_transaction([](signed_transaction& trx, auto) {
                            trx.sign(fc::ecc::private_key::regenerate(fc::digest("an unknown key")), {});
                            return true;
                         }), tx_irrelevant_sig);
       // Push it through with a skip flag
-      chain.review_transaction([](SignedTransaction& trx, uint32_t& skip) {
+      chain.review_transaction([](signed_transaction& trx, uint32_t& skip) {
          trx.sign(fc::ecc::private_key::regenerate(fc::digest("an unknown key")), {});
          skip |= chain_controller::skip_transaction_signatures;
          return true;

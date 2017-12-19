@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 
 #include <boost/test/unit_test.hpp>
@@ -27,7 +8,7 @@
 #include <eos/chain/block_schedule.hpp>
 #include "../common/expect.hpp"
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 /*
@@ -86,19 +67,19 @@ static lossy_functor<NUM, DEN, NEXT> lossy(NEXT &&next) {
 class common_fixture {
 public:
    struct test_transaction {
-      test_transaction(const std::initializer_list<AccountName>& _scopes)
+      test_transaction(const std::initializer_list<account_name>& _scopes)
          : scopes(_scopes)
       {
       }
 
-      const std::initializer_list<AccountName>& scopes;
+      const std::initializer_list<account_name>& scopes;
    };
 
 protected:
    auto create_transactions( const std::initializer_list<test_transaction>& transactions ) {
-      std::vector<SignedTransaction> result;
+      std::vector<signed_transaction> result;
       for (const auto& t: transactions) {
-         SignedTransaction st;
+         signed_transaction st;
          st.scope.reserve(t.scopes.size());
          st.scope.insert(st.scope.end(), t.scopes.begin(), t.scopes.end());
          result.emplace_back(st);
@@ -106,10 +87,10 @@ protected:
       return result;
    }
 
-   auto create_pending( const std::vector<SignedTransaction>& transactions ) {
+   auto create_pending( const std::vector<signed_transaction>& transactions ) {
       std::vector<pending_transaction> result;
       for (const auto& t: transactions) {
-         result.emplace_back(std::reference_wrapper<SignedTransaction const> {t});
+         result.emplace_back(std::reference_wrapper<signed_transaction const> {t});
       }
       return result;
    }
@@ -160,13 +141,13 @@ struct base_properties {
 
 struct default_properties : public base_properties {
    default_properties() {
-      properties.configuration.maxBlockSize = 256 * 1024;
+      properties.configuration.max_blk_size = 256 * 1024;
    }
 };
 
 struct small_block_properties : public base_properties {
    small_block_properties() {
-      properties.configuration.maxBlockSize = 512;
+      properties.configuration.max_blk_size = 512;
    }
 };
 

@@ -1,0 +1,4 @@
+<map id="TOKEN_NAME::Transfer" name="TOKEN_NAME::Transfer">
+<area shape="rect" id="node2" href="$structeos_1_1token.html" title="eosio::token\&lt; uint64\l_t, N(storage)\&gt;" alt="" coords="5,5,136,47"/>
+<area shape="rect" id="node3" href="$structeos_1_1token.html" title="eosio::token\&lt; uint64\l_t, N(currency)\&gt;" alt="" coords="160,5,291,47"/>
+</map>

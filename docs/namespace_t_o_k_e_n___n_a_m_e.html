@@ -20,8 +20,10 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
+   &#160;<span id="projectnumber">DAWN2.0.1</span>
    </div>
   </td>
  </tr>
@@ -72,61 +74,54 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">row in <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html" title="row in Account table stored within each scope ">Account</a> table stored within each scope  <a href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html#details">More...</a><br /></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">row in account table stored within each scope  table  <a href="struct_t_o_k_e_n___n_a_m_e_1_1account.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html">Transfer</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1link.html">link</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1transfer.html">transfer</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a0c4afa08ec2e44777543fe547d60e9e6"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeos_1_1token.html">eos::token</a>&lt; <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a0c4afa08ec2e44777543fe547d60e9e6">CurrencyTokens</a></td></tr>
-<tr class="separator:a0c4afa08ec2e44777543fe547d60e9e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a90f15481940a6f47f7f86fe0ab21bda4"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a90f15481940a6f47f7f86fe0ab21bda4">Accounts</a> = <a class="el" href="struct_table.html">Table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account), <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>, <a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
-<tr class="separator:a90f15481940a6f47f7f86fe0ab21bda4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga9db0889003fa473f1aec85be9654293e"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga9db0889003fa473f1aec85be9654293e">currency_tokens</a></td></tr>
+<tr class="separator:ga9db0889003fa473f1aec85be9654293e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga3dca1e3911b059d636a8e14a0f167f1d"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga3dca1e3911b059d636a8e14a0f167f1d">accounts</a> = <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(defaultscope), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(<a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a>), <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a>, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
+<tr class="separator:ga3dca1e3911b059d636a8e14a0f167f1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga86efb13cee9fb81541e1b4d92617b68f"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(storage)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga86efb13cee9fb81541e1b4d92617b68f">storage_tokens</a></td></tr>
+<tr class="separator:ga86efb13cee9fb81541e1b4d92617b68f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a9e234bedec057f2367390b88c3b73ad8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a9e234bedec057f2367390b88c3b73ad8">storeAccount</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> account, const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a> &amp;a)</td></tr>
-<tr class="memdesc:a9e234bedec057f2367390b88c3b73ad8"><td class="mdescLeft">&#160;</td><td class="mdescRight">When storing accounts, check for empty balance and remove account.  <a href="#a9e234bedec057f2367390b88c3b73ad8">More...</a><br /></td></tr>
-<tr class="separator:a9e234bedec057f2367390b88c3b73ad8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad480ac2ff519e253e8d947fca896a12f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#ad480ac2ff519e253e8d947fca896a12f">apply_currency_transfer</a> (const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html">TOKEN_NAME::Transfer</a> &amp;transfer)</td></tr>
-<tr class="separator:ad480ac2ff519e253e8d947fca896a12f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1de45851aa74bc1e9b4793dfe99717db"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a1de45851aa74bc1e9b4793dfe99717db">getAccount</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> owner)</td></tr>
-<tr class="separator:a1de45851aa74bc1e9b4793dfe99717db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af6bc69032730f0ceaa6f2025a9afde79"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#af6bc69032730f0ceaa6f2025a9afde79">store_account</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> account_to_store, const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a> &amp;a)</td></tr>
+<tr class="memdesc:af6bc69032730f0ceaa6f2025a9afde79"><td class="mdescLeft">&#160;</td><td class="mdescRight">When storing accounts, check for empty balance and remove account.  <a href="#af6bc69032730f0ceaa6f2025a9afde79">More...</a><br /></td></tr>
+<tr class="separator:af6bc69032730f0ceaa6f2025a9afde79"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a922172cbdeeb0706e858419690c5038f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a922172cbdeeb0706e858419690c5038f">apply_currency_transfer</a> (const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1transfer.html">TOKEN_NAME::transfer</a> &amp;transfer_msg)</td></tr>
+<tr class="separator:a922172cbdeeb0706e858419690c5038f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga0f5c38cd82e9e2d628b89620695ee1f6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__currencyapi.html#ga0f5c38cd82e9e2d628b89620695ee1f6">get_account</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> owner)</td></tr>
+<tr class="separator:ga0f5c38cd82e9e2d628b89620695ee1f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a23a009f16ddbdf742a8aa8dc4301e10a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a23a009f16ddbdf742a8aa8dc4301e10a">apply_storage_transfer</a> (const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1transfer.html">TOKEN_NAME::transfer</a> &amp;transfer_storage)</td></tr>
+<tr class="separator:a23a009f16ddbdf742a8aa8dc4301e10a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a18486d4da268752899c650597706531b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a18486d4da268752899c650597706531b">validate_ipfspath</a> (const char *ipfspath, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
+<tr class="separator:a18486d4da268752899c650597706531b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a53c86f810197659cf9e744fbdb77d20a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a53c86f810197659cf9e744fbdb77d20a">validate_eospath</a> (const char *eospath, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
+<tr class="separator:a53c86f810197659cf9e744fbdb77d20a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a320896ff363dcabfd994b2b7a3167fc7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a320896ff363dcabfd994b2b7a3167fc7">read_link_from_buffer</a> (const char *buffer, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> bufferlen, <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1link.html">TOKEN_NAME::link</a> &amp;link_to_read, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> &amp;eospathlen, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> ipfspathlen)</td></tr>
+<tr class="separator:a320896ff363dcabfd994b2b7a3167fc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abde3446797f0b40141fc5abfe1811cfd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#abde3446797f0b40141fc5abfe1811cfd">apply_storage_setlink</a> ()</td></tr>
+<tr class="separator:abde3446797f0b40141fc5abfe1811cfd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a933270cc1dd428e096885cb05fca9c19"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a933270cc1dd428e096885cb05fca9c19">apply_storage_removelink</a> (char *eospath, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> eospathlen)</td></tr>
+<tr class="separator:a933270cc1dd428e096885cb05fca9c19"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa19b5a46c97fa5b920c49aa9ec467d78"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#aa19b5a46c97fa5b920c49aa9ec467d78">apply_storage_createstore</a> (char *eospath, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> eospathlen)</td></tr>
+<tr class="separator:aa19b5a46c97fa5b920c49aa9ec467d78"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3416b85bad2ffb4da3fc00dc9d4d50a2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a3416b85bad2ffb4da3fc00dc9d4d50a2">apply_storage_rejectstore</a> (char *eospath, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> eospathlen)</td></tr>
+<tr class="separator:a3416b85bad2ffb4da3fc00dc9d4d50a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga1b41f02233d1ea7de04e16fdeedd987d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga1b41f02233d1ea7de04e16fdeedd987d">get_quota_used</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> owner)</td></tr>
+<tr class="separator:ga1b41f02233d1ea7de04e16fdeedd987d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Typedef Documentation</h2>
-<a id="a90f15481940a6f47f7f86fe0ab21bda4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a90f15481940a6f47f7f86fe0ab21bda4">&#9670;&nbsp;</a></span>Accounts</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">using <a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a90f15481940a6f47f7f86fe0ab21bda4">TOKEN_NAME::Accounts</a> = typedef <a class="el" href="struct_table.html">Table</a>&lt;<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(account),<a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a>,<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&gt;</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a0c4afa08ec2e44777543fe547d60e9e6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0c4afa08ec2e44777543fe547d60e9e6">&#9670;&nbsp;</a></span>CurrencyTokens</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">typedef <a class="el" href="structeos_1_1token.html">eos::token</a>&lt;<a class="el" href="types_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>,<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency)&gt; <a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a0c4afa08ec2e44777543fe547d60e9e6">TOKEN_NAME::CurrencyTokens</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <h2 class="groupheader">Function Documentation</h2>
-<a id="ad480ac2ff519e253e8d947fca896a12f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad480ac2ff519e253e8d947fca896a12f">&#9670;&nbsp;</a></span>apply_currency_transfer()</h2>
+<a id="a922172cbdeeb0706e858419690c5038f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a922172cbdeeb0706e858419690c5038f">&#9670;&nbsp;</a></span>apply_currency_transfer()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -134,8 +129,8 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void TOKEN_NAME::apply_currency_transfer </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html">TOKEN_NAME::Transfer</a> &amp;&#160;</td>
-          <td class="paramname"><em>transfer</em></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1transfer.html">TOKEN_NAME::transfer</a> &amp;&#160;</td>
+          <td class="paramname"><em>transfer_msg</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -145,52 +140,189 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a1de45851aa74bc1e9b4793dfe99717db"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1de45851aa74bc1e9b4793dfe99717db">&#9670;&nbsp;</a></span>getAccount()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a> TOKEN_NAME::getAccount </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
-          <td class="paramname"><em>owner</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Accounts information for owner is stored:</p>
-<p>owner/TOKEN_NAME/account/account -&gt; <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html" title="row in Account table stored within each scope ">Account</a></p>
-<p>This API is made available for 3rd parties wanting read access to the users balance. If the account doesn't exist a default constructed account will be returned. </p>
-<p>scope, record </p>
-
-</div>
-</div>
-<a id="a9e234bedec057f2367390b88c3b73ad8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9e234bedec057f2367390b88c3b73ad8">&#9670;&nbsp;</a></span>storeAccount()</h2>
+<a id="aa19b5a46c97fa5b920c49aa9ec467d78"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa19b5a46c97fa5b920c49aa9ec467d78">&#9670;&nbsp;</a></span>apply_storage_createstore()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void TOKEN_NAME::storeAccount </td>
+          <td class="memname">void TOKEN_NAME::apply_storage_createstore </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td>
-          <td class="paramname"><em>account</em>, </td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>eospath</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1_account.html">Account</a> &amp;&#160;</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>eospathlen</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3416b85bad2ffb4da3fc00dc9d4d50a2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3416b85bad2ffb4da3fc00dc9d4d50a2">&#9670;&nbsp;</a></span>apply_storage_rejectstore()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void TOKEN_NAME::apply_storage_rejectstore </td>
+          <td>(</td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>eospath</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>eospathlen</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a933270cc1dd428e096885cb05fca9c19"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a933270cc1dd428e096885cb05fca9c19">&#9670;&nbsp;</a></span>apply_storage_removelink()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void TOKEN_NAME::apply_storage_removelink </td>
+          <td>(</td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>eospath</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>eospathlen</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="abde3446797f0b40141fc5abfe1811cfd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abde3446797f0b40141fc5abfe1811cfd">&#9670;&nbsp;</a></span>apply_storage_setlink()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void TOKEN_NAME::apply_storage_setlink </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a23a009f16ddbdf742a8aa8dc4301e10a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a23a009f16ddbdf742a8aa8dc4301e10a">&#9670;&nbsp;</a></span>apply_storage_transfer()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void TOKEN_NAME::apply_storage_transfer </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1transfer.html">TOKEN_NAME::transfer</a> &amp;&#160;</td>
+          <td class="paramname"><em>transfer_storage</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>token subtraction has underflow assertion</p>
+<p>token addition has overflow assertion </p>
+
+</div>
+</div>
+<a id="a320896ff363dcabfd994b2b7a3167fc7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a320896ff363dcabfd994b2b7a3167fc7">&#9670;&nbsp;</a></span>read_link_from_buffer()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> TOKEN_NAME::read_link_from_buffer </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>buffer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>bufferlen</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1link.html">TOKEN_NAME::link</a> &amp;&#160;</td>
+          <td class="paramname"><em>link_to_read</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> &amp;&#160;</td>
+          <td class="paramname"><em>eospathlen</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>ipfspathlen</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af6bc69032730f0ceaa6f2025a9afde79"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af6bc69032730f0ceaa6f2025a9afde79">&#9670;&nbsp;</a></span>store_account()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void TOKEN_NAME::store_account </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>account_to_store</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a> &amp;&#160;</td>
           <td class="paramname"><em>a</em>&#160;</td>
         </tr>
         <tr>
@@ -202,6 +334,62 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>value, scope</p>
 <p>value, scope </p>
+
+</div>
+</div>
+<a id="a53c86f810197659cf9e744fbdb77d20a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a53c86f810197659cf9e744fbdb77d20a">&#9670;&nbsp;</a></span>validate_eospath()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool TOKEN_NAME::validate_eospath </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>eospath</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a18486d4da268752899c650597706531b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a18486d4da268752899c650597706531b">&#9670;&nbsp;</a></span>validate_ipfspath()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool TOKEN_NAME::validate_ipfspath </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>ipfspath</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>

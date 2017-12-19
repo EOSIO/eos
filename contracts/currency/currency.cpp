@@ -1,47 +1,56 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #include <currency/currency.hpp> /// defines transfer struct (abi)
 
 namespace TOKEN_NAME {
-   using namespace eos;
+   using namespace eosio;
 
    ///  When storing accounts, check for empty balance and remove account
-   void storeAccount( AccountName account, const Account& a ) {
-      if( a.isEmpty() ) {
+   void store_account( account_name account_to_store, const account& a ) {
+      if( a.is_empty() ) {
          ///               value, scope
-         Accounts::remove( a, account );
+         accounts::remove( a, account_to_store );
       } else {
          ///              value, scope
-         Accounts::store( a, account );
+         accounts::store( a, account_to_store );
       }
    }
 
-   void apply_currency_transfer( const TOKEN_NAME::Transfer& transfer ) {
-      requireNotice( transfer.to, transfer.from );
-      requireAuth( transfer.from );
+   void apply_currency_transfer( const TOKEN_NAME::transfer& transfer_msg ) {
+      require_notice( transfer_msg.to, transfer_msg.from );
+      require_auth( transfer_msg.from );
 
-      auto from = getAccount( transfer.from );
-      auto to   = getAccount( transfer.to );
+      auto from = get_account( transfer_msg.from );
+      auto to   = get_account( transfer_msg.to );
 
-      from.balance -= transfer.quantity; /// token subtraction has underflow assertion
-      to.balance   += transfer.quantity; /// token addition has overflow assertion
+      from.balance -= transfer_msg.quantity; /// token subtraction has underflow assertion
+      to.balance   += transfer_msg.quantity; /// token addition has overflow assertion
 
-      storeAccount( transfer.from, from );
-      storeAccount( transfer.to, to );
+      store_account( transfer_msg.from, from );
+      store_account( transfer_msg.to, to );
    }
 
 }  // namespace TOKEN_NAME
 
-using namespace currency;
+using namespace TOKEN_NAME;
 
 extern "C" {
     void init()  {
-       storeAccount( N(currency), Account( CurrencyTokens(1000ll*1000ll*1000ll) ) );
+       account owned_account;
+       //Initialize currency account only if it does not exist
+       if ( !accounts::get( owned_account, N(currency) )) {
+          store_account( N(currency), account( currency_tokens(1000ll*1000ll*1000ll) ) );
+       }
     }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(currency) ) {
           if( action == N(transfer) ) 
-             currency::apply_currency_transfer( currentMessage< TOKEN_NAME::Transfer >() );
+             TOKEN_NAME::apply_currency_transfer( current_message< TOKEN_NAME::transfer >() );
        }
     }
 }

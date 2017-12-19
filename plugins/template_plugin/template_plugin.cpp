@@ -1,6 +1,10 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/template_plugin/template_plugin.hpp>
 
-namespace eos {
+namespace eosio {
 
 class template_plugin_impl {
    public:

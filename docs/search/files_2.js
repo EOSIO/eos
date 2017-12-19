@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['eos_2ecpp',['eos.cpp',['../eos_8cpp.html',1,'']]],
-  ['eos_2ehpp',['eos.hpp',['../eos_8hpp.html',1,'']]],
-  ['eosc_2edox',['eosc.dox',['../eosc_8dox.html',1,'']]],
-  ['exchange_2ecpp',['exchange.cpp',['../exchange_8cpp.html',1,'']]],
-  ['exchange_2ehpp',['exchange.hpp',['../exchange_8hpp.html',1,'']]]
+  ['datastream_2ehpp',['datastream.hpp',['../datastream_8hpp.html',1,'']]],
+  ['db_2eh',['db.h',['../db_8h.html',1,'']]],
+  ['db_2ehpp',['db.hpp',['../db_8hpp.html',1,'']]],
+  ['dice_2ecpp',['dice.cpp',['../dice_8cpp.html',1,'']]],
+  ['dice_2ehpp',['dice.hpp',['../dice_8hpp.html',1,'']]]
 ];

@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <appbase/application.hpp>
 
 #include <eos/http_plugin/http_plugin.hpp>
@@ -10,7 +14,7 @@
 #include <boost/exception/diagnostic_information.hpp>
 
 using namespace appbase;
-using namespace eos;
+using namespace eosio;
 
 int main(int argc, char** argv)
 {

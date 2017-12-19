@@ -1,10 +1,14 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <boost/range/combine.hpp>
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
-namespace eos { namespace utilities {
+namespace eosio { namespace utilities {
 
 /**
  * @brief Return values in DataRange corresponding to matching Markers
@@ -22,8 +26,8 @@ namespace eos { namespace utilities {
  * @endcode
  */
 template<typename DataRange, typename MarkerRange, typename Marker>
-DataRange FilterDataByMarker(DataRange data, MarkerRange markers, const Marker& markerValue) {
-   auto RemoveMismatchedMarkers = boost::adaptors::filtered([&markerValue](const auto& tuple) {
+DataRange filter_data_by_marker(DataRange data, MarkerRange markers, const Marker& markerValue) {
+   auto remove_mismatched_markers = boost::adaptors::filtered([&markerValue](const auto& tuple) {
       return boost::get<0>(tuple) == markerValue;
    });
    auto ToData = boost::adaptors::transformed([](const auto& tuple) {
@@ -31,9 +35,9 @@ DataRange FilterDataByMarker(DataRange data, MarkerRange markers, const Marker& 
    });
 
    // Zip the ranges together, filter out data with markers that don't match, and return the data without the markers
-   auto range = boost::combine(markers, data) | RemoveMismatchedMarkers | ToData;
+   auto range = boost::combine(markers, data) | remove_mismatched_markers | ToData;
    return {range.begin(), range.end()};
 }
 
-}} // namespace eos::utilities
+}} // namespace eosio::utilities
 

@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eoslib/types.h>
 
@@ -32,7 +36,7 @@ extern "C" {
     *  @brief Get time of the last accepted block
     *  @return time in seconds from 1970 of the last accepted block
     */
-   Time  now();
+   time  now();
 
    ///@ } systemcapi
 }

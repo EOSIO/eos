@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['name',['Name',['../structeos_1_1_name.html',1,'eos']]]
+  ['game',['game',['../structdice_1_1game.html',1,'dice::game'],['../structtic__tac__toe_1_1game.html',1,'tic_tac_toe::game']]]
 ];

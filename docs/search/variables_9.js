@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['name',['name',['../structexchange_1_1_order_i_d.html#ace33e68445f307e12c36b69c55edc526',1,'exchange::OrderID::name()'],['../struct_test_model.html#ac5fefdad999c22c304761fbca4e090a1',1,'TestModel::name()']]],
-  ['new_5ffield',['new_field',['../struct_test_model_v2.html#a7f8ee7b77960c6e15a653040d9d8d934',1,'TestModelV2::new_field()'],['../struct_test_model128x2___v2.html#af0e5083368419917c205dd763be5f9b7',1,'TestModel128x2_V2::new_field()'],['../struct_test_model3xi64___v2.html#a014b817a26e4fd92768f21b286d944b7',1,'TestModel3xi64_V2::new_field()']]],
-  ['number',['number',['../structexchange_1_1_order_i_d.html#a7e557eea50518e99975b511f27e16eb2',1,'exchange::OrderID::number()'],['../struct_test_model128x2.html#ab84c4ac3eb98dbdfe703aa77c5bc6b75',1,'TestModel128x2::number()']]]
+  ['key',['key',['../group__currencyapi.html#ga454b823303c2a094ef99b46536a4d8da',1,'TOKEN_NAME::account::key()'],['../structinfinite_1_1account.html#a2672b8f2e1f22073750f47d6cb092496',1,'infinite::account::key()'],['../structproxy_1_1config.html#a89169703c539ad6ccfeb4b2e462605cb',1,'proxy::config::key()'],['../structrecord1.html#ac32481166036e99e15df78c470ad6249',1,'record1::key()'],['../structkey__value1.html#a7f2f37362a56600e4884a7581702b2d4',1,'key_value1::key()'],['../structkey__value2.html#a2b3576941d21247380b337ddd95a42ec',1,'key_value2::key()']]],
+  ['key1',['key1',['../structrecord2.html#a3712edd4e9bb1ca959003b463b1ab55b',1,'record2::key1()'],['../structrecord3.html#a1c38ea991bc3a03b714f75d394a03696',1,'record3::key1()']]],
+  ['key2',['key2',['../structrecord2.html#a4f268d3be4655496ecff550578e0c8c5',1,'record2::key2()'],['../structrecord3.html#a26fdaffc50ed76fe470c50c128cd81b9',1,'record3::key2()']]],
+  ['key3',['key3',['../structrecord3.html#aca5389e4f90bcf130638746aea914e3a',1,'record3']]]
 ];

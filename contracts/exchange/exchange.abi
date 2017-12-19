@@ -1,70 +1,101 @@
 {
   "types": [{
-      "newTypeName": "AccountName",
-      "type": "Name"
+      "new_type_name": "account_name",
+      "type": "name"
     }
   ],
   "structs": [{
-      "name": "OrderID",
+      "name": "order_id",
       "fields": {
-        "name" : "AccountName",
-        "id"   : "UInt64"
+        "name" : "account_name",
+        "number"   : "uint64"
       }
     },{
-      "name" : "Bid",
+      "name" : "bid",
       "fields" : {
-         "buyer" : "OrderID",
-         "price" : "UInt128",
-         "quantity" : "UInt64",
-         "expiration" : "Time"
+         "buyer" : "order_id",
+         "at_price" : "uint128",
+         "quantity" : "uint64",
+         "expiration" : "time"
        }
     },{
-      "name" : "Ask",
+      "name" : "ask",
       "fields" : {
-         "seller" : "OrderID",
-         "price" : "UInt128",
-         "quantity" : "UInt64",
-         "expiration" : "Time"
+         "seller" : "order_id",
+         "at_price" : "uint128",
+         "quantity" : "uint64",
+         "expiration" : "time"
        }
     },{
-      "name" : "Account",
+      "name" : "account",
       "fields" : {
-         "owner" : "AccountName",
-         "eos_balance" : "UInt64",
-         "currency_balance" : "UInt64",
-         "open_orders" : "UInt32"
+         "owner" : "account_name",
+         "eos_balance" : "uint64",
+         "currency_balance" : "uint64",
+         "open_orders" : "uint32"
        }
     },{
-      "name" : "BuyOrder",
-      "base" : "Bid",
+      "name" : "buy_order",
+      "base" : "bid",
       "fields" : {
-         "fill_or_kill" : "UInt8"
+         "fill_or_kill" : "uint8"
        }
     },{
-      "name" : "SellOrder",
-      "base" : "Ask",
+      "name" : "sell_order",
+      "base" : "ask",
       "fields" : {
-         "fill_or_kill" : "UInt8"
+         "fill_or_kill" : "uint8"
        }
     }
   ],
   "actions": [{
-      "action": "buy",
-      "type": "BuyOrder"
+      "action_name": "buy",
+      "type": "buy_order"
     },{
-      "action": "sell",
-      "type": "SellOrder"
+      "action_name": "sell",
+      "type": "sell_order"
     },{
-      "action": "cancelbuy",
-      "type": "OrderID"
+      "action_name": "cancelbuy",
+      "type": "order_id"
     },{
-      "action": "cancelsell",
-      "type": "OrderID"
+      "action_name": "cancelsell",
+      "type": "order_id"
     }
   ],
-  "tables": [
-    {"table":"bids","type":"Bid"},
-    {"table":"asks","type":"Ask"},
-    {"table":"account","type":"Account"}
+  "tables": [{
+      "table_name": "bid",
+      "index_type": "i128i128",
+      "key_names": [
+        "buyer",
+        "at_price"
+      ],
+      "key_types": [
+        "order_id",
+        "price"
+      ],
+      "type": "bid"
+    },{
+      "table_name": "ask",
+      "index_type": "i128i128",
+      "key_names": [
+        "seller",
+        "at_price"
+      ],
+      "key_types": [
+        "order_id",
+        "price"
+      ],
+      "type": "ask"
+    },{
+      "table_name": "account",
+      "index_type": "i64",
+      "key_names": [
+        "owner"
+      ],
+      "key_types": [
+        "account_name"
+      ],
+      "type": "account"
+    }
   ]
 }

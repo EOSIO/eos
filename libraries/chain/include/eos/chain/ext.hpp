@@ -1,32 +1,13 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 
 #include <fc/io/varint.hpp>
 #include <fc/reflect/reflect.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 template< typename T >
 struct extension
@@ -73,7 +54,7 @@ struct eos_extension_pack_read_visitor
 };
 
 template< typename Stream, class T >
-void operator<<( Stream& stream, const eos::chain::extension<T>& value )
+void operator<<( Stream& stream, const eosio::chain::extension<T>& value )
 {
    eos_extension_pack_count_visitor<T> count_vtor( value.value );
    fc::reflector<T>::visit( count_vtor );
@@ -130,15 +111,15 @@ struct eos_extension_unpack_visitor
 };
 
 template< typename Stream, typename T >
-void operator>>( Stream& s, eos::chain::extension<T>& value )
+void operator>>( Stream& s, eosio::chain::extension<T>& value )
 {
-   value = eos::chain::extension<T>();
+   value = eosio::chain::extension<T>();
    eos_extension_unpack_visitor<Stream, T> vtor( s, value.value );
    fc::reflector<T>::visit( vtor );
    FC_ASSERT( vtor.count_left == 0 ); // unrecognized extension throws here
 }
 
-} } // eos::chain
+} } // eosio::chain
 
 namespace fc {
 
@@ -169,9 +150,9 @@ struct eos_extension_from_variant_visitor
 };
 
 template< typename T >
-void from_variant( const fc::variant& var, eos::chain::extension<T>& value )
+void from_variant( const fc::variant& var, eosio::chain::extension<T>& value )
 {
-   value = eos::chain::extension<T>();
+   value = eosio::chain::extension<T>();
    if( var.is_null() )
       return;
    if( var.is_array() )
@@ -202,7 +183,7 @@ struct eos_extension_to_variant_visitor
 };
 
 template< typename T >
-void to_variant( const eos::chain::extension<T>& value, fc::variant& var )
+void to_variant( const eosio::chain::extension<T>& value, fc::variant& var )
 {
    eos_extension_to_variant_visitor<T> vtor( value.value );
    fc::reflector<T>::visit( vtor );

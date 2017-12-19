@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <vector>
 #include <array>
@@ -15,54 +19,55 @@
 #include <fc/io/datastream.hpp>
 #include <fc/time.hpp>
 #include <fc/fixed_string.hpp>
+#include <fc/string.hpp>
 
 #include <fc/reflect/reflect.hpp>
 
-#define N(X) eos::types::string_to_name(#X)
+#define N(X) eosio::types::string_to_name(#X)
 
-namespace eos { namespace types {
+namespace eosio { namespace types {
    using namespace boost::multiprecision;
 
    template<typename... T>
-   using Vector       = std::vector<T...>;
+   using vector         = std::vector<T...>;
 
    template<typename... T>
-   using Array        = std::array<T...>;
+   using array          = std::array<T...>;
 
-   using String        = std::string;
-   using Time          = fc::time_point_sec;
-   using Signature     = fc::ecc::compact_signature;
-   using Checksum      = fc::sha256;
-   using FieldName     = fc::fixed_string<>;
-   using FixedString32 = fc::fixed_string<fc::array<uint64_t,4>>;// std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>>; 
-   using FixedString16 = fc::fixed_string<>; 
-   using TypeName      = FixedString32;;
-   using Bytes         = Vector<char>;
+   using string         = std::string;
+   using time           = fc::time_point_sec;
+   using signature      = fc::ecc::compact_signature;
+   using checksum       = fc::sha256;
+   using field_name     = fc::fixed_string<>;
+   using fixed_string32 = fc::fixed_string<fc::array<uint64_t,4>>;// std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>>;
+   using fixed_string16 = fc::fixed_string<>;
+   using type_name      = fixed_string32;;
+   using bytes          = vector<char>;
 
    template<size_t Size>
-   using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
+   using uint_t = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
    template<size_t Size>
-   using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
+   using int_t = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
 
-   using UInt8     = UInt<8>; 
-   using UInt16    = UInt<16>; 
-   using UInt32    = UInt<32>;
-   using UInt64    = UInt<64>;
-   using UInt128   = boost::multiprecision::uint128_t;
-   using UInt256   = boost::multiprecision::uint256_t;
-   using Int8      = int8_t;//Int<8>;  these types are different sizes than native...
-   using Int16     = int16_t; //Int<16>;
-   using Int32     = int32_t; //Int<32>;
-   using Int64     = int64_t; //Int<64>; 
-   using Int128    = boost::multiprecision::int128_t;
-   using Int256    = boost::multiprecision::int256_t;
+   using uint8     = uint_t<8>;
+   using uint16    = uint_t<16>;
+   using uint32    = uint_t<32>;
+   using uint64    = uint_t<64>;
+   using uint128   = boost::multiprecision::uint128_t;
+   using uint256   = boost::multiprecision::uint256_t;
+   using int8      = int8_t;//int_t<8>;  these types are different sizes than native...
+   using int16     = int16_t; //int_t<16>;
+   using int32     = int32_t; //int_t<32>;
+   using int64     = int64_t; //int_t<64>;
+   using int128    = boost::multiprecision::int128_t;
+   using int256    = boost::multiprecision::int256_t;
    using uint128_t = unsigned __int128; /// native clang/gcc 128 intrinisic
    
    static constexpr char char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
-         return (c - 'a') + 1;
+         return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
-         return (c - '1') + 27;
+         return (c - '1') + 1;
       return 0;
    }
 
@@ -91,29 +96,30 @@ namespace eos { namespace types {
       return value;
    }
    
-   struct Name {
+   struct name {
       uint64_t value = 0;
       bool valid()const { return true; }
       bool empty()const { return 0 == value; }
       bool good()const  { return !empty() && valid();  }
 
-      Name( const char* str )   { set(str);           } 
-      Name( const String& str ) { set( str.c_str() ); }
+      name( const char* str )   { set(str);           }
+      name( const string& str ) { set( str.c_str() ); }
 
       void set( const char* str ) {
       try {
          const auto len = strnlen(str,14);
          FC_ASSERT( len <= 13 );
          value = string_to_name(str);
-         FC_ASSERT( toString() == String(str), "name not properly normalized", ("name",String(str))("normalized",toString())  );
+         FC_ASSERT(to_string() == string(str), "name not properly normalized", ("name",string(str))("normalized",
+                                                                                                    to_string())  );
       }FC_CAPTURE_AND_RETHROW( (str) ) }
 
-      Name( uint64_t v = 0 ):value(v){}
+      name( uint64_t v = 0 ):value(v){}
 
-      explicit operator String()const {
-         static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
+      explicit operator string()const {
+        static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
-         String str(13,'.');
+         string str(13,'.');
 
          uint64_t tmp = value;
          for( uint32_t i = 0; i <= 12; ++i ) {
@@ -125,75 +131,75 @@ namespace eos { namespace types {
          boost::algorithm::trim_right_if( str, []( char c ){ return c == '.'; } );
          return str;
       }
-      String toString() const { return String(*this); }
+      string to_string() const { return string(*this); }
 
-      Name& operator=( uint64_t v ) {
+      name& operator=( uint64_t v ) {
          value = v;
          return *this;
       }
 
-      Name& operator=( const String& n ) {
-         value = Name(n).value;
+      name& operator=( const string& n ) {
+         value = name(n).value;
          return *this;
       }
-      Name& operator=( const char* n ) {
-         value = Name(n).value;
+      name& operator=( const char* n ) {
+         value = name(n).value;
          return *this;
       }
 
       template<typename Stream>
-      friend Stream& operator << ( Stream& out, const Name& n ) {
-         return out << String(n);
+      friend Stream& operator << ( Stream& out, const name& n ) {
+         return out << string(n);
       }
 
-      friend bool operator < ( const Name& a, const Name& b ) { return a.value < b.value; }
-      friend bool operator <= ( const Name& a, const Name& b ) { return a.value <= b.value; }
-      friend bool operator > ( const Name& a, const Name& b ) { return a.value > b.value; }
-      friend bool operator >=( const Name& a, const Name& b ) { return a.value >= b.value; }
-      friend bool operator == ( const Name& a, const Name& b ) { return a.value == b.value; }
-      friend bool operator != ( const Name& a, const Name& b ) { return a.value != b.value; }
+      friend bool operator < ( const name& a, const name& b ) { return a.value < b.value; }
+      friend bool operator <= ( const name& a, const name& b ) { return a.value <= b.value; }
+      friend bool operator > ( const name& a, const name& b ) { return a.value > b.value; }
+      friend bool operator >=( const name& a, const name& b ) { return a.value >= b.value; }
+      friend bool operator == ( const name& a, const name& b ) { return a.value == b.value; }
+      friend bool operator != ( const name& a, const name& b ) { return a.value != b.value; }
 
       operator bool()const            { return value; }
       operator uint64_t()const        { return value; }
    };
 
 
-   struct Field {
-      FieldName name;
-      TypeName  type;
+   struct field {
+      field_name name;
+      type_name  type;
 
-      bool operator==(const Field& other) const;
+      bool operator==(const field& other) const;
    };
 
-   struct Struct {
-      TypeName        name;
-      TypeName        base;
-      Vector<Field>   fields;
+   struct struct_t {
+      type_name        name;
+      type_name        base;
+      vector<field>    fields;
 
-      bool operator==(const Struct& other) const;
+      bool operator==(const struct_t& other) const;
    };
 
-   using Fields = Vector<Field>;
+   using fields = vector<field>;
 
    template<typename T>
-   struct GetStruct{};
+   struct get_struct{};
 
-    template<> struct GetStruct<Field> { 
-        static const Struct& type() { 
-           static Struct result = { "Field ", "", {
-                {"name", "FieldName"},
-                {"type", "TypeName"}
+    template<> struct get_struct<field> {
+        static const struct_t& type() {
+           static struct_t result = { "field ", "", {
+                {"name", "field_name"},
+                {"type", "type_name"}
               }
            };
            return result;
          }
     };
-    template<> struct GetStruct<Struct> { 
-        static const Struct& type() { 
-           static Struct result = { "Struct ", "", {
-                {"name", "TypeName"},
-                {"base", "TypeName"},
-                {"fields", "Field[]"}
+    template<> struct get_struct<struct_t> {
+        static const struct_t& type() {
+           static struct_t result = { "struct_t ", "", {
+                {"name", "type_name"},
+                {"base", "type_name"},
+                {"fields", "field[]"}
               }
            };
            return result;
@@ -203,29 +209,29 @@ namespace eos { namespace types {
 
    /// TODO: make sure this works with FC raw
    template<typename Stream, typename Number>
-   void fromBinary(Stream& st, boost::multiprecision::number<Number>& value) {
+   void from_binary(Stream& st, boost::multiprecision::number<Number>& value) {
       unsigned char data[(std::numeric_limits<decltype(value)>::digits+1)/8];
       st.read((char*)data, sizeof(data));
       boost::multiprecision::import_bits(value, data, data + sizeof(data), 1);
    }
    template<typename Stream, typename Number>
-   void toBinary(Stream& st, const boost::multiprecision::number<Number>& value) {
+   void to_binary(Stream& st, const boost::multiprecision::number<Number>& value) {
       unsigned char data[(std::numeric_limits<decltype(value)>::digits+1)/8];
       boost::multiprecision::export_bits(value, data, 1);
       st.write((const char*)data, sizeof(data));
    }
    
-}} // namespace eos::types
+}} // namespace eosio::types
 
 namespace fc {
-  void to_variant(const eos::types::Name& c, fc::variant& v);
-  void from_variant(const fc::variant& v, eos::types::Name& check);
-  void to_variant(const std::vector<eos::types::Field>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, std::vector<eos::types::Field>& check);
-  void to_variant(const std::map<std::string,eos::types::Struct>& c, fc::variant& v);
-  void from_variant(const fc::variant& v, std::map<std::string,eos::types::Struct>& check);
+  void to_variant(const eosio::types::name& c, fc::variant& v);
+  void from_variant(const fc::variant& v, eosio::types::name& check);
+  void to_variant(const std::vector<eosio::types::field>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, std::vector<eosio::types::field>& check);
+  void to_variant(const std::map<std::string,eosio::types::struct_t>& c, fc::variant& v);
+  void from_variant(const fc::variant& v, std::map<std::string,eosio::types::struct_t>& check);
 }
 
-FC_REFLECT(eos::types::Name, (value))
-FC_REFLECT(eos::types::Field, (name)(type))
-FC_REFLECT(eos::types::Struct, (name)(base)(fields))
+FC_REFLECT(eosio::types::name, (value))
+FC_REFLECT(eosio::types::field, (name)(type))
+FC_REFLECT(eosio::types::struct_t, (name)(base)(fields))

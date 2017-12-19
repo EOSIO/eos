@@ -1,0 +1,69 @@
+{
+    "types": [{
+        "new_type_name": "account_name",
+        "type": "name"
+        }
+    ],
+    "structs": [{
+        "name": "transfer",
+        "base": "",
+        "fields": {
+            "from": "account_name",
+            "to": "account_name",
+            "amount": "uint64"
+        } 
+    },{
+        "name": "account",
+        "base": "",
+        "fields": {
+            "account": "account_name",
+            "tokbalance": "uint64",
+            "quotausage": "uint64"
+        }
+    },{ 
+        "name": "link",
+        "base": "",
+        "fields": {
+            "owner"  : "account_name",
+            "eospath" : "string",
+            "ipfspath" : "string",
+            "size"  : "uint32",
+            "store" : "uint8",
+            "accept": "uint8",
+            "stake" : "uint64",
+            "producer": "account_name"
+        }
+    }
+  ],
+    "actions": [{
+         "action_name": "transfer",
+         "type": "transfer"
+    },{
+         "action_name": "setlink",
+         "type": "link"
+    },{
+         "action_name": "removelink",
+         "type": "string"
+    },{
+         "action_name": "acceptstore",
+         "type": "string"
+    },{
+         "action_name": "rejectstore",
+         "type": "string"
+    }
+  ],
+    "tables": [{
+         "table_name": "account",
+         "type": "account",
+         "index_type": "i64",
+         "key_names" : ["account"],
+         "key_types" : ["account_name"]
+    },{
+         "table_name": "links",
+         "type" : "link",
+         "index_type": "str",
+         "key_names" : ["eospath"]
+         "key_types" : ["string"]
+    }
+  ]
+}

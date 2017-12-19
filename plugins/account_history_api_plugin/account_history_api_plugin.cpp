@@ -1,12 +1,16 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/account_history_api_plugin/account_history_api_plugin.hpp>
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace eos {
+namespace eosio {
 
-using namespace eos;
+using namespace eosio;
 
 account_history_api_plugin::account_history_api_plugin(){}
 account_history_api_plugin::~account_history_api_plugin(){}
@@ -21,11 +25,13 @@ void account_history_api_plugin::plugin_initialize(const variables_map&) {}
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
              cb(200, fc::json::to_string(result)); \
-          } catch (fc::eof_exception) { \
-             cb(400, "Invalid arguments"); \
+          } catch (fc::eof_exception& e) { \
+             error_results results{400, "Bad Request", e.to_string()}; \
+             cb(400, fc::json::to_string(results)); \
              elog("Unable to parse arguments: ${args}", ("args", body)); \
           } catch (fc::exception& e) { \
-             cb(500, e.to_detail_string()); \
+             error_results results{500, "Internal Service Error", e.to_detail_string()}; \
+             cb(500, fc::json::to_string(results)); \
              elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
           } \
        }}

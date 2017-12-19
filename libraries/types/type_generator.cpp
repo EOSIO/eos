@@ -1,4 +1,8 @@
-#include <eos/types/TypeParser.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+#include <eos/types/type_parser.hpp>
 #include <fstream>
 #include <iomanip>
 #include <fc/io/json.hpp>
@@ -7,52 +11,52 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 using std::string;
-namespace eos { using types::SimpleSymbolTable; }
+namespace eosio { using types::simple_symbol_table; }
 
 
-bool   isVector( const string& type ) {
+bool   is_vector(const string& type) {
    return type.back() == ']';
 }
 
-string getWrenType( const string& type ) {
+string get_wren_type(const string& type) {
    FC_ASSERT( type.size() );
-   if( isVector(type) )
-      return getWrenType( type.substr( 0, type.size() - 2 ) );
-   if( type.substr(0,4) == "UInt" ) {
-      if( type == "UInt8" ) return "UInt";
-      if( type == "UInt16" ) return "UInt";
-      if( type == "UInt32" ) return "UInt";
-      if( type == "UInt64" ) return "UInt";
-      if( type == "UInt128" ) return "UInt";
-      if( type == "UInt256" ) return "UInt";
+   if(is_vector(type) )
+      return get_wren_type(type.substr(0, type.size() - 2));
+   if( type.substr(0,4) == "uint_t" ) {
+      if( type == "uint8" ) return "uint_t";
+      if( type == "uint16" ) return "uint_t";
+      if( type == "uint32" ) return "uint_t";
+      if( type == "uint64" ) return "uint_t";
+      if( type == "uint128" ) return "uint_t";
+      if( type == "uint256" ) return "uint_t";
       return type;
-   } else if ( type.substr( 0,3 ) == "Int" ) {
-      if( type == "Int8" ) return "Int";
-      if( type == "Int16" ) return "Int";
-      if( type == "Int32" ) return "Int";
-      if( type == "Int64" ) return "Int";
-      if( type == "Int128" ) return "Int";
-      if( type == "Int256" ) return "Int";
+   } else if ( type.substr( 0,3 ) == "int_t" ) {
+      if( type == "int8" ) return "int_t";
+      if( type == "int16" ) return "int_t";
+      if( type == "int32" ) return "int_t";
+      if( type == "int64" ) return "int_t";
+      if( type == "int128" ) return "int_t";
+      if( type == "int256" ) return "int_t";
    }
    return type;
 }
 
 string call_unpack( const string& field, const string& type ) {
-   auto wren_type = getWrenType(type);
-   if( wren_type == "UInt" ) {
+   auto wren_type = get_wren_type(type);
+   if( wren_type == "uint_t" ) {
       return "_" + field + ".unpack( stream, " +  type.substr(4) + " )";
    }
-   else if( wren_type == "Int" ) {
+   else if( wren_type == "int_t" ) {
       return "_" + field + ".unpack( stream, " +  type.substr(3) + " )";
    }
    return  "_" + field + ".unpack( stream )";
 }
 string call_pack( const string& field, const string& type ) {
-   auto wren_type = getWrenType(type);
-   if( wren_type == "UInt" ) {
+   auto wren_type = get_wren_type(type);
+   if( wren_type == "uint_t" ) {
       return "_" + field + ".unpack( stream, " +  type.substr(4) + " )";
    }
-   else if( wren_type == "Int" ) {
+   else if( wren_type == "int_t" ) {
       return "_" + field + ".unpack( stream, " +  type.substr(3) + " )";
    }
    return  "_" + field + ".unpack( stream )";
@@ -60,11 +64,11 @@ string call_pack( const string& field, const string& type ) {
 
 string call_type_constructor( const string& type ) {
    FC_ASSERT( type.size() );
-   if( isVector( type ) )
-      return "Vector[" + getWrenType(type) + "]";
-   return getWrenType(type) + ".new()";
+   if(is_vector(type) )
+      return "vector[" + get_wren_type(type) + "]";
+   return get_wren_type(type) + ".new()";
 }
-string generate_wren( const eos::types::Struct& s, eos::types::SimpleSymbolTable& symbols ) {
+string generate_wren( const eosio::types::struct_t& s, eosio::types::simple_symbol_table& symbols ) {
 
    std::stringstream ss;
    ss << "class " << s.name;
@@ -76,21 +80,21 @@ string generate_wren( const eos::types::Struct& s, eos::types::SimpleSymbolTable
    ss << "        super()\n";
 
    for( const auto& field : s.fields ) {
-      ss << "        _" << field.name << " = " << call_type_constructor( symbols.resolveTypedef(field.type) ) <<"\n";
+      ss << "        _" << field.name << " = " << call_type_constructor(symbols.resolve_type_def(field.type) ) <<"\n";
    }
    ss << "    }\n";
    ss << "    unpack( stream ) { \n";
    if( s.base.size() ) 
    ss << "        super.unpack( stream )\n";
    for( const auto& field : s.fields ) {
-      ss << "        " << call_unpack( field.name, symbols.resolveTypedef(field.type) ) <<"\n";
+      ss << "        " << call_unpack( field.name, symbols.resolve_type_def(field.type) ) <<"\n";
    }
    ss << "    }\n";
    ss << "    pack( stream ) { \n";
    if( s.base.size() ) 
    ss << "        super.pack( stream )\n";
    for( const auto& field : s.fields ) {
-      ss << "        " << call_pack( field.name, symbols.resolveTypedef(field.type) ) <<"\n";
+      ss << "        " << call_pack( field.name, symbols.resolve_type_def(field.type) ) <<"\n";
    }
    ss << "    }\n";
    for( const auto& field : s.fields ) {
@@ -102,17 +106,17 @@ string generate_wren( const eos::types::Struct& s, eos::types::SimpleSymbolTable
    return ss.str();
 }
 
-void generate_wren( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_wren( eosio::types::simple_symbol_table& ss, const char* outfile ) {
   //for( const auto& s : ss.order ) 
 }
 
-void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
+void generate_hpp( eosio::types::simple_symbol_table& ss, const char* outfile ) {
    struct FakeField { std::string type; std::string name; };
-   auto arrays_to_vectors = [](eos::types::Field f) {
+   auto arrays_to_vectors = [](eosio::types::field f) {
       if (boost::ends_with<std::string>(f.type, "[]")) {
          std::string type = f.type;
          type.resize(type.size() - 2);
-         return FakeField{"Vector<" + type + ">", f.name};
+         return FakeField{"vector<" + type + ">", f.name};
       }
       return FakeField{f.type, f.name};
    };
@@ -120,7 +124,7 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
    wdump((outfile));
    std::ofstream out(outfile);
    out << "#pragma once\n";
-   out << "namespace eos { namespace types {\n";
+   out << "namespace eosio { namespace types {\n";
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
          const auto& td = ss.typedefs[s];
@@ -158,9 +162,9 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
       }
       out << "    };\n\n";
 
-      out << "    template<> struct GetStruct<"<< s <<"> { \n";
-      out << "        static const Struct& type() { \n";
-      out << "           static Struct result = { \"" << s << "\", \"" << st.base <<"\", {\n";
+      out << "    template<> struct get_struct<"<< s <<"> { \n";
+      out << "        static const struct_t& type() { \n";
+      out << "           static struct_t result = { \"" << s << "\", \"" << st.base <<"\", {\n";
       for( const auto& f : st.fields ) {
       out << "                {\"" << f.name <<"\", \"" << f.type <<"\"},\n";               
       }
@@ -172,7 +176,7 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
    }
 
 
-   out << "}} // namespace eos::types\n";
+   out << "}} // namespace eosio::types\n";
 
    for( const auto& s : ss.order ) {
       if( ss.typedefs.find( s ) != ss.typedefs.end() ) {
@@ -181,9 +185,9 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
 
       const auto& st = ss.structs[s];
       if( st.base.size() ) {
-        out << "FC_REFLECT_DERIVED( eos::types::" << s << ", (eos::types::" << st.base <<"), ";
+        out << "FC_REFLECT_DERIVED( eosio::types::" << s << ", (eosio::types::" << st.base <<"), ";
       } else  {
-        out << "FC_REFLECT( eos::types::" <<  std::setw(33) << s << ", ";
+        out << "FC_REFLECT( eosio::types::" <<  std::setw(33) << s << ", ";
       }
       for( const auto& f : st.fields ) {
          out <<"("<<f.name<<")";
@@ -193,9 +197,9 @@ void generate_hpp( eos::types::SimpleSymbolTable& ss, const char* outfile ) {
 
 }
 
-int  count_fields( eos::types::SimpleSymbolTable& ss, const eos::types::Struct& st ) {
+int  count_fields( eosio::types::simple_symbol_table& ss, const eosio::types::struct_t& st ) {
    if( st.base.size() )
-      return st.fields.size() + count_fields( ss, ss.getType( st.base ) );
+      return st.fields.size() + count_fields( ss, ss.get_type(st.base) );
    return st.fields.size();
 }
 
@@ -204,7 +208,7 @@ int main( int argc, char** argv ) {
      FC_ASSERT( argc > 2, "Usage: ${program} input path/to/out.hpp", ("program",string(argv[0]))  );
      std::ifstream in(argv[1]);
 
-     eos::types::SimpleSymbolTable ss;
+     eosio::types::simple_symbol_table ss;
      ss.parse(in);
 
      auto as_json = fc::json::to_pretty_string( ss );
@@ -214,13 +218,13 @@ int main( int argc, char** argv ) {
      /*
      generate_cpp( ss, argv[2], argv[3] );
 
-     auto w = generate_wren( ss.getType( "Message" ), ss );
+     auto w = generate_wren( ss.getType( "message" ), ss );
      std::cerr << w <<"\n";
      w = generate_wren( ss.getType( "Transfer" ), ss );
      std::cerr << w <<"\n";
      w = generate_wren( ss.getType( "BlockHeader" ), ss );
      std::cerr << w <<"\n";
-     w = generate_wren( ss.getType( "Block" ), ss );
+     w = generate_wren( ss.get_type( "Block" ), ss );
      std::cerr << w <<"\n";
      */
 

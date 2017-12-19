@@ -1,8 +1,9 @@
 var searchData=
 [
-  ['database_20api',['Database API',['../group__database.html',1,'']]],
-  ['database_20c_20api',['Database C API',['../group__database_c.html',1,'']]],
-  ['database_20c_2b_2b_20api',['Database C++ API',['../group__database_cpp.html',1,'']]],
-  ['dual_20128_20bit_20index_20table',['Dual 128 bit Index Table',['../group__dbi128i128.html',1,'']]],
-  ['dual_20index_20table',['Dual Index Table',['../group__dual_index_table.html',1,'']]]
+  ['chain_20api',['Chain API',['../group__chainapi.html',1,'']]],
+  ['chain_20c_20api',['Chain C API',['../group__chaincapi.html',1,'']]],
+  ['console_20api',['Console API',['../group__consoleapi.html',1,'']]],
+  ['console_20c_20api',['Console C API',['../group__consolecapi.html',1,'']]],
+  ['console_20c_2b_2b_20api',['Console C++ API',['../group__console_cppapi.html',1,'']]],
+  ['currency_20contract',['Currency Contract',['../group__currencyapi.html',1,'']]]
 ];

@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['quantity',['quantity',['../struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html#a2892db9fb7756afd55846ef6979406e4',1,'TOKEN_NAME::Transfer::quantity()'],['../structeos_1_1token.html#a3daddb64094c45d8f51897aabd44ba3d',1,'eos::token::quantity()'],['../structeos_1_1_transfer.html#a7def55a64767b812debfa5fa0407b1ab',1,'eos::Transfer::quantity()'],['../structinfinite_1_1_transfer.html#a7bb1f54a3a58f42f067d9a020c900ddf',1,'infinite::Transfer::quantity()']]],
-  ['quote_5ftoken_5ftype',['quote_token_type',['../structeos_1_1price.html#a60368826b12afaaf30f7690c32ee2e39',1,'eos::price']]]
+  ['quantity',['quantity',['../group__currencyapi.html#ga637bc5a749449e7f478f6620160f4795',1,'TOKEN_NAME::transfer::quantity()'],['../structeosio_1_1token.html#a9849d728bf72ca934962865f0d9881d2',1,'eosio::token::quantity()'],['../structeosio_1_1transfer.html#a1049a343ae45a293835b07b76a44c208',1,'eosio::transfer::quantity()'],['../structexchange_1_1bid.html#a4c1368e393fb3ac999ca3b22c0224eff',1,'exchange::bid::quantity()'],['../structexchange_1_1ask.html#a4008c5e71dc9b48e0e0198af75e45e1c',1,'exchange::ask::quantity()'],['../structinfinite_1_1transfer.html#a2b72eb47bcc8f3221dd5a622c0169e63',1,'infinite::transfer::quantity()'],['../group__storageapi.html#gaa19dbd7b8beace25c91d274519166a37',1,'TOKEN_NAME::transfer::quantity()']]],
+  ['quotaused',['quotaused',['../group__storageapi.html#gaa97baa09a2c424509ff42822ec0c50b6',1,'TOKEN_NAME::account']]],
+  ['quote',['quote',['../structprice.html#ad266b6515f7c10c3bf8ad1f17261163c',1,'price']]],
+  ['quote_5ftoken_5ftype',['quote_token_type',['../structeosio_1_1price.html#aef7d0e4f45187d59ebc40b0d91a1d358',1,'eosio::price']]]
 ];

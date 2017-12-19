@@ -1,12 +1,6 @@
 var searchData=
 [
-  ['table',['table',['../struct_test_model3xi64.html#a7ec8a7efd660e872ec1007b70f34ee9f',1,'TestModel3xi64']]],
-  ['table_5fname',['table_name',['../struct_test_model128x2.html#a4b04b40b8a51cb9eddc260f644aafcd3',1,'TestModel128x2']]],
-  ['tertiary',['tertiary',['../test__db_8cpp.html#a632e136a0d941bad1256d19a04735542',1,'test_db.cpp']]],
-  ['tertiary_5flb',['tertiary_lb',['../test__db_8cpp.html#adeac5d6dbb5474a829a158cc7739bd7b',1,'test_db.cpp']]],
-  ['tertiary_5fub',['tertiary_ub',['../test__db_8cpp.html#a2daa1f65ef31c27b1f5a71a5f7cf030b',1,'test_db.cpp']]],
-  ['test2',['test2',['../test__crypto_8cpp.html#a5c0b0a4d5ca0593870b708343c3eb6c9',1,'test_crypto.cpp']]],
-  ['test2_5fok',['test2_ok',['../test__crypto_8cpp.html#a6a58953140719f1c7c3f0636d0a5f4b8',1,'test_crypto.cpp']]],
-  ['to',['to',['../struct_t_o_k_e_n___n_a_m_e_1_1_transfer.html#a75350616e02bd681c0e8b12ca4cf7a38',1,'TOKEN_NAME::Transfer::to()'],['../structeos_1_1_transfer.html#a034713fef29af790067be03d2f12d39b',1,'eos::Transfer::to()'],['../structinfinite_1_1_transfer.html#a51fc76c45adc5b7e002593649529c218',1,'infinite::Transfer::to()']]],
-  ['total_5fvotes',['total_votes',['../struct_post_record.html#aca901b24573f6a0bf3e1058b197b6174',1,'PostRecord']]]
+  ['quantity',['quantity',['../group__currencyapi.html#ga637bc5a749449e7f478f6620160f4795',1,'TOKEN_NAME::transfer::quantity()'],['../structeosio_1_1token.html#a9849d728bf72ca934962865f0d9881d2',1,'eosio::token::quantity()'],['../structeosio_1_1transfer.html#a1049a343ae45a293835b07b76a44c208',1,'eosio::transfer::quantity()'],['../structexchange_1_1bid.html#a4c1368e393fb3ac999ca3b22c0224eff',1,'exchange::bid::quantity()'],['../structexchange_1_1ask.html#a4008c5e71dc9b48e0e0198af75e45e1c',1,'exchange::ask::quantity()'],['../structinfinite_1_1transfer.html#a2b72eb47bcc8f3221dd5a622c0169e63',1,'infinite::transfer::quantity()'],['../group__storageapi.html#gaa19dbd7b8beace25c91d274519166a37',1,'TOKEN_NAME::transfer::quantity()']]],
+  ['quotaused',['quotaused',['../group__storageapi.html#gaa97baa09a2c424509ff42822ec0c50b6',1,'TOKEN_NAME::account']]],
+  ['quote',['quote',['../structprice.html#ad266b6515f7c10c3bf8ad1f17261163c',1,'price']]]
 ];

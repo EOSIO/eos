@@ -1,0 +1,109 @@
+{
+  "types": [],
+  "structs": [
+    {
+      "name": "table1",
+      "fields": {
+        "key1": "uint64",
+        "value1": "uint128",
+        "value2": "int64"
+      }
+    },
+    {
+      "name": "table2",
+      "fields": {
+        "key1": "uint128",
+        "key2": "uint128",
+        "value1": "uint64",
+        "value2": "int64"
+      }
+    },
+    {
+      "name": "table3",
+      "fields": {
+        "key1": "uint64",
+        "key2": "uint64",
+        "key3": "uint64",
+        "value1": "uint128",
+        "value2": "int64"
+      }
+    },
+    {
+      "name": "strkey",
+      "fields": {
+        "key": "string",
+        "value": "string"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "action_name": "storei",
+      "type": "table1"
+    },
+    {
+      "action_name": "storestr",
+      "type": "strkey"
+    },
+    {
+      "action_name": "storeii",
+      "type": "table2"
+    },
+    {
+      "action_name": "storeiii",
+      "type": "table3"
+    }
+  ],
+  "tables": [
+    {
+      "table_name": "table1",
+      "type": "table1",
+      "index_type": "i64",
+      "key_names": [
+        "key1"
+      ],
+      "key_types": [
+        "uint64"
+      ]
+    },
+    {
+      "table_name": "table2",
+      "type": "table2",
+      "index_type": "i128i128",
+      "key_names": [
+        "key1",
+        "key2"
+      ],
+      "key_types": [
+        "uint128",
+        "uint128"
+      ]
+    },
+    {
+      "table_name": "table3",
+      "type": "table3",
+      "index_type": "i64i64i64",
+      "key_names": [
+        "key1",
+        "key2",
+        "key3"
+      ],
+      "key_types": [
+        "uint64",
+        "int64",
+        "uint64"
+      ]
+    },
+    {
+      "table_name": "strkey",
+      "type": "strkey",
+      "index_type": "str",
+      "key_names": [
+        "key"
+      ],
+      "key_types": [
+        "string"
+      ]
+    }
+  ]
+}

@@ -52,6 +52,7 @@ namespace fc
             console_appender();
 
             ~console_appender();
+            void initialize( boost::asio::io_service& io_service ) {}
             virtual void log( const log_message& m );
             
             void print( const std::string& text_to_print, 

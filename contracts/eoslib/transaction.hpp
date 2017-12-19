@@ -1,131 +1,144 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eoslib/transaction.h>
 #include <eoslib/print.hpp>
 
-namespace eos {
+namespace eosio {
 
    /**
     * @defgroup transactioncppapi Transaction C++ API
     * @ingroup transactionapi
-    * @brief Type-safe C++ wrapers for Transaction C API
+    * @brief Type-safe C++ wrappers for transaction C API
     *
     * @note There are some methods from the @ref transactioncapi that can be used directly from C++
     *
     * @{ 
     */
+   
+   class transaction;
 
-   class Transaction;
-   class Message {
+   /**
+    * @brief Message
+    * 
+    */
+   class message {
    public:
       template<typename Payload, typename ...Permissions>
-      Message(const AccountName& code, const FuncName& type, const Payload& payload, Permissions... permissions ) 
-         : handle(messageCreate(code, type, &payload, sizeof(Payload)))
+      message(const account_name& code, const func_name& type, const Payload& payload, Permissions... permissions )
+         : handle(message_create(code, type, &payload, sizeof(Payload)))
       {
-         addPermissions(permissions...);
+         add_permissions(permissions...);
       }
 
       template<typename Payload>
-      Message(const AccountName& code, const FuncName& type, const Payload& payload ) 
-         : handle(messageCreate(code, type, &payload, sizeof(Payload)))
+      message(const account_name& code, const func_name& type, const Payload& payload )
+         : handle(message_create(code, type, &payload, sizeof(Payload)))
       {
       }
 
-      Message(const AccountName& code, const FuncName& type) 
-         : handle(messageCreate(code, type, nullptr, 0))
+      message(const account_name& code, const func_name& type)
+         : handle(message_create(code, type, nullptr, 0))
       {
       }
 
-      // no copy construtor due to opaque handle
-      Message( const Message& ) = delete;
+      // no copy constructor due to opaque handle
+      message( const message& ) = delete;
 
-      Message( Message&& msg ) {
+      message( message&& msg ) {
          handle = msg.handle;
-         msg.handle = InvalidMessageHandle;
+         msg.handle = invalid_message_handle;
       }
 
-      ~Message() {
-         if (handle != InvalidMessageHandle) {
-            messageDrop(handle);
-            handle = InvalidMessageHandle;
+      ~message() {
+         if (handle != invalid_message_handle) {
+            message_drop(handle);
+            handle = invalid_message_handle;
          }
       }
 
-      void addPermissions(AccountName account, PermissionName permission) {
-         messageRequirePermission(handle, account, permission);
+      void add_permissions(account_name account, permission_name permission) {
+         message_require_permission(handle, account, permission);
       }
 
       template<typename ...Permissions>
-      void addPermissions(AccountName account, PermissionName permission, Permissions... permissions) {
-         addPermissions(account, permission);
-         addPermissions(permissions...);
+      void add_permissions(account_name account, permission_name permission, Permissions... permissions) {
+         add_permissions(account, permission);
+         add_permissions(permissions...);
       }
 
       void send() {
-         assertValidHandle();
-         messageSend(handle);
-         handle = InvalidMessageHandle;
+         assert_valid_handle();
+         message_send(handle);
+         handle = invalid_message_handle;
       }
 
    private:
-      void assertValidHandle() {
-         assert(handle != InvalidMessageHandle, "attempting to send or modify a finalized message" );
+      void assert_valid_handle() {
+         assert(handle != invalid_message_handle, "attempting to send or modify a finalized message" );
       }
 
-      MessageHandle handle;
+      message_handle handle;
 
-      friend class Transaction;
+      friend class transaction;
 
    };
 
-   class Transaction {
+    /**
+    * @brief Transaction, which contains one or multiple messages
+    * 
+    */
+   class transaction {
    public:
-      Transaction() 
-         : handle(transactionCreate())
+      transaction()
+         : handle(transaction_create())
       {}
 
-      // no copy construtor due to opaque handle
-      Transaction( const Transaction& ) = delete;
+      // no copy constructor due to opaque handle
+      transaction( const transaction& ) = delete;
 
-      Transaction( Transaction&& trx ) {
+      transaction( transaction&& trx ) {
          handle = trx.handle;
-         trx.handle = InvalidTransactionHandle;
+         trx.handle = invalid_transaction_handle;
       }
 
-      ~Transaction() {
-         if (handle != InvalidTransactionHandle) {
-            transactionDrop(handle);
-            handle = InvalidTransactionHandle;
+      ~transaction() {
+         if (handle != invalid_transaction_handle) {
+            transaction_drop(handle);
+            handle = invalid_transaction_handle;
          }
       }
 
-      void addScope(AccountName scope, bool readOnly = false) {
-         assertValidHandle();
-         transactionRequireScope(handle, scope, readOnly ? 1 : 0);
+      void add_scope(account_name scope, bool readOnly = false) {
+         assert_valid_handle();
+         transaction_require_scope(handle, scope, readOnly ? 1 : 0);
       }
 
-      void addMessage(Message &message) {
-         assertValidHandle();
-         message.assertValidHandle();
-         transactionAddMessage(handle, message.handle);
-         message.handle = InvalidMessageHandle;
+      void add_message(message &msg) {
+         assert_valid_handle();
+         msg.assert_valid_handle();
+         transaction_add_message(handle, msg.handle);
+         msg.handle = invalid_message_handle;
       }
 
       void send() {
-         assertValidHandle();
-         transactionSend(handle);
-         handle = InvalidTransactionHandle;
+         assert_valid_handle();
+         transaction_send(handle);
+         handle = invalid_transaction_handle;
       }
 
-      TransactionHandle get() {
+      transaction_handle get() {
          return handle;
       }
 
    private:
-      void assertValidHandle() {
-         assert(handle != InvalidTransactionHandle, "attempting to send or modify a finalized transaction" );
+      void assert_valid_handle() {
+         assert(handle != invalid_transaction_handle, "attempting to send or modify a finalized transaction" );
       }
 
-      TransactionHandle handle;
+      transaction_handle handle;
    };
 
 

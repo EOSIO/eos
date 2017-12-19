@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 #include <eos/chain/global_property_object.hpp>
@@ -44,9 +25,10 @@
 
 #include <map>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
+   using applied_irreverisable_block_func = fc::optional<signal<void(const signed_block&)>::slot_type>;
    struct path_cons_list;
 
    /**
@@ -55,9 +37,19 @@ namespace eos { namespace chain {
     */
    class chain_controller {
       public:
+         struct txn_msg_limits;
+
          chain_controller(database& database, fork_database& fork_db, block_log& blocklog,
-                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin);
-         chain_controller(chain_controller&&) = default;
+                          chain_initializer_interface& starter, unique_ptr<chain_administration_interface> admin,
+                          uint32_t block_interval_seconds,
+                          uint32_t txn_execution_time, uint32_t rcvd_block_txn_execution_time,
+                          uint32_t create_block_txn_execution_time,
+                          const txn_msg_limits& rate_limit,
+                          const applied_irreverisable_block_func& applied_func = {});
+         chain_controller(const chain_controller&) = delete;
+         chain_controller(chain_controller&&) = delete;
+         chain_controller& operator=(const chain_controller&) = delete;
+         chain_controller& operator=(chain_controller&&) = delete;
          ~chain_controller();
 
          /**
@@ -71,10 +63,19 @@ namespace eos { namespace chain {
          signal<void(const signed_block&)> applied_block;
 
          /**
+          *  This signal is emitted after irreversible block is written to disk.
+          *
+          *  You may not yield from this callback because the blockchain is holding
+          *  the write lock and may be in an "inconstant state" until after it is
+          *  released.
+          */
+         signal<void(const signed_block&)> applied_irreversible_block;
+
+         /**
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         signal<void(const SignedTransaction&)> on_pending_transaction;
+         signal<void(const signed_transaction&)> on_pending_transaction;
 
          /**
           * @brief Check whether the controller is currently applying a block or not
@@ -86,7 +87,7 @@ namespace eos { namespace chain {
           *  The controller can override any script endpoint with native code.
           */
          ///@{
-         void set_apply_handler( const AccountName& contract, const AccountName& scope, const ActionName& action, apply_handler v );
+         void set_apply_handler( const account_name& contract, const account_name& scope, const action_name& action, apply_handler v );
          //@}
 
          enum validation_steps
@@ -105,7 +106,10 @@ namespace eos { namespace chain {
             skip_producer_schedule_check= 1 << 10, ///< used while reindexing
             skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
             skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
-            skip_output_check           = 1 << 13  ///< used to skip checks for outputs in block exactly matching those created from apply
+            skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
+            pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
+            created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
+            received_block              = 1 << 16  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
          };
 
          /**
@@ -117,28 +121,27 @@ namespace eos { namespace chain {
          block_id_type               get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>      fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>      fetch_block_by_number( uint32_t num )const;
-         const SignedTransaction&    get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type>  get_block_ids_on_fork(block_id_type head_of_fork)const;
-         const GeneratedTransaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
+         const generated_transaction& get_generated_transaction( const generated_transaction_id_type& id ) const;
 
 
          /**
           *  This method will convert a variant to a SignedTransaction using a contract's ABI to
           *  interpret the message types.
           */
-         ProcessedTransaction transaction_from_variant( const fc::variant& v )const;
+         processed_transaction transaction_from_variant( const fc::variant& v )const;
 
          /**
           * This method will convert a signed transaction into a human-friendly variant that can be
-          * converted to JSON.  
+          * converted to JSON.
           */
-         fc::variant       transaction_to_variant( const ProcessedTransaction& trx )const;
+         fc::variant       transaction_to_variant( const processed_transaction& trx )const;
 
          /**
           *  Usees the ABI for code::type to convert a JSON object (variant) into hex
           */
-         vector<char>       message_to_binary( Name code, Name type, const fc::variant& obj )const;
-         fc::variant        message_from_binary( Name code, Name type, const vector<char>& bin )const;
+         vector<char>       message_to_binary( name code, name type, const fc::variant& obj )const;
+         fc::variant        message_from_binary( name code, name type, const vector<char>& bin )const;
 
 
          /**
@@ -154,8 +157,8 @@ namespace eos { namespace chain {
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
 
 
-         ProcessedTransaction push_transaction( const SignedTransaction& trx, uint32_t skip = skip_nothing );
-         ProcessedTransaction _push_transaction( const SignedTransaction& trx );
+         processed_transaction push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         processed_transaction _push_transaction( const signed_transaction& trx );
 
          /**
           * Determine which public keys are needed to sign the given transaction.
@@ -164,28 +167,28 @@ namespace eos { namespace chain {
           * @return Subset of candidateKeys whose private keys should be used to sign transaction
           * @throws fc::exception if candidateKeys does not contain all required keys
           */
-         flat_set<public_key_type> get_required_keys(const SignedTransaction& trx, const flat_set<public_key_type>& candidateKeys)const;
+         flat_set<public_key_type> get_required_keys(const signed_transaction& trx, const flat_set<public_key_type>& candidateKeys)const;
 
 
          bool _push_block( const signed_block& b );
 
          signed_block generate_block(
             fc::time_point_sec when,
-            const AccountName& producer,
+            const account_name& producer,
             const fc::ecc::private_key& block_signing_private_key,
             block_schedule::factory scheduler = block_schedule::in_single_thread,
             uint32_t skip = skip_nothing
             );
          signed_block _generate_block(
             fc::time_point_sec when,
-            const AccountName& producer,
+            const account_name& producer,
             const fc::ecc::private_key& block_signing_private_key,
             block_schedule::factory scheduler
             );
 
 
          template<typename Function>
-         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto with_skip_flags( uint64_t flags, Function&& f ) -> decltype((*((Function*)nullptr))())
          {
             auto old_flags = _skip_flags;
             auto on_exit   = fc::make_scoped_exit( [&](){ _skip_flags = old_flags; } );
@@ -194,11 +197,11 @@ namespace eos { namespace chain {
          }
 
          template<typename Function>
-         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))()) 
+         auto without_pending_transactions( Function&& f ) -> decltype((*((Function*)nullptr))())
          {
             auto old_pending = std::move( _pending_transactions );
             _pending_tx_session.reset();
-            auto on_exit = fc::make_scoped_exit( [&](){ 
+            auto on_exit = fc::make_scoped_exit( [&](){
                for( const auto& t : old_pending ) {
                   try {
                      if (!is_known_transaction(t.id()))
@@ -226,7 +229,7 @@ namespace eos { namespace chain {
           *
           * Passing slot_num == 0 returns EOS_NULL_PRODUCER
           */
-         AccountName get_scheduled_producer(uint32_t slot_num)const;
+         account_name get_scheduled_producer(uint32_t slot_num)const;
 
          /**
           * Get the time at which the given slot occurs.
@@ -250,25 +253,61 @@ namespace eos { namespace chain {
 
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
-         const producer_object&                 get_producer(const AccountName& ownerName)const;
+         const producer_object&                 get_producer(const account_name& ownerName)const;
 
          time_point_sec   head_block_time()const;
          uint32_t         head_block_num()const;
          block_id_type    head_block_id()const;
-         AccountName      head_block_producer()const;
+         account_name     head_block_producer()const;
 
-         uint32_t block_interval()const { return config::BlockIntervalSeconds; }
+         uint32_t block_interval()const { return _block_interval_seconds; }
 
          uint32_t last_irreversible_block_num() const;
 
  //  protected:
          const chainbase::database& get_database() const { return _db; }
          chainbase::database& get_mutable_database() { return _db; }
-         
-         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
+
+         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);                     }
+         bool is_producing()const                            { return _skip_flags & (received_block | pushed_transaction); }
 
 
-         const deque<SignedTransaction>&  pending()const { return _pending_transactions; }
+         const deque<signed_transaction>&  pending()const { return _pending_transactions; }
+
+         /**
+          * Enum to indicate what type of rate limiting is being performed.
+          */
+         enum rate_limit_type
+         {
+            authorization_account,
+            code_account
+         };
+
+         /**
+          * Determine what the current message rate is.
+          * @param now                       The current block time seconds
+          * @param last_update_sec           The block time at the last update of the message rate
+          * @param rate_limit_time_frame_sec The time frame, in seconds, that the rate limit is over
+          * @param rate_limit                The rate that is not allowed to be exceeded
+          * @param previous_rate             The rate at the last_update_sec
+          * @param type                      The type of the rate limit
+          * @param name                      The account name associated with this rate (for logging errors)
+          * @return the calculated rate at this time
+          * @throws tx_msgs_auth_exceeded if current message rate exceeds the passed in rate_limit, and type is authorization_account
+          * @throws tx_msgs_code_exceeded if current message rate exceeds the passed in rate_limit, and type is code_account
+          */
+         static uint32_t _transaction_message_rate(const fc::time_point_sec& now, const fc::time_point_sec& last_update_sec, const fc::time_point_sec& rate_limit_time_frame_sec,
+                                                   uint32_t rate_limit, uint32_t previous_rate, rate_limit_type type, const account_name& name);
+
+         struct txn_msg_limits {
+            fc::time_point_sec per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_auth_account_rate_time_frame_seconds);
+            uint32_t per_auth_account_txn_msg_rate = config::default_per_auth_account_rate;
+            fc::time_point_sec per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(config::default_per_code_account_rate_time_frame_seconds);
+            uint32_t per_code_account_txn_msg_rate = config::default_per_code_account_rate;
+            uint32_t pending_txn_depth_limit = config::default_pending_txn_depth_limit;
+            fc::microseconds gen_block_time_limit = config::default_gen_block_time_limit;
+         };
+
    private:
 
          /// Reset the object graph in-memory
@@ -289,18 +328,18 @@ namespace eos { namespace chain {
             return f();
          }
 
-         void check_transaction_authorization(const SignedTransaction& trx, bool allow_unused_signatures = false)const;
+         void check_transaction_authorization(const signed_transaction& trx, bool allow_unused_signatures = false)const;
 
          template<typename T>
          void check_transaction_output(const T& expected, const T& actual, const path_cons_list& path)const;
 
          template<typename T>
-         typename T::Processed apply_transaction(const T& trx);
-         
-         template<typename T>
-         typename T::Processed process_transaction(const T& trx, int depth, const fc::time_point& start_time);
+         typename T::processed apply_transaction(const T& trx);
 
-         void require_account(const AccountName& name) const;
+         template<typename T>
+         typename T::processed process_transaction(const T& trx, int depth, const fc::time_point& start_time);
+
+         void require_account(const account_name& name) const;
 
          /**
           * This method performs some consistency checks on a transaction.
@@ -317,17 +356,17 @@ namespace eos { namespace chain {
             validate_tapos(trx);
 
          } FC_CAPTURE_AND_RETHROW( (trx) ) }
-         
-         /// Validate transaction helpers @{
-         void validate_uniqueness(const SignedTransaction& trx)const;
-         void validate_uniqueness(const GeneratedTransaction& trx)const;
-         void validate_tapos(const Transaction& trx)const;
-         void validate_referenced_accounts(const Transaction& trx)const;
-         void validate_expiration(const Transaction& trx) const;
-         void validate_scope(const Transaction& trx) const;
 
-         void record_transaction(const SignedTransaction& trx);
-         void record_transaction(const GeneratedTransaction& trx);         
+         /// Validate transaction helpers @{
+         void validate_uniqueness(const signed_transaction& trx)const;
+         void validate_uniqueness(const generated_transaction& trx)const;
+         void validate_tapos(const transaction& trx)const;
+         void validate_referenced_accounts(const transaction& trx)const;
+         void validate_expiration(const transaction& trx) const;
+         void validate_scope(const transaction& trx) const;
+
+         void record_transaction(const signed_transaction& trx);
+         void record_transaction(const generated_transaction& trx);
          /// @}
 
          /**
@@ -338,12 +377,21 @@ namespace eos { namespace chain {
           * @param type The type of message
           * @return
           */
-         const permission_object& lookup_minimum_permission(types::AccountName authorizer_account,
-                                                            types::AccountName code_account,
-                                                            types::FuncName type) const;
+         const permission_object& lookup_minimum_permission(types::account_name authorizer_account,
+                                                            types::account_name code_account,
+                                                            types::func_name type) const;
 
-         void process_message(const Transaction& trx, AccountName code, const Message& message,
-                              MessageOutput& output, apply_context* parent_context = nullptr);
+         /**
+          * Calculate all rates associated with the given message and enforce rate limiting.
+          * @param message  The message to calculate
+          * @throws tx_msgs_auth_exceeded if any of the calculated message rates exceed the configured authorization account rate limit
+          * @throws tx_msgs_code_exceeded if the calculated message rate exceed the configured code account rate limit
+          */
+         void rate_limit_message(const message& message);
+
+         void process_message(const transaction& trx, account_name code, const message& message,
+                              message_output& output, apply_context* parent_context = nullptr,
+                              int depth = 0, const fc::time_point& start_time = fc::time_point::now());
          void apply_message(apply_context& c);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
@@ -365,7 +413,7 @@ namespace eos { namespace chain {
          void spinup_db();
          void spinup_fork_db();
 
-         ProducerRound calculate_next_round(const signed_block& next_block);
+         producer_round calculate_next_round(const signed_block& next_block);
 
          database&                        _db;
          fork_database&                   _fork_db;
@@ -374,16 +422,28 @@ namespace eos { namespace chain {
          unique_ptr<chain_administration_interface> _admin;
 
          optional<database::session>      _pending_tx_session;
-         deque<SignedTransaction>         _pending_transactions;
+         deque<signed_transaction>         _pending_transactions;
 
          bool                             _currently_applying_block = false;
+         bool                             _currently_replaying_blocks = false;
          uint64_t                         _skip_flags = 0;
+
+         const uint32_t                   _block_interval_seconds;
+         const uint32_t                   _txn_execution_time;
+         const uint32_t                   _rcvd_block_txn_execution_time;
+         const uint32_t                   _create_block_txn_execution_time;
+         const fc::time_point_sec         _per_auth_account_txn_msg_rate_limit_time_frame_sec;
+         const uint32_t                   _per_auth_account_txn_msg_rate_limit;
+         const fc::time_point_sec         _per_code_account_txn_msg_rate_limit_time_frame_sec;
+         const uint32_t                   _per_code_account_txn_msg_rate_limit;
+         const uint32_t                   _pending_txn_depth_limit;
+         const fc::microseconds           _gen_block_time_limit;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
 
-         typedef pair<AccountName,types::Name> handler_key;
+         typedef pair<account_name,types::name> handler_key;
 
-         map< AccountName, map<handler_key, apply_handler> >                   apply_handlers;
+         map< account_name, map<handler_key, apply_handler> >                   apply_handlers;
    };
 
 } }

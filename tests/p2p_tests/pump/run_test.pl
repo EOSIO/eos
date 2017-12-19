@@ -42,11 +42,11 @@ if (!GetOptions("nodes=i" => \$nodes,
     print "where:\n";
     print "--nodes=n (default = 1) sets the number of eosd instances to launch\n";
     print "--pnodes=n (default = 1) sets the number nodes that will also be producers\n";
-    print "--topo=s (default = ring) sets the network topology to eithar a ring shape or a star shape\n";
+    print "--topo=s (default = ring) sets the network topology to either a ring shape or a star shape\n";
     print "--first-pause=n (default = 0) sets the seconds delay after starting the first instance\n";
     print "--launch-pause=n (default = 0) sets the seconds delay after starting subsequent nodes\n";
     print "--duration=n (default = 60) sets the seconds delay after starting the last node before shutting down the test\n";
-    print "--time-stamp=s (defsult \"\") sets the timestsmp in UTC for the genesis block. use \"now\" to mean the current time.\n";
+    print "--time-stamp=s (default \"\") sets the timestamp in UTC for the genesis block. use \"now\" to mean the current time.\n";
     print "\nproducer count currently fixed at $prods\n";
     exit
 }
@@ -102,11 +102,11 @@ sub write_config {
     print $cfg "readonly = 0\n";
     print $cfg "shared-file-dir = blockchain\n";
     print $cfg "shared-file-size = 64\n";
-    print $cfg "http-server-endpoint = 127.0.0.1:$http_port[$i]\n";
-    print $cfg "listen-endpoint = 0.0.0.0:$p2p_port[$i]\n";
-    print $cfg "public-endpoint = $hostname:$p2p_port[$i]\n";
+    print $cfg "http-server-address = 127.0.0.1:$http_port[$i]\n";
+    print $cfg "p2p-listen-endpoint = 0.0.0.0:$p2p_port[$i]\n";
+    print $cfg "p2p-server-address = $hostname:$p2p_port[$i]\n";
     foreach my $peer (@peers) {
-        print $cfg "remote-endpoint = $peer\n";
+        print $cfg "p2p-peer-address = $peer\n";
     }
 
     if (defined $producer) {
@@ -114,8 +114,8 @@ sub write_config {
         print $cfg "required-participation = true\n";
         print $cfg "private-key = [\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]\n";
 
-        print $cfg "plugin = eos::producer_plugin\n";
-        print $cfg "plugin = eos::chain_api_plugin\n";
+        print $cfg "plugin = eosio::producer_plugin\n";
+        print $cfg "plugin = eosio::chain_api_plugin\n";
 
         my $prod_ndx = ord('a') + $producer;
         my $num_prod = $pcount[$producer];

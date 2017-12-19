@@ -1,8 +1,12 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <eoslib/message.h>
 #include <eoslib/print.hpp>
 
-namespace eos {
+namespace eosio {
 
    /**
     * @defgroup messagecppapi Message C++ API
@@ -28,19 +32,19 @@ namespace eos {
     *    unsigned long long b; //8
     *    int  c; //4
     *  };
-    *  dummy_message msg = currentMessage<dummy_message>();
+    *  dummy_message msg = current_message<dummy_message>();
     *  @endcode
     */
    template<typename T>
-   T currentMessage() {
+   T current_message() {
       T value;
-      auto read = readMessage( &value, sizeof(value) );
+      auto read = read_message( &value, sizeof(value) );
       assert( read >= sizeof(value), "message shorter than expected" );
       return value;
    }
 
-   using ::requireAuth;
-   using ::requireNotice;
+   using ::require_auth;
+   using ::require_notice;
 
    /**
     *  All of the listed accounts will be added to the set of accounts to be notified
@@ -54,13 +58,13 @@ namespace eos {
     *
     *  Example:
     *  @code
-    *  requireNotice(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
+    *  require_notice(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
     *  @endcode
     */
    template<typename... Accounts>
-   void requireNotice( AccountName name, Accounts... accounts ){
-      requireNotice( name );
-      requireNotice( accounts... );
+   void require_notice( account_name name, Accounts... remaining_accounts ){
+      require_notice( name );
+      require_notice( remaining_accounts... );
    }
 
 

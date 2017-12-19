@@ -20,8 +20,10 @@
 <table cellspacing="0" cellpadding="0">
  <tbody>
  <tr style="height: 56px;">
+  <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
+   &#160;<span id="projectnumber">DAWN2.0.1</span>
    </div>
   </td>
  </tr>
@@ -68,35 +70,31 @@ $(function() {
 <div class="title">message.h File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="types_8h_source.html">eoslib/types.h</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="system_8h_source.html">eoslib/system.h</a>&gt;</code><br />
 </div>
 <p><a href="message_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ga95a7d555722669cdeb72d6d6d1236893"><td class="memItemLeft" align="right" valign="top"><a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#ga95a7d555722669cdeb72d6d6d1236893">readMessage</a> (void *msg, <a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="memdesc:ga95a7d555722669cdeb72d6d6d1236893"><td class="mdescLeft">&#160;</td><td class="mdescRight">Copy current message to the specified location.  <a href="group__messagecapi.html#ga95a7d555722669cdeb72d6d6d1236893">More...</a><br /></td></tr>
-<tr class="separator:ga95a7d555722669cdeb72d6d6d1236893"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaa4e5f3cd4b54bccaa36e755caecda727"><td class="memItemLeft" align="right" valign="top"><a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#gaa4e5f3cd4b54bccaa36e755caecda727">messageSize</a> ()</td></tr>
-<tr class="memdesc:gaa4e5f3cd4b54bccaa36e755caecda727"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the length of current message's data field.  <a href="group__messagecapi.html#gaa4e5f3cd4b54bccaa36e755caecda727">More...</a><br /></td></tr>
-<tr class="separator:gaa4e5f3cd4b54bccaa36e755caecda727"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaeb32e8229c58b2b2b045080dc1d4b850"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#gaeb32e8229c58b2b2b045080dc1d4b850">requireNotice</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> name)</td></tr>
-<tr class="memdesc:gaeb32e8229c58b2b2b045080dc1d4b850"><td class="mdescLeft">&#160;</td><td class="mdescRight">Add the specified account to set of accounts to be notified.  <a href="group__messagecapi.html#gaeb32e8229c58b2b2b045080dc1d4b850">More...</a><br /></td></tr>
-<tr class="separator:gaeb32e8229c58b2b2b045080dc1d4b850"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaed0ef9b019ed08c7cc0241c5b4169f13"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#gaed0ef9b019ed08c7cc0241c5b4169f13">requireAuth</a> (<a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a> name)</td></tr>
-<tr class="memdesc:gaed0ef9b019ed08c7cc0241c5b4169f13"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verify specified account exists in the set of provided auths.  <a href="group__messagecapi.html#gaed0ef9b019ed08c7cc0241c5b4169f13">More...</a><br /></td></tr>
-<tr class="separator:gaed0ef9b019ed08c7cc0241c5b4169f13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga1f06c06adc584456cf30e8086d6b55b1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="types_8h.html#ad67b43dc23285b01176f4c181c59fc23">AccountName</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#ga1f06c06adc584456cf30e8086d6b55b1">currentCode</a> ()</td></tr>
-<tr class="memdesc:ga1f06c06adc584456cf30e8086d6b55b1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the account which specifies the code that is being run.  <a href="group__messagecapi.html#ga1f06c06adc584456cf30e8086d6b55b1">More...</a><br /></td></tr>
-<tr class="separator:ga1f06c06adc584456cf30e8086d6b55b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a">assert</a> (<a class="el" href="types_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> test, const char *cstr)</td></tr>
-<tr class="memdesc:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this message and unwinds all pending changes.  <a href="group__messagecapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a">More...</a><br /></td></tr>
-<tr class="separator:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga34bcb797186fc81170ac182f8bba1e7d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="types_8h.html#a2518c21789dfad901bbf283f9ea4247f">Time</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d">now</a> ()</td></tr>
-<tr class="memdesc:ga34bcb797186fc81170ac182f8bba1e7d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get time of the last accepted block.  <a href="group__messagecapi.html#ga34bcb797186fc81170ac182f8bba1e7d">More...</a><br /></td></tr>
-<tr class="separator:ga34bcb797186fc81170ac182f8bba1e7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gadf80b51a90a52fd7bfe6208119a96c24"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#gadf80b51a90a52fd7bfe6208119a96c24">read_message</a> (void *msg, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
+<tr class="memdesc:gadf80b51a90a52fd7bfe6208119a96c24"><td class="mdescLeft">&#160;</td><td class="mdescRight">Copy current message to the specified location.  <a href="group__messagecapi.html#gadf80b51a90a52fd7bfe6208119a96c24">More...</a><br /></td></tr>
+<tr class="separator:gadf80b51a90a52fd7bfe6208119a96c24"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga4ebf6b7927fc900ae1fa8e06ceb5a16b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#ga4ebf6b7927fc900ae1fa8e06ceb5a16b">message_size</a> ()</td></tr>
+<tr class="memdesc:ga4ebf6b7927fc900ae1fa8e06ceb5a16b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the length of current message's data field.  <a href="group__messagecapi.html#ga4ebf6b7927fc900ae1fa8e06ceb5a16b">More...</a><br /></td></tr>
+<tr class="separator:ga4ebf6b7927fc900ae1fa8e06ceb5a16b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gae901e9bfdcc04bb37bbbe43455e5ff9a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#gae901e9bfdcc04bb37bbbe43455e5ff9a">require_notice</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> name)</td></tr>
+<tr class="memdesc:gae901e9bfdcc04bb37bbbe43455e5ff9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Add the specified account to set of accounts to be notified.  <a href="group__messagecapi.html#gae901e9bfdcc04bb37bbbe43455e5ff9a">More...</a><br /></td></tr>
+<tr class="separator:gae901e9bfdcc04bb37bbbe43455e5ff9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gab1e668e93ac1f94421743ed79edffb26"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#gab1e668e93ac1f94421743ed79edffb26">require_auth</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> name)</td></tr>
+<tr class="memdesc:gab1e668e93ac1f94421743ed79edffb26"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verify specified account exists in the set of provided auths.  <a href="group__messagecapi.html#gab1e668e93ac1f94421743ed79edffb26">More...</a><br /></td></tr>
+<tr class="separator:gab1e668e93ac1f94421743ed79edffb26"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga56515ccd3d1f5724f2e96fa50c349a14"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__messagecapi.html#ga56515ccd3d1f5724f2e96fa50c349a14">current_code</a> ()</td></tr>
+<tr class="memdesc:ga56515ccd3d1f5724f2e96fa50c349a14"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the account which specifies the code that is being run.  <a href="group__messagecapi.html#ga56515ccd3d1f5724f2e96fa50c349a14">More...</a><br /></td></tr>
+<tr class="separator:ga56515ccd3d1f5724f2e96fa50c349a14"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-</div><!-- contents -->
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>
+</div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

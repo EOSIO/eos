@@ -1,0 +1,5 @@
+<map id="Example Contract" name="Example Contract">
+<area shape="rect" id="node2" href="$group__storageapi.html" title="Defines the storage contract example. " alt="" coords="193,5,314,32"/>
+<area shape="rect" id="node3" href="$group__tictactoecontract.html" title="Defines the PvP tic tac toe contract example. " alt="" coords="180,56,327,83"/>
+<area shape="rect" id="node4" href="$group__currencyapi.html" title="Defines the curency contract example. " alt="" coords="189,107,318,133"/>
+</map>

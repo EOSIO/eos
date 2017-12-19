@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/variant.hpp>
@@ -7,7 +11,7 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
    using namespace appbase;
 
    namespace wallet {

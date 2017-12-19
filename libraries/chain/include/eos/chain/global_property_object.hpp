@@ -1,38 +1,19 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 #include <fc/uint128.hpp>
 #include <fc/array.hpp>
 
 #include <eos/chain/types.hpp>
-#include <eos/chain/BlockchainConfiguration.hpp>
+#include <eos/chain/blockchain_configuration.hpp>
 
 #include <chainbase/chainbase.hpp>
 
 #include "multi_index_includes.hpp"
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
    /**
     * @class global_property_object
@@ -47,8 +28,8 @@ namespace eos { namespace chain {
       OBJECT_CTOR(global_property_object)
 
       id_type id;
-      BlockchainConfiguration configuration;
-      std::array<AccountName, config::BlocksPerRound> active_producers;
+      blockchain_configuration configuration;
+      std::array<account_name, config::blocks_per_round> active_producers;
    };
 
 
@@ -70,7 +51,7 @@ namespace eos { namespace chain {
         uint32_t          head_block_number = 0;
         block_id_type     head_block_id;
         time_point_sec    time;
-        AccountName       current_producer;
+        account_name      current_producer;
         uint32_t          accounts_registered_this_interval = 0;
         
         /**
@@ -121,11 +102,11 @@ namespace eos { namespace chain {
 
 }}
 
-CHAINBASE_SET_INDEX_TYPE(eos::chain::global_property_object, eos::chain::global_property_multi_index)
-CHAINBASE_SET_INDEX_TYPE(eos::chain::dynamic_global_property_object,
-                         eos::chain::dynamic_global_property_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::global_property_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
+                         eosio::chain::dynamic_global_property_multi_index)
 
-FC_REFLECT(eos::chain::dynamic_global_property_object,
+FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (head_block_number)
            (head_block_id)
            (time)
@@ -136,7 +117,7 @@ FC_REFLECT(eos::chain::dynamic_global_property_object,
            (last_irreversible_block_num)
           )
 
-FC_REFLECT(eos::chain::global_property_object,
+FC_REFLECT(eosio::chain::global_property_object,
            (configuration)
            (active_producers)
           )

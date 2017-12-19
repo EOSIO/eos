@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/chain_plugin/chain_plugin.hpp>
 #include <eos/chain/fork_database.hpp>
 #include <eos/chain/block_log.hpp>
@@ -5,11 +9,14 @@
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/config.hpp>
 #include <eos/chain/types.hpp>
+#include <eos/chain/wasm_interface.hpp>
+
+#include <eos/db_plugin/db_plugin.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
-#include <eos/native_contract/staked_balance_objects.hpp>
-#include <eos/native_contract/balance_object.hpp>
+#include <eos/chain/staked_balance_objects.hpp>
+#include <eos/chain/balance_object.hpp>
 #include <eos/native_contract/genesis_state.hpp>
 
 #include <eos/utilities/key_conversion.hpp>
@@ -18,9 +25,8 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-namespace eos {
+namespace eosio {
 
-using namespace eos;
 using fc::flat_map;
 using chain::block_id_type;
 using chain::fork_database;
@@ -33,22 +39,38 @@ using chain::key64x64x64_value_object;
 using chain::by_name;
 using chain::by_scope_primary;
 using chain::uint128_t;
+using txn_msg_limits = chain_controller::txn_msg_limits;
 
 
 class chain_plugin_impl {
 public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
-   chain::Time                      genesis_timestamp;
+   chain::time                      genesis_timestamp;
    uint32_t                         skip_flags = chain_controller::skip_nothing;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
-   fc::optional<chain_controller>   chain;
+   std::unique_ptr<chain_controller>   chain;
    chain_id_type                    chain_id;
+   uint32_t                         block_interval_seconds;
+   uint32_t                         rcvd_block_txn_execution_time;
+   uint32_t                         txn_execution_time;
+   uint32_t                         create_block_txn_execution_time;
+   txn_msg_limits                   cfg_txn_msg_limits;
 };
+
+#ifdef NDEBUG
+const uint32_t chain_plugin::default_received_block_transaction_execution_time = 12;
+const uint32_t chain_plugin::default_transaction_execution_time = 5;
+const uint32_t chain_plugin::default_create_block_transaction_execution_time = 5;
+#else
+const uint32_t chain_plugin::default_received_block_transaction_execution_time = 72;
+const uint32_t chain_plugin::default_transaction_execution_time = 18;
+const uint32_t chain_plugin::default_create_block_transaction_execution_time = 18;
+#endif
 
 
 chain_plugin::chain_plugin()
@@ -61,23 +83,50 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 {
    cfg.add_options()
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
-     ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
+         ("block-interval-seconds", bpo::value<uint32_t>()->default_value(config::default_block_interval_seconds),
+          "Sets the block interval in seconds.")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ;
+         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_received_block_transaction_execution_time),
+          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
+         ("trans-execution-time", bpo::value<uint32_t>()->default_value(default_transaction_execution_time),
+          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
+         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_create_block_transaction_execution_time),
+          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
+         ("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_rate_time_frame_seconds),
+          "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
+         ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_auth_account_rate),
+          "Limits the maximum rate of transaction messages that an account is allowed each per-authorized-account-transaction-msg-rate-limit-time-frame-sec.")
+         ("per-code-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(config::default_per_code_account_rate_time_frame_seconds),
+          "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
+         ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(config::default_per_code_account_rate),
+          "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")
+         ("per-code-account-max-storage-db-limit-mbytes", bpo::value<uint32_t>()->default_value(config::default_per_code_account_max_db_limit_mbytes),
+          "Limits the maximum database storage that an account's code is allowed.")
+         ("row-overhead-db-limit-bytes", bpo::value<uint32_t>()->default_value(config::default_row_overhead_db_limit_bytes),
+          "The overhead to apply per row for approximating total database storage.")
+         ("pending-txn-depth-limit", bpo::value<uint32_t>()->default_value(config::default_pending_txn_depth_limit),
+          "The maximum depth the pending transaction queue will be allowed to reach till new pushed transactions are rejected.")
+         ("gen-block-time-limit-msec", bpo::value<uint32_t>()->default_value(config::default_gen_block_time_limit.to_milliseconds()),
+          "The maximum allowed for generating a block before subsequent transactions get put back on the pending transaction queue.")
+          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
          ("skip-transaction-signatures", bpo::bool_switch()->default_value(false),
-          "Disable Transaction signature verification. ONLY for TESTING.")
+          "Disable transaction signature verification. ONLY for TESTING.")
          ;
 }
 
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
+
+   // option block-interval-seconds default set to config::default_block_interval_seconds
+   my->block_interval_seconds = options.at("block-interval-seconds").as<uint32_t>();
 
    if(options.count("genesis-json")) {
       my->genesis_file = options.at("genesis-json").as<bfs::path>();
@@ -86,15 +135,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
      string tstr = options.at("genesis-timestamp").as<string>();
      if (strcasecmp (tstr.c_str(), "now") == 0) {
        my->genesis_timestamp = fc::time_point::now();
-       auto diff = my->genesis_timestamp.sec_since_epoch() % config::BlockIntervalSeconds;
+       auto diff = my->genesis_timestamp.sec_since_epoch() % my->block_interval_seconds;
        if (diff > 0) {
-         auto delay =  (config::BlockIntervalSeconds - diff);
+         auto delay = (my->block_interval_seconds - diff);
          my->genesis_timestamp += delay;
          dlog ("pausing ${s} seconds to the next interval",("s",delay));
        }
      }
      else {
-       my->genesis_timestamp = chain::Time::from_iso_string (tstr);
+       my->genesis_timestamp = chain::time::from_iso_string (tstr);
      }
    }
    if (options.count("block-log-dir")) {
@@ -108,10 +157,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if (options.at("replay-blockchain").as<bool>()) {
       ilog("Replay requested: wiping database");
       app().get_plugin<database_plugin>().wipe_database();
+      if (db_plugin* db = app().find_plugin<db_plugin>()) {
+         db->wipe_database();
+      }
    }
    if (options.at("resync-blockchain").as<bool>()) {
       ilog("Resync requested: wiping blocks");
       app().get_plugin<database_plugin>().wipe_database();
+      if (db_plugin* db = app().find_plugin<db_plugin>()) {
+         db->wipe_database();
+      }
       fc::remove_all(my->block_log_dir);
    }
    if (options.at("skip-transaction-signatures").as<bool>()) {
@@ -139,11 +194,34 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->loaded_checkpoints[item.first] = item.second;
       }
    }
+
+   my->rcvd_block_txn_execution_time = options.at("rcvd-block-trans-execution-time").as<uint32_t>() * 1000;
+   my->txn_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
+   my->create_block_txn_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
+
+   my->cfg_txn_msg_limits.per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
+   my->cfg_txn_msg_limits.per_auth_account_txn_msg_rate = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
+
+   my->cfg_txn_msg_limits.per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
+   my->cfg_txn_msg_limits.per_code_account_txn_msg_rate = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();
+
+   my->cfg_txn_msg_limits.pending_txn_depth_limit = options.at("pending-txn-depth-limit").as<uint32_t>();
+   my->cfg_txn_msg_limits.gen_block_time_limit = fc::milliseconds(options.at("gen-block-time-limit-msec").as<uint32_t>());
+
+   chain::wasm_interface::get().per_code_account_max_db_limit_mbytes = options.at("per-code-account-max-storage-db-limit-mbytes").as<uint32_t>();
+   chain::wasm_interface::get().row_overhead_db_limit_bytes = options.at("row-overhead-db-limit-bytes").as<uint32_t>();
 }
 
 void chain_plugin::plugin_startup() 
 { try {
    auto& db = app().get_plugin<database_plugin>().db();
+   eosio::chain::applied_irreverisable_block_func applied_func;
+   if (db_plugin* plugin = app().find_plugin<db_plugin>()) {
+      if (plugin->get_state() != registered) {
+         ilog("Blockchain configured with external database.");
+         applied_func = [plugin](const chain::signed_block& b) { plugin->applied_irreversible_block(b); };
+      }
+   }
 
    FC_ASSERT( fc::exists( my->genesis_file ), 
               "unable to find genesis file '${f}', check --genesis-json argument", 
@@ -159,8 +237,14 @@ void chain_plugin::plugin_startup()
    my->fork_db = fork_database();
    my->block_logger = block_log(my->block_log_dir);
    my->chain_id = genesis.compute_chain_id();
-   my->chain = chain_controller(db, *my->fork_db, *my->block_logger,
-                                initializer, native_contract::make_administrator());
+   my->chain.reset(new chain_controller(db, *my->fork_db, *my->block_logger,
+                                        initializer, native_contract::make_administrator(),
+                                        my->block_interval_seconds,
+                                        my->txn_execution_time,
+                                        my->rcvd_block_txn_execution_time,
+                                        my->create_block_txn_execution_time,
+                                        my->cfg_txn_msg_limits,
+                                        applied_func));
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
@@ -173,6 +257,7 @@ void chain_plugin::plugin_startup()
 } FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
+   my->chain.reset();
 }
 
 chain_apis::read_write chain_plugin::get_read_write_api() {
@@ -190,7 +275,7 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
    return chain().push_block(block, my->skip_flags);
 }
 
-void chain_plugin::accept_transaction(const chain::SignedTransaction& trx) {
+void chain_plugin::accept_transaction(const chain::signed_transaction& trx) {
    chain().push_transaction(trx, my->skip_flags);
 }
 
@@ -215,8 +300,24 @@ const chain::chain_controller& chain_plugin::chain() const { return *my->chain; 
 
 namespace chain_apis {
 
+const string read_only::KEYi64 = "i64";
+const string read_only::KEYstr = "str";
+const string read_only::KEYi128i128 = "i128i128";
+const string read_only::KEYi64i64i64 = "i64i64i64";
+const string read_only::PRIMARY = "primary";
+const string read_only::SECONDARY = "secondary";
+const string read_only::TERTIARY = "tertiary";
+
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+   auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t)<<1) {
+    static const char* digits = "0123456789abcdef";
+    std::string r(hlen, '0');
+    for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
+      r[i] = digits[(n>>j) & 0x0f];
+    return r;
+  };
    return {
+      itoh(static_cast<uint32_t>(app().version())),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.head_block_id(),
@@ -227,35 +328,33 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-types::Abi getAbi( const chain_controller& db, const Name& account ) {
+types::abi getAbi( const chain_controller& db, const name& account ) {
    const auto& d = db.get_database();
    const auto& code_accnt  = d.get<account_object,by_name>( account );
 
-   eos::types::Abi abi;
-   if( code_accnt.abi.size() > 4 ) {
-      fc::datastream<const char*> ds( code_accnt.abi.data(), code_accnt.abi.size() );
-      fc::raw::unpack( ds, abi );
-   }
+   eosio::types::abi abi;
+   types::abi_serializer::to_abi(code_accnt.abi, abi);
    return abi;
 }
 
-string getTableType( const types::Abi& abi, const Name& tablename ) {
+string getTableType( const types::abi& abi, const name& tablename ) {
    for( const auto& t : abi.tables ) {
-      if( t.table == tablename )
-         return t.indextype;
+      if( t.table_name == tablename ){
+         return t.index_type;
+      }
    }
-   FC_ASSERT( !"Abi does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
+   FC_ASSERT( !"ABI does not define table", "Table ${table} not specified in ABI", ("table",tablename) );
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   const auto& d = db.get_database();
-
-   const types::Abi abi = getAbi( db, p.code );
+   const types::abi abi = getAbi( db, p.code );
    auto table_type = getTableType( abi, p.table );
    auto table_key = PRIMARY;
 
    if( table_type == KEYi64 ) {
       return get_table_rows_ex<chain::key_value_index, chain::by_scope_primary>(p,abi);
+   } else if( table_type == KEYstr ) {
+      return get_table_rows_ex<chain::keystr_value_index, chain::by_scope_primary>(p,abi);
    } else if( table_type == KEYi128i128 ) { 
       if( table_key == PRIMARY )
          return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_primary>(p,abi);
@@ -269,7 +368,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       if( table_key == TERTIARY )
          return get_table_rows_ex<chain::key64x64x64_value_index, chain::by_scope_tertiary>(p,abi);
    }
-   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
+   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("code_abi",abi));
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
@@ -287,7 +386,7 @@ read_only::get_block_results read_only::get_block(const read_only::get_block_par
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
-   db.push_block(params);
+   db.push_block(params, chain_controller::validation_steps::skip_nothing);
    return read_write::push_block_results();
 }
 
@@ -316,47 +415,50 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
 
 read_only::get_code_results read_only::get_code( const get_code_params& params )const {
    get_code_results result;
-   result.name = params.name;
+   result.account_name = params.account_name;
    const auto& d = db.get_database();
-   const auto& accnt  = d.get<account_object,by_name>( params.name );
+   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
       result.wast = chain::wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
-   if( accnt.abi.size() > 4 ) {
-      eos::types::Abi abi;
-      fc::datastream<const char*> ds( accnt.abi.data(), accnt.abi.size() );
-      fc::raw::unpack( ds, abi );
+   eosio::types::abi abi;
+   if( types::abi_serializer::to_abi(accnt.abi, abi) ) {
       result.abi = std::move(abi);
    }
    return result;
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-   using namespace native::eos;
+   using namespace eosio::chain;
 
    get_account_results result;
-   result.name = params.name;
+   result.account_name = params.account_name;
 
    const auto& d = db.get_database();
-   const auto& accnt          = d.get<account_object,by_name>( params.name );
-   const auto& balance        = d.get<BalanceObject,byOwnerName>( params.name );
-   const auto& staked_balance = d.get<StakedBalanceObject,byOwnerName>( params.name );
+   const auto& balance        = d.get<balance_object,by_owner_name>( params.account_name );
+   const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.account_name );
 
-   result.eos_balance          = Asset(balance.balance, EOS_SYMBOL);
-   result.staked_balance       = Asset(staked_balance.stakedBalance);
-   result.unstaking_balance    = Asset(staked_balance.unstakingBalance);
-   result.last_unstaking_time  = staked_balance.lastUnstakingTime;
+   result.eos_balance          = asset(balance.balance, EOS_SYMBOL);
+   result.staked_balance       = asset(staked_balance.staked_balance);
+   result.unstaking_balance    = asset(staked_balance.unstaking_balance);
+   result.last_unstaking_time  = staked_balance.last_unstaking_time;
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
-   auto perm = permissions.lower_bound( boost::make_tuple( params.name ) );
-   while( perm != permissions.end() && perm->owner == params.name ) {
+   auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
+   while( perm != permissions.end() && perm->owner == params.account_name ) {
       /// TODO: lookup perm->parent name 
-      Name parent;
+      name parent;
 
-      const auto* p = d.find<permission_object,by_id>( perm->parent );
-      if( p ) parent = p->name;
+      // Don't lookup parent if null
+      if( perm->parent._id ) {
+         const auto* p = d.find<permission_object,by_id>( perm->parent );
+         if( p ) {
+            FC_ASSERT(perm->owner == p->owner, "Invalid parent");
+            parent = p->name; 
+         } 
+      }
 
       result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );
       ++perm;
@@ -386,4 +488,4 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 
 } // namespace chain_apis
-} // namespace eos
+} // namespace eosio

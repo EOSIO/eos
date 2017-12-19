@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eos/account_history_plugin/account_history_plugin.hpp>
 #include <eos/account_history_plugin/account_control_history_object.hpp>
 #include <eos/account_history_plugin/account_transaction_history_object.hpp>
@@ -22,12 +26,12 @@
 
 namespace fc { class variant; }
 
-namespace eos {
+namespace eosio {
 
-using chain::AccountName;
+using chain::account_name;
 using chain::block_id_type;
-using chain::PermissionName;
-using chain::ProcessedTransaction;
+using chain::permission_name;
+using chain::processed_transaction;
 using chain::signed_block;
 using boost::multi_index_container;
 using chain::transaction_id_type;
@@ -37,16 +41,16 @@ using get_transactions_results = account_history_apis::read_only::get_transactio
 
 class account_history_plugin_impl {
 public:
-   ProcessedTransaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
-   get_transactions_results get_transactions(const AccountName&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
-   vector<AccountName> get_key_accounts(const public_key_type& public_key) const;
-   vector<AccountName> get_controlled_accounts(const AccountName& controlling_account) const;
+   processed_transaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
+   get_transactions_results get_transactions(const account_name&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
+   vector<account_name> get_key_accounts(const public_key_type& public_key) const;
+   vector<account_name> get_controlled_accounts(const account_name& controlling_account) const;
    void applied_block(const signed_block&);
 
    chain_plugin* chain_plug;
    static const int64_t DEFAULT_TRANSACTION_TIME_LIMIT;
    int64_t transactions_time_limit = DEFAULT_TRANSACTION_TIME_LIMIT;
-   std::set<AccountName> filter_on;
+   std::set<account_name> filter_on;
 
 private:
    struct block_comp
@@ -59,12 +63,12 @@ private:
    typedef std::multimap<block_id_type, transaction_id_type, block_comp> block_transaction_id_map;
 
    optional<block_id_type> find_block_id(const chainbase::database& db, const transaction_id_type& transaction_id) const;
-   ProcessedTransaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
-   bool is_scope_relevant(const eos::types::Vector<AccountName>& scope);
+   processed_transaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
+   bool is_scope_relevant(const eosio::types::vector<account_name>& scope);
    get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
-   static void add(chainbase::database& db, const vector<types::KeyPermissionWeight>& keys, const AccountName& account_name, const PermissionName& permission);
+   static void add(chainbase::database& db, const vector<types::key_permission_weight>& keys, const account_name& account_name, const permission_name& permission);
    template<typename MultiIndex, typename LookupType>
-   static void remove(chainbase::database& db, const AccountName& account_name, const PermissionName& permission)
+   static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
    {
       const auto& idx = db.get_index<MultiIndex, LookupType>();
       auto& mutatable_idx = db.get_mutable_index<MultiIndex>();
@@ -76,22 +80,22 @@ private:
       }
    }
 
-   static void add(chainbase::database& db, const vector<types::AccountPermissionWeight>& controlling_accounts, const AccountName& account_name, const PermissionName& permission);
+   static void add(chainbase::database& db, const vector<types::account_permission_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission);
    bool time_exceeded(const fc::time_point& start_time) const;
-   static const AccountName NEW_ACCOUNT;
-   static const AccountName UPDATE_AUTH;
-   static const AccountName DELETE_AUTH;
-   static const PermissionName OWNER;
-   static const PermissionName ACTIVE;
-   static const PermissionName RECOVERY;
+   static const account_name NEW_ACCOUNT;
+   static const account_name UPDATE_AUTH;
+   static const account_name DELETE_AUTH;
+   static const permission_name OWNER;
+   static const permission_name ACTIVE;
+   static const permission_name RECOVERY;
 };
 const int64_t account_history_plugin_impl::DEFAULT_TRANSACTION_TIME_LIMIT = 3;
-const AccountName account_history_plugin_impl::NEW_ACCOUNT = "newaccount";
-const AccountName account_history_plugin_impl::UPDATE_AUTH = "updateauth";
-const AccountName account_history_plugin_impl::DELETE_AUTH = "deleteauth";
-const PermissionName account_history_plugin_impl::OWNER = "owner";
-const PermissionName account_history_plugin_impl::ACTIVE = "active";
-const PermissionName account_history_plugin_impl::RECOVERY = "recovery";
+const account_name account_history_plugin_impl::NEW_ACCOUNT = "newaccount";
+const account_name account_history_plugin_impl::UPDATE_AUTH = "updateauth";
+const account_name account_history_plugin_impl::DELETE_AUTH = "deleteauth";
+const permission_name account_history_plugin_impl::OWNER = "owner";
+const permission_name account_history_plugin_impl::ACTIVE = "active";
+const permission_name account_history_plugin_impl::RECOVERY = "recovery";
 
 optional<block_id_type> account_history_plugin_impl::find_block_id(const chainbase::database& db, const transaction_id_type& transaction_id) const
 {
@@ -104,7 +108,7 @@ optional<block_id_type> account_history_plugin_impl::find_block_id(const chainba
    return block_id;
 }
 
-ProcessedTransaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
+processed_transaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
 {
    for (const auto& cycle : block.cycles)
       for (const auto& thread : cycle)
@@ -116,7 +120,7 @@ ProcessedTransaction account_history_plugin_impl::find_transaction(const chain::
    FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block.id()));
 }
 
-ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
+processed_transaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
 {
    const auto& db = chain_plug->chain().get_database();
    optional<block_id_type> block_id;
@@ -135,7 +139,7 @@ ProcessedTransaction account_history_plugin_impl::get_transaction(const chain::t
                       "Could not find transaction for: ${id}", ("id", transaction_id.str()));
 }
 
-get_transactions_results account_history_plugin_impl::get_transactions(const AccountName&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const
+get_transactions_results account_history_plugin_impl::get_transactions(const account_name&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const
 {
    fc::time_point start_time = fc::time_point::now();
    const auto& db = chain_plug->chain().get_database();
@@ -253,24 +257,24 @@ bool account_history_plugin_impl::time_exceeded(const fc::time_point& start_time
    return (fc::time_point::now() - start_time).count() > transactions_time_limit;
 }
 
-vector<AccountName> account_history_plugin_impl::get_key_accounts(const public_key_type& public_key) const
+vector<account_name> account_history_plugin_impl::get_key_accounts(const public_key_type& public_key) const
 {
-   std::set<AccountName> accounts;
+   std::set<account_name> accounts;
    const auto& db = chain_plug->chain().get_database();
    db.with_read_lock( [&]() {
       const auto& pub_key_idx = db.get_index<public_key_history_multi_index, by_pub_key>();
       auto range = pub_key_idx.equal_range( public_key );
       for (auto obj = range.first; obj != range.second; ++obj)
       {
-         accounts.insert(obj->account_name);
+         accounts.insert(obj->name);
       }
    } );
-   return vector<AccountName>(accounts.begin(), accounts.end());
+   return vector<account_name>(accounts.begin(), accounts.end());
 }
 
-vector<AccountName> account_history_plugin_impl::get_controlled_accounts(const AccountName& controlling_account) const
+vector<account_name> account_history_plugin_impl::get_controlled_accounts(const account_name& controlling_account) const
 {
-   std::set<AccountName> accounts;
+   std::set<account_name> accounts;
    const auto& db = chain_plug->chain().get_database();
    db.with_read_lock( [&]() {
       const auto& account_control_idx = db.get_index<account_control_history_multi_index, by_controlling>();
@@ -280,7 +284,7 @@ vector<AccountName> account_history_plugin_impl::get_controlled_accounts(const A
          accounts.insert(obj->controlled_account);
       }
    } );
-   return vector<AccountName>(accounts.begin(), accounts.end());
+   return vector<account_name>(accounts.begin(), accounts.end());
 }
 
 void account_history_plugin_impl::applied_block(const signed_block& block)
@@ -297,6 +301,10 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
             if (check_relevance && !is_scope_relevant(trx.scope))
                continue;
 
+            auto trx_obj_ptr = db.find<transaction_history_object, by_trx_id>(trx.id());
+            if (trx_obj_ptr != nullptr)
+               continue; // on restart may already have block
+
             db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
                transaction_history.block_id = block_id;
                transaction_history.transaction_id = trx.id();
@@ -304,15 +312,15 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
 
             for (const auto& account_name : trx.scope)
             {
-               db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
-                  account_transaction_history.account_name = account_name;
-                  account_transaction_history.transaction_id = trx.id();
-               });
+              db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
+                account_transaction_history.name = account_name;
+                account_transaction_history.transaction_id = trx.id();
+              });
             }
 
-            for (const chain::Message& msg : trx.messages)
+            for (const chain::message& msg : trx.messages)
             {
-               if (msg.code == config::EosContractName)
+               if (msg.code == config::eos_contract_name)
                {
                   if (msg.type == NEW_ACCOUNT)
                   {
@@ -329,10 +337,10 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
                   {
                      const auto update = msg.as<types::updateauth>();
                      remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
-                     add(db, update.authority.keys, update.account, update.permission);
+                     add(db, update.new_authority.keys, update.account, update.permission);
 
                      remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
-                     add(db, update.authority.accounts, update.account, update.permission);
+                     add(db, update.new_authority.accounts, update.account, update.permission);
                   }
                   else if (msg.type == DELETE_AUTH)
                   {
@@ -348,19 +356,19 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
    }
 }
 
-void account_history_plugin_impl::add(chainbase::database& db, const vector<types::KeyPermissionWeight>& keys, const AccountName& account_name, const PermissionName& permission)
+void account_history_plugin_impl::add(chainbase::database& db, const vector<types::key_permission_weight>& keys, const account_name& name, const permission_name& permission)
 {
    for (auto pub_key_weight : keys )
    {
       db.create<public_key_history_object>([&](public_key_history_object& obj) {
          obj.public_key = pub_key_weight.key;
-         obj.account_name = account_name;
+         obj.name = name;
          obj.permission = permission;
       });
    }
 }
 
-void account_history_plugin_impl::add(chainbase::database& db, const vector<types::AccountPermissionWeight>& controlling_accounts, const AccountName& account_name, const PermissionName& permission)
+void account_history_plugin_impl::add(chainbase::database& db, const vector<types::account_permission_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission)
 {
    for (auto controlling_account : controlling_accounts )
    {
@@ -372,9 +380,9 @@ void account_history_plugin_impl::add(chainbase::database& db, const vector<type
    }
 }
 
-bool account_history_plugin_impl::is_scope_relevant(const eos::types::Vector<AccountName>& scope)
+bool account_history_plugin_impl::is_scope_relevant(const eosio::types::vector<account_name>& scope)
 {
-   for (const AccountName& account_name : scope)
+   for (const account_name& account_name : scope)
       if (filter_on.count(account_name))
          return true;
 
@@ -455,4 +463,4 @@ read_only::get_controlled_accounts_results read_only::get_controlled_accounts(co
 }
 
 } // namespace account_history_apis
-} // namespace eos
+} // namespace eosio

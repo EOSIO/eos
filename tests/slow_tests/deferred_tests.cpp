@@ -1,25 +1,6 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 
 #include <boost/test/unit_test.hpp>
@@ -45,15 +26,15 @@
 
 #include <proxy/proxy.wast.hpp>
 
-using namespace eos;
+using namespace eosio;
 using namespace chain;
 
 
-void Set_Proxy_Owner( testing_blockchain& chain, AccountName proxy, AccountName owner ) {
-   eos::chain::SignedTransaction trx;
+void Set_Proxy_Owner( testing_blockchain& chain, account_name proxy, account_name owner ) {
+   eosio::chain::signed_transaction trx;
    trx.scope = sort_names({proxy,owner});
    transaction_emplace_message(trx, "proxy", 
-                      vector<types::AccountPermission>({ }),
+                      vector<types::account_permission>({ }),
                       "setowner", owner);
 
    trx.expiration = chain.head_block_time() + 100;
@@ -64,7 +45,7 @@ void Set_Proxy_Owner( testing_blockchain& chain, AccountName proxy, AccountName 
 
 // declared in slow_test.cpp
 namespace slow_tests {
-   void SetCode( testing_blockchain& chain, AccountName account, const char* wast );
+   void SetCode( testing_blockchain& chain, account_name account, const char* wast );
 }
 
 BOOST_AUTO_TEST_SUITE(deferred_tests)
@@ -83,17 +64,24 @@ BOOST_FIXTURE_TEST_CASE(opaque_proxy, testing_fixture)
       Set_Proxy_Owner(chain, "proxy", "newguy");
       chain.produce_blocks(7);
       
-      Transfer_Asset(chain, inita, proxy, Asset(100));
+      try {
+        Transfer_Asset(chain, inita, proxy, asset(100));
+      } catch (eosio::chain::api_not_supported) {
+        // transfer_send is not functional in STAT, exception expected.
+        return;
+      }
+      BOOST_FAIL("transfer_send is not functional in STAT, exception expected.");
+
       chain.produce_blocks(1);
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(0));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-300));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), Asset(100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), asset(0));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000-300));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), asset(100));
 
 
       chain.produce_blocks(1);
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), Asset(100));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), Asset(100000-300));
-      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), Asset(0));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), asset(100));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000-300));
+      BOOST_CHECK_EQUAL(chain.get_liquid_balance("proxy"), asset(0));
       
       BOOST_CHECK_EQUAL(chain.head_block_num(), 12);
       BOOST_CHECK(chain.fetch_block_by_number(12).valid());

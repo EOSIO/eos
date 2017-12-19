@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
 
 #include <eos/wallet_plugin/wallet_plugin.hpp>
@@ -5,7 +9,7 @@
 
 #include <appbase/application.hpp>
 
-namespace eos {
+namespace eosio {
 
 using namespace appbase;
 

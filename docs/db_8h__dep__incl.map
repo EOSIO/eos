@@ -1,0 +1,21 @@
+<map id="contracts/eoslib/db.h" name="contracts/eoslib/db.h">
+<area shape="rect" id="node2" href="$db_8hpp.html" title="contracts/eoslib/db.hpp" alt="" coords="685,80,842,107"/>
+<area shape="rect" id="node17" href="$test__db_8cpp.html" title="contracts/test_api\l/test_db.cpp" alt="" coords="1197,155,1324,196"/>
+<area shape="rect" id="node3" href="$currency_8hpp.html" title="contracts/currency\l/currency.hpp" alt="" coords="874,155,1005,196"/>
+<area shape="rect" id="node8" href="$infinite_8hpp.html" title="contracts/infinite\l/infinite.hpp" alt="" coords="5,155,124,196"/>
+<area shape="rect" id="node10" href="$proxy_8hpp.html" title="contracts/proxy/proxy.hpp" alt="" coords="677,162,850,189"/>
+<area shape="rect" id="node11" href="$simpledb_8hpp.html" title="contracts/simpledb\l/simpledb.hpp" alt="" coords="148,155,280,196"/>
+<area shape="rect" id="node13" href="$skeleton_8hpp.html" title="contracts/skeleton\l/skeleton.hpp" alt="" coords="304,155,433,196"/>
+<area shape="rect" id="node15" href="$storage_8hpp.html" title="contracts/storage/storage.hpp" alt="" coords="458,162,653,189"/>
+<area shape="rect" id="node19" href="$tic__tac__toe_8hpp.html" title="contracts/tic_tac_toe\l/tic_tac_toe.hpp" alt="" coords="1029,155,1173,196"/>
+<area shape="rect" id="node4" href="$currency_8cpp.html" title="contracts/currency\l/currency.cpp" alt="" coords="1034,244,1165,285"/>
+<area shape="rect" id="node5" href="$exchange_8hpp.html" title="contracts/exchange\l/exchange.hpp" alt="" coords="874,244,1010,285"/>
+<area shape="rect" id="node7" href="$proxy_8cpp.html" title="contracts/proxy/proxy.cpp" alt="" coords="677,251,850,278"/>
+<area shape="rect" id="node6" href="$exchange_8cpp.html" title="defines an example exchange contract " alt="" coords="874,333,1010,375"/>
+<area shape="rect" id="node9" href="$infinite_8cpp.html" title="contracts/infinite\l/infinite.cpp" alt="" coords="5,244,124,285"/>
+<area shape="rect" id="node12" href="$simpledb_8cpp.html" title="contracts/simpledb\l/simpledb.cpp" alt="" coords="148,244,280,285"/>
+<area shape="rect" id="node14" href="$skeleton_8cpp.html" title="contracts/skeleton\l/skeleton.cpp" alt="" coords="304,244,433,285"/>
+<area shape="rect" id="node16" href="$storage_8cpp.html" title="contracts/storage/storage.cpp" alt="" coords="458,251,653,278"/>
+<area shape="rect" id="node18" href="$test__api_8cpp.html" title="contracts/test_api\l/test_api.cpp" alt="" coords="1357,244,1484,285"/>
+<area shape="rect" id="node20" href="$tic__tac__toe_8cpp.html" title="contracts/tic_tac_toe\l/tic_tac_toe.cpp" alt="" coords="1189,244,1333,285"/>
+</map>

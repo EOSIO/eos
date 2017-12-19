@@ -1,31 +1,13 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
 
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/exceptions.hpp>
+#include <eos/chain_plugin/chain_plugin.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
@@ -41,7 +23,7 @@
 
 #include <iostream>
 
-using namespace eos::chain;
+using namespace eosio::chain;
 
 extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
 
@@ -86,9 +68,9 @@ extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
          << req_throw_info << std::endl;                  \
 }
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 FC_DECLARE_EXCEPTION(testing_exception, 6000000, "test framework exception")
-FC_DECLARE_DERIVED_EXCEPTION(missing_key_exception, eos::chain::testing_exception, 6010000, "key could not be found")
+FC_DECLARE_DERIVED_EXCEPTION(missing_key_exception, eosio::chain::testing_exception, 6010000, "key could not be found")
 
 /**
  * @brief The testing_fixture class provides various services relevant to testing the blockchain.
@@ -143,14 +125,21 @@ protected:
 class testing_blockchain : public chain_controller {
 public:
    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                     chain_initializer_interface& initializer, testing_fixture& fixture);
+                      chain_initializer_interface& initializer, testing_fixture& fixture);
+
+   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
+                      chain_initializer_interface& initializer, testing_fixture& fixture,
+                      uint32_t transaction_execution_time_msec,
+                      uint32_t received_block_execution_time_msec,
+                      uint32_t create_block_execution_time_msec,
+                      const chain_controller::txn_msg_limits& rate_limits = chain_controller::txn_msg_limits());
 
    /**
     * @brief Publish the provided contract to the blockchain, owned by owner
     * @param owner The account to publish the contract under
     * @param contract_wast The WAST of the contract
     */
-   void set_contract(AccountName owner, const char* contract_wast);
+   void set_contract(account_name owner, const char* contract_wast);
 
    /**
     * @brief Produce new blocks, adding them to the blockchain, optionally following a gap of missed blocks
@@ -175,29 +164,29 @@ public:
    void sync_with(testing_blockchain& other);
 
    /// @brief Get the liquid balance belonging to the named account
-   Asset get_liquid_balance(const types::AccountName& account);
+   asset get_liquid_balance(const types::account_name& account);
    /// @brief Get the staked balance belonging to the named account
-   Asset get_staked_balance(const types::AccountName& account);
+   asset get_staked_balance(const types::account_name& account);
    /// @brief Get the unstaking balance belonging to the named account
-   Asset get_unstaking_balance(const types::AccountName& account);
+   asset get_unstaking_balance(const types::account_name& account);
 
    /// @brief Get the set of producers approved by the named account
-   std::set<AccountName> get_approved_producers(const AccountName& account);
+   std::set<account_name> get_approved_producers(const account_name& account);
    /// @brief Get the specified block producer's signing key
-   PublicKey get_block_signing_key(const AccountName& producerName);
+   public_key get_block_signing_key(const account_name& producerName);
 
    /// @brief Attempt to sign the provided transaction using the keys available to the testing_fixture
-   void sign_transaction(SignedTransaction& trx) const;
+   void sign_transaction(signed_transaction& trx) const;
 
    /// @brief Override push_transaction to apply testing policies
    /// If transactions are being held for review, transaction will be held after testing policies are applied
-   fc::optional<ProcessedTransaction> push_transaction(SignedTransaction trx, uint32_t skip_flags = 0);
+   fc::optional<processed_transaction> push_transaction(signed_transaction trx, uint32_t skip_flags = 0);
    /// @brief Review and optionally push last held transaction
    /// @tparam F A callable with signature `bool f(SignedTransaction&, uint32_t&)`
    /// @param reviewer Callable which inspects and potentially alters the held transaction and skip flags, and returns
    /// whether it should be pushed or not
    template<typename F>
-   fc::optional<ProcessedTransaction> review_transaction(F&& reviewer) {
+   fc::optional<processed_transaction> review_transaction(F&& reviewer) {
       if (reviewer(review_storage.first, review_storage.second))
          return chain_controller::push_transaction(review_storage.first, review_storage.second);
       return {};
@@ -217,10 +206,12 @@ public:
       hold_for_review = hold_trxs;
    }
 
+   static std::vector<uint8_t> assemble_wast(const std::string& wast);
+
 protected:
    chainbase::database& db;
    testing_fixture& fixture;
-   std::pair<SignedTransaction, uint32_t> review_storage;
+   std::pair<signed_transaction, uint32_t> review_storage;
    bool skip_trx_sigs = true;
    bool auto_sign_trxs = false;
    bool hold_for_review = false;

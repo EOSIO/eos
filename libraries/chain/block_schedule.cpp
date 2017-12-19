@@ -1,30 +1,11 @@
-/*
- * Copyright (c) 2017, Respective Authors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #include <eos/chain/block_schedule.hpp>
 #include <eos/chain/block.hpp>
 
-namespace eos { namespace chain {
+namespace eosio { namespace chain {
 
 static uint next_power_of_two(uint input) {
    if (input == 0) {
@@ -42,7 +23,7 @@ static uint next_power_of_two(uint input) {
    return result;
 };
 
-typedef std::hash<decltype(AccountName::value)> account_hash;
+typedef std::hash<decltype(account_name::value)> account_hash;
 static account_hash account_hasher;
 
 struct schedule_entry {
@@ -57,13 +38,7 @@ struct schedule_entry {
    std::reference_wrapper<const pending_transaction> transaction;
 
    friend bool operator<( const schedule_entry& l, const schedule_entry& r ) {
-      if (l.cycle < r.cycle) {
-            return true;
-      } else if (l.cycle == r.cycle) {
-            return l.thread < r.thread;
-      } 
-
-      return false;
+      return std::tie(l.cycle, l.thread) < std::tie(r.cycle, r.thread);
    }
 };
 
@@ -72,7 +47,7 @@ static block_schedule from_entries(vector<schedule_entry>& entries) {
    // for the highest cycle index first meaning the naive resize in the loop below
    // is usually the largest and only resize
    auto reverse = [](const schedule_entry& l, const schedule_entry& r) {
-      return !(l < r);
+      return std::tie(r.cycle, r.thread) < std::tie(l.cycle, l.thread);
    };
 
    std::sort(entries.begin(), entries.end(), reverse);
@@ -140,7 +115,7 @@ struct block_size_skipper {
 
 auto make_skipper(const global_property_object& properties) {
    static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = properties.configuration.maxBlockSize;
+   auto maximum_block_size = properties.configuration.max_blk_size;
    return block_size_skipper { max_block_header_size, (size_t)maximum_block_size };
 }
 
@@ -308,4 +283,4 @@ block_schedule block_schedule::in_single_thread(
    return block_schedule { { { thread } } };
 }
 
-} /* namespace chain */ } /* namespace eos */
+} /* namespace chain */ } /* namespace eosio */
