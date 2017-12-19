@@ -10,12 +10,6 @@ Create the two accounts used for transactions. Must give account & private key u
 curl --data-binary '["inita", "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]' http://localhost:7777/v1/txn_test_gen/create_test_accounts
 ```
 
-Wait a block, and then fund those accounts
-
-```
-curl --data-binary '["inita", "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]' http://localhost:7777/v1/txn_test_gen/fund_accounts
-```
-
 ## Starting/Stopping
 
 Start generation:

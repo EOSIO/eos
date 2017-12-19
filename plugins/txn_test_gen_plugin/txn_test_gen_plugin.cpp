@@ -75,16 +75,19 @@ struct txn_test_gen_plugin_impl {
       fc::crypto::public_key  txn_text_receiver_B_pub_key = txn_test_receiver_B_priv_key.get_public_key();
       fc::crypto::private_key creator_priv_key = fc::crypto::private_key(init_priv_key);
 
-      signed_transaction trx;
+      //stake some currency; and then create some test accounts
       auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
+      signed_transaction trx;
+      trx.expiration = cc.head_block_time() + fc::seconds(30);
+      trx.set_reference_block(cc.head_block_id());
+      trx.write_scope = {creator, config::system_account_name, config::eosio_auth_scope};
+      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::lock{creator, creator, 300});
 
       //create "A" account
       {
       auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
       auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-
-      trx.write_scope = sort_names({creator,config::system_account_name});
       trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountA, owner_auth, active_auth, recovery_auth, stake});
       }
       //create "B" account
@@ -93,40 +96,23 @@ struct txn_test_gen_plugin_impl {
       auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      trx.write_scope = sort_names({creator,config::system_account_name});
       trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth, stake});
       }
+      trx.sign(creator_priv_key, chainid);
+      cc.push_transaction(trx);
 
+      //now, transfer some balance to new accounts
+      {
+      uint64_t balance = 10000;
+      signed_transaction trx;
+      trx.write_scope = sort_names({creator,newaccountA,newaccountB});
+      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::transfer{creator, newaccountA, balance, memo});
+      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::transfer{creator, newaccountB, balance, memo});
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(creator_priv_key, chainid);
-
       cc.push_transaction(trx);
-   }
-
-   void fund_accounts(const std::string& fund_name, const std::string& fund_priv_key) {
-      name newaccountA("txn.test.a");
-      name newaccountB("txn.test.b");
-      name fundor(fund_name);
-
-      fc::crypto::private_key fundor_priv_key = fc::crypto::private_key(fund_priv_key);
-
-      chain_controller& cc = app().get_plugin<chain_plugin>().chain();
-      chain::chain_id_type chainid;
-      app().get_plugin<chain_plugin>().get_chain_id(chainid);
-      uint64_t balance = 10000;
-
-      auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();  
-
-      signed_transaction trx;
-      trx.write_scope = sort_names({fundor,newaccountA,newaccountB});
-      trx.actions.emplace_back(vector<chain::permission_level>{{fundor,"active"}}, contracts::transfer{fundor, newaccountA, balance, memo});
-      trx.actions.emplace_back(vector<chain::permission_level>{{fundor,"active"}}, contracts::transfer{fundor, newaccountB, balance, memo});
-      trx.expiration = cc.head_block_time() + fc::seconds(30);
-      trx.set_reference_block(cc.head_block_id());
-      trx.sign(fundor_priv_key, chainid);
-
-      cc.push_transaction(trx);
+      }
    }
 
    void start_generation(const std::string& salt, const uint64_t& persecond) {
@@ -223,7 +209,6 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
 void txn_test_gen_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       CALL(txn_test_gen, my, create_test_accounts, INVOKE_V_R_R(my, create_test_accounts, std::string, std::string), 200),
-      CALL(txn_test_gen, my, fund_accounts, INVOKE_V_R_R(my, fund_accounts, std::string, std::string), 200),
       CALL(txn_test_gen, my, stop_generation, INVOKE_V_V(my, stop_generation), 200),
       CALL(txn_test_gen, my, start_generation, INVOKE_V_R_R(my, start_generation, std::string, uint64_t), 200)
    });
