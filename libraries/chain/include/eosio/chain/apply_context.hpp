@@ -27,6 +27,7 @@ class apply_context {
 
       void execute_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
+      void cancel_deferred( uint32_t sender_id );
 
       using table_id_object = contracts::table_id_object;
       const table_id_object* find_table( name scope, name code, name table );
@@ -157,6 +158,7 @@ class apply_context {
       struct apply_results {
          vector<action_trace>          applied_actions;
          vector<deferred_transaction>  generated_transactions;
+         vector<deferred_reference>    canceled_deferred;
       };
 
       apply_results results;
@@ -166,10 +168,22 @@ class apply_context {
          _pending_console_output << val;
       }
 
+      template<typename T, typename ...Ts>
+      void console_append(T val, Ts ...rest) {
+         console_append(val);
+         console_append(rest...);
+      };
+
+      inline void console_append_formatted(const string& fmt, const variant_object& vo) {
+         console_append(fc::format_string(fmt, vo));
+      }
+
+
    private:
       void append_results(apply_results &&other) {
          fc::move_append(results.applied_actions, move(other.applied_actions));
          fc::move_append(results.generated_transactions, move(other.generated_transactions));
+         fc::move_append(results.canceled_deferred, move(other.canceled_deferred));
       }
 
       void exec_one();

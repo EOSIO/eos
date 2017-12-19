@@ -165,6 +165,10 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
+void apply_context::cancel_deferred( uint32_t sender_id ) {
+   results.canceled_deferred.emplace_back(receiver, sender_id);
+}
+
 const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
    require_read_scope(scope);
    return db.find<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));

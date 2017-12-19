@@ -56,6 +56,9 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio );
    SET_APP_HANDLER( eosio, eosio, nonce, eosio );
    SET_APP_HANDLER( eosio, eosio, onerror, eosio );
+   SET_APP_HANDLER( eosio, eosio, postrecovery, eosio );
+   SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
+   SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
 }
 
 
@@ -64,6 +67,7 @@ abi_def chain_initializer::eos_contract_abi()
    abi_def eos_abi;
    eos_abi.types.push_back( type_def{"account_name","name"} );
    eos_abi.types.push_back( type_def{"share_type","int64"} );
+   eos_abi.types.push_back( type_def{"onerror","bytes"} );
    eos_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
    eos_abi.actions.push_back( action_def{name("lock"), "lock"} );
    eos_abi.actions.push_back( action_def{name("unlock"), "unlock"} );
@@ -78,7 +82,13 @@ abi_def chain_initializer::eos_contract_abi()
    eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth"} );
    eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth"} );
    eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
+   eos_abi.actions.push_back( action_def{name("postrecovery"), "postrecovery"} );
+   eos_abi.actions.push_back( action_def{name("passrecovery"), "passrecovery"} );
+   eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery"} );
+   eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
    eos_abi.actions.push_back( action_def{name("nonce"), "nonce"} );
+
+   // ACTION PAYLOADS
    eos_abi.structs.emplace_back( struct_def {
       "transfer", "", {
          {"from", "account_name"},
@@ -187,10 +197,67 @@ abi_def chain_initializer::eos_contract_abi()
    });
 
    eos_abi.structs.emplace_back( struct_def {
+      "postrecovery", "", {
+         {"account", "account_name"},
+         {"request_id", "uint32"},
+         {"data", "authority"},
+         {"memo", "string"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "passrecovery", "", {
+         {"account", "account_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "vetorecovery", "", {
+         {"account", "account_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
       "nonce", "", {
          {"value", "name"}
       }
    });
+
+   // DATABASE RECORDS
+   eos_abi.structs.emplace_back( struct_def {
+      "account", "", {
+         {"key",     "name"},
+         {"balance", "uint64"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "pending_recovery", "", {
+         {"account",    "name"},
+         {"request_id", "uint32"},
+         {"update",     "updateauth"},
+         {"memo",       "string"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( table_def {
+      "currency", "i64", {
+         "key"
+      }, {
+         "name"
+      },
+      "account"
+   });
+
+   eos_abi.tables.emplace_back( table_def {
+      "recovery", "i64", {
+         "account",
+      }, {
+         "name"
+      },
+      "pending_recovery"
+   });
+
 
    return eos_abi;
 }

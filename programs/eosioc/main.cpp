@@ -162,13 +162,6 @@ const string wallet_unlock = wallet_func_base + "/unlock";
 const string wallet_import_key = wallet_func_base + "/import_key";
 const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
 
-inline std::vector<name> sort_names( std::vector<name>&& names ) {
-   std::sort( names.begin(), names.end() );
-   auto itr = std::unique( names.begin(), names.end() );
-   names.erase( itr, names.end() );
-   return names;
-}
-
 inline std::vector<name> sort_names( const std::vector<name>& names ) {
    auto results = std::vector<name>(names);
    std::sort( results.begin(), results.end() );

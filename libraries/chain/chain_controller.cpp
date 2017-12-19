@@ -390,6 +390,21 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
             });
          }
 
+         if (tr.canceled_deferred.size() > 0 ) {
+            auto &generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+            const auto &generated_index = generated_transaction_idx.indices().get<by_sender_id>();
+            for (const auto &dr: tr.canceled_deferred) {
+               while(!generated_index.empty()) {
+                  const auto& itr = generated_index.lower_bound(boost::make_tuple(dr.sender, dr.sender_id));
+                  if (itr == generated_index.end() || itr->sender != dr.sender || itr->sender_id != dr.sender_id ) {
+                     break;
+                  }
+
+                  generated_transaction_idx.remove(*itr);
+               }
+            }
+         }
+
          ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
@@ -1342,6 +1357,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
+      fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
    }
 
    uint32_t act_usage = result.action_traces.size();

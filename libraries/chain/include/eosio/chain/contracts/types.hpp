@@ -84,7 +84,7 @@ struct table_def {
    :name(name), index_type(index_type), key_names(key_names), key_types(key_types), type(type)
    {}
 
-   table_name         name;  // the name of the table
+   table_name         name;        // the name of the table
    type_name          index_type;  // the kind of index, i64, i128i128, etc
    vector<field_name> key_names;   // names for the keys defined by key_types
    vector<type_name>  key_types;   // the type of key parameters
@@ -379,6 +379,45 @@ struct onerror : bytes {
    }
 };
 
+struct postrecovery {
+   account_name       account;
+   authority          data;
+   string             memo;
+
+   static scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(postrecovery);
+   }
+};
+
+struct passrecovery {
+   account_name   account;
+
+   static scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(passrecovery);
+   }
+};
+
+
+struct vetorecovery {
+   account_name   account;
+
+   static scope_name get_scope() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(vetorecovery);
+   }
+};
+
 using nonce_type = name;
 struct nonce {
    nonce_type value;
@@ -414,4 +453,8 @@ FC_REFLECT( eosio::chain::contracts::updateauth                       , (account
 FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account)(code)(type) )
+FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
+FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
+FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::nonce                            , (value) )
+

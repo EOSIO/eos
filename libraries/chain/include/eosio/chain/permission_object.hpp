@@ -16,6 +16,7 @@ namespace eosio { namespace chain {
       id_type           parent; ///< parent permission 
       permission_name   name; ///< human-readable name for the permission
       shared_authority  auth; ///< authority required to execute this permission
+      time_point        last_updated; ///< the last time this authority was updated
 
       /**
        * @brief Checks if this permission is equivalent or greater than other
@@ -78,7 +79,7 @@ namespace eosio { namespace chain {
    >;
 
    class permission_usage_object : public chainbase::object<permission_usage_object_type, permission_usage_object> {
-      OBJECT_CTOR(permission_usage_object, (account)(permission) )
+      OBJECT_CTOR(permission_usage_object)
 
       id_type           id;
       account_name      account;     ///< the account this permission belongs to
