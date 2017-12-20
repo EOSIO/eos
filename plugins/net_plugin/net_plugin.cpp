@@ -1544,9 +1544,76 @@ namespace eosio {
       sync_master->reset_lib_num();
       c->syncing = false;
 
+      //--------------------------------
+      // sync need checkz;
+      //
+      // 0. my head block id == peer head id means we are all caugnt up block wize
+      // 1. my lib < peer lib - start sync locally
+      // 2. my lib > peer lib - send an last_irr_catch_up notice if not the first generation
+      //
+      // 3  my head block num <= peer head block num - update sync state and send a catchup request
+      // 4  my head block num > peer block num ssend a notice catchup if this is not the first generation
+      //
+      //-----------------------------
+
       uint32_t head = cc.head_block_num( );
       block_id_type head_id = cc.head_block_id();
 
+      if (sync_master->syncing() ) {
+        fc_dlog(logger, "sync check state -1");
+        sync_master->start_sync( c, peer_lib);
+        return;
+      }
+      if (head_id == msg.head_id) {
+        fc_dlog(logger, "sync check state 0");
+        notice_message note;
+        note.known_blocks.mode = none;
+        note.known_trx.mode = catch_up;
+        note.known_trx.pending = local_txns.size();
+        c->enqueue( note );
+        return;
+      }
+      if (lib_num < peer_lib) {
+        fc_dlog(logger, "sync check state 1");
+        sync_master->start_sync( c, peer_lib);
+        return;
+      }
+      if (lib_num > peer_lib ) {
+        fc_dlog(logger, "sync check state 2");
+        if ( msg.generation > 1 ) {
+          notice_message note;
+          note.known_trx.mode = none;
+          note.known_blocks.mode = last_irr_catch_up;
+          note.known_blocks.pending = lib_num;
+          c->enqueue( note );
+        }
+        c->syncing = true;
+        return;
+      }
+      if (head <= msg.head_num ) {
+        fc_dlog(logger, "sync check state 3");
+        request_message req;
+        req.req_trx.mode = none;
+        req.req_blocks.mode = catch_up;
+        req.req_blocks.pending = lib_num;
+        c->enqueue( req );
+        return;
+      }
+      else {
+        fc_dlog(logger, "sync check state 4");
+        if ( msg.generation > 1 ) {
+          notice_message note;
+          note.known_trx.mode = none;
+          note.known_blocks.mode = catch_up;
+          note.known_blocks.pending = head - lib_num;
+          c->enqueue( note );
+        }
+        c->syncing = true;
+        return;
+      }
+      elog ("sync check failed to resolbe status");
+      return;
+#if 0
       if( peer_lib > head || sync_master->syncing() ) {
         sync_master->start_sync( c, peer_lib );
       }
@@ -1554,25 +1621,26 @@ namespace eosio {
         fc_dlog(logger, "msg.head_id = ${m} our head = ${h}",("m",msg.head_id)("h",head_id));
 
         notice_message note;
-        note.known_blocks.mode = id_list_modes::none;
+        note.known_blocks.mode = none;
         fc_dlog(logger, "msg head = ${mh} msg lib = ${ml} my head = ${h} my lib = ${l}",("mh",msg.head_num)("ml",msg.last_irreversible_block_num)("h",head)("l",lib_num));
         if( msg.head_num >= lib_num ) {
-          note.known_blocks.mode = id_list_modes::catch_up;
+          note.known_blocks.mode = catch_up;
           note.known_blocks.pending = head - lib_num;
         } else {
-          note.known_blocks.mode = id_list_modes::last_irr_catch_up;
+          note.known_blocks.mode = last_irr_catch_up;
           note.known_blocks.pending = lib_num;
         }
-        note.known_trx.mode = id_list_modes::catch_up;
+        note.known_trx.mode = catch_up;
         note.known_trx.pending = local_txns.size();
         if( note.known_trx.pending > 0 || note.known_blocks.pending > 0) {
-          if (msg.generation > 1) {
+          if (msg.generation > 1 && note.known_blocks.mode == catch_up) {
             fc_dlog(logger, "sending ${m} notice to ${n} about ${t} txns and ${b} blocks",("m",modes_str(note.known_blocks.mode))("n",c->peer_name())("t",note.known_trx.pending)("b",note.known_blocks.pending));
             c->enqueue( note );
           }
           c->syncing = true;
         }
       }
+#endif
     }
 
   void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
