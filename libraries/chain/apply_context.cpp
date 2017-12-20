@@ -137,7 +137,10 @@ void apply_context::require_recipient( account_name code ) {
 }
 
 void apply_context::execute_inline( action &&a ) {
-   controller.check_authorization( {a}, flat_set<public_key_type>(), false, {receiver} );
+   // todo: rethink this special case
+   if (receiver != config::system_account_name) {
+      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+   }
    _inline_actions.emplace_back( move(a) );
 }
 
@@ -153,7 +156,10 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
-      controller.check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
+      // todo: rethink this special case
+      if (receiver != config::system_account_name) {
+         controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+      }
 
       controller.validate_scope( trx );
 

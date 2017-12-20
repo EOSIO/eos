@@ -52,7 +52,8 @@ namespace eosio { namespace chain {
       pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
       created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
       received_block              = 1 << 16,  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
-      genesis_setup               = 1 << 17  ///< used to indicate that the origination of the call was for a genesis transaction
+      genesis_setup               = 1 << 17, ///< used to indicate that the origination of the call was for a genesis transaction
+      skip_missed_block_penalty   = 1 << 18, ///< used to indicate that missed blocks shouldn't count against producers (used in long unit tests)
    };
 
 
@@ -377,7 +378,7 @@ namespace eosio { namespace chain {
           * @param type The type of message
           * @return
           */
-         const permission_object& lookup_minimum_permission( account_name authorizer_account,
+         optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
                                                              scope_name code_account,
                                                              action_name type) const;
 

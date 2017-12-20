@@ -675,15 +675,19 @@ void chain_controller::check_authorization( const vector<action>& actions,
    for( const auto& act : actions ) {
       for( const auto& declared_auth : act.authorization ) {
 
-         const auto& min_permission = lookup_minimum_permission(declared_auth.actor, 
-                                                                act.scope, act.name);
+         // check a minimum permission if one is set, otherwise assume the contract code will validate
+         auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.scope, act.name);
+         if (min_permission_name) {
+            const auto& min_permission = _db.get<permission_object, by_owner>(boost::make_tuple(declared_auth.actor, *min_permission_name));
 
-         if ((_skip_flags & skip_authority_check) == false) {
-            const auto& index = _db.get_index<permission_index>().indices();
-            EOS_ASSERT(get_permission(declared_auth).satisfies(min_permission, index), 
-                       tx_irrelevant_auth,
-                       "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                       ("auth", declared_auth)("min", min_permission.name));
+
+            if ((_skip_flags & skip_authority_check) == false) {
+               const auto &index = _db.get_index<permission_index>().indices();
+               EOS_ASSERT(get_permission(declared_auth).satisfies(min_permission, index),
+                          tx_irrelevant_auth,
+                          "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+                          ("auth", declared_auth)("min", min_permission.name));
+            }
          }
          if ((_skip_flags & skip_transaction_signatures) == false) {
             EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
@@ -737,9 +741,15 @@ void chain_controller::validate_scope( const transaction& trx )const {
    FC_ASSERT( intersection.size() == 0, "a transaction may not redeclare scope in readscope" );
 }
 
-const permission_object& chain_controller::lookup_minimum_permission(account_name authorizer_account,
+optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,
                                                                     account_name scope,
                                                                     action_name act_name) const {
+   // updateauth is a special case where any permission _may_ be suitable depending
+   // on the contents of the action
+   if (scope == config::system_account_name && act_name == N(updateauth)) {
+      return optional<permission_name>();
+   }
+
    try {
       // First look up a specific link for this message act_name
       auto key = boost::make_tuple(authorizer_account, scope, act_name);
@@ -751,10 +761,10 @@ const permission_object& chain_controller::lookup_minimum_permission(account_nam
       }
 
       // If no specific or default link found, use active permission
-      auto permission_key = boost::make_tuple<account_name, permission_name>(authorizer_account, config::active_name );
       if (link != nullptr)
-         get<1>(permission_key) = link->required_permission;
-      return _db.get<permission_object, by_owner>(permission_key);
+         return link->required_permission;
+      else
+         return N(active);
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
 }
 
@@ -1141,18 +1151,20 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
 //   if (missed_blocks)
 //      wlog("Blockchain continuing after gap of ${b} missed blocks", ("b", missed_blocks));
 
-   for(uint32_t i = 0; i < missed_blocks; ++i) {
-      const auto& producer_missed = get_producer(get_scheduled_producer(i+1));
-      if(producer_missed.owner != b.producer) {
-         /*
-         const auto& producer_account = producer_missed.producer_account(*this);
-         if( (fc::time_point::now() - b.timestamp) < fc::seconds(30) )
-            wlog( "Producer ${name} missed block ${n} around ${t}", ("name",producer_account.name)("n",b.block_num())("t",b.timestamp) );
-            */
+   if (!(_skip_flags & skip_missed_block_penalty)) {
+      for (uint32_t i = 0; i < missed_blocks; ++i) {
+         const auto &producer_missed = get_producer(get_scheduled_producer(i + 1));
+         if (producer_missed.owner != b.producer) {
+            /*
+            const auto& producer_account = producer_missed.producer_account(*this);
+            if( (fc::time_point::now() - b.timestamp) < fc::seconds(30) )
+               wlog( "Producer ${name} missed block ${n} around ${t}", ("name",producer_account.name)("n",b.block_num())("t",b.timestamp) );
+               */
 
-         _db.modify( producer_missed, [&]( producer_object& w ) {
-           w.total_missed++;
-         });
+            _db.modify(producer_missed, [&](producer_object &w) {
+               w.total_missed++;
+            });
+         }
       }
    }
 
@@ -1541,10 +1553,18 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
 
       // for any transaction not sent by code, update the affirmative last time a given permission was used
       if (!meta.sender) {
-         const auto &puo = _db.get<permission_usage_object, by_account_permission>(boost::make_tuple(authaccnt.first, authaccnt.second));
-         _db.modify(puo, [this](auto &pu) {
-            pu.last_used = head_block_time();
-         });
+         const auto *puo = _db.find<permission_usage_object, by_account_permission>(boost::make_tuple(authaccnt.first, authaccnt.second));
+         if (puo) {
+            _db.modify(*puo, [this](permission_usage_object &pu) {
+               pu.last_used = head_block_time();
+            });
+         } else {
+            _db.create<permission_usage_object>([this, &authaccnt](permission_usage_object &pu){
+               pu.account = authaccnt.first;
+               pu.permission = authaccnt.second;
+               pu.last_used = head_block_time();
+            });
+         }
       }
    }
 

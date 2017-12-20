@@ -76,7 +76,7 @@ namespace eosio { namespace testing {
       auto sch_pro   = control->get_scheduled_producer(slot);
       auto priv_key  = get_private_key( sch_pro, "producer" );
 
-      return control->generate_block( next_time, sch_pro, priv_key );
+      return control->generate_block( next_time, sch_pro, priv_key, skip_missed_block_penalty );
    }
 
 
@@ -96,7 +96,7 @@ namespace eosio { namespace testing {
       trx.write_scope = { creator, config::eosio_auth_scope };
 
       trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}}, 
-                                contracts::newaccount{ 
+                                contracts::newaccount{
                                    .creator  = creator,
                                    .name     = a,
                                    .owner    = authority( get_public_key( a, "owner" ) ),

@@ -457,11 +457,15 @@ using apply_handler = std::function<void(apply_context&)>;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
-      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-      if( copylen ) {
-         itr->value.copy(value, copylen);
+      if (valuelen) {
+         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         if (copylen) {
+            itr->value.copy(value, copylen);
+         }
+         return copylen;
+      } else {
+         return itr->value.size();
       }
-      return copylen;
    }
 
    template <typename IndexType, typename Scope>
@@ -477,11 +481,15 @@ using apply_handler = std::function<void(apply_context&)>;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
-      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-      if( copylen ) {
-         itr->value.copy(value, copylen);
+      if (valuelen) {
+         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         if (copylen) {
+            itr->value.copy(value, copylen);
+         }
+         return copylen;
+      } else {
+         return itr->value.size();
       }
-      return copylen;
    }
 
    template <typename IndexType, typename Scope>
@@ -501,11 +509,15 @@ using apply_handler = std::function<void(apply_context&)>;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
-      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-      if( copylen ) {
-         itr->value.copy(value, copylen);
+      if (valuelen) {
+         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         if (copylen) {
+            itr->value.copy(value, copylen);
+         }
+         return copylen;
+      } else {
+         return itr->value.size();
       }
-      return copylen;
    }
 
    template <typename IndexType, typename Scope>
@@ -539,12 +551,16 @@ using apply_handler = std::function<void(apply_context&)>;
       }
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-      
-      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-      if( copylen ) {
-         itr->value.copy(value, copylen);
+
+      if (valuelen) {
+         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         if (copylen) {
+            itr->value.copy(value, copylen);
+         }
+         return copylen;
+      } else {
+         return itr->value.size();
       }
-      return copylen;
    }
 
    template <typename IndexType, typename Scope>
@@ -575,11 +591,15 @@ using apply_handler = std::function<void(apply_context&)>;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
-      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-      if( copylen ) {
-         itr->value.copy(value, copylen);
+      if (valuelen) {
+         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         if (copylen) {
+            itr->value.copy(value, copylen);
+         }
+         return copylen;
+      } else {
+         return itr->value.size();
       }
-      return copylen;
    }
 
    template <typename IndexType, typename Scope>
@@ -595,11 +615,15 @@ using apply_handler = std::function<void(apply_context&)>;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
-      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-      if( copylen ) {
-         itr->value.copy(value, copylen);
+      if (valuelen) {
+         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         if (copylen) {
+            itr->value.copy(value, copylen);
+         }
+         return copylen;
+      } else {
+         return itr->value.size();
       }
-      return copylen;
    }
 
    template <typename IndexType, typename Scope>
@@ -615,11 +639,15 @@ using apply_handler = std::function<void(apply_context&)>;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
-      auto copylen =  std::min<size_t>(itr->value.size(),valuelen);
-      if( copylen ) {
-         itr->value.copy(value, copylen);
+      if (valuelen) {
+         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         if (copylen) {
+            itr->value.copy(value, copylen);
+         }
+         return copylen;
+      } else {
+         return itr->value.size();
       }
-      return copylen;
    }
 
 } } // namespace eosio::chain

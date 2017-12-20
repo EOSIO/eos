@@ -107,12 +107,6 @@ void apply_eosio_newaccount(apply_context& context) {
    });
 
    auto create_permission = [owner=create.name, &db, &context](const permission_name& name, permission_object::id_type parent, authority &&auth) {
-      db.create<permission_usage_object>([&](permission_usage_object& pu){
-         pu.account = owner;
-         pu.permission = name;
-         pu.last_used = context.controller.head_block_time();
-      });
-
       return db.create<permission_object>([&](permission_object& p) {
          p.name = name;
          p.parent = parent;
@@ -431,10 +425,27 @@ void apply_eosio_updateauth(apply_context& context) {
 
    auto& db = context.mutable_db;
 
-   bool is_system = context.act.authorization.size() == 1 && context.act.authorization.front().actor == config::system_account_name && context.sender && context.sender == config::system_account_name;
-   if (!is_system) {
-      context.require_authorization(update.account);
-   }
+   FC_ASSERT(context.act.authorization.size(), "updateauth can only have one action authorization");
+   const auto& act_auth = context.act.authorization.front();
+   // lazy evaluating loop
+   auto permission_is_valid_for_update = [&](){
+      if (act_auth.permission == config::owner_name || act_auth.permission == update.permission) {
+         return true;
+      }
+
+      auto current = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+      while(current.name != config::owner_name) {
+         if (current.name == act_auth.permission) {
+            return true;
+         }
+
+         current = db.get<permission_object>(current.parent);
+      }
+
+      return false;
+   };
+
+   FC_ASSERT(act_auth.actor == update.account && permission_is_valid_for_update(), "updateauth must carry a permission equal to or in the ancestery of permission it updates");
 
    db.get<account_object, by_name>(update.account);
    validate_authority_precondition(context, update.data);
@@ -561,26 +572,29 @@ static const abi_serializer& get_abi_serializer() {
 }
 
 static optional<variant> get_pending_recovery(apply_context& context, account_name account ) {
-   const auto* t_id = context.find_table(account, config::system_account_name, N(pending_recovery));
+   ilog("Fetching recovery for ${account}:", ("account", account));
+   const auto* t_id = context.find_table(account, config::system_account_name, N(recovery));
    if (t_id) {
-      uint64_t key = N(account);
+      uint64_t key = account;
       int32_t record_size = context.front_record<key_value_index, by_scope_primary>(*t_id, &key, nullptr, 0);
       if (record_size > 0) {
-         bytes value(record_size);
-         record_size = context.front_record<key_value_index, by_scope_primary>(*t_id, &key, value.data(), value.size());
-         assert(record_size == value.size());
+         bytes value(record_size + sizeof(uint64_t));
+         uint64_t* key_p = reinterpret_cast<uint64_t *>(value.data());
+         *key_p = key;
+
+         record_size = context.front_record<key_value_index, by_scope_primary>(*t_id, &key, value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
+         assert(record_size == value.size() - sizeof(uint64_t));
 
          return get_abi_serializer().binary_to_variant("pending_recovery", value);
       }
    }
-
 
    return optional<variant_object>();
 }
 
 static uint32_t get_next_sender_id(apply_context& context) {
    context.require_write_scope( config::eosio_auth_scope );
-   const auto& t_id = context.find_or_create_table(config::eosio_auth_scope, config::system_account_name, N(deferred_sequence));
+   const auto& t_id = context.find_or_create_table(config::eosio_auth_scope, config::system_account_name, N(deferred.seq));
    uint64_t key = N(config::eosio_auth_scope);
    uint32_t next_serial = 0;
    context.front_record<key_value_index, by_scope_primary>(t_id, &key, (char *)&next_serial, sizeof(uint32_t));
@@ -589,6 +603,20 @@ static uint32_t get_next_sender_id(apply_context& context) {
    context.store_record<key_value_object>(t_id, &key, (char *)&next_serial, sizeof(uint32_t));
    return result;
 }
+
+static auto get_account_creation(const apply_context& context, const account_name& account) {
+   auto const& accnt = context.db.get<account_object, by_name>(account);
+   return (time_point)accnt.creation_date;
+};
+
+static auto get_permission_last_used(const apply_context& context, const account_name& account, const permission_name& permission) {
+   auto const* perm = context.db.find<permission_usage_object, by_account_permission>(boost::make_tuple(account, permission));
+   if (perm) {
+      return optional<time_point>(perm->last_used);
+   }
+
+   return optional<time_point>();
+};
 
 void apply_eosio_postrecovery(apply_context& context) {
    context.require_write_scope( config::eosio_auth_scope );
@@ -609,11 +637,23 @@ void apply_eosio_postrecovery(apply_context& context) {
       delay_lock = fc::days(30);
    } else {
       // process lost password
-      auto const& owner_perm = context.db.get<permission_usage_object, by_account_permission>(boost::make_tuple(account, N(owner)));
-      auto const& active_perm = context.db.get<permission_usage_object, by_account_permission>(boost::make_tuple(account, N(active)));
 
-      FC_ASSERT(owner_perm.last_used >= now - fc::days(30), "Account ${account} has had owner key activity recently and cannot be recovered yet!", ("account",account));
-      FC_ASSERT(active_perm.last_used >= now - fc::days(30), "Account ${account} has had active key activity recently and cannot be recovered yet!", ("account",account));
+      auto owner_last_used = get_permission_last_used(context, account, N(owner));
+      auto active_last_used = get_permission_last_used(context, account, N(active));
+
+      if (!owner_last_used || !active_last_used) {
+         auto account_creation = get_account_creation(context, account);
+         if (!owner_last_used) {
+            owner_last_used.emplace(account_creation);
+         }
+
+         if (!active_last_used) {
+            active_last_used.emplace(account_creation);
+         }
+      }
+
+      FC_ASSERT(*owner_last_used <= now - fc::days(30), "Account ${account} has had owner key activity recently and cannot be recovered yet!", ("account",account));
+      FC_ASSERT(*active_last_used <= now - fc::days(30), "Account ${account} has had active key activity recently and cannot be recovered yet!", ("account",account));
 
       delay_lock = fc::days(7);
    }
@@ -628,8 +668,8 @@ void apply_eosio_postrecovery(apply_context& context) {
 
    uint32_t request_id = get_next_sender_id(context);
 
-   auto record = mutable_variant_object()
-      ("account", (string)account)
+   auto record_data = mutable_variant_object()
+      ("account", account)
       ("request_id", request_id)
       ("update", update)
       ("memo", recover_act.memo);
@@ -641,28 +681,32 @@ void apply_eosio_postrecovery(apply_context& context) {
    dtrx.execute_after = context.controller.head_block_time() + delay_lock;
    dtrx.set_reference_block(context.controller.head_block_id());
    dtrx.expiration = dtrx.execute_after + fc::seconds(60);
-   dtrx.write_scope = sort_names({account, config::eosio_auth_scope});
-   dtrx.actions.emplace_back(vector<permission_level>{{config::system_account_name,config::active_name}},
+   dtrx.write_scope = sort_names({account, config::eosio_auth_scope, config::system_account_name});
+   dtrx.actions.emplace_back(vector<permission_level>{{account,config::active_name}},
                              passrecovery { account });
 
    context.execute_deferred(std::move(dtrx));
 
-   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(pending_recovery));
-   auto data = get_abi_serializer().variant_to_binary("pending_recovery", record);
-   context.store_record<key_value_object>(t_id,(uint64_t *)data.data(), data.data() + sizeof(uint64_t), data.size() - sizeof(uint64_t));
+
+   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(recovery));
+   auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
+   context.store_record<key_value_object>(t_id,&account.value, data.data() + sizeof(uint64_t), data.size() - sizeof(uint64_t));
 
    context.console_append_formatted("Recovery Started for account ${account} : ${memo}\n", mutable_variant_object()("account", account)("memo", recover_act.memo));
 }
 
 static void remove_pending_recovery(apply_context& context, const account_name& account) {
-   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(pending_recovery));
+   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(recovery));
    context.remove_record<key_value_object>(t_id, &account.value);
 }
 
 void apply_eosio_passrecovery(apply_context& context) {
-   context.require_authorization(config::system_account_name);
    auto pass_act = context.act.as<passrecovery>();
    const auto& account = pass_act.account;
+
+   // ensure this is only processed if it is a deferred transaction from the system account
+   FC_ASSERT(context.sender && *context.sender == config::system_account_name);
+   context.require_authorization(account);
 
    auto maybe_recovery = get_pending_recovery(context, account);
    FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
@@ -671,7 +715,7 @@ void apply_eosio_passrecovery(apply_context& context) {
    updateauth update;
    fc::from_variant(recovery["update"], update);
 
-   action act(vector<permission_level>{{config::system_account_name,config::active_name}}, update);
+   action act(vector<permission_level>{{account,config::owner_name}}, update);
    context.execute_inline(move(act));
 
    remove_pending_recovery(context, account);
