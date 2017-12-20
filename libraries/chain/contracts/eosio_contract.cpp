@@ -572,7 +572,6 @@ static const abi_serializer& get_abi_serializer() {
 }
 
 static optional<variant> get_pending_recovery(apply_context& context, account_name account ) {
-   ilog("Fetching recovery for ${account}:", ("account", account));
    const auto* t_id = context.find_table(account, config::system_account_name, N(recovery));
    if (t_id) {
       uint64_t key = account;
