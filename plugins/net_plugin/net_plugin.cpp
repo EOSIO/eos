@@ -349,7 +349,6 @@ namespace eosio {
     uint32_t     end_block;
     uint32_t     last; ///< last sent or received
     time_point   start_time; ///< time request made or received
-    // deque<vector<char> > block_cache;
   };
 
   using sync_state_ptr = shared_ptr< sync_state >;
@@ -1093,6 +1092,7 @@ namespace eosio {
     ,sync_last_requested_num( 0 )
     ,sync_req_span( span )
     ,source()
+    ,active(false)
   {
     chain_plug = app( ).find_plugin<chain_plugin>( );
   }
@@ -1222,7 +1222,6 @@ namespace eosio {
   }
 
   void sync_manager::start_sync( connection_ptr c, uint32_t target) {
-
     if (!sync_required()) {
       uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
       uint32_t hnum = chain_plug->chain().head_block_num();
@@ -1537,7 +1536,7 @@ namespace eosio {
       //
       // 0. my head block id == peer head id means we are all caugnt up block wise
       // 1. my head block num < peer lib - start sync locally
-      // 2. my lib > peer lib - send an last_irr_catch_up notice if not the first generation
+      // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
       //
       // 3  my head block num <= peer head block num - update sync state and send a catchup request
       // 4  my head block num > peer block num ssend a notice catchup if this is not the first generation
