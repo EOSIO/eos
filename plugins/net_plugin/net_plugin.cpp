@@ -1223,6 +1223,10 @@ namespace eosio {
   }
 
   void sync_manager::start_sync( connection_ptr c, uint32_t target) {
+    if( target > sync_known_lib_num) {
+      sync_known_lib_num = target;
+    }
+
     if (!sync_required()) {
       uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
       uint32_t hnum = chain_plug->chain().head_block_num();
@@ -1235,9 +1239,7 @@ namespace eosio {
     active = true;
 
     ilog( "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}", ( "cc",sync_last_requested_num)("t",target)("p",c->peer_name()));
-    if( target > sync_known_lib_num) {
-      sync_known_lib_num = target;
-    }
+
     if( c->sync_receiving && c->sync_receiving->end_block > 0) {
       ilog("connection already has end block ${eb}",("eb",c->sync_receiving->end_block));
       return;
@@ -1564,7 +1566,8 @@ namespace eosio {
         fc_dlog(logger, "sync check state 2");
         if ( msg.generation > 1 ) {
           notice_message note;
-          note.known_trx.mode = none;
+          note.known_trx.pending = head;
+          note.known_trx.mode = last_irr_catch_up;
           note.known_blocks.mode = last_irr_catch_up;
           note.known_blocks.pending = lib_num;
           c->enqueue( note );
@@ -1655,6 +1658,7 @@ namespace eosio {
       case none:
         break;
       case last_irr_catch_up: {
+        c->last_handshake.head_num = msg.known_trx.pending;
         req.req_trx.mode = none;
         fwd.known_trx.mode = none;
         break;
@@ -1705,7 +1709,10 @@ namespace eosio {
         break;
       }
       case last_irr_catch_up : {
+        c->last_handshake.last_irreversible_block_num = msg.known_trx.pending;
+        sync_master->reset_lib_num ();
         if (!c->sync_receiving ) {
+
           sync_master->start_sync(c, msg.known_blocks.pending);
         }
         break;
