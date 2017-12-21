@@ -51,13 +51,6 @@ using namespace eosio::chain;
      api_handle->call_name(); \
      eosio::detail::txn_test_gen_empty result;
 
-static std::vector<name> sort_names( std::vector<name>&& names ) {
-   std::sort( names.begin(), names.end() );
-   auto itr = std::unique( names.begin(), names.end() );
-   names.erase( itr, names.end() );
-   return names;
-}
-
 struct txn_test_gen_plugin_impl {
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
       name newaccountA("txn.test.a");

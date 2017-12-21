@@ -40,6 +40,7 @@ namespace eosio { namespace chain {
    struct by_expiration;
    struct by_delay;
    struct by_status;
+   struct by_sender_id;
 
    using generated_transaction_multi_index = chainbase::shared_multi_index_container<
       generated_transaction_object,
@@ -55,6 +56,13 @@ namespace eosio { namespace chain {
          ordered_unique< tag<by_delay>, 
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, delay_until),
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
+            >
+         >,
+         ordered_unique< tag<by_sender_id>,
+            composite_key< generated_transaction_object,
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, account_name, sender),
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, uint32_t, sender_id),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
             >
          >

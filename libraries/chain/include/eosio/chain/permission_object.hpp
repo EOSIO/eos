@@ -16,6 +16,7 @@ namespace eosio { namespace chain {
       id_type           parent; ///< parent permission 
       permission_name   name; ///< human-readable name for the permission
       shared_authority  auth; ///< authority required to execute this permission
+      time_point        last_updated; ///< the last time this authority was updated
 
       /**
        * @brief Checks if this permission is equivalent or greater than other
@@ -77,9 +78,37 @@ namespace eosio { namespace chain {
       >
    >;
 
+   class permission_usage_object : public chainbase::object<permission_usage_object_type, permission_usage_object> {
+      OBJECT_CTOR(permission_usage_object)
+
+      id_type           id;
+      account_name      account;     ///< the account this permission belongs to
+      permission_name   permission;  ///< human-readable name for the permission
+      time_point        last_used;   ///< when this permission was last used
+   };
+
+   struct by_account_permission;
+   using permission_usage_index = chainbase::shared_multi_index_container<
+      permission_usage_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<permission_usage_object, permission_usage_object::id_type, &permission_usage_object::id>>,
+         ordered_unique<tag<by_account_permission>,
+            composite_key<permission_usage_object,
+               member<permission_usage_object, account_name, &permission_usage_object::account>,
+               member<permission_usage_object, permission_name, &permission_usage_object::permission>,
+               member<permission_usage_object, permission_usage_object::id_type, &permission_usage_object::id>
+            >
+         >
+      >
+   >;
+
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
 
 FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
 FC_REFLECT(eosio::chain::permission_object, (id)(owner)(parent)(name)(auth))
+
+FC_REFLECT(chainbase::oid<eosio::chain::permission_usage_object>, (_id))
+FC_REFLECT(eosio::chain::permission_usage_object, (id)(account)(permission)(last_used))

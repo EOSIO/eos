@@ -160,6 +160,15 @@ namespace eosio { namespace chain {
       time_point_sec execute_after; /// delayed exeuction
    };
 
+   struct deferred_reference {
+      deferred_reference( const account_name& sender, uint32_t sender_id)
+      :sender(sender),sender_id(sender_id)
+      {}
+
+      account_name   sender;
+      uint32_t       sender_id;
+   };
+
    struct data_access_info {
       enum access_type {
          read = 0, ///< scope was read by this action
@@ -185,6 +194,7 @@ namespace eosio { namespace chain {
 
       vector<action_trace>          action_traces;
       vector<deferred_transaction>  deferred_transactions;
+      vector<deferred_reference>    canceled_deferred;
    };
 
    struct transaction_metadata {

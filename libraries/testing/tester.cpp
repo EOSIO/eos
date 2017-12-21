@@ -41,11 +41,11 @@ namespace eosio { namespace testing {
       open();
    }
 
-   public_key_type  tester::get_public_key( name keyname, string role ) { 
+   public_key_type  tester::get_public_key( name keyname, string role ) const {
       return get_private_key( keyname, role ).get_public_key(); 
    }
 
-   private_key_type tester::get_private_key( name keyname, string role ) { 
+   private_key_type tester::get_private_key( name keyname, string role ) const {
       return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
    }
 
@@ -76,7 +76,7 @@ namespace eosio { namespace testing {
       auto sch_pro   = control->get_scheduled_producer(slot);
       auto priv_key  = get_private_key( sch_pro, "producer" );
 
-      return control->generate_block( next_time, sch_pro, priv_key );
+      return control->generate_block( next_time, sch_pro, priv_key, skip_missed_block_penalty );
    }
 
 
@@ -85,21 +85,29 @@ namespace eosio { namespace testing {
          produce_block();
    }
 
-  void tester::set_tapos( signed_transaction& trx ) {
+  void tester::set_tapos( signed_transaction& trx ) const {
      trx.set_reference_block( control->head_block_id() );
   }
 
 
-   void tester::create_account( account_name a, asset initial_balance, account_name creator ) {
+   void tester::create_account( account_name a, asset initial_balance, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_tapos( trx );
       trx.write_scope = { creator, config::eosio_auth_scope };
 
+      authority owner_auth;
+      if (multisig) {
+         // multisig between account's owner key and creators active permission
+         owner_auth = authority(2, {key_weight{get_public_key( a, "owner" ), 1}}, {permission_level_weight{{creator, config::active_name}, 1}});
+      } else {
+         owner_auth =  authority( get_public_key( a, "owner" ) );
+      }
+
       trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}}, 
-                                contracts::newaccount{ 
+                                contracts::newaccount{
                                    .creator  = creator,
                                    .name     = a,
-                                   .owner    = authority( get_public_key( a, "owner" ) ),
+                                   .owner    = owner_auth,
                                    .active   = authority( get_public_key( a, "active" ) ),
                                    .recovery = authority( get_public_key( a, "recovery" ) ),
                                    .deposit  = initial_balance
@@ -115,8 +123,8 @@ namespace eosio { namespace testing {
       return control->push_transaction( trx );
    }
 
-   void tester::create_account( account_name a, string initial_balance, account_name creator ) {
-      create_account( a, asset::from_string(initial_balance), creator );
+   void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
+      create_account( a, asset::from_string(initial_balance), creator, multisig );
    }
    
 
