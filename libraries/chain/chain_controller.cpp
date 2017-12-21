@@ -1385,6 +1385,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    }
 
    update_usage(meta, act_usage);
+   record_transaction(meta.trx);
    return result;
 }
 
