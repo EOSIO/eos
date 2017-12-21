@@ -1233,6 +1233,7 @@ namespace eosio {
   }
 
   void sync_manager::start_sync( connection_ptr c, uint32_t target) {
+    #if 0
     if( !syncing()) {
       sync_last_requested_num = chain_plug->chain().head_block_num();
       fc_dlog(logger, "Inform other open connections that we are syncing");
@@ -1246,6 +1247,12 @@ namespace eosio {
           ci->enqueue( hello );
         }
       }
+    }
+    #endif
+
+    if (!syncing()) {
+      fc_dlog( logger, "We are already caught up.");
+      return;
     }
     ilog( "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}", ( "cc",sync_last_requested_num)("t",target)("p",c->peer_name()));
     if( target > sync_known_lib_num) {
@@ -1548,8 +1555,9 @@ namespace eosio {
       //--------------------------------
       // sync need checkz;
       //
-      // 0. my head block id == peer head id means we are all caugnt up block wize
-      // 1. my lib < peer lib - start sync locally
+      // -1. another connection has already decided we are synching so continue with this connection
+      // 0. my head block id == peer head id means we are all caugnt up block wise
+      // 1. my head block num < peer lib - start sync locally
       // 2. my lib > peer lib - send an last_irr_catch_up notice if not the first generation
       //
       // 3  my head block num <= peer head block num - update sync state and send a catchup request
@@ -1612,7 +1620,7 @@ namespace eosio {
         c->syncing = true;
         return;
       }
-      elog ("sync check failed to resolbe status");
+      elog ("sync check failed to resolve status");
       return;
 #if 0
       if( peer_lib > head || sync_master->syncing() ) {
