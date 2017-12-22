@@ -174,13 +174,6 @@ struct claim {
 };
 
 struct newaccount {
-   /*
-   newaccount() = default;
-   newaccount(const account_name& creator, const account_name& name, const authority& owner, const authority& active, const authority& recovery, const asset& deposit)
-   :creator(creator), name(name), owner(owner), active(active), recovery(recovery), deposit(deposit)
-   {}
-   */
-
    account_name                     creator;
    account_name                     name;
    authority                        owner;
@@ -198,13 +191,6 @@ struct newaccount {
 };
 
 struct setcode {
-   /*
-   setcode() = default;
-   setcode(const account_name& account, const uint8& vmtype, const uint8& vmversion, const bytes& code)
-   :account(account), vmtype(vmtype), vmversion(vmversion), code(code)//, abi(abi)
-   {}
-   */
-
    account_name                     account;
    uint8                            vmtype;
    uint8                            vmversion;
@@ -220,13 +206,6 @@ struct setcode {
 };
 
 struct setabi {
-   /*
-   setabi() = default;
-   setabi(const account_name& account, const abi_def& abi)
-   :account(account), abi(abi)
-   {}
-   */
-
    account_name                     account;
    abi_def                          abi;
 
