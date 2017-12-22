@@ -76,8 +76,8 @@ script:
   - mkdir build && cd build
   - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release $EOS_CMAKE_OPTIONS ..
   - ninja -j4
-  - tests/eosd_run_test.sh --host=localhost --port=8888
-#  - '[ "$TRAVIS_OS_NAME" == "osx" ] || EOSLIB=../contracts tests/chain_test'
+#  - tests/eosd_run_test.sh --host=localhost --port=8888
+  - '[ "$TRAVIS_OS_NAME" == "osx" ] || EOSLIB=../contracts tests/chain_test'
 #  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/slow_test'
 #  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/api_test'
 #  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/p2p_tests/sync/test.sh'
