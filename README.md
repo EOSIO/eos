@@ -46,7 +46,7 @@ develop applications (smart contracts).
 
 <a name="gettingstarted"></a>
 ## Getting Started
-The following instructions overview the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain.
+The following instructions overview the process of getting the software, building it, running a simple test network that produces blocks, creating an account, and uploading a sample contract to the blockchain.
 
 <a name="setup"></a>
 ## Setting up a build/development environment
@@ -54,13 +54,13 @@ The following instructions overview the process of getting the software, buildin
 <a name="autobuild"></a>
 ### Automated build script
 
-For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
+For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and build EOS.
 
-It is called build.sh with following inputs.
+It is called build.sh with the following inputs:
 - architecture [ubuntu|darwin]
 - optional mode [full|build]
 
-The second optional input can be full or build where full implies that it installs dependencies and builds eos. If you omit this input then build script always installs dependencies and then builds eos.
+The second optional input can be `full` or `build` where `full` implies that it installs dependencies and builds EOS. If you omit this input, then the build script will install dependencies and then builds EOS.
 
 ```bash
 ./build.sh <architecture> <optional mode>
@@ -82,7 +82,7 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 <a name="automac"></a>
 #### MacOS Sierra
 
-Before running the script make sure you have updated XCode and brew:
+Before running the script, make sure you have updated XCode and Homebrew:
 
 ```bash
 xcode-select --install
@@ -258,7 +258,7 @@ Run the `create` command where `inita` is the account authorizing the creation o
 ./eosc create account inita currency PUBLIC_KEY_1 PUBLIC_KEY_2
 ```
 
-You should then get a json response back with a transaction ID confirming it was executed successfully.
+You should then get a JSON response back with a transaction ID confirming it was executed successfully.
 
 Go ahead and check that the account was successfully created
 
@@ -266,7 +266,7 @@ Go ahead and check that the account was successfully created
 ./eosc get account currency
 ```
 
-If all went well, you will receive output similar to the following
+If all went well, you will receive output similar to the following:
 
 ```json
 {
@@ -300,15 +300,15 @@ With an account for a contract created, upload a sample contract:
 ./eosc set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
 ```
 
-As a response you should get a json with a `transaction_id` field. Your contract was successfully uploaded!
+As a response you should get a JSON with a `transaction_id` field. Your contract was successfully uploaded!
 
-You can also verify that the code has been set with the following command
+You can also verify that the code has been set with the following command:
 
 ```bash
 ./eosc get code currency
 ```
 
-It will return something like
+It will return something like:
 ```bash
 code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 ```
@@ -330,13 +330,9 @@ Next verify the currency contract has the proper initial balance:
 <a name="pushamessage"></a>
 ### Transfering funds with the sample "currency" contract
 
-Anyone can send any message to any contract at any time, but the contracts may reject messages which are not given necessary permission. Messages are not
-sent "from" anyone, they are sent "with permission of" one or more accounts and permission levels. The following commands shows a "transfer" message being
-sent to the "currency" contract.
+Anyone can send any message to any contract at any time, but the contracts may reject messages which are not given necessary permission. Messages are not sent "from" anyone, they are sent "with permission of" one or more accounts and permission levels. The following commands show a "transfer" message being sent to the "currency" contract.
 
-The content of the message is `'{"from":"currency","to":"inita","amount":50}'`. In this case we are asking the currency contract to transfer funds from itself to
-someone else.  This requires the permission of the currency contract.
-
+The content of the message is `'{"from":"currency","to":"inita","quantity":50}'`. In this case we are asking the currency contract to transfer funds from itself to someone else. This requires the permission of the currency contract.
 
 ```bash
 ./eosc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
@@ -348,10 +344,9 @@ Below is a generalization that shows the `currency` account is only referenced o
 ./eosc push message currency transfer '{"from":"${usera}","to":"${userb}","amount":50}' --scope ${usera},${userb} --permission ${usera}@active
 ```
 
-We specify the `--scope ...` argument to give the currency contract read/write permission to those users so it can modify their balances.  In a future release scope
-will be determined automatically.
+We specify the `--scope ...` argument to give the currency contract read/write permission to those users so it can modify their balances.  In a future release scope will be determined automatically.
 
-As a confirmation of a successfully submitted transaction you will receive json output that includes a `transaction_id` field.
+As confirmation of a successfully submitted transaction, you will receive JSON output that includes a `transaction_id` field.
 
 <a name="readingcontract"></a>
 ### Reading sample "currency" contract balance
@@ -384,9 +379,9 @@ As expected, the receiving account **inita** now has a balance of **50** tokens,
 <a name="localtestnet"></a>
 ## Running multi-node local testnet
 
-To run a local testnet you can use a `launcher` application provided in `~/eos/build/programs/launcher` folder.
+To run a local testnet you can use a `launcher` application provided in the `~/eos/build/programs/launcher` folder.
 
-For testing purposes you will run 2 local production nodes talking to each other.
+For testing purposes you will run two local production nodes talking to each other.
 
 ```bash
 cd ~/eos/build
@@ -394,7 +389,7 @@ cp ../genesis.json ./
 ./programs/launcher/launcher -p2 --skip-signature
 ```
 
-This command will generate 2 data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
+This command will generate two data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
 
 You should see a following response:
 
@@ -403,16 +398,61 @@ spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_d
 spawning child, programs/eosd/eosd --skip-transaction-signatures --data-dir tn_data_1
 ```
 
-To confirm the nodes are running, run following `eosc` commands:
+To confirm the nodes are running, run the following `eosc` commands:
 ```bash
 ~/eos/build/programs/eosc
 ./eosc -p 8888 get info
 ./eosc -p 8889 get info
 ```
 
-For each you should get a json with a blockchain information.
+For each command, you should get a JSON response with blockchain information.
 
 You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
+
+<a name="publictestnet"></a>
+## Running a local node connected to the public testnet
+
+To run a local node connected to the public testnet operated by block.one, a script is provided.
+
+```bash
+cd ~/eos/build/scripts
+./start_npnode.sh
+```
+
+This command will use the data folder provided for the instance called `testnet_np`.
+
+You should see the following response:
+
+```bash
+Launched eosd.
+See testnet_np/stderr.txt for eosd output.
+Synching requires at least 8 minutes, depending on network conditions.
+```
+
+To confirm eosd operation and synchronization:
+
+```bash
+tail -F testnet_np/stderr.txt
+```
+
+To exit tail, use Ctrl-C.  During synchronization, you will see log messages similar to:
+
+```bash
+3439731ms            chain_plugin.cpp:272          accept_block         ] Syncing Blockchain --- Got block: #200000 time: 2017-12-09T07:56:32 producer: initu
+3454532ms            chain_plugin.cpp:272          accept_block         ] Syncing Blockchain --- Got block: #210000 time: 2017-12-09T13:29:52 producer: initc
+```
+
+Synchronization is complete when you see log messages similar to:
+
+```bash
+42467ms            net_plugin.cpp:1245           start_sync           ] Catching up with chain, our last req is 351734, theirs is 351962 peer ip-10-160-11-116:9876
+42792ms            chain_controller.cpp:208      _push_block          ] initt #351947 @2017-12-12T22:59:44  | 0 trx, 0 pending, exectime_ms=0
+42793ms            chain_controller.cpp:208      _push_block          ] inito #351948 @2017-12-12T22:59:46  | 0 trx, 0 pending, exectime_ms=0
+42793ms            chain_controller.cpp:208      _push_block          ] initd #351949 @2017-12-12T22:59:48  | 0 trx, 0 pending, exectime_ms=0
+```
+
+This eosd instance listens on 127.0.0.1:8888 for http requests, on all interfaces at port 9877
+for P2P requests, and includes the wallet plugins.
 
 <a name="doxygen"></a>
 ## Doxygen documentation
@@ -424,12 +464,10 @@ You can find more detailed API documentation in Doxygen reference: https://eosio
 
 You can find up to date information about EOS Docker in the [Docker Readme](https://github.com/EOSIO/eos/blob/master/Docker/README.md)
 
-
-
 <a name="manualdep"></a>
 ## Manual installation of the dependencies
 
-If you prefer to manually build dependencies - follow the steps below.
+If you prefer to manually build dependencies, follow the steps below.
 
 This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
 
@@ -524,7 +562,7 @@ Your environment is set up. Now you can <a href="#runanode">build EOS and run a 
 
 macOS additional Dependencies:
 
-* Brew
+* Homebrew
 * Newest XCode
 
 Upgrade your XCode to the newest version:
@@ -533,7 +571,7 @@ Upgrade your XCode to the newest version:
 xcode-select --install
 ```
 
-Install homebrew:
+Install Homebrew:
 
 ```bash
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
@@ -575,8 +613,7 @@ echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
-
-Build LLVM and clang for WASM:
+Build LLVM and Clang for WASM:
 
 ```bash
 mkdir  ~/wasm-compiler
