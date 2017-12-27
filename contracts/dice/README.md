@@ -11,7 +11,7 @@ Before playing all players deposit funds into their @dice account just like the 
 Because Player 1 and 2 bet equal amounts their orders are matched and the game begins.
 
 3. A Player reveales their secret
-4. A 5 minute deadline starts whereby the first to reveal automatically wins unless the other player reveales
+4. A 5 minute deadline starts whereby the first to reveal automatically wins unless the other player reveals
 5. The other player reveals and a winner is chosen and paid based upon the value of sha256( cat(secret1,secret2) )
 6. After the deadline anyone can trigger a default claim and the rewards
 
