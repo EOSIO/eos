@@ -91,7 +91,7 @@ namespace fc {
    }
    const string& get_thread_name() {
       static int thread_count = 0;
-      if( thread_name == string() )
+      if( thread_name.empty() )
          thread_name = string("thread-")+fc::to_string(thread_count++);
       return thread_name;
    }
