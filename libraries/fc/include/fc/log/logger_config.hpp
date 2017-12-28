@@ -41,6 +41,9 @@ namespace fc {
 
    void configure_logging( const fc::path& log_config );
    bool configure_logging( const logging_config& l );
+
+   void set_thread_name( const string& name );
+   const string& get_thread_name();
 }
 
 #include <fc/reflect/reflect.hpp>

@@ -84,4 +84,15 @@ namespace fc {
       cfg.loggers.push_back( dlc );
       return cfg;
    }
+
+   static thread_local std::string thread_name;
+   void set_thread_name( const string& name ) {
+      thread_name = name;
+   }
+   const string& get_thread_name() {
+      static int thread_count = 0;
+      if( thread_name.empty() )
+         thread_name = string("thread-")+fc::to_string(thread_count++);
+      return thread_name;
+   }
 }
