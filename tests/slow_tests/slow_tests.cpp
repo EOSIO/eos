@@ -14,6 +14,8 @@
 
 #include <eos/utilities/tempdir.hpp>
 
+#include <eos/chain_plugin/chain_plugin.hpp>
+
 #include <fc/crypto/digest.hpp>
 
 #include "../common/database_fixture.hpp"
