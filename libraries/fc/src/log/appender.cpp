@@ -6,6 +6,7 @@
 #include <fc/log/file_appender.hpp>
 #include <fc/log/gelf_appender.hpp>
 #include <fc/variant.hpp>
+#include <mutex>
 #include "console_defines.h"
 
 
@@ -20,6 +21,8 @@ namespace fc {
      return lm;
    }
    appender::ptr appender::get( const fc::string& s ) {
+      static std::mutex appender_mutex;
+      std::lock_guard<std::mutex> lock(appender_mutex);
       return get_appender_map()[s];
    }
    bool  appender::register_appender( const fc::string& type, const appender_factory::ptr& f )

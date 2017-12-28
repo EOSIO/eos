@@ -117,6 +117,8 @@ namespace fc {
       fc::string message = fc::format_string( m.get_format(), m.get_data() );
       line << message;//.c_str();
 
+      std::unique_lock<boost::mutex> lock(log_mutex());
+
       print( line.str(), my->lc[m.get_context().get_log_level()] );
 
       fprintf( out, "\n" );
