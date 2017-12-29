@@ -4,8 +4,6 @@
 #include <fc/log/logger.hpp>
 #include <fc/time.hpp>
 
-namespace boost { namespace asio { class io_service; } }
-
 namespace fc 
 {
   // Log appender that sends log messages in JSON format over UDP

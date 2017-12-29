@@ -7,7 +7,6 @@
 #include <eos/chain/chain_controller.hpp>
 #include <eos/chain/producer_object.hpp>
 #include <eos/chain/exceptions.hpp>
-#include <eos/chain_plugin/chain_plugin.hpp>
 
 #include <eos/native_contract/native_contract_chain_initializer.hpp>
 #include <eos/native_contract/native_contract_chain_administrator.hpp>
