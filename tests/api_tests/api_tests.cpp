@@ -46,6 +46,8 @@
 #include <eos/chain/staked_balance_objects.hpp>
 #include <eos/chain/balance_object.hpp>
 
+#include <eos/chain_plugin/chain_plugin.hpp>
+
 FC_REFLECT( dummy_message, (a)(b)(c) );
 FC_REFLECT( u128_msg, (values) );
 
