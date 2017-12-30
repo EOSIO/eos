@@ -11,6 +11,7 @@
 #include "console_defines.h"
 #include <fc/exception/exception.hpp>
 #include <iomanip>
+#include <mutex>
 #include <sstream>
 
 
