@@ -29,7 +29,6 @@ var searchData=
   ['reply_5fto_5fid',['reply_to_id',['../structpost__action.html#a56b91c31a891fc44bf0f8fd8892ffb9a',1,'post_action']]],
   ['require_5fauth',['require_auth',['../structtest__message.html#a16fbe2fff9c7966e24985a73ce12cbbe',1,'test_message::require_auth()'],['../group__messagecapi.html#gab1e668e93ac1f94421743ed79edffb26',1,'require_auth():&#160;message.h']]],
   ['require_5fnotice',['require_notice',['../structtest__message.html#a3c6b5b304941dcc908b34d21cba4cf1a',1,'test_message::require_notice()'],['../group__messagecapi.html#gae901e9bfdcc04bb37bbbe43455e5ff9a',1,'require_notice():&#160;message.h'],['../group__messagecppapi.html#gaeef23f10fd4183e9af4828ef91c3f174',1,'eosio::require_notice()']]],
-  ['reset_5fgame',['reset_game',['../structtic__tac__toe_1_1game.html#a9a68ac4f22a8862caa07f4ab2e83c295',1,'tic_tac_toe::game']]],
   ['restart',['restart',['../structtic__tac__toe_1_1restart.html',1,'tic_tac_toe']]],
   ['reveal',['reveal',['../structdice_1_1reveal.html',1,'dice::reveal'],['../structdice_1_1player.html#a762fbafc70af24093a84ca8c05f2da0a',1,'dice::player::reveal()']]],
   ['row',['row',['../structtic__tac__toe_1_1movement.html#af94a6b7cccda6364d00825f8d26c2207',1,'tic_tac_toe::movement']]],

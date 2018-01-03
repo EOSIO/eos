@@ -77,8 +77,6 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">row in account table stored within each scope  table  <a href="struct_t_o_k_e_n___n_a_m_e_1_1account.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1link.html">link</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1transfer.html">transfer</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -106,7 +104,7 @@ Functions</h2></td></tr>
 <tr class="separator:a18486d4da268752899c650597706531b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a53c86f810197659cf9e744fbdb77d20a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a53c86f810197659cf9e744fbdb77d20a">validate_eospath</a> (const char *eospath, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
 <tr class="separator:a53c86f810197659cf9e744fbdb77d20a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a320896ff363dcabfd994b2b7a3167fc7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a320896ff363dcabfd994b2b7a3167fc7">read_link_from_buffer</a> (const char *buffer, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> bufferlen, <a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1link.html">TOKEN_NAME::link</a> &amp;link_to_read, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> &amp;eospathlen, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> ipfspathlen)</td></tr>
+<tr class="memitem:a320896ff363dcabfd994b2b7a3167fc7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a320896ff363dcabfd994b2b7a3167fc7">read_link_from_buffer</a> (const char *buffer, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> bufferlen, TOKEN_NAME::link &amp;link_to_read, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> &amp;eospathlen, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> ipfspathlen)</td></tr>
 <tr class="separator:a320896ff363dcabfd994b2b7a3167fc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abde3446797f0b40141fc5abfe1811cfd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#abde3446797f0b40141fc5abfe1811cfd">apply_storage_setlink</a> ()</td></tr>
 <tr class="separator:abde3446797f0b40141fc5abfe1811cfd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -116,8 +114,13 @@ Functions</h2></td></tr>
 <tr class="separator:aa19b5a46c97fa5b920c49aa9ec467d78"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3416b85bad2ffb4da3fc00dc9d4d50a2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_t_o_k_e_n___n_a_m_e.html#a3416b85bad2ffb4da3fc00dc9d4d50a2">apply_storage_rejectstore</a> (char *eospath, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> eospathlen)</td></tr>
 <tr class="separator:a3416b85bad2ffb4da3fc00dc9d4d50a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga91c727f2c7563c091d098f5e97d4d071"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga91c727f2c7563c091d098f5e97d4d071">PACKED</a> (<a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a>)</td></tr>
+<tr class="memdesc:ga91c727f2c7563c091d098f5e97d4d071"><td class="mdescLeft">&#160;</td><td class="mdescRight">row in account table stored within each scope  <a href="group__storageapi.html#ga91c727f2c7563c091d098f5e97d4d071">More...</a><br /></td></tr>
+<tr class="separator:ga91c727f2c7563c091d098f5e97d4d071"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga1b41f02233d1ea7de04e16fdeedd987d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga1b41f02233d1ea7de04e16fdeedd987d">get_quota_used</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> owner)</td></tr>
 <tr class="separator:ga1b41f02233d1ea7de04e16fdeedd987d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga6fd7e68a6bf71a5a78dc2ff7047e8f62"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga6fd7e68a6bf71a5a78dc2ff7047e8f62">PACKED</a> (link)</td></tr>
+<tr class="separator:ga6fd7e68a6bf71a5a78dc2ff7047e8f62"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
 <a id="a922172cbdeeb0706e858419690c5038f"></a>
@@ -282,7 +285,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1link.html">TOKEN_NAME::link</a> &amp;&#160;</td>
+          <td class="paramtype">TOKEN_NAME::link &amp;&#160;</td>
           <td class="paramname"><em>link_to_read</em>, </td>
         </tr>
         <tr>

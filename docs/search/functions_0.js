@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['account',['account',['../group__currencyapi.html#gaa648707be79dc2cb4f7306ed1b5e374c',1,'TOKEN_NAME::account::account()'],['../structdice_1_1account.html#a6cf8226422ed2b164524e87a0ced94ed',1,'dice::account::account()'],['../structexchange_1_1account.html#a2bdad696d66826e43c79ca120bc548c4',1,'exchange::account::account()'],['../structinfinite_1_1account.html#abd9362b588e409e7a8f7e0050cb45eab',1,'infinite::account::account()'],['../group__storageapi.html#ga178ce3b03e0fcd2ee52df57dbf14302d',1,'TOKEN_NAME::account::account()']]],
+  ['account',['account',['../group__currencyapi.html#gaa648707be79dc2cb4f7306ed1b5e374c',1,'TOKEN_NAME::account::account()'],['../structinfinite_1_1account.html#abd9362b588e409e7a8f7e0050cb45eab',1,'infinite::account::account()']]],
   ['account_5fbalance_5fget',['account_balance_get',['../group__accountcapi.html#gabc0d83c30cea31ccd9c5155f5292eab7',1,'account.h']]],
   ['add_5fmessage',['add_message',['../classeosio_1_1transaction.html#a67f65f5b6701db79031a4e30e187f443',1,'eosio::transaction']]],
   ['add_5fpermissions',['add_permissions',['../classeosio_1_1message.html#aad585c683bba06889eeeb4126f56cac5',1,'eosio::message::add_permissions(account_name account, permission_name permission)'],['../classeosio_1_1message.html#ad304e555d132377ee2ec576ebabf1fb6',1,'eosio::message::add_permissions(account_name account, permission_name permission, Permissions... permissions)']]],

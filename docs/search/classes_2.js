@@ -5,7 +5,6 @@ var searchData=
   ['claim_5fexpired',['claim_expired',['../structdice_1_1claim__expired.html',1,'dice']]],
   ['close',['close',['../structtic__tac__toe_1_1close.html',1,'tic_tac_toe']]],
   ['complex_5ftype',['complex_type',['../structcomplex__type.html',1,'']]],
-  ['config',['config',['../structproxy_1_1config.html',1,'proxy']]],
   ['contract',['contract',['../structnative_1_1contract.html',1,'native']]],
   ['create',['create',['../structtic__tac__toe_1_1create.html',1,'tic_tac_toe']]]
 ];

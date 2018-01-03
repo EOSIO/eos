@@ -7,7 +7,6 @@ var searchData=
   ['wasm_5ftest_5ffail',['WASM_TEST_FAIL',['../test__api_8hpp.html#ae1bd429404fdcba8cecd5d63cf71d590',1,'test_api.hpp']]],
   ['wasm_5ftest_5fhandler',['WASM_TEST_HANDLER',['../test__api_8hpp.html#ac8741fa467f356e73d52f63521612abe',1,'test_api.hpp']]],
   ['wasm_5ftest_5fpass',['WASM_TEST_PASS',['../test__api_8hpp.html#a0ef7aa5de5b842c4a4f166cfd825495d',1,'test_api.hpp']]],
-  ['winner',['winner',['../structtic__tac__toe_1_1game.html#acf77cac60c4105db4b4102aabf576296',1,'tic_tac_toe::game']]],
   ['words',['words',['../structuint256.html#aa9f9cda5a15f57d856ca9d5d9deb1914',1,'uint256']]],
   ['write',['write',['../classeosio_1_1datastream.html#a1e42133f6f57a8c89e1db04abe44b342',1,'eosio::datastream::write()'],['../classeosio_1_1datastream_3_01size__t_01_4.html#a3c2ca245c9f33549505ea7886a1d3ecf',1,'eosio::datastream&lt; size_t &gt;::write()']]]
 ];

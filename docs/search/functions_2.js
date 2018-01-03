@@ -6,7 +6,6 @@ var searchData=
   ['comparison_5foperator',['comparison_operator',['../structtest__string.html#ad72004a2d2e38edcfe1c862cd8c58fc6',1,'test_string']]],
   ['concatenation_5fnon_5fnull_5fterminated',['concatenation_non_null_terminated',['../structtest__string.html#a6534729848a08f83ffb8b9e5e8791741',1,'test_string']]],
   ['concatenation_5fnull_5fterminated',['concatenation_null_terminated',['../structtest__string.html#a00308c91df8f590c0ca7f976918547c3',1,'test_string']]],
-  ['config',['config',['../structproxy_1_1config.html#a2200d13293133c55ac88f5522abf3bf4',1,'proxy::config']]],
   ['construct_5fwith_5fdata',['construct_with_data',['../structtest__string.html#afb7fb5d06037a146497240f9a3dce1c4',1,'test_string']]],
   ['construct_5fwith_5fdata_5fcopied',['construct_with_data_copied',['../structtest__string.html#a98eb87c5d39b2e6fc356d454a1d94f11',1,'test_string']]],
   ['construct_5fwith_5fdata_5fpartially',['construct_with_data_partially',['../structtest__string.html#ac24a5db094956d97086947b306179107',1,'test_string']]],
