@@ -62,7 +62,6 @@ namespace eosio { namespace chain {
         block_id_type        head_block_id;
         time_point           time;
         account_name         current_producer;
-        uint32_t             accounts_registered_this_interval = 0;
 
         share_type           total_staked_tokens;
         
@@ -165,7 +164,6 @@ FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (head_block_id)
            (time)
            (current_producer)
-           (accounts_registered_this_interval)
            (current_absolute_slot)
            (recent_slots_filled)
            (last_irreversible_block_num)

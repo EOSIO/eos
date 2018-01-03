@@ -358,10 +358,6 @@ void apply_eosio_okproducer(apply_context& context) {
 
    auto total_voting_stake = voter.staked_balance;
 
-   // Check if voter is proxied to; if so, we need to add in the proxied stake
-   if (auto proxy = db.find<proxy_vote_object, by_target_name>(voter.owner_name))
-      total_voting_stake += proxy->proxied_stake;
-
    // Add/remove votes from producer
    db.modify(producer, [approve = approve.approve, total_voting_stake](producer_votes_object& pvo) {
       if (approve)

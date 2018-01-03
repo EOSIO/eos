@@ -34,8 +34,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    // Install the native contract's indexes; we can't do anything until our objects are recognized
    db.add_index<staked_balance_multi_index>();
    db.add_index<producer_votes_multi_index>();
-   db.add_index<proxy_vote_multi_index>();
-   db.add_index<producer_schedule_multi_index>();
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
@@ -269,9 +267,6 @@ void intialize_eosio_tokens(chainbase::database& db, const account_name& system_
 std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
    std::vector<action> messages_to_process;
-
-   // Create the singleton object, producer_schedule_object
-   db.create<producer_schedule_object>([](const auto&){});
 
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto create_native_account = [this, &db](account_name name, auto liquid_balance) {

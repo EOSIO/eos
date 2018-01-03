@@ -56,9 +56,6 @@ void staked_balance_object::propagate_votes(share_type staked_delta, chainbase::
          });
       });
    else {
-      // This account has proxied its votes to another account; update the proxy_vote_object
-      const auto& proxy = db.get<proxy_vote_object, by_target_name>(producer_votes.get<account_name>());
-      proxy.update_proxied_state(staked_delta, db);
    }
 }
 
