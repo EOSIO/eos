@@ -15,6 +15,7 @@ scriptNames[2]='restart-scenarios-test.py -c resync -p3'
 scriptNames[3]='restart-scenarios-test.py -c replay -p3'
 
 # Test to kill node with SIGKILL and restart without an explicit chain sync strategy argument
+#  This doesn't seem to be deterministic and ocassionally fails, so disabling it.
 # scriptNames[4]='restart-scenarios-test.py -c none -p3'
 
 failingTestsCount=0
