@@ -1,3 +1,4 @@
+add_subdirectory(eosio.system)
 add_subdirectory(asserter)
 add_subdirectory(currency)
 add_subdirectory(exchange)

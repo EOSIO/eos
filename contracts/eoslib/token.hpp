@@ -56,13 +56,13 @@ namespace eosio {
   *
   *  @{
   */
-  template<typename NumberType, uint64_t currency = N(eos) >
+  template<typename NumberType, uint64_t Currency = N(eos) >
   struct token {
     /**
     * Type of the currency (e.g. eos) represented as an unsigned 64 bit integer
     * @brief  Type of the currency
     */
-    static const uint64_t currency_type = currency;
+    static const uint64_t currency_type = Currency;
 
     /**
     * Default constructor
@@ -289,7 +289,6 @@ namespace eosio {
     * @return quote token
     */
     friend QuoteToken operator / ( BaseToken b, const price& q ) {
-      eosio::print( "operator/ ", uint128(b.quantity), " * ", uint128( precision ), " / ", q.base_per_quote, "\n" );
       return QuoteToken( uint64_t((uint128(b.quantity) * uint128(precision)   / q.base_per_quote)) );
     }
 
@@ -301,8 +300,6 @@ namespace eosio {
     * @return base token
     */
     friend BaseToken operator * ( const QuoteToken& b, const price& q ) {
-      eosio::print( "b: ", b, " \n" );
-      eosio::print( "operator* ", uint128(b.quantity), " * ", uint128( q.base_per_quote ), " / ", precision, "\n" );
       //return QuoteToken( uint64_t( mult_div_i128( b.quantity, q.base_per_quote, precision ) ) );
       return BaseToken( uint64_t((b.quantity * q.base_per_quote) / precision) );
     }
