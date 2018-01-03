@@ -11,7 +11,6 @@ var searchData=
   ['max',['max',['../group__mathcppapi.html#ga29bcc1fa0b9eaa7667a68a2e135dd8bd',1,'eosio']]],
   ['memcmp',['memcmp',['../group__memorycapi.html#ga174f86fdde222a278e5524a8aea63da9',1,'memory.h']]],
   ['memcpy',['memcpy',['../group__memorycapi.html#ga59ed1449718a3c27f7622cb3efb845af',1,'memory.h']]],
-  ['memo_5flength',['memo_length',['../structeosio_1_1transfer.html#a35d0dfbad6eac71d0575a3de88ca4926',1,'eosio::transfer']]],
   ['memory_2eh',['memory.h',['../memory_8h.html',1,'']]],
   ['memory_2ehpp',['memory.hpp',['../memory_8hpp.html',1,'']]],
   ['memory_5fheap',['memory_heap',['../group__memorycppapi.html#ga92fafed038dc971cb8742fce00f27b61',1,'eosio']]],

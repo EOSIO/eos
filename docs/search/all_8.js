@@ -11,7 +11,6 @@ var searchData=
   ['infinite_2ecpp',['infinite.cpp',['../infinite_8cpp.html',1,'']]],
   ['infinite_2ehpp',['infinite.hpp',['../infinite_8hpp.html',1,'']]],
   ['init',['init',['../currency_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;currency.cpp'],['../exchange_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;exchange.cpp'],['../infinite_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;infinite.cpp'],['../proxy_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;proxy.cpp'],['../simpledb_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;simpledb.cpp'],['../skeleton_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;skeleton.cpp'],['../storage_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;storage.cpp'],['../test__api_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;test_api.cpp'],['../tic__tac__toe_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947',1,'init():&#160;tic_tac_toe.cpp']]],
-  ['initialize_5fboard',['initialize_board',['../structtic__tac__toe_1_1game.html#ababd98ad1c54e722a1f17c1e285c65d5',1,'tic_tac_toe::game']]],
   ['int128_5ft',['int128_t',['../group__types.html#ga811ec3b3c805bfd6b8ec302d59fc5a94',1,'types.h']]],
   ['int16_5ft',['int16_t',['../group__types.html#gaa343fa3b3d06292b959ffdd4c4703b06',1,'types.h']]],
   ['int32_5ft',['int32_t',['../group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60',1,'types.h']]],
@@ -22,8 +21,7 @@ var searchData=
   ['invalid_5ftransaction_5fhandle',['invalid_transaction_handle',['../group__transactioncapi.html#ga0f11d4ad11a06afabb59010d8bda517b',1,'transaction.h']]],
   ['invalid_5futf8',['invalid_utf8',['../structtest__string.html#a740023ce152de5d2a3fceefe9cbe3308',1,'test_string']]],
   ['iostream',['iostream',['../classeosio_1_1iostream.html',1,'eosio']]],
-  ['ipfspath',['ipfspath',['../group__storageapi.html#ga6c6f9e686f962553ab6e897c3f9465e0',1,'TOKEN_NAME::link']]],
-  ['is_5fempty',['is_empty',['../group__currencyapi.html#ga2b694bcfa1d4d81b37a108388f5c8353',1,'TOKEN_NAME::account::is_empty()'],['../structdice_1_1account.html#ae286197b8c59e49bedc6ad342e9090d1',1,'dice::account::is_empty()'],['../structexchange_1_1account.html#aa17310d26569d151e3889ac6b62515d6',1,'exchange::account::is_empty()'],['../structinfinite_1_1account.html#ae3aed9d0907ff88520f666ec23e83456',1,'infinite::account::is_empty()'],['../group__storageapi.html#ga2b694bcfa1d4d81b37a108388f5c8353',1,'TOKEN_NAME::account::is_empty()']]],
+  ['is_5fempty',['is_empty',['../group__currencyapi.html#ga2b694bcfa1d4d81b37a108388f5c8353',1,'TOKEN_NAME::account::is_empty()'],['../structinfinite_1_1account.html#ae3aed9d0907ff88520f666ec23e83456',1,'infinite::account::is_empty()']]],
   ['is_5fempty_5fcell',['is_empty_cell',['../namespacetic__tac__toe.html#a6f32b76cb96a584daeacd2fd81de47d2',1,'tic_tac_toe']]],
   ['is_5fown_5fmemory',['is_own_memory',['../classeosio_1_1string.html#a813bb1e0b11250761b63d48e3bf387b5',1,'eosio::string']]],
   ['is_5fvalid_5fmovement',['is_valid_movement',['../namespacetic__tac__toe.html#abb2ba327b8a040528d6b773f72712b28',1,'tic_tac_toe']]]

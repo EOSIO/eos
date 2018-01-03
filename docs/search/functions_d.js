@@ -15,6 +15,5 @@ var searchData=
   ['remove_5fi64i64i64',['remove_i64i64i64',['../group__dbi64i64i64.html#ga0346066edabfa6e07a7d0f60e54e2cdf',1,'db.h']]],
   ['remove_5fstr',['remove_str',['../group__dbstr.html#gaa468d0143c8e74dfad42915214cd2218',1,'db.h']]],
   ['require_5fauth',['require_auth',['../structtest__message.html#a16fbe2fff9c7966e24985a73ce12cbbe',1,'test_message::require_auth()'],['../group__messagecapi.html#gab1e668e93ac1f94421743ed79edffb26',1,'require_auth():&#160;message.h']]],
-  ['require_5fnotice',['require_notice',['../structtest__message.html#a3c6b5b304941dcc908b34d21cba4cf1a',1,'test_message::require_notice()'],['../group__messagecapi.html#gae901e9bfdcc04bb37bbbe43455e5ff9a',1,'require_notice():&#160;message.h'],['../group__messagecppapi.html#gaeef23f10fd4183e9af4828ef91c3f174',1,'eosio::require_notice()']]],
-  ['reset_5fgame',['reset_game',['../structtic__tac__toe_1_1game.html#a9a68ac4f22a8862caa07f4ab2e83c295',1,'tic_tac_toe::game']]]
+  ['require_5fnotice',['require_notice',['../structtest__message.html#a3c6b5b304941dcc908b34d21cba4cf1a',1,'test_message::require_notice()'],['../group__messagecapi.html#gae901e9bfdcc04bb37bbbe43455e5ff9a',1,'require_notice():&#160;message.h'],['../group__messagecppapi.html#gaeef23f10fd4183e9af4828ef91c3f174',1,'eosio::require_notice()']]]
 ];
