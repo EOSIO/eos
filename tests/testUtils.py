@@ -31,6 +31,9 @@ class Utils:
     SyncNoneTag="none"
     SyncReplayTag="replay"
     SyncResyncTag="resync"
+
+    SigKillTag="kill"
+    SigTermTag="term"
     
     @staticmethod
     def getChainStrategies():
@@ -67,6 +70,9 @@ class Node(object):
         self.cmd=cmd
         self.alive=alive
 
+    def __str__(self):
+        return "Port:%d, Pid:%d, Alive:%s, Cmd:\"%s\"" % (self.port, self.pid, self.alive, self.cmd)
+        
     def doesNodeHaveBlockNum(self, blockNum):
         if self.alive is False:
             return False
@@ -234,6 +240,7 @@ class Cluster(object):
     __chainSyncStrategies=Utils.getChainStrategies()
     __WalletName="MyWallet"
     __START_PORT=8888
+    __lastTrans=None
 
     # inita account creds
     __adminName="inita"
@@ -247,12 +254,20 @@ class Cluster(object):
         if self.__chainSyncStrategy is None:
             self.__chainSyncStrategy= __chainSyncStrategies.get("none")
 
-
+    # If a last transaction exists wait for it on root node, then collect its head block number.
+    #  Wait on this block number on each cluster node
     def waitOnClusterSync(self, timeout=60):
         startTime=time.time()
         if self.nodes[0].alive is False:
             Utils.Print("ERROR: Root node is down.")
             return False;
+
+        if self.__lastTrans is not None:
+            if self.nodes[0].waitForTransIdOnNode(self.__lastTrans) is False:
+                Utils.Print("ERROR: Failed to wait for last known transaction(%s) on root node." %
+                            (self.__lastTrans))
+                return False;
+
         targetHeadBlockNum=self.nodes[0].getHeadBlockNum() #get root nodes head block num
         Utils.Debug and Utils.Print("Head block number on root node: %d" % (targetHeadBlockNum))
         if targetHeadBlockNum == -1:
@@ -388,6 +403,7 @@ class Cluster(object):
         transId=node.transferFunds(fromm, to, transferAmount)
         if transId is None:
             return False
+        self.__lastTrans=transId
         Utils.Debug and Utils.Print("Funds transfered on transaction id %s." % (transId))
         self.accounts[0].balance += transferAmount
 
@@ -423,6 +439,7 @@ class Cluster(object):
             transId=node.transferFunds(fromm, to, transferAmount)
             if transId is None:
                 return False
+            self.__lastTrans=transId
             Utils.Debug and Utils.Print("Funds transfered on block num %s." % (transId))
 
             self.accounts[i].balance -= transferAmount
@@ -468,7 +485,7 @@ class Cluster(object):
 
     # Create account and return creation transactions
     def createAccount(self, accountInfo):
-        transId="abc"
+        transId=None
         p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
         cmd="programs/eosc/eosc create account %s %s %s %s" % (
             Cluster.__adminAccount.name, accountInfo.name, accountInfo.ownerPublicKey,
@@ -545,8 +562,11 @@ class Cluster(object):
                 self.nodes[i].alive=running
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
-    def killSomeEosInstances(self, percent, killSignal=signal.SIGTERM):
-        killCount=int((percent/100.0)*len(self.nodes))
+    def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
+        killSignal=signal.SIGKILL
+        if killSignalStr == Utils.SigTermTag:
+            killSignal=signal.SIGTERM
+        # killCount=int((percent/100.0)*len(self.nodes))
         Utils.Print("Kill %d Eosd instances with signal %s." % (killCount, killSignal))
 
         killedCount=0
@@ -562,7 +582,6 @@ class Cluster(object):
 
         time.sleep(1) # Give processes time to stand down
         return self.updateNodesStatus()
-
 
     def relaunchEosInstances(self):
 
@@ -585,7 +604,7 @@ class Cluster(object):
                 stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
                 with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
                     cmd=node.cmd + ("" if chainArg is None else (" " + chainArg))
-                    Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+                    Utils.Print("cmd: %s" % (cmd))
                     popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
                     self.nodes[i].pid=popen.pid
 
@@ -597,7 +616,7 @@ class Cluster(object):
 
         cmd="programs/launcher/launcher --eosd \"--plugin eosio::wallet_api_plugin\" -p %s -n %s -s %s -d %s" % (
             pnodes, total_nodes, topo, delay)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(["programs/launcher/launcher", "--eosd", "--plugin eosio::wallet_api_plugin",
                                  "-p", str(pnodes), "-n", str(total_nodes), "-d", str(delay), "-s", topo]):
             Utils.Print("ERROR: Launcher failed to launch.")
@@ -613,6 +632,16 @@ class Cluster(object):
         self.nodes=nodes
         return True
 
+    def dumpErrorDetails(self):
+        for i in range(0, len(self.nodes)):
+            for f in ("config.ini", "stderr.txt"):
+                Utils.Print("=================================================================")
+                fileName="tn_data_%02d/%s" % (i, f)
+                Utils.Print("Contents of %s:" % (fileName))
+                with open(fileName, "r") as f:
+                    shutil.copyfileobj(f, sys.stdout)
+        Utils.Print("== Errors see above ==")
+    
     def killall(self):
         cmd="programs/launcher/launcher -k 15"
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
@@ -649,8 +678,8 @@ class Cluster(object):
             Utils.Debug and Utils.Print("Account %s created." % (account.name))
 
         if transId is not None:
-            Utils.Debug and Utils.Print("Wait for transaction id %s on server port %d." % ( transId, node.port))
             node=self.nodes[0]
+            Utils.Debug and Utils.Print("Wait for transaction id %s on server port %d." % ( transId, node.port))
             if node.waitForTransIdOnNode(transId) is False:
                 Utils.Print("ERROR: Failed waiting for transaction id %s on server port %d." % (
                     transId, node.port))
