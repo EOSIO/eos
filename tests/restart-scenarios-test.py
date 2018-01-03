@@ -6,6 +6,22 @@ import argparse
 import random
 import signal
 
+###############################################################
+# Test for different test scenarios.
+# Nodes can be producing or non-producing.
+# -p <producing nodes count>
+# -c <chain strategy[replay|resync|none]>
+# -s <topology>
+# -d <delay between nodes startup>
+# -v <verbose logging>
+# --killSig <kill signal [term|kill]>
+# --killCount <Eosd instances to kill>
+# --dontKill <Leave cluster running after test finishes>
+# --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
+# --keepLogs <Don't delete tn_data_* folders upon test completion>
+###############################################################
+
+
 DefaultKillPercent=50
 Print=testUtils.Utils.Print
 
@@ -23,10 +39,13 @@ parser.add_argument("-c", type=str, help="chain strategy[%s|%s|%s]" %
 parser.add_argument("--killSig", type=str, help="kill signal[%s|%s]" %
                     (testUtils.Utils.SigKillTag, testUtils.Utils.SigTermTag), default=testUtils.Utils.SigKillTag)
 parser.add_argument("--killCount", type=int, help="eosd instances to kill", default=-1)
-parser.add_argument("-v", help="verbose", action='store_true')
-parser.add_argument("--dontKill", help="No cleanup done, no eosd instances killed", action='store_true')
-parser.add_argument("--dumpErrorDetails", help="Will spit config and error logs to stdout", action='store_true')
-parser.add_argument("--keepLogs", help="Don't cleanup logs", action='store_true')
+parser.add_argument("-v", help="verbose logging", action='store_true')
+parser.add_argument("--dontKill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--dumpErrorDetails",
+                    help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
+                    action='store_true')
+parser.add_argument("--keepLogs", help="Don't delete tn_data_* folders upon test completion",
+                    action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
