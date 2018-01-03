@@ -1,0 +1,120 @@
+{
+  "types": [],
+  "structs": [{
+      "name": "game",
+      "base": "",
+      "fields": {
+        "id": "uint64",
+        "foe": "account_name",
+        "host": "account_name",
+        "host_moves": "moves",
+        "foe_moves": "moves",
+        "round": "uint8",
+        "round_winner": "account_name[]",
+        "game_winner": "account_name",
+        "host_stake": "uint64",
+        "foe_stake": "uint64",
+        "created_time": "time",
+        "is_active": "uint8"
+      }
+    },{
+      "name": "moves",
+      "base": "",
+      "fields": {
+        "moves_val": "string[]",
+        "nonces": "string[]",
+        "hashed_moves": "checksum[]",
+        "submit_turn": "uint8",
+        "reveal_turn": "uint8"
+      }
+    },{
+      "name": "create",
+      "base": "",
+      "fields": {
+        "host": "account_name",
+        "foe": "account_name"
+      }
+    },{
+      "name": "submit",
+      "base": "",
+      "fields": {
+        "game_id": "uint64",
+        "by": "account_name",
+        "hashed_move": "checksum"
+      }
+    },{
+      "name": "reveal",
+      "base": "",
+      "fields": {
+        "game_id": "uint64",
+        "by": "account_name",
+        "move": "string",
+        "nonce": "string"
+      }
+    },{
+      "name": "cancel",
+      "base": "",
+      "fields": {
+        "game_id": "uint64",
+        "by": "account_name"
+      }
+    },{
+      "name": "stake",
+      "base": "",
+      "fields": {
+        "game_id": "uint64",
+        "amount": "uint64",
+        "by": "account_name"
+      }
+    },{
+      "name": "withdraw",
+      "base": "",
+      "fields": {
+        "by": "account_name",
+        "amount": "uint64"
+      }
+    },{
+      "name": "balance",
+      "base": "",
+      "fields": {
+        "key": "account_name",
+        "locked_amount": "uint64",
+        "avail_amount": "uint64"
+      }
+    }
+  ],
+  "actions": [{
+      "action_name": "create",
+      "type": "create"
+    },{
+      "action_name": "submit",
+      "type": "submit"
+    },{
+      "action_name": "reveal",
+      "type": "reveal"
+    },{
+      "action_name": "cancel",
+      "type": "cancel"
+    },{
+      "action_name": "stake",
+      "type": "stake"
+    },{
+      "action_name": "withdraw",
+      "type": "withdraw"
+    }
+  ],
+  "tables": [{
+      "table_name": "games",
+      "type": "game",
+      "index_type": "i64",
+      "key_names" : ["id"],
+      "key_types" : ["uint64"]
+    }, {
+      "table_name": "balance",
+      "type": "balance",
+      "index_type": "i64",
+      "key_names" : ["key"],
+      "key_types" : ["account_name"]
+    }
+  ]
+}
