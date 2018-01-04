@@ -849,7 +849,13 @@ namespace eosio {
           conn->write_depth--;
 
           if(ec) {
-            elog("Error sending to connection: ${i}", ("i", ec.message()));
+            string pname = conn ? conn->peer_name() : "no connection name";
+            if( ec.value() != boost::asio::error::eof) {
+              elog("Error sending to peer ${p}: ${i}", ("p",pname)("i", ec.message()));
+            }
+            else {
+              ilog("connection closure detected on write to ${p}",("p",pname));
+            }
             my_impl->close(conn);
             return;
           }
@@ -857,13 +863,19 @@ namespace eosio {
           conn->do_queue_write();
         }
         catch(const std::exception &ex) {
-          elog("Exception in do_queue_write ${s}", ("s",ex.what()));
+          auto conn = c.lock();
+          string pname = conn ? conn->peer_name() : "no connection name";
+          elog("Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.what()));
         }
         catch(const fc::exception &ex) {
-          elog("Exception in do_queue_write ${s}", ("s",ex.to_string()));
+          auto conn = c.lock();
+          string pname = conn ? conn->peer_name() : "no connection name";
+          elog("Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.to_string()));
         }
         catch(...) {
-          elog("Exception in do_queue_write");
+          auto conn = c.lock();
+          string pname = conn ? conn->peer_name() : "no connection name";
+          elog("Exception in do_queue_write to ${p}", ("p",pname) );
         }
       });
   }
@@ -1400,26 +1412,35 @@ namespace eosio {
                 }
                 start_read_message(conn);
               } else {
-                elog( "Error reading message from connection: ${m}",( "m", ec.message() ) );
+                auto pname = conn->peer_name();
+                if (ec.value() != boost::asio::error::eof) {
+                  elog( "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
+                } else {
+                  ilog( "Peer ${p} closed connection",("p",pname) );
+                }
                 close( conn );
               }
             }
             catch(const std::exception &ex) {
-              elog("Exception in handling read data ${s}", ("s",ex.what()));
+              string pname = conn ? conn->peer_name() : "no connection name";
+              elog("Exception in handling read data from ${p} ${s}",("p",pname)("s",ex.what()));
               close( conn );
             }
             catch(const fc::exception &ex) {
-              elog("Exception in handling read data ${s}", ("s",ex.to_string()));
+              string pname = conn ? conn->peer_name() : "no connection name";
+              elog("Exception in handling read data ${s}", ("p",pname)("s",ex.to_string()));
               close( conn );
             }
             catch (...) {
-              elog( "Undefined exception hanlding the read data from connection: ${m}",( "m", ec.message() ) );
+              string pname = conn ? conn->peer_name() : "no connection name";
+              elog( "Undefined exception hanlding the read data from connection ${p}",( "p",pname));
               close( conn );
             }
           }
         );
       } catch (...) {
-        elog( "Undefined exception handling reading" );
+        string pname = conn ? conn->peer_name() : "no connection name";
+        elog( "Undefined exception handling reading ${p}",("p",pname) );
         close( conn );
       }
     }
@@ -1604,6 +1625,7 @@ namespace eosio {
 
   void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
     string rsn = reason_str( msg.reason );
+    ilog( "received a go away message, reason = ${r}",("r",rsn));
     c->no_retry = msg.reason;
     if(msg.reason == go_away_reason::duplicate ) {
       c->node_id = msg.node_id;
