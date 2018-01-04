@@ -901,9 +901,10 @@ void chain_controller::process_message(const transaction& trx, account_name code
                                        apply_context* parent_context, int depth,
                                        const fc::time_point& start_time ) {
    const blockchain_configuration& chain_configuration = get_global_properties().configuration;
+   auto us_duration = (fc::time_point::now() - start_time).count();
    if( is_producing() ) {
-      EOS_ASSERT((fc::time_point::now() - start_time).count() < chain_configuration.max_trx_runtime, checktime_exceeded,
-         "Transaction message exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.max_trx_runtime));
+      EOS_ASSERT(us_duration < chain_configuration.max_trx_runtime, checktime_exceeded,
+                  "Transaction message exceeded maximum total transaction time of ${limit}ms, took ${duration}ms", ("limit", chain_configuration.max_trx_runtime/1000)("dur",us_duration/1000));
    }
    EOS_ASSERT(depth < chain_configuration.in_depth_limit, msg_resource_exhausted,
      "Message processing exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.in_depth_limit));
@@ -977,7 +978,15 @@ void chain_controller::apply_message(apply_context& context)
              : _skip_flags & created_block
                ? _create_block_txn_execution_time
                : _txn_execution_time;
-       wasm_interface::get().apply(context, execution_time, is_producing() );
+       try {
+         wasm_interface::get().apply(context, execution_time, is_producing() );
+       } catch (const fc::exception &ex) {
+         if (!is_producing()) { // && ex.cause == Runtime::Exception::Cause::integerDivideByZeroOrIntegerOverflow) {
+           wlog ("apply_message ignoring exception while not producing");
+         }
+         else
+           throw;
+       }
     }
 
 } FC_CAPTURE_AND_RETHROW((context.msg)) }
@@ -999,7 +1008,7 @@ typename T::processed chain_controller::process_transaction( const T& trx, int d
 { try {
    const blockchain_configuration& chain_configuration = get_global_properties().configuration;
    EOS_ASSERT((fc::time_point::now() - start_time).count() < chain_configuration.max_trx_runtime, checktime_exceeded,
-      "Transaction exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.max_trx_runtime));
+      "Transaction exceeded maximum total transaction time of ${limit}ms", ("limit", chain_configuration.max_trx_runtime/1000));
 
    EOS_ASSERT(depth < chain_configuration.in_depth_limit, tx_resource_exhausted,
       "Transaction exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.in_depth_limit));
@@ -1030,7 +1039,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
    EOS_ASSERT(head_block_time() < next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
-   if (next_block.timestamp > head_block_time() + block_interval()) {
+   if (is_producing() && next_block.timestamp > head_block_time() + block_interval()) {
       elog("head_block_time ${h}, next_block ${t}, block_interval ${bi}",
            ("h", head_block_time())("t", next_block.timestamp)("bi", block_interval()));
       elog("Did not produce block within block_interval ${bi}, took ${t}ms)",

@@ -109,7 +109,8 @@ namespace eosio { namespace chain {
             skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
             pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
             created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
-            received_block              = 1 << 16  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
+            received_block              = 1 << 16, ///< used to indicate that the origination of the call was for a received block, to determine time allotment
+            irreversible                = 1 << 17  ///< indicates the blcok was received while catching up and is already considered irreversible.
          };
 
          /**
@@ -269,8 +270,7 @@ namespace eosio { namespace chain {
          chainbase::database& get_mutable_database() { return _db; }
 
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);                     }
-         bool is_producing()const                            { return _skip_flags & (received_block | pushed_transaction); }
-
+     bool is_producing()const                            { return (_skip_flags & (received_block | pushed_transaction)) && !(_skip_flags & irreversible); }
 
          const deque<signed_transaction>&  pending()const { return _pending_transactions; }
 
