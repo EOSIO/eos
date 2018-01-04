@@ -4,7 +4,6 @@
 #include <fc/log/logger.hpp>
 #include <fc/time.hpp>
 
-namespace boost { namespace asio { class io_service; } }
 
 namespace fc 
 {
