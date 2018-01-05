@@ -110,7 +110,7 @@ namespace eosio { namespace chain {
             pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
             created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
             received_block              = 1 << 16, ///< used to indicate that the origination of the call was for a received block, to determine time allotment
-            irreversible                = 1 << 17  ///< indicates the blcok was received while catching up and is already considered irreversible.
+            irreversible                = 1 << 17  ///< indicates the block was received while catching up and is already considered irreversible.
          };
 
          /**

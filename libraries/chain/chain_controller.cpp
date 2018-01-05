@@ -979,13 +979,15 @@ void chain_controller::apply_message(apply_context& context)
                ? _create_block_txn_execution_time
                : _txn_execution_time;
        try {
-         wasm_interface::get().apply(context, execution_time, is_producing() );
+          wasm_interface::get().apply(context, execution_time, is_producing() );
        } catch (const fc::exception &ex) {
-         if (!is_producing()) { // && ex.cause == Runtime::Exception::Cause::integerDivideByZeroOrIntegerOverflow) {
-           wlog ("apply_message ignoring exception while not producing");
-         }
-         else
-           throw;
+          // The particular exception that is causing havoc is generated in the wasm layer, and is
+          // Runtime::Exception::Cause::integerDivideByZeroOrIntegerOverflow)
+          if (!is_producing()) {
+             wlog ("apply_message ignoring exception while not producing");
+          }
+          else
+             throw;
        }
     }
 
