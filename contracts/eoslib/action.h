@@ -14,7 +14,7 @@ extern "C" {
     */
 
    /**
-    * @defgroup messagecapi message C API
+    * @defgroup messagecapi Message C API
     * @ingroup messageapi
     * @brief Define API for querying message properties
     *

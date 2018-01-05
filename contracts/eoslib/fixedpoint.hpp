@@ -4,8 +4,8 @@
 namespace eosio
 {
     /**
-    * @defgroup fixed_point Template classes for Fixed Point representaton
-    * @ingroup contractdev
+    * @defgroup fixedpoint Fixed Point
+    * @ingroup mathcppapi
     * @brief 32,64,128,256 bits version of Fixed Point variables
     *
     * Floating point operations are indeterministic, hence is prevented in smart contract.
@@ -13,7 +13,7 @@ namespace eosio
     * by passing the number to be represented in integer format and the number of decimals 
     * required.
     * These template classes also support the arithmetic operations and basic comparison operators
-    * 
+    * @{
     */
 
     // Some forward declarations
@@ -25,7 +25,7 @@ namespace eosio
 #if 0
     template <uint8_t Q> struct fixed_point256;
     /**
-    * @defgroup Template classe for Fixed Point 256 bits representaton
+    * @defgroup Template class for Fixed Point 256 bits representaton
     * @ingroup contractdev
     * @brief Template param Q is the Q factor i.e. number of decimals
     *
@@ -84,7 +84,8 @@ namespace eosio
 #endif    
 
     /**
-    * 128 bits representation of Fixed Point class
+    * @brief 128 bits representation of Fixed Point class.
+    *
     * The template param Q represents the Q Factor i.e number of decimals
     * Example:
     * @code
@@ -159,8 +160,9 @@ ope        * fixed_point128<3> b(a);
         template <uint8_t qr> bool operator<(const fixed_point128<qr> &r) { return (val < r.val);}
     };
 
+
     /**
-    * 64 bits representation of Fixed Point class
+    * @brief 64 bits representation of Fixed Point class.
     *
     * Example:
     * @code
@@ -171,7 +173,7 @@ ope        * fixed_point128<3> b(a);
     * fixed_point64<24> e = b/a;
     * @endcode
     */
-template <uint8_t Q>
+    template <uint8_t Q>
     struct fixed_point64 
     {
         static_assert(Q < 128, "Maximum number of decimals supported in fixed_point64 is 128 decimals");
@@ -241,14 +243,8 @@ template <uint8_t Q>
     };
 
     /**
-     *  @defgroup fixed point Fixed Point generic class
-     *  @brief Implementation of fixed point template class
-     *  @ingroup contractdev
-     *
-     *  @{
-     */
-
-    /**
+     * @brief 32 bits representation of Fixed Point class.
+     * 
      * This class is implemented to to replace the floating point variables
      * It can resolve floating point undetermenistic related issues
      *
@@ -260,13 +256,14 @@ template <uint8_t Q>
      * fixed_point32<24> d = a+b+c;
      * fixed_point32<24> e = b/a;
      * @endcode
+     * 
      */
     // fixed_point 32 bit version. The template param 'q' is the scale factor 
     template <uint8_t Q>
     struct fixed_point32
     {
         static_assert(Q < 128, "Maximum number of decimals supported in fixed_point32 is 128 decimals");
-        // trsnslates given double variable to the int32 based on the scale factor
+        // translates given double variable to the int32 based on the scale factor
         int32_t val;
         template <uint8_t QR> fixed_point32(const fixed_point32<QR> &r);
         template <uint8_t QR> fixed_point32(const fixed_point64<QR> &r);
@@ -311,6 +308,7 @@ template <uint8_t Q>
         template <uint8_t QR> bool operator>(const fixed_point32<QR> &r) { return (val > r.val);}
         template <uint8_t QR> bool operator<(const fixed_point32<QR> &r) { return (val < r.val);}
     };
+
 
     // Helper functions
     template<typename T>
@@ -372,10 +370,10 @@ template <uint8_t Q>
     }
 
     /**
-    * Addition between two fixed_point64 variables
     * @brief Addition between two fixed_point64 variables and the result goes to fixed_point64
-    * Number of decimal on result will be max of decimals of lhs and rhs
     *
+    * Addition between two fixed_point64 variables
+    * Number of decimal on result will be max of decimals of lhs and rhs
     */
     template<uint8_t Q> template<uint8_t QR>
     fixed_point64< (Q>QR)?Q:QR > fixed_point64<Q>::operator+(const fixed_point64<QR> &rhs) const
@@ -392,10 +390,10 @@ template <uint8_t Q>
     }
 
     /**
-    * Subtraction between two fixed_point64 variables
     * @brief Subtraction between two fixed_point64 variables and the result goes to fixed_point64
-    * Number of decimal on result will be max of decimals of lhs and rhs
     *
+    * Subtraction between two fixed_point64 variables
+    * Number of decimal on result will be max of decimals of lhs and rhs
     */
     template<uint8_t Q> template<uint8_t QR>
     fixed_point64< (Q>QR)?Q:QR > fixed_point64<Q>::operator-(const fixed_point64<QR> &rhs) const
@@ -412,8 +410,9 @@ template <uint8_t Q>
     }
 
     /**
-    * Multiplication operator for fixed_point64. The result goes to fixed_point128
     * @brief Multiplication operator for fixed_point64. The result goes to fixed_point64
+    * 
+    * Multiplication operator for fixed_point64. The result goes to fixed_point128
     * Number of decimal on result will be sum of number of decimals of lhs and rhs
     *
     * Example:
@@ -427,9 +426,9 @@ template <uint8_t Q>
     }
 
     /**
-    * Division operator for fixed_point64
     * @brief Division of two fixed_point64 result will be stored in fixed_point128
     * 
+    * Division operator for fixed_point64
     *
     * Example:
     * @code
@@ -466,8 +465,9 @@ template <uint8_t Q>
     }
 
     /**
-    * Addition between two fixed_point32 variables
-    * @brief Addition between two fixed_point32 variables and the result goes to fixed_point32
+    * @brief Addition between two fixed_point32 variables and the result goes to fixed_point32 
+    *
+    * Addition between two fixed_point32 variables 
     * Number of decimal on result will be max of decimals of lhs and rhs
     *
     */
@@ -486,8 +486,9 @@ template <uint8_t Q>
     }
 
     /**
-    * Subtraction between two fixed_point32 variables
     * @brief Subtraction between two fixed_point32 variables and the result goes to fixed_point32
+    *
+    * Subtraction between two fixed_point32 variables
     * Number of decimal on result will be max of decimals of lhs and rhs
     *
     */
@@ -506,8 +507,9 @@ template <uint8_t Q>
     }
 
     /**
+    * @brief Multiplication operator for fixed_point32. The result goes to fixed_point64 
+    *
     * Multiplication operator for fixed_point32. The result goes to fixed_point64
-    * @brief Multiplication operator for fixed_point32. The result goes to fixed_point64
     * Number of decimal on result will be sum of number of decimals of lhs and rhs
     *
     * Example:
@@ -521,9 +523,9 @@ template <uint8_t Q>
     }
 
     /**
-    * Division operator for fixed_point32
     * @brief Division of two fixed_point32 result will be stored in fixed_point64
-    * 
+    *
+    * Division operator for fixed_point32 
     *
     * Example:
     * @code
@@ -538,9 +540,9 @@ template <uint8_t Q>
     }
 
     /**
-    * Wrapper function for dividing two unit32 variable and stores result in fixed_point64
-    * @brief Wrapper function for dividing two unit64 variable and stores result in fixed_point64
-    * 
+    * @brief Wrapper function for dividing two unit64 variable and stores result in fixed_point64 
+    *
+    * Wrapper function for dividing two unit32 variable and stores result in fixed_point64 
     *
     * Example:
     * @code
@@ -555,9 +557,8 @@ template <uint8_t Q>
     }
 
     /**
-    * Wrapper function for dividing two unit64 variable and stores result in fixed_point128
     * @brief Wrapper function for dividing two unit64 variable and stores result in fixed_point128
-    * 
+    * Wrapper function for dividing two unit64 variable and stores result in fixed_point128 
     *
     * Example:
     * @code
@@ -571,4 +572,6 @@ template <uint8_t Q>
         fixed_point128<Q> result = fixed_point64<0>(lhs) / fixed_point64<0>(rhs);
         return fixed_point128<Q>(result);
     }
+
+    /// @} fixedpoint
 };

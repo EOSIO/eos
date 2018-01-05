@@ -4,6 +4,13 @@
  */
 #pragma once
 
+
+/**
+ * @defgroup varint Variable Length Integer
+ * @ingroup types
+ * @{
+ */
+
 struct unsigned_int {
     unsigned_int( uint32_t v = 0 ):value(v){}
 
@@ -38,7 +45,7 @@ struct unsigned_int {
 };
 
 /**
- *  @brief serializes a 32 bit signed interger in as few bytes as possible
+ *  @brief serializes a 32 bit signed integer in as few bytes as possible
  *
  *  Uses the google protobuf algorithm for seralizing signed numbers
  */
@@ -68,3 +75,5 @@ struct signed_int {
     friend bool operator>=( const int32_t& i, const signed_int& v )    { return i       >= v.value; }
     friend bool operator>=( const signed_int& i, const signed_int& v ) { return i.value >= v.value; }
 };
+
+/// @}

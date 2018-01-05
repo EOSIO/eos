@@ -8,8 +8,9 @@
 namespace  eosio {
 
    /**
-    *  Converts a base32 symbol into its binary representation, used by string_to_name()
+    *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
     *
+    *  @details Converts a base32 symbol into its binary representation, used by string_to_name()
     *  @ingroup types
     */
    static constexpr char char_to_symbol( char c ) {
@@ -21,7 +22,9 @@ namespace  eosio {
    }
 
    /**
-    *  Converts a base32 string to a uint64_t. This is a constexpr so that
+    *  @brief Converts a base32 string to a uint64_t. 
+    *
+    *  @details Converts a base32 string to a uint64_t. This is a constexpr so that
     *  this method can be used in template arguments as well.
     *
     *  @ingroup types
@@ -58,7 +61,6 @@ namespace  eosio {
    #define N(X) ::eosio::string_to_name(#X)
 
    /**
-    *  @class name
     *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
     *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and
     *         that no mathematical operations occur.  It also enables specialization of print
