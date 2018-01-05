@@ -212,7 +212,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    chain::wasm_interface::get().row_overhead_db_limit_bytes = options.at("row-overhead-db-limit-bytes").as<uint32_t>();
 }
 
-void chain_plugin::plugin_startup() 
+void chain_plugin::plugin_startup()
 { try {
    auto& db = app().get_plugin<database_plugin>().db();
    eosio::chain::applied_irreverisable_block_func applied_func;
@@ -223,8 +223,8 @@ void chain_plugin::plugin_startup()
       }
    }
 
-   FC_ASSERT( fc::exists( my->genesis_file ), 
-              "unable to find genesis file '${f}', check --genesis-json argument", 
+   FC_ASSERT( fc::exists( my->genesis_file ),
+              "unable to find genesis file '${f}', check --genesis-json argument",
               ("f",my->genesis_file.generic_string()) );
 
    auto genesis = fc::json::from_file(my->genesis_file).as<native_contract::genesis_state_type>();
@@ -272,7 +272,10 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
            ("p", block.producer));
    }
 
-   return chain().push_block(block, my->skip_flags);
+   // note that currently_syncing is true when the p2p layer is catching up to the current last
+   // irreversible block and so it is reasonable to use it as an indication that timing and exception
+   // handling should be relaxed for this block.
+   return chain().push_block(block, my->skip_flags | (currently_syncing ? chain_controller::irreversible : 0) );
 }
 
 void chain_plugin::accept_transaction(const chain::signed_transaction& trx) {
@@ -355,7 +358,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       return get_table_rows_ex<chain::key_value_index, chain::by_scope_primary>(p,abi);
    } else if( table_type == KEYstr ) {
       return get_table_rows_ex<chain::keystr_value_index, chain::by_scope_primary>(p,abi);
-   } else if( table_type == KEYi128i128 ) { 
+   } else if( table_type == KEYi128i128 ) {
       if( table_key == PRIMARY )
          return get_table_rows_ex<chain::key128x128_value_index, chain::by_scope_primary>(p,abi);
       if( table_key == SECONDARY )
@@ -404,9 +407,9 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
    result.reserve(params.size());
    for( const auto& item : params ) {
       try {
-        result.emplace_back( push_transaction( item ) ); 
+        result.emplace_back( push_transaction( item ) );
       } catch ( const fc::exception& e ) {
-        result.emplace_back( read_write::push_transaction_results{ chain::transaction_id_type(), 
+        result.emplace_back( read_write::push_transaction_results{ chain::transaction_id_type(),
                           fc::mutable_variant_object( "error", e.to_detail_string() ) } );
       }
    }
@@ -448,7 +451,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
    while( perm != permissions.end() && perm->owner == params.account_name ) {
-      /// TODO: lookup perm->parent name 
+      /// TODO: lookup perm->parent name
       name parent;
 
       // Don't lookup parent if null
@@ -456,8 +459,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          const auto* p = d.find<permission_object,by_id>( perm->parent );
          if( p ) {
             FC_ASSERT(perm->owner == p->owner, "Invalid parent");
-            parent = p->name; 
-         } 
+            parent = p->name;
+         }
       }
 
       result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );
