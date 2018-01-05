@@ -293,7 +293,7 @@ void create_account(name creator, name newaccount, public_key_type owner, public
       uint64_t deposit = 1;
 
       signed_transaction trx;
-      trx.write_scope = sort_names({creator,config::system_account_name});
+      trx.write_scope = sort_names({creator,config::eosio_auth_scope});
       trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}}, 
                                 contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
 
