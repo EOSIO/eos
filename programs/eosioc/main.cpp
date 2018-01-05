@@ -428,7 +428,7 @@ struct set_account_stake_subcommand {
         trx.write_scope = sort_names({from, to, config::system_account_name});
 
         trx.actions.emplace_back( vector<chain::permission_level>{{from,"active"}},
-                                  contracts::lock{ .from = from, .to = to, .amount = amount });
+                                  contracts::lock{ .from = from, .to = to, .amount = share_type(amount) });
 
         auto info = get_info();
         trx.expiration = info.head_block_time + tx_expiration;
