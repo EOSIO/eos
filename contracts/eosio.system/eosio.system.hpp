@@ -6,6 +6,7 @@
 #include <eoslib/eos.hpp>
 #include <eoslib/token.hpp>
 #include <eoslib/db.hpp>
+#include <eoslib/reflect.hpp>
 
 namespace eosiosystem {
 
@@ -13,7 +14,6 @@ namespace eosiosystem {
    *  @defgroup eosio.system EOSIO System Contract
    *  @brief Defines the wasm components of the system contract
    *
-   *  @{
    */
 
    /**
@@ -44,10 +44,29 @@ namespace eosiosystem {
    };
 
 
+   /**
+    * This will transfer tokens from from.balance to to.vote_stake 
+    */
+   struct stakevote {
+      account_name     from;
+      account_name     to;
+      native_tokens    quantity;
+   };
+
+
 
    /**
-    *  @brief row in account table stored within each scope
-    *  @abi table
+    *   This table is used to track an individual user's token balance and vote stake. 
+    *
+    *
+    *   Location:
+    *
+    *   { 
+    *     code: system_code
+    *     scope: ${owner_account_name}
+    *     table: N(singlton)
+    *     key: N(account)
+    *   }
     */
    struct account {
       /**
@@ -77,6 +96,8 @@ namespace eosiosystem {
       **/
       bool  is_empty()const  { return balance.quantity == 0; }
    };
+
+
 
    struct producer {
       account_name key; /// producer name
@@ -113,4 +134,8 @@ namespace eosiosystem {
       return owned_account;
    }
 
-} /// @} /// currencyapi
+} /// eosiosystem 
+
+EOSLIB_REFLECT( eosiosystem::account, (balance)(vote_stake)(proxied_vote_stake)(last_vote_weight)(proxy) )
+EOSLIB_REFLECT( eosiosystem::transfer, (from)(to)(quantity) )
+EOSLIB_REFLECT( eosiosystem::stakevote, (from)(to)(quantity) )

@@ -4,33 +4,57 @@
  */
 
 #include <eosio.system/eosio.system.hpp> 
+#include <eoslib/singleton.hpp>
 
 namespace eosiosystem {
    using namespace eosio;
 
-   ///  When storing accounts, check for empty balance and remove account
-   void store_account( account_name account_to_store, const account& a ) {
-      /// value, scope
-      accounts::store( a, account_to_store );
+   typedef eosio::singleton<eosiosystem::account, system_code, account_table> account_single;
+
+   void on( const eosiosystem::transfer& act ) {
+      require_recipient( act.to, act.from );
+      require_auth( act.from );
+
+      auto from = account_single::get_or_create( act.from );
+      auto to   = account_single::get_or_create( act.to );
+
+      from.balance -= act.quantity; /// token subtraction has underflow assertion
+      to.balance   += act.quantity; /// token addition has overflow assertion
+
+      account_single::set( act.from, from );
+      account_single::set( act.to, to );
    }
 
-   void on( const eosiosystem::transfer& transfer_msg ) {
-      require_recipient( transfer_msg.to, transfer_msg.from );
-      require_auth( transfer_msg.from );
+   void on( const eosiosystem::stakevote& act ) {
+      require_recipient( act.to, act.from );
+      require_auth( act.from );
 
-      auto from = get_account( transfer_msg.from );
-      auto to   = get_account( transfer_msg.to );
+      auto from = account_single::get_or_create( act.from );
+      from.balance -= act.quantity; /// token subtraction has underflow assertion
+      account_single::set( act.from, from );
 
-      from.balance -= transfer_msg.quantity; /// token subtraction has underflow assertion
-      to.balance   += transfer_msg.quantity; /// token addition has overflow assertion
+      auto to        = account_single::get_or_create( act.to );
+      to.vote_stake += act.quantity; /// token addition has overflow assertion
+      account_single::set( act.to, to );
 
-      store_account( transfer_msg.from, from );
-      store_account( transfer_msg.to, to );
+      /// TODO: iterate over all producer votes on act.to 
+      /*
+      producer_vote current;
+      if( producer_votes::by_voter::front( current ) ) {
+         do {
+
+         } while ( producer_votes::by_voter::next( current ) );
+      }
+      */
+      
    }
 
     void init()  {
-       // TODO verify that 
-       //store_account( system_name, account( native_tokens(1000ll*1000ll*1000ll) ) );
+       assert( !account_single::exists( system_code ), "contract already initialized" ) ;
+
+       account system;
+       system.balance = native_tokens( 1000ll*1000ll*1000ll );
+       account_single::set( system_code, system );
     }
 
 }  // namespace eosiosystem
@@ -45,7 +69,7 @@ extern "C" {
           if( action == N(init) ) {
              init();
           } else if( action == N(transfer) ) {
-             on( current_action< eosiosystem::transfer >() );
+             on( unpack_action<eosiosystem::transfer>() );
           }
        }
     }

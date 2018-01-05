@@ -7,6 +7,7 @@
 #pragma once
 #include <eoslib/math.hpp>
 #include <eoslib/print.hpp>
+#include <eoslib/reflect.hpp>
 
 
 namespace eosio {
@@ -429,4 +430,26 @@ namespace eosio {
   /// @}
 
   /// @} tokenhppapi
+
+
+   template<typename NumberType, uint64_t Currency>
+   struct reflector< token<NumberType,Currency> > {
+      typedef token<NumberType,Currency>  type;
+
+      typedef eosio::true_type  is_reflected; 
+      typedef eosio::false_type is_enum; 
+
+      template<typename Visitor> 
+      static void visit( Visitor&& visitor ) {
+         visitor( &type::quantity);
+      }
+
+      template<typename Visitor> 
+      static void visit( const type& t, Visitor&& visitor ) {
+         visitor( t.quantity );
+      }
+   };
+
+
 }
+

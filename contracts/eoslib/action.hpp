@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eoslib/action.h>
-#include <eoslib/print.hpp>
+#include <eoslib/serialize.hpp>
 
 namespace eosio {
 
@@ -41,6 +41,13 @@ namespace eosio {
       auto read = read_action( &value, sizeof(value) );
       assert( read >= sizeof(value), "action shorter than expected" );
       return value;
+   }
+
+   template<typename T>
+   T unpack_action() {
+      char buffer[action_size()];
+      read_action( buffer, sizeof(buffer) );
+      return unpack<T>( buffer, sizeof(buffer) );
    }
 
    using ::require_auth;
