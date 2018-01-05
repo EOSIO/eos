@@ -270,7 +270,11 @@ namespace eosio { namespace chain {
          chainbase::database& get_mutable_database() { return _db; }
 
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);                     }
-     bool is_producing()const                            { return (_skip_flags & (received_block | pushed_transaction)) && !(_skip_flags & irreversible); }
+
+         // returns true to indicate that the caller should interpret the current block or transaction
+         // as one that is being produced, or otherwise validated. This is never true if the block is
+         // received as part of catching up with the rest of the chain, and is known to be irreversible.
+         bool is_producing()const                            { return (_skip_flags & (received_block | pushed_transaction)) && !(_skip_flags & irreversible); }
 
          const deque<signed_transaction>&  pending()const { return _pending_transactions; }
 
