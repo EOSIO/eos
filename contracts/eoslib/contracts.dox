@@ -11,7 +11,7 @@
 
   @section programstructure Application Structure
 
-  EOS.IO applications are designed around event (aka message) handlers that respond to user actions. For example,
+  EOS.IO applications are designed around event (aka action) handlers that respond to user actions. For example,
   a user might transfer tokens to another user. This event can be processed and potentially rejected by the sender,
   the receiver, and the currency application itself.
 
@@ -49,7 +49,7 @@
      void apply( uint64_t code, uint64_t action ) {
         if( code == N(currency) ) {
            if( action == N(transfer) ) 
-              currency::apply_currency_transfer( current_message< currency::transfer >() );
+              currency::apply_currency_transfer( current_action< currency::transfer >() );
         } else {
            assert( false, "rejecting unexpected event" );
         }
