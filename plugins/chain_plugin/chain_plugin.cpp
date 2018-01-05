@@ -272,6 +272,9 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
            ("p", block.producer));
    }
 
+   // note that currently_syncing is true when the p2p layer is catching up to the current last
+   // irreversible block and so it is reasonable to use it as an indication that timing and exception
+   // handling should be relaxed for this block.
    return chain().push_block(block, my->skip_flags | (currently_syncing ? chain_controller::irreversible : 0) );
 }
 
