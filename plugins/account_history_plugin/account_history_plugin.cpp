@@ -290,12 +290,10 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
    const bool check_relevance = filter_on.size();
    for (const signed_transaction& trx : block.input_transactions)
    {
-      wlog("applied_block block_id=${bid}, txn_id=${tid}",("bid",block_id)("tid",trx.id()));
       if (check_relevance && !is_scope_relevant(trx.read_scope) && !is_scope_relevant(trx.write_scope))
          continue;
 
       auto trx_obj_ptr = db.find<transaction_history_object, by_trx_id>(trx.id());
-      wlog("applied_block block_id=${bid} txn_id=${tid} relevant and ${state}",("bid",block_id)("tid",trx.id())("state",(trx_obj_ptr != nullptr ? "exists" : "new")));
       if (trx_obj_ptr != nullptr)
          continue; // on restart may already have block
 
@@ -305,18 +303,15 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
       });
 
       auto create_ath_object = [&trx,&db](const account_name& name) {
-         wlog("applied_block create auth for ${name}",("name",name));
          db.create<account_transaction_history_object>([&trx,&name](account_transaction_history_object& account_transaction_history) {
             account_transaction_history.name = name;
             account_transaction_history.transaction_id = trx.id();
          });
       };
 
-      wlog("applied_block read scope");
       for (const auto& account_name : trx.read_scope)
          create_ath_object(account_name);
 
-      wlog("applied_block write scope");
       for (const auto& account_name : trx.write_scope)
          create_ath_object(account_name);
 
