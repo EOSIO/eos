@@ -1,7 +1,0 @@
-/**
-@defgroup howtobuild How To Build EOS.IO
-@brief Describes how to download, compile, and configure an EOS.IO node
-
-[Check the latest instructions to build EOS.IO in Github!](https://github.com/EOSIO/eos#building-eos-and-running-a-node)
-
-*/

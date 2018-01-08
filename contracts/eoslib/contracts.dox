@@ -1,5 +1,5 @@
 /**
-  @defgroup contractdev How To Write Contracts
+  @defgroup contractdev Smart Contract API Reference
   @brief Introduction to writing contracts for EOS.IO
 
   @section background Background 
@@ -11,7 +11,7 @@
 
   @section programstructure Application Structure
 
-  EOS.IO applications are designed around event (aka message) handlers that respond to user actions. For example,
+  EOS.IO applications are designed around event (aka action) handlers that respond to user actions. For example,
   a user might transfer tokens to another user. This event can be processed and potentially rejected by the sender,
   the receiver, and the currency application itself.
 

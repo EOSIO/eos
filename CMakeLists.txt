@@ -10,9 +10,9 @@ INCLUDE( SetupTargetMacros )
 set( BLOCKCHAIN_NAME "Eos" )
 set( CMAKE_CXX_STANDARD 14 )
 
-set(VERSION_MAJOR 1)
+set(VERSION_MAJOR 2)
 set(VERSION_MINOR 1)
-set(VERSION_PATCH 0)
+set(VERSION_PATCH 1)
 
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
 set( GUI_CLIENT_EXECUTABLE_NAME eos )
@@ -239,7 +239,7 @@ else()
   set(DOXY_EOS_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" CACHE INTERNAL "Version string used in PROJECT_NUMBER.")
   # CMake strips trailing path separators off of variables it knows are paths,
   # so the trailing '/' Doxygen expects is embedded in the doxyfile.
-  set(DOXY_DOC_DEST_DIR "${CMAKE_BINARY_DIR}/docs/html" CACHE PATH "Path to the doxygen output")
+  set(DOXY_DOC_DEST_DIR "${CMAKE_BINARY_DIR}/docs" CACHE PATH "Path to the doxygen output")
   set(DOXY_DOC_INPUT_ROOT_DIR "contracts" CACHE PATH "Path to the doxygen input")
   if(DOXYGEN_DOT_FOUND)
     set(DOXY_HAVE_DOT "YES" CACHE STRING "Doxygen to use dot for diagrams.")

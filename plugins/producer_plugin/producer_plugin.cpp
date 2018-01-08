@@ -175,11 +175,14 @@ void producer_plugin::plugin_shutdown() {
 
 void producer_plugin_impl::schedule_production_loop() {
    //Schedule for the next second's tick regardless of chain state
-   // If we would wait less than 50ms, wait for the whole second.
+   // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
    fc::time_point now = fc::time_point::now();
    int64_t time_to_next_block_time = (config::block_interval_us) - (now.time_since_epoch().count() % (config::block_interval_us) );
-   if(time_to_next_block_time < config::block_interval_us/10 )      // we must sleep for at least 50ms
-       time_to_next_block_time += config::block_interval_us;
+   if(time_to_next_block_time < config::block_interval_us/10 ) {     // we must sleep for at least 50ms
+      ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}us",
+           ("t", config::block_interval_us/10)("bt", time_to_next_block_time));
+      time_to_next_block_time += config::block_interval_us;
+   }
 
    //_timer.expires_from_now(boost::posix_time::microseconds(time_to_next_block_time));
    _timer.expires_from_now( boost::posix_time::microseconds(time_to_next_block_time) );

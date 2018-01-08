@@ -14,8 +14,8 @@ extern "C" {
 
    /**
     *  @defgroup consolecapi Console C API
+    *  @brief C API to log/print text messages
     *  @ingroup consoleapi
-    *
     *  @{
     */
 

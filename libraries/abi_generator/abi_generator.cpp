@@ -204,7 +204,7 @@ bool abi_generator::is_i128i128_index(const vector<field_def>& fields) {
 }
 
 bool abi_generator::is_str_index(const vector<field_def>& fields) {
-  return fields.size() == 2 && is_string(fields[0].type) && fields[0].name == "key" && fields[1].name == "value"; 
+  return fields.size() == 2 && is_string(fields[0].type);
 }
 
 void abi_generator::guess_index_type(table_def& table, const struct_def s) {

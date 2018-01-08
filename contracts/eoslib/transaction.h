@@ -52,7 +52,7 @@ extern "C" {
     */
 
    /** 
-    * @defgroup transactioncapi transaction C API
+    * @defgroup transactioncapi Transaction C API
     * @ingroup transactionapi
     * @brief Define API for sending transactions 
     *

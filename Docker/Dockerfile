@@ -67,7 +67,7 @@ RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-dr
     && cmake --build build --target install
 
 
-### If you don't want to change the depedencies, you can commet out above lines and uncoment the following line to get faster build time.
+### If you don't want to change the depedencies, you can comment out above lines and uncomnent the following line to get faster build time.
 # FROM huangminghuang/eos_builder as builder
 
 RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
@@ -81,11 +81,11 @@ RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
 FROM ubuntu:16.04
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
-COPY --from=builder /opt/eos/bin /opt/eos/bin
+COPY --from=builder /opt/eosio/bin /opt/eosio/bin
 COPY --from=builder /tmp/build/contracts /contracts
 COPY --from=builder /eos/Docker/config.ini /eos/genesis.json /
-COPY start_eosd.sh /opt/eos/bin/start_eosd.sh
-RUN chmod +x /opt/eos/bin/start_eosd.sh
+COPY start_eosiod.sh /opt/eosio/bin/start_eosiod.sh
+RUN chmod +x /opt/eosio/bin/start_eosiod.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
-VOLUME /opt/eos/bin/data-dir
-ENV PATH /opt/eos/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+VOLUME /opt/eosio/bin/data-dir
+ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

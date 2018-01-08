@@ -12,7 +12,7 @@
 namespace eosio {
 
    /**
-    * @defgroup transactioncppapi transaction C++ API
+    * @defgroup transactioncppapi Transaction C++ API
     * @ingroup transactionapi
     * @brief Type-safe C++ wrappers for transaction C API
     *

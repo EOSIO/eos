@@ -13,7 +13,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
   find_package(Git)
   if(GIT_FOUND)
     execute_process(
-      COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+      COMMAND ${GIT_EXECUTABLE} rev-parse --short=8 HEAD
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
       OUTPUT_VARIABLE "eosiod_BUILD_VERSION"
       ERROR_QUIET
@@ -34,7 +34,7 @@ target_link_libraries( eosiod
         PRIVATE chain_api_plugin producer_plugin chain_plugin 
        PRIVATE  wallet_api_plugin
         PRIVATE net_plugin net_api_plugin txn_test_gen_plugin
-        PRIVATE http_plugin
+        PRIVATE http_plugin faucet_testnet_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
