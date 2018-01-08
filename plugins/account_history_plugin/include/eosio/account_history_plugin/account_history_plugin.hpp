@@ -42,7 +42,7 @@ public:
 
 
    struct get_transactions_params {
-      chain::account_name name;
+      chain::account_name account_name;
       optional<uint32_t>  skip_seq;
       optional<uint32_t>  num_seq;
    };
@@ -110,7 +110,7 @@ private:
 FC_REFLECT(eosio::account_history_apis::empty, )
 FC_REFLECT(eosio::account_history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eosio::account_history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
-FC_REFLECT(eosio::account_history_apis::read_only::get_transactions_params, (name)(skip_seq)(num_seq) )
+FC_REFLECT(eosio::account_history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
 FC_REFLECT(eosio::account_history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
 FC_REFLECT(eosio::account_history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
 FC_REFLECT(eosio::account_history_apis::read_only::get_key_accounts_params, (public_key) )

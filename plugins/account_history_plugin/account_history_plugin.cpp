@@ -463,7 +463,7 @@ read_only::get_transaction_results read_only::get_transaction(const read_only::g
 
 read_only::get_transactions_results read_only::get_transactions(const read_only::get_transactions_params& params) const
 {
-   return account_history->get_transactions(params.name, params.skip_seq, params.num_seq);
+   return account_history->get_transactions(params.account_name, params.skip_seq, params.num_seq);
 }
 
 read_only::get_key_accounts_results read_only::get_key_accounts(const get_key_accounts_params& params) const
