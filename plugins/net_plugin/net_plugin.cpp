@@ -388,7 +388,8 @@ namespace eosio {
     deque<queued_write>     write_queue;
 
     fc::sha256              node_id;
-    handshake_message       last_handshake;
+    handshake_message       last_handshake_recv;
+    handshake_message       last_handshake_sent;
     int16_t                 sent_handshake_count;
     deque<net_message>      out_queue;
     bool                    connecting;
@@ -404,7 +405,7 @@ namespace eosio {
        stat.peer = peer_addr;
        stat.connecting = connecting;
        stat.syncing = syncing;
-       stat.last_handshake = last_handshake;
+       stat.last_handshake = last_handshake_recv;
        return stat;
     }
 
@@ -554,7 +555,8 @@ namespace eosio {
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
         send_buffer(send_buf_size),
         node_id(),
-        last_handshake(),
+        last_handshake_recv(),
+        last_handshake_sent(),
         sent_handshake_count(0),
         out_queue(),
         connecting(false),
@@ -578,7 +580,8 @@ namespace eosio {
         socket( s ),
         send_buffer(send_buf_size),
         node_id(),
-        last_handshake(),
+        last_handshake_recv(),
+        last_handshake_sent(),
         sent_handshake_count(0),
         out_queue(),
         connecting(true),
@@ -650,7 +653,8 @@ namespace eosio {
       sync_receiving.reset();
       reset();
       sent_handshake_count = 0;
-      last_handshake = handshake_message();
+      last_handshake_recv = handshake_message();
+      last_handshake_sent = handshake_message();
       my_impl->sync_master->reset_lib_num();
       if(response_expected) {
         response_expected->cancel();
@@ -790,6 +794,7 @@ namespace eosio {
       handshake_message hello;
       handshake_initializer::populate(hello);
       hello.generation = ++sent_handshake_count;
+      last_handshake_sent = hello;
       fc_dlog(logger, "Sending handshake to ${ep}", ("ep", peer_addr));
       enqueue(hello);
     }
@@ -1026,8 +1031,8 @@ namespace eosio {
   }
 
   const string connection::peer_name() {
-    if( !last_handshake.p2p_address.empty() ) {
-      return last_handshake.p2p_address;
+    if( !last_handshake_recv.p2p_address.empty() ) {
+      return last_handshake_recv.p2p_address;
     }
     if( !peer_addr.empty() ) {
       return peer_addr;
@@ -1102,8 +1107,8 @@ namespace eosio {
     sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
     sync_last_requested_num = chain_plug->chain().head_block_num();
      for (auto& c : my_impl->connections) {
-      if( c->last_handshake.last_irreversible_block_num > sync_known_lib_num) {
-        sync_known_lib_num =c->last_handshake.last_irreversible_block_num;
+      if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num) {
+        sync_known_lib_num =c->last_handshake_recv.last_irreversible_block_num;
       }
       if( c->sync_receiving && c->sync_receiving->end_block > sync_last_requested_num) {
         sync_last_requested_num = c->sync_receiving->end_block;
@@ -1215,6 +1220,7 @@ namespace eosio {
       for( auto &ci : my_impl->connections) {
         if( ci->current()) {
           hello.generation = ++ci->sent_handshake_count;
+          ci->last_handshake_sent = hello;
           ci->enqueue( hello );
         }
       }
@@ -1460,12 +1466,19 @@ namespace eosio {
           return;
         }
 
-        if( c->peer_addr.empty() || c->last_handshake.node_id == fc::sha256()) {
+        if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
           fc_dlog(logger, "checking for duplicate" );
           for(const auto &check : connections) {
             if(check == c)
               continue;
             if(check->connected() && check->peer_name() == msg.p2p_address) {
+              // It's possible that both peers could arrive here at relatively the same time, so
+              // we need to avoid the case where they would both tell a different connection to go away.
+              // Using the sum of the initial handshake times of the two connections, we will
+              // arbitrarily (but consistently between the two peers) keep one of them.
+              if (msg.time + c->last_handshake_sent.time <= check->last_handshake_sent.time + check->last_handshake_recv.time)
+                continue;
+
               fc_dlog(logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
               go_away_message gam(go_away_reason::duplicate);
               gam.node_id = node_id;
@@ -1476,7 +1489,7 @@ namespace eosio {
           }
         }
         else {
-          fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake.node_id));
+          fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
         }
 
         if( msg.chain_id != chain_id) {
@@ -1530,7 +1543,7 @@ namespace eosio {
         }
       }
 
-      c->last_handshake = msg;
+      c->last_handshake_recv = msg;
       sync_master->reset_lib_num();
       c->syncing = false;
 
@@ -1658,7 +1671,7 @@ namespace eosio {
       case none:
         break;
       case last_irr_catch_up: {
-        c->last_handshake.head_num = msg.known_trx.pending;
+        c->last_handshake_recv.head_num = msg.known_trx.pending;
         req.req_trx.mode = none;
         fwd.known_trx.mode = none;
         break;
@@ -1709,7 +1722,7 @@ namespace eosio {
         break;
       }
       case last_irr_catch_up : {
-        c->last_handshake.last_irreversible_block_num = msg.known_trx.pending;
+        c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
         sync_master->reset_lib_num ();
         if (!c->sync_receiving ) {
 
@@ -1972,6 +1985,7 @@ namespace eosio {
         for( auto &ci : my_impl->connections) {
           if( ci->current()) {
             hello.generation = ++ci->sent_handshake_count;
+            ci->last_handshake_sent = hello;
             fc_dlog(logger, "send to ${p}", ("p",ci->peer_name()));
             ci->enqueue( hello );
           }
