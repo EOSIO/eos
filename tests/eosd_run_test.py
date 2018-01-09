@@ -338,17 +338,88 @@ try:
     if codeHash is None:
         cmdError("eosc get code currency")
         errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
-    nonZero=codeHash.replace('0', '')
-    if nonZero != "":
-        errorExit("FAILURE - get transactions testera failed", raw=True)
+    hashNum=int(codeHash, 16)
+    if hashNum != 0:
+        errorExit("FAILURE - get code currency failed", raw=True)
 
-    # wastFile="contracts/currency/currency.wast"
-    # abiFile="contracts/currency/currency.abi"
-    # Print("Publish contract")
-    # transId=node.publishContract(currencyAccount.name, wastFile, abiFile, waitForTransBlock=True)
-    # if transId is None:
-    #     cmdError("eosc set contract currency")
-    #     errorExit("Failed to publish contract.")
+    wastFile="contracts/currency/currency.wast"
+    abiFile="contracts/currency/currency.abi"
+    Print("Publish contract")
+    trans=node.publishContract(currencyAccount.name, wastFile, abiFile, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set contract currency")
+        errorExit("Failed to publish contract.")
+
+    Print("Get code hash for account %s" % (currencyAccount.name))
+    codeHash=node.getAccountCodeHash(currencyAccount.name)
+    if codeHash is None:
+        cmdError("eosc get code currency")
+        errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
+    hashNum=int(codeHash, 16)
+    if hashNum == 0:
+        errorExit("FAILURE - get code currency failed", raw=True)
+
+    Print("Verify currency contract has proper initial balance")
+    contract="currency"
+    table="account"
+    row0=node.getTableRow(currencyAccount.name, contract, table, 0)
+    if row0 is None:
+        cmdError("eosc get table currency account")
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    balanceKey="balance"
+    keyKey="key"
+    if row0[balanceKey] != 1000000000 or row0[keyKey] != "account":
+        errorExit("FAILURE - get table currency account failed", raw=True)
+
+    Print("push message to currency contract")
+    contract="currency"
+    action="transfer"
+    data="{\"from\":\"currency\",\"to\":\"inita\",\"quantity\":50}"
+    opts="--scope currency,inita --permission currency@active"
+    trans=node.pushMessage(contract, action, data, opts)
+    if trans is None:
+        cmdError("eosc push message currency transfer")
+        errorExit("Failed to push message to currency contract")
+    transId=testUtils.Node.getTransId(trans)
+
+    Print("verify transaction exists")
+    if not node.waitForTransIdOnNode(transId):
+        cmdError("eosc get transaction trans_id")
+        errorExit("Failed to verify push message transaction id.")
+
+    Print("read current contract balance")
+    contract="currency"
+    table="account"
+    row0=node.getTableRow(initaAccount.name, contract, table, 0)
+    if row0 is None:
+        cmdError("eosc get table currency account")
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    balanceKey="balance"
+    keyKey="key"
+    if row0[balanceKey] != 50:
+        errorExit("FAILURE - get table currency account failed", raw=True)
+
+    row0=node.getTableRow(currencyAccount.name, contract, table, 0)
+    if row0 is None:
+        cmdError("eosc get table currency account")
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    if row0[balanceKey] != 999999950:
+        errorExit("FAILURE - get table currency account failed", raw=True)
+
+    Print("Exchange Contract Tests")
+    Print("upload exchange contract")
+
+    wastFile="contracts/exchange/exchange.wast"
+    abiFile="contracts/exchange/exchange.abi"
+    Print("Publish contract")
+    trans=node.publishContract(exchangeAccount.name, wastFile, abiFile, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set contract exchange")
+        errorExit("Failed to publish contract.")
+    
         
     testSuccessful=True
     Print("END")

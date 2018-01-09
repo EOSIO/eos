@@ -14,6 +14,7 @@ import inspect
 import sys
 import random
 import io
+import json
 
 ###########################################################################################
 class Utils:
@@ -51,6 +52,13 @@ class Utils:
 
         return chainSyncStrategies
 
+###########################################################################################
+class Table(object):
+    def __init__(self, name):
+        self.name=name
+        self.keys=[]
+        self.data=[]
+        
 ###########################################################################################
 class Transaction(object):
     def __init__(self, transId):
@@ -135,7 +143,7 @@ class Node(object):
             transId=m.group(1)
             # Utils.Print("Transaction num: %s" % (transId))
        
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account creation. %s" % (msg))
             return None
@@ -155,7 +163,7 @@ class Node(object):
             if m is None:
                 Utils.Print("ERROR: Failed to verify account creation.", account.name)
                 return False
-        except Exception as es:
+        except subprocess.CalledProcessError as es:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account verification. %s", msg)
             return False
@@ -201,7 +209,7 @@ class Node(object):
             s=m.group(1)
             num=int(s)
 
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during block number retrieval. %s" % (msg))
             return -1
@@ -247,7 +255,7 @@ class Node(object):
             transId=m.group(1)
             #MyPrint("Transaction block num: %s" % (blockNum))
        
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
             return None
@@ -291,7 +299,7 @@ class Node(object):
                 raise Exception(msg)
 
             return m
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during accounts by key retrieval. %s" % (msg))
             raise
@@ -310,7 +318,7 @@ class Node(object):
                 raise Exception(msg)
 
             return m
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during servants retrieval. %s" % (msg))
             raise
@@ -335,7 +343,7 @@ class Node(object):
             account.balance=int(balance)
             return account
 
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account by name retrieval. %s" % (msg))
             raise
@@ -375,7 +383,7 @@ class Node(object):
             transaction.amount=amount
             return transaction
 
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account by transaction retrieval. %s" % (msg))
             raise
@@ -399,7 +407,7 @@ class Node(object):
                 transaction=Transaction(id)
                 transactions.append(transaction)
             return transactions
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during transactions by account retrieval. %s" % (msg))
             raise
@@ -409,7 +417,7 @@ class Node(object):
             cmd="programs/eosc/eosc %s get code %s" % (self.endpointArgs, account)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=subprocess.check_output(cmd.split()).decode("utf-8")
-            #Utils.Print ("getAccountDetails> %s"% retStr)
+            #Utils.Print ("get code> %s"% retStr)
             p=re.compile('code\shash: (\w+)\n', re.MULTILINE)
             m=p.search(retStr)
             if m is None:
@@ -418,33 +426,123 @@ class Node(object):
                 raise Exception(msg)
 
             return m.group(1)
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
             raise
 
+    # def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False):
+    #     transId=None
+    #     p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
+    #     cmd="programs/eosc/eosc %s set contract %s %s %s" % (self.endpointArgs, account, wastFile, abiFile)
+    #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+    #     try:
+    #         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
+    #         #Utils.Print ("getAccountDetails> %s"% retStr)
+    #         m=p.search(retStr)
+    #         if m is None:
+    #             Utils.Print("ERROR: transaction id parser failure")
+    #             return None
+    #         transId=m.group(1)
+    #     except subprocess.CalledProcessError as ex:
+    #         msg=ex.output.decode("utf-8")
+    #         Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
+    #         return None
+
+    #     if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+    #         return None
+    #     return transId
+
+    @staticmethod
+    def filterJsonObject(data):
+        firstIdx=data.find('{')
+        lastIdx=data.rfind('}')
+        retStr=data[firstIdx:lastIdx+1]
+        return retStr
+
     def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False):
-        transId=None
-        p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
         cmd="programs/eosc/eosc %s set contract %s %s %s" % (self.endpointArgs, account, wastFile, abiFile)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        trans=None
         try:
-            retStr=subprocess.check_output(cmd.split()).decode("utf-8")
-            Utils.Print ("getAccountDetails> %s"% retStr)
-            m=p.search(retStr)
-            if m is None:
-                Utils.Print("ERROR: transaction id parser failure")
-                return None
-            transId=m.group(1)
-        except Exception as ex:
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("publishContract> %s"% retStr)
+            trans=jsonData=json.loads(jStr)
+            transId=Node.getTransId(jsonData)
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
             return None
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
             return None
-        return transId
+        return trans
+    
+    @staticmethod
+    def __checkOutput(cmd):
+        #retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
+        retStr=subprocess.check_output(cmd).decode("utf-8")
+        return retStr
+    
+    def getTable(self, account, contract, table):
+        try:
+            cmd="programs/eosc/eosc %s get table %s %s %s" % (self.endpointArgs, account, contract, table)
+            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+            retStr=Node.__checkOutput(cmd.split())
+            #Utils.Print ("getAccountDetails> %s"% retStr)
+            jsonData=json.loads(retStr)
+            return jsonData
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during table retrieval. %s" % (msg))
+            raise
 
+    def getTableRows(self, account, contract, table):
+        jsonData=self.getTable(account, contract, table)
+        rows=jsonData["rows"]
+        return rows
+
+    def getTableRow(self, account, contract, table, idx):
+        if idx < 0:
+            Utils.Print("ERROR: Table index cannot be negative. idx: %d" % (idx))
+            return None
+        rows=self.getTableRows(account, contract, table)
+        if idx >= len(rows):
+            Utils.Print("ERROR: Requested table index(%d) larger than table length(%d)." % (idx, len(rows)))
+            return None
+        row=rows[idx]
+        return row
+
+    def getTableColumns(self, account, contract, table):
+        row=self.getTableRow(account, contract, table, 0)
+        keys=list(row.keys())
+        return keys
+
+    def pushMessage(self, contract, action, data, opts):
+        try:
+            cmd="programs/eosc/eosc %s push message %s %s" % (self.endpointArgs, contract, action)
+            cmdArgs=cmd.split()
+            if data is not None:
+                cmdArgs.append(data)
+            if opts is not None:
+                cmdArgs += opts.split()
+            Utils.Debug and Utils.Print("cmd: %s" % (cmdArgs))
+            retStr=Node.__checkOutput(cmdArgs)
+            #Utils.Print ("getAccountDetails> %s"% retStr)
+            jsonData=json.loads(retStr)
+            return jsonData
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during push message. %s" % (msg))
+            raise
+
+    @staticmethod
+    def getTransId(trans):
+        transIdKey="transaction_id"
+        transId=trans[transIdKey]
+        return transId
+    
 ###########################################################################################
 
 Wallet=namedtuple("Wallet", "name password host port")
@@ -509,7 +607,7 @@ class WalletMgr(object):
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             if warningMsg in msg:
                 Utils.Print("WARNING: This key is already imported into the wallet.")
@@ -525,7 +623,7 @@ class WalletMgr(object):
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             try:
                 retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
-            except Exception as ex:
+            except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
                 if warningMsg in msg:
                     Utils.Print("WARNING: This key is already imported into the wallet.")
@@ -627,6 +725,7 @@ class WalletMgr(object):
             shutil.copyfileobj(Cluster.__walletLogFile, sys.stdout)
     
     def killall(self):
+        #Utils.Print("Wallet pid: %s" % "None" if self.__walletPid is None else str(self.__walletPid))
         if self.__walletPid is not None:
             os.kill(self.__walletPid, signal.SIGKILL)
             
@@ -790,7 +889,7 @@ class Cluster(object):
                 account.activePublicKey=activePublic
                 accounts.append(account)
 
-            except Exception as ex:
+            except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
                 Utils.Print("ERROR: Exception during key creation. %s" % (msg))
                 break
@@ -1050,7 +1149,7 @@ class Cluster(object):
                 instance.setWalletEndpointArgs(self.walletEndpointArgs)
                 Utils.Debug and Utils.Print("Node:", instance)
                 nodes.append(instance)
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             Utils.Print("ERROR: Exception during Nodes creation:", ex)
             raise
         
@@ -1064,7 +1163,7 @@ class Cluster(object):
             running=True
             try:
                 os.kill(node.pid, 0)
-            except Exception as ex:
+            except subprocess.CalledProcessError as ex:
                 running=False
             if running != node.alive:
                 self.nodes[i].alive=running
@@ -1081,7 +1180,7 @@ class Cluster(object):
         for node in reversed(self.nodes):
             try:
                 os.kill(node.pid, killSignal)
-            except Exception as ex:
+            except subprocess.CalledProcessError as ex:
                 Utils.Print("ERROR: Failed to kill process pid %d." % (node.pid), ex)
                 return False
             killedCount += 1
@@ -1100,7 +1199,7 @@ class Cluster(object):
             running=True
             try:
                 os.kill(node.pid, 0) #check if instance is running
-            except Exception as ex:
+            except subprocess.CalledProcessError as ex:
                 running=False
 
             if running is False:
@@ -1136,7 +1235,7 @@ class Cluster(object):
         for node in self.nodes:
             try:
                 os.kill(node.pid, signal.SIGKILL)
-            except Exception as ex:
+            except subprocess.CalledProcessError as ex:
                 pass
             
     def waitForNextBlock(self, timeout=60):
