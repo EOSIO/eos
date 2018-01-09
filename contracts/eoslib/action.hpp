@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eoslib/action.h>
-#include <eoslib/serialize.hpp>
+#include <eoslib/raw.hpp>
 
 namespace eosio {
 
@@ -73,6 +73,24 @@ namespace eosio {
       require_recipient( name );
       require_recipient( remaining_accounts... );
    }
+
+
+   struct action {
+      scope_name                 scope;
+      action_name                name;
+      vector<permission_level>   authorization;
+      string                     data;
+
+      action(){}
+
+      template<typename T>
+      action( vector<permission_level> auth, const T& value ) {
+         scope         = T::get_scope();
+         name          = T::get_name();
+         authorization = move(auth);
+         data          = pack(value);
+      }
+   };
 
 
  ///@} actioncpp api

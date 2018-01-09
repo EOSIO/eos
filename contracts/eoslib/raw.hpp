@@ -7,6 +7,7 @@
 #include <eoslib/varint.hpp>
 #include <eoslib/datastream.hpp>
 #include <eoslib/memory.hpp>
+#include <eoslib/vector.hpp>
 
 namespace eosio {
     namespace raw {    
@@ -17,7 +18,7 @@ namespace eosio {
    *  @param args other values to be serialized
    */
    template<typename Stream, typename Arg0, typename... Args>
-   inline void pack( Stream& s, const Arg0& a0, Args... args ) {
+   void pack( Stream& s, const Arg0& a0, Args... args ) {
       pack( s, a0 );
       pack( s, args... );
    }
@@ -28,7 +29,7 @@ namespace eosio {
    *  @param v value to be serialized
    */
    template<typename Stream, typename T>
-   inline void pack( Stream& s, const T& v )
+   void pack( Stream& s, const T& v )
    {
       s << v;
    }
@@ -39,7 +40,7 @@ namespace eosio {
    *  @param v destination of deserialized value
    */
    template<typename Stream, typename T>
-   inline void unpack( Stream& s, T& v )
+   void unpack( Stream& s, T& v )
    {
       s >> v;
    }
@@ -49,7 +50,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const signed_int& v ) {
+   template<typename Stream> 
+   void pack( Stream& s, const signed_int& v ) {
       uint32_t val = (v.value<<1) ^ (v.value>>31);
       do {
          uint8_t b = uint8_t(val) & 0x7f;
@@ -64,7 +66,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const unsigned_int& v ) {
+   template<typename Stream> 
+   void pack( Stream& s, const unsigned_int& v ) {
       uint64_t val = v.value;
       do {
          uint8_t b = uint8_t(val) & 0x7f;
@@ -79,7 +82,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, signed_int& vi ) {
+   template<typename Stream> 
+   void unpack( Stream& s, signed_int& vi ) {
       uint32_t v = 0; char b = 0; int by = 0;
       do {
          s.get(b);
@@ -96,7 +100,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, unsigned_int& vi ) {
+   template<typename Stream> 
+   void unpack( Stream& s, unsigned_int& vi ) {
       uint64_t v = 0; char b = 0; uint8_t by = 0;
       do {
          s.get(b);
@@ -111,7 +116,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const bytes& value ) {
+   template<typename Stream> 
+   void pack( Stream& s, const bytes& value ) {
       eosio::raw::pack( s, unsigned_int((uint32_t)value.len) );
       if( value.len )
          s.write( (char *)value.data, (uint32_t)value.len );
@@ -122,7 +128,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, bytes& value ) {
+   template<typename Stream> 
+   void unpack( Stream& s, bytes& value ) {
       unsigned_int size; eosio::raw::unpack( s, size );
       value.len = size.value;
       if( value.len ) {
@@ -136,7 +143,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const public_key& value ) {
+   template<typename Stream> 
+   void pack( Stream& s, const public_key& value ) {
       s.write( (char *)value.data, sizeof(public_key) );
    }
    
@@ -145,7 +153,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized public_key
    */
-   template<typename Stream> inline void unpack( Stream& s, public_key& value ) {
+   template<typename Stream> 
+   void unpack( Stream& s, public_key& value ) {
       s.read( (char *)value.data, sizeof(public_key) );
    }
 
@@ -154,10 +163,33 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const string& v )  {
+   template<typename Stream> 
+   void pack( Stream& s, const string& v )  {
       auto size = v.get_size();
       eosio::raw::pack( s, unsigned_int(size));
       if( size ) s.write( v.get_data(), size );
+   }
+
+  /**
+   *  Serialize a string into a stream
+   *  @param s stream to write
+   *  @param v value to be serialized
+   */
+   template<typename Stream, typename T> 
+   void pack( Stream& s, const vector<T>& v )  {
+      auto size = v.size();
+      eosio::raw::pack( s, unsigned_int(size));
+      for( const auto& value : v )
+         eosio::raw::pack( s, value );
+   }
+
+   template<typename Stream, typename T> 
+   void unpack( Stream& s, vector<T>& v )  {
+      unsigned_int size; 
+      eosio::raw::unpack( s, size );
+      v.resize(size);
+      for( auto& value : v )
+         eosio::raw::unpack( ds, value );
    }
 
   /**
@@ -165,7 +197,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, string& v)  {
+   template<typename Stream> 
+   void unpack( Stream& s, string& v)  {
       unsigned_int size; eosio::raw::unpack( s, size );
       v.assign((char*)s.pos(), size.value, true);
       s.skip(size.value);
@@ -176,7 +209,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const fixed_string32& v )  {
+   template<typename Stream> 
+   void pack( Stream& s, const fixed_string32& v )  {
       auto size = v.len;
       eosio::raw::pack( s, unsigned_int(size));
       if( size ) s.write( v.str, size );
@@ -187,7 +221,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, fixed_string32& v)  {
+   template<typename Stream> 
+   void unpack( Stream& s, fixed_string32& v)  {
       unsigned_int size; eosio::raw::unpack( s, size );
       assert(size.value <= 32, "unpack fixed_string32");
       s.read( (char *)v.str, size );
@@ -199,7 +234,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const fixed_string16& v )  {
+   template<typename Stream> 
+   void pack( Stream& s, const fixed_string16& v )  {
       auto size = v.len;
       eosio::raw::pack( s, unsigned_int(size));
       if( size ) s.write( v.str, size );
@@ -211,7 +247,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, fixed_string16& v)  {
+   template<typename Stream> 
+   void unpack( Stream& s, fixed_string16& v)  {
       unsigned_int size; eosio::raw::unpack( s, size );
       assert(size.value <= 16, "unpack fixed_string16");
       s.read( (char *)v.str, size );
@@ -223,7 +260,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const ::price& v )  {
+   template<typename Stream> 
+   void pack( Stream& s, const ::price& v )  {
       eosio::raw::pack(s, v.base);
       eosio::raw::pack(s, v.quote);
    }
@@ -233,7 +271,8 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, ::price& v)  {
+   template<typename Stream> 
+   void unpack( Stream& s, ::price& v)  {
       eosio::raw::unpack(s, v.base);
       eosio::raw::unpack(s, v.quote);
    }
@@ -242,7 +281,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const ::asset& v )  {
+   template<typename Stream> 
+   void pack( Stream& s, const ::asset& v )  {
       eosio::raw::pack(s, v.amount);
       eosio::raw::pack(s, v.symbol);
    }
@@ -252,17 +292,20 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, ::asset& v)  {
+   template<typename Stream> 
+   void unpack( Stream& s, ::asset& v)  {
       eosio::raw::unpack(s, v.amount);
       eosio::raw::unpack(s, v.symbol);
    }
 
-   template<typename Stream> inline void pack(Stream &s, const ::account_permission &pe) {
+   template<typename Stream> 
+   void pack(Stream &s, const ::account_permission &pe) {
       eosio::raw::pack(s, pe.account);
       eosio::raw::pack(s, pe.permission);
    }
 
-   template<typename Stream> inline void unpack(Stream &s, ::account_permission &pe) {
+   template<typename Stream> 
+   void unpack(Stream &s, ::account_permission &pe) {
       eosio::raw::unpack(s, pe.account);
       eosio::raw::unpack(s, pe.permission);
    }
@@ -271,7 +314,10 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream> inline void pack( Stream& s, const bool& v ) { eosio::raw::pack( s, uint8_t(v) );             }
+   template<typename Stream> 
+   void pack( Stream& s, const bool& v ) { 
+       eosio::raw::pack( s, uint8_t(v) );
+   }
 
   /**
    *  Serialize an array of types into a stream
@@ -279,14 +325,16 @@ namespace eosio {
    *  @param varr array of values to be serialized
    *  @param count the number of values to be serialized
    */
-   template<typename Stream, typename T> inline void pack( Stream& s, const T* varr, size_t count ) {
+   template<typename Stream, typename T> 
+   void pack( Stream& s, const T* varr, size_t count ) {
       eosio::raw::pack( s, unsigned_int(count) );
       for (size_t idx = 0; idx < count; idx++) {
          eosio::raw::pack( s, varr[idx] );
       }
    }
 
-   template<typename Stream, typename T> inline void unpack( Stream& s, T* varr, size_t &count, size_t max_count ) {
+   template<typename Stream, typename T> 
+   void unpack( Stream& s, T* varr, size_t &count, size_t max_count ) {
       unsigned_int packed_count;
       eosio::raw::unpack( s, packed_count );
       count = packed_count.value;
@@ -298,13 +346,15 @@ namespace eosio {
    }
 
 
-   template<typename Stream> inline void pack( Stream& s, const char *str, size_t len ) {
+   template<typename Stream> 
+   void pack( Stream& s, const char *str, size_t len ) {
      eosio::raw::pack( s, unsigned_int(len) );
      if( len )
         s.write( str, len );
    }
 
-   template<typename Stream> inline void unpack( Stream& s, char *str, size_t &len, size_t max_len ) {
+   template<typename Stream> 
+   void unpack( Stream& s, char *str, size_t &len, size_t max_len ) {
       unsigned_int packed_len;
       eosio::raw::unpack( s, packed_len );
       len = packed_len.value;
@@ -313,14 +363,13 @@ namespace eosio {
          s.read( str, len );
    }
 
-
-
-    /**
+   /**
    *  Deserialize a bool from a stream
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream> inline void unpack( Stream& s, bool& v )
+   template<typename Stream> 
+   void unpack( Stream& s, bool& v )
    {
       uint8_t b;
       eosio::raw::unpack( s, b );
@@ -333,7 +382,7 @@ namespace eosio {
    *  @param v value to calculate its serialized size
    */
    template<typename T>
-   inline size_t pack_size( const T& v )
+   size_t pack_size( const T& v )
    {
       datastream<size_t> ps;
       eosio::raw::pack(ps,v );
@@ -345,7 +394,7 @@ namespace eosio {
    *  @param v value to be serialized
    */
    template<typename T>
-   inline bytes pack(  const T& v ) {
+   bytes pack(  const T& v ) {
       datastream<size_t> ps;
       eosio::raw::pack(ps, v);
       bytes b;
@@ -365,10 +414,10 @@ namespace eosio {
    *  @param v value to be serialized
    */
    template<typename T>
-   inline void pack( char* d, uint32_t s, const T& v ) {
+   void pack( char* d, uint32_t s, const T& v ) {
       datastream<char*> ds(d,s);
       eosio::raw::pack(ds,v );
-    }
+   }
 
   /** Deserialize a value from a buffer
    *  @return the deserialized value 
@@ -376,7 +425,7 @@ namespace eosio {
    *  @param s size of the buffer
    */
    template<typename T>
-   inline T unpack( const char* d, uint32_t s )
+   T unpack( const char* d, uint32_t s )
    {
       T v;
       datastream<const char*>  ds( d, s );
@@ -390,7 +439,7 @@ namespace eosio {
    *  @param v destination of deserialized value
    */
    template<typename T>
-   inline void unpack( const char* d, uint32_t s, T& v )
+   void unpack( const char* d, uint32_t s, T& v )
    {
       datastream<const char*>  ds( d, s );
       eosio::raw::unpack(ds,v);

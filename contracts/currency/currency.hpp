@@ -57,6 +57,10 @@ namespace TOKEN_NAME {
       currency_tokens    quantity;
    };
 
+   struct transfer_memo : public transfer {
+      string memo;
+   };
+
    /**
     *  @brief row in account table stored within each scope
     *  @abi table
