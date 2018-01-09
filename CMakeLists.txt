@@ -46,13 +46,11 @@ endif(USE_PCH)
 list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules" )
 
 SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
-
 IF( WIN32 )
   SET(BOOST_ROOT $ENV{BOOST_ROOT})
   set(Boost_USE_MULTITHREADED ON)
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
-
 FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
     thread
     date_time
