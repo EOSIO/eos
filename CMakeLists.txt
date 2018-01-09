@@ -183,9 +183,7 @@ add_subdirectory( scripts )
 add_subdirectory( tests )
 add_subdirectory( tools )
 
-if (ENABLE_INSTALLER)
-    include(installer)
-endif(ENABLE_INSTALLER)
+include(installer)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
 
