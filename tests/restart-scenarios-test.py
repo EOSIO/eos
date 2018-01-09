@@ -71,7 +71,7 @@ random.seed(1) # Use a fixed seed for repeatability.
 testSuccessful=False
 
 try:
-    print("Stand up cluster")
+    Print("Stand up cluster")
     if cluster.launch(pnodes, total_nodes, topo, delay) is False:
         errorExit("Failed to stand up eos cluster.")
     
