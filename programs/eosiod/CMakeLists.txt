@@ -28,13 +28,26 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
 target_include_directories(eosiod PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
+if(UNIX)
+  if(APPLE)
+    set(whole_archive_flag "-all_load")
+    set(no_whole_archive_flag "-noall_load")
+  else()
+    set(whole_archive_flag "--whole-archive")
+    set(no_whole_archive_flag "--no-whole-archive")
+  endif()
+else()
+  set(whole_archive_flag "--whole-archive")
+  set(no_whole_archive_flag "--no-whole-archive")
+endif()
+
 target_link_libraries( eosiod
         PRIVATE appbase
 #        PRIVATE account_history_api_plugin account_history_plugin db_plugin
-        PRIVATE -Wl,--whole-archive chain_api_plugin -Wl,--no-whole-archive producer_plugin chain_plugin
-        PRIVATE  -Wl,--whole-archive wallet_api_plugin -Wl,--no-whole-archive
-        PRIVATE net_plugin net_api_plugin -Wl,--whole-archive txn_test_gen_plugin -Wl,--no-whole-archive
-        PRIVATE http_plugin -Wl,--whole-archive faucet_testnet_plugin -Wl,--no-whole-archive
+        PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
+        PRIVATE  -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE net_plugin net_api_plugin -Wl,${whole_archive_flag} txn_test_gen_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE http_plugin -Wl,${whole_archive_flag} faucet_testnet_plugin -Wl,${no_whole_archive_flag}
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
