@@ -690,7 +690,7 @@ int main( int argc, char** argv ) {
       handler.code.assign(wasm.begin(), wasm.end());
 
       signed_transaction trx;
-      trx.write_scope = sort_names({config::system_account_name, account});
+      trx.write_scope = sort_names({config::eosio_auth_scope, account});
       trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
 
       if (abi->count()) {
