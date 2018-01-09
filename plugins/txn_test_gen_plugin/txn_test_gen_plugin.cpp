@@ -73,8 +73,7 @@ struct txn_test_gen_plugin_impl {
       signed_transaction trx;
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
-      trx.write_scope = {creator, config::system_account_name, config::eosio_auth_scope};
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::lock{creator, creator, 300});
+      trx.write_scope = {creator, config::eosio_auth_scope};
 
       //create "A" account
       {
