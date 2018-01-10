@@ -421,9 +421,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
  */
 template<typename Ret>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
-   //using next_step = intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<I32, I32, I32>>;
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
-   //using then_type = void_type(*)(wasm_interface &, array_ptr<char>, int, size_t);
    using then_type = Ret(*)(wasm_interface &, array_ptr<char>, int, size_t);
 
    template<then_type Then>
