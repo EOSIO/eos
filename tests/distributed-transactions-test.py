@@ -31,12 +31,14 @@ Print ("producing nodes:", pnodes, ", non-producing nodes: ", total_nodes-pnodes
        ", topology:", topo, ", delay between nodes launch(seconds):", delay)
 
 cluster=testUtils.Cluster()
+walletMgr=testUtils.WalletMgr(False)
 cluster.killall()
 cluster.cleanup()
 random.seed(1) # Use a fixed seed for repeatability.
 
 try:
-    print("Stand up cluster")
+    cluster.setWalletMgr(walletMgr)
+    Print("Stand up cluster")
     if cluster.launch(pnodes, total_nodes, topo, delay) is False:
         errorExit("Failed to stand up eos cluster.")
     
@@ -47,11 +49,17 @@ try:
 
     accountsCount=total_nodes
     Print ("Create wallet.")
-    if not cluster.populateWallet(accountsCount):
+    walletName="MyWallet"
+    Print("Creating wallet %s if one doesn't already exist." % walletName)
+    wallet=walletMgr.create(walletName)
+    if wallet is None:
+        errorExit("Failed to create wallet %s" % (walletName))
+
+    if not cluster.populateWallet(accountsCount, wallet):
         errorExit("Wallet initialization failed.")
 
     Print("Create accounts.")
-    if not cluster.createAccounts():
+    if not cluster.createAccounts(wallet):
         errorExit("Accounts creation failed.")
 
     Print("Spread funds and validate")

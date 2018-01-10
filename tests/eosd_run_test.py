@@ -4,6 +4,7 @@ import testUtils
 
 import argparse
 import random
+import re
 
 ###############################################################
 # eosd_run_test
@@ -47,12 +48,11 @@ args = parser.parse_args()
 testOutputFile=args.output
 server=args.host
 port=args.port
-# debug=args.v
-debug=True
-localTest=True if server == LOCAL_HOST else False
-#testUtils.Utils.Debug=debug
+debug=args.v
 #ciju
-testUtils.Utils.Debug=True
+#debug=True
+localTest=True if server == LOCAL_HOST else False
+testUtils.Utils.Debug=debug
 
 cluster=testUtils.Cluster(walletd=True)
 walletMgr=testUtils.WalletMgr(True)
@@ -78,6 +78,8 @@ try:
         if cluster.launch() is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
+    else:
+        cluster.initializeNodes(self)
 
     accounts=testUtils.Cluster.createAccountKeys(3)
     if accounts is None:
@@ -420,6 +422,96 @@ try:
         cmdError("eosc set contract exchange")
         errorExit("Failed to publish contract.")
     
+
+    wastFile="contracts/simpledb/simpledb.wast"
+    abiFile="contracts/simpledb/simpledb.abi"
+    Print("Setting simpledb contract without simpledb account was causing core dump in eosc.")
+    Print("Verify eosc generates an error, but does not core dump.")
+    retMap=node.publishContract("simpledb", wastFile, abiFile, shouldFail=True)
+    if retMap is None:
+        errorExit("Failed to publish, but should have returned a details map")
+    if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
+        errorExit("FAILURE - set contract exchange failed", raw=True)
+    else:
+        Print("Test successful, eosc returned error code: %d" % (retMap["returncode"]))
+
+    Print("Producer tests")
+    trans=node.createProducer(testeraAccount.name, testeraAccount.ownerPublicKey, waitForTransBlock=False)
+    if trans is None:
+        cmdError("eosc create producer")
+        errorExit("Failed to create producer %s" % (testeraAccount.name))
+
+    Print("set permission")
+    code="currency"
+    pType="transfer"
+    requirement="active"
+    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set action permission set")
+        errorExit("Failed to set permission")
+
+    Print("remove permission")
+    requirement="null"
+    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set action permission set")
+        errorExit("Failed to remove permission")
+                  
+    Print("Locking all wallets.")
+    if not walletMgr.lockAllWallets():
+        cmdError("eosc wallet lock_all")
+        errorExit("Failed to lock all wallets")
+
+    Print("Unlocking wallet \"%s\"." % (initaWallet.name))
+    if not walletMgr.unlockWallet(initaWallet):
+        cmdError("eosc wallet unlock inita")
+        errorExit("Failed to unlock wallet %s" % (initaWallet.name))
+
+    # TODO: Approving producers currently not supported
+    # approve producer
+    # INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
+    # verifyErrorCode "eosc approve producer"
+
+    Print("Get account inita")
+    account=node.getEosAccount(initaAccount.name)
+    if account is None:
+        cmdError("eosc get account")
+        errorExit("Failed to get account %s" % (initaAccount.name))
+
+    # TODO: Unapproving producers currently not supported
+    # unapprove producer
+    # INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
+    # verifyErrorCode "eosc unapprove producer"
+
+    #
+    # Proxy
+    #
+    # not implemented
+
+    Print("Get head block num.")
+    currentBlockNum=node.getHeadBlockNum()
+    Print("CurrentBlockNum: %d" % (currentBlockNum))
+    Print("Request blocks 1-%d" % (currentBlockNum))
+    for blockNum in range(1, currentBlockNum+1):
+        block=node.getBlock(blockNum)
+        if block is None:
+            cmdError("eosc get block")
+            errorExit("Failed to get block")
+
+    Print("Request invalid block numbered %d" % (currentBlockNum+100))
+    block=node.getBlock(currentBlockNum+100, silent=True)
+    if block is not None:
+        errorExit("ERROR: Received block where not expected")
+    else:
+        Print("Success: No such block found")
+
+    if localTest:
+        p = re.compile('Assert')
+        errFileName="tn_data_00/stderr.txt"
+        with open(errFileName) as errFile:
+            for line in errFile:
+                if p.search(line):
+                   errorExit("FAILURE - Assert in tn_data_00/stderr.txt")
         
     testSuccessful=True
     Print("END")

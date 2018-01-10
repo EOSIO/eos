@@ -84,7 +84,7 @@ class Account(object):
 ###########################################################################################
 class Node(object):
     
-    def __init__(self, host, port, pid, cmd, alive):
+    def __init__(self, host, port, pid=None, cmd=None, alive=None):
         self.host=host
         self.port=port
         self.pid=pid
@@ -97,19 +97,31 @@ class Node(object):
 
     def setWalletEndpointArgs(self, args):
         self.endpointArgs="--host %s --port %d %s" % (self.host, self.port, args)
-        
+
+    def getBlock(self, blockNum, silent=False):
+        cmd="programs/eosc/eosc %s get block %s" % (self.endpointArgs, blockNum)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        try:
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("getInfo> %s"% retStr)
+            jsonData=json.loads(jStr)
+            return jsonData
+        except subprocess.CalledProcessError as ex:
+            if not silent:
+                msg=ex.output.decode("utf-8")
+                Utils.Print("ERROR: Exception during get block. %s" % (msg))
+            return None
+
     def doesNodeHaveBlockNum(self, blockNum):
         if self.alive is False:
             return False
-    
-        Utils.Debug and Utils.Print("Request block num %s from node on port %d" % (blockNum, self.port))
-        cmd="programs/eosc/eosc %s get block %s" % (self.endpointArgs, blockNum)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, stderr=Utils.FNull):
-            Utils.Debug and Utils.Print("Block num %s request failed: " % (blockNum))
-            return False
 
-        return True
+        block=self.getBlock(blockNum, silent=True)
+        if block is None:
+            return False
+        else:
+            return True
 
     def doesNodeHaveTransId(self, transId):
         if self.alive is False:
@@ -192,29 +204,6 @@ class Node(object):
             time.sleep(sleepTime)
 
         return False
-
-    def getHeadBlockNum(self):
-        num=None
-        try:
-            cmd="programs/eosc/eosc %s get info" % (self.endpointArgs)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-            ret=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
-            #MyPrint("eosc get info: ", ret)
-            p=re.compile('\n\s+\"head_block_num\"\:\s+(\d+),\n', re.MULTILINE)
-            m=p.search(ret)
-            if m is None:
-                Utils.Print("ERROR: Failed to parse head block num.")
-                return -1
-
-            s=m.group(1)
-            num=int(s)
-
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during block number retrieval. %s" % (msg))
-            return -1
-
-        return num
 
     def waitForNextBlock(self, timeout=60):
         startTime=time.time()
@@ -322,37 +311,28 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during servants retrieval. %s" % (msg))
             raise
-        
-    def getAccountDetailsByName(self, name):
+
+    def getEosAccount(self, name):
         try:
             cmd="programs/eosc/eosc %s get account %s" % (self.endpointArgs, name)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-            ret=subprocess.check_output(cmd.split()).decode("utf-8")
-            #Utils.Print ("getAccountDetails> %s"% ret)
-            p=re.compile('\n\s+\"eos_balance\"\:\s+\"(\d+.\d+)\s+EOS\",\n', re.MULTILINE)
-            m=p.search(ret)
-            if m is None:
-                msg="Failed to parse account balance."
-                Utils.Print("ERROR: "+ msg)
-                raise Exception(msg)
-
-            s=m.group(1)
-            balance=float(s)
-            balance *= 10000
-            account=Account(name)
-            account.balance=int(balance)
-            return account
-
+            retStr=Node.__checkOutput(cmd.split())
+            #Utils.Print ("getEosAccount> %s"% retStr)
+            jStr=Node.filterJsonObject(retStr)
+            jsonData=json.loads(jStr)
+            return jsonData
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during account by name retrieval. %s" % (msg))
+            Utils.Print("ERROR: Exception during get account. %s" % (msg))
             raise
 
     def getAccountBalance(self, name):
-        account=self.getAccountDetailsByName(name)
-        if account is not None:
-            return account.balance
-        return None
+        account=self.getEosAccount(name)
+        balanceKey="eos_balance"
+        field=account[balanceKey]
+        balanceStr=field.split()[0]
+        balance=int(float(balanceStr)*10000)
+        return balance
 
     def getTransactionDetails(self, transId):
         try:
@@ -431,28 +411,6 @@ class Node(object):
             Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
             raise
 
-    # def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False):
-    #     transId=None
-    #     p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
-    #     cmd="programs/eosc/eosc %s set contract %s %s %s" % (self.endpointArgs, account, wastFile, abiFile)
-    #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #     try:
-    #         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
-    #         #Utils.Print ("getAccountDetails> %s"% retStr)
-    #         m=p.search(retStr)
-    #         if m is None:
-    #             Utils.Print("ERROR: transaction id parser failure")
-    #             return None
-    #         transId=m.group(1)
-    #     except subprocess.CalledProcessError as ex:
-    #         msg=ex.output.decode("utf-8")
-    #         Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
-    #         return None
-
-    #     if waitForTransBlock and not self.waitForTransIdOnNode(transId):
-    #         return None
-    #     return transId
-
     @staticmethod
     def filterJsonObject(data):
         firstIdx=data.find('{')
@@ -460,7 +418,7 @@ class Node(object):
         retStr=data[firstIdx:lastIdx+1]
         return retStr
 
-    def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False):
+    def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False, shouldFail=False):
         cmd="programs/eosc/eosc %s set contract %s %s %s" % (self.endpointArgs, account, wastFile, abiFile)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
@@ -471,18 +429,31 @@ class Node(object):
             trans=jsonData=json.loads(jStr)
             transId=Node.getTransId(jsonData)
         except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
-            return None
+            if not shouldFail:
+                msg=ex.output.decode("utf-8")
+                Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
+                return None
+            else:
+                retMap={}
+                retMap["returncode"]=ex.returncode
+                retMap["cmd"]=ex.cmd
+                retMap["output"]=ex.output
+                retMap["stdout"]=ex.stdout
+                retMap["stderr"]=ex.stderr
+                return retMap
 
+        if shouldFail:
+            Utils.Print("ERROR: The publish contract did not fail as expected.")
+            return None
+        
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
             return None
         return trans
     
     @staticmethod
     def __checkOutput(cmd):
-        #retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
-        retStr=subprocess.check_output(cmd).decode("utf-8")
+        retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
+        #retStr=subprocess.check_output(cmd).decode("utf-8")
         return retStr
     
     def getTable(self, account, contract, table):
@@ -491,7 +462,8 @@ class Node(object):
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=Node.__checkOutput(cmd.split())
             #Utils.Print ("getAccountDetails> %s"% retStr)
-            jsonData=json.loads(retStr)
+            jStr=Node.filterJsonObject(retStr)
+            jsonData=json.loads(jStr)
             return jsonData
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -530,7 +502,8 @@ class Node(object):
             Utils.Debug and Utils.Print("cmd: %s" % (cmdArgs))
             retStr=Node.__checkOutput(cmdArgs)
             #Utils.Print ("getAccountDetails> %s"% retStr)
-            jsonData=json.loads(retStr)
+            jStr=Node.filterJsonObject(retStr)
+            jsonData=json.loads(jStr)
             return jsonData
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -542,7 +515,55 @@ class Node(object):
         transIdKey="transaction_id"
         transId=trans[transIdKey]
         return transId
-    
+
+    def setPermission(self, account, code, pType, requirement, waitForTransBlock=False):
+        cmd="programs/eosc/eosc %s set action permission %s %s %s %s" % (
+            self.endpointArgs, account, code, pType, requirement)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        trans=None
+        try:
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("setPermission> %s"% retStr)
+            trans=jsonData=json.loads(jStr)
+            transId=Node.getTransId(jsonData)
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during set permission. %s" % (msg))
+            return None
+        
+        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+            return None
+        return trans
+
+    def getInfo(self):
+        cmd="programs/eosc/eosc %s get info" % (self.endpointArgs)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        try:
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("getInfo> %s"% retStr)
+            jsonData=json.loads(jStr)
+            return jsonData
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during get info. %s" % (msg))
+            return None
+
+    def checkPulse(self):
+        info=getInfo()
+        if info is not None:
+            self.alive=True
+            return True
+        else:
+            self.alive=False
+            return False
+            
+    def getHeadBlockNum(self):
+        info=self.getInfo()
+        headBlockNumTag="head_block_num"
+        return info[headBlockNumTag]
+
 ###########################################################################################
 
 Wallet=namedtuple("Wallet", "name password host port")
@@ -588,6 +609,7 @@ class WalletMgr(object):
         cmd="programs/eosc/eosc %s wallet create --name %s" % (self.endpointArgs, name)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
+        #Utils.Print("create: %s" % (retStr))
         m=p.search(retStr)
         if m is None:
             Utils.Print("ERROR: wallet password parser failure")
@@ -598,7 +620,6 @@ class WalletMgr(object):
     
         return wallet
 
-    #ciju
     def importKey(self, account, wallet):
         #Utils.Print("Private: ", key.private)
         warningMsg="This key is already imported into the wallet"
@@ -633,27 +654,6 @@ class WalletMgr(object):
                     return False
 
         return True
-
-    # def importKey(self, account, wallet):
-    #     #Utils.Print("Private: ", key.private)
-    #     cmd="programs/eosc/eosc %s wallet import --name %s %s" % (
-    #         self.endpointArgs, wallet.name, account.ownerPrivateKey)
-    #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #     if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-    #         Utils.Print("ERROR: Failed to import account owner key %s." % (account.ownerPrivateKey))
-    #         return False
-
-    #     if account.activePrivateKey is None:
-    #         Utils.Print("WARNING: Active private key is not defined for account \"%s\"" % (account.name))
-    #     else:
-    #         cmd="programs/eosc/eosc %s wallet import --name %s %s" % (
-    #             self.endpointArgs, wallet.name, account.activePrivateKey)
-    #         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-    #             Utils.Print("ERROR: Failed to import account active key %s." % (account.activePrivateKey))
-    #             return False
-
-    #     return True
 
     def lockWallet(self, wallet):
         cmd="programs/eosc/eosc %s wallet lock --name %s" % (self.endpointArgs, wallet.name)
@@ -769,12 +769,12 @@ class Cluster(object):
         self.endpointArgs=""
 
     # ciju
-    def setChainStrategy(chainSyncStrategy=Utils.SyncReplayTag):
+    def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
         if self.__chainSyncStrategy is None:
             self.__chainSyncStrategy= __chainSyncStrategies.get("none")
 
-    def setWalletMgr(walletMgr):
+    def setWalletMgr(self, walletMgr):
         self.walletMgr=walletMgr
 
     # launch local nodes and set self.nodes
@@ -807,8 +807,14 @@ class Cluster(object):
         self.nodes=nodes
         return True
 
-    # manually set nodes, alternative to explicitly launch
-    def setNodes(nodes):
+    def initializeNodes(self):
+        node=Node(self.host, self.port)
+        node.checkPulse()
+        self.node={node}
+        return True
+    
+    # manually set nodes, alternative to explicit launch
+    def setNodes(self, nodes):
         self.nodes=nodes
 
     # If a last transaction exists wait for it on root node, then collect its head block number.
@@ -900,9 +906,9 @@ class Cluster(object):
 
         return accounts
 
-    # create account keys and import into wallet. Wallet initialization needs to be done externally
+    # create account keys and import into wallet. Wallet initialization will be user responsibility
     def populateWallet(self, accountsCount, wallet):
-        if walletMgr is None:
+        if self.walletMgr is None:
             Utils.Print("ERROR: WalletMgr hasn't been initialized.")
             return False
 
@@ -914,22 +920,22 @@ class Cluster(object):
                 Utils.Print("Account keys creation failed.")
                 return False
 
-        Print("Importing keys for account %s into wallet %s." % (initaAccount.name, wallet.name))
-        if not walletMgr.importKey(Cluster.initaAccount, wallet):
-            Utils.Print("ERROR: Failed to import key for account %s" % (initaAccount.name))
+        Utils.Print("Importing keys for account %s into wallet %s." % (Cluster.initaAccount.name, wallet.name))
+        if not self.walletMgr.importKey(Cluster.initaAccount, wallet):
+            Utils.Print("ERROR: Failed to import key for account %s" % (Cluster.initaAccount.name))
             return False
 
-        Print("Importing keys for account %s into wallet %s." % (initbAccount.name, wallet.name))
-        if not walletMgr.importKey(Cluster.initbAccount, wallet):
-            Utils.Print("ERROR: Failed to import key for account %s" % (initbAccount.name))
+        Utils.Print("Importing keys for account %s into wallet %s." % (Cluster.initbAccount.name, wallet.name))
+        if not self.walletMgr.importKey(Cluster.initbAccount, wallet):
+            Utils.Print("ERROR: Failed to import key for account %s" % (Cluster.initbAccount.name))
             return False
 
         for account in accounts:
-            Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
-            if not walletMgr.importKey(account, wallet):
+            Utils.Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
+            if not self.walletMgr.importKey(account, wallet):
                 errorExit("Failed to import key for account %s" % (account.name))
                 return False
-        
+        return True
     # def populateWallet(self, accountsCount):
     #     accounts=None
     #     if accountsCount > 0:
@@ -1158,15 +1164,17 @@ class Cluster(object):
     # Check state of running eosd process and update EosInstanceInfos
     #def updateEosInstanceInfos(eosInstanceInfos):
     def updateNodesStatus(self):
-        for i in range(0, len(self.nodes)):
-            node=self.nodes[i]
-            running=True
-            try:
-                os.kill(node.pid, 0)
-            except subprocess.CalledProcessError as ex:
-                running=False
-            if running != node.alive:
-                self.nodes[i].alive=running
+        for node in self.nodes:
+            node.checkPulse()
+        # for i in range(0, len(self.nodes)):
+        #     node=self.nodes[i]
+        #     running=True
+        #     try:
+        #         os.kill(node.pid, 0)
+        #     except subprocess.CalledProcessError as ex:
+        #         running=False
+        #     if running != node.alive:
+        #         self.nodes[i].alive=running
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
@@ -1235,7 +1243,7 @@ class Cluster(object):
         for node in self.nodes:
             try:
                 os.kill(node.pid, signal.SIGKILL)
-            except subprocess.CalledProcessError as ex:
+            except:
                 pass
             
     def waitForNextBlock(self, timeout=60):
