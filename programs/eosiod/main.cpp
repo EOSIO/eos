@@ -31,6 +31,30 @@ namespace fc {
    std::unordered_map<std::string,appender::ptr>& get_appender_map();
 }
 
+namespace detail {
+
+void configure_logging(const bfs::path& config_path)
+{
+  try {
+    try {
+      fc::configure_logging(config_path);
+    } catch (...) {
+      elog("Error reloading logging.json");
+      throw;
+    }
+  } catch (const fc::exception& e) {
+    elog("${e}", ("e",e.to_detail_string()));
+  } catch (const boost::exception& e) {
+    elog("${e}", ("e",boost::diagnostic_information(e)));
+  } catch (const std::exception& e) {
+    elog("${e}", ("e",e.what()));
+  } catch (...) {
+    // empty
+  }
+}
+
+} // namespace detail
+
 void logging_conf_loop()
 {
   std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(app().get_io_service(), SIGHUP));
@@ -40,22 +64,7 @@ void logging_conf_loop()
       ilog("Received HUP.  Reloading logging configuration.");
       auto config_path = app().get_logging_conf();
       if(fc::exists(config_path))
-      {
-        try {
-          fc::configure_logging(config_path);
-        } catch (const fc::exception& e) {
-          elog("Error reloading logging.json");
-          elog("${e}", ("e",e.to_detail_string()));
-        } catch (const boost::exception& e) {
-          elog("Error reloading logging.json");
-          elog("${e}", ("e",boost::diagnostic_information(e)));
-        } catch (const std::exception& e) {
-          elog("Error reloading logging.json");
-          elog("${e}", ("e",e.what()));
-        } catch (...) {
-          elog("Error reloading logging.json");
-        }
-      }
+        ::detail::configure_logging(config_path);
       for(auto iter : fc::get_appender_map())
         iter.second->initialize(app().get_io_service());
       logging_conf_loop();
@@ -67,7 +76,7 @@ void initialize_logging()
 {
   auto config_path = app().get_logging_conf();
   if(fc::exists(config_path))
-    fc::configure_logging(config_path);
+    fc::configure_logging(config_path); // intentionally allowing exceptions to escape
   for(auto iter : fc::get_appender_map())
     iter.second->initialize(app().get_io_service());
 
