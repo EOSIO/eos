@@ -27,6 +27,12 @@
 	#include <execinfo.h>
 	#include <dlfcn.h>
 #endif
+#ifdef __FreeBSD__
+	#include <execinfo.h>
+	#include <dlfcn.h>
+	#include <pthread_np.h>
+	#include <iostream>
+#endif
 
 namespace Platform
 {
@@ -101,12 +107,16 @@ namespace Platform
 
 	bool describeInstructionPointer(Uptr ip,std::string& outDescription)
 	{
-		#ifdef __linux__
+		#if defined __linux__ || defined __FreeBSD__
 			// Look up static symbol information for the address.
 			Dl_info symbolInfo;
 			if(dladdr((void*)ip,&symbolInfo) && symbolInfo.dli_sname)
 			{
-				outDescription = symbolInfo.dli_sname;
+				#ifdef __linux__
+					outDescription = symbolInfo.dli_sname;
+				#else
+					outDescription.append(symbolInfo.dli_sname);
+				#endif
 				return true;
 			}
 		#endif
@@ -136,11 +146,16 @@ namespace Platform
 			// Get the stack address from pthreads, but use getrlimit to find the maximum size of the stack instead of the current.
 			struct rlimit stackLimit;
 			getrlimit(RLIMIT_STACK,&stackLimit);
-			#ifdef __linux__
+			#if defined __linux__ || defined __FreeBSD__
 				// Linux uses pthread_getattr_np/pthread_attr_getstack, and returns a pointer to the minimum address of the stack.
 				pthread_attr_t threadAttributes;
-				memset(&threadAttributes,0,sizeof(threadAttributes));
-				pthread_getattr_np(pthread_self(),&threadAttributes);
+				#ifdef __linux__
+					memset(&threadAttributes,0,sizeof(threadAttributes));
+					pthread_getattr_np(pthread_self(),&threadAttributes);
+				#else
+					pthread_attr_init(&threadAttributes);
+					pthread_attr_get_np(pthread_self(), &threadAttributes);
+				#endif
 				Uptr stackSize;
 				pthread_attr_getstack(&threadAttributes,(void**)&stackMinAddr,&stackSize);
 				pthread_attr_destroy(&threadAttributes);
@@ -158,7 +173,11 @@ namespace Platform
 		}
 	}
 
-	THREAD_LOCAL jmp_buf signalReturnEnv;
+	#ifdef __FreeBSD__
+		THREAD_LOCAL sigjmp_buf signalReturnEnv;
+	#else
+		THREAD_LOCAL jmp_buf signalReturnEnv;
+	#endif
 	THREAD_LOCAL HardwareTrapType signalType = HardwareTrapType::none;
 	THREAD_LOCAL CallStack* signalCallStack = nullptr;
 	THREAD_LOCAL Uptr* signalOperand = nullptr;
@@ -266,7 +285,7 @@ namespace Platform
 
 	CallStack captureCallStack(Uptr numOmittedFramesFromTop)
 	{
-		#ifdef __linux__
+		#if defined __linux__ || defined __FreeBSD__
 			// Unwind the callstack.
 			enum { maxCallStackSize = signalStackNumBytes / sizeof(void*) / 8 };
 			void* callstackAddresses[maxCallStackSize];
