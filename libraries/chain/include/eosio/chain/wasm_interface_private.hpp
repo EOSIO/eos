@@ -101,7 +101,7 @@ struct native_to_wasm {
 };
 
 /**
- * specialization for maping pointers to int32's
+ * specialization for mapping pointers to int32's
  */
 template<typename T>
 struct native_to_wasm<T *> {
@@ -278,7 +278,7 @@ struct wasm_function_type_provider<Ret(Args...)> {
 };
 
 /**
- * Forward delclaration of the invoker type which transcribes arguments to/from a native method
+ * Forward declaration of the invoker type which transcribes arguments to/from a native method
  * and injects the appropriate checks
  *
  * @tparam Ret - the return type of the native function
@@ -289,7 +289,7 @@ template<typename Ret, typename NativeParameters, typename WasmParameters>
 struct intrinsic_invoker_impl;
 
 /**
- * specialization fo the fully transcribed signature
+ * Specialization for the fully transcribed signature
  * @tparam Ret - the return type of the native function
  * @tparam Translated - the arguments to the wasm function
  */
@@ -411,6 +411,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
    }
 };
 
+#if 1
 /**
  * Specialization for transcribing memset parameters
  *
@@ -418,13 +419,15 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<>
-struct intrinsic_invoker_impl<void_type, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
-   using next_step = intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<I32, I32, I32>>;
-   using then_type = void_type(*)(wasm_interface &, array_ptr<char>, int, size_t);
+template<typename Ret>
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
+   //using next_step = intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<I32, I32, I32>>;
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
+   //using then_type = void_type(*)(wasm_interface &, array_ptr<char>, int, size_t);
+   using then_type = Ret(*)(wasm_interface &, array_ptr<char>, int, size_t);
 
    template<then_type Then>
-   static void_type translate_one(wasm_interface &wasm, I32 ptr, I32 value, I32 size) {
+   static Ret translate_one(wasm_interface &wasm, I32 ptr, I32 value, I32 size) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       size_t length = size_t(size);
       char *base = memoryArrayPtr<char>(mem, ptr, length);
@@ -436,6 +439,7 @@ struct intrinsic_invoker_impl<void_type, std::tuple<array_ptr<char>, int, size_t
       return next_step::template fn<translate_one<Then>>();
    }
 };
+#endif
 
 /**
  * Specialization for transcribing  a pointer type in the native method signature

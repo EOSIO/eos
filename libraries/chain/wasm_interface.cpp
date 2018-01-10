@@ -23,6 +23,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+//#include <iostream>
 
 
 
@@ -622,11 +623,12 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 class context_aware_api {
    public:
       context_aware_api(wasm_interface& wasm)
-      :context(intrinsics_accessor::get_context(wasm).context)
+      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code)
       {}
 
    protected:
-      apply_context& context;
+		wasm_cache::entry& code;
+      apply_context& 	 context;
 };
 
 class system_api : public context_aware_api {
@@ -807,9 +809,10 @@ class db_index_api : public context_aware_api {
 
 };
 
-class memory_api {
+class memory_api : public context_aware_api {
    public:
-      memory_api(wasm_interface&){}
+		using context_aware_api::context_aware_api;
+
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
@@ -819,10 +822,44 @@ class memory_api {
          return ::memcmp(dest, src, length);
       }
 
-      void memset( array_ptr<char> dest, int value, size_t length ) {
-         ::memset(dest, value, length);
-      }
+	   char* memset( array_ptr<char> dest, int value, size_t length ) {
+			return (char *)::memset( dest, value, length );
+		}
 
+		uint32_t sbrk(int num_bytes) {
+			// TODO: omitted checktime	function from previous version of sbrk, may need to be put back in at some point
+			constexpr uint32_t 	NBPPL2 = IR::numBytesPerPageLog2;
+			constexpr uint32_t max_mem = 1024 * 1024;
+			const auto 			 default_mem = Runtime::getDefaultMemory(code.instance);
+			const uint32_t		 num_pages = Runtime::getMemoryNumPages(default_mem);
+			// limit this min to 32 bit space
+			const uint32_t 	 min_bytes = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
+			static uint32_t 	 _num_bytes = min_bytes;
+			const uint32_t 	 prev_num_bytes = _num_bytes;
+
+			if (Runtime::getMemoryNumPages(default_mem) != num_pages)	
+				throw eosio::chain::page_memory_error();
+
+			// round the absolute value of num_bytes to an alignment boundary
+			num_bytes = (num_bytes + 7) & ~7;
+
+			if ((num_bytes > 0) && (prev_num_bytes > (max_mem - num_bytes)))  // test if allocating too much memory (overflowed)
+				throw eosio::chain::page_memory_error();
+			else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
+				throw eosio::chain::page_memory_error(); 
+
+			// update the number of bytes allocated, and compute the number of pages needed
+			_num_bytes += num_bytes;
+			const uint32_t num_desired_pages = (_num_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
+
+			// grow or shrink the memory to the desired number of pages
+			if (num_desired_pages > num_pages)
+				Runtime::growMemory(default_mem, num_desired_pages - num_pages);
+			else if (num_desired_pages < num_pages)
+				Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
+			
+			return prev_num_bytes;
+		}
 };
 
 class transaction_api : public context_aware_api {
@@ -885,15 +922,16 @@ REGISTER_INTRINSICS(console_api,
    (printhex,              void(int, int)  )
 );
 
-REGISTER_INTRINSICS(memory_api,
-   (memcpy,                 int(int, int, int)  )
-   (memcmp,                 int(int, int, int)  )
-   (memset,                void(int, int, int)  )
-);
-
 REGISTER_INTRINSICS(transaction_api,
    (send_inline,           void(int, int)  )
    (send_deferred,         void(int, int, int, int)  )
+);
+
+REGISTER_INTRINSICS(memory_api,
+   (memcpy,                 int(int, int, int)   )
+   (memcmp,                 int(int, int, int)   )
+   (memset,                 int(int, int, int)   )
+	(sbrk,						 int(int)				 )
 );
 
 
