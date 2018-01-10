@@ -449,6 +449,25 @@ class Node(object):
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
             return None
         return trans
+
+    def createProducer(self, account, ownerPublicKey, waitForTransBlock=False):
+        cmd="programs/eosc/eosc %s create producer %s %s" % (self.endpointArgs, account, ownerPublicKey)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        trans=None
+        try:
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("publishContract> %s"% retStr)
+            trans=jsonData=json.loads(jStr)
+            transId=Node.getTransId(jsonData)
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during producer creation. %s" % (msg))
+            return None
+        
+        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+            return None
+        return trans
     
     @staticmethod
     def __checkOutput(cmd):
@@ -551,7 +570,7 @@ class Node(object):
             return None
 
     def checkPulse(self):
-        info=getInfo()
+        info=self.getInfo()
         if info is not None:
             self.alive=True
             return True
@@ -935,6 +954,8 @@ class Cluster(object):
             if not self.walletMgr.importKey(account, wallet):
                 errorExit("Failed to import key for account %s" % (account.name))
                 return False
+
+        self.accounts=accounts
         return True
     # def populateWallet(self, accountsCount):
     #     accounts=None
@@ -991,6 +1012,8 @@ class Cluster(object):
     # Spread funds across accounts with transactions spread through cluster nodes.
     #  Validate transactions are synchronized on root node
     def spreadFunds(self, amount=1):
+        #ciju
+        Utils.Print("len(self.accounts): %d" % (len(self.accounts)))
         if len(self.accounts) == 0:
             return True
 
@@ -1085,13 +1108,15 @@ class Cluster(object):
         return True
 
     # create account, verify account and return transaction id
-    def createAccountAndVerify(self, account, wallet):
+    #def createAccountAndVerify(self, account, wallet):
+    def createAccountAndVerify(self, account, creator):
         if len(self.nodes) == 0:
             Utils.Print("ERROR: No nodes initialized.")
             return None
         node=self.nodes[0]
 
-        transId=node.createAccount(account, wallet)
+        #transId=node.createAccount(account, wallet)
+        transId=node.createAccount(account, creator)
 
         if transId is not None and node.verifyAccount(account):
             return transId
@@ -1188,7 +1213,7 @@ class Cluster(object):
         for node in reversed(self.nodes):
             try:
                 os.kill(node.pid, killSignal)
-            except subprocess.CalledProcessError as ex:
+            except Exception as ex:
                 Utils.Print("ERROR: Failed to kill process pid %d." % (node.pid), ex)
                 return False
             killedCount += 1
@@ -1207,7 +1232,7 @@ class Cluster(object):
             running=True
             try:
                 os.kill(node.pid, 0) #check if instance is running
-            except subprocess.CalledProcessError as ex:
+            except Exception as ex:
                 running=False
 
             if running is False:
@@ -1255,14 +1280,16 @@ class Cluster(object):
             shutil.rmtree(f)
             
     # Create accounts and validates that the last transaction is received on root node
-    def createAccounts(self, wallet):
+    #def createAccounts(self, wallet):
+    def createAccounts(self, creator):
         if self.accounts is None:
             return True
 
         transId=None
         for account in self.accounts:
             Utils.Debug and Utils.Print("Create account %s." % (account.name))
-            transId=self.createAccountAndVerify(account, wallet)
+            #transId=self.createAccountAndVerify(account, wallet)
+            transId=self.createAccountAndVerify(account, creator)
             if transId is None:
                 Utils.Print("ERROR: Failed to create account %s." % (account.name))
                 return False
