@@ -2,6 +2,7 @@
 project( EOS )
 cmake_minimum_required( VERSION 2.8.12 )
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 
 INCLUDE( VersionMacros )
@@ -29,8 +30,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         message(FATAL_ERROR "Clang version must be at least 3.3!")
     endif()
 endif()
-
-list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules" )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN TRUE CACHE BOOL "Build doxygen documentation on every make")
