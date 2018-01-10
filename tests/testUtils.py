@@ -20,6 +20,10 @@ import json
 class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
+    EosClientPath="programs/eosc/eosc"
+    EosWalletPath="programs/eos-walletd/eos-walletd"
+    EosServerPath="programs/eosiod/eosiod"
+    EosLauncherPath="programs/launcher/launcher"
     
     @staticmethod
     def Print(*args, **kwargs):
@@ -99,7 +103,7 @@ class Node(object):
         self.endpointArgs="--host %s --port %d %s" % (self.host, self.port, args)
 
     def getBlock(self, blockNum, silent=False):
-        cmd="programs/eosc/eosc %s get block %s" % (self.endpointArgs, blockNum)
+        cmd="%s %s get block %s" % (Utils.EosClientPath, self.endpointArgs, blockNum)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             retStr=Node.__checkOutput(cmd.split())
@@ -128,7 +132,7 @@ class Node(object):
             return False
     
         Utils.Debug and Utils.Print("Request transation id %s from node on port %d" % (transId, self.port))
-        cmd="programs/eosc/eosc %s get transaction %s" % (self.endpointArgs, transId)
+        cmd="%s %s get transaction %s" % (Utils.EosClientPath, self.endpointArgs, transId)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, stderr=Utils.FNull):
             Utils.Debug and Utils.Print("Transaction id %s request failed: " % (transId))
@@ -141,7 +145,7 @@ class Node(object):
     def createAccount(self, account, creatorAccount, waitForTransBlock=False):
         transId=None
         p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
-        cmd="programs/eosc/eosc %s create account %s %s %s %s" % (self.endpointArgs,
+        cmd="%s %s create account %s %s %s %s" % (Utils.EosClientPath, self.endpointArgs,
             creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
@@ -166,7 +170,7 @@ class Node(object):
 
     def verifyAccount(self, account):
         try :
-            cmd="programs/eosc/eosc %s get account %s" % (self.endpointArgs, account.name)
+            cmd="%s %s get account %s" % (Utils.EosClientPath, self.endpointArgs, account.name)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             ret=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print ("ret:", ret)
@@ -227,8 +231,8 @@ class Node(object):
     def transferFunds(self, source, destination, amount, memo="memo", force=False):
         transId=None
         p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
-        cmd="programs/eosc/eosc %s transfer %s %s %d" % (
-            self.endpointArgs, source.name, destination.name, amount)
+        cmd="%s %s transfer %s %s %d" % (
+            Utils.EosClientPath, self.endpointArgs, source.name, destination.name, amount)
         cmdArgs=cmd.split()
         cmdArgs.append(memo)
         if force:
@@ -276,7 +280,7 @@ class Node(object):
 
     def getAccountsByKey(self, key):
         try:
-            cmd="programs/eosc/eosc %s get accounts %s" % (self.endpointArgs, key)
+            cmd="%s %s get accounts %s" % (Utils.EosClientPath, self.endpointArgs, key)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print ("getAccountDetails> %s"% retStr)
@@ -295,7 +299,7 @@ class Node(object):
 
     def getServants(self, name):
         try:
-            cmd="programs/eosc/eosc %s get servants %s" % (self.endpointArgs, name)
+            cmd="%s %s get servants %s" % (Utils.EosClientPath, self.endpointArgs, name)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print ("getAccountDetails> %s"% retStr)
@@ -314,7 +318,7 @@ class Node(object):
 
     def getEosAccount(self, name):
         try:
-            cmd="programs/eosc/eosc %s get account %s" % (self.endpointArgs, name)
+            cmd="%s %s get account %s" % (Utils.EosClientPath, self.endpointArgs, name)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=Node.__checkOutput(cmd.split())
             #Utils.Print ("getEosAccount> %s"% retStr)
@@ -336,7 +340,7 @@ class Node(object):
 
     def getTransactionDetails(self, transId):
         try:
-            cmd="programs/eosc/eosc %s get transaction %s" % (self.endpointArgs, transId)
+            cmd="%s %s get transaction %s" % (Utils.EosClientPath, self.endpointArgs, transId)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             ret=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print ("getAccountDetails> %s"% ret)
@@ -370,7 +374,7 @@ class Node(object):
         
     def getTransactionsByAccount(self, name):
         try:
-            cmd="programs/eosc/eosc %s get transactions %s" % (self.endpointArgs, name)
+            cmd="%s %s get transactions %s" % (Utils.EosClientPath, self.endpointArgs, name)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print ("getAccountDetails> %s"% retStr)
@@ -394,7 +398,7 @@ class Node(object):
 
     def getAccountCodeHash(self, account):
         try:
-            cmd="programs/eosc/eosc %s get code %s" % (self.endpointArgs, account)
+            cmd="%s %s get code %s" % (Utils.EosClientPath, self.endpointArgs, account)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print ("get code> %s"% retStr)
@@ -419,7 +423,7 @@ class Node(object):
         return retStr
 
     def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False, shouldFail=False):
-        cmd="programs/eosc/eosc %s set contract %s %s %s" % (self.endpointArgs, account, wastFile, abiFile)
+        cmd="%s %s set contract %s %s %s" % (Utils.EosClientPath, self.endpointArgs, account, wastFile, abiFile)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
@@ -451,7 +455,7 @@ class Node(object):
         return trans
 
     def createProducer(self, account, ownerPublicKey, waitForTransBlock=False):
-        cmd="programs/eosc/eosc %s create producer %s %s" % (self.endpointArgs, account, ownerPublicKey)
+        cmd="%s %s create producer %s %s" % (Utils.EosClientPath, self.endpointArgs, account, ownerPublicKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
@@ -477,7 +481,7 @@ class Node(object):
     
     def getTable(self, account, contract, table):
         try:
-            cmd="programs/eosc/eosc %s get table %s %s %s" % (self.endpointArgs, account, contract, table)
+            cmd="%s %s get table %s %s %s" % (Utils.EosClientPath, self.endpointArgs, account, contract, table)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             retStr=Node.__checkOutput(cmd.split())
             #Utils.Print ("getAccountDetails> %s"% retStr)
@@ -512,7 +516,7 @@ class Node(object):
 
     def pushMessage(self, contract, action, data, opts):
         try:
-            cmd="programs/eosc/eosc %s push message %s %s" % (self.endpointArgs, contract, action)
+            cmd="%s %s push message %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
             cmdArgs=cmd.split()
             if data is not None:
                 cmdArgs.append(data)
@@ -536,8 +540,8 @@ class Node(object):
         return transId
 
     def setPermission(self, account, code, pType, requirement, waitForTransBlock=False):
-        cmd="programs/eosc/eosc %s set action permission %s %s %s %s" % (
-            self.endpointArgs, account, code, pType, requirement)
+        cmd="%s %s set action permission %s %s %s %s" % (
+            Utils.EosClientPath, self.endpointArgs, account, code, pType, requirement)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
@@ -556,7 +560,7 @@ class Node(object):
         return trans
 
     def getInfo(self):
-        cmd="programs/eosc/eosc %s get info" % (self.endpointArgs)
+        cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             retStr=Node.__checkOutput(cmd.split())
@@ -608,8 +612,8 @@ class WalletMgr(object):
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch walletd")
             return False
             
-        cmd="programs/eos-walletd/eos-walletd --data-dir %s --http-server-address=%s:%d" % (
-            WalletMgr.__walletDataDir, self.host, self.port)
+        cmd="%s --data-dir %s --http-server-address=%s:%d" % (
+            Utils.EosWalletPath, WalletMgr.__walletDataDir, self.host, self.port)
         Utils.Print("cmd: %s" % (cmd))
         with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
@@ -625,7 +629,7 @@ class WalletMgr(object):
             Utils.Debug and Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
             return wallet
         p = re.compile('\n\"(\w+)\"\n', re.MULTILINE)
-        cmd="programs/eosc/eosc %s wallet create --name %s" % (self.endpointArgs, name)
+        cmd="%s %s wallet create --name %s" % (Utils.EosClientPath, self.endpointArgs, name)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("create: %s" % (retStr))
@@ -642,8 +646,8 @@ class WalletMgr(object):
     def importKey(self, account, wallet):
         #Utils.Print("Private: ", key.private)
         warningMsg="This key is already imported into the wallet"
-        cmd="programs/eosc/eosc %s wallet import --name %s %s" % (
-            self.endpointArgs, wallet.name, account.ownerPrivateKey)
+        cmd="%s %s wallet import --name %s %s" % (
+            Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
@@ -658,8 +662,8 @@ class WalletMgr(object):
         if account.activePrivateKey is None:
             Utils.Print("WARNING: Active private key is not defined for account \"%s\"" % (account.name))
         else:
-            cmd="programs/eosc/eosc %s wallet import --name %s %s" % (
-                self.endpointArgs, wallet.name, account.activePrivateKey)
+            cmd="%s %s wallet import --name %s %s" % (
+                Utils.EosClientPath, self.endpointArgs, wallet.name, account.activePrivateKey)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             try:
                 retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
@@ -675,7 +679,7 @@ class WalletMgr(object):
         return True
 
     def lockWallet(self, wallet):
-        cmd="programs/eosc/eosc %s wallet lock --name %s" % (self.endpointArgs, wallet.name)
+        cmd="%s %s wallet lock --name %s" % (Utils.EosClientPath, self.endpointArgs, wallet.name)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             Utils.Print("ERROR: Failed to lock wallet %s." % (wallet.name))
@@ -684,7 +688,7 @@ class WalletMgr(object):
         return True
 
     def unlockWallet(self, wallet):
-        cmd="programs/eosc/eosc %s wallet unlock --name %s" % (self.endpointArgs, wallet.name)
+        cmd="%s %s wallet unlock --name %s" % (Utils.EosClientPath, self.endpointArgs, wallet.name)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         popen=subprocess.Popen(cmd.split(), stdout=Utils.FNull, stdin=subprocess.PIPE)
         popen.communicate(input=wallet.password.encode("utf-8"))
@@ -695,7 +699,7 @@ class WalletMgr(object):
         return True
 
     def lockAllWallets(self):
-        cmd="programs/eosc/eosc %s wallet lock_all" % (self.endpointArgs)
+        cmd="%s %s wallet lock_all" % (Utils.EosClientPath, self.endpointArgs)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             Utils.Print("ERROR: Failed to lock all wallets.")
@@ -707,7 +711,7 @@ class WalletMgr(object):
         wallets=[]
 
         p = re.compile('\s+\"(\w+)\s\*\",?\n', re.MULTILINE)
-        cmd="programs/eosc/eosc %s wallet list" % (self.endpointArgs)
+        cmd="%s %s wallet list" % (Utils.EosClientPath, self.endpointArgs)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("retStr: %s" % (retStr))
@@ -723,7 +727,7 @@ class WalletMgr(object):
         keys=[]
 
         p = re.compile('\n\s+\"(\w+)\"\n', re.MULTILINE)
-        cmd="programs/eosc/eosc %s wallet keys" % (self.endpointArgs)
+        cmd="%s %s wallet keys" % (Utils.EosClientPath, self.endpointArgs)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("retStr: %s" % (retStr))
@@ -805,8 +809,8 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        cmd="programs/launcher/launcher -p %s -n %s -s %s -d %s" % (
-            pnodes, total_nodes, topo, delay)
+        cmd="%s -p %s -n %s -s %s -d %s" % (
+            Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
         cmdArr=cmd.split()
         if not self.walletd:
             cmdArr.append("--eosd")
@@ -884,7 +888,7 @@ class Cluster(object):
         p = re.compile('Private key: (.+)\nPublic key: (.+)\n', re.MULTILINE)
         for i in range(0, count):
             try:
-                cmd="programs/eosc/eosc create key"
+                cmd="%s create key" % (Utils.EosClientPath)
                 Utils.Debug and Utils.Print("cmd: %s" % (cmd))
                 keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
                 m=p.match(keyStr)
@@ -895,7 +899,7 @@ class Cluster(object):
                 ownerPrivate=m.group(1)
                 ownerPublic=m.group(2)
 
-                cmd="programs/eosc/eosc create key"
+                cmd="%s create key" % (Utils.EosClientPath)
                 Utils.Debug and Utils.Print("cmd: %s" % (cmd))
                 keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
                 m=p.match(keyStr)
@@ -973,14 +977,14 @@ class Cluster(object):
 
     # # Initialize wallet and import account keys
     # def createWallet_old(self, accounts):
-    #     cmd="programs/eosc/eosc wallet create --name %s" % (self.__WalletName)
+    #     cmd="%s wallet create --name %s" % (Utils.EosClientPath, self.__WalletName)
     #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
     #     if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
     #         Utils.Print("ERROR: Failed to create wallet.")
     #         return False
 
-    #     cmd="programs/eosc/eosc wallet import --name %s %s" % (
-    #         self.__WalletName, Cluster.initaAccount.ownerPrivateKey)
+    #     cmd="%s wallet import --name %s %s" % (
+    #         Utils.EosClientPath, self.__WalletName, Cluster.initaAccount.ownerPrivateKey)
     #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
     #     if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
     #         Utils.Print("ERROR: Failed to import account inita key.")
@@ -992,13 +996,13 @@ class Cluster(object):
     #     self.accounts=accounts
     #     for account in self.accounts:
     #         #Utils.Print("Private: ", key.private)
-    #         cmd="programs/eosc/eosc wallet import --name %s %s" % (self.__WalletName, account.ownerPrivateKey)
+    #         cmd="%s wallet import --name %s %s" % (Utils.EosClientPath, self.__WalletName, account.ownerPrivateKey)
     #         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
     #         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
     #             Utils.Print("ERROR: Failed to import account owner key.")
     #             return False
 
-    #         cmd="programs/eosc/eosc wallet import --name %s %s" % (self.__WalletName, account.activePrivateKey)
+    #         cmd="%s wallet import --name %s %s" % (Utils.EosClientPath, self.__WalletName, account.activePrivateKey)
     #         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
     #         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
     #             Utils.Print("ERROR: Failed to import account active key.")
@@ -1126,8 +1130,8 @@ class Cluster(object):
     # def createAccount(self, accountInfo):
     #     transId=None
     #     p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
-    #     cmd="programs/eosc/eosc create account %s %s %s %s" % (
-    #         Cluster.initaAccount.name, accountInfo.name, accountInfo.ownerPublicKey,
+    #     cmd="%s create account %s %s %s %s" % (
+    #         Utils.EosClientPath, Cluster.initaAccount.name, accountInfo.name, accountInfo.ownerPublicKey,
     #         accountInfo.activePublicKey)
     #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
     #     try:
@@ -1145,7 +1149,7 @@ class Cluster(object):
     #         return None
 
     #     try :
-    #         cmd="programs/eosc/eosc get account %s" % (accountInfo.name)
+    #         cmd="%s get account %s" % (Utils.EosClientPath, accountInfo.name)
     #         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
     #         ret=subprocess.check_output(cmd.split()).decode("utf-8")
     #         #Utils.Print ("ret:", ret)
@@ -1260,7 +1264,7 @@ class Cluster(object):
                     shutil.copyfileobj(f, sys.stdout)
     
     def killall(self):
-        cmd="programs/launcher/launcher -k 15"
+        cmd="%s -k 15" % (Utils.EosLauncherPath)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             Utils.Print("Launcher failed to shut down eos cluster.")
