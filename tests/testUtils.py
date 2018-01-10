@@ -20,9 +20,10 @@ import json
 class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
-    EosClientPath="programs/eosc/eosc"
-    EosWalletPath="programs/eos-walletd/eos-walletd"
-    EosServerPath="programs/eosiod/eosiod"
+    EosClientPath="programs/eosioc/eosioc"
+    EosWalletPath="programs/eosio-walletd/eosio-walletd"
+    EosServerName="eosiod"
+    EosServerPath="programs/eosiod/%s" % (EosServerName)
     EosLauncherPath="programs/launcher/launcher"
     
     @staticmethod
@@ -813,7 +814,7 @@ class Cluster(object):
             Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
         cmdArr=cmd.split()
         if not self.walletd:
-            cmdArr.append("--eosd")
+            cmdArr.append("--eosiod")
             cmdArr.append("--plugin eosio::wallet_api_plugin")
         Utils.Print("cmd: ", cmdArr)
         if 0 != subprocess.call(cmdArr):
@@ -1169,7 +1170,7 @@ class Cluster(object):
         nodes=[]
 
         try:
-            cmd="pgrep -a eosd"
+            cmd="pgrep -a %s" % (Utils.EosServerName)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             psOut=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print("psOut: <%s>" % psOut)
