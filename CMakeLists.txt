@@ -2,6 +2,10 @@
 project( EOS )
 cmake_minimum_required( VERSION 2.8.12 )
 
+set(VERSION_MAJOR 2)
+set(VERSION_MINOR 0)
+set(VERSION_PATCH 1)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 
@@ -10,10 +14,6 @@ INCLUDE( SetupTargetMacros )
 
 set( BLOCKCHAIN_NAME "Eos" )
 set( CMAKE_CXX_STANDARD 14 )
-
-set(VERSION_MAJOR 2)
-set(VERSION_MINOR 0)
-set(VERSION_PATCH 1)
 
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
 set( GUI_CLIENT_EXECUTABLE_NAME eos )
