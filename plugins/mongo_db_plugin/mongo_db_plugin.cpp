@@ -594,11 +594,11 @@ mongo_db_plugin_impl::~mongo_db_plugin_impl() {
 }
 
 void mongo_db_plugin_impl::wipe_database() {
-   ilog("db wipe_database");
+   ilog("mongo db wipe_database");
 
    accounts = mongo_conn[db_name][accounts_col]; // Accounts
    auto trans = mongo_conn[db_name][trans_col]; // Transactions
-   auto msgs = mongo_conn[db_name][actions_col]; // Messages
+   auto msgs = mongo_conn[db_name][actions_col]; // Actions
    auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
 
    accounts.drop();
@@ -679,29 +679,22 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
 #endif
 }
 
-void mongo_db_plugin::wipe_database() {
-#ifdef MONGODB
-   if (!my->startup) {
-      elog("ERROR: mongo_db_plugin::wipe_database() called before configuration or after startup. Ignoring.");
-   } else {
-      my->wipe_database_on_startup = true;
-   }
-#endif
-}
-
-void mongo_db_plugin::applied_irreversible_block(const signed_block& block) {
-#ifdef MONGODB
-   my->applied_irreversible_block(block);
-#endif
-}
-
-
 void mongo_db_plugin::plugin_initialize(const variables_map& options)
 {
 #ifdef MONGODB
    if (options.count("mongodb-uri")) {
-      ilog("initializing db plugin");
+      ilog("initializing mongo_db_plugin");
       my->configured = true;
+
+      if (options.at("replay-blockchain").as<bool>()) {
+         ilog("Replay requested: wiping mongo database on startup");
+         my->wipe_database_on_startup = true;
+      }
+      if (options.at("resync-blockchain").as<bool>()) {
+         ilog("Resync requested: wiping mongo database on startup");
+         my->wipe_database_on_startup = true;
+      }
+
       if (options.count("filter-on-accounts")) {
          auto foa = options.at("filter-on-accounts").as<std::vector<std::string>>();
          for (auto filter_account : foa)
@@ -718,6 +711,12 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
       if (my->db_name.empty())
          my->db_name = "EOS";
       my->mongo_conn = mongocxx::client{uri};
+
+      // add callback to chain_controller config
+      chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
+      FC_ASSERT(chain_plug);
+      chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
+            [my = my](const chain::signed_block& b) { my->applied_irreversible_block(b); });
 
       if (my->wipe_database_on_startup) {
          my->wipe_database();
