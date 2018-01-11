@@ -112,8 +112,8 @@ cleanup
 
 # stand up eosd cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
-echo Launcher options: $launcherOpts
-programs/launcher/launcher $launcherOpts
+echo Launcher options: --eosd \"--plugin eosio::wallet_api_plugin\" $launcherOpts
+programs/launcher/launcher --eosd "--plugin eosio::wallet_api_plugin" $launcherOpts
 sleep 7
 
 startPort=8888

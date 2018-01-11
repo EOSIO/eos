@@ -20,10 +20,10 @@ import json
 class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
-    EosClientPath="programs/eosioc/eosioc"
-    EosWalletPath="programs/eosio-walletd/eosio-walletd"
-    EosServerName="eosiod"
-    EosServerPath="programs/eosiod/%s" % (EosServerName)
+    EosClientPath="programs/eosc/eosc"
+    EosWalletPath="programs/eos-walletd/eos-walletd"
+    EosServerName="eosd"
+    EosServerPath="programs/eosd/%s" % (EosServerName)
     EosLauncherPath="programs/launcher/launcher"
     
     @staticmethod
@@ -143,23 +143,19 @@ class Node(object):
 
     # Create account and return creation transactions
     # waitForTransBlock: wait on creation transaction id to appear in a block
+    # return transaction json object
     def createAccount(self, account, creatorAccount, waitForTransBlock=False):
-        transId=None
-        p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
         cmd="%s %s create account %s %s %s %s" % (Utils.EosClientPath, self.endpointArgs,
             creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        trans=None
         try:
-            retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
-            # Utils.Print("Ret: ", retStr)
-            m=p.search(retStr)
-            if m is None:
-                Utils.Print("ERROR: transaction id parser failure")
-                return None
-            transId=m.group(1)
-            # Utils.Print("Transaction num: %s" % (transId))
-       
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("createAccount> %s"% retStr)
+            trans=jsonData=json.loads(jStr)
+            transId=Node.getTransId(jsonData)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account creation. %s" % (msg))
@@ -167,24 +163,29 @@ class Node(object):
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
             return None
-        return transId
+        return trans
 
+    # Verifies account. Returns "get account" json return object
     def verifyAccount(self, account):
-        try :
-            cmd="%s %s get account %s" % (Utils.EosClientPath, self.endpointArgs, account.name)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-            ret=subprocess.check_output(cmd.split()).decode("utf-8")
-            #Utils.Print ("ret:", ret)
-            p=re.compile('\n\s+\"staked_balance\"\:\s+\"\d+.\d+\s+EOS\",\n', re.MULTILINE)
-            m=p.search(ret)
-            if m is None:
-                Utils.Print("ERROR: Failed to verify account creation.", account.name)
-                return False
-        except subprocess.CalledProcessError as es:
+        cmd="%s %s get account %s" % (Utils.EosClientPath, self.endpointArgs, account.name)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        trans=None
+        try:
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("get account> %s"% retStr)
+            trans=jsonData=json.loads(jStr)
+        except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account verification. %s", msg)
-            return False
-        return True
+            return None
+
+        stakedBalanceKey="staked_balance"
+        stakedBalance=trans[stakedBalanceKey];
+        if stakedBalance is None:
+            Utils.Print("ERROR: Failed to verify account creation.", account.name)
+            return None
+        return trans
 
     def waitForBlockNumOnNode(self, blockNum, timeout=60):
         startTime=time.time()
@@ -228,10 +229,8 @@ class Node(object):
 
         return False
 
-    # returns transaction id # for this transaction
+    # Trasfer funds. Returns "transfer" json return object
     def transferFunds(self, source, destination, amount, memo="memo", force=False):
-        transId=None
-        p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
         cmd="%s %s transfer %s %s %d" % (
             Utils.EosClientPath, self.endpointArgs, source.name, destination.name, amount)
         cmdArgs=cmd.split()
@@ -239,22 +238,20 @@ class Node(object):
         if force:
             cmdArgs.append("-f")
         Utils.Debug and Utils.Print("cmd: %s" % (cmdArgs))
+        trans=None
         try:
-            retStr=subprocess.check_output(cmdArgs, stderr=subprocess.STDOUT).decode("utf-8")
-            #MyPrint("Ret: ", retStr)
-            m=p.search(retStr)
-            if m is None:
-                Utils.Print("ERROR: transaction id parser failure")
-                return None
-            transId=m.group(1)
-            #MyPrint("Transaction block num: %s" % (blockNum))
+            retStr=Node.__checkOutput(cmd.split())
+            jStr=Node.filterJsonObject(retStr)
+            #Utils.Print ("transfer> %s"% retStr)
+            jsonData=json.loads(jStr)
+            return jsonData
        
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
             return None
 
-        return transId
+        return trans
 
     def validateSpreadFundsOnNode(self, adminAccount, accounts, expectedTotal):
         actualTotal=self.getAccountBalance(adminAccount.name)
@@ -279,24 +276,33 @@ class Node(object):
             balance += self.getAccountBalance(account.name)
         return balance
 
-    def getAccountsByKey(self, key):
-        try:
-            cmd="%s %s get accounts %s" % (Utils.EosClientPath, self.endpointArgs, key)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-            retStr=subprocess.check_output(cmd.split()).decode("utf-8")
-            #Utils.Print ("getAccountDetails> %s"% retStr)
-            p=re.compile('\s+\"(\w+)\",?\n', re.MULTILINE)
-            m=p.findall(retStr)
-            if m is None:
-                msg="Failed to account list by key."
-                Utils.Print("ERROR: "+ msg)
-                raise Exception(msg)
 
-            return m
+    @staticmethod
+    def __runCmdReturnJson(cmd, trace=False):
+        retStr=Node.__checkOutput(cmd.split())
+        jStr=Node.filterJsonObject(retStr)
+        trace and Utils.Print ("> %s"% retStr)
+        jsonData=json.loads(jStr)
+        return jsonData
+
+    # Gets accounts mapped to key. Returns json object
+    def getAccountsByKey(self, key):
+        cmd="%s %s get accounts %s" % (Utils.EosClientPath, self.endpointArgs, key)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        try:
+            trans=Node.__runCmdReturnJson(cmd)
+            return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during accounts by key retrieval. %s" % (msg))
-            raise
+            return None
+
+    # Gets accounts mapped to key. Returns array
+    def getAccountsArrByKey(self, key):
+        trans=self.getAccountsByKey(key)
+        accountNamesKey="account_names"
+        accounts=trans[accountNamesKey]
+        return accounts
 
     def getServants(self, name):
         try:
@@ -339,35 +345,12 @@ class Node(object):
         balance=int(float(balanceStr)*10000)
         return balance
 
-    def getTransactionDetails(self, transId):
+    def getTransaction(self, transId):
+        cmd="%s %s get transaction %s" % (Utils.EosClientPath, self.endpointArgs, transId)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
-            cmd="%s %s get transaction %s" % (Utils.EosClientPath, self.endpointArgs, transId)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-            ret=subprocess.check_output(cmd.split()).decode("utf-8")
-            #Utils.Print ("getAccountDetails> %s"% ret)
-            p1=re.compile('\n\s+\"type\"\:\s+\"(\w+)\",\n', re.MULTILINE)
-            p2=re.compile('\n\s+\"amount\"\:\s+(\d+),\n', re.MULTILINE)
-            m1=p1.search(ret)
-            if m1 is None:
-                msg="Failed to parse transaction type."
-                Utils.Print("ERROR: "+ msg)
-                raise Exception(msg)
-
-            tType=m1.group(1)
-
-            m2=p2.search(ret)
-            if m2 is None:
-                msg="Failed to parse transaction amount."
-                Utils.Print("ERROR: "+ msg)
-                raise Exception(msg)
-
-            amount=int(m2.group(1))
-
-            transaction=Transaction(transId)
-            transaction.tType=tType
-            transaction.amount=amount
-            return transaction
-
+            trans=Node.__runCmdReturnJson(cmd)
+            return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account by transaction retrieval. %s" % (msg))
@@ -792,7 +775,6 @@ class Cluster(object):
         #self.endpointArgs="--host %s --port %d" % (self.host, self.port)
         self.endpointArgs=""
 
-    # ciju
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
         if self.__chainSyncStrategy is None:
@@ -814,7 +796,7 @@ class Cluster(object):
             Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
         cmdArr=cmd.split()
         if not self.walletd:
-            cmdArr.append("--eosiod")
+            cmdArr.append("--eosd")
             cmdArr.append("--plugin eosio::wallet_api_plugin")
         Utils.Print("cmd: ", cmdArr)
         if 0 != subprocess.call(cmdArr):
@@ -962,54 +944,6 @@ class Cluster(object):
 
         self.accounts=accounts
         return True
-    # def populateWallet(self, accountsCount):
-    #     accounts=None
-    #     if accountsCount > 0:
-    #         Utils.Print ("Create account keys.")
-    #         accounts = self.createAccountKeys(accountsCount)
-    #         if accounts is None:
-    #             Utils.Print("Account keys creation failed.")
-    #             return False
-
-    #     if self.createWallet(accounts) is False:
-    #         return False
-
-    #     return True
-
-    # # Initialize wallet and import account keys
-    # def createWallet_old(self, accounts):
-    #     cmd="%s wallet create --name %s" % (Utils.EosClientPath, self.__WalletName)
-    #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #     if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-    #         Utils.Print("ERROR: Failed to create wallet.")
-    #         return False
-
-    #     cmd="%s wallet import --name %s %s" % (
-    #         Utils.EosClientPath, self.__WalletName, Cluster.initaAccount.ownerPrivateKey)
-    #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #     if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-    #         Utils.Print("ERROR: Failed to import account inita key.")
-    #         return False
-
-    #     if accounts is None:
-    #         return True
-
-    #     self.accounts=accounts
-    #     for account in self.accounts:
-    #         #Utils.Print("Private: ", key.private)
-    #         cmd="%s wallet import --name %s %s" % (Utils.EosClientPath, self.__WalletName, account.ownerPrivateKey)
-    #         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-    #             Utils.Print("ERROR: Failed to import account owner key.")
-    #             return False
-
-    #         cmd="%s wallet import --name %s %s" % (Utils.EosClientPath, self.__WalletName, account.activePrivateKey)
-    #         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-    #             Utils.Print("ERROR: Failed to import account active key.")
-    #             return False
-
-    #     return True
 
     def getNode(self, id=0):
         return self.nodes[0]
@@ -1017,7 +951,6 @@ class Cluster(object):
     # Spread funds across accounts with transactions spread through cluster nodes.
     #  Validate transactions are synchronized on root node
     def spreadFunds(self, amount=1):
-        #ciju
         Utils.Print("len(self.accounts): %d" % (len(self.accounts)))
         if len(self.accounts) == 0:
             return True
@@ -1029,7 +962,8 @@ class Cluster(object):
         to=self.accounts[0]
         Utils.Print("Transfer %d units from account %s to %s on eos server port %d" % (
             transferAmount, fromm.name, to.name, node.port))
-        transId=node.transferFunds(fromm, to, transferAmount)
+        trans=node.transferFunds(fromm, to, transferAmount)
+        transId=Node.getTransId(trans)
         if transId is None:
             return False
         self.__lastTrans=transId
@@ -1065,7 +999,8 @@ class Cluster(object):
             Utils.Print("Transfer %d units from account %s to %s on eos server port %d." %
                     (transferAmount, fromm.name, to.name, node.port))
 
-            transId=node.transferFunds(fromm, to, transferAmount)
+            trans=node.transferFunds(fromm, to, transferAmount)
+            transId=Node.getTransId(trans)
             if transId is None:
                 return False
             self.__lastTrans=transId
@@ -1113,57 +1048,17 @@ class Cluster(object):
         return True
 
     # create account, verify account and return transaction id
-    #def createAccountAndVerify(self, account, wallet):
     def createAccountAndVerify(self, account, creator):
         if len(self.nodes) == 0:
             Utils.Print("ERROR: No nodes initialized.")
             return None
         node=self.nodes[0]
 
-        #transId=node.createAccount(account, wallet)
         transId=node.createAccount(account, creator)
 
-        if transId is not None and node.verifyAccount(account):
+        if transId is not None and node.verifyAccount(account) is not None:
             return transId
         return None
-
-    # # Create account and return creation transactions
-    # def createAccount(self, accountInfo):
-    #     transId=None
-    #     p = re.compile('\n\s+\"transaction_id\":\s+\"(\w+)\",\n', re.MULTILINE)
-    #     cmd="%s create account %s %s %s %s" % (
-    #         Utils.EosClientPath, Cluster.initaAccount.name, accountInfo.name, accountInfo.ownerPublicKey,
-    #         accountInfo.activePublicKey)
-    #     Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #     try:
-    #         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
-    #         # Utils.Print("Ret: ", retStr)
-    #         m=p.search(retStr)
-    #         if m is None:
-    #             Utils.Print("ERROR: transaction id parser failure")
-    #             return None
-    #         transId=m.group(1)
-    #         # Utils.Print("Transaction num: %s" % (transId))
-       
-    #     except Exception as ex:
-    #         Utils.Print("ERROR: Exception during inita account creation.", ex)
-    #         return None
-
-    #     try :
-    #         cmd="%s get account %s" % (Utils.EosClientPath, accountInfo.name)
-    #         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-    #         ret=subprocess.check_output(cmd.split()).decode("utf-8")
-    #         #Utils.Print ("ret:", ret)
-    #         p=re.compile('\n\s+\"staked_balance\"\:\s+\"\d+.\d+\s+EOS\",\n', re.MULTILINE)
-    #         m=p.search(ret)
-    #         if m is None:
-    #             Utils.Print("ERROR: Failed to validate account creation.", accountInfo.name)
-    #             return None
-    #     except Exception as e:
-    #         Utils.Print("ERROR: Exception during account creation validation:", e)
-    #         return None
-    
-    #     return transId
 
     # Populates list of EosInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes):
@@ -1196,22 +1091,12 @@ class Cluster(object):
     def updateNodesStatus(self):
         for node in self.nodes:
             node.checkPulse()
-        # for i in range(0, len(self.nodes)):
-        #     node=self.nodes[i]
-        #     running=True
-        #     try:
-        #         os.kill(node.pid, 0)
-        #     except subprocess.CalledProcessError as ex:
-        #         running=False
-        #     if running != node.alive:
-        #         self.nodes[i].alive=running
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
-        # killCount=int((percent/100.0)*len(self.nodes))
         Utils.Print("Kill %d Eosd instances with signal %s." % (killCount, killSignal))
 
         killedCount=0
@@ -1285,22 +1170,21 @@ class Cluster(object):
             shutil.rmtree(f)
             
     # Create accounts and validates that the last transaction is received on root node
-    #def createAccounts(self, wallet):
-    def createAccounts(self, creator):
+    def createAccounts(self, creator, waitForTransBlock=True):
         if self.accounts is None:
             return True
 
         transId=None
         for account in self.accounts:
             Utils.Debug and Utils.Print("Create account %s." % (account.name))
-            #transId=self.createAccountAndVerify(account, wallet)
-            transId=self.createAccountAndVerify(account, creator)
-            if transId is None:
+            trans=self.createAccountAndVerify(account, creator)
+            if trans is None:
                 Utils.Print("ERROR: Failed to create account %s." % (account.name))
                 return False
             Utils.Debug and Utils.Print("Account %s created." % (account.name))
+            transId=Node.getTransId(trans)
 
-        if transId is not None:
+        if waitForTransBlock and transId is not None:
             node=self.nodes[0]
             Utils.Debug and Utils.Print("Wait for transaction id %s on server port %d." % ( transId, node.port))
             if node.waitForTransIdOnNode(transId) is False:
