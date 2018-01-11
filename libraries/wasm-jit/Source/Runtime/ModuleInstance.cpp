@@ -184,7 +184,7 @@ namespace Runtime
 		if(module.startFunctionIndex != UINTPTR_MAX)
 		{
 			assert(moduleInstance->functions[module.startFunctionIndex]->type == IR::FunctionType::get());
-			invokeFunction(moduleInstance->functions[module.startFunctionIndex],{});
+         moduleInstance->startFunctionIndex = module.startFunctionIndex;
 		}
 
 		moduleInstances.push_back(moduleInstance);
@@ -199,6 +199,11 @@ namespace Runtime
 	MemoryInstance* getDefaultMemory(ModuleInstance* moduleInstance) { return moduleInstance->defaultMemory; }
 	uint64_t getDefaultMemorySize(ModuleInstance* moduleInstance) { return moduleInstance->defaultMemory->numPages << IR::numBytesPerPageLog2; }
 	TableInstance* getDefaultTable(ModuleInstance* moduleInstance) { return moduleInstance->defaultTable; }
+
+   void runInstanceStartFunc(ModuleInstance* moduleInstance) {
+      if(moduleInstance->startFunctionIndex != UINTPTR_MAX)
+         invokeFunction(moduleInstance->functions[moduleInstance->startFunctionIndex],{});
+   }
 	
 	ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name)
 	{

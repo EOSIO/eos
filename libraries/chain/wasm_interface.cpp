@@ -385,6 +385,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
+      runInstanceStartFunc(code.instance);
       Runtime::invokeFunction(call,args);
    } catch( const Runtime::Exception& e ) {
       FC_THROW_EXCEPTION(wasm_execution_error,
