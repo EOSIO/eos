@@ -17,15 +17,23 @@ using wasm_double = boost::multiprecision::cpp_dec_float_50;
 
 struct wasm_cache::entry {
    entry(ModuleInstance *instance, Module *module)
-      : instance(instance), module(module) {}
+      : instance(instance), module(module) 
+   {
+   }
 
-   ModuleInstance *instance;
-   Module *module;
+   ModuleInstance* instance;
+   Module* module;
 };
 
 struct wasm_context {
-   wasm_cache::entry &code;
-   apply_context &context;
+   wasm_context(wasm_cache::entry &code, apply_context& ctx) : code(code), context(ctx)
+   {
+      //initialize to minimum bytes and limit this to 32 bit space
+      sbrk_bytes = (1 << IR::numBytesPerPageLog2) > UINT32_MAX ? UINT32_MAX : 1 << IR::numBytesPerPageLog2;
+   }
+   wasm_cache::entry& code;
+   apply_context& context;
+   uint32_t sbrk_bytes;
 };
 
 struct wasm_interface_impl {
