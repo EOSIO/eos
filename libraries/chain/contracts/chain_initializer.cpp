@@ -151,6 +151,13 @@ abi_def chain_initializer::eos_contract_abi()
    });
 
    eos_abi.structs.emplace_back( struct_def {
+      "setabi", "", {
+         {"account", "account_name"},
+         {"abi", "abi_def"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
       "updateauth", "", {
          {"account", "account_name"},
          {"permission", "permission_name"},
@@ -197,7 +204,6 @@ abi_def chain_initializer::eos_contract_abi()
    eos_abi.structs.emplace_back( struct_def {
       "postrecovery", "", {
          {"account", "account_name"},
-         {"request_id", "uint32"},
          {"data", "authority"},
          {"memo", "string"},
       }
