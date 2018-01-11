@@ -10,6 +10,8 @@ namespace eosio {
    template<typename T>
    class vector {
       public:
+         vector(){}
+
          vector( const vector& copy ) {
             reserve( copy.size() );
             for( uint32_t i = 0; i < copy.size(); ++i ) {

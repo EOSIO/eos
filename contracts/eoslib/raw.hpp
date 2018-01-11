@@ -8,9 +8,26 @@
 #include <eoslib/datastream.hpp>
 #include <eoslib/memory.hpp>
 #include <eoslib/vector.hpp>
+#include <eoslib/string.hpp>
+#include <eoslib/reflect.hpp>
 
 namespace eosio {
     namespace raw {    
+
+   template<typename Stream, typename T>
+   void pack( Stream& ds, const T& t ) {
+      reflector<T>::visit( t, [&]( const auto& field ) {
+         raw::pack( ds, field );
+      });
+   }
+
+   template<typename Stream, typename T>
+   void unpack( Stream& ds, T& t ) {
+      reflector<T>::visit( t, [&]( auto& field ) {
+         raw::unpack( ds, field );
+      });
+   }
+
   /**
    *  Serialize a list of values into a stream
    *  @param s    stream to write
@@ -28,9 +45,8 @@ namespace eosio {
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream, typename T>
-   void pack( Stream& s, const T& v )
-   {
+   template<typename Stream, typename T, typename reflector<T>::is_reflected::value = 0>
+   void pack( Stream& s, const T& v ) {
       s << v;
    }
    
@@ -39,7 +55,7 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream, typename T>
+   template<typename Stream, typename T, typename reflector<T>::is_reflected::value = 0>
    void unpack( Stream& s, T& v )
    {
       s >> v;
@@ -184,9 +200,9 @@ namespace eosio {
    }
 
    template<typename Stream, typename T> 
-   void unpack( Stream& s, vector<T>& v )  {
+   void unpack( Stream& ds, vector<T>& v )  {
       unsigned_int size; 
-      eosio::raw::unpack( s, size );
+      eosio::raw::unpack( ds, size );
       v.resize(size);
       for( auto& value : v )
          eosio::raw::unpack( ds, value );

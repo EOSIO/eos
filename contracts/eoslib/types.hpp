@@ -20,6 +20,21 @@ namespace  eosio {
       return 0;
    }
 
+   static constexpr uint64_t string_to_symbol( const char* str ) {
+      uint32_t len = 0;
+      while( str[len] ) ++len;
+
+      uint64_t result = 0;
+      for( uint32_t i = 0; i < len; ++i ) {
+         if( str[i] < 'A' || str[i] > 'Z' ) {
+            /// ERRORS?
+         } else {
+            result |= (uint64_t(str[i]) << (8*(1+i)));
+         }
+      }
+      return result;
+   }
+
    /**
     *  Converts a base32 string to a uint64_t. This is a constexpr so that
     *  this method can be used in template arguments as well.
@@ -56,6 +71,7 @@ namespace  eosio {
     * @ingroup types
     */
    #define N(X) ::eosio::string_to_name(#X)
+   #define S(X) ::eosio::string_to_symbol(#X)
 
    /**
     *  @class name
@@ -86,5 +102,10 @@ namespace  eosio {
    template<typename T> struct remove_reference<T&>       { typedef T type; };
    template<typename T> struct remove_reference<const T&> { typedef T type; };
    ///@}
+
+   typedef decltype(nullptr) nullptr_t;
+
+   struct true_type  { enum _value { value = 1 }; };
+   struct false_type { enum _value { value = 0 }; };
 
 } // namespace eos

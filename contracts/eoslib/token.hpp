@@ -19,51 +19,17 @@ namespace eosio {
   * @{
   */
 
-  /**
-  *
-  *  @brief a uint64_t wrapper with checks for proper types and over/underflows.
-  *  @tparam NumberType - numeric type of the token
-  *  @tparam currency - type of the currency (e.g. eos) represented as an unsigned 64 bit integer
-  *  @ingroup tokens
-  *
-  *  @details Base token structure with checks for proper types and over/underflows.
-  *  It supports the following operator: +=, -=, +, -, <=, <, ==, !=, >=, >, bool and also print functionality
-  *
-  *  Example:
-  *  @code
-  *  typedef eosio::token<uint32_t, N(MyToken)> MyToken;
-  *  MyToken  a(128);
-  *  a.print(); // Output: 128 MyToken
-  *  MyToken b(64);
-  *  a += b;
-  *  a.print(); // Output: 192 MyToken
-  *  b.print(); // Output:  64 MyToken
-  *  a -= b;
-  *  a.print(); // Output: 128 MyToken
-  *  b.print(); // Output:  64 MyToken
-  *  b -= a;    // Throws integer underflow exception
-  *  MyToken c = a + b;
-  *  c.print(); // Output: 192 MyToken
-  *  MyToken d = a - b;
-  *  d.print(); // Output: 64 MyToken
-  *  MyToken maxToken(std::numeric_limits<uint32_t>::max());
-  *  maxToken += b; // Throws integer overflow exception
-  *  std::cout << (maxToken > b); // Output: true
-  *  std::cout << (b > maxToken); // Output: false
-  *  std::cout << (bool)maxToken; // Output: true
-  *  std::cout << (a == b);  // Output: false
-  *  std::cout << (a != b);  // Output: true
-  *  @endcode
-  *
-  *  @{
-  */
-  template<typename NumberType, uint64_t Currency = N(eos) >
+  template<typename NumberType, 
+           uint64_t Code = N(eosio.system), 
+           uint64_t Symbol = S(EOS), 
+           uint8_t precision = 4 >
   struct token {
     /**
     * Type of the currency (e.g. eos) represented as an unsigned 64 bit integer
     * @brief  Type of the currency
     */
-    static const uint64_t currency_type = Currency;
+    static const uint64_t code   = Code;
+    static const uint64_t symbol = Code;
 
     /**
     * Default constructor
@@ -198,15 +164,17 @@ namespace eosio {
     */
     explicit operator bool()const { return quantity != 0; }
 
-    /**
-    * Print as string representation of the token (e.g. 1 EOS)
-    * @brief Print as string
-    */
-    inline void print() {
-      eosio::print( quantity, " ", name(currency_type) );
-    }
   };
   /// @}
+
+
+  template<typename BaseToken, typename QuoteToken>
+  struct price_ratio {
+     BaseToken   base;
+     QuoteToken  quote;
+  };
+
+  
 
   /**
   *
@@ -359,13 +327,6 @@ namespace eosio {
     */
     friend bool operator != ( const price& a, const price& b ) { return a.base_per_quote != b.base_per_quote; }
 
-    /**
-    * Prints as string representing the conversion.
-    * @brief Prints as string.
-    */
-    inline void print() {
-      eosio::print( base_per_quote, ".", " ", name(base_token_type::currency_type), "/", name(quote_token_type::currency_type)  );
-    }
   private:
     /**
     * Represents as number of base tokens to purchase 1 quote token.
@@ -376,58 +337,6 @@ namespace eosio {
 
   /// @}
 
-  /**
-  * @typedef tokens
-  * @brief Defines eos tokens
-  * @details Defines eos tokens
-  */
-  typedef eosio::token<uint64_t,N(eos)>   tokens;
-
-  /**
-  *  @struct eosio::transfer
-  *  @brief The binary structure of the `transfer` message type for the `eos` contract.
-  *  @ingroup tokens
-  *
-  *  @details
-  *  Example:
-  *  @code
-  *  transfer MeToYou;
-  *  MeToYou.from = N(Me);
-  *  MeToYou.to = N(You);
-  *  MeToYou.quantity = tokens(100);
-  *  @endcode
-  *  @{
-  */
-  struct PACKED (transfer) {
-    /**
-    * Defines transfer action type
-    * @brief Defines transfer action type
-    */
-    static const uint64_t action_type = N(transfer);
-
-    /**
-    * Name of the account who sends the token
-    * @brief Name of the account who sends the token
-    */
-    account_name  from;
-    /**
-    * Name of the account who receives the token
-    * @brief Name of the account who receives the token
-    */
-    account_name  to;
-    /**
-    * Quantity of token to be transferred
-    * @brief Quantity of token to be transferred
-    */
-    tokens        quantity;
-
-    /**
-    * Length of the memo field, included for binary compatibility
-    * @brief Length of the memo field
-    */
-    const uint8_t memo_length = 0;
-  };
-  /// @}
 
   /// @} tokenhppapi
 

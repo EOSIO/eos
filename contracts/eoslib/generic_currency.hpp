@@ -1,13 +1,16 @@
 #pragma once
 #include <eoslib/singleton.hpp>
+#include <eoslib/token.hpp>
 
 namespace eosio {
 
-   template<account_name Code>
+   template<typename Token>
    class generic_currency {
       public:
-          typedef token<uint64_t,Contract> token_type;
-          static const name accounts_table_name = N(account);
+          typedef Token token_type;
+          static const uint64_t code                = token_type::code;
+          static const uint64_t symbol              = token_type::symbol;
+          static const uint64_t accounts_table_name = N(account)
 
           struct issue : public action<Code,N(issue)> {
              account_name to;
@@ -78,6 +81,16 @@ namespace eosio {
 
 
           }
+
+
+         static void apply( account_name code, action_name action ) {
+            if( code == Code ) {
+               if( action == N(transfer) ) 
+                  on( unpack_action<transfer>() );
+               else if( action == N(issue) ) 
+                  on( unpack_action<issue>() );
+            } 
+         }
    };
 
 } /// namespace eosio
@@ -86,7 +99,7 @@ namespace eosio {
 
 
 
-
+#if 0
 template<account_name RelayAccount, account_name FirstCurrency, account_name SecondCurrency>
 class relay_contract {
    public:
@@ -233,24 +246,10 @@ class relay_contract {
       }
 
       static void apply( account_name code, action_name action ) {
-         if( code == RelayAccount ) {
-            if( action == N(transfer) ) 
-               on( unpack_action<relay_currency::transfer>() );
-         } 
-         else if( code == first_currency )
-         {
-            if( action == N(transfer) ) 
-               on( unpack_action<first_currency::transfer>() );
-         }
-         else if( code == first_currency )
-         {
-            if( action == N(transfer) ) 
-               on( unpack_action<second_currency::transfer>() );
-         }
-         else {
-            assert( false, "unknown action notification" );
-         }
+         if( !dispatcher<Currency, transfer, issue>::exec( code, action ) )
+            assert( false, "received unexpected action" );
       }
 };
 
+#endif
 

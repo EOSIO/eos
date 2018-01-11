@@ -47,7 +47,7 @@ namespace eosio {
    T unpack_action() {
       char buffer[action_size()];
       read_action( buffer, sizeof(buffer) );
-      return unpack<T>( buffer, sizeof(buffer) );
+      return raw::unpack<T>( buffer, sizeof(buffer) );
    }
 
    using ::require_auth;
@@ -74,25 +74,44 @@ namespace eosio {
       require_recipient( remaining_accounts... );
    }
 
+   struct permission_level {
+      account_name    actor;
+      permission_name permission;
+   };
 
+   /**
+    * This is the packed representation of an action along with
+    * meta-data about the authorization levels.
+    */
    struct action {
       scope_name                 scope;
       action_name                name;
       vector<permission_level>   authorization;
       string                     data;
 
-      action(){}
-
-      template<typename T>
-      action( vector<permission_level> auth, const T& value ) {
-         scope         = T::get_scope();
-         name          = T::get_name();
+      /**
+       *  @tparam Action - a type derived from action_meta<Scope,Name>
+       *  @param value - will be serialized via raw::pack into data
+       */
+      template<typename Action>
+      action( vector<permission_level> auth, const Action& value ) {
+         scope         = Action::get_scope();
+         name          = Action::get_name();
          authorization = move(auth);
-         data          = pack(value);
+         data          = raw::pack(value);
       }
+   };
+
+   template<uint64_t Scope, uint64_t Name>
+   struct action_meta {
+      static uint64_t get_scope() { return Scope; }
+      static uint64_t get_(me)    { return Name; }
    };
 
 
  ///@} actioncpp api
 
-} // namespace eos
+} // namespace eosio
+
+EOSLIB_REFLECT( eosio::permission_level, (actor)(permission) )
+EOSLIB_REFLECT( eosio::action, (scope)(name)(authorization)(data) )
