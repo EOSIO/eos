@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <algorithm>
 #include <new>
 #include <vector>
 
@@ -69,6 +70,24 @@ namespace fc {
       dest = std::move(src);
     } else {
       dest.insert(std::end(dest), std::make_move_iterator(std::begin(src)), std::make_move_iterator(std::end(src)));
+    }
+  }
+
+  template<typename T>
+  void copy_append(std::vector<T> &dest, const std::vector<T>& src ) {
+    if (src.empty()) {
+      return;
+    } else {
+      dest.insert(std::end(dest), std::begin(src), std::end(src));
+    }
+  }
+
+  template<typename T>
+  void deduplicate( std::vector<T>& entries ) {
+    if (entries.size() > 1) {
+      std::sort( entries.begin(), entries.end() );
+      auto itr = std::unique( entries.begin(), entries.end() );
+      entries.erase( itr, entries.end() );
     }
   }
 }

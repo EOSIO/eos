@@ -193,8 +193,6 @@ namespace eosio { namespace chain {
       vector<action_trace>          action_traces;
       vector<deferred_transaction>  deferred_transactions;
       vector<deferred_reference>    canceled_deferred;
-      vector<scope_name>            read_scopes;
-      vector<scope_name>            write_scopes;
    };
 
 
@@ -231,10 +229,6 @@ namespace eosio { namespace chain {
       uint32_t                              sender_id = 0;
       const char*                           generated_data = nullptr;
       size_t                                generated_size = 0;
-
-      // scheduling related information
-      optional<const vector<scope_name>*>   allowed_read_scopes;
-      optional<const vector<scope_name>*>   allowed_write_scopes;
    };
 
 } } // eosio::chain
@@ -250,7 +244,7 @@ FC_REFLECT( eosio::chain::data_access_info, (type)(scope)(sequence))
 FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions)(read_scopes)(write_scopes) )
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )
 
 
 

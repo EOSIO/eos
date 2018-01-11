@@ -84,7 +84,7 @@ void apply_eosio_newaccount(apply_context& context) {
    auto create = context.act.as<newaccount>();
    try {
    context.require_authorization(create.creator);
-   context.require_write_scope( config::eosio_auth_scope );
+   context.require_write_lock( config::eosio_auth_scope );
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
@@ -149,8 +149,8 @@ void apply_eosio_transfer(apply_context& context) {
 
    try {
       EOS_ASSERT(transfer.amount > 0, action_validate_exception, "Must transfer a positive amount");
-      context.require_write_scope(transfer.to);
-      context.require_write_scope(transfer.from);
+      context.require_write_lock(transfer.to);
+      context.require_write_lock(transfer.from);
 
       context.require_authorization(transfer.from);
 
@@ -181,9 +181,9 @@ void apply_eosio_lock(apply_context& context) {
 
    EOS_ASSERT(lock.amount > 0, action_validate_exception, "Locked amount must be positive");
 
-   context.require_write_scope(lock.to);
-   context.require_write_scope(lock.from);
-   context.require_write_scope(config::system_account_name);
+   context.require_write_lock(lock.to);
+   context.require_write_lock(lock.from);
+   context.require_write_lock(config::system_account_name);
 
    context.require_authorization(lock.from);
 
@@ -222,7 +222,7 @@ void apply_eosio_setcode(apply_context& context) {
    auto  act = context.act.as<setcode>();
 
    context.require_authorization(act.account);
-   context.require_write_scope( config::eosio_auth_scope );
+   context.require_write_lock( config::eosio_auth_scope );
 
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
@@ -327,8 +327,8 @@ void apply_eosio_okproducer(apply_context& context) {
    context.require_recipient(approve.voter);
    context.require_recipient(approve.producer);
 
-   context.require_write_scope(config::system_account_name);
-   context.require_write_scope(approve.voter);
+   context.require_write_lock(config::system_account_name);
+   context.require_write_lock(approve.voter);
    context.require_authorization(approve.voter);
 
 
@@ -406,7 +406,7 @@ void apply_eosio_setproxy(apply_context& context) {
 }
 
 void apply_eosio_updateauth(apply_context& context) {
-   context.require_write_scope( config::eosio_auth_scope );
+   context.require_write_lock( config::eosio_auth_scope );
 
    auto update = context.act.as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
@@ -588,7 +588,7 @@ static optional<variant> get_pending_recovery(apply_context& context, account_na
 }
 
 static uint32_t get_next_sender_id(apply_context& context) {
-   context.require_write_scope( config::eosio_auth_scope );
+   context.require_write_lock( config::eosio_auth_scope );
    const auto& t_id = context.find_or_create_table(config::eosio_auth_scope, config::system_account_name, N(deferred.seq));
    uint64_t key = N(config::eosio_auth_scope);
    uint32_t next_serial = 0;
@@ -614,14 +614,14 @@ static auto get_permission_last_used(const apply_context& context, const account
 };
 
 void apply_eosio_postrecovery(apply_context& context) {
-   context.require_write_scope( config::eosio_auth_scope );
+   context.require_write_lock( config::eosio_auth_scope );
 
    FC_ASSERT(context.act.authorization.size() == 1, "Recovery Message must have exactly one authorization");
 
    auto recover_act = context.act.as<postrecovery>();
    const auto &auth = context.act.authorization.front();
    const auto& account = recover_act.account;
-   context.require_write_scope(account);
+   context.require_write_lock(account);
 
    FC_ASSERT(!get_pending_recovery(context, account), "Account ${account} already has a pending recovery request!", ("account",account));
 
@@ -717,7 +717,7 @@ void apply_eosio_passrecovery(apply_context& context) {
 }
 
 void apply_eosio_vetorecovery(apply_context& context) {
-   context.require_write_scope( config::eosio_auth_scope );
+   context.require_write_lock( config::eosio_auth_scope );
    auto pass_act = context.act.as<vetorecovery>();
    const auto& account = pass_act.account;
    context.require_authorization(account);

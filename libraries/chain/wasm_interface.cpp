@@ -869,8 +869,8 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_scope,   void(int64_t)   )
-   (require_read_scope,    void(int64_t)   )
+   (require_write_lock,    void(int64_t)   )
+   (require_read_lock,     void(int64_t, int64_t)   )
    (require_recipient,     void(int64_t)   )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
 );
