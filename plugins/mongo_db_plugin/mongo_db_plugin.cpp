@@ -42,17 +42,20 @@ using chain::signed_block;
 using chain::transaction_id_type;
 
 #ifndef MONGODB
-class db_plugin_impl {
+class mongo_db_plugin_impl {
 public:
-   db_plugin_impl() {}
+   mongo_db_plugin_impl() {}
 };
 #endif
 
 #ifdef MONGODB
-class db_plugin_impl {
+
+static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
+
+class mongo_db_plugin_impl {
 public:
-   db_plugin_impl();
-   ~db_plugin_impl();
+   mongo_db_plugin_impl();
+   ~mongo_db_plugin_impl();
 
    void applied_irreversible_block(const signed_block&);
    void process_irreversible_block(const signed_block&);
@@ -100,23 +103,23 @@ public:
    static const std::string accounts_col;
 };
 
-abi_def db_plugin_impl::eos_abi;
+abi_def mongo_db_plugin_impl::eos_abi;
 
-const account_name db_plugin_impl::newaccount = "newaccount";
-const account_name db_plugin_impl::transfer = "transfer";
-const account_name db_plugin_impl::lock = "lock";
-const account_name db_plugin_impl::unlock = "unlock";
-const account_name db_plugin_impl::claim = "claim";
-const account_name db_plugin_impl::setcode = "setcode";
-const account_name db_plugin_impl::setabi = "setabi";
+const account_name mongo_db_plugin_impl::newaccount = "newaccount";
+const account_name mongo_db_plugin_impl::transfer = "transfer";
+const account_name mongo_db_plugin_impl::lock = "lock";
+const account_name mongo_db_plugin_impl::unlock = "unlock";
+const account_name mongo_db_plugin_impl::claim = "claim";
+const account_name mongo_db_plugin_impl::setcode = "setcode";
+const account_name mongo_db_plugin_impl::setabi = "setabi";
 
-const std::string db_plugin_impl::blocks_col = "Blocks";
-const std::string db_plugin_impl::trans_col = "Transactions";
-const std::string db_plugin_impl::actions_col = "Actions";
-const std::string db_plugin_impl::accounts_col = "Accounts";
+const std::string mongo_db_plugin_impl::blocks_col = "Blocks";
+const std::string mongo_db_plugin_impl::trans_col = "Transactions";
+const std::string mongo_db_plugin_impl::actions_col = "Actions";
+const std::string mongo_db_plugin_impl::accounts_col = "Accounts";
 
 
-void db_plugin_impl::applied_irreversible_block(const signed_block& block) {
+void mongo_db_plugin_impl::applied_irreversible_block(const signed_block& block) {
    try {
       if (startup) {
          // on startup we don't want to queue, instead push back on caller
@@ -136,7 +139,7 @@ void db_plugin_impl::applied_irreversible_block(const signed_block& block) {
    }
 }
 
-void db_plugin_impl::consum_blocks() {
+void mongo_db_plugin_impl::consum_blocks() {
    try {
       signed_block block;
       size_t size = 0;
@@ -162,7 +165,7 @@ void db_plugin_impl::consum_blocks() {
             break;
          }
       }
-      ilog("db_plugin consum thread shutdown gracefully");
+      ilog("mongo_db_plugin consum thread shutdown gracefully");
    } catch (fc::exception& e) {
       elog("FC Exception while consuming block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -193,7 +196,7 @@ namespace {
      try {
         abi_serializer abis;
         if (msg.scope == chain::config::system_account_name) {
-           abis.set_abi(db_plugin_impl::eos_abi);
+           abis.set_abi(mongo_db_plugin_impl::eos_abi);
         } else {
            auto from_account = find_account(accounts, msg.name);
            auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
@@ -240,7 +243,7 @@ namespace {
    }
 }
 
-void db_plugin_impl::process_irreversible_block(const signed_block& block) {
+void mongo_db_plugin_impl::process_irreversible_block(const signed_block& block) {
   try {
      _process_irreversible_block(block);
   } catch (fc::exception& e) {
@@ -252,7 +255,7 @@ void db_plugin_impl::process_irreversible_block(const signed_block& block) {
   }
 }
 
-void db_plugin_impl::_process_irreversible_block(const signed_block& block)
+void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block)
 {
    using namespace bsoncxx::types;
    using namespace bsoncxx::builder;
@@ -411,7 +414,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
 }
 
 // For now providing some simple account processing to maintain eos_balance
-void db_plugin_impl::update_account(const chain::action& msg) {
+void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::stream::document;
    using bsoncxx::builder::stream::open_document;
@@ -564,7 +567,7 @@ void db_plugin_impl::update_account(const chain::action& msg) {
    }
 }
 
-bool db_plugin_impl::is_scope_relevant(const vector<account_name>& scope)
+bool mongo_db_plugin_impl::is_scope_relevant(const vector<account_name>& scope)
 {
    for (const account_name& account_name : scope)
       if (filter_on.count(account_name))
@@ -573,24 +576,24 @@ bool db_plugin_impl::is_scope_relevant(const vector<account_name>& scope)
    return false;
 }
 
-db_plugin_impl::db_plugin_impl()
+mongo_db_plugin_impl::mongo_db_plugin_impl()
 : mongo_inst{}
 , mongo_conn{}
 {
 }
 
-db_plugin_impl::~db_plugin_impl() {
+mongo_db_plugin_impl::~mongo_db_plugin_impl() {
    try {
       done = true;
       condtion.notify_one();
 
       consum_thread.join();
    } catch (std::exception& e) {
-      elog("Exception on db_plugin shutdown of consum thread: ${e}", ("e", e.what()));
+      elog("Exception on mongo_db_plugin shutdown of consum thread: ${e}", ("e", e.what()));
    }
 }
 
-void db_plugin_impl::wipe_database() {
+void mongo_db_plugin_impl::wipe_database() {
    ilog("db wipe_database");
 
    accounts = mongo_conn[db_name][accounts_col]; // Accounts
@@ -604,7 +607,7 @@ void db_plugin_impl::wipe_database() {
    blocks.drop();
 }
 
-void db_plugin_impl::init() {
+void mongo_db_plugin_impl::init() {
    using namespace bsoncxx::types;
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
@@ -649,19 +652,19 @@ void db_plugin_impl::init() {
 
 #endif /* MONGODB */
 ////////////
-// db_plugin
+// mongo_db_plugin
 ////////////
 
-db_plugin::db_plugin()
-:my(new db_plugin_impl)
+mongo_db_plugin::mongo_db_plugin()
+:my(new mongo_db_plugin_impl)
 {
 }
 
-db_plugin::~db_plugin()
+mongo_db_plugin::~mongo_db_plugin()
 {
 }
 
-void db_plugin::set_program_options(options_description& cli, options_description& cfg)
+void mongo_db_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
 #ifdef MONGODB
    cfg.add_options()
@@ -676,24 +679,24 @@ void db_plugin::set_program_options(options_description& cli, options_descriptio
 #endif
 }
 
-void db_plugin::wipe_database() {
+void mongo_db_plugin::wipe_database() {
 #ifdef MONGODB
    if (!my->startup) {
-      elog("ERROR: db_plugin::wipe_database() called before configuration or after startup. Ignoring.");
+      elog("ERROR: mongo_db_plugin::wipe_database() called before configuration or after startup. Ignoring.");
    } else {
       my->wipe_database_on_startup = true;
    }
 #endif
 }
 
-void db_plugin::applied_irreversible_block(const signed_block& block) {
+void mongo_db_plugin::applied_irreversible_block(const signed_block& block) {
 #ifdef MONGODB
    my->applied_irreversible_block(block);
 #endif
 }
 
 
-void db_plugin::plugin_initialize(const variables_map& options)
+void mongo_db_plugin::plugin_initialize(const variables_map& options)
 {
 #ifdef MONGODB
    if (options.count("mongodb-uri")) {
@@ -721,13 +724,13 @@ void db_plugin::plugin_initialize(const variables_map& options)
       }
       my->init();
    } else {
-      wlog("eosio::db_plugin configured, but no --mongodb-uri specified.");
-      wlog("db_plugin disabled.");
+      wlog("eosio::mongo_db_plugin configured, but no --mongodb-uri specified.");
+      wlog("mongo_db_plugin disabled.");
    }
 #endif
 }
 
-void db_plugin::plugin_startup()
+void mongo_db_plugin::plugin_startup()
 {
 #ifdef MONGODB
    if (my->configured) {
@@ -741,7 +744,7 @@ void db_plugin::plugin_startup()
 #endif
 }
 
-void db_plugin::plugin_shutdown()
+void mongo_db_plugin::plugin_shutdown()
 {
    my.reset();
 }

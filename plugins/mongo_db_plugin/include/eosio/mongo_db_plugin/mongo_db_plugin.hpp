@@ -10,13 +10,13 @@
 
 namespace eosio {
 
-using db_plugin_impl_ptr = std::shared_ptr<class db_plugin_impl>;
+using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
 
 /**
  * Provides persistence to MongoDB for:
  *   Blocks
  *   Transactions
- *   Messages
+ *   Actions
  *   Accounts
  *
  *   See data dictionary (DB Schema Definition - EOS API) for description of MongoDB schema.
@@ -29,12 +29,12 @@ using db_plugin_impl_ptr = std::shared_ptr<class db_plugin_impl>;
  *
  *   If MongoDB env not available (#ifndef MONGODB) this plugin is a no-op.
  */
-class db_plugin : public plugin<db_plugin> {
+class mongo_db_plugin : public plugin<mongo_db_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
-   db_plugin();
-   virtual ~db_plugin();
+   mongo_db_plugin();
+   virtual ~mongo_db_plugin();
 
    virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
@@ -47,7 +47,7 @@ public:
    void plugin_shutdown();
 
 private:
-   db_plugin_impl_ptr my;
+   mongo_db_plugin_impl_ptr my;
 };
 
 }
