@@ -43,9 +43,10 @@ endif()
 
 target_link_libraries( eosiod
         PRIVATE appbase
-#        PRIVATE account_history_api_plugin account_history_plugin db_plugin
+#        PRIVATE account_history_api_plugin account_history_plugin
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
-        PRIVATE  -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag}
         PRIVATE net_plugin net_api_plugin -Wl,${whole_archive_flag} txn_test_gen_plugin -Wl,${no_whole_archive_flag}
         PRIVATE http_plugin -Wl,${whole_archive_flag} faucet_testnet_plugin -Wl,${no_whole_archive_flag}
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
