@@ -672,7 +672,7 @@ int main( int argc, char** argv ) {
    string abiPath;
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
    contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))->required();
-   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST"))->required()
+   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM"))->required()
          ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
               ->check(CLI::ExistingFile);
@@ -682,15 +682,24 @@ int main( int argc, char** argv ) {
       std::string wast;
       std::cout << localized("Reading WAST...") << std::endl;
       fc::read_file_contents(wastPath, wast);
-      std::cout << localized("Assembling WASM...") << std::endl;
-      auto wasm = assemble_wast(wast);
+
+      vector<uint8_t> wasm;
+      const string binary_wasm_header = "\x00\x61\x73\x6d";
+      if(wast.compare(0, 4, binary_wasm_header)) {
+         std::cout << localized("Using already assembled WASM...") << std::endl;
+         wasm = vector<uint8_t>(wast.begin(), wast.end());
+      }
+      else {
+         std::cout << localized("Assembling WASM...") << std::endl;
+         wasm = assemble_wast(wast);
+      }
 
       contracts::setcode handler;
       handler.account = account;
       handler.code.assign(wasm.begin(), wasm.end());
 
       signed_transaction trx;
-      trx.write_scope = sort_names({config::system_account_name, account});
+      trx.write_scope = sort_names({config::eosio_auth_scope, account});
       trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
 
       if (abi->count()) {

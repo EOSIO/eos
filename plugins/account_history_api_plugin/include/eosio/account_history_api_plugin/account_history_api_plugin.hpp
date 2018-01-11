@@ -4,9 +4,9 @@
  */
 
 #pragma once
-#include <eos/account_history_plugin/account_history_plugin.hpp>
-#include <eos/chain_plugin/chain_plugin.hpp>
-#include <eos/http_plugin/http_plugin.hpp>
+#include <eosio/account_history_plugin/account_history_plugin.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
 

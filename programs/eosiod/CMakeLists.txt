@@ -30,9 +30,10 @@ target_include_directories(eosiod PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries( eosiod
         PRIVATE appbase
-#        PRIVATE account_history_api_plugin account_history_plugin db_plugin
+        PRIVATE account_history_api_plugin account_history_plugin
+#        PRIVATE db_plugin
         PRIVATE chain_api_plugin producer_plugin chain_plugin 
-       PRIVATE  wallet_api_plugin
+        PRIVATE  wallet_api_plugin
         PRIVATE net_plugin net_api_plugin txn_test_gen_plugin
         PRIVATE http_plugin faucet_testnet_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
