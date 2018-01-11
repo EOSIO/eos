@@ -41,8 +41,8 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_permission,            eosio::chain::transaction_exception, 3030017, "Unsatisfied permission" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_auth_exceeded,             eosio::chain::transaction_exception, 3030018, "Number of transaction messages per authorized account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_code_exceeded,             eosio::chain::transaction_exception, 3030019, "Number of transaction messages per code account has been exceeded" )
-   FC_DECLARE_DERIVED_EXCEPTION( tx_missing_read_scope,             eosio::chain::transaction_exception, 3030020, "missing required read scope" )
-   FC_DECLARE_DERIVED_EXCEPTION( tx_missing_write_scope,            eosio::chain::transaction_exception, 3030021, "missing required write scope" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_missing_read_lock,              eosio::chain::transaction_exception, 3030020, "missing required read lock" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_missing_write_lock,             eosio::chain::transaction_exception, 3030021, "missing required write lock" )
    FC_DECLARE_DERIVED_EXCEPTION( wasm_execution_error,              eosio::chain::transaction_exception, 3030022, "Runtime Error Processing WASM" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )

@@ -193,7 +193,7 @@ class apply_context {
       vector<action>                      _inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
 
-      vector<scope_name>                  _read_scopes;
+      vector<shard_lock>                  _read_locks;
       vector<scope_name>                  _write_scopes;
 };
 

@@ -34,24 +34,25 @@ void apply_context::exec_one()
       std::sort(_write_scopes.begin(), _write_scopes.end());
    }
 
-   if (_read_scopes.empty()) {
-      std::sort(_read_scopes.begin(), _read_scopes.end());
+   if (_read_locks.empty()) {
+      std::sort(_read_locks.begin(), _read_locks.end());
       // remove any write_scopes
-      auto r_iter = _read_scopes.begin();
-      for( auto w_iter = _write_scopes.cbegin(); (w_iter != _write_scopes.cend()) && (r_iter != _read_scopes.end()); ++w_iter) {
-         while(r_iter != _read_scopes.end() && *r_iter < *w_iter) {
+      auto r_iter = _read_locks.begin();
+      for( auto w_iter = _write_scopes.cbegin(); (w_iter != _write_scopes.cend()) && (r_iter != _read_locks.end()); ++w_iter) {
+         shard_lock w_lock = {receiver, *w_iter};
+         while(r_iter != _read_locks.end() && *r_iter < w_lock ) {
             ++r_iter;
          }
 
-         if (*r_iter == *w_iter) {
-            r_iter = _read_scopes.erase(r_iter);
+         if (*r_iter == w_lock) {
+            r_iter = _read_locks.erase(r_iter);
          }
       }
    }
 
    // create a receipt for this
    vector<data_access_info> data_access;
-   data_access.reserve(_write_scopes.size() + _read_scopes.size());
+   data_access.reserve(_write_scopes.size() + _read_locks.size());
    for (const auto& scope: _write_scopes) {
       auto key = boost::make_tuple(scope, receiver);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
@@ -74,19 +75,19 @@ void apply_context::exec_one()
       }
    }
 
-   for (const auto& scope: _read_scopes) {
-      auto key = boost::make_tuple(scope, receiver);
+   for (const auto& lock: _read_locks) {
+      auto key = boost::make_tuple(lock.scope, lock.account);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
       if (scope_sequence == nullptr) {
-         data_access.emplace_back(data_access_info{data_access_info::read, scope, 0});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::read, scope, scope_sequence->sequence});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, scope_sequence->sequence});
       }
    }
 
    results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str(), 0, 0, move(data_access)});
    _pending_console_output = std::ostringstream();
-   _read_scopes.clear();
+   _read_locks.clear();
    _write_scopes.clear();
 }
 
@@ -132,7 +133,7 @@ static bool locks_contain(const vector<shard_lock>& locks, const account_name& a
 
 void apply_context::require_write_lock(const scope_name& scope) {
    if (allowed_write_locks) {
-      EOS_ASSERT( locks_contain(*allowed_write_locks, receiver, scope), tx_missing_write_scope, "missing write scope ${scope}", ("scope",scope) );
+      EOS_ASSERT( locks_contain(*allowed_write_locks, receiver, scope), tx_missing_write_lock, "missing write lock \"${a}::${s}\"", ("a", receiver)("s",scope) );
    }
 
    if (!scopes_contain(_write_scopes, scope)) {
@@ -142,11 +143,11 @@ void apply_context::require_write_lock(const scope_name& scope) {
 
 void apply_context::require_read_lock(const account_name& account, const scope_name& scope) {
    if (allowed_read_locks) {
-      EOS_ASSERT( locks_contain(*allowed_read_locks, account, scope), tx_missing_read_scope, "missing read scope ${scope}", ("scope",scope) );
+      EOS_ASSERT( locks_contain(*allowed_read_locks, account, scope), tx_missing_read_lock, "missing read lock \"${a}::${s}\"", ("a", account)("s",scope) );
    }
 
-   if (!scopes_contain(_read_scopes, scope)) {
-      _read_scopes.emplace_back(scope);
+   if (!locks_contain(_read_locks, account, scope)) {
+      _read_locks.emplace_back(shard_lock{account, scope});
    }
 }
 
