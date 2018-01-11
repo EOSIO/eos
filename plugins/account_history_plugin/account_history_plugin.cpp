@@ -386,7 +386,8 @@ bool account_history_plugin_impl::is_scope_relevant(const vector<account_name>& 
 
 fc::variant account_history_plugin_impl::transaction_to_variant(const signed_transaction& txn) const
 {
-   auto resolver = [&database = chain_plug->chain().get_database()]( const account_name& name ) -> optional<abi_serializer> {
+   const chainbase::database& database = chain_plug->chain().get_database();
+   auto resolver = [&database]( const account_name& name ) -> optional<abi_serializer> {
       const auto* accnt = database.find<chain::account_object,chain::by_name>( name );
       if (accnt != nullptr) {
          abi_def abi;
