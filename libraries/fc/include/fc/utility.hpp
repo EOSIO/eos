@@ -63,7 +63,9 @@ namespace fc {
 
   template<typename T>
   void move_append(std::vector<T> &dest, std::vector<T>&& src ) {
-    if (dest.empty()) {
+    if (src.empty()) {
+      return;
+    } else if (dest.empty()) {
       dest = std::move(src);
     } else {
       dest.insert(std::end(dest), std::make_move_iterator(std::begin(src)), std::make_move_iterator(std::end(src)));

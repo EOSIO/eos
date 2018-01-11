@@ -100,6 +100,36 @@ namespace eosio { namespace chain {
       return names;
    }
 
+   /**
+    * append incoming scopes to a vector of scopes maintaining the invariants that the final
+    * vector is sorted and unique
+    *
+    * @param scopes
+    * @param incoming
+    */
+   inline void move_append_names(std::vector<name>& scopes, std::vector<name>&& incoming) {
+      fc::move_append(scopes, move(incoming));
+
+      if (!scopes.empty()) {
+         sort_names(std::forward<std::vector<name>>(scopes));
+      }
+   }
+
+   /**
+    * append incoming scopes to a vector of scopes maintaining the invariants that the final
+    * vector is sorted and unique
+    *
+    * @param scopes
+    * @param incoming
+    */
+   inline void copy_append_names(std::vector<name>& scopes, const std::vector<name>& incoming) {
+      scopes.insert(scopes.end(), incoming.begin(), incoming.end());
+
+      if (!scopes.empty()) {
+         sort_names(std::forward<std::vector<name>>(scopes));
+      }
+   }
+
 } } // eosio::chain
 
 namespace fc {

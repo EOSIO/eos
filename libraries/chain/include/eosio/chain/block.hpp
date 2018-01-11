@@ -49,8 +49,14 @@ namespace eosio { namespace chain {
    };
 
 
-   typedef vector<transaction_receipt>   shard; /// new or generated transactions
-   typedef vector<shard>                 cycle;
+   struct shard_summary {
+      vector<scope_name>            read_scopes;
+      vector<scope_name>            write_scopes;
+      vector<transaction_receipt>   transactions; /// new or generated transactions
+   };
+
+   typedef vector<shard_summary>    cycle;
+
    struct region_summary {
       uint16_t region = 0;
       vector<cycle>    cycles_summary;
@@ -140,6 +146,7 @@ FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
            (producer)(new_producers))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
+FC_REFLECT( eosio::chain::shard_summary, (read_scopes)(write_scopes)(transactions))
 FC_REFLECT( eosio::chain::region_summary, (region)(cycles_summary) )
 FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (regions))
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_summary), (input_transactions))

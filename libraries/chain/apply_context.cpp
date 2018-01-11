@@ -11,7 +11,7 @@ namespace eosio { namespace chain {
 void apply_context::exec_one()
 {
    try {
-      auto native = mutable_controller.find_apply_handler(receiver, act.scope, act.name);
+      auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
       } else {
@@ -27,12 +27,19 @@ void apply_context::exec_one()
             wasm.apply(code, *this);
          }
       }
+
+      if (results.read_scopes.empty()) {
+         std::sort(results.read_scopes.begin(), results.read_scopes.end());
+      }
+      if (results.write_scopes.empty()) {
+         std::sort(results.write_scopes.begin(), results.write_scopes.end());
+      }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
    // create a receipt for this
    vector<data_access_info> data_access;
-   data_access.reserve(trx.write_scope.size() + trx.read_scope.size());
-   for (const auto& scope: trx.write_scope) {
+   data_access.reserve(results.write_scopes.size() + results.read_scopes.size());
+   for (const auto& scope: results.write_scopes) {
       auto key = boost::make_tuple(scope, receiver);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
       if (scope_sequence == nullptr) {
@@ -54,7 +61,7 @@ void apply_context::exec_one()
       }
    }
 
-   for (const auto& scope: trx.read_scope) {
+   for (const auto& scope: results.read_scopes) {
       auto key = boost::make_tuple(scope, receiver);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
       if (scope_sequence == nullptr) {
@@ -70,7 +77,7 @@ void apply_context::exec_one()
 
 void apply_context::exec()
 {
-   _notified.push_back(act.scope);
+   _notified.push_back(act.account);
 
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
@@ -78,7 +85,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i], published, sender);
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -100,28 +107,34 @@ void apply_context::require_authorization(const account_name& account,
               ("account",account)("permission",permission) );
 }
 
-void apply_context::require_write_scope(const account_name& account)const {
-   for( const auto& s : trx.write_scope )
-      if( s == account ) return;
+static bool scopes_contain(const vector<scope_name>& scopes, const scope_name& scope) {
+   for (const auto &s : scopes) {
+      if (s == scope) {
+         return true;
+      }
+   }
 
-   if( trx.write_scope.size() == 1 && trx.write_scope.front() == config::eosio_all_scope )
-      return;
-
-   EOS_ASSERT( false, tx_missing_write_scope, "missing write scope ${account}", 
-               ("account",account) );
+   return false;
 }
 
-void apply_context::require_read_scope(const account_name& account)const {
-   for( const auto& s : trx.write_scope )
-      if( s == account ) return;
-   for( const auto& s : trx.read_scope )
-      if( s == account ) return;
+void apply_context::require_write_scope(const scope_name& scope) {
+   if (trx_meta.allowed_write_scopes) {
+      EOS_ASSERT( scopes_contain(**trx_meta.allowed_write_scopes, scope), tx_missing_write_scope, "missing write scope ${scope}", ("scope",scope) );
+   }
 
-   if( trx.write_scope.size() == 1 && trx.write_scope.front() == config::eosio_all_scope )
-      return;
+   if (!scopes_contain(results.write_scopes, scope)) {
+      results.write_scopes.emplace_back(scope);
+   }
+}
 
-   EOS_ASSERT( false, tx_missing_read_scope, "missing read scope ${account}", 
-               ("account",account) );
+void apply_context::require_read_scope(const scope_name& scope) {
+   if (trx_meta.allowed_read_scopes) {
+      EOS_ASSERT( scopes_contain(**trx_meta.allowed_read_scopes, scope), tx_missing_read_scope, "missing read scope ${scope}", ("scope",scope) );
+   }
+
+   if (!scopes_contain(results.read_scopes, scope)) {
+      results.read_scopes.emplace_back(scope);
+   }
 }
 
 bool apply_context::has_recipient( account_name code )const {
@@ -160,8 +173,6 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       if (receiver != config::system_account_name) {
          controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
       }
-
-      controller.validate_scope( trx );
 
       trx.sender = receiver; //  "Attempting to send from another account"
       trx.set_reference_block(controller.head_block_id());

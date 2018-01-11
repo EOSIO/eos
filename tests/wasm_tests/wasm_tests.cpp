@@ -26,7 +26,7 @@ struct assertdef {
    int8_t      condition;
    string      message;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return N(asserter);
    }
 
@@ -38,7 +38,7 @@ struct assertdef {
 FC_REFLECT(assertdef, (condition)(message));
 
 struct provereset {
-   static scope_name get_scope() {
+   static account_name get_account() {
       return N(asserter);
    }
 
@@ -64,7 +64,7 @@ constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
 
 template<uint64_t NAME>
 struct test_api_action {
-   static scope_name get_scope() {
+   static account_name get_account() {
       return N(tester);
    }
 
@@ -102,7 +102,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
       BOOST_CHECK_EQUAL(result.status, transaction_receipt::executed);
       BOOST_CHECK_EQUAL(result.action_traces.size(), 1);
       BOOST_CHECK_EQUAL(result.action_traces.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.scope.to_string(), name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.account.to_string(), name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result.action_traces.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
       BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.size(),  1 );
       BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
@@ -195,7 +195,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    variant pretty_trx = mutable_variant_object()
       ("actions", variants({
          mutable_variant_object()
-            ("scope", "asserter")
+            ("account", "asserter")
             ("name", "procassert")
             ("authorization", variants({
                mutable_variant_object()
@@ -293,9 +293,8 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
    // make a transfer from the contract to a user
    {
       signed_transaction trx;
-      trx.write_scope = {N(currency),N(alice)};
       action transfer_act;
-      transfer_act.scope = N(currency);
+      transfer_act.account = N(currency);
       transfer_act.name = N(transfer);
       transfer_act.authorization = vector<permission_level>{{N(currency), config::active_name}};
       transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
@@ -316,9 +315,8 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
    // Overspend!
    {
       signed_transaction trx;
-      trx.write_scope = {N(alice),N(bob)};
       action transfer_act;
-      transfer_act.scope = N(currency);
+      transfer_act.account = N(currency);
       transfer_act.name = N(transfer);
       transfer_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
@@ -339,9 +337,8 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
    // Full spend
    {
       signed_transaction trx;
-      trx.write_scope = {N(alice),N(bob)};
       action transfer_act;
-      transfer_act.scope = N(currency);
+      transfer_act.account = N(currency);
       transfer_act.name = N(transfer);
       transfer_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
@@ -381,9 +378,8 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    // set up proxy owner
    {
       signed_transaction trx;
-      trx.write_scope = {N(proxy)};
       action setowner_act;
-      setowner_act.scope = N(proxy);
+      setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
       setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
       setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
@@ -439,9 +435,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    // set up proxy owner
    {
       signed_transaction trx;
-      trx.write_scope = {N(proxy)};
       action setowner_act;
-      setowner_act.scope = N(proxy);
+      setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
       setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
       setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
@@ -481,9 +476,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    // set up bob owner
    {
       signed_transaction trx;
-      trx.write_scope = {N(bob)};
       action setowner_act;
-      setowner_act.scope = N(bob);
+      setowner_act.account = N(bob);
       setowner_act.name = N(setowner);
       setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
       setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()

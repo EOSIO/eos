@@ -554,8 +554,8 @@ void apply_eosio_nonce(apply_context&) {
 }
 
 void apply_eosio_onerror(apply_context& context) {
-   assert(context.sender);
-   context.require_recipient(*context.sender);
+   assert(context.trx_meta.sender);
+   context.require_recipient(*context.trx_meta.sender);
 }
 
 static const abi_serializer& get_abi_serializer() {
@@ -676,7 +676,6 @@ void apply_eosio_postrecovery(apply_context& context) {
    dtrx.execute_after = context.controller.head_block_time() + delay_lock;
    dtrx.set_reference_block(context.controller.head_block_id());
    dtrx.expiration = dtrx.execute_after + fc::seconds(60);
-   dtrx.write_scope = sort_names({account, config::eosio_auth_scope, config::system_account_name});
    dtrx.actions.emplace_back(vector<permission_level>{{account,config::active_name}},
                              passrecovery { account });
 
@@ -700,7 +699,7 @@ void apply_eosio_passrecovery(apply_context& context) {
    const auto& account = pass_act.account;
 
    // ensure this is only processed if it is a deferred transaction from the system account
-   FC_ASSERT(context.sender && *context.sender == config::system_account_name);
+   FC_ASSERT(context.trx_meta.sender && *context.trx_meta.sender == config::system_account_name);
    context.require_authorization(account);
 
    auto maybe_recovery = get_pending_recovery(context, account);

@@ -285,18 +285,7 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata& dat
    // for now apply the transaction serially but schedule it according to those invariants
    validate_referenced_accounts(trx);
 
-   auto shardnum = 0;
    auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
-   bool new_cycle = false;
-
-   if (!force_new_cycle) {
-      shardnum = _pending_cycle.schedule( trx );
-   }
-   if (shardnum == -1 || force_new_cycle) {
-      cyclenum += 1;
-      shardnum = 0;
-      new_cycle = true;
-   }
 
    /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
    /// the transaction first so that there is nothing to undo... this only works because things are currently
@@ -304,24 +293,17 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata& dat
    // set cycle, shard, region etc
    data.region_id = 0;
    data.cycle_index = cyclenum;
-   data.shard_index = shardnum;
+   data.shard_index = 0;
    auto result = _apply_transaction( data );
 
-   if( new_cycle ) { /// schedule conflict start new cycle
-      _finalize_pending_cycle();
-      _start_pending_cycle();
-      FC_ASSERT(_pending_cycle.schedule( trx ) == shardnum);
-   }
-
-
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
-   if( shardnum >= bcycle.size() ) {
-      _start_pending_shard();
-   }
+   auto& bshard = bcycle.front();
 
+   copy_append_names(bshard.read_scopes, result.read_scopes);
+   copy_append_names(bshard.write_scopes, result.write_scopes);
+   bshard.transactions.emplace_back( result );
 
-   bcycle.at(shardnum).emplace_back( result );
-   _pending_cycle_trace->shard_traces.at(shardnum).append(result);
+   _pending_cycle_trace->shard_traces.at(0).append(result);
 
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
@@ -346,7 +328,6 @@ void chain_controller::_start_pending_block()
  */
 void chain_controller::_start_pending_cycle() {
    _pending_block->regions.back().cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
-   _pending_cycle = pending_cycle_state();
    _pending_cycle_trace = cycle_trace();
    _start_pending_shard();
 
@@ -409,10 +390,10 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
                auto prefix = fc::format_string(
-                  "[(${s},${a})->${r}]",
+                  "[(${a},${n})->${r}]",
                   fc::mutable_variant_object()
-                     ("s", ar.act.scope)
-                     ("a", ar.act.name)
+                     ("a", ar.act.account)
+                     ("n", ar.act.name)
                      ("r", ar.receiver));
                std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
                std::cerr << ar.console;
@@ -598,7 +579,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
          uint32_t shard_index = 0;
          for (const auto& shard: cycle) {
             shard_trace s_trace;
-            for (const auto& receipt : shard) {
+            for (const auto& receipt : shard.transactions) {
                 auto make_metadata = [&](){
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
@@ -614,6 +595,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx.region_id = r.region;
                mtrx.cycle_index = cycle_index;
                mtrx.shard_index = shard_index;
+               mtrx.allowed_read_scopes = &shard.read_scopes;
+               mtrx.allowed_write_scopes = &shard.write_scopes;
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(mtrx));
 
@@ -676,7 +659,7 @@ void chain_controller::check_authorization( const vector<action>& actions,
       for( const auto& declared_auth : act.authorization ) {
 
          // check a minimum permission if one is set, otherwise assume the contract code will validate
-         auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.scope, act.name);
+         auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
          if (min_permission_name) {
             const auto& min_permission = _db.get<permission_object, by_owner>(boost::make_tuple(declared_auth.actor, *min_permission_name));
 
@@ -707,38 +690,6 @@ void chain_controller::check_transaction_authorization(const signed_transaction&
                                                        bool allow_unused_signatures)const 
 {
    check_authorization( trx.actions, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
-}
-
-void chain_controller::validate_scope( const transaction& trx )const {
-   for( uint32_t i = 1; i < trx.read_scope.size(); ++i ) {
-      EOS_ASSERT( trx.read_scope[i-1] < trx.read_scope[i], transaction_exception, 
-                  "Scopes must be sorted and unique" );
-   }
-   for( uint32_t i = 1; i < trx.write_scope.size(); ++i ) {
-      EOS_ASSERT( trx.write_scope[i-1] < trx.write_scope[i], transaction_exception, 
-                  "Scopes must be sorted and unique" );
-   }
-
-   /**
-    * We need to verify that all authorizing accounts have write scope because write
-    * access is necessary to update bandwidth usage.
-    */
-   ///{
-   auto has_write_scope = [&]( auto s ) { return std::binary_search( trx.write_scope.begin(),
-                                                                     trx.write_scope.end(),
-                                                                     s ); };
-   for( const auto& a : trx.actions ) {
-      for( const auto& auth : a.authorization ) {
-         FC_ASSERT( has_write_scope( auth.actor ), "write scope of the authorizing account is required" );
-      }
-   }
-   ///@}
-
-   vector<account_name> intersection;
-   std::set_intersection( trx.read_scope.begin(), trx.read_scope.end(),
-                          trx.write_scope.begin(), trx.write_scope.end(),
-                          std::back_inserter(intersection) );
-   FC_ASSERT( intersection.size() == 0, "a transaction may not redeclare scope in readscope" );
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,
@@ -797,13 +748,8 @@ void chain_controller::validate_tapos(const transaction& trx)const {
 
 void chain_controller::validate_referenced_accounts( const transaction& trx )const 
 { try { 
-   for( const auto& scope : trx.read_scope )
-      require_scope(scope);
-   for( const auto& scope : trx.write_scope )
-      require_scope(scope);
-
    for( const auto& act : trx.actions ) {
-      require_account(act.scope);
+      require_account(act.account);
       for (const auto& auth : act.authorization )
          require_account(auth.actor);
    }
@@ -1055,7 +1001,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          auto acts = starter.prepare_database(*this, _db);
 
          transaction genesis_setup_transaction;
-         genesis_setup_transaction.write_scope = { config::eosio_all_scope };
          genesis_setup_transaction.actions = move(acts);
 
          ilog( "applying genesis transaction" );
@@ -1371,11 +1316,13 @@ static void log_handled_exceptions(const transaction& trx) {
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
    for (const auto &act : meta.trx.actions) {
-      apply_context context(*this, _db, meta.trx, act, meta.published, meta.sender);
+      apply_context context(*this, _db, act, meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
       fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
+      move_append_names(result.read_scopes, std::forward<vector<scope_name>>(context.results.read_scopes));
+      move_append_names(result.write_scopes, std::forward<vector<scope_name>>(context.results.write_scopes));
    }
 
    uint32_t act_usage = result.action_traces.size();
@@ -1384,7 +1331,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       at.region_id = meta.region_id;
       at.cycle_index = meta.cycle_index;
       if (at.receiver == config::system_account_name &&
-          at.act.scope == config::system_account_name &&
+          at.act.account == config::system_account_name &&
           at.act.name == N(setcode)) {
          act_usage += config::setcode_act_usage;
       }
@@ -1418,18 +1365,18 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    result.status = transaction_trace::soft_fail;
 
    transaction etrx;
-   etrx.read_scope = meta.trx.read_scope;
-   etrx.write_scope = meta.trx.write_scope;
    etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
                              contracts::onerror(meta.generated_data, meta.generated_data + meta.generated_size) );
 
    try {
       auto temp_session = _db.start_undo_session(true);
 
-      apply_context context(*this, _db, etrx, etrx.actions.front(), meta.published, meta.sender);
+      apply_context context(*this, _db, etrx.actions.front(), meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
+      move_append_names(result.read_scopes, std::forward<vector<scope_name>>(context.results.read_scopes));
+      move_append_names(result.write_scopes, std::forward<vector<scope_name>>(context.results.write_scopes));
 
       uint32_t act_usage = result.action_traces.size();
 

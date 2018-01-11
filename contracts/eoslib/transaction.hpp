@@ -26,8 +26,8 @@ namespace eosio {
    class action {
    public:
       template<typename Payload, typename ...Permissions>
-      action(const scope_name& scope, const action_name& name, const Payload& payload, Permissions... permissions )
-      :_scope(scope), _name(name), _num_permissions(0)
+      action(const account_name& account, const action_name& name, const Payload& payload, Permissions... permissions )
+      :_account(account), _name(name), _num_permissions(0)
       {
          assert(sizeof(payload) <= MaxPayloadSize, "Payload exceeds maximum size");
          memcpy(_payload, &payload, sizeof(payload));
@@ -36,16 +36,16 @@ namespace eosio {
       }
 
       template<typename Payload>
-      action(const scope_name& scope, const action_name& name, const Payload& payload )
-      : _scope(scope), _name(name),  _num_permissions(0)
+      action(const account_name& account, const action_name& name, const Payload& payload )
+      : _account(account), _name(name),  _num_permissions(0)
       {
          assert(sizeof(payload) <= MaxPayloadSize, "payload exceeds maximum size");
          _payload_size = sizeof(payload);
          memcpy(_payload, &payload, sizeof(payload));
       }
 
-      action(const scope_name& scope, const action_name& name)
-      :_scope(scope), _name(name),  _payload_size(0), _num_permissions(0)
+      action(const account_name& account, const action_name& name)
+      :_account(account), _name(name),  _payload_size(0), _num_permissions(0)
       {
       }
 
@@ -69,7 +69,7 @@ namespace eosio {
          send_inline(buffer, used);
       }
 
-      scope_name        _scope;
+      account_name      _account;
       action_name       _name;
       char              _payload[MaxPayloadSize];
       size_t            _payload_size;
@@ -77,12 +77,12 @@ namespace eosio {
       size_t            _num_permissions;
 
       static constexpr size_t max_buffer_size() {
-         return sizeof(size_t) + MaxPayloadSize + sizeof(size_t) + (MaxPermissions * sizeof(account_permission)) + sizeof(scope_name) + sizeof(action_name);
+         return sizeof(size_t) + MaxPayloadSize + sizeof(size_t) + (MaxPermissions * sizeof(account_permission)) + sizeof(account_name) + sizeof(action_name);
       }
 
       size_t pack( char *buffer, size_t buffer_size ) const {
          datastream<char*>  ds( buffer, buffer_size );
-         eosio::raw::pack(ds, _scope);
+         eosio::raw::pack(ds, _account);
          eosio::raw::pack(ds, _name);
          eosio::raw::pack(ds, _permissions, _num_permissions);
          eosio::raw::pack(ds, _payload, _payload_size);
@@ -102,46 +102,16 @@ namespace eosio {
       {
       }
 
-      template<size_t MaxActionsSize, size_t MaxWriteScopes, size_t MaxReadScopes>
+      template<size_t MaxActionsSize>
       friend class deferred_transaction;
    };
 
-   template<size_t MaxActionsSize = 256, size_t MaxWriteScopes = 2, size_t MaxReadScopes = 4>
+   template<size_t MaxActionsSize = 256>
    class transaction {
-   private:
-      static void insert_sorted_unique( scope_name scope, scope_name *scopes, size_t &size, const char* non_unique_message) {
-         size_t insert_index = 0;
-         for (; insert_index < size; insert_index++) {
-            assert(scopes[insert_index] != scope, non_unique_message);
-            if (scopes[insert_index] > scope) {
-               break;
-            }
-         }
-
-         if (insert_index != size) {
-            for (size_t idx = size; idx > insert_index; idx--) {
-               scopes[idx] = scopes[idx - 1];
-            }
-         }
-
-         scopes[insert_index] = scope;
-         size++;
-      }
-
    public:
       transaction(time expiration = now() + 60, region_id region = 0)
-      :_expiration(expiration),_region(region),_num_read_scopes(0), _num_write_scopes(0), _action_buffer_size(0), _num_actions(0)
+      :_expiration(expiration),_region(region), _action_buffer_size(0), _num_actions(0)
       {}
-
-      void add_read_scope(account_name scope) {
-         assert(_num_read_scopes < MaxReadScopes, "Too many Read Scopes");
-         insert_sorted_unique(scope, _read_scopes, _num_read_scopes, "Duplicate Read Scope");
-      }
-
-      void add_write_scope(account_name scope) {
-         assert(_num_write_scopes < MaxWriteScopes, "Too many Write Scopes");
-         insert_sorted_unique(scope, _write_scopes, _num_write_scopes, "Duplicate Write Scope");
-      }
 
       template<size_t ...ActArgs>
       void add_action(const action<ActArgs...> &act) {
@@ -157,8 +127,6 @@ namespace eosio {
 
       static constexpr size_t max_buffer_size() {
          return sizeof(time) + sizeof(region_id) + sizeof(uint16_t) + sizeof(uint32_t) +
-                sizeof(size_t) + (MaxReadScopes * sizeof(scope_name)) +
-                sizeof(size_t) + (MaxWriteScopes * sizeof(scope_name)) +
                 sizeof(size_t) + MaxActionsSize;
       }
 
@@ -168,8 +136,6 @@ namespace eosio {
          eosio::raw::pack(ds, _region);
          eosio::raw::pack(ds, uint16_t(0));
          eosio::raw::pack(ds, uint32_t(0));
-         eosio::raw::pack(ds, _read_scopes, _num_read_scopes);
-         eosio::raw::pack(ds, _write_scopes, _num_write_scopes);
          eosio::raw::pack(ds, unsigned_int(_num_actions));
          ds.write(_action_buffer, _action_buffer_size);
          return ds.tellp();
@@ -191,12 +157,6 @@ namespace eosio {
       uint16_t        _ref_block_num;
       uint32_t        _ref_block_id;
 
-      scope_name      _read_scopes[MaxReadScopes];
-      size_t          _num_read_scopes;
-
-      scope_name      _write_scopes[MaxWriteScopes];
-      size_t          _num_write_scopes;
-
       char            _action_buffer[MaxActionsSize];
       size_t          _action_buffer_size;
 
@@ -206,7 +166,7 @@ namespace eosio {
       template<size_t MaxPayloadSize, size_t MaxPermissions>
       static size_t unpack_action(char* buffer, size_t size, size_t offset, action<MaxPayloadSize, MaxPermissions> &act) {
          datastream<char*> ds(buffer + offset, size - offset);
-         eosio::raw::unpack(ds, act._scope);
+         eosio::raw::unpack(ds, act._account);
          eosio::raw::unpack(ds, act._name);
          eosio::raw::unpack(ds, act._permissions, act._num_permissions, MaxPermissions);
          eosio::raw::unpack(ds, act._payload, act._payload_size, MaxPayloadSize);
@@ -214,15 +174,15 @@ namespace eosio {
       }
    };
 
-   template<size_t MaxActionsSize = 256, size_t MaxWriteScopes = 2, size_t MaxReadScopes = 4>
-   class deferred_transaction : public transaction<MaxActionsSize, MaxWriteScopes, MaxReadScopes> {
+   template<size_t MaxActionsSize = 256>
+   class deferred_transaction : public transaction<MaxActionsSize> {
       public:
          uint32_t     _sender_id;
          account_name _sender;
          time         _delay_until;
 
          static constexpr size_t max_buffer_size() {
-            return sizeof(uint32_t) + sizeof(account_name) + sizeof(time) + transaction<MaxActionsSize, MaxWriteScopes, MaxReadScopes>::max_buffer_size();
+            return sizeof(uint32_t) + sizeof(account_name) + sizeof(time) + transaction<MaxActionsSize>::max_buffer_size();
          }
 
          template< size_t MaxPayloadSize = 64, size_t MaxPermissions = 2 >
@@ -238,8 +198,6 @@ namespace eosio {
             eosio::raw::unpack(ds, result._region);
             eosio::raw::unpack(ds, result._ref_block_num);
             eosio::raw::unpack(ds, result._ref_block_id);
-            eosio::raw::unpack(ds, result._read_scopes, result._num_read_scopes, MaxReadScopes);
-            eosio::raw::unpack(ds, result._write_scopes, result._num_write_scopes, MaxWriteScopes);
             unsigned_int packed_num_actions;
             eosio::raw::unpack(ds, packed_num_actions);
             result._num_actions = packed_num_actions.value;
@@ -249,7 +207,7 @@ namespace eosio {
             size_t action_offset = 0;
             action<MaxPayloadSize, MaxPermissions> temp;
             for (size_t idx; idx < result._num_actions; idx++) {
-               action_offset = transaction<MaxActionsSize, MaxWriteScopes, MaxReadScopes>::unpack_action(temp_actions, temp_action_size, action_offset, temp);
+               action_offset = transaction<MaxActionsSize>::unpack_action(temp_actions, temp_action_size, action_offset, temp);
             }
             assert(action_offset <= MaxActionsSize, "Actions are too large to parse");
             result._action_buffer_size = action_offset;

@@ -17,11 +17,10 @@ class chain_controller;
 class apply_context {
 
    public:
-      apply_context(chain_controller& con, chainbase::database& db,
-                    const transaction& t, const action& a, const time_point& published, const optional<account_name>& sender)
-      :controller(con), db(db), trx(t), act(a), mutable_controller(con),
+      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta)
+      :controller(con), db(db), act(a), mutable_controller(con),
        mutable_db(db), used_authorizations(act.authorization.size(), false),
-       published(published), sender(sender) {}
+       trx_meta(trx_meta) {}
 
       void exec();
 
@@ -75,8 +74,8 @@ class apply_context {
        */
       void require_authorization(const account_name& account)const;
       void require_authorization(const account_name& account, const permission_name& permission)const;
-      void require_write_scope(const account_name& account)const;
-      void require_read_scope(const account_name& account)const;
+      void require_write_scope(const account_name& account);
+      void require_read_scope(const account_name& account);
 
       /**
        * Requires that the current action be delivered to account
@@ -96,7 +95,6 @@ class apply_context {
 
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
-      const transaction&            trx; ///< used to gather the valid read/write scopes
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running
 
@@ -107,10 +105,9 @@ class apply_context {
       ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
       vector<bool> used_authorizations;
 
-      const time_point&             published;
-      const optional<account_name>& sender;
+      const transaction_metadata&   trx_meta;
 
-      ///< pending transaction construction
+   ///< pending transaction construction
      /*
       typedef uint32_t pending_transaction_handle;
       struct pending_transaction : public transaction {
@@ -159,6 +156,9 @@ class apply_context {
          vector<action_trace>          applied_actions;
          vector<deferred_transaction>  generated_transactions;
          vector<deferred_reference>    canceled_deferred;
+         vector<scope_name>            read_scopes;
+         vector<scope_name>            write_scopes;
+
       };
 
       apply_results results;
@@ -184,6 +184,8 @@ class apply_context {
          fc::move_append(results.applied_actions, move(other.applied_actions));
          fc::move_append(results.generated_transactions, move(other.generated_transactions));
          fc::move_append(results.canceled_deferred, move(other.canceled_deferred));
+         move_append_names(results.read_scopes, forward<vector<scope_name>>(other.read_scopes));
+         move_append_names(results.write_scopes, forward<vector<scope_name>>(other.write_scopes));
       }
 
       void exec_one();

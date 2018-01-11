@@ -34,7 +34,7 @@ namespace eosio { namespace chain {
     *  were properly declared when it executes.
     */
    struct action {
-      scope_name                 scope;
+      account_name               account;
       action_name                name;
       vector<permission_level>   authorization;
       vector<char>               data;
@@ -43,7 +43,7 @@ namespace eosio { namespace chain {
 
       template<typename T, std::enable_if_t<std::is_base_of<bytes, T>::value, int> = 1>
       action( vector<permission_level> auth, const T& value ) {
-         scope       = T::get_scope();
+         account     = T::get_account();
          name        = T::get_name();
          authorization = move(auth);
          data.assign(value.data(), value.data() + value.size());
@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
 
       template<typename T, std::enable_if_t<!std::is_base_of<bytes, T>::value, int> = 1>
       action( vector<permission_level> auth, const T& value ) {
-         scope       = T::get_scope();
+         account     = T::get_account();
          name        = T::get_name();
          authorization = move(auth);
          data        = fc::raw::pack(value);
@@ -59,8 +59,8 @@ namespace eosio { namespace chain {
 
       template<typename T>
       T as()const {
-         FC_ASSERT( scope == T::get_scope() );
-         FC_ASSERT( name  == T::get_name()  );
+         FC_ASSERT( account == T::get_account() );
+         FC_ASSERT( name == T::get_name()  );
          return fc::raw::unpack<T>(data);
       }
    };
@@ -128,8 +128,6 @@ namespace eosio { namespace chain {
     *  read and write scopes.
     */
    struct transaction : public transaction_header {
-      vector<account_name>   read_scope;
-      vector<account_name>   write_scope;
       vector<action>         actions;
 
       transaction_id_type id()const;
@@ -195,7 +193,10 @@ namespace eosio { namespace chain {
       vector<action_trace>          action_traces;
       vector<deferred_transaction>  deferred_transactions;
       vector<deferred_reference>    canceled_deferred;
+      vector<scope_name>            read_scopes;
+      vector<scope_name>            write_scopes;
    };
+
 
    struct transaction_metadata {
       transaction_metadata( const transaction& t )
@@ -230,14 +231,18 @@ namespace eosio { namespace chain {
       uint32_t                              sender_id = 0;
       const char*                           generated_data = nullptr;
       size_t                                generated_size = 0;
+
+      // scheduling related information
+      optional<const vector<scope_name>*>   allowed_read_scopes;
+      optional<const vector<scope_name>*>   allowed_write_scopes;
    };
 
 } } // eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
-FC_REFLECT( eosio::chain::action, (scope)(name)(authorization)(data) )
+FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
-FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (read_scope)(write_scope)(actions) )
+FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
 FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
@@ -245,7 +250,7 @@ FC_REFLECT( eosio::chain::data_access_info, (type)(scope)(sequence))
 FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions)(read_scopes)(write_scopes) )
 
 
 

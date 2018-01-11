@@ -406,10 +406,10 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      if (context.act.scope == config::system_account_name && context.act.name == N(setcode)) {
+      if (context.act.account == config::system_account_name && context.act.name == N(setcode)) {
          my->call("init", {}, code, context);
       } else {
-         vector<Value> args = {Value(uint64_t(context.act.scope)),
+         vector<Value> args = {Value(uint64_t(context.act.account)),
                                Value(uint64_t(context.act.name))};
          my->call("apply", args, code, context);
       }
@@ -664,12 +664,12 @@ class action_api : public context_aware_api {
       }
 
       fc::time_point_sec publication_time() {
-         return context.published;
+         return context.trx_meta.published;
       }
 
       name current_sender() {
-         if (context.sender) {
-            return *context.sender;
+         if (context.trx_meta.sender) {
+            return *context.trx_meta.sender;
          } else {
             return name();
          }
