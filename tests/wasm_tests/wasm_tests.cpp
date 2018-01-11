@@ -16,6 +16,8 @@
 
 #include <fc/variant_object.hpp>
 
+#include "test_wasts.hpp"
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -513,6 +515,35 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
 
 } FC_LOG_AND_RETHROW() /// test_currency
+
+/**
+ * Make sure WASM "start" method is used correctly
+ */
+BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(entrycheck)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(entrycheck), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(entrycheck), entry_wast);
+   produce_blocks(10);
+
+   signed_transaction trx;
+   action act;
+   act.scope = N(entrycheck);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(entrycheck),config::active_name}};
+   trx.actions.push_back(act);
+
+   set_tapos(trx);
+   trx.sign(get_private_key( N(entrycheck), "active" ), chain_id_type());
+   control->push_transaction(trx);
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   const auto& receipt = get_transaction_receipt(trx.id());
+   BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
+} FC_LOG_AND_RETHROW() /// prove_mem_reset
 
 
 BOOST_AUTO_TEST_SUITE_END()

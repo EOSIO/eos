@@ -870,9 +870,8 @@ launcher_def::write_config_file (tn_node_def &node) {
   if( instance.has_db ) {
     cfg << "plugin = eosio::db_plugin\n";
   }
-  cfg << "plugin = eosio::chain_api_plugin\n";
-      //<< "plugin = eosio::account_history_plugin\n"
-      //<< "plugin = eosio::account_history_api_plugin\n";
+  cfg << "plugin = eosio::chain_api_plugin\n"
+      << "plugin = eosio::account_history_api_plugin\n";
   cfg.close();
 }
 

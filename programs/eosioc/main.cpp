@@ -680,7 +680,7 @@ int main( int argc, char** argv ) {
 
       vector<uint8_t> wasm;
       const string binary_wasm_header = "\x00\x61\x73\x6d";
-      if(wast.compare(0, 4, binary_wasm_header)) {
+      if(wast.compare(0, 4, binary_wasm_header) == 0) {
          std::cout << localized("Using already assembled WASM...") << std::endl;
          wasm = vector<uint8_t>(wast.begin(), wast.end());
       }
