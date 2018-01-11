@@ -118,7 +118,7 @@ namespace Runtime
 
 		LLVMJIT::JITModuleBase* jitModule;
 
-      Uptr startFunctionIndex = UINTPTR_MAX;
+		Uptr startFunctionIndex = UINTPTR_MAX;
 
 		ModuleInstance(
 			std::vector<FunctionInstance*>&& inFunctionImports,
