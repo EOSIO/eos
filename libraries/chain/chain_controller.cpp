@@ -273,7 +273,6 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
 transaction_trace chain_controller::_push_transaction( transaction_metadata& data )
 {
    const transaction& trx = data.trx;
-   bool force_new_cycle = false;
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -538,6 +537,17 @@ void chain_controller::_apply_block(const signed_block& next_block, uint32_t ski
    });
 }
 
+static void validate_shard_scopes(const vector<scope_name>& scopes, string tag) {
+   if (scopes.size() < 2) {
+      return;
+   }
+
+   for (auto cur = scopes.begin() + 1; cur < scopes.end(); cur++) {
+      auto prev = cur - 1;
+      FC_ASSERT(*prev != *cur, "${tag} scope \"${scope}\" is not unique", ("tag",tag)("scope",*cur));
+      FC_ASSERT(*prev < *cur,  "${tag} scopes are not sorted", ("tag",tag));
+   }
+}
 
 void chain_controller::__apply_block(const signed_block& next_block)
 { try {
@@ -576,8 +586,32 @@ void chain_controller::__apply_block(const signed_block& next_block)
          cycle_trace c_trace;
          c_trace.shard_traces.reserve(cycle.size());
 
-         uint32_t shard_index = 0;
-         for (const auto& shard: cycle) {
+         // validate that no read_scope is used as a write scope in this cycle and that no two shards
+         // share write scopes
+         set<scope_name> read_scopes;
+         map<scope_name, uint32_t> write_scopes;
+
+         for (uint32_t shard_index = 0; shard_index < cycle.size(); shard_index++) {
+            const auto& shard = cycle.at(shard_index);
+
+            // Validate that the shards scopes are correct and available
+            validate_shard_scopes(shard.read_scopes,  "read");
+            validate_shard_scopes(shard.write_scopes, "write");
+
+            for (const auto& s: shard.read_scopes) {
+               FC_ASSERT(write_scopes.count(s) == 0,
+                  "shard ${i} requires read scope \"${s}\" which is locked for write by shard ${j}",
+                  ("i", shard_index)("s", s)("j", write_scopes[s]));
+               read_scopes.emplace(s);
+            }
+
+            for (const auto& s: shard.write_scopes) {
+               FC_ASSERT(write_scopes.count(s) == 0,
+                  "shard ${i} requires write scope \"${s}\" which is locked for write by shard ${j}",
+                  ("i", shard_index)("s", s)("j", write_scopes[s]));
+               write_scopes[s] = shard_index;
+            }
+
             shard_trace s_trace;
             for (const auto& receipt : shard.transactions) {
                 auto make_metadata = [&](){
@@ -608,7 +642,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                // check_transaction_authorization(trx, true);
             } /// for each transaction id
 
-            ++shard_index;
             s_trace.calculate_root();
             c_trace.shard_traces.emplace_back(move(s_trace));
          } /// for each shard
