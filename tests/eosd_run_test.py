@@ -258,11 +258,12 @@ try:
     transferAmount=975311
     Print("Transfer funds %d from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
-    transId=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
-    if transId is None:
+    trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
+    if trans is None:
         cmdError("eosc transfer")
         errorExit("Failed to transfer funds %d from account %s to %s" % (
             transferAmount, initaAccount.name, testeraAccount.name))
+    transId=testUtils.Node.getTransId(trans)
 
     expectedAmount=975311
     Print("Verify transfer, Expected: %d" % (expectedAmount))
@@ -276,7 +277,7 @@ try:
 
     expectedAccounts=[testeraAccount.name, currencyAccount.name, exchangeAccount.name]
     Print("Get accounts by key %s, Expected: %s" % (PUB_KEY3, expectedAccounts))
-    actualAccounts=node.getAccountsByKey(PUB_KEY3)
+    actualAccounts=node.getAccountsArrByKey(PUB_KEY3)
     if actualAccounts is None:
         cmdError("eosc get accounts pub_key3")
         errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY3))
@@ -287,7 +288,7 @@ try:
 
     expectedAccounts=[testeraAccount.name]
     Print("Get accounts by key %s, Expected: %s" % (PUB_KEY1, expectedAccounts))
-    actualAccounts=node.getAccountsByKey(PUB_KEY1)
+    actualAccounts=node.getAccountsArrByKey(PUB_KEY1)
     if actualAccounts is None:
         cmdError("eosc get accounts pub_key1")
         errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY1))
@@ -319,12 +320,15 @@ try:
     node.waitForTransIdOnNode(transId)
 
     Print("Get transaction details %s" % (transId))
-    transaction=node.getTransactionDetails(transId)
+    transaction=node.getTransaction(transId)
     if transaction is None:
         cmdError("eosc get transaction trans_id")
         errorExit("Failed to retrieve transaction details %s" % (transId))
 
-    if transaction.tType != "transfer" or transaction.amount != 975311:
+    typeVal=  transaction["transaction"]["messages"][0]["type"]
+    amountVal=transaction["transaction"]["messages"][0]["data"]["amount"]
+    if typeVal!= "transfer" or amountVal != 975311:
+    #if transaction.tType != "transfer" or transaction.amount != 975311:
         errorExit("FAILURE - get transaction trans_id failed: %s" % (transId), raw=True)
 
     Print("Get transactions for account %s" % (testeraAccount.name))
