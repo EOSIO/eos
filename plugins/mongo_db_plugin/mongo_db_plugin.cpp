@@ -2,12 +2,12 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/db_plugin/db_plugin.hpp>
+#include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/types.hpp>
-//todo #include <eosio/native_contract/native_contract_chain_initializer.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -26,6 +26,7 @@
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
+
 #endif
 
 namespace fc { class variant; }
@@ -82,7 +83,7 @@ public:
 
    void consum_blocks();
 
-   bool is_scope_relevant(const eosio::chain::shared_vector<account_name>& scope);
+   bool is_scope_relevant(const vector<account_name>& scope);
    void update_account(const chain::action& msg);
 
    static const account_name newaccount;
@@ -91,10 +92,11 @@ public:
    static const account_name unlock;
    static const account_name claim;
    static const account_name setcode;
+   static const account_name setabi;
 
    static const std::string blocks_col;
    static const std::string trans_col;
-   static const std::string msgs_col;
+   static const std::string actions_col;
    static const std::string accounts_col;
 };
 
@@ -106,10 +108,11 @@ const account_name db_plugin_impl::lock = "lock";
 const account_name db_plugin_impl::unlock = "unlock";
 const account_name db_plugin_impl::claim = "claim";
 const account_name db_plugin_impl::setcode = "setcode";
+const account_name db_plugin_impl::setabi = "setabi";
 
 const std::string db_plugin_impl::blocks_col = "Blocks";
 const std::string db_plugin_impl::trans_col = "Transactions";
-const std::string db_plugin_impl::msgs_col = "Messages";
+const std::string db_plugin_impl::actions_col = "Actions";
 const std::string db_plugin_impl::accounts_col = "Accounts";
 
 
@@ -186,15 +189,14 @@ namespace {
                 mongocxx::collection& accounts,
                 const chain::action& msg)
   {
-     /*
      using bsoncxx::builder::basic::kvp;
      try {
         abi_serializer abis;
-        if (msg.name == chain::config::system_account_name) {
+        if (msg.scope == chain::config::system_account_name) {
            abis.set_abi(db_plugin_impl::eos_abi);
         } else {
            auto from_account = find_account(accounts, msg.name);
-           auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<types::abi>();
+           auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
            abis.set_abi(abi);
         }
         auto v = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
@@ -208,15 +210,14 @@ namespace {
            elog("  EOS JSON: ${j}", ("j", json));
         }
      } catch (fc::exception& e) {
-        elog("Unable to convert message.data to ABI type: ${t}, what: ${e}", ("t", msg.type)("e", e.to_string()));
+        elog("Unable to convert action.data to ABI: ${s} :: ${n}, what: ${e}", ("s", msg.scope)("n", msg.name)("e", e.to_string()));
      } catch (std::exception& e) {
-        elog("Unable to convert message.data to ABI type: ${t}, std what: ${e}", ("t", msg.type)("e", e.what()));
+        elog("Unable to convert action.data to ABI: ${s} :: ${n}, std what: ${e}", ("s", msg.scope)("n", msg.name)("e", e.what()));
      } catch (...) {
-        elog("Unable to convert message.data to ABI type: ${t}", ("t", msg.type));
+        elog("Unable to convert action.data to ABI: ${s} :: ${n}, unknown exception", ("s", msg.scope)("n", msg.name));
      }
      // if anything went wrong just store raw hex_data
      msg_doc.append(kvp("hex_data", fc::variant(msg.data).as_string()));
-      */
   }
 
   void verify_last_block(mongocxx::collection& blocks, const std::string& prev_block_id) {
@@ -264,7 +265,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
 
    auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
    auto trans = mongo_conn[db_name][trans_col]; // Transactions
-   auto msgs = mongo_conn[db_name][msgs_col]; // Messages
+   auto msgs = mongo_conn[db_name][actions_col]; // Actions
 
    stream::document block_doc{};
    const auto block_id = block.id();
@@ -299,99 +300,96 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
        << "transaction_merkle_root" << block.transaction_mroot.str()
        << "producer_account_id" << block.producer.to_string();
    auto blk_doc = block_doc << "transactions" << stream::open_array;
-/*
+
    int32_t trx_num = -1;
    const bool check_relevance = !filter_on.empty();
-   for (const auto& cycle : block.cycles) {
-      for (const auto& thread : cycle) {
-         for (const auto& trx : thread.user_input) {
-            ++trx_num;
-            if (check_relevance && !is_scope_relevant(trx.scope))
-               continue;
+   for (const auto& trx : block.input_transactions) {
+      ++trx_num;
+      if (check_relevance && !is_scope_relevant(trx.read_scope))
+         continue;
 
-            auto txn_oid = bsoncxx::oid{};
-            blk_doc = blk_doc << txn_oid; // add to transaction.messages array
-            stream::document doc{};
-            const auto trans_id_str = trx.id().str();
-            auto trx_doc = doc
-                  << "_id" << txn_oid
-                  << "transaction_id" << trans_id_str
-                  << "sequence_num" << b_int32{trx_num}
-                  << "block_id" << block_id_str
-                  << "ref_block_num" << b_int32{static_cast<int32_t >(trx.ref_block_num)}
-                  << "ref_block_prefix" << trx.ref_block_prefix.str()
-                  << "scope" << stream::open_array;
-            for (const auto& account_name : trx.scope)
-               trx_doc = trx_doc << account_name.to_string();
-            trx_doc = trx_doc
-                  << stream::close_array
-                  << "read_scope" << stream::open_array;
-            for (const auto& account_name : trx.read_scope)
-               trx_doc = trx_doc << account_name.to_string();
-            trx_doc = trx_doc
-                  << stream::close_array
-                  << "expiration" << b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}
-                  << "signatures" << stream::open_array;
-            for (const auto& sig : trx.signatures) {
-               trx_doc = trx_doc << fc::variant(sig).as_string();
+      auto txn_oid = bsoncxx::oid{};
+      blk_doc = blk_doc << txn_oid; // add to transaction.actions array
+      stream::document doc{};
+      const auto trans_id_str = trx.id().str();
+      auto trx_doc = doc
+            << "_id" << txn_oid
+            << "transaction_id" << trans_id_str
+            << "sequence_num" << b_int32{trx_num}
+            << "block_id" << block_id_str
+            << "ref_block_num" << b_int32{static_cast<int32_t >(trx.ref_block_num)}
+            << "ref_block_prefix" << b_int32{static_cast<int32_t >(trx.ref_block_prefix)}
+            << "write_scope" << stream::open_array;
+      for (const auto& account_name : trx.write_scope)
+         trx_doc = trx_doc << account_name.to_string();
+      trx_doc = trx_doc
+            << stream::close_array
+            << "read_scope" << stream::open_array;
+      for (const auto& account_name : trx.read_scope)
+         trx_doc = trx_doc << account_name.to_string();
+      trx_doc = trx_doc
+            << stream::close_array
+            << "expiration" << b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}
+            << "signatures" << stream::open_array;
+      for (const auto& sig : trx.signatures) {
+         trx_doc = trx_doc << fc::variant(sig).as_string();
+      }
+      trx_doc = trx_doc
+            << stream::close_array
+            << "actions" << stream::open_array;
+
+      mongocxx::bulk_write bulk_msgs{bulk_opts};
+      int32_t i = 0;
+      for (const auto& msg : trx.actions) {
+         auto msg_oid = bsoncxx::oid{};
+         trx_doc = trx_doc << msg_oid; // add to transaction.actions array
+
+         auto msg_doc = bsoncxx::builder::basic::document{};
+         msg_doc.append(kvp("_id", b_oid{msg_oid}),
+                        kvp("action_id", b_int32{i}),
+                        kvp("transaction_id", trans_id_str));
+         msg_doc.append(kvp("authorization", [&msg](bsoncxx::builder::basic::sub_array subarr) {
+            for (const auto& auth : msg.authorization) {
+               subarr.append([&auth](bsoncxx::builder::basic::sub_document subdoc) {
+                  subdoc.append(kvp("actor", auth.actor.to_string()),
+                                kvp("permission", auth.permission.to_string()));
+               });
             }
-            trx_doc = trx_doc
-                  << stream::close_array
-                  << "messages" << stream::open_array;
+         }));
+         msg_doc.append(kvp("handler_account_name", msg.scope.to_string()));
+         msg_doc.append(kvp("name", msg.name.to_string()));
+         add_data(msg_doc, accounts, msg);
+         msg_doc.append(kvp("createdAt", b_date{now}));
+         mongocxx::model::insert_one insert_msg{msg_doc.view()};
+         bulk_msgs.append(insert_msg);
 
-            mongocxx::bulk_write bulk_msgs{bulk_opts};
-            int32_t i = 0;
-            for (const auto& msg : trx.messages) {
-               auto msg_oid = bsoncxx::oid{};
-               trx_doc = trx_doc << msg_oid; // add to transaction.messages array
-
-               auto msg_doc = bsoncxx::builder::basic::document{};
-               msg_doc.append(kvp("_id", b_oid{msg_oid}),
-                              kvp("message_id", b_int32{i}),
-                              kvp("transaction_id", trans_id_str));
-               msg_doc.append(kvp("authorization", [&msg](bsoncxx::builder::basic::sub_array subarr) {
-                  for (const auto& auth : msg.authorization) {
-                     subarr.append([&auth](bsoncxx::builder::basic::sub_document subdoc) {
-                        subdoc.append(kvp("account", auth.account.to_string()),
-                                      kvp("permission", auth.permission.to_string()));
-                     });
-                  }
-               }));
-               msg_doc.append(kvp("handler_account_name", msg.code.to_string()));
-               msg_doc.append(kvp("type", msg.type.to_string()));
-               add_data(msg_doc, accounts, msg);
-               msg_doc.append(kvp("createdAt", b_date{now}));
-               mongocxx::model::insert_one insert_msg{msg_doc.view()};
-               bulk_msgs.append(insert_msg);
-
-               // eos account update
-               if (msg.code == chain::config::system_account_name) {
-                  try {
-                     update_account(msg);
-                  } catch(fc::exception& e) {
-                     elog("Unable to update account ${e}", ("e", e.to_string()));
-                  }
-               }
-
-               ++i;
+         // eos account update
+         if (msg.scope == chain::config::system_account_name) {
+            try {
+               update_account(msg);
+            } catch (fc::exception& e) {
+               elog("Unable to update account ${e}", ("e", e.to_string()));
             }
+         }
 
-            if (!trx.messages.empty()) {
-               auto result = msgs.bulk_write(bulk_msgs);
-               if (!result) {
-                  elog("Bulk message insert failed for block: ${bid}, transaction: ${trx}", ("bid", block_id)("trx", trx.id()));
-               }
-            }
+         ++i;
+      }
 
-            auto complete_doc = trx_doc << stream::close_array
-                 << "createdAt" << b_date{now}
-                 << stream::finalize;
-            mongocxx::model::insert_one insert_op{complete_doc.view()};
-            transactions_in_block = true;
-            bulk_trans.append(insert_op);
-
+      if (!trx.actions.empty()) {
+         auto result = msgs.bulk_write(bulk_msgs);
+         if (!result) {
+            elog("Bulk action insert failed for block: ${bid}, transaction: ${trx}",
+                 ("bid", block_id)("trx", trx.id()));
          }
       }
+
+      auto complete_doc = trx_doc << stream::close_array
+                                  << "createdAt" << b_date{now}
+                                  << stream::finalize;
+      mongocxx::model::insert_one insert_op{complete_doc.view()};
+      transactions_in_block = true;
+      bulk_trans.append(insert_op);
+
    }
 
    auto blk_complete = blk_doc << stream::close_array
@@ -408,7 +406,7 @@ void db_plugin_impl::_process_irreversible_block(const signed_block& block)
          elog("Bulk transaction insert failed for block: ${bid}", ("bid", block_id));
       }
    }
-*/
+
    ++processed;
 }
 
@@ -420,14 +418,14 @@ void db_plugin_impl::update_account(const chain::action& msg) {
    using bsoncxx::builder::stream::close_document;
    using bsoncxx::builder::stream::finalize;
    using namespace bsoncxx::types;
-/*
-   if (msg.code != chain::config::system_account_name)
+
+   if (msg.scope != chain::config::system_account_name)
       return;
 
-   if (msg.type == transfer) {
+   if (msg.name == transfer) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto transfer = msg.as<types::transfer>();
+      auto transfer = msg.as<chain::contracts::transfer>();
       auto from_name = transfer.from.to_string();
       auto to_name = transfer.to.to_string();
       auto from_account = find_account(accounts, transfer.from);
@@ -435,8 +433,8 @@ void db_plugin_impl::update_account(const chain::action& msg) {
 
       asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
       asset to_balance = asset::from_string(to_account.view()["eos_balance"].get_utf8().value.to_string());
-      from_balance -= eosio::types::share_type(transfer.amount);
-      to_balance += eosio::types::share_type(transfer.amount);
+      from_balance -= chain::share_type(transfer.amount);
+      to_balance += chain::share_type(transfer.amount);
 
       document update_from{};
       update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
@@ -450,10 +448,10 @@ void db_plugin_impl::update_account(const chain::action& msg) {
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
-   } else if (msg.type == newaccount) {
+   } else if (msg.name == newaccount) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto newaccount = msg.as<types::newaccount>();
+      auto newaccount = msg.as<chain::contracts::newaccount>();
 
       // find creator to update its balance
       auto from_name = newaccount.creator.to_string();
@@ -484,10 +482,10 @@ void db_plugin_impl::update_account(const chain::action& msg) {
          elog("Failed to insert account ${n}", ("n", newaccount.name));
       }
 
-   } else if (msg.type == lock) {
+   } else if (msg.name == lock) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto lock = msg.as<types::lock>();
+      auto lock = msg.as<chain::contracts::lock>();
       auto from_account = find_account(accounts, lock.from);
       auto to_account = find_account(accounts, lock.to);
 
@@ -508,10 +506,10 @@ void db_plugin_impl::update_account(const chain::action& msg) {
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
 
-   } else if (msg.type == unlock) {
+   } else if (msg.name == unlock) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto unlock = msg.as<types::unlock>();
+      auto unlock = msg.as<chain::contracts::unlock>();
       auto from_account = find_account(accounts, unlock.account);
 
       asset unstack_balance = asset::from_string(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
@@ -530,10 +528,10 @@ void db_plugin_impl::update_account(const chain::action& msg) {
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
 
-   } else if (msg.type == claim) {
+   } else if (msg.name == claim) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto claim = msg.as<types::claim>();
+      auto claim = msg.as<chain::contracts::claim>();
       auto from_account = find_account(accounts, claim.account);
 
       asset balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
@@ -550,24 +548,23 @@ void db_plugin_impl::update_account(const chain::action& msg) {
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
 
-   } else if (msg.type == setcode) {
+   } else if (msg.name == setabi) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto setcode = msg.as<types::setcode>();
-      auto from_account = find_account(accounts, setcode.account);
+      auto setabi = msg.as<chain::contracts::setabi>();
+      auto from_account = find_account(accounts, setabi.account);
 
       document update_from{};
       update_from << "$set" << open_document
-                  << "abi" << bsoncxx::from_json(fc::json::to_string(setcode.code_abi))
+                  << "abi" << bsoncxx::from_json(fc::json::to_string(setabi.abi))
                   << "updatedAt" << b_date{now}
                   << close_document;
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
    }
-   */
 }
 
-bool db_plugin_impl::is_scope_relevant(const eosio::chain::shared_vector<account_name>& scope)
+bool db_plugin_impl::is_scope_relevant(const vector<account_name>& scope)
 {
    for (const account_name& account_name : scope)
       if (filter_on.count(account_name))
@@ -598,7 +595,7 @@ void db_plugin_impl::wipe_database() {
 
    accounts = mongo_conn[db_name][accounts_col]; // Accounts
    auto trans = mongo_conn[db_name][trans_col]; // Transactions
-   auto msgs = mongo_conn[db_name][msgs_col]; // Messages
+   auto msgs = mongo_conn[db_name][actions_col]; // Messages
    auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
 
    accounts.drop();
@@ -611,16 +608,16 @@ void db_plugin_impl::init() {
    using namespace bsoncxx::types;
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
-/*
-   eos_abi = native_contract::native_contract_chain_initializer::eos_contract_abi();
+
+   eos_abi = chain::contracts::chain_initializer::eos_contract_abi();
 
    accounts = mongo_conn[db_name][accounts_col]; // Accounts
    bsoncxx::builder::stream::document doc{};
    if (accounts.count(doc.view()) == 0) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      doc << "name" << config::eos_contract_name.to_string()
-          << "eos_balance" << asset(config::initial_token_supply).to_string()
+      doc << "name" << name(chain::config::system_account_name).to_string()
+          << "eos_balance" << asset(chain::config::initial_token_supply).to_string()
           << "staked_balance" << asset().to_string()
           << "unstaking_balance" << asset().to_string()
           << "abi" << bsoncxx::from_json(fc::json::to_string(eos_abi))
@@ -628,7 +625,7 @@ void db_plugin_impl::init() {
           << "updatedAt" << b_date{now};
 
       if (!accounts.insert_one(doc.view())) {
-         elog("Failed to insert account ${n}", ("n", config::eos_contract_name.to_string()));
+         elog("Failed to insert account ${n}", ("n", name(chain::config::system_account_name).to_string()));
       }
 
       // Accounts indexes
@@ -639,7 +636,7 @@ void db_plugin_impl::init() {
       trans.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
 
       // Messages indexes
-      auto msgs = mongo_conn[db_name][msgs_col]; // Messages
+      auto msgs = mongo_conn[db_name][actions_col]; // Messages
       msgs.create_index(bsoncxx::from_json(R"xxx({ "message_id" : 1 })xxx"));
       msgs.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
 
@@ -648,7 +645,6 @@ void db_plugin_impl::init() {
       blocks.create_index(bsoncxx::from_json(R"xxx({ "block_num" : 1 })xxx"));
       blocks.create_index(bsoncxx::from_json(R"xxx({ "block_id" : 1 })xxx"));
    }
-   */
 }
 
 #endif /* MONGODB */

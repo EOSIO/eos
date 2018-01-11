@@ -1,6 +1,6 @@
-file(GLOB HEADERS "include/eos/db_plugin/*.hpp")
-add_library( db_plugin
-             db_plugin.cpp
+file(GLOB HEADERS "include/eosio/mongo_db_plugin/*.hpp")
+add_library( mongo_db_plugin
+             mongo_db_plugin.cpp
              ${HEADERS} )
 
 find_package(libmongoc-1.0 1.8)
@@ -32,7 +32,7 @@ if (libmongoc-1.0_FOUND)
 
     add_definitions(-DMONGODB)
 else()
-    message("Could NOT find MongoDB. db_plugin with MongoDB support will not be included.")
+    message("Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
     # sudo apt-get install pkg-config libssl-dev libsasl2-dev
     # wget https://github.com/mongodb/mongo-c-driver/releases/download/1.8.0/mongo-c-driver-1.8.0.tar.gz
     # tar xzf mongo-c-driver-1.8.0.tar.gz
@@ -51,25 +51,25 @@ else()
     # sudo apt-get install mongodb
 endif()
 
-target_include_directories(db_plugin
+target_include_directories(mongo_db_plugin
         PRIVATE ${LIBMONGOCXX_INCLUDE_DIRS} ${LIBBSONCXX_INCLUDE_DIRS}
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
         )
 
-target_compile_definitions(db_plugin
+target_compile_definitions(mongo_db_plugin
 	PRIVATE ${LIBMONGOCXX_DEFINITIONS} ${LIBBSONCXX_DEFINITIONS}
 	)
 
-target_link_libraries(db_plugin
+target_link_libraries(mongo_db_plugin
         PUBLIC chain_plugin eos_chain appbase
         ${EOS_LIBMONGOCXX} ${EOS_LIBBSONCXX}
         )
 
 install( TARGETS
-   db_plugin
+   mongo_db_plugin
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/eos/db_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/eosio/mongo_db_plugin" )
