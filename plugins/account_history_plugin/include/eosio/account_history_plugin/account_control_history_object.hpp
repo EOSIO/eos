@@ -30,8 +30,13 @@ using account_control_history_multi_index = chainbase::shared_multi_index_contai
    account_control_history_object,
    indexed_by<
       ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_control_history_object, account_control_history_object::id_type, id)>,
-      ordered_non_unique<tag<by_controlling>, BOOST_MULTI_INDEX_MEMBER(account_control_history_object, account_name, controlling_account)>,
-      ordered_non_unique<tag<by_controlled_authority>,
+      ordered_unique<tag<by_controlling>,
+         composite_key< account_control_history_object,
+            member<account_control_history_object, account_name,                            &account_control_history_object::controlling_account>,
+            member<account_control_history_object, account_control_history_object::id_type, &account_control_history_object::id>
+         >
+      >,
+      ordered_unique<tag<by_controlled_authority>,
          composite_key< account_control_history_object,
             member<account_control_history_object, account_name, &account_control_history_object::controlled_account>,
             member<account_control_history_object, permission_name, &account_control_history_object::controlled_permission>

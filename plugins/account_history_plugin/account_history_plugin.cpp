@@ -76,11 +76,11 @@ private:
    {
       const auto& idx = db.get_index<MultiIndex, LookupType>();
       auto& mutatable_idx = db.get_mutable_index<MultiIndex>();
-      auto range = idx.equal_range( boost::make_tuple( account_name, permission ) );
+      auto obj = idx.find( boost::make_tuple( account_name, permission ) );
 
-      for (auto acct_perm = range.first; acct_perm != range.second; ++acct_perm)
+      if (obj != idx.end())
       {
-         mutatable_idx.remove(*acct_perm);
+         mutatable_idx.remove(*obj);
       }
    }
 

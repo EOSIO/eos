@@ -29,8 +29,13 @@ using public_key_history_multi_index = chainbase::shared_multi_index_container<
    public_key_history_object,
    indexed_by<
       ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(public_key_history_object, public_key_history_object::id_type, id)>,
-      ordered_non_unique<tag<by_pub_key>, BOOST_MULTI_INDEX_MEMBER(public_key_history_object, public_key_type, public_key)>,
-      ordered_non_unique<tag<by_account_permission>,
+      ordered_unique<tag<by_pub_key>,
+         composite_key< public_key_history_object,
+            member<public_key_history_object, public_key_type,                    &public_key_history_object::public_key>,
+            member<public_key_history_object, public_key_history_object::id_type, &public_key_history_object::id>
+         >
+      >,
+      ordered_unique<tag<by_account_permission>,
          composite_key< public_key_history_object,
             member<public_key_history_object, account_name,     &public_key_history_object::name>,
             member<public_key_history_object, permission_name,  &public_key_history_object::permission>
