@@ -5,8 +5,8 @@
 #include <appbase/application.hpp>
 
 #include <eosio/http_plugin/http_plugin.hpp>
-#include "eosio/wallet_plugin/wallet_plugin.hpp"
-#include "eosio/wallet_api_plugin/wallet_api_plugin.hpp"
+#include <eosio/wallet_plugin/wallet_plugin.hpp>
+#include <eosio/wallet_api_plugin/wallet_api_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
