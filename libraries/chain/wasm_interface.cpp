@@ -627,7 +627,7 @@ class context_aware_api {
 
    protected:
       wasm_cache::entry& code;
-		apply_context& 	 context;
+      apply_context&     context;
 };
 
 class system_api : public context_aware_api {
@@ -810,7 +810,7 @@ class db_index_api : public context_aware_api {
 
 class memory_api : public context_aware_api {
    public:
-		using context_aware_api::context_aware_api;
+      using context_aware_api::context_aware_api;
 
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
@@ -822,11 +822,11 @@ class memory_api : public context_aware_api {
       }
 
       char* memset( array_ptr<char> dest, int value, size_t length ) {
-		   return (char *)::memset( dest, value, length );
+         return (char *)::memset( dest, value, length );
       }
 
       uint32_t sbrk(int num_bytes) {
-         // TODO: omitted checktime	function from previous version of sbrk, may need to be put back in at some point
+         // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
          constexpr uint32_t NBPPL2         = IR::numBytesPerPageLog2;
          constexpr uint32_t max_mem        = 1024 * 1024;
          const auto         default_mem    = Runtime::getDefaultMemory(code.instance);
@@ -928,7 +928,7 @@ REGISTER_INTRINSICS(memory_api,
    (memcpy,                 int(int, int, int)   )
    (memcmp,                 int(int, int, int)   )
    (memset,                 int(int, int, int)   )
-	(sbrk,						 int(int)				 )
+   (sbrk,                   int(int)             )
 );
 
 

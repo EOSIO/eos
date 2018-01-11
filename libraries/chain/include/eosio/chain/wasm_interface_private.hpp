@@ -411,7 +411,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
    }
 };
 
-#if 1
 /**
  * Specialization for transcribing memset parameters
  *
@@ -437,7 +436,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std
       return next_step::template fn<translate_one<Then>>();
    }
 };
-#endif
 
 /**
  * Specialization for transcribing  a pointer type in the native method signature
