@@ -61,7 +61,7 @@ target_compile_definitions(mongo_db_plugin
 	)
 
 target_link_libraries(mongo_db_plugin
-        PUBLIC chain_plugin eos_chain appbase
+        PUBLIC chain_plugin eosio_chain appbase
         ${EOS_LIBMONGOCXX} ${EOS_LIBBSONCXX}
         )
 
