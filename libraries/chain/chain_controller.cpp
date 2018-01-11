@@ -52,6 +52,9 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
 {
    _initialize_indexes();
 
+   for (auto& f : cfg.applied_irreversible_block_callbacks)
+      applied_irreversible_block.connect(f);
+
    contracts::chain_initializer starter(cfg.genesis);
    starter.register_types(*this, _db);
 

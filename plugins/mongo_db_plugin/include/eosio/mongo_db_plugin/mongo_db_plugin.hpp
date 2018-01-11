@@ -38,10 +38,6 @@ public:
 
    virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
-   // This may only be called after plugin_initialize() and before plugin_startup()!
-   void wipe_database();
-   void applied_irreversible_block(const chain::signed_block& block);
-
    void plugin_initialize(const variables_map& options);
    void plugin_startup();
    void plugin_shutdown();
