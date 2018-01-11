@@ -523,7 +523,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
 } FC_LOG_AND_RETHROW() /// test_currency
 
 /**
- * Make sure entry method is used correctly
+ * Make sure WASM "start" method is used correctly
  */
 BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
    produce_blocks(2);
