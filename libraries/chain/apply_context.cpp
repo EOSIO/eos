@@ -30,11 +30,11 @@ void apply_context::exec_one()
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
-   if (_write_scopes.empty()) {
+   if (!_write_scopes.empty()) {
       std::sort(_write_scopes.begin(), _write_scopes.end());
    }
 
-   if (_read_locks.empty()) {
+   if (!_read_locks.empty()) {
       std::sort(_read_locks.begin(), _read_locks.end());
       // remove any write_scopes
       auto r_iter = _read_locks.begin();
@@ -101,7 +101,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, allowed_read_locks, allowed_write_locks);
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -132,8 +132,8 @@ static bool locks_contain(const vector<shard_lock>& locks, const account_name& a
 }
 
 void apply_context::require_write_lock(const scope_name& scope) {
-   if (allowed_write_locks) {
-      EOS_ASSERT( locks_contain(*allowed_write_locks, receiver, scope), tx_missing_write_lock, "missing write lock \"${a}::${s}\"", ("a", receiver)("s",scope) );
+   if (trx_meta.allowed_write_locks) {
+      EOS_ASSERT( locks_contain(**trx_meta.allowed_write_locks, receiver, scope), block_lock_exception, "write lock \"${a}::${s}\" required but not provided", ("a", receiver)("s",scope) );
    }
 
    if (!scopes_contain(_write_scopes, scope)) {
@@ -142,8 +142,8 @@ void apply_context::require_write_lock(const scope_name& scope) {
 }
 
 void apply_context::require_read_lock(const account_name& account, const scope_name& scope) {
-   if (allowed_read_locks) {
-      EOS_ASSERT( locks_contain(*allowed_read_locks, account, scope), tx_missing_read_lock, "missing read lock \"${a}::${s}\"", ("a", account)("s",scope) );
+   if (trx_meta.allowed_read_locks) {
+      EOS_ASSERT( locks_contain(**trx_meta.allowed_read_locks, account, scope), block_lock_exception, "read lock \"${a}::${s}\" required but not provided", ("a", account)("s",scope) );
    }
 
    if (!locks_contain(_read_locks, account, scope)) {

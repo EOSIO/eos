@@ -270,6 +270,18 @@ transaction_trace chain_controller::_push_transaction(const signed_transaction& 
 
 }
 
+static void record_locks_for_data_access(const vector<action_trace>& action_traces, vector<shard_lock>& read_locks, vector<shard_lock>& write_locks ) {
+   for (const auto& at: action_traces) {
+      for (const auto& access: at.data_access) {
+         if (access.type == data_access_info::read) {
+            read_locks.emplace_back(shard_lock{at.receiver, access.scope});
+         } else {
+            write_locks.emplace_back(shard_lock{at.receiver, access.scope});
+         }
+      }
+   }
+}
+
 transaction_trace chain_controller::_push_transaction( transaction_metadata& data )
 {
    const transaction& trx = data.trx;
@@ -298,15 +310,7 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata& dat
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    auto& bshard = bcycle.front();
 
-   for (const auto& at: result.action_traces) {
-      for (const auto& access: at.data_access) {
-         if (access.type == data_access_info::read) {
-            bshard.read_locks.emplace_back(shard_lock{at.receiver, access.scope});
-         } else {
-            bshard.write_locks.emplace_back(shard_lock{at.receiver, access.scope});
-         }
-      }
-   }
+   record_locks_for_data_access(result.action_traces, bshard.read_locks, bshard.write_locks);
 
    fc::deduplicate(bshard.read_locks);
    fc::deduplicate(bshard.write_locks);
@@ -553,10 +557,10 @@ static void validate_shard_locks(const vector<shard_lock>& locks, const string& 
       return;
    }
 
-   for (auto cur = locks.begin() + 1; cur < locks.end(); cur++) {
+   for (auto cur = locks.begin() + 1; cur != locks.end(); ++cur) {
       auto prev = cur - 1;
-      FC_ASSERT(*prev != *cur, "${tag} lock \"${a}::${s}\" is not unique", ("tag",tag)("a",cur->account)("s",cur->scope));
-      FC_ASSERT(*prev < *cur,  "${tag} locks are not sorted", ("tag",tag));
+      EOS_ASSERT(*prev != *cur, block_lock_exception, "${tag} lock \"${a}::${s}\" is not unique", ("tag",tag)("a",cur->account)("s",cur->scope));
+      EOS_ASSERT(*prev < *cur,  block_lock_exception, "${tag} locks are not sorted", ("tag",tag));
    }
 }
 
@@ -610,18 +614,24 @@ void chain_controller::__apply_block(const signed_block& next_block)
             validate_shard_locks(shard.write_locks, "write");
 
             for (const auto& s: shard.read_locks) {
-               FC_ASSERT(write_locks.count(s) == 0,
+               EOS_ASSERT(write_locks.count(s) == 0, block_concurrency_exception,
                   "shard ${i} requires read lock \"${a}::${s}\" which is locked for write by shard ${j}",
                   ("i", shard_index)("s", s)("j", write_locks[s]));
                read_locks.emplace(s);
             }
 
             for (const auto& s: shard.write_locks) {
-               FC_ASSERT(write_locks.count(s) == 0,
+               EOS_ASSERT(write_locks.count(s) == 0, block_concurrency_exception,
                   "shard ${i} requires write lock \"${a}::${s}\" which is locked for write by shard ${j}",
-                  ("i", shard_index)("s", s)("j", write_locks[s]));
+                  ("i", shard_index)("a", s.account)("s", s.scope)("j", write_locks[s]));
+               EOS_ASSERT(read_locks.count(s) == 0, block_concurrency_exception,
+                  "shard ${i} requires write lock \"${a}::${s}\" which is locked for read",
+                  ("i", shard_index)("a", s.account)("s", s.scope));
                write_locks[s] = shard_index;
             }
+
+            vector<shard_lock> used_read_locks;
+            vector<shard_lock> used_write_locks;
 
             shard_trace s_trace;
             for (const auto& receipt : shard.transactions) {
@@ -640,8 +650,11 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx.region_id = r.region;
                mtrx.cycle_index = cycle_index;
                mtrx.shard_index = shard_index;
+               mtrx.allowed_read_locks.emplace(&shard.read_locks);
+               mtrx.allowed_write_locks.emplace(&shard.write_locks);
 
-               s_trace.transaction_traces.emplace_back(_apply_transaction(mtrx, &shard.read_locks, &shard.write_locks));
+               s_trace.transaction_traces.emplace_back(_apply_transaction(mtrx));
+               record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
 
                FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
 
@@ -650,6 +663,16 @@ void chain_controller::__apply_block(const signed_block& next_block)
                // If the block producer let it slide, we'll roll with it.
                // check_transaction_authorization(trx, true);
             } /// for each transaction id
+
+            // Validate that the producer didn't list extra locks to bloat the size of the block
+            // TODO: this check can be removed when blocks are irreversible
+            fc::deduplicate(used_read_locks);
+            fc::deduplicate(used_write_locks);
+
+            EOS_ASSERT(std::equal(used_read_locks.cbegin(), used_read_locks.cend(), shard.read_locks.begin()),
+               block_lock_exception, "Read locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
+            EOS_ASSERT(std::equal(used_write_locks.cbegin(), used_write_locks.cend(), shard.write_locks.begin()),
+               block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
 
             s_trace.calculate_root();
             c_trace.shard_traces.emplace_back(move(s_trace));
@@ -1355,10 +1378,10 @@ static void log_handled_exceptions(const transaction& trx) {
    } FC_CAPTURE_AND_LOG((trx));
 }
 
-transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta, const vector<shard_lock>* allowed_read_locks, const vector<shard_lock>* allowed_write_locks ) {
+transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
    for (const auto &act : meta.trx.actions) {
-      apply_context context(*this, _db, act, meta, allowed_read_locks, allowed_write_locks);
+      apply_context context(*this, _db, act, meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
@@ -1382,10 +1405,10 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    return result;
 }
 
-transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta, const vector<shard_lock>* allowed_read_locks, const vector<shard_lock>* allowed_write_locks ) {
+transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) {
    try {
       auto temp_session = _db.start_undo_session(true);
-      auto result = __apply_transaction(meta, allowed_read_locks, allowed_write_locks);
+      auto result = __apply_transaction(meta);
       temp_session.squash();
       return result;
    } catch (...) {
@@ -1396,11 +1419,11 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
       // log exceptions we can handle with the error handle, throws otherwise
       log_handled_exceptions(meta.trx);
 
-      return _apply_error( meta, allowed_read_locks, allowed_write_locks );
+      return _apply_error( meta );
    }
 }
 
-transaction_trace chain_controller::_apply_error( transaction_metadata& meta, const vector<shard_lock>* allowed_read_locks, const vector<shard_lock>* allowed_write_locks ) {
+transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
    result.status = transaction_trace::soft_fail;
 
@@ -1411,7 +1434,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta, co
    try {
       auto temp_session = _db.start_undo_session(true);
 
-      apply_context context(*this, _db, etrx.actions.front(), meta, allowed_read_locks, allowed_write_locks);
+      apply_context context(*this, _db, etrx.actions.front(), meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));

@@ -311,9 +311,9 @@ namespace eosio { namespace chain {
 
          transaction_trace _push_transaction( const signed_transaction& trx );
          transaction_trace _push_transaction( transaction_metadata& data );
-         transaction_trace _apply_transaction( transaction_metadata& data, const vector<shard_lock>* allowed_read_locks = nullptr, const vector<shard_lock>* allowed_write_locks = nullptr );
-         transaction_trace __apply_transaction( transaction_metadata& data, const vector<shard_lock>* allowed_read_locks = nullptr, const vector<shard_lock>* allowed_write_locks = nullptr );
-         transaction_trace _apply_error( transaction_metadata& data, const vector<shard_lock>* allowed_read_locks = nullptr, const vector<shard_lock>* allowed_write_locks = nullptr );
+         transaction_trace _apply_transaction( transaction_metadata& data );
+         transaction_trace __apply_transaction( transaction_metadata& data );
+         transaction_trace _apply_error( transaction_metadata& data );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();

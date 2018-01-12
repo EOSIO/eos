@@ -5,6 +5,7 @@
 #pragma once
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/transaction.hpp>
+#include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
@@ -18,11 +19,11 @@ class chain_controller;
 class apply_context {
 
    public:
-      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta, const vector<shard_lock>* allowed_read_locks, const vector<shard_lock>* allowed_write_locks)
+      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta)
 
       :controller(con), db(db), act(a), mutable_controller(con),
        mutable_db(db), used_authorizations(act.authorization.size(), false),
-       trx_meta(trx_meta), allowed_read_locks(allowed_read_locks), allowed_write_locks(allowed_write_locks) {}
+       trx_meta(trx_meta) {}
 
       void exec();
 
@@ -108,8 +109,6 @@ class apply_context {
       vector<bool> used_authorizations;
 
       const transaction_metadata&   trx_meta;
-      const vector<shard_lock>*     allowed_read_locks;
-      const vector<shard_lock>*     allowed_write_locks;
 
    ///< pending transaction construction
      /*
