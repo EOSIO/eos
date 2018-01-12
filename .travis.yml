@@ -19,7 +19,7 @@ matrix:
             - ninja-build
             - libgmp-dev
             - libclang-4.0-dev
-            - python3
+            - python3.5
     - os: osx
       osx_image: xcode9.1
 before_install:

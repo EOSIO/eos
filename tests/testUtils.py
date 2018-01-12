@@ -16,6 +16,10 @@ import random
 import io
 import json
 
+if sys.version_info[0] != 3 or sys.version_info[1] < 5:
+    print("ERROR: This script requires Python version 3.5")
+    sys.exit(1)
+
 ###########################################################################################
 class Utils:
     Debug=False
@@ -600,7 +604,6 @@ class WalletMgr(object):
             Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
-            #trans=Node.runCmdReturnJson(cmd, True)
             retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -617,7 +620,6 @@ class WalletMgr(object):
                 Utils.EosClientPath, self.endpointArgs, wallet.name, account.activePrivateKey)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             try:
-                #trans=Node.runCmdReturnJson(cmd)
                 retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
