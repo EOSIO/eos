@@ -2127,7 +2127,317 @@ BOOST_AUTO_TEST_CASE(newaccount)
 
 } FC_LOG_AND_RETHROW() }
 
-   // TODO: Add test cases for new native contract actions
+
+BOOST_AUTO_TEST_CASE(setcode)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "setcode.acc",
+     "vmtype" : "0",
+     "vmversion" : "0",
+     "code" : "0061736d0100000001390a60037e7e7f017f60047e7e7f7f017f60017e0060057e7e7e7f7f"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto setcode = var.as<contracts::setcode>();
+   BOOST_TEST("setcode.acc" == setcode.account);
+   BOOST_TEST(0 == setcode.vmtype);
+   BOOST_TEST(0 == setcode.vmversion);
+   BOOST_TEST("0061736d0100000001390a60037e7e7f017f60047e7e7f7f017f60017e0060057e7e7e7f7f" == fc::to_hex(setcode.code.data(), setcode.code.size()));
+
+   auto var2 = verify_round_trip_conversion( abis, "setcode", var );
+   auto setcode2 = var2.as<contracts::setcode>();
+   BOOST_TEST(setcode.account == setcode2.account);
+   BOOST_TEST(setcode.vmtype == setcode2.vmtype);
+   BOOST_TEST(setcode.vmversion == setcode2.vmversion);
+   BOOST_TEST(setcode.code == setcode2.code);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(setabi)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+      "account": "setabi.acc",
+      "abi":  {
+        "types": [{
+            "new_type_name": "account_name",
+            "type": "name"
+          }
+        ],
+        "structs": [{
+            "name": "transfer_base",
+            "base": "",
+            "fields": [{
+               "name": "memo",
+               "type": "string"
+            }]
+          },{
+            "name": "transfer",
+            "base": "transfer_base",
+            "fields": [{
+               "name": "from",
+               "type": "account_name"
+            },{
+               "name": "to",
+               "type": "account_name"
+            },{
+               "name": "amount",
+               "type": "uint64"
+            }]
+          },{
+            "name": "account",
+            "base": "",
+            "fields": [{
+               "name": "account",
+               "type": "name"
+            },{
+               "name": "balance",
+               "type": "uint64"
+            }]
+          }
+        ],
+        "actions": [{
+            "name": "transfer",
+            "type": "transfer"
+          }
+        ],
+        "tables": [{
+            "name": "account",
+            "type": "account",
+            "index_type": "i64",
+            "key_names" : ["account"],
+            "key_types" : ["name"]
+          }
+        ]
+      }
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto setabi = var.as<contracts::setabi>();
+   BOOST_TEST("setabi.acc" == setabi.account);
+
+   BOOST_TEST_REQUIRE(1 == setabi.abi.types.size());
+
+   BOOST_TEST("account_name" == setabi.abi.types[0].new_type_name);
+   BOOST_TEST("name" == setabi.abi.types[0].type);
+
+   BOOST_TEST_REQUIRE(3 == setabi.abi.structs.size());
+
+   BOOST_TEST("transfer_base" == setabi.abi.structs[0].name);
+   BOOST_TEST("" == setabi.abi.structs[0].base);
+   BOOST_TEST_REQUIRE(1 == setabi.abi.structs[0].fields.size());
+   BOOST_TEST("memo" == setabi.abi.structs[0].fields[0].name);
+   BOOST_TEST("string" == setabi.abi.structs[0].fields[0].type);
+
+   BOOST_TEST("transfer" == setabi.abi.structs[1].name);
+   BOOST_TEST("transfer_base" == setabi.abi.structs[1].base);
+   BOOST_TEST_REQUIRE(3 == setabi.abi.structs[1].fields.size());
+   BOOST_TEST("from" == setabi.abi.structs[1].fields[0].name);
+   BOOST_TEST("account_name" == setabi.abi.structs[1].fields[0].type);
+   BOOST_TEST("to" == setabi.abi.structs[1].fields[1].name);
+   BOOST_TEST("account_name" == setabi.abi.structs[1].fields[1].type);
+   BOOST_TEST("amount" == setabi.abi.structs[1].fields[2].name);
+   BOOST_TEST("uint64" == setabi.abi.structs[1].fields[2].type);
+
+   BOOST_TEST("account" == setabi.abi.structs[2].name);
+   BOOST_TEST("" == setabi.abi.structs[2].base);
+   BOOST_TEST_REQUIRE(2 == setabi.abi.structs[2].fields.size());
+   BOOST_TEST("account" == setabi.abi.structs[2].fields[0].name);
+   BOOST_TEST("name" == setabi.abi.structs[2].fields[0].type);
+   BOOST_TEST("balance" == setabi.abi.structs[2].fields[1].name);
+   BOOST_TEST("uint64" == setabi.abi.structs[2].fields[1].type);
+
+   BOOST_TEST_REQUIRE(1 == setabi.abi.actions.size());
+   BOOST_TEST("transfer" == setabi.abi.actions[0].name);
+   BOOST_TEST("transfer" == setabi.abi.actions[0].type);
+
+   BOOST_TEST_REQUIRE(1 == setabi.abi.tables.size());
+   BOOST_TEST("account" == setabi.abi.tables[0].name);
+   BOOST_TEST("account" == setabi.abi.tables[0].type);
+   BOOST_TEST("i64" == setabi.abi.tables[0].index_type);
+   BOOST_TEST_REQUIRE(1 == setabi.abi.tables[0].key_names.size());
+   BOOST_TEST("account" == setabi.abi.tables[0].key_names[0]);
+   BOOST_TEST_REQUIRE(1 == setabi.abi.tables[0].key_types.size());
+   BOOST_TEST("name" == setabi.abi.tables[0].key_types[0]);
+
+   auto var2 = verify_round_trip_conversion( abis, "setabi", var );
+   auto setabi2 = var2.as<contracts::setabi>();
+
+   BOOST_TEST(setabi.account == setabi2.account);
+
+   BOOST_TEST_REQUIRE(setabi.abi.types.size() == setabi2.abi.types.size());
+
+   BOOST_TEST(setabi.abi.types[0].new_type_name == setabi2.abi.types[0].new_type_name);
+   BOOST_TEST(setabi.abi.types[0].type == setabi2.abi.types[0].type);
+
+   BOOST_TEST_REQUIRE(setabi.abi.structs.size() == setabi2.abi.structs.size());
+
+   BOOST_TEST(setabi.abi.structs[0].name == setabi2.abi.structs[0].name);
+   BOOST_TEST(setabi.abi.structs[0].base == setabi2.abi.structs[0].base);
+   BOOST_TEST_REQUIRE(setabi.abi.structs[0].fields.size() == setabi2.abi.structs[0].fields.size());
+   BOOST_TEST(setabi.abi.structs[0].fields[0].name == setabi2.abi.structs[0].fields[0].name);
+   BOOST_TEST(setabi.abi.structs[0].fields[0].type == setabi2.abi.structs[0].fields[0].type);
+
+   BOOST_TEST(setabi.abi.structs[1].name == setabi2.abi.structs[1].name);
+   BOOST_TEST(setabi.abi.structs[1].base == setabi2.abi.structs[1].base);
+   BOOST_TEST_REQUIRE(setabi.abi.structs[1].fields.size() == setabi2.abi.structs[1].fields.size());
+   BOOST_TEST(setabi.abi.structs[1].fields[0].name == setabi2.abi.structs[1].fields[0].name);
+   BOOST_TEST(setabi.abi.structs[1].fields[0].type == setabi2.abi.structs[1].fields[0].type);
+   BOOST_TEST(setabi.abi.structs[1].fields[1].name == setabi2.abi.structs[1].fields[1].name);
+   BOOST_TEST(setabi.abi.structs[1].fields[1].type == setabi2.abi.structs[1].fields[1].type);
+   BOOST_TEST(setabi.abi.structs[1].fields[2].name == setabi2.abi.structs[1].fields[2].name);
+   BOOST_TEST(setabi.abi.structs[1].fields[2].type == setabi2.abi.structs[1].fields[2].type);
+
+   BOOST_TEST(setabi.abi.structs[2].name == setabi2.abi.structs[2].name);
+   BOOST_TEST(setabi.abi.structs[2].base == setabi2.abi.structs[2].base);
+   BOOST_TEST_REQUIRE(setabi.abi.structs[2].fields.size() == setabi2.abi.structs[2].fields.size());
+   BOOST_TEST(setabi.abi.structs[2].fields[0].name == setabi2.abi.structs[2].fields[0].name);
+   BOOST_TEST(setabi.abi.structs[2].fields[0].type == setabi2.abi.structs[2].fields[0].type);
+   BOOST_TEST(setabi.abi.structs[2].fields[1].name == setabi2.abi.structs[2].fields[1].name);
+   BOOST_TEST(setabi.abi.structs[2].fields[1].type == setabi2.abi.structs[2].fields[1].type);
+
+   BOOST_TEST_REQUIRE(setabi.abi.actions.size() == setabi2.abi.actions.size());
+   BOOST_TEST(setabi.abi.actions[0].name == setabi2.abi.actions[0].name);
+   BOOST_TEST(setabi.abi.actions[0].type == setabi2.abi.actions[0].type);
+
+   BOOST_TEST_REQUIRE(setabi.abi.tables.size() == setabi2.abi.tables.size());
+   BOOST_TEST(setabi.abi.tables[0].name == setabi2.abi.tables[0].name);
+   BOOST_TEST(setabi.abi.tables[0].type == setabi2.abi.tables[0].type);
+   BOOST_TEST(setabi.abi.tables[0].index_type == setabi2.abi.tables[0].index_type);
+   BOOST_TEST_REQUIRE(setabi.abi.tables[0].key_names.size() == setabi2.abi.tables[0].key_names.size());
+   BOOST_TEST(setabi.abi.tables[0].key_names[0] == setabi2.abi.tables[0].key_names[0]);
+   BOOST_TEST_REQUIRE(setabi.abi.tables[0].key_types.size() == setabi2.abi.tables[0].key_types.size());
+   BOOST_TEST(setabi.abi.tables[0].key_types[0] == setabi2.abi.tables[0].key_types[0]);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(postrecovery)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "postrec.acc",
+     "data": {
+        "threshold" : "2147483145",
+        "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005} ],
+        "accounts" : [ {"permission" : {"actor" : "postrec.acc", "permission" : "prm.prm1"}, "weight" : 57005 } ]
+     }
+     "memo": "postrec.memo"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto postrecovery = var.as<contracts::postrecovery>();
+   BOOST_TEST("postrec.acc" == postrecovery.account);
+   BOOST_TEST(2147483145u == postrecovery.data.threshold);
+
+   BOOST_TEST_REQUIRE(1 == postrecovery.data.keys.size());
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)postrecovery.data.keys[0].key);
+   BOOST_TEST(57005u == postrecovery.data.keys[0].weight);
+
+   BOOST_TEST_REQUIRE(1 == postrecovery.data.accounts.size());
+   BOOST_TEST("postrec.acc" == postrecovery.data.accounts[0].permission.actor);
+   BOOST_TEST("prm.prm1" == postrecovery.data.accounts[0].permission.permission);
+   BOOST_TEST(57005u == postrecovery.data.accounts[0].weight);
+   BOOST_TEST("postrec.memo" == postrecovery.memo);
+
+   auto var2 = verify_round_trip_conversion( abis, "postrecovery", var );
+   auto postrecovery2 = var2.as<contracts::postrecovery>();
+   BOOST_TEST(postrecovery.account == postrecovery2.account);
+   BOOST_TEST(postrecovery.data.threshold == postrecovery2.data.threshold);
+
+   BOOST_TEST_REQUIRE(postrecovery.data.keys.size() == postrecovery2.data.keys.size());
+   BOOST_TEST(postrecovery.data.keys[0].key == postrecovery2.data.keys[0].key);
+   BOOST_TEST(postrecovery.data.keys[0].weight == postrecovery2.data.keys[0].weight);
+
+   BOOST_TEST_REQUIRE(postrecovery.data.accounts.size() == postrecovery2.data.accounts.size());
+   BOOST_TEST(postrecovery.data.accounts[0].permission.actor == postrecovery2.data.accounts[0].permission.actor);
+   BOOST_TEST(postrecovery.data.accounts[0].permission.permission == postrecovery2.data.accounts[0].permission.permission);
+   BOOST_TEST(postrecovery.data.accounts[0].weight == postrecovery2.data.accounts[0].weight);
+   BOOST_TEST(postrecovery.memo == postrecovery2.memo);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(passrecovery)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "passrec.acc"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto passrecovery = var.as<contracts::passrecovery>();
+   BOOST_TEST("passrec.acc" == passrecovery.account);
+
+   auto var2 = verify_round_trip_conversion( abis, "passrecovery", var );
+   auto passrecovery2 = var2.as<contracts::passrecovery>();
+   BOOST_TEST(passrecovery.account == passrecovery2.account);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(vetorecovery)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "vetorec.acc"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto vetorecovery = var.as<contracts::vetorecovery>();
+   BOOST_TEST("vetorec.acc" == vetorecovery.account);
+
+   auto var2 = verify_round_trip_conversion( abis, "vetorecovery", var );
+   auto vetorecovery2 = var2.as<contracts::vetorecovery>();
+   BOOST_TEST(vetorecovery.account == vetorecovery2.account);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(nonce)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "value" : "nonce.value"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto nonce = var.as<contracts::nonce>();
+   BOOST_TEST("nonce.value" == nonce.value);
+
+   auto var2 = verify_round_trip_conversion( abis, "nonce", var );
+   auto nonce2 = var2.as<contracts::nonce>();
+   BOOST_TEST(nonce.value == nonce2.value);
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_CASE(abi_type_repeat)
 { try {
