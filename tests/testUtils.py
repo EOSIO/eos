@@ -16,10 +16,6 @@ import random
 import io
 import json
 
-if sys.version_info[0] != 3 or sys.version_info[1] < 5:
-    print("ERROR: This script requires Python version 3.5")
-    sys.exit(1)
-
 ###########################################################################################
 class Utils:
     Debug=False
@@ -465,6 +461,8 @@ class Node(object):
 
     def getTableRows(self, account, contract, table):
         jsonData=self.getTable(account, contract, table)
+        if jsonData is None:
+            return None
         rows=jsonData["rows"]
         return rows
 
@@ -473,8 +471,8 @@ class Node(object):
             Utils.Print("ERROR: Table index cannot be negative. idx: %d" % (idx))
             return None
         rows=self.getTableRows(account, contract, table)
-        if idx >= len(rows):
-            Utils.Print("ERROR: Requested table index(%d) larger than table length(%d)." % (idx, len(rows)))
+        if rows is None or idx >= len(rows):
+            Utils.Print("ERROR: Retrieved table does not contain row %d" % idx)
             return None
         row=rows[idx]
         return row
@@ -697,12 +695,12 @@ class WalletMgr(object):
     def dumpErrorDetails(self):
         Utils.Print("=================================================================")
         if self.__walletPid is not None:
-            Utils.Print("Contents of %s:" % (Cluster.__walletLogFile))
+            Utils.Print("Contents of %s:" % (WalletMgr.__walletLogFile))
             Utils.Print("=================================================================")
-            shutil.copyfileobj(Cluster.__walletLogFile, sys.stdout)
+            with open(WalletMgr.__walletLogFile) as f:
+                shutil.copyfileobj(f, sys.stdout)
     
     def killall(self):
-        #Utils.Print("Wallet pid: %s" % "None" if self.__walletPid is None else str(self.__walletPid))
         if self.__walletPid is not None:
             os.kill(self.__walletPid, signal.SIGKILL)
             

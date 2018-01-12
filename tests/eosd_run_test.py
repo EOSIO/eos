@@ -1,4 +1,4 @@
-#!/usr/bin/python3.5
+#!/usr/bin/python3
 
 import testUtils
 
@@ -519,8 +519,8 @@ try:
 finally:
     if not testSuccessful and dumpErrorDetails:
         cluster.dumpErrorDetails()
-        wallet.dumpErrorDetails()
-        Utils.Print("== Errors see above ==")
+        walletMgr.dumpErrorDetails()
+        Print("== Errors see above ==")
 
     if killEosInstances:
         Print("Shut down the cluster and wallet.")
