@@ -8,6 +8,8 @@ import re
 
 ###############################################################
 # eosd_run_test
+# --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
+# --keepLogs <Don't delete tn_data_* folders upon test completion>
 ###############################################################
 
 Print=testUtils.Utils.Print
@@ -26,9 +28,6 @@ def cmdError(name, code=0, exitNow=False):
 TEST_OUTPUT_DEFAULT="test_output_0.txt"
 LOCAL_HOST="localhost"
 DEFAULT_PORT=8888
-# INITA_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
-# INITB_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
-#LOG_FILE="eeosd_run_test.log"
 
 parser = argparse.ArgumentParser(add_help=False)
 # Override default help argument so that only --help (and not -h) can call help
@@ -36,7 +35,7 @@ parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
 parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
 parser.add_argument("-h", "--host", type=str, help="eosd host name", default=LOCAL_HOST)
-parser.add_argument("-p", "--port", type=str, help="eosd host port", default=DEFAULT_PORT)
+parser.add_argument("-p", "--port", type=int, help="eosd host port", default=DEFAULT_PORT)
 parser.add_argument("--dumpErrorDetails",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
@@ -49,8 +48,6 @@ testOutputFile=args.output
 server=args.host
 port=args.port
 debug=args.v
-#ciju
-#debug=True
 localTest=True if server == LOCAL_HOST else False
 testUtils.Utils.Debug=debug
 
@@ -299,7 +296,7 @@ try:
 
     expectedServants=[testeraAccount.name, currencyAccount.name]
     Print("Get %s servants, Expected: %s" % (initaAccount.name, expectedServants))
-    actualServants=node.getServants(initaAccount.name)
+    actualServants=node.getServantsArr(initaAccount.name)
     if actualServants is None:
         cmdError("eosc get servants testera")
         errorExit("Failed to retrieve %s servants" % (initaAccount.name))
@@ -309,7 +306,7 @@ try:
             initaAccount.name, expectedServants, actualServants), raw=True)
 
     Print("Get %s servants, Expected: []" % (testeraAccount.name))
-    actualServants=node.getServants(testeraAccount.name)
+    actualServants=node.getServantsArr(testeraAccount.name)
     if actualServants is None:
         cmdError("eosc get servants testera")
         errorExit("Failed to retrieve %s servants" % (testeraAccount.name))
@@ -332,7 +329,7 @@ try:
         errorExit("FAILURE - get transaction trans_id failed: %s" % (transId), raw=True)
 
     Print("Get transactions for account %s" % (testeraAccount.name))
-    actualTransactions=node.getTransactionsByAccount(testeraAccount.name)
+    actualTransactions=node.getTransactionsArrByAccount(testeraAccount.name)
     if actualTransactions is None:
         cmdError("eosc get transactions testera")
         errorExit("Failed to get transactions by account %s" % (testeraAccount.name))
