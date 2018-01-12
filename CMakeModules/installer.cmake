@@ -1,5 +1,6 @@
 include(InstallRequiredSystemLibraries)
 
+set(CPACK_PACKAGE_CONTACT "someone@eos.org"
 set(CPACK_OUTPUT_FILE_PREFIX ${CMAKE_BINARY_DIR}/packages)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 
