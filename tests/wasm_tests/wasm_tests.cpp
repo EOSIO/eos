@@ -531,7 +531,7 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
 
    signed_transaction trx;
    action act;
-   act.scope = N(entrycheck);
+   act.account = N(entrycheck);
    act.name = N();
    act.authorization = vector<permission_level>{{N(entrycheck),config::active_name}};
    trx.actions.push_back(act);
