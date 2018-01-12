@@ -1057,7 +1057,11 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
 
          auto acts = starter.prepare_database(*this, _db);
 
-         transaction genesis_setup_transaction;
+         // create a block for our genesis transaction to send to applied_irreversible_block below
+         signed_block block{};
+         block.producer = config::system_account_name;
+
+         signed_transaction genesis_setup_transaction; // not actually signed, signature checking is skipped
          genesis_setup_transaction.write_scope = { config::eosio_all_scope };
          genesis_setup_transaction.actions = move(acts);
 
@@ -1067,6 +1071,11 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             transaction_metadata tmeta( genesis_setup_transaction );
             __apply_transaction( tmeta );
          });
+
+         // TODO: Should we write this genesis block instead of faking it on startup?
+         block.input_transactions.emplace_back(genesis_setup_transaction);
+         applied_irreversible_block(block);
+
          ilog( "done applying genesis transaction" );
       });
    }
