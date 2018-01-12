@@ -24,17 +24,13 @@ if(WIN32)
  set(CPACK_NSIS_DEFINES "  !define MUI_STARTMENUPAGE_DEFAULTFOLDER \\\"Eos\\\"")
  # it seems like windows zip files usually don't have a single directory inside them, unix tgz frequently do
  SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
-
-endif(WIN32)
-
-if(APPLE)
+elseif(APPLE)
   set(CPACK_GENERATOR "DragNDrop")
-endif()
-
-if(LINUX)
+else()
   # Linux gets a .tgz
-  SET(CPACK_GENERATOR "TGZ")
+  SET(CPACK_GENERATOR "TGZ;DEB")
+  SET(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
   SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
-endif(LINUX)
+endif()
 
 include(CPack)
