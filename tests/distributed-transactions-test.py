@@ -59,7 +59,6 @@ try:
         errorExit("Wallet initialization failed.")
 
     Print("Create accounts.")
-    #if not cluster.createAccounts(wallet):
     if not cluster.createAccounts(testUtils.Cluster.initaAccount):
         errorExit("Accounts creation failed.")
 

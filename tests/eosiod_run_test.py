@@ -4,9 +4,12 @@ import testUtils
 
 import argparse
 import random
+import re
 
 ###############################################################
 # eosd_run_test
+# --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
+# --keepLogs <Don't delete tn_data_* folders upon test completion>
 ###############################################################
 
 Print=testUtils.Utils.Print
@@ -25,9 +28,6 @@ def cmdError(name, code=0, exitNow=False):
 TEST_OUTPUT_DEFAULT="test_output_0.txt"
 LOCAL_HOST="localhost"
 DEFAULT_PORT=8888
-# INITA_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
-# INITB_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
-#LOG_FILE="eeosd_run_test.log"
 
 parser = argparse.ArgumentParser(add_help=False)
 # Override default help argument so that only --help (and not -h) can call help
@@ -35,7 +35,7 @@ parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
 parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
 parser.add_argument("-h", "--host", type=str, help="eosd host name", default=LOCAL_HOST)
-parser.add_argument("-p", "--port", type=str, help="eosd host port", default=DEFAULT_PORT)
+parser.add_argument("-p", "--port", type=int, help="eosd host port", default=DEFAULT_PORT)
 parser.add_argument("--dumpErrorDetails",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
@@ -47,12 +47,9 @@ args = parser.parse_args()
 testOutputFile=args.output
 server=args.host
 port=args.port
-# debug=args.v
-debug=True
+debug=args.v
 localTest=True if server == LOCAL_HOST else False
-#testUtils.Utils.Debug=debug
-#ciju
-testUtils.Utils.Debug=True
+testUtils.Utils.Debug=debug
 
 cluster=testUtils.Cluster(walletd=True)
 walletMgr=testUtils.WalletMgr(True)
@@ -78,6 +75,8 @@ try:
         if cluster.launch() is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
+    else:
+        cluster.initializeNodes(self)
 
     accounts=testUtils.Cluster.createAccountKeys(3)
     if accounts is None:
@@ -256,11 +255,12 @@ try:
     transferAmount=975311
     Print("Transfer funds %d from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
-    transId=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
-    if transId is None:
+    trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
+    if trans is None:
         cmdError("eosc transfer")
         errorExit("Failed to transfer funds %d from account %s to %s" % (
             transferAmount, initaAccount.name, testeraAccount.name))
+    transId=testUtils.Node.getTransId(trans)
 
     expectedAmount=975311
     Print("Verify transfer, Expected: %d" % (expectedAmount))
@@ -274,7 +274,7 @@ try:
 
     expectedAccounts=[testeraAccount.name, currencyAccount.name, exchangeAccount.name]
     Print("Get accounts by key %s, Expected: %s" % (PUB_KEY3, expectedAccounts))
-    actualAccounts=node.getAccountsByKey(PUB_KEY3)
+    actualAccounts=node.getAccountsArrByKey(PUB_KEY3)
     if actualAccounts is None:
         cmdError("eosc get accounts pub_key3")
         errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY3))
@@ -285,7 +285,7 @@ try:
 
     expectedAccounts=[testeraAccount.name]
     Print("Get accounts by key %s, Expected: %s" % (PUB_KEY1, expectedAccounts))
-    actualAccounts=node.getAccountsByKey(PUB_KEY1)
+    actualAccounts=node.getAccountsArrByKey(PUB_KEY1)
     if actualAccounts is None:
         cmdError("eosc get accounts pub_key1")
         errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY1))
@@ -296,7 +296,7 @@ try:
 
     expectedServants=[testeraAccount.name, currencyAccount.name]
     Print("Get %s servants, Expected: %s" % (initaAccount.name, expectedServants))
-    actualServants=node.getServants(initaAccount.name)
+    actualServants=node.getServantsArr(initaAccount.name)
     if actualServants is None:
         cmdError("eosc get servants testera")
         errorExit("Failed to retrieve %s servants" % (initaAccount.name))
@@ -306,7 +306,7 @@ try:
             initaAccount.name, expectedServants, actualServants), raw=True)
 
     Print("Get %s servants, Expected: []" % (testeraAccount.name))
-    actualServants=node.getServants(testeraAccount.name)
+    actualServants=node.getServantsArr(testeraAccount.name)
     if actualServants is None:
         cmdError("eosc get servants testera")
         errorExit("Failed to retrieve %s servants" % (testeraAccount.name))
@@ -317,16 +317,19 @@ try:
     node.waitForTransIdOnNode(transId)
 
     Print("Get transaction details %s" % (transId))
-    transaction=node.getTransactionDetails(transId)
+    transaction=node.getTransaction(transId)
     if transaction is None:
         cmdError("eosc get transaction trans_id")
         errorExit("Failed to retrieve transaction details %s" % (transId))
 
-    if transaction.tType != "transfer" or transaction.amount != 975311:
+    typeVal=  transaction["transaction"]["actions"][1]["name"]
+    amountVal=transaction["transaction"]["actions"][1]["data"]["amount"]
+    if typeVal!= "transfer" or amountVal != 975311:
+    #if transaction.tType != "transfer" or transaction.amount != 975311:
         errorExit("FAILURE - get transaction trans_id failed: %s" % (transId), raw=True)
 
     Print("Get transactions for account %s" % (testeraAccount.name))
-    actualTransactions=node.getTransactionsByAccount(testeraAccount.name)
+    actualTransactions=node.getTransactionsArrByAccount(testeraAccount.name)
     if actualTransactions is None:
         cmdError("eosc get transactions testera")
         errorExit("Failed to get transactions by account %s" % (testeraAccount.name))
@@ -338,25 +341,190 @@ try:
     if codeHash is None:
         cmdError("eosc get code currency")
         errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
-    nonZero=codeHash.replace('0', '')
-    if nonZero != "":
-        errorExit("FAILURE - get transactions testera failed", raw=True)
+    hashNum=int(codeHash, 16)
+    if hashNum != 0:
+        errorExit("FAILURE - get code currency failed", raw=True)
 
-    # wastFile="contracts/currency/currency.wast"
-    # abiFile="contracts/currency/currency.abi"
-    # Print("Publish contract")
-    # transId=node.publishContract(currencyAccount.name, wastFile, abiFile, waitForTransBlock=True)
-    # if transId is None:
-    #     cmdError("eosc set contract currency")
-    #     errorExit("Failed to publish contract.")
+    wastFile="contracts/currency/currency.wast"
+    abiFile="contracts/currency/currency.abi"
+    Print("Publish contract")
+    trans=node.publishContract(currencyAccount.name, wastFile, abiFile, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set contract currency")
+        errorExit("Failed to publish contract.")
+
+    Print("Get code hash for account %s" % (currencyAccount.name))
+    codeHash=node.getAccountCodeHash(currencyAccount.name)
+    if codeHash is None:
+        cmdError("eosc get code currency")
+        errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
+    hashNum=int(codeHash, 16)
+    if hashNum == 0:
+        errorExit("FAILURE - get code currency failed", raw=True)
+
+    Print("Verify currency contract has proper initial balance")
+    contract="currency"
+    table="account"
+    row0=node.getTableRow(currencyAccount.name, contract, table, 0)
+    if row0 is None:
+        cmdError("eosc get table currency account")
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    balanceKey="balance"
+    keyKey="key"
+    if row0[balanceKey] != 1000000000 or row0[keyKey] != "account":
+        errorExit("FAILURE - get table currency account failed", raw=True)
+
+    Print("push message to currency contract")
+    contract="currency"
+    action="transfer"
+    data="{\"from\":\"currency\",\"to\":\"inita\",\"quantity\":50}"
+    opts="--scope currency,inita --permission currency@active"
+    trans=node.pushMessage(contract, action, data, opts)
+    if trans is None:
+        cmdError("eosc push message currency transfer")
+        errorExit("Failed to push message to currency contract")
+    transId=testUtils.Node.getTransId(trans)
+
+    Print("verify transaction exists")
+    if not node.waitForTransIdOnNode(transId):
+        cmdError("eosc get transaction trans_id")
+        errorExit("Failed to verify push message transaction id.")
+
+    Print("Stoping test at this point pending additional fixes.")
+    testSuccessful=True
+    exit(0)
+    
+    Print("read current contract balance")
+    contract="currency"
+    table="account"
+    row0=node.getTableRow(initaAccount.name, contract, table, 0)
+    if row0 is None:
+        cmdError("eosc get table currency account")
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    balanceKey="balance"
+    keyKey="key"
+    if row0[balanceKey] != 50:
+        errorExit("FAILURE - get table currency account failed", raw=True)
+
+    row0=node.getTableRow(currencyAccount.name, contract, table, 0)
+    if row0 is None:
+        cmdError("eosc get table currency account")
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    if row0[balanceKey] != 999999950:
+        errorExit("FAILURE - get table currency account failed", raw=True)
+
+    Print("Exchange Contract Tests")
+    Print("upload exchange contract")
+
+    wastFile="contracts/exchange/exchange.wast"
+    abiFile="contracts/exchange/exchange.abi"
+    Print("Publish contract")
+    trans=node.publishContract(exchangeAccount.name, wastFile, abiFile, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set contract exchange")
+        errorExit("Failed to publish contract.")
+    
+
+    wastFile="contracts/simpledb/simpledb.wast"
+    abiFile="contracts/simpledb/simpledb.abi"
+    Print("Setting simpledb contract without simpledb account was causing core dump in eosc.")
+    Print("Verify eosc generates an error, but does not core dump.")
+    retMap=node.publishContract("simpledb", wastFile, abiFile, shouldFail=True)
+    if retMap is None:
+        errorExit("Failed to publish, but should have returned a details map")
+    if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
+        errorExit("FAILURE - set contract exchange failed", raw=True)
+    else:
+        Print("Test successful, eosc returned error code: %d" % (retMap["returncode"]))
+
+    Print("Producer tests")
+    trans=node.createProducer(testeraAccount.name, testeraAccount.ownerPublicKey, waitForTransBlock=False)
+    if trans is None:
+        cmdError("eosc create producer")
+        errorExit("Failed to create producer %s" % (testeraAccount.name))
+
+    Print("set permission")
+    code="currency"
+    pType="transfer"
+    requirement="active"
+    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set action permission set")
+        errorExit("Failed to set permission")
+
+    Print("remove permission")
+    requirement="null"
+    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
+    if trans is None:
+        cmdError("eosc set action permission set")
+        errorExit("Failed to remove permission")
+                  
+    Print("Locking all wallets.")
+    if not walletMgr.lockAllWallets():
+        cmdError("eosc wallet lock_all")
+        errorExit("Failed to lock all wallets")
+
+    Print("Unlocking wallet \"%s\"." % (initaWallet.name))
+    if not walletMgr.unlockWallet(initaWallet):
+        cmdError("eosc wallet unlock inita")
+        errorExit("Failed to unlock wallet %s" % (initaWallet.name))
+
+    # TODO: Approving producers currently not supported
+    # approve producer
+    # INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
+    # verifyErrorCode "eosc approve producer"
+
+    Print("Get account inita")
+    account=node.getEosAccount(initaAccount.name)
+    if account is None:
+        cmdError("eosc get account")
+        errorExit("Failed to get account %s" % (initaAccount.name))
+
+    # TODO: Unapproving producers currently not supported
+    # unapprove producer
+    # INFO="$(programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
+    # verifyErrorCode "eosc unapprove producer"
+
+    #
+    # Proxy
+    #
+    # not implemented
+
+    Print("Get head block num.")
+    currentBlockNum=node.getHeadBlockNum()
+    Print("CurrentBlockNum: %d" % (currentBlockNum))
+    Print("Request blocks 1-%d" % (currentBlockNum))
+    for blockNum in range(1, currentBlockNum+1):
+        block=node.getBlock(blockNum)
+        if block is None:
+            cmdError("eosc get block")
+            errorExit("Failed to get block")
+
+    Print("Request invalid block numbered %d" % (currentBlockNum+100))
+    block=node.getBlock(currentBlockNum+100, silent=True)
+    if block is not None:
+        errorExit("ERROR: Received block where not expected")
+    else:
+        Print("Success: No such block found")
+
+    if localTest:
+        p = re.compile('Assert')
+        errFileName="tn_data_00/stderr.txt"
+        with open(errFileName) as errFile:
+            for line in errFile:
+                if p.search(line):
+                   errorExit("FAILURE - Assert in tn_data_00/stderr.txt")
         
     testSuccessful=True
     Print("END")
 finally:
     if not testSuccessful and dumpErrorDetails:
         cluster.dumpErrorDetails()
-        wallet.dumpErrorDetails()
-        Utils.Print("== Errors see above ==")
+        walletMgr.dumpErrorDetails()
+        Print("== Errors see above ==")
 
     if killEosInstances:
         Print("Shut down the cluster and wallet.")
