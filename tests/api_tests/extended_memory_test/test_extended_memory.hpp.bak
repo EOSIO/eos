@@ -1,0 +1,9 @@
+#pragma once
+
+
+struct test_extended_memory()
+{
+	static void test_initial_buffer();
+	static void test_page_memory();
+};
+

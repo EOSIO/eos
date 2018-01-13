@@ -1,0 +1,96 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+//#include <eoslib/message.h>
+#include <boost/test/unit_test.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
+#include <eosio/testing/tester.hpp>
+//#include <tests/api_tests/extended_memory_test/extended_memory_test_contract.wast.hpp>
+//#include <api_tests/extended_memory_test/extended_memory_test_contract.wast.hpp>
+#include <test_contracts/extended_memory_test_sc.wast.hpp>
+using namespace eosio; 
+using namespace eosio::testing; 
+
+void verify(const void* const ptr, const uint32_t val, const uint32_t size)
+{
+	 const char* char_ptr = (const char*)ptr;
+	 for (uint32_t i = 0; i < size; ++i)
+	 {
+		 BOOST_TEST_MESSAGE("P[" << i << "] : " << static_cast<uint64_t>(static_cast<unsigned char>(char_ptr[i])));
+//		 BOOST_REQUIRE_EQUAL(static_cast<uint64_t>(static_cast<unsigned char>(char_ptr[i])), val);
+		 //assert(static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])) == val, "buf slot doesn't match");
+	 }
+}
+
+
+BOOST_AUTO_TEST_SUITE(extended_memory_tests)
+
+/************************************************************************************************************
+ *
+ * Test to ensure that the initial heap is 8192 bytes and that after overbounding this size that we
+ * can create up to 4 "heaps".  Heaps 2-4 should be 1024 bytes in size.
+ *
+ ***********************************************************************************************************/
+#if 0
+BOOST_FIXTURE_TEST_CASE(irrelevant_auth, tester) { try {
+   auto joe = N(joe);
+   auto inita = N(inita);
+
+   create_account(joe, asset::from_string("0.0000 EOS"));
+   produce_blocks(1);
+   signed_transaction trx;
+   trx.write_scope = {joe, inita};
+   asset amount(50);
+   trx.actions.emplace_back( vector<permission_level>{{inita, config::active_name}},
+                             contracts::transfer {
+                                 .from = inita,
+                                 .to   = joe,
+                                 .amount = amount.amount,
+                                 .memo   = "memo"
+                           });
+   set_tapos( trx );
+   trx.sign( get_private_key( inita, "active" ), chain_id_type()  );
+   control->push_transaction( trx );
+
+   auto initb = N(initb);
+   signed_transaction invalid_trx;
+   invalid_trx.write_scope = {joe, inita};
+   invalid_trx.actions.emplace_back( vector<permission_level>{{initb, config::active_name}},
+                                     contracts::transfer {
+                                     .from = inita,
+                                     .to   = joe,
+                                     .amount = amount.amount,
+                                     .memo   = "memo"
+                                  });
+
+   invalid_trx.sign( get_private_key( initb, "active" ), chain_id_type()  );
+   BOOST_CHECK_THROW(control->push_transaction( invalid_trx ) , tx_irrelevant_auth);
+} FC_LOG_AND_RETHROW() }
+#endif
+BOOST_FIXTURE_TEST_CASE(test_extended_memory, tester) try {
+	auto bucky = N(bucky);
+	//test.produce_blocks(2);
+//	const std::string& test_ext_mem_wast = R"
+	int a = 30;
+	BOOST_TEST_MESSAGE("Testing extended memory");
+	create_account(bucky, asset::from_string("1000.0000 EOS"));
+
+	//create_accounts({N(bucky)}, asset::from_string("10.0000 EOS"));
+	//create_account(N(alice), asset::from_string("1.0000 EOS"));
+	produce_block();
+	//transfer(N(alice), N(bucky), "1.0000 EOS", "memo");
+	//produce_block();
+	set_code(N(bucky), extended_memory_test_sc_wast);
+	produce_blocks(1);
+	BOOST_REQUIRE_EQUAL(a, 30);
+} FC_LOG_AND_RETHROW()
+/*
+BOOST_AUTO_TEST_CASE(test_page_memory) { try {
+	tester test;
+	constexpr uint32_t _64K = 65536;
+	// inital
+	BOOST_REQUIRE_EQUAL(_64K, 65536);	
+} FC_LOG_AND_RETHROW() 
+*/
+BOOST_AUTO_TEST_SUITE_END()
