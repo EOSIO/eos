@@ -291,7 +291,7 @@ void create_account(name creator, name newaccount, public_key_type owner, public
       auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      uint64_t deposit = 1;
+      uint64_t deposit = 1000;
 
       signed_transaction trx;
       trx.write_scope = sort_names({creator,config::eosio_auth_scope});
