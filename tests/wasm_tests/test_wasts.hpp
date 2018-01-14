@@ -35,6 +35,26 @@ static const char entry_wast[] = R"=====(
 )
 )=====";
 
+static const char simple_no_memory_wast[] = R"=====(
+(module
+ (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+ (table 0 anyfunc)
+ (export "init" (func $init))
+ (export "apply" (func $apply))
+ (func $init
+ )
+ (func $apply (param $0 i64) (param $1 i64)
+    (drop
+       (call $memcpy
+          (i32.const 0)
+          (i32.const 1024)
+          (i32.const 1024)
+       )
+    )
+ )
+)
+)=====";
+
 static const char mutable_global_wast[] = R"=====(
 (module
  (import "env" "assert" (func $assert (param i32 i32)))
@@ -58,5 +78,4 @@ static const char mutable_global_wast[] = R"=====(
   )
  )
  (global $g0 (mut i32) (i32.const 2))
-)
 )=====";
