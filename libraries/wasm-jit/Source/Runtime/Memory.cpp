@@ -129,10 +129,11 @@ namespace Runtime
 	
 	U8* getValidatedMemoryOffsetRange(MemoryInstance* memory,Uptr offset,Uptr numBytes)
 	{
+		if(!memory)
+			causeException(Exception::Cause::accessViolation);
 		// Validate that the range [offset..offset+numBytes) is contained by the memory's reserved pages.
 		U8* address = memory->baseAddress + offset;
-		if(	!memory
-		||	address < memory->reservedBaseAddress
+		if(	address < memory->reservedBaseAddress
 		||	address + numBytes < address
 		||	address + numBytes >= memory->reservedBaseAddress + (memory->reservedNumPlatformPages << Platform::getPageSizeLog2()))
 		{
