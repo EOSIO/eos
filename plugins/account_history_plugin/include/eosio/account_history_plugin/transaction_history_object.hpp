@@ -25,7 +25,7 @@ using transaction_history_multi_index = chainbase::shared_multi_index_container<
    transaction_history_object,
    indexed_by<
       ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_history_object, transaction_history_object::id_type, id)>,
-      hashed_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_history_object, transaction_id_type, transaction_id), std::hash<transaction_id_type>>
+      ordered_unique<tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_history_object, transaction_id_type, transaction_id)>
    >
 >;
 
