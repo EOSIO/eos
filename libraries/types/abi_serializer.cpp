@@ -13,6 +13,8 @@ namespace eosio { namespace types {
 
    using boost::algorithm::ends_with;
    using std::string;
+   using std::deque;
+
 
    template <typename T>
    inline fc::variant variant_from_stream(fc::datastream<const char*>& stream) {
@@ -22,16 +24,37 @@ namespace eosio { namespace types {
    }
 
    template <typename T>
+   inline fc::variant variant_arr_from_stream(fc::datastream<const char*>& stream) {
+     return variant_from_stream<vector<T>>(stream);
+   }
+
+   // Can't use vector for unpacking bools, because of how vector<bool> is specialized by standard
+   template <>
+   inline fc::variant variant_arr_from_stream<bool>(fc::datastream<const char*>& stream) {
+     return variant_from_stream<deque<bool>>(stream);
+   }
+
+   template<typename T>
+   inline void pack_arr(fc::datastream<char*>& stream, const fc::variant& var) {
+     fc::raw::pack(stream, var.as<vector<T>>());
+   }
+
+   template <>
+   inline void pack_arr<bool>(fc::datastream<char*>& stream, const fc::variant& var) {
+     fc::raw::pack(stream, var.as<deque<bool>>());
+   }
+
+   template <typename T>
    auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
          []( fc::datastream<const char*>& stream, bool is_array) -> fc::variant  {
             if( is_array )
-               return variant_from_stream<vector<T>>(stream);
+               return variant_arr_from_stream<T>(stream);
             return variant_from_stream<T>(stream);
          },
          []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array ){
             if( is_array )
-               fc::raw::pack( ds, var.as<vector<T>>() );
+               pack_arr<T>(ds, var);
             else
                fc::raw::pack( ds,  var.as<T>());
          }
@@ -71,6 +94,7 @@ namespace eosio { namespace types {
       built_in_types.emplace("int16",         pack_unpack<int16_t>());
       built_in_types.emplace("int32",         pack_unpack<int32_t>());
       built_in_types.emplace("int64",         pack_unpack<int64_t>());
+      built_in_types.emplace("bool",          pack_unpack<bool>());
       //built_in_types.emplace("int128",      pack_unpack<int128>());
       //built_in_types.emplace("int256",      pack_unpack<int256>());
       //built_in_types.emplace("uint128_t",   pack_unpack<uint128_t>());
