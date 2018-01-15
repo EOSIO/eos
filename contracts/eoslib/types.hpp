@@ -20,20 +20,6 @@ namespace  eosio {
       return 0;
    }
 
-   static constexpr uint64_t string_to_symbol( const char* str ) {
-      uint32_t len = 0;
-      while( str[len] ) ++len;
-
-      uint64_t result = 0;
-      for( uint32_t i = 0; i < len; ++i ) {
-         if( str[i] < 'A' || str[i] > 'Z' ) {
-            /// ERRORS?
-         } else {
-            result |= (uint64_t(str[i]) << (8*(1+i)));
-         }
-      }
-      return result;
-   }
 
    /**
     *  Converts a base32 string to a uint64_t. This is a constexpr so that
@@ -71,7 +57,6 @@ namespace  eosio {
     * @ingroup types
     */
    #define N(X) ::eosio::string_to_name(#X)
-   #define S(X) ::eosio::string_to_symbol(#X)
 
    /**
     *  @class name

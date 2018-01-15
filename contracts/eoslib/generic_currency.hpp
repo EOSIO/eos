@@ -1,6 +1,7 @@
 #pragma once
 #include <eoslib/singleton.hpp>
 #include <eoslib/token.hpp>
+#include <eoslib/asset.hpp>
 #include <eoslib/dispatcher.hpp>
 
 namespace eosio {
@@ -17,7 +18,7 @@ namespace eosio {
           struct issue : action_meta<code,N(issue)> {
              typedef action_meta<code,N(issue)> meta;
              account_name to;
-             token_type   quantity;
+             asset        quantity;
 
              template<typename DataStream>
              friend DataStream& operator << ( DataStream& ds, const issue& t ){
@@ -32,19 +33,18 @@ namespace eosio {
           struct transfer : action_meta<code,N(transfer)> {
              account_name from;
              account_name to;
-             token_type   quantity;
-             name         symbol;
+             asset        quantity;
 
              //EOSLIB_SERIALIZE( transfer, (from)(to)(quantity)(symbol) )
 
              template<typename DataStream>
              friend DataStream& operator << ( DataStream& ds, const transfer& t ){
-                return ds << t.from << t.to << t.quantity << t.symbol;
+                return ds << t.from << t.to << t.quantity;
              }
              template<typename DataStream>
              friend DataStream& operator >> ( DataStream& ds, transfer& t ){
-                ds >> t.from >> t.to >> t.quantity >> t.symbol;
-                assert( t.symbol.value == token_type::symbol, "unexpected asset type" );
+                ds >> t.from >> t.to >> t.quantity;
+                assert( t.quantity.symbol== token_type::symbol, "unexpected asset type" );
                 return ds;
              }
           };

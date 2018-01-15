@@ -8,6 +8,7 @@
 #include <eoslib/math.hpp>
 #include <eoslib/print.hpp>
 #include <eoslib/reflect.hpp>
+#include <eoslib/asset.hpp>
 
 
 namespace eosio {
@@ -21,7 +22,6 @@ namespace eosio {
 
   template< uint64_t Code,
             uint64_t Symbol,
-            uint8_t Precision = 4,
             typename NumberType = uint64_t 
               >
   struct token {
@@ -37,6 +37,12 @@ namespace eosio {
     * @brief Default constructor
     */
     token(){}
+
+    operator asset()const { return asset( quantity, Symbol ); }
+
+    token( const asset& a ):quantity(a.amount) {
+       assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );
+    }
 
     /**
     * Constructor for token given quantity of tokens available
@@ -351,25 +357,6 @@ namespace eosio {
   /// @} tokenhppapi
 
 
-/*
-   template< uint64_t Code, uint64_t Symbol, uint8_t Precision, typename NumberType >
-   struct reflector< token<Code,Symbol,Precision,NumberType> > {
-      typedef token<Code,Symbol,Precision,NumberType>  type;
-
-      typedef eosio::true_type  is_reflected; 
-      typedef eosio::false_type is_enum; 
-
-      template<typename Visitor> 
-      static void visit( Visitor&& visitor ) {
-         visitor( &type::quantity);
-      }
-
-      template<typename Visitor> 
-      static void visit( const type& t, Visitor&& visitor ) {
-         visitor( t.quantity );
-      }
-   };
-   */
 
 
 }
