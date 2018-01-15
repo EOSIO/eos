@@ -64,7 +64,6 @@ public:
    void init();
    void wipe_database();
 
-   std::set<account_name> filter_on;
    static abi_def eos_abi; // cached for common use
 
    bool configured{false};
@@ -195,7 +194,7 @@ namespace {
      using bsoncxx::builder::basic::kvp;
      try {
         abi_serializer abis;
-        if (msg.scope == chain::config::system_account_name) {
+        if (msg.account == chain::config::system_account_name) {
            abis.set_abi(mongo_db_plugin_impl::eos_abi);
         } else {
            auto from_account = find_account(accounts, msg.name);
@@ -213,11 +212,11 @@ namespace {
            elog("  EOS JSON: ${j}", ("j", json));
         }
      } catch (fc::exception& e) {
-        elog("Unable to convert action.data to ABI: ${s} :: ${n}, what: ${e}", ("s", msg.scope)("n", msg.name)("e", e.to_string()));
+        elog("Unable to convert action.data to ABI: ${s} :: ${n}, what: ${e}", ("s", msg.account)("n", msg.name)("e", e.to_string()));
      } catch (std::exception& e) {
-        elog("Unable to convert action.data to ABI: ${s} :: ${n}, std what: ${e}", ("s", msg.scope)("n", msg.name)("e", e.what()));
+        elog("Unable to convert action.data to ABI: ${s} :: ${n}, std what: ${e}", ("s", msg.account)("n", msg.name)("e", e.what()));
      } catch (...) {
-        elog("Unable to convert action.data to ABI: ${s} :: ${n}, unknown exception", ("s", msg.scope)("n", msg.name));
+        elog("Unable to convert action.data to ABI: ${s} :: ${n}, unknown exception", ("s", msg.account)("n", msg.name));
      }
      // if anything went wrong just store raw hex_data
      msg_doc.append(kvp("hex_data", fc::variant(msg.data).as_string()));
@@ -305,11 +304,8 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
    auto blk_doc = block_doc << "transactions" << stream::open_array;
 
    int32_t trx_num = -1;
-   const bool check_relevance = !filter_on.empty();
    for (const auto& trx : block.input_transactions) {
       ++trx_num;
-      if (check_relevance && !is_scope_relevant(trx.read_scope))
-         continue;
 
       auto txn_oid = bsoncxx::oid{};
       blk_doc = blk_doc << txn_oid; // add to transaction.actions array
@@ -322,16 +318,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
             << "block_id" << block_id_str
             << "ref_block_num" << b_int32{static_cast<int32_t >(trx.ref_block_num)}
             << "ref_block_prefix" << b_int32{static_cast<int32_t >(trx.ref_block_prefix)}
-            << "write_scope" << stream::open_array;
-      for (const auto& account_name : trx.write_scope)
-         trx_doc = trx_doc << account_name.to_string();
-      trx_doc = trx_doc
-            << stream::close_array
-            << "read_scope" << stream::open_array;
-      for (const auto& account_name : trx.read_scope)
-         trx_doc = trx_doc << account_name.to_string();
-      trx_doc = trx_doc
-            << stream::close_array
             << "expiration" << b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}
             << "signatures" << stream::open_array;
       for (const auto& sig : trx.signatures) {
@@ -359,7 +345,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
                });
             }
          }));
-         msg_doc.append(kvp("handler_account_name", msg.scope.to_string()));
+         msg_doc.append(kvp("handler_account_name", msg.account.to_string()));
          msg_doc.append(kvp("name", msg.name.to_string()));
          add_data(msg_doc, accounts, msg);
          msg_doc.append(kvp("createdAt", b_date{now}));
@@ -367,7 +353,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
          bulk_msgs.append(insert_msg);
 
          // eos account update
-         if (msg.scope == chain::config::system_account_name) {
+         if (msg.account == chain::config::system_account_name) {
             try {
                update_account(msg);
             } catch (fc::exception& e) {
@@ -422,7 +408,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    using bsoncxx::builder::stream::finalize;
    using namespace bsoncxx::types;
 
-   if (msg.scope != chain::config::system_account_name)
+   if (msg.account != chain::config::system_account_name)
       return;
 
    if (msg.name == transfer) {
@@ -567,15 +553,6 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    }
 }
 
-bool mongo_db_plugin_impl::is_scope_relevant(const vector<account_name>& scope)
-{
-   for (const account_name& account_name : scope)
-      if (filter_on.count(account_name))
-         return true;
-
-   return false;
-}
-
 mongo_db_plugin_impl::mongo_db_plugin_impl()
 : mongo_inst{}
 , mongo_conn{}
@@ -668,10 +645,8 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
 {
 #ifdef MONGODB
    cfg.add_options()
-         ("filter-on-accounts,f", bpo::value<std::vector<std::string>>()->composing(),
-          "Track only transactions whose scopes involve the listed accounts. Default is to track all transactions.")
-         ("queue-size,q", bpo::value<uint>()->default_value(256),
-         "The queue size between EOSd and MongoDB process thread.")
+         ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256),
+         "The queue size between eosiod and MongoDB plugin thread.")
          ("mongodb-uri,m", bpo::value<std::string>(),
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.")
@@ -695,12 +670,8 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->wipe_database_on_startup = true;
       }
 
-      if (options.count("filter-on-accounts")) {
-         auto foa = options.at("filter-on-accounts").as<std::vector<std::string>>();
-         for (auto filter_account : foa)
-            my->filter_on.emplace(filter_account);
-      } else if (options.count("queue-size")) {
-         auto size = options.at("queue-size").as<uint>();
+      if (options.count("mongodb-queue-size")) {
+         auto size = options.at("mongodb-queue-size").as<uint>();
          my->queue_size = size;
       }
 
