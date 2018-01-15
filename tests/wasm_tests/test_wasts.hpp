@@ -78,4 +78,5 @@ static const char mutable_global_wast[] = R"=====(
   )
  )
  (global $g0 (mut i32) (i32.const 2))
+)
 )=====";
