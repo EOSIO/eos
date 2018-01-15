@@ -216,6 +216,7 @@ namespace Runtime
 	RUNTIME_API TableInstance* getDefaultTable(ModuleInstance* moduleInstance);
 
 	RUNTIME_API void runInstanceStartFunc(ModuleInstance* moduleInstance);
+	RUNTIME_API void resetGlobalInstances(ModuleInstance* moduleInstance);
 
 	// Gets an object exported by a ModuleInstance by name.
 	RUNTIME_API ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name);

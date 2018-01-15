@@ -30,8 +30,6 @@ namespace proxy {
 
          transaction<> out;
          out.add_action(out_act);
-         out.add_write_scope(self);
-         out.add_write_scope(code_config.owner);
          out.send(id, now() + code_config.delay);
       }
    }

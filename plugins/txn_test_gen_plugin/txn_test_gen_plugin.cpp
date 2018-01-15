@@ -75,7 +75,6 @@ struct txn_test_gen_plugin_impl {
       signed_transaction trx;
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
-      trx.write_scope = {creator, config::system_account_name, config::eosio_auth_scope};
       trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::lock{creator, creator, 300});
 
       //create "A" account
@@ -100,7 +99,6 @@ struct txn_test_gen_plugin_impl {
       {
       uint64_t balance = 10000;
       signed_transaction trx;
-      trx.write_scope = sort_names({creator,newaccountA,newaccountB});
       trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::transfer{creator, newaccountA, balance, memo});
       trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::transfer{creator, newaccountB, balance, memo});
       trx.expiration = cc.head_block_time() + fc::seconds(30);
@@ -152,7 +150,6 @@ struct txn_test_gen_plugin_impl {
       //make transaction a->b
       {
       signed_transaction trx;
-      trx.write_scope = sort_names({sender,recipient});
       trx.actions.emplace_back(vector<chain::permission_level>{{sender,"active"}}, contracts::transfer{sender, recipient, 1, memo});
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
@@ -165,7 +162,6 @@ struct txn_test_gen_plugin_impl {
       //make transaction b->a
       {
       signed_transaction trx;
-      trx.write_scope = sort_names({sender,recipient});
       trx.actions.emplace_back(vector<chain::permission_level>{{recipient,"active"}}, contracts::transfer{recipient, sender, 1, memo});
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
