@@ -1,10 +1,12 @@
 #pragma once
-namespace eosio {
-  typedef decltype(nullptr) nullptr_t;
+#include <eoslib/types.hpp>
 
-  struct true_type  { enum _value { value = 1 }; };
-  struct false_type { enum _value { value = 0 }; };
+namespace eosio {
 
   template<typename T, typename U>
   inline T&& forward( U&& u ) { return static_cast<T&&>(u); }
+
+  template<typename T>
+  inline typename remove_reference<T>::type&& move( T&& arg ) { return (typename remove_reference<T>::type&&)arg; }
+
 } /// namespace eosio
