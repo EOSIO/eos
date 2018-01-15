@@ -27,13 +27,13 @@ set( CMAKE_CXX_STANDARD 14 )
 
 
 
-file(GLOB UNIT_TESTS "chain_tests/*.cpp")
+file(GLOB UNIT_TESTS "chain_tests/*.cpp" "tests/abi_tests.cpp")
 if(WASM_TOOLCHAIN)
     file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
 endif()
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp )
-target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 
 if(WASM_TOOLCHAIN)
   target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )

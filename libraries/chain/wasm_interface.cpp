@@ -220,7 +220,7 @@ namespace eosio { namespace chain {
                // time to compile a brand new (maybe first) copy of this code
                Module* module = new Module();
                ModuleInstance* instance = nullptr;
-               size_t mem_end;
+               size_t mem_end = 0;
                vector<char> mem_image;
 
                try {
@@ -233,18 +233,19 @@ namespace eosio { namespace chain {
                   instance = instantiateModule(*module, std::move(link_result.resolvedImports));
                   FC_ASSERT(instance != nullptr);
 
-                  auto current_memory = Runtime::getDefaultMemory(instance);
+                  MemoryInstance* current_memory = Runtime::getDefaultMemory(instance);
 
-                  char *mem_ptr = &memoryRef<char>(current_memory, 0);
-                  const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
-                  for (uint64_t i = 0; i < allocated_memory; ++i) {
-                     if (mem_ptr[i]) {
-                        mem_end = i + 1;
+                  if(current_memory) {
+                     char *mem_ptr = &memoryRef<char>(current_memory, 0);
+                     const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
+                     for (uint64_t i = 0; i < allocated_memory; ++i) {
+                        if (mem_ptr[i])
+                           mem_end = i + 1;
                      }
+                     mem_image.resize(mem_end);
+                     memcpy(mem_image.data(), mem_ptr, mem_end);
                   }
-
-                  mem_image.resize(mem_end);
-                  memcpy(mem_image.data(), mem_ptr, mem_end);
+                  
                } catch (...) {
                   pending_error = std::current_exception();
                }
@@ -302,9 +303,11 @@ namespace eosio { namespace chain {
          _ios.post([&,code_id,this](){
             // sanitize by reseting the memory that may now be dirty
             auto& info = (*fetch_info(code_id)).get();
-            char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
-            memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-            memcpy( memstart, info.mem_image.data(), info.mem_end);
+            if(getDefaultMemory(entry.instance)) {
+               char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
+               memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
+               memcpy( memstart, info.mem_image.data(), info.mem_end);
+            }
 
             // under a lock, put this entry back in the available instances side of the instances vector
             with_lock([&,this](){
@@ -352,8 +355,9 @@ namespace eosio { namespace chain {
 
 
    void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      auto default_mem = Runtime::getDefaultMemory(code.instance);
-      Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
+      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.instance);
+      if(default_mem)
+         Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
       _my->return_entry(code_id, code);
    }
 
@@ -832,10 +836,13 @@ class memory_api : public context_aware_api {
          constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
          constexpr uint32_t MAX_MEM = 1024 * 1024;
 
-         const auto         default_mem    = Runtime::getDefaultMemory(code.instance);
-         const uint32_t     num_pages      = Runtime::getMemoryNumPages(default_mem);
-         const uint32_t     min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
-         const uint32_t     prev_num_bytes = sbrk_bytes; //_num_bytes;
+         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
+         if(!default_mem)
+            throw eosio::chain::page_memory_error();
+
+         const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
+         const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
+         const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
          
          // round the absolute value of num_bytes to an alignment boundary
          num_bytes = (num_bytes + 7) & ~7;

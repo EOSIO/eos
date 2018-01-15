@@ -13,6 +13,7 @@
 #include <proxy/proxy.wast.hpp>
 #include <proxy/proxy.abi.hpp>
 
+#include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
 
@@ -543,7 +544,32 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
-} FC_LOG_AND_RETHROW() /// prove_mem_reset
+} FC_LOG_AND_RETHROW()
 
+/**
+ * Ensure we can load a wasm w/o memory
+ */
+BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(nomem)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(nomem), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(nomem), simple_no_memory_wast);
+   produce_blocks(1);
+
+   //the apply func of simple_no_memory_wast tries to call a native func with linear memory pointer
+   signed_transaction trx;
+   action act;
+   act.scope = N(nomem);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(nomem),config::active_name}};
+   trx.actions.push_back(act);
+
+   trx.sign(get_private_key( N(nomem), "active" ), chain_id_type());
+   BOOST_CHECK_THROW(control->push_transaction( trx ), wasm_execution_error);
+
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
