@@ -4,12 +4,14 @@
  */
 #pragma once
 
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/producer_object.hpp>
-#include <eos/chain/exceptions.hpp>
+#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/producer_object.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
-#include <eos/native_contract/native_contract_chain_initializer.hpp>
-#include <eos/native_contract/native_contract_chain_administrator.hpp>
+#include <eosio/chain/contracts/chain_initializer.hpp>
+//#include <eos/native_contract/native_contract_chain_initializer.hpp>
+//#include <eos/native_contract/native_contract_chain_administrator.hpp>
 
 #include <eos/utilities/tempdir.hpp>
 
@@ -95,8 +97,8 @@ public:
     */
    fc::path get_temp_dir(std::string id = std::string());
 
-   const native_contract::genesis_state_type& genesis_state() const;
-   native_contract::genesis_state_type& genesis_state();
+   const chain::contracts::genesis_state_type& genesis_state() const;
+	chain::contracts::genesis_state_type& genesis_state();
 
    void store_private_key(const private_key_type& key);
    private_key_type get_private_key(const public_key_type& public_key) const;
@@ -106,7 +108,7 @@ protected:
    std::vector<fc::temp_directory> anonymous_temp_dirs;
    std::map<std::string, fc::temp_directory> named_temp_dirs;
    std::map<public_key_type, private_key_type> key_ring;
-   native_contract::genesis_state_type default_genesis_state;
+	chain::contracts::genesis_state_type default_genesis_state;
 };
 
 /**
@@ -123,15 +125,16 @@ protected:
  */
 class testing_blockchain : public chain_controller {
 public:
-   testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
-                      chain_initializer_interface& initializer, testing_fixture& fixture);
+   testing_blockchain(chain_contoller::chain_config cfg);
 
+#if 0
    testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                       chain_initializer_interface& initializer, testing_fixture& fixture,
                       uint32_t transaction_execution_time_msec,
                       uint32_t received_block_execution_time_msec,
                       uint32_t create_block_execution_time_msec,
                       const chain_controller::txn_msg_limits& rate_limits = chain_controller::txn_msg_limits());
+#endif
 
    /**
     * @brief Publish the provided contract to the blockchain, owned by owner

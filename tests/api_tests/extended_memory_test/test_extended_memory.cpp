@@ -14,15 +14,35 @@ void verify( const void* const ptr, const uint32_t val, const uint32_t size) {
 
 void test_extended_memory::test_page_memory() {
 	constexpr uint32_t _64K = 64*1024;
+   /*
+    * Test test_extended_memory::test_page_memory `ensure initial page size`
+    * Given I have not tried to increase the "program break" yet,
+    * when I call sbrk(0), then I should get the end of the first page, which should be 64K.
+    */
 	auto prev = sbrk(0);
 	assert(reinterpret_cast<uint32_t>(prev) == _64K, "Should initially have 1 64K page allocated");
 
+   /*
+    * Test test_extended_memory::test_page_memory `ensure sbrk returns previous end of program break`
+    * Given I have not tried to increase memory,
+    * when I call sbrk(1), then I should get the end of the first page, which should be 64K.
+    */
 	prev = sbrk(1);
 	assert(reinterpret_cast<uint32_t>(prev) == _64K, "Should still be pointing to the end of the 1st 64K page");
 
+   /*
+    * Test test_extended_memory::test_page_memory `ensure sbrk aligns allocations`
+    * Given that I allocated 1 byte via sbrk, 
+    * when I call sbrk(2), then I should get 8 bytes past the previous end because of maintaining 8 byte alignment.
+    */
 	prev = sbrk(2);
 	assert(reinterpret_cast<uint32_t>(prev) == _64K+8, "Should point to 8 past the end of 1st 64K page");
 
+   /*
+    * Test test_extended_memory::test_page_memory `ensure sbrk aligns allocations 2`
+    * Given that I allocated 2 bytes via sbrk, 
+    * when I call sbrk(_64K-17), then I should get 8 bytes past the previous end because of maintaining 8 byte alignment.
+    */
 	prev = sbrk(_64K - 17);
 	assert(reinterpret_cast<uint32_t>(prev) == _64K+16, "Should point to 16 past the end of the 1st 64K page");
 
@@ -52,8 +72,19 @@ void test_extended_memory::test_page_memory() {
 }
 
 void test_extended_memory::test_page_memory_exceeded() {
+   /*
+    * Test test_extended_memory::test_page_memory_exceeded `ensure sbrk won't allocation more than 1M of memory`
+    * Given that I have not tried to increase allocated memory,
+    * when I increase allocated memory with sbrk(15*64K), then I should get the end of the first page.
+    */
 	auto prev = sbrk(15*64*1024);
 	assert(reinterpret_cast<uint32_t>(prev) == 64*1024, "Should have allocated 1M of memory");
+
+   /*
+    * Test test_extended_memory::test_page_memory_exceeded `ensure sbrk won't allocation more than 1M of memory 2`
+    */
+   prev = sbrk(0);
+	assert(reinterpret_cast<uint32_t>(prev) == (1024*1024), "Should have allocated 1M of memory");
 	sbrk(1);
 	assert(0, "Should have thrown exception for trying to allocate too much memory");
 }

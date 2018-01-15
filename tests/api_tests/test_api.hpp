@@ -193,3 +193,14 @@ struct test_extended_memory {
 	static void test_page_memory_exceeded();
 	static void test_page_memory_negative_bytes();
 };
+
+struct test_memory {
+   static void test_memory_allocs();
+   static void test_memory_hunk();
+   static void test_memory_hunks();
+   static void test_memory_hunks_disjoint();
+   static void test_memset_memcpy();
+   static void test_memcpy_overlap_start();
+   static void test_memcpy_overlap_end();
+   static void test_memcmp();
+};

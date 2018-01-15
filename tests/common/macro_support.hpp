@@ -10,7 +10,7 @@
  * @file Contains support macros for the testcase helper macros. These macros are implementation details, and thus
  * should not be used directly. Use their frontends instead.
  */
-
+#if 0
 #define MKCHAIN1(name) \
    chainbase::database name ## _db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE); \
    block_log name ## _log(get_temp_dir() / "blocklog"); \
@@ -32,6 +32,34 @@
    native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
    testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this, transaction_execution_time_sec, receive_block_execution_time_sec, create_block_execution_time_sec, rate_limits); \
    BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
+#endif
+#define MKCHAIN1(name) \
+	chain_controller::chain_config name ## _cfg; \
+	name ## _cfg.block_log_dir(get_temp_dir() / "blocklog"); \
+	name ## _cfg.shared_memory_dir(get_temp_dir() / "shared"); \
+	name ## _cfg.shared_memory_size(1024 * 1024 * 8); \ 
+	testing_blockchain name(name ## _cfg);	
+   chainbase::database name ## _db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE); \
+   block_log name ## _log(get_temp_dir() / "blocklog"); \
+   fork_database name ## _fdb; \
+   native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
+   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this); \
+   BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
+#define MKCHAIN2(name, id) \
+   chainbase::database name ## _db(get_temp_dir(#id), chainbase::database::read_write, TEST_DB_SIZE); \
+   block_log name ## _log(get_temp_dir(#id) / "blocklog"); \
+   fork_database name ## _fdb; \
+   native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
+   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this); \
+   BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
+#define MKCHAIN5(name, transaction_execution_time_sec, receive_block_execution_time_sec, create_block_execution_time_sec, rate_limits) \
+   chainbase::database name ## _db(get_temp_dir(), chainbase::database::read_write, TEST_DB_SIZE); \
+   block_log name ## _log(get_temp_dir() / "blocklog"); \
+   fork_database name ## _fdb; \
+   native_contract::native_contract_chain_initializer name ## _initializer(genesis_state()); \
+   testing_blockchain name(name ## _db, name ## _fdb, name ## _log, name ## _initializer, *this, transaction_execution_time_sec, receive_block_execution_time_sec, create_block_execution_time_sec, rate_limits); \
+   BOOST_TEST_CHECKPOINT("Created blockchain " << #name);
+
 #define MKCHAINS_MACRO(x, y, name) Make_Blockchain(name)
 
 #define MKNET1(name) testing_network name; BOOST_TEST_CHECKPOINT("Created testnet " << #name);

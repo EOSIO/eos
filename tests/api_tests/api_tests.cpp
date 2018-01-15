@@ -48,10 +48,13 @@
 #include <extended_memory_test/extended_memory_test.wast.hpp>
 #include <action_test/action_test.wast.hpp>
 #include <account_test/account_test.wast.hpp>
-#include <chain_test/chain_test.wast.hpp>
+#include <real_test/real_test.wast.hpp>
+#include <crypto_test/crypto_test.wast.hpp>
+//#include <chain_test/chain_test.wast.hpp>
 //#include <db_test/db_test.wast.hpp>
 #include <fixedpoint_test/fixedpoint_test.wast.hpp>
 #include <math_test/math_test.wast.hpp>
+#include <memory_test/memory_test.wast.hpp>
 #include <print_test/print_test.wast.hpp>
 #include <string_test/string_test.wast.hpp>
 #include <types_test/types_test.wast.hpp>
@@ -379,8 +382,9 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_action", "read_action_normal", fc::raw::pack(dummy13));
 
    //std::vector<char> raw_bytes((1<<16)-1);
-   std::vector<char> raw_bytes((1<<16));
-   //CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes);
+   std::vector<char> raw_bytes(64);
+   //std::vector<char> raw_bytes((1<<16)-1);
+   CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes);
 
    //raw_bytes.resize((1<<16)+1);
    //CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes);
@@ -389,7 +393,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
    //BOOST_TEST_MESSAGE("SIZE " << raw_bytes2.size());
    //CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes2);
    //BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes), fc::unhandled_exception, is_access_violation);
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_action", "require_auth", {}), tx_missing_auth, is_tx_missing_auth);
+   //BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_action", "require_auth", {}), tx_missing_auth, is_tx_missing_auth);
 } FC_LOG_AND_RETHROW() }
 
 // TODO missing intrinsic get_active_producers
@@ -454,7 +458,85 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
 } FC_LOG_AND_RETHROW() }
 #endif
 
+// TODO missing intrinsics for doubles
+#if 0
+/*************************************************************************************
+ * real_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(real_test, tester) { try {
+   produce_blocks(1000);
+   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   produce_blocks(1000);
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   produce_blocks(1000);
+   set_code(N(testapi), real_test_wast);
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_real", "create_instances", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_real", "test_addition", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_real", "test_multiplication", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_real", "test_division", {} );
+} FC_LOG_AND_RETHROW() }
+#endif
 
+// TODO missing intrinsics assert_sha256
+#if 0
+/*************************************************************************************
+ * crypto_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(real_test, tester) { try {
+   produce_blocks(1000);
+   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   produce_blocks(1000);
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   produce_blocks(1000);
+   set_code(N(testapi), crypto_test_wast);
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_crypto", "asert_sha256_false", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_crypto", "asert_sha256_true", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_crypto", "asert_no_data", {} );
+} FC_LOG_AND_RETHROW() }
+#endif 
+
+#if 1
+/*************************************************************************************
+ * memory_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(memory_test, tester) { try {
+   produce_blocks(1000);
+   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   produce_blocks(1000);
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   produce_blocks(1000);
+   set_code(N(testapi), memory_test_wast);
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_allocs", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_hunk", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_hunks", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_hunks_disjoint", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memset_memcpy", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memcpy_overlap_start", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memcpy_overlap_end", {} );
+   produce_blocks(1000);
+   CALL_TEST_FUNCTION( *this, "test_memory", "test_memcmp", {} );
+} FC_LOG_AND_RETHROW() }
+#endif
+
+#if 1
 /*************************************************************************************
  * extended_memory_tests test cases
  *************************************************************************************/
@@ -503,69 +585,9 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_negative_bytes", {} ),
                          page_memory_error, is_page_memory_error);
 } FC_LOG_AND_RETHROW() }
-
-#if 0
-BOOST_AUTO_TEST_CASE(extended_memory_test_inital_memory) { try {
-   tester test_init_mem;
-   SETUP_TESTER_FOR_MEM_TEST(test_init_mem, extended_memory_test_wast);
-   CALL_TEST_FUNCTION( test_init_mem, "test_extended_memory", "test_initial_buffer", {} );
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(extended_memory_tests) { try {
-
-   tester test_init_mem;
-   tester test_page_mem;
-   tester test_page_mem_exceed;
-   tester test_page_mem_neg_bytes;
-
-//BOOST_FIXTURE_TEST_CASE(extended_memory_tests, tester) { try {
-/*
-	test_init_mem.produce_blocks(1000);
-	//test_init_mem.create_account( N(testapi), asset::from_string("1000.0000 EOS") );
-	test_init_mem.create_account( N(test_init_mem), asset::from_string("1000.0000 EOS") );
-	test_init_mem.produce_blocks(1000);
-	create_account( N(test_page_mem), asset::from_string("1000.0000 EOS") );
-	create_account( N(test_page_mem_exceed), asset::from_string("1000.0000 EOS") );
-	create_account( N(test_page_mem_neg_bytes), asset::from_string("1000.0000 EOS") );
-	produce_blocks(1000);
- 
-
-	transfer( N(inita), N(test_init_mem), "100.0000 EOS", "memo" );
-	produce_blocks(1000);
-	set_code( N(testapi), extended_memory_test_wast );
-	produce_blocks(1000);
-
-	transfer( N(inita), N(test_page_mem), "100.0000 EOS", "memo" );
-	produce_blocks(1000);
-	set_code( N(testapi), extended_memory_test_wast );
-	produce_blocks(1000);
-
-	transfer( N(inita), N(test_page_mem_exceed), "100.0000 EOS", "memo" );
-	produce_blocks(1000);
-	set_code( N(testapi), extended_memory_test_wast );
-	produce_blocks(1000);
-
-	transfer( N(inita), N(test_page_mem_neg_bytes), "100.0000 EOS", "memo" );
-	produce_blocks(1000);
-	set_code( N(testapi), extended_memory_test_wast );
-	produce_blocks(1000);
-*/
-   SETUP_TESTER_FOR_MEM_TEST(test_init_mem, extended_memory_test_wast);
-   SETUP_TESTER_FOR_MEM_TEST(test_page_mem, extended_memory_test_wast);
-   SETUP_TESTER_FOR_MEM_TEST(test_page_mem_exceed, extended_memory_test_wast);
-   SETUP_TESTER_FOR_MEM_TEST(test_page_mem_neg_bytes, extended_memory_test_wast);
-
-	CALL_TEST_FUNCTION( test_init_mem, "test_extended_memory", "test_initial_buffer", {});
-	CALL_TEST_FUNCTION( test_page_mem, "test_extended_memory", "test_page_memory", {});
-
-//	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( test_page_mem_exceed, "test_extended_memory", "test_page_memory_exceeded", {}), 
-//							    page_memory_error, is_page_memory_error);
-
-//	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( test_page_mem_neg_bytes, "test_extended_memory", "test_page_memory_negative_bytes", {}), 
-//							    page_memory_error, is_page_memory_error);
-
-} FC_LOG_AND_RETHROW() }
 #endif
+
+
 /*************************************************************************************
  * string_tests test case
  *************************************************************************************/

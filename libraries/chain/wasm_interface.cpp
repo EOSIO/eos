@@ -23,7 +23,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
-
+#include <iostream>
 
 
 using namespace IR;
@@ -632,6 +632,19 @@ class context_aware_api {
       apply_context&     context;
 };
 
+template <uint32_t N>
+struct left_shift_mask
+{
+   static const uint64_t value = (1<<N)+left_shift_mask<N-1>::value;
+};
+
+template<>
+struct left_shift_mask<0>
+{
+   static const uint64_t value = 1;
+};
+
+
 class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -827,6 +840,9 @@ class memory_api : public context_aware_api {
       }
 
       uint32_t sbrk(int num_bytes) {
+         // sbrk should only allow for memory to grow
+         if (num_bytes < 0)
+            throw eosio::chain::page_memory_error();
          // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
          constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
          constexpr uint32_t MAX_MEM = 1024 * 1024;
@@ -890,7 +906,7 @@ class transaction_api : public context_aware_api {
 
 REGISTER_INTRINSICS(system_api,
    (assert,      void(int, int))
-   (now,          int())
+   (now,         int())
 );
 
 REGISTER_INTRINSICS(action_api,

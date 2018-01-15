@@ -2,8 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/action.hpp>
-#include <eoslib/print.hpp>
+//#include <eoslib/action.hpp>
+//#include <eoslib/print.hpp>
+#include <eoslib/eos.hpp>
 
 #include "../test_api.hpp"
 
@@ -37,7 +38,8 @@ void test_action::read_action_normal() {
 void test_action::read_action_to_0() {
    prints("made it here\n");
    uint32_t total = read_action((void *)0,  0x7FFFFFFF); //0x7FFFFFFF);
-   assert(false, "WHY YOU NO FAIL!");
+   prints("made it out\n");
+//   assert(false, "WHY YOU NO FAIL!");
 }
 
 void test_action::read_action_to_64k() {
