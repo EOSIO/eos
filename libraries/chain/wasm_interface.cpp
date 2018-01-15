@@ -308,6 +308,7 @@ namespace eosio { namespace chain {
                memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
                memcpy( memstart, info.mem_image.data(), info.mem_end);
             }
+            resetGlobalInstances(entry.instance);
 
             // under a lock, put this entry back in the available instances side of the instances vector
             with_lock([&,this](){

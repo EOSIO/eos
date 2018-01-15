@@ -569,7 +569,33 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
 
    trx.sign(get_private_key( N(nomem), "active" ), chain_id_type());
    BOOST_CHECK_THROW(control->push_transaction( trx ), wasm_execution_error);
+} FC_LOG_AND_RETHROW()
 
+//Make sure globals are all reset to their inital values
+BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(globalreset)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(globalreset), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(globalreset), mutable_global_wast);
+   produce_blocks(1);
+
+   signed_transaction trx;
+   action act;
+   act.account = N(globalreset);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
+   trx.actions.push_back(act);
+
+   set_tapos(trx);
+   trx.sign(get_private_key( N(globalreset), "active" ), chain_id_type());
+   control->push_transaction(trx);
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   const auto& receipt = get_transaction_receipt(trx.id());
+   BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
