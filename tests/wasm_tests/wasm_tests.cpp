@@ -562,7 +562,7 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
    //the apply func of simple_no_memory_wast tries to call a native func with linear memory pointer
    signed_transaction trx;
    action act;
-   act.scope = N(nomem);
+   act.account = N(nomem);
    act.name = N();
    act.authorization = vector<permission_level>{{N(nomem),config::active_name}};
    trx.actions.push_back(act);
