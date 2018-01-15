@@ -1,6 +1,7 @@
 #pragma once
 #include <eoslib/singleton.hpp>
 #include <eoslib/token.hpp>
+#include <eoslib/dispatcher.hpp>
 
 namespace eosio {
 
@@ -10,56 +11,110 @@ namespace eosio {
           typedef Token token_type;
           static const uint64_t code                = token_type::code;
           static const uint64_t symbol              = token_type::symbol;
-          static const uint64_t accounts_table_name = N(account)
+          static const uint64_t accounts_table_name = N(account);
+          static const uint64_t stats_table_name    = N(stat);
 
-          struct issue : public action<Code,N(issue)> {
+          struct issue : action_meta<code,N(issue)> {
+             typedef action_meta<code,N(issue)> meta;
              account_name to;
              token_type   quantity;
+
+             template<typename DataStream>
+             friend DataStream& operator << ( DataStream& ds, const issue& t ){
+                return ds << t.to << t.quantity;
+             }
+             template<typename DataStream>
+             friend DataStream& operator >> ( DataStream& ds, issue& t ){
+                return ds >> t.to >> t.quantity;
+             }
           };
 
-          struct transfer : public action<Code,N(transfer)> {
+          struct transfer : action_meta<code,N(transfer)> {
              account_name from;
              account_name to;
              token_type   quantity;
+             name         symbol;
+
+             //EOSLIB_SERIALIZE( transfer, (from)(to)(quantity)(symbol) )
+
+             template<typename DataStream>
+             friend DataStream& operator << ( DataStream& ds, const transfer& t ){
+                return ds << t.from << t.to << t.quantity << t.symbol;
+             }
+             template<typename DataStream>
+             friend DataStream& operator >> ( DataStream& ds, transfer& t ){
+                ds >> t.from >> t.to >> t.quantity >> t.symbol;
+                assert( t.symbol.value == token_type::symbol, "unexpected asset type" );
+                return ds;
+             }
           };
 
           struct transfer_memo : public transfer {
              string       memo;
+
+             template<typename DataStream>
+             friend DataStream& operator << ( DataStream& ds, const transfer_memo& t ){
+                ds << static_cast<const transfer&>(t);
+                return ds << t.memo;
+             }
+             template<typename DataStream>
+             friend DataStream& operator >> ( DataStream& ds, transfer_memo& t ){
+                ds >> static_cast<transfer&>(t);
+                return ds >> t.memo;
+             }
           };
 
           struct account {
              token_type balance;
+
+             template<typename DataStream>
+             friend DataStream& operator << ( DataStream& ds, const account& t ){
+                return ds << t.balance;
+             }
+             template<typename DataStream>
+             friend DataStream& operator >> ( DataStream& ds, account& t ){
+                return ds >> t.balance;
+             }
           };
 
           struct currency_stats {
              token_type supply;
+
+             template<typename DataStream>
+             friend DataStream& operator << ( DataStream& ds, const currency_stats& t ){
+                return ds << t.supply;
+             }
+             template<typename DataStream>
+             friend DataStream& operator >> ( DataStream& ds, currency_stats& t ){
+                return ds >> t.supply;
+             }
           };
 
           /**
            *  Each user stores their balance in the singleton table under the
            *  scope of their account name.
            */
-          typedef eosio::singleton<Code, account_type_name, account> accounts;
-          typedef eosio::singleton<Code, stats_type_name, account>   stats;
+          typedef singleton<code, accounts_table_name, account>      accounts;
+          typedef singleton<code, stats_table_name, currency_stats>  stats;
 
           static token_type get_balance( account_name owner ) {
              return accounts::get_or_create( owner ).balance;
           }
 
-          static token_type set_balance( account_name owner, token_type balance ) {
-             return accounts::set( owner, balance );
+          static void set_balance( account_name owner, token_type balance ) {
+             accounts::set( account{balance}, owner );
           }
 
           static void on( const issue& act ) {
-             require_auth( Code );
+             require_auth( code );
 
-             auto s = stats::get_or_create()
+             auto s = stats::get_or_create();
              s.supply += act.quantity;
              stats::set(s);
 
-             set_balance( Code, get_balance( Code ) + act.quantity );
+             set_balance( code, get_balance( code ) + act.quantity );
 
-             inline_transfer( Code, act.to, act.quantity ); 
+             inline_transfer( code, act.to, act.quantity ); 
           }
 
 
@@ -74,27 +129,20 @@ namespace eosio {
           static void inline_transfer( account_name from, account_name to, token_type quantity, 
                                        string memo = string() )
           {
+             /*
              transfer_memo t{ from, to, quantity, move(memo) }
 
              action act{ t, .... }
-
-
-
+             */
           }
 
 
-         static void apply( account_name code, action_name action ) {
-            if( code == Code ) {
-               if( action == N(transfer) ) 
-                  on( unpack_action<transfer>() );
-               else if( action == N(issue) ) 
-                  on( unpack_action<issue>() );
-            } 
+         static void apply( account_name c, action_name act) {
+            eosio::dispatch<generic_currency, transfer_memo, issue>(c,act);
          }
    };
 
 } /// namespace eosio
-
 
 
 

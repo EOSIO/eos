@@ -10,6 +10,5 @@
 
 
 namespace currency {
-   typedef generic_currency<N(currency),
-                            S(CUR), 4>  contract;
+   typedef eosio::generic_currency< eosio::token<N(currency),S(CUR)> > contract;
 }

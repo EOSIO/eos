@@ -23,10 +23,10 @@ namespace eosio {
     
   class string {
      private:
-       size_t size; // size of the string
-       char* data; // underlying data
-       bool own_memory; // true if the object is responsible to clean the memory
-       uint32_t* refcount; // shared reference count to the underlying data
+       size_t    size = 0; // size of the string
+       char*     data = nullptr; // underlying data
+       bool      own_memory = false; // true if the object is responsible to clean the memory
+       uint32_t* refcount = nullptr; // shared reference count to the underlying data
 
        // Release data if no more string reference to it
        void release_data_if_needed() {
@@ -103,6 +103,29 @@ namespace eosio {
          release_data_if_needed();
        }
 
+       void resize( size_t newsize ) {
+          if( newsize == 0 ) {
+             release_data_if_needed();
+             refcount = nullptr;
+             own_memory = true;
+             data = nullptr;
+             size = 0;
+          }
+          else if( newsize < size ) {
+             size = newsize;
+             data[newsize] = 0;
+          }
+          else if( newsize > size ) {
+             char* newbuf = (char*)malloc( newsize );
+             memcpy( newbuf, data, size );
+             release_data_if_needed();
+             size = newsize;
+             data = newbuf;
+             own_memory = true;
+             refcount = nullptr;
+          }
+       }
+
        // Get size of the string (in number of bytes)
        const size_t get_size() const {
          return size;
@@ -110,6 +133,9 @@ namespace eosio {
 
        // Get the underlying data of the string
        const char* get_data() const {
+         return data;
+       }
+       char* get_data() {
          return data;
        }
 
@@ -286,6 +312,23 @@ namespace eosio {
        friend string operator + (string lhs, const string& rhs) {
          return lhs += rhs;
        }
+
+       template<typename DataStream>
+       friend DataStream& operator << ( DataStream& ds, const string& t ){
+          ds << unsigned_int( t.get_size() );
+          if( t.get_size() ) ds.write( t.get_data(), t.get_size() );
+          return ds;
+       }
+       template<typename DataStream>
+       friend DataStream& operator >> ( DataStream& ds, string& t ){
+          unsigned_int size;
+          ds >> size;
+          t.resize( size );
+          if( size.value )
+             ds.read( t.get_data(), size.value );
+          return ds;
+       }
+
 
        void print() const {
          if (size > 0 && *(data + size - 1) == '\0') {

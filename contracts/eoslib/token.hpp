@@ -19,17 +19,18 @@ namespace eosio {
   * @{
   */
 
-  template<typename NumberType, 
-           uint64_t Code = N(eosio.system), 
-           uint64_t Symbol = S(EOS), 
-           uint8_t precision = 4 >
+  template< uint64_t Code,
+            uint64_t Symbol,
+            uint8_t Precision = 4,
+            typename NumberType = uint64_t 
+              >
   struct token {
     /**
     * Type of the currency (e.g. eos) represented as an unsigned 64 bit integer
     * @brief  Type of the currency
     */
     static const uint64_t code   = Code;
-    static const uint64_t symbol = Code;
+    static const uint64_t symbol = Symbol;
 
     /**
     * Default constructor
@@ -163,6 +164,15 @@ namespace eosio {
     * @return true if quantity is not zero
     */
     explicit operator bool()const { return quantity != 0; }
+
+    template<typename DataStream>
+    friend DataStream& operator << ( DataStream& ds, const token& t ){
+       return ds << t.quantity;
+    }
+    template<typename DataStream>
+    friend DataStream& operator >> ( DataStream& ds, token& t ){
+       return ds >> t.quantity;
+    }
 
   };
   /// @}
@@ -341,9 +351,10 @@ namespace eosio {
   /// @} tokenhppapi
 
 
-   template<typename NumberType, uint64_t Currency>
-   struct reflector< token<NumberType,Currency> > {
-      typedef token<NumberType,Currency>  type;
+/*
+   template< uint64_t Code, uint64_t Symbol, uint8_t Precision, typename NumberType >
+   struct reflector< token<Code,Symbol,Precision,NumberType> > {
+      typedef token<Code,Symbol,Precision,NumberType>  type;
 
       typedef eosio::true_type  is_reflected; 
       typedef eosio::false_type is_enum; 
@@ -358,6 +369,7 @@ namespace eosio {
          visitor( t.quantity );
       }
    };
+   */
 
 
 }

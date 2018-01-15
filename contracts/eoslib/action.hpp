@@ -102,10 +102,10 @@ namespace eosio {
       }
    };
 
-   template<uint64_t Scope, uint64_t Name>
+   template<uint64_t Account, uint64_t Name>
    struct action_meta {
-      static uint64_t get_scope() { return Scope; }
-      static uint64_t get_(me)    { return Name; }
+      static uint64_t get_account() { return Account; }
+      static uint64_t get_name()  { return Name; }
    };
 
 

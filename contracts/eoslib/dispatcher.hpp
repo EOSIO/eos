@@ -1,15 +1,15 @@
 #pragma once
 
 namespace eosio {
-
    template<typename Contract, typename FirstAction>
-   bool dispatch( account_name code, account_name act ) {
-      if( code == FirstAction::get_code() && FirstAction::get_name() == act ) {
+   bool dispatch( uint64_t code, uint64_t act ) {
+      if( code == FirstAction::get_account() && FirstAction::get_name() == act ) {
          Contract::on( unpack_action<FirstAction>() );
          return true;
       }
       return false;
    }
+
 
    /**
     * This method will dynamically dispatch an incoming set of actions to
@@ -21,13 +21,14 @@ namespace eosio {
     * For this to work the Actions must be dervied from the 
     *
     */
-   template<typename Contract, typename FirstAction, typename... Actions>
-   bool dispatch( account_name code, name act ) {
-      if( code == FirstAction::get_code() && FirstAction::get_name() == act ) {
+   template<typename Contract, typename FirstAction, typename SecondAction, typename... Actions>
+   bool dispatch( uint64_t code, uint64_t act ) {
+      if( code == FirstAction::get_account() && FirstAction::get_name() == act ) {
          Contract::on( unpack_action<FirstAction>() );
          return true;
       }
-      return dispatch<Contract,Actions...>( code, act );
+      return eosio::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
+
 
 }

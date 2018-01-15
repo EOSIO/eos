@@ -14,14 +14,14 @@
 namespace eosio {
     namespace raw {    
 
-   template<typename Stream, typename T>
+   template<typename Stream, typename T, typename reflector<T>::is_reflected::value = 1>
    void pack( Stream& ds, const T& t ) {
       reflector<T>::visit( t, [&]( const auto& field ) {
          raw::pack( ds, field );
       });
    }
 
-   template<typename Stream, typename T>
+   template<typename Stream, typename T, typename reflector<T>::is_reflected::value = 1>
    void unpack( Stream& ds, T& t ) {
       reflector<T>::visit( t, [&]( auto& field ) {
          raw::unpack( ds, field );
@@ -33,19 +33,19 @@ namespace eosio {
    *  @param s    stream to write
    *  @param a0   value to be serialized
    *  @param args other values to be serialized
-   */
    template<typename Stream, typename Arg0, typename... Args>
    void pack( Stream& s, const Arg0& a0, Args... args ) {
       pack( s, a0 );
       pack( s, args... );
    }
+   */
 
   /**
    *  Serialize a value into a stream
    *  @param s stream to write
    *  @param v value to be serialized
    */
-   template<typename Stream, typename T, typename reflector<T>::is_reflected::value = 0>
+   template<typename Stream, typename T>
    void pack( Stream& s, const T& v ) {
       s << v;
    }
@@ -55,7 +55,7 @@ namespace eosio {
    *  @param s stream to read
    *  @param v destination of deserialized value
    */
-   template<typename Stream, typename T, typename reflector<T>::is_reflected::value = 0>
+   template<typename Stream, typename T> //, typename reflector<T>::is_reflected::value = 0>
    void unpack( Stream& s, T& v )
    {
       s >> v;

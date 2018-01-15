@@ -89,6 +89,15 @@ namespace  eosio {
 
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
+
+      template<typename DataStream>
+      friend DataStream& operator << ( DataStream& ds, const name& v ){
+         return ds << v.value;
+      }
+      template<typename DataStream>
+      friend DataStream& operator >> ( DataStream& ds, name& v ){
+         return ds >> v.value;
+      }
    };
 
    /// @}

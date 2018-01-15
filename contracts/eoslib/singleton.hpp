@@ -1,6 +1,6 @@
 #pragma once
 #include <eoslib/db.hpp>
-#include <eoslib/serialize.hpp>
+#include <eoslib/raw.hpp>
 
 namespace  eosio {
 
@@ -12,7 +12,7 @@ namespace  eosio {
     *  @tparam T - the type of the singleton 
     */
    template<account_name Code, uint64_t SingletonName, typename T>
-   class scope_local_singleton
+   class singleton
    {
       public:
          static const uint64_t singleton_table_name = N(singleton);
@@ -30,7 +30,7 @@ namespace  eosio {
             datastream<const char*> ds(temp + sizeof(SingletonName), read);
 
             T result;
-            unpack( ds, result );
+            raw::unpack( ds, result );
             return result;
          }
 
@@ -39,26 +39,25 @@ namespace  eosio {
 
             auto read = load_i64( scope, Code, singleton_table_name, temp, sizeof(temp) );
             if( read < 0 ) {
-               set( scope, def );
+               set( def, scope );
                return def;
             }
 
             datastream<const char*> ds(temp + sizeof(SingletonName), read);
-
             T result;
-            unpack( ds, result );
+            ds >> result;
             return result;
          }
 
          static void set( const T& value = T(), scope_name scope = Code ) {
-            auto size = pack_size( value );
+            auto size = raw::pack_size( value );
             char buf[size+ sizeof(SingletonName)];
 
             assert( sizeof(buf) <= 1024 + 8, "singleton too big to store" );
 
             datastream<char*> ds( buf, size + sizeof(SingletonName) );
-            pack( ds, SingletonName );
-            pack( ds, value );
+            ds << SingletonName;
+            ds << value;
             
             store_i64( scope, singleton_table_name, buf, sizeof(buf) );
          }
