@@ -48,7 +48,7 @@ public:
    get_transactions_results get_transactions(const account_name&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
    vector<account_name> get_key_accounts(const public_key_type& public_key) const;
    vector<account_name> get_controlled_accounts(const account_name& controlling_account) const;
-   void applied_block(const signed_block&);
+   void applied_block(const chain::block_trace&);
    fc::variant transaction_to_variant(const signed_transaction& pretty_input) const;
 
    chain_plugin* chain_plug;
@@ -283,45 +283,59 @@ vector<account_name> account_history_plugin_impl::get_controlled_accounts(const 
    return vector<account_name>(accounts.begin(), accounts.end());
 }
 
-void account_history_plugin_impl::applied_block(const signed_block& block)
+static vector<account_name> generated_affected_accounts(const chain::transaction_trace& trx_trace) {
+   vector<account_name> result;
+   for (const auto& at: trx_trace.action_traces) {
+      for (const auto& auth: at.act.authorization) {
+         result.emplace_back(auth.actor);
+      }
+
+      result.emplace_back(at.receiver);
+   }
+
+   fc::deduplicate(result);
+   return result;
+}
+
+void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
 {
+   const auto& block = trace.block;
    const auto block_id = block.id();
    auto& db = chain_plug->chain().get_mutable_database();
    const bool check_relevance = filter_on.size();
-   for (const signed_transaction& trx : block.input_transactions)
+   auto process_one = [&](const chain::transaction_trace& trx_trace )
    {
-      if (check_relevance && !is_scope_relevant(trx.read_scope) && !is_scope_relevant(trx.write_scope))
-         continue;
+      auto affected_accounts = generated_affected_accounts(trx_trace);
+      if (check_relevance && !is_scope_relevant(affected_accounts))
+         return;
 
-      auto trx_obj_ptr = db.find<transaction_history_object, by_trx_id>(trx.id());
+      auto trx_obj_ptr = db.find<transaction_history_object, by_trx_id>(trx_trace.id);
       if (trx_obj_ptr != nullptr)
-         continue; // on restart may already have block
+         return; // on restart may already have block
 
-      db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
+      db.create<transaction_history_object>([&block_id,&trx_trace](transaction_history_object& transaction_history) {
          transaction_history.block_id = block_id;
-         transaction_history.transaction_id = trx.id();
+         transaction_history.transaction_id = trx_trace.id;
+         transaction_history.transaction_status = trx_trace.status;
       });
 
-      auto create_ath_object = [&trx,&db](const account_name& name) {
-         db.create<account_transaction_history_object>([&trx,&name](account_transaction_history_object& account_transaction_history) {
+      auto create_ath_object = [&trx_trace,&db](const account_name& name) {
+         db.create<account_transaction_history_object>([&trx_trace,&name](account_transaction_history_object& account_transaction_history) {
             account_transaction_history.name = name;
-            account_transaction_history.transaction_id = trx.id();
+            account_transaction_history.transaction_id = trx_trace.id;
          });
       };
 
-      for (const auto& account_name : trx.read_scope)
+      for (const auto& account_name : affected_accounts)
          create_ath_object(account_name);
 
-      for (const auto& account_name : trx.write_scope)
-         create_ath_object(account_name);
-
-      for (const chain::action& act : trx.actions)
+      for (const auto& act_trace : trx_trace.action_traces)
       {
-         if (act.scope == chain::config::system_account_name)
+         if (act_trace.receiver == chain::config::system_account_name)
          {
-            if (act.name == NEW_ACCOUNT)
+            if (act_trace.act.name == NEW_ACCOUNT)
             {
-               const auto create = act.as<chain::contracts::newaccount>();
+               const auto create = act_trace.act.as<chain::contracts::newaccount>();
                add(db, create.owner.keys, create.name, OWNER);
                add(db, create.active.keys, create.name, ACTIVE);
                add(db, create.recovery.keys, create.name, RECOVERY);
@@ -330,25 +344,32 @@ void account_history_plugin_impl::applied_block(const signed_block& block)
                add(db, create.active.accounts, create.name, ACTIVE);
                add(db, create.recovery.accounts, create.name, RECOVERY);
             }
-            else if (act.name == UPDATE_AUTH)
+            else if (act_trace.act.name == UPDATE_AUTH)
             {
-               const auto update = act.as<chain::contracts::updateauth>();
+               const auto update = act_trace.act.as<chain::contracts::updateauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
                add(db, update.data.keys, update.account, update.permission);
 
                remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
                add(db, update.data.accounts, update.account, update.permission);
             }
-            else if (act.name == DELETE_AUTH)
+            else if (act_trace.act.name == DELETE_AUTH)
             {
-               const auto del = act.as<chain::contracts::deleteauth>();
+               const auto del = act_trace.act.as<chain::contracts::deleteauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
 
                remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
             }
          }
       }
-   }
+   };
+
+   // go through all the transaction traces
+   for (const auto& rt: trace.region_traces)
+      for(const auto& ct: rt.cycle_traces)
+         for(const auto& st: ct.shard_traces)
+            for(const auto& trx_trace: st.transaction_traces)
+               process_one(trx_trace);
 }
 
 void account_history_plugin_impl::add(chainbase::database& db, const vector<key_weight>& keys, const account_name& name, const permission_name& permission)

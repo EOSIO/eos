@@ -60,7 +60,6 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
       auto to   = N(dan);
       asset amount(1);
       signed_transaction trx;
-      trx.write_scope = {from,to};
       trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
                                 contracts::transfer{
                                    .from   = from,
@@ -80,7 +79,6 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
       auto to   = N(dan);
       asset amount(1);
       signed_transaction trx;
-      trx.write_scope = {from,to};
       trx.actions.emplace_back( vector<permission_level>{{to,config::active_name}},
                                 contracts::transfer{
                                    .from   = from,
@@ -93,25 +91,6 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
       trx.sign( test.get_private_key( to, "active" ), chain_id_type()  ); 
       /// action not provided from authority
       BOOST_REQUIRE_THROW( test.control->push_transaction( trx ), tx_missing_auth);
-  }
-
-  {
-      auto from = N(bart);
-      auto to   = N(dan);
-      asset amount(1);
-      signed_transaction trx;
-     // trx.write_scope = {from,to};
-      trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
-                                contracts::transfer{
-                                   .from   = from,
-                                   .to     = to,
-                                   .amount = amount.amount,
-                                   .memo   = "memo" 
-                                } );
-
-      test.set_tapos( trx );
-      trx.sign( test.get_private_key( from, "active" ), chain_id_type()  ); 
-      BOOST_REQUIRE_THROW( test.control->push_transaction( trx ), tx_missing_write_scope);
   }
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
@@ -151,7 +130,6 @@ BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
       asset amount(1);
 
       signed_transaction trx;
-      trx.write_scope = {from,to};
       trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
                                 contracts::transfer{
                                    .from   = from,
