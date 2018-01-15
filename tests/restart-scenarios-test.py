@@ -62,16 +62,20 @@ keepLogs=args.keepLogs
 
 testUtils.Utils.Debug=debug
 
-Print ("producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d, chain sync strategy: %s" % (pnodes, topo, delay, chainSyncStrategyStr))
+Print ("producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d, chain sync strategy: %s" % (
+    pnodes, topo, delay, chainSyncStrategyStr))
 
-cluster=testUtils.Cluster(chainSyncStrategyStr)
+cluster=testUtils.Cluster()
+walletMgr=testUtils.WalletMgr(False)
 cluster.killall()
 cluster.cleanup()
 random.seed(1) # Use a fixed seed for repeatability.
 testSuccessful=False
 
 try:
-    print("Stand up cluster")
+    cluster.setChainStrategy(chainSyncStrategyStr)
+    cluster.setWalletMgr(walletMgr)
+    Print("Stand up cluster")
     if cluster.launch(pnodes, total_nodes, topo, delay) is False:
         errorExit("Failed to stand up eos cluster.")
     
@@ -81,12 +85,19 @@ try:
         errorExit("Cluster never stabilized")
 
     accountsCount=total_nodes
+    walletName="MyWallet"
+    Print("Creating wallet %s if one doesn't already exist." % walletName)
+    wallet=walletMgr.create(walletName)
+    if wallet is None:
+        errorExit("Failed to create wallet %s" % (walletName))
+
     Print ("Create wallet.")
-    if not cluster.populateWallet(accountsCount):
+    if not cluster.populateWallet(accountsCount, wallet):
         errorExit("Wallet initialization failed.")
 
     Print("Create accounts.")
-    if not cluster.createAccounts():
+    #if not cluster.createAccounts(wallet):
+    if not cluster.createAccounts(testUtils.Cluster.initaAccount):
         errorExit("Accounts creation failed.")
 
     Print("Wait on cluster sync.")
@@ -136,12 +147,17 @@ try:
 finally:
     if not testSuccessful and dumpErrorDetails:
         cluster.dumpErrorDetails()
+        wallet.dumpErrorDetails()
+        Utils.Print("== Errors see above ==")
 
     if killEosInstances:
         Print("Shut down the cluster%s" % (" and cleanup." if (testSuccessful and not keepLogs) else "."))
         cluster.killall()
+        walletMgr.killall()
         if testSuccessful and not keepLogs:
+            Print("Cleanup cluster and wallet data.")
             cluster.cleanup()
+            walletMgr.cleanup()
     pass
     
 exit(0)
