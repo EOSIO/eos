@@ -211,7 +211,7 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
 
                      auto a_data = action_proof_data {
                         at.receiver,
-                        at.act.scope,
+                        at.act.account,
                         at.act.name,
                         at.act.data,
                         at.region_id,

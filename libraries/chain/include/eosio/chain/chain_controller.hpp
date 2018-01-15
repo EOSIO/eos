@@ -19,7 +19,6 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/pending_cycle_state.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -312,8 +311,8 @@ namespace eosio { namespace chain {
 
          transaction_trace _push_transaction( const signed_transaction& trx );
          transaction_trace _push_transaction( transaction_metadata& data );
-         transaction_trace _apply_transaction( transaction_metadata& data );//const transaction& trx, uint32_t region_id, uint32_t cycle_index );
-         transaction_trace __apply_transaction( transaction_metadata& data );//const transaction& trx, uint32_t region_id, uint32_t cycle_index );
+         transaction_trace _apply_transaction( transaction_metadata& data );
+         transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
 
          /// Reset the object graph in-memory
@@ -354,7 +353,6 @@ namespace eosio { namespace chain {
          try {
             EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
 
-            validate_scope(trx);
             validate_expiration(trx);
             validate_uniqueness(trx);
             validate_tapos(trx);
@@ -366,7 +364,6 @@ namespace eosio { namespace chain {
          void validate_tapos(const transaction& trx)const;
          void validate_referenced_accounts(const transaction& trx)const;
          void validate_expiration(const transaction& trx) const;
-         void validate_scope(const transaction& trx) const;
          void record_transaction(const transaction& trx);
          /// @}
 
@@ -421,7 +418,6 @@ namespace eosio { namespace chain {
          optional<signed_block>           _pending_block;
          optional<block_trace>            _pending_block_trace;
          uint32_t                         _pending_transaction_count = 0; 
-         pending_cycle_state              _pending_cycle;
          optional<cycle_trace>            _pending_cycle_trace;
 
          bool                             _currently_applying_block = false;
