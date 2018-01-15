@@ -411,10 +411,10 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      if (context.act.scope == config::system_account_name && context.act.name == N(setcode)) {
+      if (context.act.account == config::system_account_name && context.act.name == N(setcode)) {
          my->call("init", {}, code, context);
       } else {
-         vector<Value> args = {Value(uint64_t(context.act.scope)),
+         vector<Value> args = {Value(uint64_t(context.act.account)),
                                Value(uint64_t(context.act.name))};
          my->call("apply", args, code, context);
       }
@@ -672,12 +672,12 @@ class action_api : public context_aware_api {
       }
 
       fc::time_point_sec publication_time() {
-         return context.published;
+         return context.trx_meta.published;
       }
 
       name current_sender() {
-         if (context.sender) {
-            return *context.sender;
+         if (context.trx_meta.sender) {
+            return *context.trx_meta.sender;
          } else {
             return name();
          }
@@ -910,8 +910,8 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_scope,   void(int64_t)   )
-   (require_read_scope,    void(int64_t)   )
+   (require_write_lock,    void(int64_t)   )
+   (require_read_lock,     void(int64_t, int64_t)   )
    (require_recipient,     void(int64_t)   )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
 );

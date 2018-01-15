@@ -11,7 +11,6 @@ using namespace eosio::testing;
 
 auto make_postrecovery(const tester &t, account_name account, string role) {
    signed_transaction trx;
-   trx.write_scope = {config::eosio_auth_scope, account};
    trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                              postrecovery{
                                 .account = account,
@@ -25,7 +24,6 @@ auto make_postrecovery(const tester &t, account_name account, string role) {
 
 auto make_vetorecovery(const tester &t, account_name account, permission_name vetoperm = N(active), optional<private_key_type> signing_key = optional<private_key_type>()) {
    signed_transaction trx;
-   trx.write_scope = {config::eosio_auth_scope, account};
    trx.actions.emplace_back( vector<permission_level>{{account,vetoperm}},
                              vetorecovery{
                                 .account = account
@@ -42,7 +40,6 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
 auto push_nonce(tester &t, const string& role) {
    // ensure the old owner key is valid
    signed_transaction trx;
-   trx.write_scope = {N(alice)};
    trx.actions.emplace_back( vector<permission_level>{{N(alice),config::owner_name}},
                              nonce{
                                 .value = t.control->head_block_num()

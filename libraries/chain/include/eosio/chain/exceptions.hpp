@@ -22,7 +22,9 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eosio::chain::chain_exception, 3110000, "unknown block" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eosio::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
-   
+   FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
+   FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              eosio::chain::block_validate_exception, 3020003, "shard locks in block are incorrect or mal-formed" )
+
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   eosio::chain::transaction_exception, 3030001, "missing required authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   eosio::chain::transaction_exception, 3030002, "signatures do not satisfy declared authorizations" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_auth,                eosio::chain::transaction_exception, 3030003, "irrelevant authority included" )
@@ -41,9 +43,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_permission,            eosio::chain::transaction_exception, 3030017, "Unsatisfied permission" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_auth_exceeded,             eosio::chain::transaction_exception, 3030018, "Number of transaction messages per authorized account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_code_exceeded,             eosio::chain::transaction_exception, 3030019, "Number of transaction messages per code account has been exceeded" )
-   FC_DECLARE_DERIVED_EXCEPTION( tx_missing_read_scope,             eosio::chain::transaction_exception, 3030020, "missing required read scope" )
-   FC_DECLARE_DERIVED_EXCEPTION( tx_missing_write_scope,            eosio::chain::transaction_exception, 3030021, "missing required write scope" )
-   FC_DECLARE_DERIVED_EXCEPTION( wasm_execution_error,              eosio::chain::transaction_exception, 3030022, "Runtime Error Processing WASM" )
+   FC_DECLARE_DERIVED_EXCEPTION( wasm_execution_error,              eosio::chain::transaction_exception, 3030020, "Runtime Error Processing WASM" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eosio::chain::utility_exception, 3060001, "invalid pts address" )

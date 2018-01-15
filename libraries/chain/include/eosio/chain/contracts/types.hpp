@@ -109,7 +109,7 @@ struct transfer {
    uint64         amount;
    string         memo;
 
-   static name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -128,7 +128,7 @@ struct lock {
    account_name                      to;
    share_type                        amount;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -146,7 +146,7 @@ struct unlock {
    account_name                      account;
    share_type                        amount;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -164,7 +164,7 @@ struct claim {
    account_name                      account;
    share_type                        amount;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -181,7 +181,7 @@ struct newaccount {
    authority                        recovery;
    asset                            deposit;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -196,7 +196,7 @@ struct setcode {
    uint8                            vmversion;
    bytes                            code;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -209,7 +209,7 @@ struct setabi {
    account_name                     account;
    abi_def                          abi;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -228,7 +228,7 @@ struct setproducer {
    public_key_type         key;
    chain_config            configuration;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -247,7 +247,7 @@ struct okproducer {
    account_name                      producer;
    int8_t                            approve;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -265,7 +265,7 @@ struct setproxy {
    account_name                      stakeholder;
    account_name                      proxy;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -280,7 +280,7 @@ struct updateauth {
    permission_name                   parent;
    authority                         data;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -298,7 +298,7 @@ struct deleteauth {
    account_name                      account;
    permission_name                   permission;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -318,7 +318,7 @@ struct linkauth {
    action_name                       type;
    permission_name                   requirement;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -337,7 +337,7 @@ struct unlinkauth {
    account_name                      code;
    action_name                       type;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -349,7 +349,7 @@ struct unlinkauth {
 struct onerror : bytes {
    using bytes::bytes;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -363,7 +363,7 @@ struct postrecovery {
    authority          data;
    string             memo;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -375,7 +375,7 @@ struct postrecovery {
 struct passrecovery {
    account_name   account;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -388,7 +388,7 @@ struct passrecovery {
 struct vetorecovery {
    account_name   account;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 
@@ -401,7 +401,7 @@ using nonce_type = name;
 struct nonce {
    nonce_type value;
 
-   static scope_name get_scope() {
+   static account_name get_account() {
       return config::system_account_name;
    }
 

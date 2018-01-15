@@ -67,7 +67,7 @@ namespace eosio { namespace chain {
             digest_type::encoder enc;
 
             fc::raw::pack(enc, at.receiver);
-            fc::raw::pack(enc, at.act.scope);
+            fc::raw::pack(enc, at.act.account);
             fc::raw::pack(enc, at.act.name);
             fc::raw::pack(enc, at.act.data);
             fc::raw::pack(enc, at.region_id);
