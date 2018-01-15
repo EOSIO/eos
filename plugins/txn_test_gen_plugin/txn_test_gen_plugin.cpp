@@ -10,15 +10,39 @@
 #include <fc/io/json.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/reflect/variant.hpp>
+#include <fc/io/json.hpp>
 
 #include <boost/asio/high_resolution_timer.hpp>
 #include <boost/algorithm/clamp.hpp>
+
+#include <Inline/BasicTypes.h>
+#include <IR/Module.h>
+#include <IR/Validate.h>
+#include <WAST/WAST.h>
+#include <WASM/WASM.h>
+#include <Runtime/Runtime.h>
+
+#include <currency/currency.wast.hpp>
+#include <currency/currency.abi.hpp>
 
 namespace eosio { namespace detail {
   struct txn_test_gen_empty {};
 }}
 
 FC_REFLECT(eosio::detail::txn_test_gen_empty, );
+
+static std::vector<uint8_t> assemble_wast( const std::string& wast ) {
+   IR::Module module;
+   std::vector<WAST::Error> parseErrors;
+   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
+   if(parseErrors.size())
+      FC_THROW_EXCEPTION(fc::parse_error_exception, "wast parsing failure");
+
+   // Serialize the WebAssembly module.
+   Serialization::ArrayOutputStream stream;
+   WASM::serialize(stream,module);
+   return stream.getBytes();
+}
 
 namespace eosio {
 
@@ -55,7 +79,10 @@ struct txn_test_gen_plugin_impl {
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
       name newaccountA("txn.test.a");
       name newaccountB("txn.test.b");
+      name newaccountC("currency");
       name creator(init_name);
+
+      contracts::abi_def currency_abi_def = fc::json::from_string(currency_abi).as<contracts::abi_def>();
 
       chain_controller& cc = app().get_plugin<chain_plugin>().chain();
       chain::chain_id_type chainid;
@@ -64,11 +91,13 @@ struct txn_test_gen_plugin_impl {
 
       fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
+      fc::crypto::private_key txn_test_receiver_C_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'c')));
       fc::crypto::public_key  txn_text_receiver_A_pub_key = txn_test_receiver_A_priv_key.get_public_key();
       fc::crypto::public_key  txn_text_receiver_B_pub_key = txn_test_receiver_B_priv_key.get_public_key();
+      fc::crypto::public_key  txn_text_receiver_C_pub_key = txn_test_receiver_C_priv_key.get_public_key();
       fc::crypto::private_key creator_priv_key = fc::crypto::private_key(init_priv_key);
 
-      //stake some currency; and then create some test accounts
+      //create some test accounts
       auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
       signed_transaction trx;
       trx.expiration = cc.head_block_time() + fc::seconds(30);
@@ -90,10 +119,19 @@ struct txn_test_gen_plugin_impl {
 
       trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth, stake});
       }
+      //create "currency" account
+      {
+      auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+      auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+      auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
+
+      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth, stake});
+      }
+      
       trx.sign(creator_priv_key, chainid);
       cc.push_transaction(trx);
 
-      //now, transfer some balance to new accounts
+      //now, transfer some balance to new accounts (for native currency)
       {
       uint64_t balance = 10000;
       signed_transaction trx;
@@ -103,6 +141,58 @@ struct txn_test_gen_plugin_impl {
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(creator_priv_key, chainid);
+      cc.push_transaction(trx);
+      }
+
+      //create currency contract
+      {
+      signed_transaction trx;
+      vector<uint8_t> wasm = assemble_wast(std::string(currency_wast));
+
+      contracts::setcode handler;
+      handler.account = newaccountC;
+      handler.code.assign(wasm.begin(), wasm.end());
+
+      trx.write_scope = sort_names({config::eosio_auth_scope, newaccountC});
+      trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
+
+      {
+      contracts::setabi handler;
+      handler.account = newaccountC;
+      handler.abi = currency_abi_def;
+      trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
+      }
+
+      trx.set_reference_block(cc.head_block_id());
+      trx.sign(txn_test_receiver_C_priv_key, chainid);
+      cc.push_transaction(trx);
+      }
+
+      //fund the two accounts with currency contract currency
+      {
+      signed_transaction trx;
+      trx.write_scope = sort_names({newaccountA, newaccountB, newaccountC});
+      abi_serializer currency_serializer(currency_abi_def);
+      
+      {
+      action act;
+      act.scope = N(currency);
+      act.name = N(transfer);
+      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.a\",\"quantity\":200}"));
+      trx.actions.push_back(act);
+      }
+      {
+      action act;
+      act.scope = N(currency);
+      act.name = N(transfer);
+      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.b\",\"quantity\":200}"));
+      trx.actions.push_back(act);
+      }
+
+      trx.set_reference_block(cc.head_block_id());
+      trx.sign(txn_test_receiver_C_priv_key, chainid);
       cc.push_transaction(trx);
       }
    }
@@ -145,6 +235,7 @@ struct txn_test_gen_plugin_impl {
       name sender("txn.test.a");
       name recipient("txn.test.b");
 
+#if 0
       std::string memo = memo_salt + fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
       //make transaction a->b
       {
@@ -171,6 +262,51 @@ struct txn_test_gen_plugin_impl {
       trx.sign(b_priv_key, chainid);
       cc.push_transaction(trx);
       }
+#endif
+
+      static uint64_t nonce;
+
+      abi_serializer currency_serializer(fc::json::from_string(currency_abi).as<contracts::abi_def>());
+      {
+      signed_transaction trx;
+      trx.write_scope = sort_names({sender, recipient});
+      
+      //a->b
+      {
+      action act;
+      act.scope = N(currency);
+      act.name = N(transfer);
+      act.authorization = vector<permission_level>{{sender,config::active_name}};
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":1}"));
+      trx.actions.push_back(act);
+      }
+      trx.actions.emplace_back(chain::action({}, contracts::nonce{.value = nonce}));
+      trx.set_reference_block(cc.head_block_id());
+      fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
+      trx.sign(a_priv_key, chainid);
+      cc.push_transaction(trx);
+      }
+
+      //b->a
+      {
+      signed_transaction trx;
+      trx.write_scope = sort_names({sender, recipient});
+      {
+      action act;
+      act.scope = N(currency);
+      act.name = N(transfer);
+      act.authorization = vector<permission_level>{{recipient,config::active_name}};
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":1}"));
+      trx.actions.push_back(act);
+      }
+      trx.actions.emplace_back(chain::action({}, contracts::nonce{.value = nonce++}));
+
+      trx.set_reference_block(cc.head_block_id());
+      fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
+      trx.sign(b_priv_key, chainid);
+      cc.push_transaction(trx);
+      }
+   
    }
 
    void stop_generation() {
