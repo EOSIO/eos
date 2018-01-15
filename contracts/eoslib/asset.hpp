@@ -21,9 +21,11 @@ namespace eosio {
 
    #define S(P,X) ::eosio::string_to_symbol(P,#X)
 
+   typedef uint64_t symbol_name;
+
    struct asset {
-      uint64_t amount = 0;
-      uint64_t symbol = S(4,EOS);
+      uint64_t     amount = 0;
+      symbol_name  symbol = S(4,EOS);
 
       asset( uint64_t a = 0, uint64_t s = S(4,EOS))
       :amount(a),symbol(s){}

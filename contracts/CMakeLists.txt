@@ -1,6 +1,6 @@
 add_subdirectory(currency)
+add_subdirectory(bancor)
 #add_subdirectory(eosio.system)
-#add_subdirectory(bancor)
 add_subdirectory(asserter)
 #add_subdirectory(exchange)
 #add_subdirectory(infinite)

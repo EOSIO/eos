@@ -22,6 +22,16 @@ using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
+struct issue {
+   static uint64_t get_scope(){ return N(currency); }
+   static uint64_t get_name(){ return N(issue); }
+
+   account_name to;
+   asset        quantity;
+};
+FC_REFLECT( issue, (to)(quantity) )
+
+
 struct assertdef {
    int8_t      condition;
    string      message;
@@ -233,6 +243,30 @@ struct assert_message_is {
 
    string expected;
 };
+
+
+BOOST_FIXTURE_TEST_CASE( test_generic_currency, tester ) try {
+   produce_blocks(2);
+   create_accounts( {N(currency), N(usera), N(userb)}, asset::from_string("1000.0000 EOS") );
+   produce_blocks(2);
+   set_code( N(currency), currency_wast );
+   produce_blocks(2);
+
+
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(currency), config::active_name}},
+                               issue{ .to = N(usera), 
+                                      .quantity = asset::from_string( "10.0000 CUR" )
+                                    });
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(currency), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+   }
+
+} FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
 BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    produce_blocks(2);

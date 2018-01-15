@@ -294,7 +294,7 @@ class relay_contract {
       }
 
       static void apply( account_name code, action_name action ) {
-         if( !dispatcher<Currency, transfer, issue>::exec( code, action ) )
+         if( !dispatch<Currency, transfer_memo, issue>( code, action ) )
             assert( false, "received unexpected action" );
       }
 };
