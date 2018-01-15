@@ -273,11 +273,13 @@ struct txn_test_gen_plugin_impl {
       
       //a->b
       {
-      action act;
+      static action act;
+      if(act.scope == name()) {
       act.scope = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{sender,config::active_name}};
       act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":1}"));
+      }
       trx.actions.push_back(act);
       }
       trx.actions.emplace_back(chain::action({}, contracts::nonce{.value = nonce}));
@@ -292,11 +294,13 @@ struct txn_test_gen_plugin_impl {
       signed_transaction trx;
       trx.write_scope = sort_names({sender, recipient});
       {
-      action act;
+      static action act;
+      if(act.scope == name()) {
       act.scope = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{recipient,config::active_name}};
       act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":1}"));
+      }
       trx.actions.push_back(act);
       }
       trx.actions.emplace_back(chain::action({}, contracts::nonce{.value = nonce++}));
