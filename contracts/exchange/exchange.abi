@@ -63,7 +63,7 @@
     }
   ],
   "tables": [{
-      "table_name": "bid",
+      "table_name": "bids",
       "index_type": "i128i128",
       "key_names": [
         "buyer",
@@ -75,7 +75,7 @@
       ],
       "type": "bid"
     },{
-      "table_name": "ask",
+      "table_name": "asks",
       "index_type": "i128i128",
       "key_names": [
         "seller",
