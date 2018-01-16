@@ -18,7 +18,6 @@
 
 #include <queue>
 
-#ifdef MONGODB
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
@@ -26,8 +25,6 @@
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
-
-#endif
 
 namespace fc { class variant; }
 
@@ -40,15 +37,6 @@ using chain::permission_name;
 using chain::signed_transaction;
 using chain::signed_block;
 using chain::transaction_id_type;
-
-#ifndef MONGODB
-class mongo_db_plugin_impl {
-public:
-   mongo_db_plugin_impl() {}
-};
-#endif
-
-#ifdef MONGODB
 
 static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
 
@@ -627,7 +615,6 @@ void mongo_db_plugin_impl::init() {
    }
 }
 
-#endif /* MONGODB */
 ////////////
 // mongo_db_plugin
 ////////////
@@ -643,7 +630,6 @@ mongo_db_plugin::~mongo_db_plugin()
 
 void mongo_db_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
-#ifdef MONGODB
    cfg.add_options()
          ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256),
          "The queue size between eosiod and MongoDB plugin thread.")
@@ -651,12 +637,10 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.")
          ;
-#endif
 }
 
 void mongo_db_plugin::plugin_initialize(const variables_map& options)
 {
-#ifdef MONGODB
    if (options.count("mongodb-uri")) {
       ilog("initializing mongo_db_plugin");
       my->configured = true;
@@ -697,12 +681,10 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
       wlog("eosio::mongo_db_plugin configured, but no --mongodb-uri specified.");
       wlog("mongo_db_plugin disabled.");
    }
-#endif
 }
 
 void mongo_db_plugin::plugin_startup()
 {
-#ifdef MONGODB
    if (my->configured) {
       ilog("starting db plugin");
 
@@ -711,7 +693,6 @@ void mongo_db_plugin::plugin_startup()
       // chain_controller is created and has resynced or replayed if needed
       my->startup = false;
    }
-#endif
 }
 
 void mongo_db_plugin::plugin_shutdown()

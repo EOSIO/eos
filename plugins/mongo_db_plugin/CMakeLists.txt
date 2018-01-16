@@ -30,8 +30,6 @@ if(BUILD_MONGO_DB_PLUGIN)
       find_library(EOS_LIBMONGOCXX ${LIBMONGOCXX_LIBRARIES}
                    PATHS ${LIBMONGOCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
       message(STATUS "Found mongocxx library: ${EOS_LIBMONGOCXX}")
-
-      add_definitions(-DMONGODB)
   else()
       message("Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
       # sudo apt-get install pkg-config libssl-dev libsasl2-dev
