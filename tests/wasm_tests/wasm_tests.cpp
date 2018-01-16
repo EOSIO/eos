@@ -397,6 +397,8 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
 } FC_LOG_AND_RETHROW() /// test_currency
 */
+
+/**
 BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    produce_blocks(2);
 
@@ -452,7 +454,9 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
 
 } FC_LOG_AND_RETHROW() /// test_currency
+*/
 
+/**
 BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    produce_blocks(2);
 
@@ -552,6 +556,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
 
 } FC_LOG_AND_RETHROW() /// test_currency
+*/
 
 /**
  * Make sure WASM "start" method is used correctly
