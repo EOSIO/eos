@@ -22,11 +22,7 @@ if [ -z "$EOSIO_TN_NODE" ]; then
     DD=`ls -d tn_data_??`
     ddcount=`echo $DD | wc -w`
     if [ $ddcount -ne 1 ]; then
-        echo $HOSTNAME has $ddcount data directories, bounce not possible. Set environment variable
-        echo EOSIO_TN_NODE to the 2-digit node id number to specify which node to bounce. For example:
-        echo EOSIO_TN_NODE=06 $0 \<options\>
-        cd -
-        exit 1
+        DD="all"
     fi
 else
     DD=tn_data_$EOSIO_TN_NODE
@@ -37,10 +33,46 @@ else
     fi
 fi
 
+prog=""
+RD=""
+for p in eosd eosiod; do
+    prog=$p
+    RD=$EOSIO_HOME/bin
+    if [ -f $RD/$prog ]; then
+        break;
+    else
+        RD=$EOSIO_HOME/programs/$prog
+        if [ -f $RD/$prog ]; then
+            break;
+        fi
+    fi
+    prog=""
+    RD=""
+done
+
+if [ \( -z "$prog" \) -o \( -z "$RD" \) ]; then
+    echo unable to locate binary for eosd or eosiod
+    exit 1
+fi
+
+SDIR=staging/eos
+if [ -e $RD/$prog ]; then
+    s1=`md5sum $RD/$prog`
+    s2=`md5sum $SDIR/$prog`
+    if [ "$s1" == "$s2" ]; then
+        echo $HOSTNAME no update $SDIR/$p
+        exit 1;
+    fi
+fi
+
+
 echo DD = $DD
 
 export EOSIO_TN_RESTART_DATA_DIR=$DD
 bash $EOSIO_HOME/scripts/tn_down.sh
+
+cp $SDIR/$RD/$prog $RD/$prog
+
 bash $EOSIO_HOME/scripts/tn_up.sh $*
 unset EOSIO_TN_RESTART_DATA_DIR
 
