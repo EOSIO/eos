@@ -140,7 +140,7 @@ namespace eosio { namespace chain {
    };
 
    struct block_trace {
-      block_trace(const signed_block& s)
+      explicit block_trace(const signed_block& s)
       :block(s)
       {}
 
