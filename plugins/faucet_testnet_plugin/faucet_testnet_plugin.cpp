@@ -230,7 +230,6 @@ struct faucet_testnet_plugin_impl {
       auto active_auth  = chain::authority{1, {{active_pub_key, 1}}, {}};
       auto recovery_auth = chain::authority{1, {}, {{{_create_account_name, "active"}, 1}}};
 
-      trx.write_scope = sort_names({_create_account_name,config::eosio_auth_scope});
       trx.actions.emplace_back(vector<chain::permission_level>{{_create_account_name,"active"}},
                                contracts::newaccount{_create_account_name, new_account_name, owner_auth, active_auth, recovery_auth, deposit});
 

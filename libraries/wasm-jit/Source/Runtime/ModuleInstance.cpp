@@ -204,6 +204,11 @@ namespace Runtime
 		if(moduleInstance->startFunctionIndex != UINTPTR_MAX)
 			invokeFunction(moduleInstance->functions[moduleInstance->startFunctionIndex],{});
 	}
+
+	void resetGlobalInstances(ModuleInstance* moduleInstance) {
+		for(GlobalInstance*& gi : moduleInstance->globals)
+			memcpy(&gi->value, &gi->initialValue, sizeof(gi->value));
+	}
 	
 	ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name)
 	{

@@ -275,8 +275,6 @@ fc::variant push_transaction( signed_transaction& trx, bool sign ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + tx_expiration;
     trx.set_reference_block(info.head_block_id);
-    boost::sort( trx.write_scope );
-    boost::sort( trx.read_scope );
 
     if (sign) {
        sign_transaction(trx);
@@ -294,8 +292,7 @@ void create_account(name creator, name newaccount, public_key_type owner, public
       uint64_t deposit = 1000;
 
       signed_transaction trx;
-      trx.write_scope = sort_names({creator,config::eosio_auth_scope});
-      trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}}, 
+      trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
                                 contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
 
       std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
@@ -321,9 +318,8 @@ chain::action create_unlinkauth(const name& account, const name& code, const nam
                    contracts::unlinkauth{account, code, type}};
 }
 
-void send_transaction(const std::vector<chain::action>& actions, const std::vector<name>& scopes, bool skip_sign = false) {
+void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false) {
    signed_transaction trx;
-   trx.write_scope = sort_names(scopes);
    for (const auto& m: actions) {
       trx.actions.emplace_back( m );
    }
@@ -362,7 +358,7 @@ struct set_account_permission_subcommand {
          bool is_delete = boost::iequals(authorityJsonOrFile, "null");
          
          if (is_delete) {
-            send_transaction({create_deleteauth(account, permission, name(permissionAuth))}, {account, config::system_account_name}, skip_sign);
+            send_transaction({create_deleteauth(account, permission, name(permissionAuth))}, skip_sign);
          } else {
             authority auth;
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
@@ -401,7 +397,7 @@ struct set_account_permission_subcommand {
                parent = name(parentStr);
             }
 
-            send_transaction({create_updateauth(account, permission, parent, auth, name(permissionAuth))}, {name(account), config::system_account_name}, skip_sign);
+            send_transaction({create_updateauth(account, permission, parent, auth, name(permissionAuth))}, skip_sign);
          }      
       });
    }
@@ -431,10 +427,10 @@ struct set_action_permission_subcommand {
          bool is_delete = boost::iequals(requirementStr, "null");
          
          if (is_delete) {
-            send_transaction({create_unlinkauth(account, code, type)}, {account, config::system_account_name}, skip_sign);
+            send_transaction({create_unlinkauth(account, code, type)}, skip_sign);
          } else {
             name requirement = name(requirementStr);
-            send_transaction({create_linkauth(account, code, type, requirement)}, {name(account), config::system_account_name}, skip_sign);
+            send_transaction({create_linkauth(account, code, type, requirement)}, skip_sign);
          }      
       });
    }
@@ -513,7 +509,6 @@ int main( int argc, char** argv ) {
       auto account_permissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      trx.write_scope = sort_names({config::system_account_name, account_name});
       trx.actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
 
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
@@ -699,7 +694,6 @@ int main( int argc, char** argv ) {
       handler.code.assign(wasm.begin(), wasm.end());
 
       signed_transaction trx;
-      trx.write_scope = sort_names({config::eosio_auth_scope, account});
       trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
 
       if (abi->count()) {
@@ -734,7 +728,6 @@ int main( int argc, char** argv ) {
       auto account_permissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      trx.write_scope = sort_names({config::system_account_name, account_name});
       trx.actions.emplace_back( account_permissions, contracts::okproducer{account_name, producer, approve});
 
       push_transaction(trx, !skip_sign);
@@ -761,7 +754,6 @@ int main( int argc, char** argv ) {
       }
 
       signed_transaction trx;
-      trx.write_scope = sort_names({config::system_account_name, account_name});
       trx.actions.emplace_back( account_permissions, contracts::setproxy{account_name, proxy});
 
       push_transaction(trx, !skip_sign);
@@ -794,8 +786,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(transfer);
    transfer->set_callback([&] {
       signed_transaction trx;
-      trx.write_scope = sort_names({sender,recipient});
-      
+
       if (tx_force_unique) {
          if (memo.size() == 0) {
             // use the memo to add a nonce
@@ -996,8 +987,7 @@ int main( int argc, char** argv ) {
         uint64_t deposit = 1;
         
         signed_transaction trx;
-        trx.write_scope = sort_names({creator,config::system_account_name});
-        trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}}, 
+        trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
                                   contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
 
         trx.expiration = info.head_block_time + tx_expiration; 
@@ -1029,7 +1019,6 @@ int main( int argc, char** argv ) {
          uint32_t amount = 100000;
 
          signed_transaction trx;
-         trx.write_scope = sort_names({sender,recipient});
          trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}},
                                    contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
          trx.expiration = info.head_block_time + tx_expiration; 
@@ -1065,7 +1054,6 @@ int main( int argc, char** argv ) {
 
 
             auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
-            trx.write_scope = sort_names({sender,recipient});
             trx.actions.emplace_back(  vector<chain::permission_level>{{sender,"active"}},
                                        contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
             trx.expiration = info.head_block_time + tx_expiration; 
@@ -1100,7 +1088,6 @@ int main( int argc, char** argv ) {
    string contract;
    string action;
    string data;
-   vector<string> scopes;
    auto actionsSubcommand = push->add_subcommand("actions", localized("Push a transaction with a single actions"));
    actionsSubcommand->fallthrough(false);
    actionsSubcommand->add_option("contract", contract,
@@ -1110,7 +1097,6 @@ int main( int argc, char** argv ) {
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
    actionsSubcommand->add_option("-p,--permission", permissions,
                                  localized("An account and permission level to authorize, as in 'account@permission'"));
-   actionsSubcommand->add_option("-S,--scope", scopes, localized("An comma separated list of accounts in scope for this operation"), true);
    actionsSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
@@ -1133,12 +1119,6 @@ int main( int argc, char** argv ) {
          trx.actions.emplace_back( generate_nonce() );
       }                                                      
 
-      for( const auto& scope : scopes ) {
-         vector<string> subscopes;
-         boost::split( subscopes, scope, boost::is_any_of( ", :" ) );
-         for( const auto& s : subscopes )
-            trx.write_scope.emplace_back(s);
-      }
       std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign )) << std::endl;
    });
 
