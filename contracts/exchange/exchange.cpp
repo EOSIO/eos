@@ -173,6 +173,8 @@ void apply_exchange_buy( buy_order order ) {
          }
          seller_account = get_account( lowest_ask.seller.name );
       } else {
+         asks::update( lowest_ask );
+         save( seller_account );
          break; // buyer's bid should be filled
       }
    }
@@ -234,6 +236,8 @@ void apply_exchange_sell( sell_order order ) {
          }
          buyer_account = get_account( highest_bid.buyer.name );
       } else {
+         bids::update( highest_bid );
+         save( buyer_account );
          break; // buyer's bid should be filled
       }
    }
