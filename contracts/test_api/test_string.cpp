@@ -8,17 +8,17 @@ unsigned int test_string::construct_with_size() {
    size_t size1 = 100;
    eosio::string str1(size1);
 
-   WASM_ASSERT( str1.get_size() == size1,  "str1.get_size() == size1" );
-   WASM_ASSERT( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
+   assert( str1.get_size() == size1,  "str1.get_size() == size1" );
+   assert( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
 
    size_t size2 = 0;
    eosio::string str2(size2);
 
-   WASM_ASSERT( str2.get_size() == size2,  "str2.get_size() == size2" );
-   WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
-   WASM_ASSERT( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
+   assert( str2.get_size() == size2,  "str2.get_size() == size2" );
+   assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+   assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 
-   return WASM_TEST_PASS;
+   return 0;;
 }
 
 
@@ -28,17 +28,17 @@ unsigned int test_string::construct_with_data() {
 
   eosio::string str1(data, size, false);
 
-  WASM_ASSERT( str1.get_size() == size,  "str1.get_size() == size" );
-  WASM_ASSERT( str1.get_data() == data,  "str1.get_data() == data" );
-  WASM_ASSERT( str1.is_own_memory() == false,  "str1.is_own_memory() == false" );
+  assert( str1.get_size() == size,  "str1.get_size() == size" );
+  assert( str1.get_data() == data,  "str1.get_data() == data" );
+  assert( str1.is_own_memory() == false,  "str1.is_own_memory() == false" );
 
   eosio::string str2(data, 0, false);
 
-  WASM_ASSERT( str2.get_size() == 0,  "str2.get_size() == 0" );
-  WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
-  WASM_ASSERT( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
+  assert( str2.get_size() == 0,  "str2.get_size() == 0" );
+  assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+  assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::construct_with_data_partially() {
@@ -48,14 +48,14 @@ unsigned int test_string::construct_with_data_partially() {
 
   eosio::string str(data + offset, substr_size, false);
 
-  WASM_ASSERT( str.get_size() == substr_size,  "str.get_size() == substr_size" );
-  WASM_ASSERT( str.get_data() == data + offset,  "str.get_data() == data + offset" );
+  assert( str.get_size() == substr_size,  "str.get_size() == substr_size" );
+  assert( str.get_data() == data + offset,  "str.get_data() == data + offset" );
   for (uint8_t i = offset; i < substr_size; i++) {
-    WASM_ASSERT( str[i] == data[offset + i],  "str[i] == data[offset + i]" );
+    assert( str[i] == data[offset + i],  "str[i] == data[offset + i]" );
   }
-  WASM_ASSERT( str.is_own_memory() == false,  "str.is_own_memory() == false" );
+  assert( str.is_own_memory() == false,  "str.is_own_memory() == false" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::construct_with_data_copied() {
@@ -64,20 +64,20 @@ unsigned int test_string::construct_with_data_copied() {
 
   eosio::string str1(data, size, true);
 
-  WASM_ASSERT( str1.get_size() == size,  "str1.get_size() == size" );
-  WASM_ASSERT( str1.get_data() != data,  "str1.get_data() != data" );
+  assert( str1.get_size() == size,  "str1.get_size() == size" );
+  assert( str1.get_data() != data,  "str1.get_data() != data" );
   for (uint8_t i = 0; i < size; i++) {
-    WASM_ASSERT( str1[i] == data[i],  "str1[i] == data[i]" );
+    assert( str1[i] == data[i],  "str1[i] == data[i]" );
   }
-  WASM_ASSERT( str1.is_own_memory() == true,  "str.is_own_memory() == true" );
+  assert( str1.is_own_memory() == true,  "str.is_own_memory() == true" );
 
   eosio::string str2(data, 0, true);
   
-  WASM_ASSERT( str2.get_size() == 0,  "str2.get_size() == 0" );
-  WASM_ASSERT( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
-  WASM_ASSERT( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
+  assert( str2.get_size() == 0,  "str2.get_size() == 0" );
+  assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+  assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::copy_constructor() {
@@ -88,13 +88,13 @@ unsigned int test_string::copy_constructor() {
 
   eosio::string str2 = str1;
 
-  WASM_ASSERT( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
-  WASM_ASSERT( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
-  WASM_ASSERT( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
-  WASM_ASSERT( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
-  WASM_ASSERT( str1.get_refcount() == 2,  "str1.refcount() == 2" );
+  assert( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
+  assert( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
+  assert( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
+  assert( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
+  assert( str1.get_refcount() == 2,  "str1.refcount() == 2" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::assignment_operator() {
@@ -106,13 +106,13 @@ unsigned int test_string::assignment_operator() {
   eosio::string str2;
   str2 = str1;
 
-  WASM_ASSERT( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
-  WASM_ASSERT( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
-  WASM_ASSERT( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
-  WASM_ASSERT( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
-  WASM_ASSERT( str1.get_refcount() == 2,  "str1.refcount() == 2" );
+  assert( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
+  assert( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
+  assert( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
+  assert( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
+  assert( str1.get_refcount() == 2,  "str1.refcount() == 2" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::index_operator() {
@@ -122,10 +122,10 @@ unsigned int test_string::index_operator() {
   eosio::string str(data, size, false);
 
   for (uint8_t i = 0; i < size; i++) {
-    WASM_ASSERT( str[i] == data[i],  "str[i] == data[i]" );
+    assert( str[i] == data[i],  "str[i] == data[i]" );
   }
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::index_out_of_bound() {
@@ -135,7 +135,7 @@ unsigned int test_string::index_out_of_bound() {
   eosio::string str(data, size, false);
   char c = str[size];
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::substring() {
@@ -148,14 +148,14 @@ unsigned int test_string::substring() {
   size_t offset = 2;
   eosio::string substr = str.substr(offset, substr_size, false);
 
-  WASM_ASSERT( substr.get_size() == substr_size,  "str.get_size() == substr_size" );
-  WASM_ASSERT( substr.get_data() == str.get_data() + offset,  "substr.get_data() == str.get_data() + offset" );
+  assert( substr.get_size() == substr_size,  "str.get_size() == substr_size" );
+  assert( substr.get_data() == str.get_data() + offset,  "substr.get_data() == str.get_data() + offset" );
   for (uint8_t i = offset; i < substr_size; i++) {
-    WASM_ASSERT( substr[i] == str[offset + i],  "substr[i] == str[offset + i]" );
+    assert( substr[i] == str[offset + i],  "substr[i] == str[offset + i]" );
   }
-  WASM_ASSERT( substr.is_own_memory() == false,  "substr.is_own_memory() == false" );
+  assert( substr.is_own_memory() == false,  "substr.is_own_memory() == false" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::substring_out_of_bound() {
@@ -168,7 +168,7 @@ unsigned int test_string::substring_out_of_bound() {
   size_t offset = 1;
   eosio::string substr = str.substr(offset, substr_size, false);
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::concatenation_null_terminated() {
@@ -183,16 +183,16 @@ unsigned int test_string::concatenation_null_terminated() {
 
   str1 += str2;
 
-  WASM_ASSERT( str1.get_data() != data1,  "str1.get_data() != data1" );
-  WASM_ASSERT( str1.get_size() == size1 + size2 - 1,  "str1.get_size == size1 + size2 - 1" );
+  assert( str1.get_data() != data1,  "str1.get_data() != data1" );
+  assert( str1.get_size() == size1 + size2 - 1,  "str1.get_size == size1 + size2 - 1" );
   for (uint8_t i = 0; i < size1 - 1; i++) {
-    WASM_ASSERT( str1[i] == data1[i],  "str1[i] == data1[i]" );
+    assert( str1[i] == data1[i],  "str1[i] == data1[i]" );
   }
   for (uint8_t i = 0; i < size2; i++) {
-    WASM_ASSERT( str1[size1 - 1 + i] == data2[i],  "str1[i] == data2[i]" );
+    assert( str1[size1 - 1 + i] == data2[i],  "str1[i] == data2[i]" );
   }
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::concatenation_non_null_terminated() {
@@ -207,16 +207,16 @@ unsigned int test_string::concatenation_non_null_terminated() {
 
   str1 += str2;
 
-  WASM_ASSERT( str1.get_data() != data1,  "str1.get_data() != data1" );
-  WASM_ASSERT( str1.get_size() == size1 + size2,  "str1.get_size == size1 + size2" );
+  assert( str1.get_data() != data1,  "str1.get_data() != data1" );
+  assert( str1.get_size() == size1 + size2,  "str1.get_size == size1 + size2" );
   for (uint8_t i = 0; i < size1; i++) {
-    WASM_ASSERT( str1[i] == data1[i],  "str1[i] == data1[i]" );
+    assert( str1[i] == data1[i],  "str1[i] == data1[i]" );
   }
   for (uint8_t i = 0; i < size2; i++) {
-    WASM_ASSERT( str1[size1 + i] == data2[i],  "str1[i] == data2[i]" );
+    assert( str1[size1 + i] == data2[i],  "str1[i] == data2[i]" );
   }
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::assign() {
@@ -226,20 +226,20 @@ unsigned int test_string::assign() {
   eosio::string str(100);
   str.assign(data, size, true);
 
-  WASM_ASSERT( str.get_size() == size,  "str.get_size() == size" );
-  WASM_ASSERT( str.get_data() != data,  "str.get_data() != data" );
+  assert( str.get_size() == size,  "str.get_size() == size" );
+  assert( str.get_data() != data,  "str.get_data() != data" );
   for (uint8_t i = 0; i < size; i++) {
-    WASM_ASSERT( str[i] == data[i],  "str[i] == data[i]" );
+    assert( str[i] == data[i],  "str[i] == data[i]" );
   }
-  WASM_ASSERT( str.is_own_memory() == true,  "str.is_own_memory() == true" );
+  assert( str.is_own_memory() == true,  "str.is_own_memory() == true" );
 
   str.assign(data, 0, true);
 
-  WASM_ASSERT( str.get_size() == 0,  "str.get_size() == 0" );
-  WASM_ASSERT( str.get_data() == nullptr,  "str.get_data() == nullptr" );
-  WASM_ASSERT( str.is_own_memory() == false,  "str.is_own_memory() == false" );
+  assert( str.get_size() == 0,  "str.get_size() == 0" );
+  assert( str.get_data() == nullptr,  "str.get_data() == nullptr" );
+  assert( str.is_own_memory() == false,  "str.is_own_memory() == false" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 
@@ -276,17 +276,17 @@ unsigned int test_string::comparison_operator() {
   size_t size8 = sizeof(data8)/sizeof(char);
   eosio::string str8(data8, size8, false);
 
-  WASM_ASSERT( str1 == str2,  "str1 == str2" );
-  WASM_ASSERT( str1 != str3,  "str1 != str3" );
-  WASM_ASSERT( str1 < str3,  "str1 < str3" );
-  WASM_ASSERT( str2 > str4,  "str2 > str4" );
-  WASM_ASSERT( str1.compare(str2) == 0,  "str1.compare(str2) == 0" );
-  WASM_ASSERT( str1.compare(str3) < 0,  "str1.compare(str3) < 0" );
-  WASM_ASSERT( str1.compare(str4) > 0,  "str1.compare(str4) > 0" );
-  WASM_ASSERT( str5.compare(str6) < 0,  "st5.compare(str6) < 0" );
-  WASM_ASSERT( str7.compare(str8) > 0,  "str7.compare(str8) > 0" );
+  assert( str1 == str2,  "str1 == str2" );
+  assert( str1 != str3,  "str1 != str3" );
+  assert( str1 < str3,  "str1 < str3" );
+  assert( str2 > str4,  "str2 > str4" );
+  assert( str1.compare(str2) == 0,  "str1.compare(str2) == 0" );
+  assert( str1.compare(str3) < 0,  "str1.compare(str3) < 0" );
+  assert( str1.compare(str4) > 0,  "str1.compare(str4) > 0" );
+  assert( str5.compare(str6) < 0,  "st5.compare(str6) < 0" );
+  assert( str7.compare(str8) > 0,  "str7.compare(str8) > 0" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::print_null_terminated() {
@@ -297,7 +297,7 @@ unsigned int test_string::print_null_terminated() {
 
   eosio::print(str);
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::print_non_null_terminated() {
@@ -308,7 +308,7 @@ unsigned int test_string::print_non_null_terminated() {
 
   eosio::print(str);
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::print_unicode() {
@@ -319,7 +319,7 @@ unsigned int test_string::print_unicode() {
 
   eosio::print(str);
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::valid_utf8() {
@@ -347,7 +347,7 @@ unsigned int test_string::valid_utf8() {
   eosio::string valid_chinese_str2(chinese_str_data2, chinese_str_size2, false);
   assert_is_utf8(valid_chinese_str2.get_data(), valid_chinese_str2.get_size(), "the string should be a valid utf8 string");
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
 
 unsigned int test_string::invalid_utf8() {
@@ -358,10 +358,8 @@ unsigned int test_string::invalid_utf8() {
   eosio::string invalid_chinese_str(chinese_str_data, 5, false);
   assert_is_utf8(invalid_chinese_str.get_data(), invalid_chinese_str.get_size(), "the string should be a valid utf8 string");
 
-  return WASM_TEST_PASS;
+  return 0;;
 }
-
-
 unsigned int test_string::string_literal() {
   // Construct
   char data1[] = "abcdefghij";
@@ -369,19 +367,19 @@ unsigned int test_string::string_literal() {
 
   eosio::string str = "abcdefghij";
 
-  WASM_ASSERT( str.get_size() == 11,  "data1 str.get_size() == 11" );
+  assert( str.get_size() == 11,  "data1 str.get_size() == 11" );
   for (uint8_t i = 0; i < 11; i++) {
-    WASM_ASSERT( str[i] == data1[i],  "data1 str[i] == data1[i]" );
+    assert( str[i] == data1[i],  "data1 str[i] == data1[i]" );
   }
-  WASM_ASSERT( str.is_own_memory() == true,  "data1 str.is_own_memory() == true" );
+  assert( str.is_own_memory() == true,  "data1 str.is_own_memory() == true" );
 
   str = "klmnopqrstuvwxyz";
   
-  WASM_ASSERT( str.get_size() == 17,  "data2 str.get_size() == 17" );
+  assert( str.get_size() == 17,  "data2 str.get_size() == 17" );
   for (uint8_t i = 0; i < 17; i++) {
-    WASM_ASSERT( str[i] == data2[i],  "data2 str[i] == data2[i]" );
+    assert( str[i] == data2[i],  "data2 str[i] == data2[i]" );
   }
-  WASM_ASSERT( str.is_own_memory() == true,  "data2 str.is_own_memory() == true" );
+  assert( str.is_own_memory() == true,  "data2 str.is_own_memory() == true" );
 
-  return WASM_TEST_PASS;
+  return 0;;
 }

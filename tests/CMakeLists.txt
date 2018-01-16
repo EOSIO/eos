@@ -53,28 +53,29 @@ endif()
 # Setup for the `api_tests`
 #
 ###########################################################################################
-#"api_tests/db_test/db_test.cpp" 
 add_subdirectory(api_tests)
-file(GLOB API_SC_TESTS "api_tests/action_test/action_test.cpp" 
-							  "api_tests/account_test/account_test.cpp" 
-							  "api_tests/chain_test/chain_test.cpp" 
-							  "api_tests/crypto_test/crypto_test.cpp" 
-                       "api_tests/extended_memory_test/extended_memory_test.cpp" 
-							  "api_tests/fixedpoint_test/fixedpoint_test.cpp" 
+add_dependencies(unit_tests test_api)
+#"api_tests/db_test/db_test.cpp" 
+#file(GLOB API_SC_TESTS #"api_tests/action_test/action_test.cpp" 
+                      #"api_tests/account_test/account_test.cpp" 
+                      #							  "api_tests/chain_test/chain_test.cpp" 
+                       #							  "api_tests/crypto_test/crypto_test.cpp" 
+                       #                       "api_tests/extended_memory_test/extended_memory_test.cpp" 
+                       #							  "api_tests/fixedpoint_test/fixedpoint_test.cpp" 
                        # "api_tests/db_test/db_test.cpp" 
-                       "api_tests/memory_test/memory_test.cpp"
-							  "api_tests/math_test/math_test.cpp" 
-							  "api_tests/print_test/print_test.cpp" 
-                       "api_tests/real_test/real_test.cpp"
-							  "api_tests/string_test/string_test.cpp" 
-							  "api_tests/types_test/types_test.cpp"
-							  "api_tests/transaction_test/transaction_test.cpp")
+                       # "api_tests/memory_test/memory_test.cpp"
+                       #							  "api_tests/math_test/math_test.cpp" 
+                       #"api_tests/print_test/print_test.cpp" 
+                       #"api_tests/real_test/real_test.cpp"
+                       #"api_tests/string_test/string_test.cpp" 
+                       #"api_tests/types_test/types_test.cpp")
+                       #							  "api_tests/transaction_test/transaction_test.cpp")
 # we need to get the `custom` target name that wasm.cmake will generate with add_wast_target
-foreach(api_sc_test_f ${API_SC_TESTS})
-	get_filename_component(_tmp ${api_sc_test_f} NAME)	
-	string(REGEX REPLACE ".cpp" "" _tmp ${_tmp})
-	add_dependencies(unit_tests "${_tmp}") # add the add_wast_target target `${_tmp}.sc`
-endforeach(api_test_f)
+##foreach(api_sc_test_f ${API_SC_TESTS})
+#	get_filename_component(_tmp ${api_sc_test_f} NAME)	
+#	string(REGEX REPLACE ".cpp" "" _tmp ${_tmp})
+#	add_dependencies(unit_tests "${_tmp}") # add the add_wast_target target `${_tmp}.sc`
+#endforeach(api_test_f)
 
 ###########################################################################################
 #

@@ -3,11 +3,11 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eoslib/account.hpp>
 #include <eoslib/eos.hpp>
+#include <eoslib/account.hpp>
 #include <eoslib/system.h>
 
-#include "../test_api.hpp"
+#include "test_api.hpp"
 
 /// must match #define in eos/types/asset.hpp
 #define EOS_SYMBOL  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
@@ -29,4 +29,13 @@ unsigned int test_account::test_balance_acc1()
    assert(b.unstaking_balance.symbol == EOS_SYMBOL, "account_balance_get should have a set a unstaking balance symbol of EOS");
    assert(b.last_unstaking_time == 55, "account_balance_get should have set a last unstaking time of 55");
    return 0;
+}
+
+extern "C" {
+	void init() {
+	}
+
+	void apply( unsigned long long code, unsigned long long action ) {
+		WASM_TEST_HANDLER(test_account, test_balance_acc1);
+	}
 }

@@ -6,6 +6,7 @@
 #include <eoslib/crypto.h>
 
 #include "test_api.hpp"
+#define WASM_TEST_FAIL 1
 
 static const char test1[] = "abc";
 static const unsigned char test1_ok[] = { 
@@ -73,18 +74,18 @@ unsigned int test_crypto::test_sha256() {
   checksum tmp;
 
   sha256( (char *)test1, my_strlen(test1), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test1_ok, &tmp, sizeof(checksum)), "sha256 test1" );
+  assert( my_memcmp((void *)test1_ok, &tmp, sizeof(checksum)), "sha256 test1" );
 
   sha256( (char *)test3, my_strlen(test3), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test3_ok, &tmp, sizeof(checksum)), "sha256 test3" );
+  assert( my_memcmp((void *)test3_ok, &tmp, sizeof(checksum)), "sha256 test3" );
 
   sha256( (char *)test4, my_strlen(test4), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test4_ok, &tmp, sizeof(checksum)), "sha256 test4" );
+  assert( my_memcmp((void *)test4_ok, &tmp, sizeof(checksum)), "sha256 test4" );
 
   sha256( (char *)test5, my_strlen(test5), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test5_ok, &tmp, sizeof(checksum)), "sha256 test5" );
+  assert( my_memcmp((void *)test5_ok, &tmp, sizeof(checksum)), "sha256 test5" );
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_crypto::sha256_no_data() {
@@ -92,9 +93,9 @@ unsigned int test_crypto::sha256_no_data() {
   checksum tmp;
 
   sha256( (char *)test2, my_strlen(test2), &tmp );
-  WASM_ASSERT( my_memcmp((void *)test2_ok, &tmp, sizeof(checksum)), "sha256 test2" );
+  assert( my_memcmp((void *)test2_ok, &tmp, sizeof(checksum)), "sha256 test2" );
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_crypto::asert_sha256_false() {
@@ -104,7 +105,8 @@ unsigned int test_crypto::asert_sha256_false() {
   sha256( (char *)test1, my_strlen(test1), &tmp );
   tmp.hash[0] ^= (uint64_t)(-1);
   assert_sha256( (char *)test1, my_strlen(test1), &tmp);
-  
+   
+  assert(false, "sha256 failed");
   return WASM_TEST_FAIL;
 }
 
@@ -124,13 +126,13 @@ unsigned int test_crypto::asert_sha256_true() {
   sha256( (char *)test5, my_strlen(test5), &tmp );
   assert_sha256( (char *)test5, my_strlen(test5), &tmp);
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_crypto::asert_no_data() {
   
   checksum *tmp = (checksum*)test2_ok;
   assert_sha256( (char *)test2, my_strlen(test2), tmp);
-
+  assert(false, "Has no data");
   return WASM_TEST_FAIL;
 }

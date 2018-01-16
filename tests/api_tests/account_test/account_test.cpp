@@ -4,7 +4,7 @@
  */
 
 #include "../test_api.hpp"
-#include "test_account.cpp"
+#include "test_account_sc.cpp"
 
 extern "C" {
 	void init() {

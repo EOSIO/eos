@@ -85,84 +85,84 @@ unsigned int test_db::key_str_table() {
     // fill some data in contiguous tables
     for( int ii = 0; ii < 4; ++ii ) {
         res = StringTableAtr.store( (char*)keys[ii], STRLEN(keys[ii]), (char*)atr[ii], STRLEN(atr[ii]) );
-        WASM_ASSERT( res != 0, "atr" );
+        assert( res != 0, "atr" );
     
         res = StringTableZtr.store( (char*)keys[ii], STRLEN(keys[ii]), (char*)ztr[ii], STRLEN(ztr[ii]) );
-        WASM_ASSERT(res != 0, "ztr" );
+        assert(res != 0, "ztr" );
     }
 
     char tmp[64];
     
     res = StringTableStr.store ((char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]));
-    WASM_ASSERT(res != 0, "store alice" );
+    assert(res != 0, "store alice" );
 
     res = StringTableStr.store((char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
-    WASM_ASSERT(res != 0, "store bob" );
+    assert(res != 0, "store bob" );
 
     res = StringTableStr.store((char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
-    WASM_ASSERT(res != 0, "store carol" );
+    assert(res != 0, "store carol" );
 
     res = StringTableStr.store((char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
-    WASM_ASSERT(res != 0, "store dave" );
+    assert(res != 0, "store dave" );
 
     res = StringTableStr.load((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
+    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
 
     res = StringTableStr.load((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
 
     res = StringTableStr.load((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+    assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
 
     res = StringTableStr.load((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
 
     res = StringTableStr.previous((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+    assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
 
     res = StringTableStr.previous((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
 
     res = StringTableStr.previous((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
 
     res = StringTableStr.previous((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == -1, "no prev");
+    assert(res == -1, "no prev");
 
     res = StringTableStr.next((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
 
     res = StringTableStr.next((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+    assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
 
     res = StringTableStr.next((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
 
     res = StringTableStr.next((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == -1, "no next");
+    assert(res == -1, "no next");
 
     res = StringTableStr.next((char *)keys[0], STRLEN(keys[0]), tmp, 0);
-    WASM_ASSERT(res == 0, "next 0");
+    assert(res == 0, "next 0");
 
     res = StringTableStr.front(tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
+    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
 
     res = StringTableStr.back(tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
+    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
 
     res = StringTableStr.lower_bound((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
 
     res = StringTableStr.upper_bound((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
 
     res = StringTableStr.lower_bound((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
 
     res = StringTableStr.upper_bound((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == -1, "no upper_bound");
+    assert(res == -1, "no upper_bound");
 
-    return WASM_TEST_PASS;
+    return 0;
 }
 
 unsigned int test_db::key_str_general() {
@@ -178,84 +178,84 @@ unsigned int test_db::key_str_general() {
   //fill some data in contiguous tables
   for(int i=0; i < 4; ++i) {
     res = store_str(current_receiver(),  N(atr), (char *)keys[i], STRLEN(keys[i]), (char *)atr[i], STRLEN(atr[i]) );
-    WASM_ASSERT(res != 0, "atr" );
+    assert(res != 0, "atr" );
 
     res = store_str(current_receiver(),  N(ztr), (char *)keys[i], STRLEN(keys[i]), (char *)ztr[i], STRLEN(ztr[i]) );
-    WASM_ASSERT(res != 0, "ztr" );
+    assert(res != 0, "ztr" );
   }
 
   char tmp[64];
 
   res = store_str(current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]) );
-  WASM_ASSERT(res != 0, "store alice" );
+  assert(res != 0, "store alice" );
 
   res = store_str(current_receiver(),  N(str), (char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
-  WASM_ASSERT(res != 0, "store bob" );
+  assert(res != 0, "store bob" );
 
   res = store_str(current_receiver(),  N(str), (char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
-  WASM_ASSERT(res != 0, "store carol" );
+  assert(res != 0, "store carol" );
 
   res = store_str(current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
-  WASM_ASSERT(res != 0, "store dave" );
+  assert(res != 0, "store dave" );
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
+  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+  assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+  assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == -1, "no prev");
+  assert(res == -1, "no prev");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+  assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == -1, "no next");
+  assert(res == -1, "no next");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 0);
-  WASM_ASSERT(res == 0, "next 0");
+  assert(res == 0, "next 0");
 
   res = front_str(current_receiver(), current_receiver(), N(str), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
+  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
 
   res = back_str(current_receiver(), current_receiver(), N(str), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
+  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
 
   res = lower_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
 
   res = upper_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
 
   res = lower_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
 
   res = upper_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == -1, "no upper_bound");
+  assert(res == -1, "no upper_bound");
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i64_general() {
@@ -268,16 +268,16 @@ unsigned int test_db::key_i64_general() {
   test_model dave { N(dave),  46, 6535354};
 
   res = store_i64(current_receiver(),  N(test_table), &dave,  sizeof(test_model));
-  WASM_ASSERT(res != 0, "store dave" );
+  assert(res != 0, "store dave" );
 
   res = store_i64(current_receiver(), N(test_table), &carol, sizeof(test_model));
-  WASM_ASSERT(res != 0, "store carol" );
+  assert(res != 0, "store carol" );
 
   res = store_i64(current_receiver(),   N(test_table), &bob,   sizeof(test_model));
-  WASM_ASSERT(res != 0, "store bob" );
+  assert(res != 0, "store bob" );
 
   res = store_i64(current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res != 0, "store alice" );
+  assert(res != 0, "store alice" );
 
   //fill with different ages in adjacent tables
   dave.age=123;  store_i64(current_receiver(), N(test_tabld), &dave,  sizeof(test_model));
@@ -292,56 +292,56 @@ unsigned int test_db::key_i64_general() {
   test_model tmp;
 
   res = front_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
+  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
   my_memset(&tmp, 0, sizeof(test_model));
 
   res = back_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
+  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
+  assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
   
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
+  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
+  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "previous null");
+  assert(res == -1, "previous null");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
+  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
+  assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
+  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "next null");
+  assert(res == -1, "next null");
 
   my_memset(&alice, 0, sizeof(test_model));
 
-  WASM_ASSERT(alice.name == 0 && alice.age == 0 && alice.phone == 0, "my_memset");
+  assert(alice.name == 0 && alice.age == 0 && alice.phone == 0, "my_memset");
 
   alice.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
+  assert(res == sizeof(test_model) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
 
   alice.age = 21;
   alice.phone = 1234;
   
   res = store_i64(current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == 0, "store alice 2" );
+  assert(res == 0, "store alice 2" );
 
   my_memset(&alice, 0, sizeof(test_model));
   alice.name = N(alice);
   
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && alice.age == 21 && alice.phone == 1234, "alice error 2");
+  assert(res == sizeof(test_model) && alice.age == 21 && alice.phone == 1234, "alice error 2");
 
   my_memset(&bob, 0, sizeof(test_model));
   bob.name = N(bob);
@@ -353,72 +353,72 @@ unsigned int test_db::key_i64_general() {
   dave.name = N(dave);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &bob, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
+  assert(res == sizeof(test_model) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &carol, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
+  assert(res == sizeof(test_model) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &dave, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
+  assert(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
 
   res = load_i64(current_receiver(), N(other_code), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == -1, "other_code");
+  assert(res == -1, "other_code");
 
   res = load_i64(current_receiver(), current_receiver(), N(other_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == -1, "other_table");
+  assert(res == -1, "other_table");
 
 
   test_model_v2 alicev2;
   alicev2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  WASM_ASSERT(res == sizeof(test_model) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
+  assert(res == sizeof(test_model) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
 
   alicev2.new_field = 66655444;
   res = store_i64(current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  WASM_ASSERT(res == 0, "store alice 3" );
+  assert(res == 0, "store alice 3" );
 
   my_memset(&alicev2, 0, sizeof(test_model_v2));
   alicev2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  WASM_ASSERT(res == sizeof(test_model_v2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
+  assert(res == sizeof(test_model_v2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(bob);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob), "lower_bound_i64 bob" );
+  assert(res == sizeof(test_model) && tmp.name == N(bob), "lower_bound_i64 bob" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(boc);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol), "lower_bound_i64 carol" );
+  assert(res == sizeof(test_model) && tmp.name == N(carol), "lower_bound_i64 carol" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(uint64_t) );
-  WASM_ASSERT(res == sizeof(uint64_t) && tmp.name == N(dave), "lower_bound_i64 dave" );
+  assert(res == sizeof(uint64_t) && tmp.name == N(dave), "lower_bound_i64 dave" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(davf);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(uint64_t) );
-  WASM_ASSERT(res == -1, "lower_bound_i64 fail" );
+  assert(res == -1, "lower_bound_i64 fail" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(alice);
   res = upper_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
+  assert(res == sizeof(test_model) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   res = upper_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "upper_bound_i64 dave" );
+  assert(res == -1, "upper_bound_i64 dave" );
 
   test_model_v3 tmp2;
   tmp2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == sizeof(test_model_v2) &&
+  assert(res == sizeof(test_model_v2) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444,
@@ -426,10 +426,10 @@ unsigned int test_db::key_i64_general() {
 
   tmp2.another_field = 221122;
   res = update_i64(current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == 1, "update_i64");
+  assert(res == 1, "update_i64");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == sizeof(test_model_v3) &&
+  assert(res == sizeof(test_model_v3) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -438,10 +438,10 @@ unsigned int test_db::key_i64_general() {
 
   tmp2.age = 11;
   res = update_i64(current_receiver(), N(test_table), &tmp2,  sizeof(uint64_t)+1 );
-  WASM_ASSERT(res == 1, "update_i64 small");
+  assert(res == 1, "update_i64 small");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == sizeof(test_model_v3) &&
+  assert(res == sizeof(test_model_v3) &&
               tmp2.age == 11 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -457,7 +457,7 @@ unsigned int test_db::key_i64_general() {
     }
   }
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i64_remove_all() {
@@ -467,80 +467,80 @@ unsigned int test_db::key_i64_remove_all() {
 
   key = N(alice);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove alice");
+  assert(res == 1, "remove alice");
   
   key = N(bob);
   res = remove_i64(current_receiver(),   N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove bob");
+  assert(res == 1, "remove bob");
   
   key = N(carol);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove carol");
+  assert(res == 1, "remove carol");
   
   key = N(dave);
   res = remove_i64(current_receiver(),  N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove dave");
+  assert(res == 1, "remove dave");
 
   test_model tmp;
   res = front_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "front_i64 remove");
+  assert(res == -1, "front_i64 remove");
 
   res = back_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "back_i64_i64 remove");
+  assert(res == -1, "back_i64_i64 remove");
   
   key = N(alice);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove alice 1");
+  assert(res == 0, "remove alice 1");
   
   key = N(bob);
   res = remove_i64(current_receiver(),   N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove bob 1");
+  assert(res == 0, "remove bob 1");
   
   key = N(carol);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove carol 1");
+  assert(res == 0, "remove carol 1");
   
   key = N(dave);
   res = remove_i64(current_receiver(),  N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove dave 1");
+  assert(res == 0, "remove dave 1");
 
  
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i64_small_load() {
   uint64_t dummy = 0;
   load_i64(current_receiver(), current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t)-1);
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i64_small_store() {
   uint64_t dummy = 0;
   store_i64(current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t)-1);
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i64_store_scope() {
   uint64_t dummy = 0;
   store_i64(current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t));
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i64_remove_scope() {
   uint64_t dummy = 0;
   store_i64(current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t));
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i64_not_found() {
   uint64_t dummy = 1000;
 
   auto res = load_i64(current_receiver(), current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t));
-  WASM_ASSERT(res == -1, "i64_not_found load");
+  assert(res == -1, "i64_not_found load");
 
   res = remove_i64(current_receiver(),  N(just_uint64), &dummy);
-  WASM_ASSERT(res == 0, "i64_not_found remove");
-  return WASM_TEST_PASS;
+  assert(res == 0, "i64_not_found remove");
+  return 0;
 }
 
 unsigned int test_db::key_i64_front_back() {
@@ -561,67 +561,67 @@ unsigned int test_db::key_i64_front_back() {
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
+  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
+  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
+  assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
+  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
 
   uint64_t key = N(carol);
   remove_i64(current_receiver(), N(b), &key);
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
+  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
+  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
+  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
+  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
 
   key = N(dave);
   remove_i64(current_receiver(), N(b), &key);
   
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 9");
+  assert(res == -1, "key_i64_front 9");
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 10");
+  assert(res == -1, "key_i64_front 10");
 
   key = N(bob);
   remove_i64(current_receiver(), N(a), &key);
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
+  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
+  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
 
   key = N(alice);
   remove_i64(current_receiver(), N(a), &key);
 
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 13");
+  assert(res == -1, "key_i64_front 13");
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 14");
+  assert(res == -1, "key_i64_front 14");
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int store_set_in_table(uint64_t table_name)
@@ -635,16 +635,16 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 alice22{2, 200, N(alice22), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &alice0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice0" );
+  assert(res == 1, "store alice0" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice1" );
+  assert(res == 1, "store alice1" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice2" );
+  assert(res == 1, "store alice2" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice22,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice22" );
+  assert(res == 1, "store alice22" );
 
   TestModel128x2 bob0{10, 1, N(bob0), table_name};
   TestModel128x2 bob1{11, 2, N(bob1), table_name};
@@ -652,16 +652,16 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 bob3{13, 4, N(bob3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &bob0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob0" );
+  assert(res == 1, "store bob0" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob1" );
+  assert(res == 1, "store bob1" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob2" );
+  assert(res == 1, "store bob2" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob3,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob3" );
+  assert(res == 1, "store bob3" );
 
   TestModel128x2 carol0{20, 900, N(carol0), table_name};
   TestModel128x2 carol1{21, 800, N(carol1), table_name};
@@ -669,16 +669,16 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 carol3{23, 600, N(carol3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &carol0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol0" );
+  assert(res == 1, "store carol0" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol1" );
+  assert(res == 1, "store carol1" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol2" );
+  assert(res == 1, "store carol2" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol3,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol3" );
+  assert(res == 1, "store carol3" );
 
   TestModel128x2 dave0{30, 8, N(dave0), table_name};
   TestModel128x2 dave1{31, 7, N(dave1), table_name};
@@ -686,18 +686,18 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 dave3{33, 4, N(dave3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &dave0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave0" );
+  assert(res == 1, "store dave0" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave1" );
+  assert(res == 1, "store dave1" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave2" );
+  assert(res == 1, "store dave2" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave3,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave3" );
+  assert(res == 1, "store dave3" );
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int store_set_in_table(TestModel3xi64* records, int len, uint64_t table_name) {
@@ -706,7 +706,7 @@ unsigned int store_set_in_table(TestModel3xi64* records, int len, uint64_t table
     TestModel3xi64 *tmp = records+i;
     tmp->table = table_name;
     res = store_i64i64i64(current_receiver(),  table_name, tmp,  sizeof(TestModel3xi64));
-    WASM_ASSERT(res == 1, "store_set_in_table" );
+    assert(res == 1, "store_set_in_table" );
   }
   return res;
 }
@@ -750,7 +750,7 @@ unsigned int test_db::key_i64i64i64_general() {
       eosio::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, "inx:", uint64_t(I), " ("); \
       eosio::print(BS(res == sizeof(V)), " ", BS(records[I].a == V.a), " ", BS(records[I].b == V.b), " ", BS(records[I].c == V.c), " => ", N(table2), ")\n"); \
     } \
-    WASM_ASSERT( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
+    assert( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
      records[I].c == V.c /*&& records[I].table == uint64_t(N(table2))*/, msg);
 
   #define LOAD_OK(I, O, T, INX, MSG) \
@@ -761,7 +761,7 @@ unsigned int test_db::key_i64i64i64_general() {
   #define LOAD_ER(I, O, T, MSG) \
     {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
     res = LOAD(I, O, T, tmp); \
-    WASM_ASSERT(res == -1, MSG)}
+    assert(res == -1, MSG)}
 
   #define FRONT_OK(I, O, T, INX, MSG) \
     {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
@@ -812,7 +812,7 @@ unsigned int test_db::key_i64i64i64_general() {
       eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = NEXT(I, i64i64i64, N(table2), tmp);\
       if(j+1<n){ TABLE1_ASSERT(I[j+1], tmp, "i64x3 NEXT " #I " ok "); } \
-      else { WASM_ASSERT(res == -1, "i64x3 NEXT " #I " fail "); }\
+      else { assert(res == -1, "i64x3 NEXT " #I " fail "); }\
     } while(++j<n); \
   }
 
@@ -824,7 +824,7 @@ unsigned int test_db::key_i64i64i64_general() {
       eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = PREV(I, i64i64i64, N(table2), tmp);\
       if(j>0){ TABLE1_ASSERT(I[j-1], tmp, "i64x3 PREV " #I " ok "); } \
-      else { WASM_ASSERT(res == -1, "i64x3 PREV " #I " fail "); }\
+      else { assert(res == -1, "i64x3 PREV " #I " fail "); }\
     } while(--j>0); \
   }
 
@@ -866,7 +866,7 @@ unsigned int test_db::key_i64i64i64_general() {
     do { \
       eosio::remove_reference<decltype(records[0])>::type tmp = records[j]; \
       res = UPPER(I, i64i64i64, N(table2), tmp);\
-      if(res == -1) { WASM_ASSERT(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
+      if(res == -1) { assert(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
       else { TABLE1_ASSERT(I##_ub[j], tmp, "i64x3 UPPER " #I " ok "); } \
     } while(++j<n); \
   }
@@ -879,37 +879,37 @@ unsigned int test_db::key_i64i64i64_general() {
   v2.a = records[6].a;
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  WASM_ASSERT(res == sizeof(TestModel3xi64), "load v2");
+  assert(res == sizeof(TestModel3xi64), "load v2");
 
   v2.new_field = 555;
 
   res = update_i64i64i64(current_receiver(),  N(table2), &v2, sizeof(TestModel3xi64_V2));
-  WASM_ASSERT(res == 1, "store v2");  
+  assert(res == 1, "store v2");  
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  WASM_ASSERT(res == sizeof(TestModel3xi64_V2), "load v2 updated");
+  assert(res == sizeof(TestModel3xi64_V2), "load v2 updated");
 
   res = remove_i64i64i64(current_receiver(),  N(table2), &v2);
-  WASM_ASSERT(res == 1, "load v2 updated");
+  assert(res == 1, "load v2 updated");
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  WASM_ASSERT(res == -1, "load not found");
+  assert(res == -1, "load not found");
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 unsigned int test_db::key_i128i128_general() {
 
   uint32_t res = 0;
 
-  if(store_set_in_table(N(table4)) != WASM_TEST_PASS)
-    return WASM_TEST_FAIL;
+  if(store_set_in_table(N(table4)) != 0)
+     assert(false, "store_set_in_table(N(table4)) != 0 (test_db::key_i128i128_general)");
 
-  if(store_set_in_table(N(table5)) != WASM_TEST_PASS)
-    return WASM_TEST_FAIL;
+  if(store_set_in_table(N(table5)) != 0)
+     assert(false, "store_set_in_table(N(table5)) != 0 (test_db::key_i128i128_general)");
 
-  if(store_set_in_table(N(table6)) != WASM_TEST_PASS)
-    return WASM_TEST_FAIL;
+  if(store_set_in_table(N(table6)) != 0)
+     assert(false, "store_set_in_table(N(table6)) != 0 (test_db::key_i128i128_general)");
 
   TestModel128x2 tmp;
   my_memset(&tmp, 0, sizeof(TestModel128x2));
@@ -917,7 +917,7 @@ unsigned int test_db::key_i128i128_general() {
 
   res = load_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
 
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
                tmp.table_name == N(table5),
@@ -927,7 +927,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp.price = 4;
   
   res = load_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 13 &&
                tmp.price == 4 &&
                tmp.extra == N(bob3) &&
@@ -935,7 +935,7 @@ unsigned int test_db::key_i128i128_general() {
               "bob3 secondary load");
 
   res = front_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 0 &&
                tmp.price == 500 &&
                tmp.extra == N(alice0) &&
@@ -943,10 +943,10 @@ unsigned int test_db::key_i128i128_general() {
               "front primary load");
   
   res = previous_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "previous primary fail");
+  assert(res == -1, "previous primary fail");
 
   res = next_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 1 &&
                tmp.price == 400 &&
                tmp.extra == N(alice1) &&
@@ -954,7 +954,7 @@ unsigned int test_db::key_i128i128_general() {
               "next primary ok");
 
   res = front_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 10 &&
                tmp.price == 1 &&
                tmp.extra == N(bob0) &&
@@ -962,10 +962,10 @@ unsigned int test_db::key_i128i128_general() {
               "front secondary ok");
   
   res = previous_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "previous secondary fail");
+  assert(res == -1, "previous secondary fail");
 
   res = next_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 11 &&
                tmp.price == 2 &&
                tmp.extra == N(bob1) &&
@@ -973,7 +973,7 @@ unsigned int test_db::key_i128i128_general() {
               "next secondary ok");
 
   res = back_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 33 &&
                tmp.price == 4 &&
                tmp.extra == N(dave3) &&
@@ -981,10 +981,10 @@ unsigned int test_db::key_i128i128_general() {
               "back primary ok");
   
   res = next_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "next primary fail");
+  assert(res == -1, "next primary fail");
 
   res = previous_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 32 &&
                tmp.price == 5 &&
                tmp.extra == N(dave2) &&
@@ -992,7 +992,7 @@ unsigned int test_db::key_i128i128_general() {
               "previous primary ok");
 
   res = back_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 20 &&
                tmp.price == 900 &&
                tmp.extra == N(carol0) &&
@@ -1000,11 +1000,11 @@ unsigned int test_db::key_i128i128_general() {
               "back secondary ok");
   
   res = next_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "next secondary fail");
+  assert(res == -1, "next secondary fail");
 
   res = previous_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
   
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 21 &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
@@ -1014,7 +1014,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp.number = 1;
 
   res = lower_bound_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 1 &&
                tmp.price == 400 &&
                tmp.extra == N(alice1) &&
@@ -1022,7 +1022,7 @@ unsigned int test_db::key_i128i128_general() {
               "lb primary ok");
 
   res = upper_bound_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 2 &&
                tmp.price == 200 &&
                tmp.extra == N(alice22) &&
@@ -1032,7 +1032,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp.price = 800;
 
   res = lower_bound_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp.number == 21 &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
@@ -1043,7 +1043,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp2.price = 800;
 
   res = upper_bound_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  assert( res == sizeof(TestModel128x2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(carol0) &&
@@ -1052,13 +1052,13 @@ unsigned int test_db::key_i128i128_general() {
   
   tmp2.new_field = 123456;
   res = update_i128i128(current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  WASM_ASSERT( res == 1, "update_i128i128 ok");
+  assert( res == 1, "update_i128i128 ok");
 
   my_memset(&tmp2, 0, sizeof(TestModel128x2_V2));
   tmp2.number = 20;
 
   res = load_primary_i128i128(current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  WASM_ASSERT( res == sizeof(TestModel128x2_V2) &&
+  assert( res == sizeof(TestModel128x2_V2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(carol0) &&
@@ -1068,10 +1068,10 @@ unsigned int test_db::key_i128i128_general() {
 
   tmp2.extra = N(xxxxx);
   res = update_i128i128(current_receiver(), N(table5), &tmp2, sizeof(uint128_t)*2+sizeof(uint64_t));
-  WASM_ASSERT( res == 1, "update_i128i128 small ok");
+  assert( res == 1, "update_i128i128 small ok");
 
   res = load_primary_i128i128(current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  WASM_ASSERT( res == sizeof(TestModel128x2_V2) &&
+  assert( res == sizeof(TestModel128x2_V2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(xxxxx) &&
@@ -1079,7 +1079,7 @@ unsigned int test_db::key_i128i128_general() {
                tmp2.new_field == 123456,
               "lp small update_i128i128 ok");
 
-  return WASM_TEST_PASS;
+  return 0;
 }
 
 void set_key_str(int i, char* key_4_digit)
@@ -1111,7 +1111,7 @@ unsigned int test_db::key_str_setup_limit()
       store_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
    }
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_str_min_exceed_limit()
@@ -1125,7 +1125,7 @@ unsigned int test_db::key_str_min_exceed_limit()
    // -> key + value bytes: 8 Bytes
    // 8 + 32 = 40 Bytes (not enough space)
    store_str(N(dblimits), N(dblstr), &key, 1, &value, 1);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_str_under_limit()
@@ -1148,7 +1148,7 @@ unsigned int test_db::key_str_under_limit()
       store_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
    }
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_str_available_space_exceed_limit()
@@ -1163,7 +1163,7 @@ unsigned int test_db::key_str_available_space_exceed_limit()
    char* value = static_cast<char*>(eosio::malloc(value_size));
    store_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_str_another_under_limit()
@@ -1197,7 +1197,7 @@ unsigned int test_db::key_str_another_under_limit()
    update_str(N(dblimits), N(dblstr), key, sizeof(key), value, value_size);
    eosio::free(value);
 
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64_setup_limit()
@@ -1216,7 +1216,7 @@ unsigned int test_db::key_i64_setup_limit()
       store_i64(N(dblimits), N(dbli64), (char*)value, value_size);
    }
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64_min_exceed_limit()
@@ -1225,7 +1225,7 @@ unsigned int test_db::key_i64_min_exceed_limit()
    // at 5M Byte limit, so cannot store anything
    uint64_t value = (uint64_t)-1;
    store_i64(N(dblimits), N(dbli64), (char*)&value, sizeof(uint64_t));
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64_under_limit()
@@ -1244,7 +1244,7 @@ unsigned int test_db::key_i64_under_limit()
    }
    // 262,144 Bytes remaining
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64_available_space_exceed_limit()
@@ -1259,7 +1259,7 @@ unsigned int test_db::key_i64_available_space_exceed_limit()
    value[0] = 1024 * 2;
    store_i64(N(dblimits), N(dbli64), (char*)value, value_size);
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64_another_under_limit()
@@ -1295,7 +1295,7 @@ unsigned int test_db::key_i64_another_under_limit()
 
    eosio::free(value);
 
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i128i128_setup_limit()
@@ -1315,7 +1315,7 @@ unsigned int test_db::key_i128i128_setup_limit()
       store_i128i128(N(dblimits), N(dbli128i128), (char*)value, value_size);
    }
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i128i128_min_exceed_limit()
@@ -1327,7 +1327,7 @@ unsigned int test_db::key_i128i128_min_exceed_limit()
    value[0] = (uint128_t)-1;
    value[1] = value[0] + 1;
    store_i128i128(N(dblimits), N(dbli128i128), (char*)&value, value_size);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i128i128_under_limit()
@@ -1347,7 +1347,7 @@ unsigned int test_db::key_i128i128_under_limit()
    }
    // 262,144 Bytes remaining
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i128i128_available_space_exceed_limit()
@@ -1363,7 +1363,7 @@ unsigned int test_db::key_i128i128_available_space_exceed_limit()
    value[1] = value[0] + 1;
    store_i128i128(N(dblimits), N(dbli128i128), (char*)value, value_size);
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i128i128_another_under_limit()
@@ -1402,7 +1402,7 @@ unsigned int test_db::key_i128i128_another_under_limit()
 
    eosio::free(value);
 
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64i64i64_setup_limit()
@@ -1423,7 +1423,7 @@ unsigned int test_db::key_i64i64i64_setup_limit()
       store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value, value_size);
    }
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64i64i64_min_exceed_limit()
@@ -1436,7 +1436,7 @@ unsigned int test_db::key_i64i64i64_min_exceed_limit()
    value[1] = value[0] + 1;
    value[2] = value[0] + 2;
    store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)&value, value_size);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64i64i64_under_limit()
@@ -1457,7 +1457,7 @@ unsigned int test_db::key_i64i64i64_under_limit()
    }
    // 262,144 Bytes remaining
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64i64i64_available_space_exceed_limit()
@@ -1474,7 +1474,7 @@ unsigned int test_db::key_i64i64i64_available_space_exceed_limit()
    value[2] = value[0] + 2;
    store_i64i64i64(N(dblimits), N(dbli64i64i64), (char*)value, value_size);
    eosio::free(value);
-   return WASM_TEST_PASS;
+   return 0;
 }
 
 unsigned int test_db::key_i64i64i64_another_under_limit()
@@ -1516,5 +1516,5 @@ unsigned int test_db::key_i64i64i64_another_under_limit()
 
    eosio::free(value);
 
-   return WASM_TEST_PASS;
+   return 0;
 }

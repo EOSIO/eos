@@ -18,14 +18,14 @@ unsigned int test_chain::test_activeprods() {
   producers msg_prods;
   read_action(&msg_prods, sizeof(producers));
 
-  WASM_ASSERT(msg_prods.len == 21, "producers.len != 21");
+  assert(msg_prods.len == 21, "producers.len != 21");
 
   producers api_prods;
   get_active_producers(api_prods.producers, sizeof(account_name)*21);
 
   for( int i = 0; i < 21 ; ++i ) {
-    WASM_ASSERT(api_prods.producers[i] == msg_prods.producers[i], "Active producer");
+    assert(api_prods.producers[i] == msg_prods.producers[i], "Active producer");
   }
   
-  return WASM_TEST_PASS;
+  return 0;
 }

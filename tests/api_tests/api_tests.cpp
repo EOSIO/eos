@@ -1,5 +1,5 @@
 /**
- *  @file
+ *  @file api_tests.cpp
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <algorithm>
@@ -39,28 +39,9 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-//extern const char* test_api_wast;
-//#include <test_api/test_api.wast.hpp>
-//#include <test_api/test_api.hpp>
+#include <test_api/test_api.wast.hpp>
 #include "test_api.hpp"
 
-//#include "memory_test/memory_test.wast.hpp"
-#include <extended_memory_test/extended_memory_test.wast.hpp>
-#include <action_test/action_test.wast.hpp>
-#include <account_test/account_test.wast.hpp>
-#include <real_test/real_test.wast.hpp>
-#include <crypto_test/crypto_test.wast.hpp>
-//#include <chain_test/chain_test.wast.hpp>
-//#include <db_test/db_test.wast.hpp>
-#include <fixedpoint_test/fixedpoint_test.wast.hpp>
-#include <math_test/math_test.wast.hpp>
-#include <memory_test/memory_test.wast.hpp>
-#include <print_test/print_test.wast.hpp>
-#include <string_test/string_test.wast.hpp>
-#include <types_test/types_test.wast.hpp>
-//#include "extended_memory_test/extended_memory_test.wast.hpp"
-//#include "table_abi_test/table_abi_test.wast.hpp"
-//#include "table_abi_test/table_abi_test.abi.hpp"
 
 #include <eosio/chain/staked_balance_objects.hpp>
 //#include <eosio/chain/balance_object.hpp>
@@ -126,7 +107,7 @@ string U64Str(uint64_t i)
 BOOST_AUTO_TEST_SUITE(api_tests)
 
 
-
+/*
 vector<uint8_t> assemble_wast( const std::string& wast ) {
    //   std::cout << "\n" << wast << "\n";
    IR::Module module;
@@ -159,7 +140,7 @@ vector<uint8_t> assemble_wast( const std::string& wast ) {
       throw;
    }
 }
-
+*/
 }
 
 template <typename T>
@@ -350,7 +331,7 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
 	trx.sign(get_private_key(N(inita), "active"), chain_id_type());
 	push_transaction(trx);
 	produce_blocks(1000);
-	set_code( N(testapi), account_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 	
 	//const auto& balance = get_balance(N(acc1));
@@ -371,7 +352,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), action_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
 	CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
@@ -409,7 +390,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 
 	produce_blocks(1000);
-	set_code( N(testapi), chain_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
    
    auto& gpo = control->get_global_properties();   
@@ -429,7 +410,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), db_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_general", {});
@@ -447,7 +428,7 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), fixedpoint_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "create_instances", {});
@@ -469,7 +450,7 @@ BOOST_FIXTURE_TEST_CASE(real_test, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), real_test_wast);
+   set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_real", "create_instances", {} );
    produce_blocks(1000);
@@ -492,7 +473,7 @@ BOOST_FIXTURE_TEST_CASE(real_test, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), crypto_test_wast);
+   set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
    produce_blocks(1000);
@@ -516,7 +497,7 @@ BOOST_FIXTURE_TEST_CASE(memory_test, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), memory_test_wast);
+   set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_allocs", {} );
    produce_blocks(1000);
@@ -546,7 +527,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_initial_memory, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), extended_memory_test_wast);
+   set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_initial_buffer", {} );
 } FC_LOG_AND_RETHROW() }
@@ -557,7 +538,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), extended_memory_test_wast);
+   set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory", {} );
 } FC_LOG_AND_RETHROW() }
@@ -568,7 +549,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, tester) { try
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), extended_memory_test_wast);
+   set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_exceeded", {} ),
                          page_memory_error, is_page_memory_error);
@@ -580,7 +561,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), extended_memory_test_wast);
+   set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_negative_bytes", {} ),
                          page_memory_error, is_page_memory_error);
@@ -599,7 +580,7 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), string_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
 
 	//transfer( N(testapi), N(testextmem), "1.0000 EOS", "memo" );
@@ -643,7 +624,7 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 
 	//Set test code
 	transfer(N(inita), N(testapi), "10.0000 EOS", "memo");
-	set_code(N(testapi), print_test_wast); 
+	set_code(N(testapi), test_api_wast); 
 	produce_blocks(1);
 	string captured = "";
 
@@ -691,7 +672,7 @@ BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
 
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), math_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
 
 	CALL_TEST_FUNCTION( *this, "test_math", "test_multeq", {});
@@ -712,7 +693,7 @@ BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), types_test_wast );
+	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
 
 	CALL_TEST_FUNCTION( *this, "test_types", "types_size", {});

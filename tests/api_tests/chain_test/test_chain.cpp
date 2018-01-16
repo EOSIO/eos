@@ -5,7 +5,7 @@
 #include <eoslib/action.h>
 #include <eoslib/chain.h>
 
-#include "../test_api.hpp"
+#include "test_api.hpp"
 
 #pragma pack(push, 1)
 struct producers {

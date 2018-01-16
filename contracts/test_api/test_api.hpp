@@ -24,7 +24,7 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
      CLASS::METHOD(); \
      return; \
   }
-
+   
 #pragma pack(push, 1)
 struct dummy_action {
   char a; //1
@@ -72,9 +72,9 @@ struct test_action {
 };
 
 struct test_math {
-  static unsigned int test_multeq_i128();
-  static unsigned int test_diveq_i128();
-  static unsigned int test_diveq_i128_by_0();
+  static unsigned int test_multeq();
+  static unsigned int test_diveq();
+  static unsigned int test_diveq_by_0();
   static unsigned int test_double_api();
   static unsigned int test_double_api_div_0();
 };
@@ -185,4 +185,22 @@ struct test_real {
 
 struct test_account {
    static unsigned int test_balance_acc1();
+};
+
+struct test_extended_memory {
+	static void test_initial_buffer();
+	static void test_page_memory();
+	static void test_page_memory_exceeded();
+	static void test_page_memory_negative_bytes();
+};
+
+struct test_memory {
+   static void test_memory_allocs();
+   static void test_memory_hunk();
+   static void test_memory_hunks();
+   static void test_memory_hunks_disjoint();
+   static void test_memset_memcpy();
+   static void test_memcpy_overlap_start();
+   static void test_memcpy_overlap_end();
+   static void test_memcmp();
 };

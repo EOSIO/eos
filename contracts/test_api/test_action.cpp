@@ -1,9 +1,9 @@
 /**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
+ * @file action_test.cpp
+ * @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/action.hpp>
 
+#include <eoslib/eos.hpp>
 #include "test_api.hpp"
 
 void test_action::read_action_normal() {
@@ -12,7 +12,6 @@ void test_action::read_action_normal() {
    uint32_t total = 0;
 
    assert( current_receiver() == N(testapi),  "current_receiver() == N(testapi)" );
-
    assert(action_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)");
 
    total = read_action(buffer, 30);
@@ -35,30 +34,36 @@ void test_action::read_action_normal() {
 }
 
 void test_action::read_action_to_0() {
-   uint32_t total = read_action((void *)0, 0x7FFFFFFF);
+   prints("made it here\n");
+   uint32_t total = read_action((void *)0,  0x7FFFFFFF); //0x7FFFFFFF);
+   prints("made it out\n");
+//   assert(false, "WHY YOU NO FAIL!");
 }
 
 void test_action::read_action_to_64k() {
    uint32_t total = read_action( (void *)((1<<16)-1), 0x7FFFFFFF);
 }
 
-//unsigned int test_action::require_notice() {
-//   if( current_receiver() == N(testapi) ) {
-//      eosio::require_recipient( N(acc1) );
-//      eosio::require_recipient( N(acc2) );
-//      eosio::require_recipient( N(acc1), N(acc2) );
-//      return WASM_TEST_FAIL;
-//   } else if ( current_receiver() == N(acc1) || current_receiver() == N(acc2) ) {
-//      return WASM_TEST_PASS;
-//   }
-//   return WASM_TEST_FAIL;
-//}
-//
-//unsigned int test_action::require_auth() {
-//   eosio::require_auth( N(acc3) );
-//   eosio::require_auth( N(acc4) );
-//   return WASM_TEST_PASS;
-//}
+unsigned int test_action::require_notice() {
+   if( current_receiver() == N(testapi) ) {
+      eosio::require_recipient( N(acc1) );
+      eosio::require_recipient( N(acc2) );
+      eosio::require_recipient( N(acc1), N(acc2) );
+      assert(false, "Should've failed");
+      return 1;
+   } else if ( current_receiver() == N(acc1) || current_receiver() == N(acc2) ) {
+      return 0;
+   }
+   assert(false, "Should've failed");
+   return 1;
+}
+
+unsigned int test_action::require_auth() {
+   prints("require_auth");
+   eosio::require_auth( N(acc3) );
+   eosio::require_auth( N(acc4) );
+   return 0;
+}
 
 void test_action::assert_false() {
    assert(false, "test_action::assert_false");
@@ -75,4 +80,18 @@ void test_action::assert_true() {
 //   WASM_ASSERT( tmp == ::now(), "tmp == now()" );
 //   return WASM_TEST_PASS;
 //}
-//
+
+/*
+extern "C" {
+	void init() {
+	}
+
+	void apply( unsigned long long code, unsigned long long action ) {
+		WASM_TEST_HANDLER(test_action, read_action_normal);
+      WASM_TEST_HANDLER(test_action, read_action_to_0);
+      WASM_TEST_HANDLER(test_action, require_auth);
+		WASM_TEST_HANDLER(test_action, assert_false);
+		WASM_TEST_HANDLER(test_action, assert_true);
+	}
+}
+*/
