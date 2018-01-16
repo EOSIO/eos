@@ -10,8 +10,8 @@
 #include <currency/currency.wast.hpp>
 #include <currency/currency.abi.hpp>
 
-#include <proxy/proxy.wast.hpp>
-#include <proxy/proxy.abi.hpp>
+//#include <proxy/proxy.wast.hpp>
+//#include <proxy/proxy.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -26,7 +26,7 @@ using namespace eosio::testing;
 using namespace fc;
 
 struct issue {
-   static uint64_t get_scope(){ return N(currency); }
+   static uint64_t get_account(){ return N(currency); }
    static uint64_t get_name(){ return N(issue); }
 
    account_name to;
@@ -247,9 +247,9 @@ struct assert_message_is {
    string expected;
 };
 
-
+/**
 BOOST_FIXTURE_TEST_CASE( test_generic_currency, tester ) try {
-   produce_blocks(2);
+   produce_blocks(2000);
    create_accounts( {N(currency), N(usera), N(userb)}, asset::from_string("1000.0000 EOS") );
    produce_blocks(2);
    set_code( N(currency), currency_wast );
@@ -270,6 +270,7 @@ BOOST_FIXTURE_TEST_CASE( test_generic_currency, tester ) try {
    }
 
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
+ */
 
 BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    produce_blocks(2);
@@ -311,8 +312,9 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    }
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
+/**
 BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
-   produce_blocks(2);
+   produce_blocks(2000);
 
    create_accounts( {N(currency), N(alice), N(bob)}, asset::from_string("1000.0000 EOS") );
    transfer( N(inita), N(currency), "10.0000 EOS", "memo" );
@@ -394,7 +396,9 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
    }
 
 } FC_LOG_AND_RETHROW() /// test_currency
+*/
 
+/**
 BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    produce_blocks(2);
 
@@ -450,7 +454,9 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
 
 } FC_LOG_AND_RETHROW() /// test_currency
+*/
 
+/**
 BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    produce_blocks(2);
 
@@ -550,6 +556,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
 
 } FC_LOG_AND_RETHROW() /// test_currency
+*/
 
 /**
  * Make sure WASM "start" method is used correctly
