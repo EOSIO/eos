@@ -10,8 +10,8 @@
 #include <currency/currency.wast.hpp>
 #include <currency/currency.abi.hpp>
 
-#include <proxy/proxy.wast.hpp>
-#include <proxy/proxy.abi.hpp>
+//#include <proxy/proxy.wast.hpp>
+//#include <proxy/proxy.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
