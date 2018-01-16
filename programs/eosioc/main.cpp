@@ -284,12 +284,12 @@ fc::variant push_transaction( signed_transaction& trx, bool sign ) {
 }
 
 
-void create_account(name creator, name newaccount, public_key_type owner, public_key_type active, bool sign) {
+void create_account(name creator, name newaccount, public_key_type owner, public_key_type active, bool sign, uint64_t staked_deposit) {
       auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
       auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      uint64_t deposit = 1000;
+      uint64_t deposit = staked_deposit;
 
       signed_transaction trx;
       trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
@@ -482,15 +482,17 @@ int main( int argc, char** argv ) {
    string ownerKey;
    string activeKey;
    bool skip_sign = false;
+   uint64_t staked_deposit=1000;
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
    createAccount->add_option("OwnerKey", ownerKey, localized("The owner public key for the account"))->required();
    createAccount->add_option("ActiveKey", activeKey, localized("The active public key for the account"))->required();
    createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
+   createAccount->add_option("--staked-deposit", staked_deposit, localized("the staked deposit transfered to the new account"));
    add_standard_transaction_options(createAccount);
    createAccount->set_callback([&] {
-      create_account(creator, account_name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign);
+                   create_account(creator, account_name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign, staked_deposit);
    });
 
    // create producer
