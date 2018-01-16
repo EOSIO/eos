@@ -40,7 +40,7 @@
 #include <Runtime/Runtime.h>
 
 #include <test_api/test_api.wast.hpp>
-#include "test_api.hpp"
+#include <test_api/test_api.hpp>
 
 
 #include <eosio/chain/staked_balance_objects.hpp>
@@ -173,58 +173,9 @@ uint32_t CallFunction(tester& test, T tm, const vector<char>& data, const vector
 	return 3;
 }
 
-/*
-uint32_t CallFunction( testing_blockchain& chain, const types::message& msg, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
-   static int expiration = 1;
-   eosio::chain::signed_transaction trx;
-   trx.scope = scope;
-   
-   //msg.data.clear();
-   vector<char>& dest = *(vector<char> *)(&msg.data);
-   std::copy(data.begin(), data.end(), std::back_inserter(dest));
-
-   //std::cout << "MANDO: " << msg.code << " " << msg.type << std::endl;
-   transaction_emplace_message(trx, msg);
-   
-   trx.expiration = chain.head_block_time() + expiration++;
-   transaction_set_reference_block(trx, chain.head_block_id());
-   //idump((trx));
-   chain.push_transaction(trx);
-
-   //
-   auto& wasm = wasm_interface::get();
-   uint32_t *res = Runtime::memoryArrayPtr<uint32_t>(wasm.current_memory, (1<<16) - 2*sizeof(uint32_t), 2);
-
-   if(res[0] == WASM_TEST_FAIL) {
-      char *str_err = &Runtime::memoryRef<char>(wasm.current_memory, res[1]);
-      wlog( "${err}", ("err",str_err));
-   }
-
-   return res[0];
-}
-*/
-
-using namespace std;
-string readFile2(const string &fileName)
-{
-    ifstream ifs(fileName.c_str(), ios::in | ios::binary | ios::ate);
-
-    ifstream::pos_type fileSize = ifs.tellg();
-    ifs.seekg(0, ios::beg);
-
-    vector<char> bytes(fileSize);
-    ifs.read(bytes.data(), fileSize);
-
-    return string(bytes.data(), fileSize);
-}
- 
-
 
 #define CALL_TEST_FUNCTION(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
 #define CALL_TEST_FUNCTION_SCOPE(TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
-//#define CALL_TEST_FUNCTION(TESTER, TYPE, AUTH, DATA) CallFunction(TESTER, DATA)
-//#define CALL_TEST_FUNCTION(TYPE, AUTH, DATA) CallFunction(chain, message{"testapi", AUTH, TYPE}, DATA)
-//#define CALL_TEST_FUNCTION_SCOPE(TESTER, TYPE, AUTH, DATA, SCOPE) CallFunction(TESTER, message{"testapi", AUTH, TYPE}, DATA, SCOPE)
 
 bool is_access_violation(fc::unhandled_exception const & e) {
    try {
@@ -237,7 +188,6 @@ bool is_access_violation(fc::unhandled_exception const & e) {
     }
    return false;
 }
-
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
@@ -252,6 +202,7 @@ bool is_tx_resource_exhausted_or_checktime(const transaction_exception& e) {
    return (e.code() == tx_resource_exhausted::code_value) || (e.code() == checktime_exceeded::code_value);
 }
 */
+
 std::vector<std::string> capture;
 
 struct MySink : public bio::sink
@@ -267,6 +218,7 @@ struct MySink : public bio::sink
    }
 };
 uint32_t last_fnc_err = 0;
+
 #define CAPTURE(STREAM, EXEC) \
    {\
       capture.clear(); \
@@ -275,23 +227,6 @@ uint32_t last_fnc_err = 0;
       last_fnc_err = EXEC; \
       std::STREAM.rdbuf(oldbuf); \
    }
-
-/*
-void send_set_code_message(testing_blockchain& chain, types::setcode& handler, account_name account)
-{
-   eosio::chain::signed_transaction trx;
-   handler.account = account;
-   trx.scope = { account };
-   trx.messages.resize(1);
-   trx.messages[0].authorization = {{account,"active"}};
-   trx.messages[0].code = config::eos_contract_name;
-   transaction_set_message(trx, 0, "setcode", handler);
-   trx.expiration = chain.head_block_time() + 100;
-   transaction_set_reference_block(trx, chain.head_block_id());
-   chain.push_transaction(trx);
-   chain.produce_blocks(1);
-}
-*/
 
 #define TEST_PRINT_METHOD( METHOD , OUT) \
 	{ \
@@ -569,6 +504,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
 #endif
 
 
+#if 0
 /*************************************************************************************
  * string_tests test case
  *************************************************************************************/
@@ -608,6 +544,7 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_string", "invalid_utf8", {});
 #endif
 } FC_LOG_AND_RETHROW() }
+#endif
 
 /*************************************************************************************
  * print_tests test case
@@ -661,7 +598,7 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 
 
 // missing intriniscs
-#if 0
+#if 1
 /*************************************************************************************
  * math_tests test case
  *************************************************************************************/

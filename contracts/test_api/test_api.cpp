@@ -10,13 +10,13 @@
 #include "test_memory.cpp"
 #include "test_print.cpp"
 #include "test_types.cpp"
+//#include "test_string.cpp"
 //#include "test_fixedpoint.cpp"
-//#include "test_math.cpp"
+#include "test_math.cpp"
 //#include "test_account.cpp"
 //#include "test_chain.cpp"
 //#include "test_crypto.cpp"
 //#include "test_db.cpp"
-//#include "test_string.cpp"
 //#include "test_real.cpp"
 //#include "test_transaction.cpp"
 
@@ -73,7 +73,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_print, test_printi128);
       WASM_TEST_HANDLER(test_print, test_printn);
 
-#if 0
+#if 1
       //test_math
       WASM_TEST_HANDLER(test_math, test_multeq);
       WASM_TEST_HANDLER(test_math, test_diveq);

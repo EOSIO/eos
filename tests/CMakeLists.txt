@@ -12,9 +12,9 @@ link_directories(${LLVM_LIBRARY_DIR})
 
 set( CMAKE_CXX_STANDARD 14 )
 
-include_directories("${CMAKE_BINARY_DIR}/tests/api_tests")
-#include_directories("${CMAKE_BINARY_DIR}/contracts")
-#include_directories("${CMAKE_SOURCE_DIR}/contracts")
+#include_directories("${CMAKE_BINARY_DIR}/tests/api_tests")
+include_directories("${CMAKE_BINARY_DIR}/contracts")
+include_directories("${CMAKE_SOURCE_DIR}/contracts")
 
 
 #file(GLOB UNIT_TESTS "tests/*.cpp")
