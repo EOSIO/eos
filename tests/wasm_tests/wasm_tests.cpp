@@ -26,8 +26,8 @@ using namespace eosio::testing;
 using namespace fc;
 
 struct issue {
-   static uint64_t get_scope(){ return N(currency); }
-   static uint64_t get_account(){ return N(issue); }
+   static uint64_t get_account(){ return N(currency); }
+   static uint64_t get_name(){ return N(issue); }
 
    account_name to;
    asset        quantity;
