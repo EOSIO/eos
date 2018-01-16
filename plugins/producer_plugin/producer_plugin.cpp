@@ -19,6 +19,8 @@ using std::vector;
 
 namespace eosio {
 
+static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
+
 using namespace eosio::chain;
 
 class producer_plugin_impl {

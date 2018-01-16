@@ -75,7 +75,7 @@ before_install:
 
 script:
   - mkdir build && cd build
-  - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release $EOS_CMAKE_OPTIONS ..
+  - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release -DBUILD_MONGO_DB_PLUGIN=true $EOS_CMAKE_OPTIONS ..
   - ninja -j4
 #  - tests/eosd_run_test.sh --host=localhost --port=8888
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/chain_test'
