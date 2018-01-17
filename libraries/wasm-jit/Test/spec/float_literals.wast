@@ -72,6 +72,28 @@
   (func (export "f64_dec.max_subnormal") (result i64) (i64.reinterpret/f64 (f64.const 2.2250738585072011e-308)))
   (func (export "f64_dec.max_finite") (result i64) (i64.reinterpret/f64 (f64.const 1.7976931348623157e+308)))
   (func (export "f64_dec.trailing_dot") (result i64) (i64.reinterpret/f64 (f64.const 1.e100)))
+
+  (func (export "f32-dec-sep1") (result f32) (f32.const 1_000_000))
+  (func (export "f32-dec-sep2") (result f32) (f32.const 1_0_0_0))
+  (func (export "f32-dec-sep3") (result f32) (f32.const 100_3.141_592))
+  (func (export "f32-dec-sep4") (result f32) (f32.const 99e+1_3))
+  (func (export "f32-dec-sep5") (result f32) (f32.const 122_000.11_3_54E0_2_3))
+  (func (export "f32-hex-sep1") (result f32) (f32.const 0xa_0f_00_99))
+  (func (export "f32-hex-sep2") (result f32) (f32.const 0x1_a_A_0_f))
+  (func (export "f32-hex-sep3") (result f32) (f32.const 0xa0_ff.f141_a59a))
+  (func (export "f32-hex-sep4") (result f32) (f32.const 0xf0P+1_3))
+  (func (export "f32-hex-sep5") (result f32) (f32.const 0x2a_f00a.1f_3_eep2_3))
+
+  (func (export "f64-dec-sep1") (result f64) (f64.const 1_000_000))
+  (func (export "f64-dec-sep2") (result f64) (f64.const 1_0_0_0))
+  (func (export "f64-dec-sep3") (result f64) (f64.const 100_3.141_592))
+  (func (export "f64-dec-sep4") (result f64) (f64.const 99e-1_23))
+  (func (export "f64-dec-sep5") (result f64) (f64.const 122_000.11_3_54e0_2_3))
+  (func (export "f64-hex-sep1") (result f64) (f64.const 0xa_f00f_0000_9999))
+  (func (export "f64-hex-sep2") (result f64) (f64.const 0x1_a_A_0_f))
+  (func (export "f64-hex-sep3") (result f64) (f64.const 0xa0_ff.f141_a59a))
+  (func (export "f64-hex-sep4") (result f64) (f64.const 0xf0P+1_3))
+  (func (export "f64-hex-sep5") (result f64) (f64.const 0x2a_f00a.1f_3_eep2_3))
 )
 
 (assert_return (invoke "f32.nan") (i32.const 0x7fc00000))
@@ -135,3 +157,343 @@
 (assert_return (invoke "f64_dec.max_subnormal") (i64.const 0xfffffffffffff))
 (assert_return (invoke "f64_dec.max_finite") (i64.const 0x7fefffffffffffff))
 (assert_return (invoke "f64_dec.trailing_dot") (i64.const 0x54b249ad2594c37d))
+
+(assert_return (invoke "f32-dec-sep1") (f32.const 1000000))
+(assert_return (invoke "f32-dec-sep2") (f32.const 1000))
+(assert_return (invoke "f32-dec-sep3") (f32.const 1003.141592))
+(assert_return (invoke "f32-dec-sep4") (f32.const 99e+13))
+(assert_return (invoke "f32-dec-sep5") (f32.const 122000.11354e23))
+(assert_return (invoke "f32-hex-sep1") (f32.const 0xa0f0099))
+(assert_return (invoke "f32-hex-sep2") (f32.const 0x1aa0f))
+(assert_return (invoke "f32-hex-sep3") (f32.const 0xa0ff.f141a59a))
+(assert_return (invoke "f32-hex-sep4") (f32.const 0xf0P+13))
+(assert_return (invoke "f32-hex-sep5") (f32.const 0x2af00a.1f3eep23))
+
+(assert_return (invoke "f64-dec-sep1") (f64.const 1000000))
+(assert_return (invoke "f64-dec-sep2") (f64.const 1000))
+(assert_return (invoke "f64-dec-sep3") (f64.const 1003.141592))
+(assert_return (invoke "f64-dec-sep4") (f64.const 99e-123))
+(assert_return (invoke "f64-dec-sep5") (f64.const 122000.11354e23))
+(assert_return (invoke "f64-hex-sep1") (f64.const 0xaf00f00009999))
+(assert_return (invoke "f64-hex-sep2") (f64.const 0x1aa0f))
+(assert_return (invoke "f64-hex-sep3") (f64.const 0xa0ff.f141a59a))
+(assert_return (invoke "f64-hex-sep4") (f64.const 0xf0P+13))
+(assert_return (invoke "f64-hex-sep5") (f64.const 0x2af00a.1f3eep23))
+
+;; Test parsing a float from binary
+(module binary
+  ;; (func (export "4294967249") (result f64) (f64.const 4294967249))
+  "\00\61\73\6d\01\00\00\00\01\85\80\80\80\00\01\60"
+  "\00\01\7c\03\82\80\80\80\00\01\00\07\8e\80\80\80"
+  "\00\01\0a\34\32\39\34\39\36\37\32\34\39\00\00\0a"
+  "\91\80\80\80\00\01\8b\80\80\80\00\00\44\00\00\20"
+  "\fa\ff\ff\ef\41\0b"
+)
+
+(assert_return (invoke "4294967249") (f64.const 4294967249))
+
+(assert_malformed
+  (module quote "(global f32 (f32.const _100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const +_100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const -_100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 99_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1__000))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const _1.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1.0_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1_.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1._0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const _1e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1e1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1_e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1e_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const _1.0e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1.0e1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1.0_e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1.0e_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1.0e+_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 1.0e_+1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const _0x100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0_x100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x_100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x00_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0xff__ffff))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x_1.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1.0_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1_.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1._0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x_1p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1p1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1_p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1p_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x_1.0p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1.0p1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1.0_p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1.0p_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1.0p+_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f32 (f32.const 0x1.0p_+1))")
+  "unknown operator"
+)
+
+(assert_malformed
+  (module quote "(global f64 (f64.const _100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const +_100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const -_100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 99_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1__000))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const _1.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1.0_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1_.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1._0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const _1e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1e1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1_e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1e_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const _1.0e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1.0e1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1.0_e1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1.0e_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1.0e+_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 1.0e_+1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const _0x100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0_x100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x_100))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x00_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0xff__ffff))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x_1.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1.0_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1_.0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1._0))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x_1p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1p1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1_p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1p_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x_1.0p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1.0p1_))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1.0_p1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1.0p_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1.0p+_1))")
+  "unknown operator"
+)
+(assert_malformed
+  (module quote "(global f64 (f64.const 0x1.0p_+1))")
+  "unknown operator"
+)

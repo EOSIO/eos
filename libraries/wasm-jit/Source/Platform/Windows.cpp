@@ -131,22 +131,24 @@ namespace Platform
 		}
 	}
 	
-	void registerSEHUnwindInfo(Uptr imageLoadAddress,Uptr pdataAddress,Uptr pdataNumBytes)
-	{
-		const U32 numFunctions = (U32)(pdataNumBytes / sizeof(RUNTIME_FUNCTION));
-
-		// Register our manually fixed up copy of the function table.
-		if(!RtlAddFunctionTable(reinterpret_cast<RUNTIME_FUNCTION*>(pdataAddress),numFunctions,imageLoadAddress))
+	#if defined(_WIN32) && defined(_AMD64_)
+		void registerSEHUnwindInfo(Uptr imageLoadAddress,Uptr pdataAddress,Uptr pdataNumBytes)
 		{
-			Errors::fatal("RtlAddFunctionTable failed");
+			const U32 numFunctions = (U32)(pdataNumBytes / sizeof(RUNTIME_FUNCTION));
+
+			// Register our manually fixed up copy of the function table.
+			if(!RtlAddFunctionTable(reinterpret_cast<RUNTIME_FUNCTION*>(pdataAddress),numFunctions,imageLoadAddress))
+			{
+				Errors::fatal("RtlAddFunctionTable failed");
+			}
 		}
-	}
-	void deregisterSEHUnwindInfo(Uptr pdataAddress)
-	{
-		auto functionTable = reinterpret_cast<RUNTIME_FUNCTION*>(pdataAddress);
-		RtlDeleteFunctionTable(functionTable);
-		delete [] functionTable;
-	}
+		void deregisterSEHUnwindInfo(Uptr pdataAddress)
+		{
+			auto functionTable = reinterpret_cast<RUNTIME_FUNCTION*>(pdataAddress);
+			RtlDeleteFunctionTable(functionTable);
+			delete [] functionTable;
+		}
+	#endif
 	
 	CallStack unwindStack(const CONTEXT& immutableContext)
 	{
@@ -156,6 +158,7 @@ namespace Platform
 
 		// Unwind the stack until there isn't a valid instruction pointer, which signals we've reached the base.
 		CallStack callStack;
+		#ifdef _WIN64
 		while(context.Rip)
 		{
 			callStack.stackFrames.push_back({context.Rip});
@@ -186,6 +189,7 @@ namespace Platform
 					);
 			}
 		}
+		#endif
 
 		return callStack;
 	}
