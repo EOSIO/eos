@@ -265,7 +265,9 @@ BOOST_FIXTURE_TEST_CASE( test_generic_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      push_transaction(trx);
+      auto result = push_transaction(trx);
+      for( const auto& act : result.action_traces )
+         std::cerr << act.console << "\n";
       produce_block();
    }
 

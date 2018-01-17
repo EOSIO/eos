@@ -31,6 +31,9 @@ namespace eosio {
           };
 
           struct transfer : action_meta<code,N(transfer)> {
+             transfer(){}
+             transfer( account_name f, account_name t, token_type q ):from(f),to(t),quantity(q){}
+
              account_name from;
              account_name to;
              asset        quantity;
@@ -50,6 +53,10 @@ namespace eosio {
           };
 
           struct transfer_memo : public transfer {
+             transfer_memo(){}
+             transfer_memo( account_name f, account_name t, token_type q, string m )
+             :transfer( f, t, q ), memo( move(m) ){}
+
              string       memo;
 
              template<typename DataStream>
@@ -130,11 +137,9 @@ namespace eosio {
           static void inline_transfer( account_name from, account_name to, token_type quantity, 
                                        string memo = string() )
           {
-             /*
-             transfer_memo t{ from, to, quantity, move(memo) }
-
-             action act{ t, .... }
-             */
+             print( "inline transfer!\n" );
+             action act( permission_level(code,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
+             act.send();
           }
 
 
