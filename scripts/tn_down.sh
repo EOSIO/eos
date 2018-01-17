@@ -1,26 +1,24 @@
 #!/bin/bash
 #
-# tn_bounce is used to restart a node that is acting badly or is down.
-# usage: tn_bounce.sh [arglist]
-# arglist will be passed to the node's command line. First with no modifiers
-# then with --replay and then a third time with --resync
-#
-# the data directory and log file are set by this script. Do not pass them on
-# the command line.
-#
-# in most cases, simply running ./tn_bounce.sh is sufficient.
+# tn_down.sh is used by the tn_bounce.sh and tn_roll.sh scripts. It is intended to terminate
+# specific EOS daemon processes.
 #
 
+
+if [ "$PWD" != "$EOSIO_HOME" ]; then
+    echo $0 must only be run from $EOSIO_HOME
+    exit -1
+fi
 
 prog=""
 RD=""
 for p in eosd eosiod; do
     prog=$p
-    RD=$EOSIO_HOME/bin
+    RD=bin
     if [ -f $RD/$prog ]; then
         break;
     else
-        RD=$EOSIO_HOME/programs/$prog
+        RD=programs/$prog
         if [ -f $RD/$prog ]; then
             break;
         fi
@@ -53,9 +51,9 @@ if [ $running -ne 0 ]; then
     echo killing $prog
 
     if [ $runtest = $prog ]; then
-        kill -15 $runtest
-    else
         pkill -15 $runtest
+    else
+        kill -15 $runtest
     fi
 
     for (( a = 10; $a; a = $(($a - 1)) )); do
@@ -72,8 +70,8 @@ fi
 if [ $running -ne 0 ]; then
     echo killing $prog with SIGTERM failed, trying with SIGKILL
     if [ $runtest = $prog ]; then
-        kill -9 $runtest
-    else
         pkill -9 $runtest
+    else
+        kill -9 $runtest
     fi
 fi

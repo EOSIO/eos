@@ -1,15 +1,8 @@
 #!/bin/bash
 #
 # tn_up is a helper script used to start a node that was previously stopped
-# usage: tn_bounce.sh [ [arglist]
-# arglist will be passed to the node's command line. First with no modifiers
-# then with --replay and then a third time with --resync
-#
-# the data directory and log file are set by this script. Do not pass them on
-# the command line.
-#
-# in most cases, simply running ./tn_bounce.sh is sufficient.
-#
+# it is not intended to be run stand-alone, it is a companion to the tn_bounce.sh and
+# tn_roll.sh scripts.
 
 connected="0"
 
@@ -23,6 +16,7 @@ relaunch() {
 
     nohup $RD/$prog $* --data-dir $DD > $DD/stdout.txt  2> $log &
     pid=$!
+
     echo $pid > $DD/$prog.pid
     for (( a = 10; $a; a = $(($a - 1)) )); do
         echo checking viability pass $((11 - $a))
@@ -38,15 +32,20 @@ relaunch() {
     done
 }
 
+if [ "$PWD" != "$EOSIO_HOME" ]; then
+    echo $0 must only be run from $EOSIO_HOME
+    exit -1
+fi
+
 prog=""
 RD=""
 for p in eosd eosiod; do
     prog=$p
-    RD=$EOSIO_HOME/bin
+    RD=bin
     if [ -f $RD/$prog ]; then
         break;
     else
-        RD=$EOSIO_HOME/programs/$prog
+        RD=programs/$prog
         if [ -f $RD/$prog ]; then
             break;
         fi
@@ -59,7 +58,6 @@ if [ \( -z "$prog" \) -o \( -z "$RD" \) ]; then
     echo unable to locate binary for eosd or eosiod
     exit 1
 fi
-
 
 if [ -z "$EOSIO_TN_RESTART_DATA_DIR" ]; then
     echo data directory not set

@@ -1,27 +1,29 @@
 #!/bin/bash
 #
-# tn_bounce is used to restart a node that is acting badly or is down.
-# usage: tn_bounce.sh [arglist]
+# tn_roll is used to have all of the instances of the EOS daemon on a host brought down
+# so that the underlying executable image file (the "text file") caan be replaced. Then
+# all instances are restarted.
+# usage: tn_roll.sh [arglist]
 # arglist will be passed to the node's command line. First with no modifiers
 # then with --replay and then a third time with --resync
 #
 # the data directory and log file are set by this script. Do not pass them on
 # the command line.
 #
-# in most cases, simply running ./tn_bounce.sh is sufficient.
+# in most cases, simply running ./tn_roll.sh is sufficient.
 #
 
-cd $EOSIO_HOME
-
-prog=eosd
-if [ ! \( -f programs/$prog/$prog \) ]; then
-    prog=eosiod
+if [ -z "$EOSIO_HOME" ]; then
+    echo EOSIO_HOME not set - $0 unable to proceed.
+    exit -1
 fi
+
+cd $EOSIO_HOME
 
 if [ -z "$EOSIO_TN_NODE" ]; then
     DD=`ls -d tn_data_??`
     ddcount=`echo $DD | wc -w`
-    if [ $ddcount -ne 1 ]; then
+    if [ $ddcount -gt 1 ]; then
         DD="all"
     fi
 else
@@ -29,7 +31,7 @@ else
     if [ ! \( -d $DD \) ]; then
         echo no directory named $PWD/$DD
         cd -
-        exit 1
+        exit -1
     fi
 fi
 
@@ -37,11 +39,11 @@ prog=""
 RD=""
 for p in eosd eosiod; do
     prog=$p
-    RD=$EOSIO_HOME/bin
+    RD=bin
     if [ -f $RD/$prog ]; then
         break;
     else
-        RD=$EOSIO_HOME/programs/$prog
+        RD=programs/$prog
         if [ -f $RD/$prog ]; then
             break;
         fi
@@ -60,7 +62,7 @@ if [ -e $RD/$prog ]; then
     s1=`md5sum $RD/$prog`
     s2=`md5sum $SDIR/$prog`
     if [ "$s1" == "$s2" ]; then
-        echo $HOSTNAME no update $SDIR/$p
+        echo $HOSTNAME no update $SDIR/$prog
         exit 1;
     fi
 fi
@@ -73,7 +75,13 @@ bash $EOSIO_HOME/scripts/tn_down.sh
 
 cp $SDIR/$RD/$prog $RD/$prog
 
-bash $EOSIO_HOME/scripts/tn_up.sh $*
+if [ $DD = "all" ]; then
+    for EOSIO_TN_RESTART_DATA_DIR in `ls -d tn_data_??`; do
+        bash $EOSIO_HOME/scripts/tn_up.sh $*
+    done
+else
+    bash $EOSIO_HOME/scripts/tn_up.sh $*
+fi
 unset EOSIO_TN_RESTART_DATA_DIR
 
 cd -
