@@ -94,9 +94,7 @@ namespace eosio { namespace chain {
 
 
    inline std::vector<name> sort_names( std::vector<name>&& names ) {
-      std::sort( names.begin(), names.end() );
-      auto itr = std::unique( names.begin(), names.end() );
-      names.erase( itr, names.end() );
+      fc::deduplicate(names);
       return names;
    }
 

@@ -21,6 +21,7 @@ namespace  eosio {
       return 0;
    }
 
+
    /**
     *  @brief Converts a base32 string to a uint64_t. 
     *
@@ -75,6 +76,15 @@ namespace  eosio {
 
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
+
+      template<typename DataStream>
+      friend DataStream& operator << ( DataStream& ds, const name& v ){
+         return ds << v.value;
+      }
+      template<typename DataStream>
+      friend DataStream& operator >> ( DataStream& ds, name& v ){
+         return ds >> v.value;
+      }
    };
 
    /// @}
@@ -88,5 +98,10 @@ namespace  eosio {
    template<typename T> struct remove_reference<T&>       { typedef T type; };
    template<typename T> struct remove_reference<const T&> { typedef T type; };
    ///@}
+
+   typedef decltype(nullptr) nullptr_t;
+
+   struct true_type  { enum _value { value = 1 }; };
+   struct false_type { enum _value { value = 0 }; };
 
 } // namespace eos

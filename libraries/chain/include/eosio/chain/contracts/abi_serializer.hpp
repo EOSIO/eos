@@ -213,11 +213,11 @@ namespace impl {
          void add( mutable_variant_object& vo, const char* name, const action& v )const
          {
             mutable_variant_object mvo;
-            mvo("scope", v.scope);
+            mvo("account", v.account);
             mvo("name", v.name);
             mvo("authorization", v.authorization);
 
-            auto abi = _resolver(v.scope);
+            auto abi = _resolver(v.account);
             if (abi.valid()) {
                auto type = abi->get_action_type(v.name);
                mvo("data", abi->binary_to_variant(type, v.data));
@@ -315,9 +315,9 @@ namespace impl {
          void extract( const variant& v, action& act )const
          {
             const variant_object& vo = v.get_object();
-            FC_ASSERT(vo.contains("scope"));
+            FC_ASSERT(vo.contains("account"));
             FC_ASSERT(vo.contains("name"));
-            from_variant(vo["scope"], act.scope);
+            from_variant(vo["account"], act.account);
             from_variant(vo["name"], act.name);
 
             if (vo.contains("authorization")) {
@@ -329,7 +329,7 @@ namespace impl {
                if( data.is_string() ) {
                   from_variant(data, act.data);
                } else if ( data.is_object() ) {
-                  auto abi = _resolver(act.scope);
+                  auto abi = _resolver(act.account);
                   if (abi.valid()) {
                      auto type = abi->get_action_type(act.name);
                      act.data = std::move(abi->variant_to_binary(type, data));
@@ -346,7 +346,7 @@ namespace impl {
                }
             }
 
-            FC_ASSERT(!act.data.empty(), "Failed to deserialize data for ${scope}:${name}", ("scope", act.scope)("name", act.name));
+            FC_ASSERT(!act.data.empty(), "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
          }
 
 

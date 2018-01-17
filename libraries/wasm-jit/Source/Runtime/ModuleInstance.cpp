@@ -96,7 +96,8 @@ namespace Runtime
 			const Value baseOffsetValue = evaluateInitializer(moduleInstance,tableSegment.baseOffset);
 			errorUnless(baseOffsetValue.type == ValueType::i32);
 			const U32 baseOffset = baseOffsetValue.i32;
-			if(baseOffset + tableSegment.indices.size() > table->elements.size())
+			if(baseOffset > table->elements.size()
+			|| table->elements.size() - baseOffset < tableSegment.indices.size())
 			{ causeException(Exception::Cause::invalidSegmentOffset); }
 		}
 		for(auto& dataSegment : module.dataSegments)
@@ -106,7 +107,9 @@ namespace Runtime
 			const Value baseOffsetValue = evaluateInitializer(moduleInstance,dataSegment.baseOffset);
 			errorUnless(baseOffsetValue.type == ValueType::i32);
 			const U32 baseOffset = baseOffsetValue.i32;
-			if(baseOffset + dataSegment.data.size() > (memory->numPages << IR::numBytesPerPageLog2))
+			const Uptr numMemoryBytes = (memory->numPages << IR::numBytesPerPageLog2);
+			if(baseOffset > numMemoryBytes
+			|| numMemoryBytes - baseOffset < dataSegment.data.size())
 			{ causeException(Exception::Cause::invalidSegmentOffset); }
 		}
 
@@ -203,6 +206,11 @@ namespace Runtime
 	void runInstanceStartFunc(ModuleInstance* moduleInstance) {
 		if(moduleInstance->startFunctionIndex != UINTPTR_MAX)
 			invokeFunction(moduleInstance->functions[moduleInstance->startFunctionIndex],{});
+	}
+
+	void resetGlobalInstances(ModuleInstance* moduleInstance) {
+		for(GlobalInstance*& gi : moduleInstance->globals)
+			memcpy(&gi->value, &gi->initialValue, sizeof(gi->value));
 	}
 	
 	ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name)

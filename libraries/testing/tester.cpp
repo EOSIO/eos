@@ -60,7 +60,7 @@ namespace eosio { namespace testing {
          for( const auto& region : trace.block.regions) {
             for( const auto& cycle : region.cycles_summary ) {
                for ( const auto& shard : cycle ) {
-                  for( const auto& receipt: shard ) {
+                  for( const auto& receipt: shard.transactions ) {
                      chain_transactions.emplace(receipt.id, receipt);
                   }
                }
@@ -93,7 +93,6 @@ namespace eosio { namespace testing {
    void tester::create_account( account_name a, asset initial_balance, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_tapos( trx );
-      trx.write_scope = { creator, config::eosio_auth_scope };
 
       authority owner_auth;
       if (multisig) {
@@ -133,7 +132,6 @@ namespace eosio { namespace testing {
    }
    transaction_trace tester::transfer( account_name from, account_name to, asset amount, string memo ) {
       signed_transaction trx;
-      trx.write_scope = {from,to};
       trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
                                 contracts::transfer{
                                    .from   = from,
@@ -151,7 +149,6 @@ namespace eosio { namespace testing {
                                authority auth,
                                permission_name parent ) { try {
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope};
       trx.actions.emplace_back( vector<permission_level>{{account,perm}},
                                 contracts::updateauth{
                                    .account    = account,
@@ -210,7 +207,6 @@ namespace eosio { namespace testing {
       auto wasm = assemble(wast);
 
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope, account};
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setcode{
                                    .account    = account,
@@ -227,7 +223,6 @@ namespace eosio { namespace testing {
    void tester::set_abi( account_name account, const char* abi_json) {
       auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope};
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setabi{
                                    .account    = account,

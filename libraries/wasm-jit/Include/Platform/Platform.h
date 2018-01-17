@@ -33,10 +33,16 @@ namespace Platform
 	// countLeadingZeroes/countTrailingZeroes returns the number of leading/trailing zeroes, or the bit width of the input if no bits are set.
 	#ifdef _WIN32
 		// BitScanReverse/BitScanForward return 0 if the input is 0.
-		inline U64 countLeadingZeroes(U64 value) { unsigned long result; return _BitScanReverse64(&result,value) ? (63 - result) : 64; }
 		inline U32 countLeadingZeroes(U32 value) { unsigned long result; return _BitScanReverse(&result,value) ? (31 - result) : 32; }
-		inline U64 countTrailingZeroes(U64 value) { unsigned long result; return _BitScanForward64(&result,value) ? result : 64; }
 		inline U32 countTrailingZeroes(U32 value) { unsigned long result; return _BitScanForward(&result,value) ? result : 32; }
+		
+		#ifdef _WIN64
+			inline U64 countLeadingZeroes(U64 value) { unsigned long result; return _BitScanReverse64(&result,value) ? (63 - result) : 64; }
+			inline U64 countTrailingZeroes(U64 value) { unsigned long result; return _BitScanForward64(&result,value) ? result : 64; }
+		#else
+			inline U64 countLeadingZeroes(U64 value) { throw; }
+			inline U64 countTrailingZeroes(U64 value) { throw; }
+		#endif
 	#else
 		// __builtin_clz/__builtin_ctz are undefined if the input is 0. 
 		inline U64 countLeadingZeroes(U64 value) { return value == 0 ? 64 : __builtin_clzll(value); }
@@ -108,7 +114,7 @@ namespace Platform
 	// Describes an instruction pointer.
 	PLATFORM_API bool describeInstructionPointer(Uptr ip,std::string& outDescription);
 
-	#ifdef _WIN32
+	#ifdef _WIN64
 		// Registers/deregisters the data used by Windows SEH to unwind stack frames.
 		PLATFORM_API void registerSEHUnwindInfo(Uptr imageLoadAddress,Uptr pdataAddress,Uptr pdataNumBytes);
 		PLATFORM_API void deregisterSEHUnwindInfo(Uptr pdataAddress);

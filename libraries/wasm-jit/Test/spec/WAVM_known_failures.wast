@@ -194,21 +194,3 @@
 (assert_return (invoke "f64.no_fold_div_one" (i64.const 0x7ff4000000000000)) (i64.const 0x7ff0000000000000))
 (assert_return (invoke "f64.no_fold_div_neg1" (i64.const 0x7ff4000000000000)) (i64.const 0x7ff0000000000000))
 (assert_return (invoke "no_fold_promote_demote" (i32.const 0x7fa00000)) (i32.const 0x7f800000))
-
-;;
-;; from int_exprs.wast
-;;
-
-(module
-  (func (export "i32.no_fold_div_neg1") (param $x i32) (result i32)
-    (i32.div_s (get_local $x) (i32.const -1)))
-
-  (func (export "i64.no_fold_div_neg1") (param $x i64) (result i64)
-    (i64.div_s (get_local $x) (i64.const -1)))
-)
-
-(assert_return (invoke "i32.no_fold_div_neg1" (i32.const 0x80000000)) (i32.const 0x80000000))
-(assert_return (invoke "i64.no_fold_div_neg1" (i64.const 0x8000000000000000)) (i64.const 0x8000000000000000))
-;; should be:
-;;(assert_trap (invoke "i32.no_fold_div_neg1" (i32.const 0x80000000)) "integer overflow")
-;;(assert_trap (invoke "i64.no_fold_div_neg1" (i64.const 0x8000000000000000)) "integer overflow")

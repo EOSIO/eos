@@ -28,7 +28,7 @@ struct DenseStaticIntSet
 	inline bool contains(Index index) const
 	{
 		assert((Uptr)index < maxIndexPlusOne);
-		return (elements[index / indicesPerElement] & (1ull << (index % indicesPerElement))) != 0;
+		return (elements[index / indicesPerElement] & (Element(1) << (index % indicesPerElement))) != 0;
 	}
 	bool isEmpty() const
 	{
@@ -60,7 +60,7 @@ struct DenseStaticIntSet
 	inline void add(Index index)
 	{
 		assert((Uptr)index < maxIndexPlusOne);
-		elements[index / indicesPerElement] |= 1ull << (index % indicesPerElement);
+		elements[index / indicesPerElement] |= Element(1) << (index % indicesPerElement);
 	}
 	inline void addRange(Index rangeMin,Index rangeMax)
 	{
@@ -73,7 +73,7 @@ struct DenseStaticIntSet
 	}
 	inline bool remove(Index index)
 	{
-		const Element elementMask = 1ull << (index % indicesPerElement);
+		const Element elementMask = Element(1) << (index % indicesPerElement);
 		const bool hadIndex = (elements[index / indicesPerElement] & elementMask) != 0;
 		elements[index / indicesPerElement] &= ~elementMask;
 		return hadIndex;
@@ -134,8 +134,8 @@ struct DenseStaticIntSet
 	}
 
 private:
-	typedef U64 Element;
+	typedef Uptr Element;
 	enum { indicesPerElement = sizeof(Element) * 8 };
 	enum { numElements = (maxIndexPlusOne + indicesPerElement - 1) / indicesPerElement };
-	U64 elements[numElements];
+	Element elements[numElements];
 };
