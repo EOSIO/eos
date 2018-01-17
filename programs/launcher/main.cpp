@@ -1218,7 +1218,7 @@ launcher_def::bounce (const string& node_numbers) {
    vector<string> nodes;
    boost::split(nodes, node_numbers, boost::is_any_of(","));
    for (string node_number: nodes) {
-      uint16_t node;
+      uint16_t node = -1;
       try {
          node = boost::lexical_cast<uint16_t,string>(node_number);
       }
@@ -1347,8 +1347,8 @@ int main (int argc, char *argv[]) {
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
     ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill to each.")
-    ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted")
-    ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version")
+    ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the tn_bounce.sh script")
+    ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the tn_roll.sh script")
     ("version,v", "print version information")
     ("help,h","print this list");
 
