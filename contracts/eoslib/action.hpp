@@ -124,7 +124,7 @@ namespace eosio {
        */
       template<typename Action>
       action( const permission_level& auth, const Action& value )
-      :authorization(auth) {
+      :authorization(1,auth) {
          account       = Action::get_account();
          name          = Action::get_name();
          data          = raw::pack(value);
