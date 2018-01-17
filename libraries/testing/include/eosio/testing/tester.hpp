@@ -56,6 +56,10 @@ namespace eosio { namespace testing {
 
          share_type                    get_balance( const account_name& account ) const;
 
+         share_type                    get_currency_balance( account_name contract,
+                                                             uint64_t symbol, 
+                                                             const account_name& account ) const;
+
       private:
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;

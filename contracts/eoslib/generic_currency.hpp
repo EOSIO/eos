@@ -1,5 +1,6 @@
 #pragma once
 #include <eoslib/singleton.hpp>
+#include <eoslib/table.hpp>
 #include <eoslib/token.hpp>
 #include <eoslib/asset.hpp>
 #include <eoslib/dispatcher.hpp>
@@ -72,28 +73,30 @@ namespace eosio {
           };
 
           struct account {
+             uint64_t   symbol = token_type::symbol;
              token_type balance;
 
              template<typename DataStream>
              friend DataStream& operator << ( DataStream& ds, const account& t ){
-                return ds << t.balance;
+                return ds << t.symbol << t.balance;
              }
              template<typename DataStream>
              friend DataStream& operator >> ( DataStream& ds, account& t ){
-                return ds >> t.balance;
+                return ds >> t.symbol >> t.balance;
              }
           };
 
           struct currency_stats {
+             uint64_t   symbol = token_type::symbol;
              token_type supply;
 
              template<typename DataStream>
              friend DataStream& operator << ( DataStream& ds, const currency_stats& t ){
-                return ds << t.supply;
+                return ds << t.symbol << t.supply;
              }
              template<typename DataStream>
              friend DataStream& operator >> ( DataStream& ds, currency_stats& t ){
-                return ds >> t.supply;
+                return ds >> t.symbol >> t.supply;
              }
           };
 
@@ -101,22 +104,21 @@ namespace eosio {
            *  Each user stores their balance in the singleton table under the
            *  scope of their account name.
            */
-          typedef singleton<code, accounts_table_name, account>      accounts;
-          typedef singleton<code, stats_table_name, currency_stats>  stats;
+          typedef table64<code, accounts_table_name, account>      accounts;
+          typedef table64<code, stats_table_name, currency_stats>  stats;
 
           static token_type get_balance( account_name owner ) {
-
-             return accounts::get_or_create( owner ).balance;
+             return accounts::get_or_create( token_type::symbol, owner ).balance;
           }
 
           static void set_balance( account_name owner, token_type balance ) {
-             accounts::set( account{balance}, owner );
+             accounts::set( account{token_type::symbol,balance}, owner );
           }
 
           static void on( const issue& act ) {
              require_auth( code );
 
-             auto s = stats::get_or_create();
+             auto s = stats::get_or_create(token_type::symbol);
              s.supply += act.quantity;
              stats::set(s);
 

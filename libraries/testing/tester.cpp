@@ -247,5 +247,23 @@ namespace eosio { namespace testing {
       return contracts::get_eosio_balance(db, account);
    }
 
+   /**
+    *  Reads balance as stored by generic_currency contract
+    */
+   share_type  tester::get_currency_balance( account_name code,
+                                             uint64_t symbol, 
+                                             const account_name& account ) const {
+      /*
+      const auto& db  = control->get_database();
+      const auto& tbl = db.get<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(account, code, N(account)));
+      
+      const auto& obj = db.get<key_value_object, contracts::by_scope_primary>( boost::make_tuple( tbl.id, symbol ) );
+      datastream<const char*> ds( obj.value.data(), obj.value.size() );
+      share_type result;
+      fc::raw::unpack( ds, result );
+      */
+      return 0;//result;
+   }
+
 
 } }  /// eosio::test

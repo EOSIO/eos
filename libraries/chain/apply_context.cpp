@@ -85,6 +85,7 @@ void apply_context::exec_one()
       }
    }
 
+   std::cerr << _pending_console_output.str();
    results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str(), 0, 0, move(data_access)});
    _pending_console_output = std::ostringstream();
    _read_locks.clear();
