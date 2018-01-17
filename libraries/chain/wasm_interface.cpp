@@ -768,7 +768,7 @@ class db_index_api : public context_aware_api {
    int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
       auto maybe_t_id = context.find_table(scope, context.receiver, table);
       if (maybe_t_id == nullptr) {
-         return 0;
+         return -1;
       }
 
       const auto& t_id = *maybe_t_id;
@@ -778,7 +778,11 @@ class db_index_api : public context_aware_api {
       char* record_data =  ((char*)data) + sizeof(KeyArrayType);
       size_t record_len = data_len - sizeof(KeyArrayType);
 
-      return (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
+      auto res = (context.*(method))(t_id, keys, record_data, record_len);
+      if (res != -1) {
+         res += sizeof(KeyArrayType);
+      }
+      return res;
    }
 
    public:

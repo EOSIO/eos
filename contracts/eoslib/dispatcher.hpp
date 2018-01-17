@@ -1,4 +1,5 @@
 #pragma once
+#include <eoslib/print.hpp>
 
 namespace eosio {
    template<typename Contract, typename FirstAction>
@@ -24,6 +25,7 @@ namespace eosio {
    template<typename Contract, typename FirstAction, typename SecondAction, typename... Actions>
    bool dispatch( uint64_t code, uint64_t act ) {
       if( code == FirstAction::get_account() && FirstAction::get_name() == act ) {
+         print("dispatching: ", code, ":", act, "\n");
          Contract::on( unpack_action<FirstAction>() );
          return true;
       }

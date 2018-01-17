@@ -1,6 +1,7 @@
 #pragma once
 #include <eoslib/utility.hpp>
 #include <eoslib/memory.hpp>
+#include <eoslib/stdlib.hpp>
 
 namespace eosio {
 
@@ -15,7 +16,7 @@ namespace eosio {
          vector( const vector& copy ) {
             reserve( copy.size() );
             for( uint32_t i = 0; i < copy.size(); ++i ) {
-               new (&_data[i]) T( copy[i] );
+               emplace_back( copy[i] );
             }
          }
 
@@ -25,7 +26,17 @@ namespace eosio {
             _capacity = mv._capacity;
             mv._data = nullptr;
             mv._size = 0;
-            mv._capcity = 0;
+            mv._capacity = 0;
+         }
+
+         vector( std::initializer_list<T> init ) {
+            resize(0);
+            reserve( init.size() );
+
+            int i = 0;
+            for( auto itr = init.begin(); itr != init.end(); itr++ ) {
+               emplace_back( *itr );
+            }
          }
 
          ~vector() {
@@ -57,7 +68,7 @@ namespace eosio {
             _capacity = mv._capacity;
             mv._data = nullptr;
             mv._size = 0;
-            mv._capcity = 0;
+            mv._capacity = 0;
             return *this;
          }
 
@@ -71,6 +82,7 @@ namespace eosio {
          const T* end()const     { return _data + _size; }
 
          const T* data()const     { return _data;     }
+         T* data()                { return _data;     }
          uint32_t size()const     { return _size;     }
          uint32_t capacity()const { return _capacity; }
 

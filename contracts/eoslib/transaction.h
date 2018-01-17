@@ -59,8 +59,6 @@ extern "C" {
     * @{
     */
 
-   void send_inline(char *serialized_action, size_t size);
-
    void send_deferred(uint32_t sender_id, time delay_until, char *serialized_transaction, size_t size);
 
    ///@ } transactioncapi

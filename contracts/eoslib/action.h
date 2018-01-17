@@ -110,5 +110,12 @@ extern "C" {
     */
    account_name current_receiver();
 
+   /**
+    *  Send an inline action in the context of this action's parent transaction
+    * @param serialized_action
+    * @param size
+    */
+   void send_inline(char *serialized_action, size_t size);
+
    ///@ } actioncapi
 }
