@@ -358,6 +358,7 @@ struct launcher_def {
   void define_network ();
   void bind_nodes ();
   host_def *find_host (const string &name);
+  host_def *find_host_by_name_or_address (const string &name);
   host_def *deploy_config_files (tn_node_def &node);
   string compose_scp_command (const host_def &host, const bf::path &source,
                               const bf::path &destination);
@@ -373,6 +374,9 @@ struct launcher_def {
   void prep_remote_config_dir (eosd_def &node, host_def *host);
   void launch (eosd_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
+  void bounce (const string& node_numbers);
+  bool bounce_node (uint16_t num);
+  void roll (const string& host_names);
   void start_all (string &gts, launch_modes mode);
 };
 
@@ -719,6 +723,23 @@ launcher_def::find_host (const string &name)
   }
   if (host == 0) {
     cerr << "could not find host for " << name << endl;
+    exit(-1);
+  }
+  return host;
+}
+
+host_def *
+launcher_def::find_host_by_name_or_address (const string &host_id)
+{
+  host_def *host = nullptr;
+  for (auto &h : bindings) {
+    if ((h.host_name == host_id) || (h.public_name == host_id)) {
+      host = &h;
+      break;
+    }
+  }
+  if (host == 0) {
+    cerr << "could not find host for " << host_id << endl;
     exit(-1);
   }
   return host;
@@ -1193,6 +1214,67 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
 }
 
 void
+launcher_def::bounce (const string& node_numbers) {
+   vector<string> nodes;
+   boost::split(nodes, node_numbers, boost::is_any_of(","));
+   for (string node_number: nodes) {
+      uint16_t node = -1;
+      try {
+         node = boost::lexical_cast<uint16_t,string>(node_number);
+      }
+      catch(boost::bad_lexical_cast &)
+      {
+         cerr << "Bad node number found in node number list for bounce: " << node_number << endl;
+         exit(-1);
+      }
+      if (!bounce_node(node)) {
+         cerr << "Node number not found: " << node << endl;
+      }
+   }
+}
+
+bool
+launcher_def::bounce_node (uint16_t num) {
+   string dex = num < 10 ? "0":"";
+   dex += boost::lexical_cast<string,uint16_t>(num);
+   string node_name = network.name + dex;
+   for (auto host: bindings) {
+      for (auto node: host.instances) {
+         if (node_name == node.name) {
+            string cmd = "cd " + host.eos_root_dir + "; "
+                       + "export EOSIO_HOME=" + host.eos_root_dir + "; "
+                       + "export EOSIO_TN_NODE=" + dex + "; "
+                       + "./scripts/tn_bounce.sh";
+            cout << "Bouncing " << node_name << endl;
+            if (!do_ssh(cmd, host.host_name)) {
+               cerr << "Unable to bounce " << node_name << endl;
+               exit (-1);
+            }
+            return true;
+         }
+      }
+   }
+   return false;
+}
+
+void
+launcher_def::roll (const string& host_names) {
+   vector<string> hosts;
+   boost::split(hosts, host_names, boost::is_any_of(","));
+   for (string host_name: hosts) {
+      cout << "Rolling " << host_name << endl;
+      auto host = find_host_by_name_or_address(host_name);
+      string cmd = "cd " + host->eos_root_dir + "; "
+                 + "export EOSIO_HOME=" + host->eos_root_dir + "; "
+                 + "./scripts/tn_roll.sh";
+      if (!do_ssh(cmd, host_name)) {
+         cerr << "Unable to roll " << host << endl;
+         exit (-1);
+      }
+   }
+}
+
+void
 launcher_def::start_all (string &gts, launch_modes mode) {
   switch (mode) {
   case LM_NONE:
@@ -1255,6 +1337,8 @@ int main (int argc, char *argv[]) {
   string gts;
   launch_modes mode;
   string kill_arg;
+  string bounce_nodes;
+  string roll_nodes;
 
   local_id.initialize();
   top.set_options(opts);
@@ -1263,6 +1347,8 @@ int main (int argc, char *argv[]) {
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
     ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill to each.")
+    ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the tn_bounce.sh script")
+    ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the tn_roll.sh script")
     ("version,v", "print version information")
     ("help,h","print this list");
 
@@ -1309,6 +1395,12 @@ int main (int argc, char *argv[]) {
         kill_arg = "-" + kill_arg;
       }
       top.kill (mode, kill_arg);
+    }
+    else if (!bounce_nodes.empty()) {
+       top.bounce(bounce_nodes);
+    }
+    else if (!roll_nodes.empty()) {
+       top.roll(roll_nodes);
     }
     else {
       top.generate();
