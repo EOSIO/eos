@@ -104,11 +104,6 @@ struct txn_test_gen_plugin_impl {
       signed_transaction trx;
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
-<<<<<<< HEAD
-      trx.write_scope = {creator, config::eosio_auth_scope};
-=======
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::lock{creator, creator, 300});
->>>>>>> eos-noon
 
       //create "A" account
       {
@@ -158,7 +153,6 @@ struct txn_test_gen_plugin_impl {
       handler.account = newaccountC;
       handler.code.assign(wasm.begin(), wasm.end());
 
-      trx.write_scope = sort_names({config::eosio_auth_scope, newaccountC});
       trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
 
       {
@@ -176,12 +170,11 @@ struct txn_test_gen_plugin_impl {
       //fund the two accounts with currency contract currency
       {
       signed_transaction trx;
-      trx.write_scope = sort_names({newaccountA, newaccountB, newaccountC});
       abi_serializer currency_serializer(currency_abi_def);
       
       {
       action act;
-      act.scope = N(currency);
+      act.account = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
       act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.a\",\"quantity\":200}"));
@@ -189,7 +182,7 @@ struct txn_test_gen_plugin_impl {
       }
       {
       action act;
-      act.scope = N(currency);
+      act.account = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
       act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.b\",\"quantity\":200}"));
@@ -272,13 +265,12 @@ struct txn_test_gen_plugin_impl {
       abi_serializer currency_serializer(fc::json::from_string(currency_abi).as<contracts::abi_def>());
       {
       signed_transaction trx;
-      trx.write_scope = sort_names({sender, recipient});
       
       //a->b
       {
       static action act;
-      if(act.scope == name()) {
-      act.scope = N(currency);
+      if(act.account == name()) {
+      act.account = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{sender,config::active_name}};
       act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":1}"));
@@ -295,11 +287,10 @@ struct txn_test_gen_plugin_impl {
       //b->a
       {
       signed_transaction trx;
-      trx.write_scope = sort_names({sender, recipient});
       {
       static action act;
-      if(act.scope == name()) {
-      act.scope = N(currency);
+      if(act.account == name()) {
+      act.account = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{recipient,config::active_name}};
       act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":1}"));
