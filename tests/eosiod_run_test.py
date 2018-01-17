@@ -41,6 +41,7 @@ parser.add_argument("--dumpErrorDetails",
                     action='store_true')
 parser.add_argument("--keepLogs", help="Don't delete tn_data_* folders upon test completion",
                     action='store_true')
+parser.add_argument("--exitEarly", help="Exit prior to known error point.", action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
 
 args = parser.parse_args()
@@ -48,6 +49,7 @@ testOutputFile=args.output
 server=args.host
 port=args.port
 debug=args.v
+exitEarly=args.exitEarly
 localTest=True if server == LOCAL_HOST else False
 testUtils.Utils.Debug=debug
 
@@ -63,6 +65,7 @@ testSuccessful=False
 dumpErrorDetails=args.dumpErrorDetails
 keepLogs=args.keepLogs
 killEosInstances=True
+
 
 try:
     Print("BEGIN")
@@ -231,7 +234,7 @@ try:
         errorExit("Transfer verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
 
     Print("Create new account %s via %s" % (currencyAccount.name, initbAccount.name))
-    transId=node.createAccount(currencyAccount, initbAccount)
+    transId=node.createAccount(currencyAccount, initbAccount, stakedDeposit=5000)
     if transId is None:
         cmdError("eosc create account")
         errorExit("Failed to create account %s" % (currencyAccount.name))
@@ -362,6 +365,11 @@ try:
     if hashNum == 0:
         errorExit("FAILURE - get code currency failed", raw=True)
 
+    if exitEarly:
+        Print("Stoping test at this point pending additional fixes.")
+        testSuccessful=True
+        exit(0)
+
     Print("Verify currency contract has proper initial balance")
     contract="currency"
     table="account"
@@ -390,10 +398,6 @@ try:
     if not node.waitForTransIdOnNode(transId):
         cmdError("eosc get transaction trans_id")
         errorExit("Failed to verify push message transaction id.")
-
-    Print("Stoping test at this point pending additional fixes.")
-    testSuccessful=True
-    exit(0)
     
     Print("read current contract balance")
     contract="currency"
