@@ -105,7 +105,7 @@ extern "C" {
        //Initialize storage account only if it does not exist
        if ( !accounts::get( owned_account, N(storage) )) {
           // How do we initialize the storage capacity? By how much here?
-          accounts::store( account( storage_tokens(1000ll*1000ll*1000ll) ), N(storage) );
+          accounts::store( account( storage_tokens(1000ull*1000ull*1000ull) ), N(storage) );
        }
     }
 

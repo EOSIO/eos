@@ -28,7 +28,7 @@ namespace exchange {
          eosio::print( "{ quantity: ", quantity, ", price: ", at_price, " }" );
       }
    };
-   static_assert( sizeof(bid) == 32+12, "unexpected padding" );
+   static_assert( sizeof(bid) == sizeof(order_id)+sizeof(price)+sizeof(eosio::tokens)+sizeof(time), "unexpected padding" );
 
    //@abi table 
    struct PACKED( ask ) {
@@ -41,7 +41,8 @@ namespace exchange {
          eosio::print( "{ quantity: ", quantity, ", price: ", at_price, " }" );
       }
    };
-   static_assert( sizeof(ask) == 32+12, "unexpected padding" );
+   static_assert( sizeof(ask) == sizeof(order_id)+sizeof(price)+sizeof(currency_tokens)+sizeof(time), "unexpected padding" );
+
 
    //@abi table i64
    struct PACKED( account ) {

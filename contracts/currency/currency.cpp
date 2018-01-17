@@ -42,7 +42,7 @@ extern "C" {
        account owned_account;
        //Initialize currency account only if it does not exist
        if ( !accounts::get( owned_account, N(currency) )) {
-          store_account( N(currency), account( currency_tokens(1000ll*1000ll*1000ll) ) );
+          store_account( N(currency), account( currency_tokens(1000ull*1000ull*1000ull) ) );
        }
     }
 

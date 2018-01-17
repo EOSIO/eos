@@ -132,7 +132,7 @@ void apply_exchange_buy( buy_order order ) {
    bid& exchange_bid = order;
    require_auth( exchange_bid.buyer.name );
 
-   assert( exchange_bid.quantity > eosio::tokens(0), "invalid quantity" );
+   assert( exchange_bid.quantity > eosio::tokens(0u), "invalid quantity" );
    assert( exchange_bid.expiration > now(), "order expired" );
 
    print( name(exchange_bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.at_price, "\n" );
@@ -163,7 +163,7 @@ void apply_exchange_buy( buy_order order ) {
       print( "lowest ask <= exchange_bid.at_price\n" );
       match( exchange_bid, buyer_account, lowest_ask, seller_account );
 
-      if( lowest_ask.quantity == currency_tokens(0) ) {
+      if( lowest_ask.quantity == currency_tokens(0u) ) {
          seller_account.open_orders--;
          save( seller_account );
          save( buyer_account );
@@ -197,7 +197,7 @@ void apply_exchange_sell( sell_order order ) {
    ask& exchange_ask = order;
    require_auth( exchange_ask.seller.name );
 
-   assert( exchange_ask.quantity > currency_tokens(0), "invalid quantity" );
+   assert( exchange_ask.quantity > currency_tokens(0u), "invalid quantity" );
    assert( exchange_ask.expiration > now(), "order expired" );
 
    print( "\n\n", name(exchange_ask.seller.name), " created sell for ", order.quantity,
@@ -226,7 +226,7 @@ void apply_exchange_sell( sell_order order ) {
    while( highest_bid.at_price >= exchange_ask.at_price ) {
       match( highest_bid, buyer_account, exchange_ask, seller_account );
 
-      if( highest_bid.quantity == eos_tokens(0) ) {
+      if( highest_bid.quantity == eos_tokens(0u) ) {
          buyer_account.open_orders--;
          save( seller_account );
          save( buyer_account );
