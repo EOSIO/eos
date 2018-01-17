@@ -87,7 +87,7 @@ namespace TOKEN_NAME {
    /**
    Assert statement to verify structure packing for account
    **/
-   //This structure is *not* packed the check will not work for different sizes of currency_tockens 
+   //TODO: reintroduce static_assert if account and transfer are packed 
    //static_assert( sizeof(account) == sizeof(uint64_t)+sizeof(currency_tokens), "unexpected packing" );
 
    /**

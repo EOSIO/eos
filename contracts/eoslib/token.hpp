@@ -7,6 +7,7 @@
 #pragma once
 #include <eoslib/math.hpp>
 #include <eoslib/print.hpp>
+#include <eoslib/type_traits.hpp>
 
 
 namespace eosio {
@@ -77,7 +78,6 @@ namespace eosio {
     * @brief Constructor for token given quantity of tokens available
     * @param v - quantity of tokens available
     */
-//    template<typename T, typename = typename eosio::enable_if<eosio::is_unsigned<T>::value && eosio::is_same<T,NumberType>::value>::type>
     template<typename T, typename = typename eosio::enable_if<eosio::is_unsigned<T>::value && !(sizeof(T)>sizeof(NumberType))>::type>
     explicit token( T v ):quantity(v){};
 
