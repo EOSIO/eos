@@ -176,9 +176,9 @@ class Node(object):
 
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
-    def createAccount(self, account, creatorAccount, waitForTransBlock=False):
-        cmd="%s %s create account %s %s %s %s" % (Utils.EosClientPath, self.endpointArgs,
-            creatorAccount.name, account.name,
+    def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
+        cmd="%s %s create account --staked-deposit %d %s %s %s %s" % (
+            Utils.EosClientPath, self.endpointArgs, stakedDeposit, creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None

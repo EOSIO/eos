@@ -79,7 +79,7 @@ script:
   - ninja -j4
 #  - tests/eosd_run_test.sh --host=localhost --port=8888
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/chain_test'
-  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosiod_run_test.py --dumpErrorDetails'
+  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosiod_run_test.py --exitEarly --dumpErrorDetails'
 #  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/slow_test'
 #  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/api_test'
 #  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/p2p_tests/sync/test.sh'
