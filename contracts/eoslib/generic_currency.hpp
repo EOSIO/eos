@@ -98,6 +98,7 @@ namespace eosio {
           typedef singleton<code, stats_table_name, currency_stats>  stats;
 
           static token_type get_balance( account_name owner ) {
+
              return accounts::get_or_create( owner ).balance;
           }
 

@@ -12,7 +12,9 @@
 #include <eoslib/reflect.hpp>
 
 namespace eosio {
-    namespace raw {    
+   using bytes = vector<char>;
+
+   namespace raw {
 
    template<typename Stream, typename T, typename reflector<T>::is_reflected::value = 1>
    void pack( Stream& ds, const T& t ) {
@@ -125,33 +127,6 @@ namespace eosio {
          by += 7;
       } while( uint8_t(b) & 0x80 );
       vi.value = static_cast<uint32_t>(v);
-   }
-
-  /**
-   *  Serialize a bytes struct into a stream
-   *  @param s stream to write
-   *  @param v value to be serialized
-   */
-   template<typename Stream> 
-   void pack( Stream& s, const bytes& value ) {
-      eosio::raw::pack( s, unsigned_int((uint32_t)value.len) );
-      if( value.len )
-         s.write( (char *)value.data, (uint32_t)value.len );
-   }
-   
-  /**
-   *  Deserialize a bytes struct from a stream
-   *  @param s stream to read
-   *  @param v destination of deserialized value
-   */
-   template<typename Stream> 
-   void unpack( Stream& s, bytes& value ) {
-      unsigned_int size; eosio::raw::unpack( s, size );
-      value.len = size.value;
-      if( value.len ) {
-         value.data = (uint8_t *)eosio::malloc(value.len);
-         s.read( (char *)value.data, value.len );
-      }
    }
 
   /**
@@ -271,50 +246,7 @@ namespace eosio {
       v.len = size;
    }
   
-  /**
-   *  Serialize a price into a stream
-   *  @param s stream to write
-   *  @param v value to be serialized
-   */
-   template<typename Stream> 
-   void pack( Stream& s, const ::price& v )  {
-      eosio::raw::pack(s, v.base);
-      eosio::raw::pack(s, v.quote);
-   }
-
-  /**
-   *  Deserialize a price from a stream
-   *  @param s stream to read
-   *  @param v destination of deserialized value
-   */
-   template<typename Stream> 
-   void unpack( Stream& s, ::price& v)  {
-      eosio::raw::unpack(s, v.base);
-      eosio::raw::unpack(s, v.quote);
-   }
-  /**
-   *  Serialize an asset into a stream
-   *  @param s stream to write
-   *  @param v value to be serialized
-   */
-   template<typename Stream> 
-   void pack( Stream& s, const ::asset& v )  {
-      eosio::raw::pack(s, v.amount);
-      eosio::raw::pack(s, v.symbol);
-   }
-
-  /**
-   *  Deserialize an asset from a stream
-   *  @param s stream to read
-   *  @param v destination of deserialized value
-   */
-   template<typename Stream> 
-   void unpack( Stream& s, ::asset& v)  {
-      eosio::raw::unpack(s, v.amount);
-      eosio::raw::unpack(s, v.symbol);
-   }
-
-   template<typename Stream> 
+   template<typename Stream>
    void pack(Stream &s, const ::account_permission &pe) {
       eosio::raw::pack(s, pe.account);
       eosio::raw::pack(s, pe.permission);
@@ -413,12 +345,12 @@ namespace eosio {
    bytes pack(  const T& v ) {
       datastream<size_t> ps;
       eosio::raw::pack(ps, v);
+      const auto size = ps.tellp();
       bytes b;
-      b.len = ps.tellp();
-      b.data = (uint8_t*)eosio::malloc(b.len);
 
-      if( b.len ) {
-         datastream<char*>  ds( (char*)b.data, b.len );
+      if( size ) {
+         b.resize(ps.tellp());
+         datastream<char*>  ds( b.data(), b.size() );
          eosio::raw::pack(ds,v);
       }
       return b;
