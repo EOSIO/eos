@@ -167,7 +167,7 @@ struct txn_test_gen_plugin_impl {
       cc.push_transaction(trx);
       }
 
-      //fund the two accounts with currency contract currency
+      //issue & fund the two accounts with currency contract currency
       {
       signed_transaction trx;
       abi_serializer currency_serializer(currency_abi_def);
@@ -175,9 +175,9 @@ struct txn_test_gen_plugin_impl {
       {
       action act;
       act.account = N(currency);
-      act.name = N(transfer);
+      act.name = N(issue);
       act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.a\",\"quantity\":200}"));
+      act.data = currency_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"currency\",\"quantity\":\"600.0000 CUR\"}"));
       trx.actions.push_back(act);
       }
       {
@@ -185,7 +185,15 @@ struct txn_test_gen_plugin_impl {
       act.account = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.b\",\"quantity\":200}"));
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+      trx.actions.push_back(act);
+      }
+      {
+      action act;
+      act.account = N(currency);
+      act.name = N(transfer);
+      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
       trx.actions.push_back(act);
       }
 
@@ -273,7 +281,7 @@ struct txn_test_gen_plugin_impl {
       act.account = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{sender,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":1}"));
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"\"}"));
       }
       trx.actions.push_back(act);
       }
@@ -293,7 +301,7 @@ struct txn_test_gen_plugin_impl {
       act.account = N(currency);
       act.name = N(transfer);
       act.authorization = vector<permission_level>{{recipient,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":1}"));
+      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"\"}"));
       }
       trx.actions.push_back(act);
       }
