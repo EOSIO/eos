@@ -7,7 +7,7 @@ import random
 import re
 
 ###############################################################
-# eosd_run_test
+# eosiod_run_test
 # --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
 # --keepLogs <Don't delete tn_data_* folders upon test completion>
 ###############################################################
@@ -34,8 +34,8 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
 parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
-parser.add_argument("-h", "--host", type=str, help="eosd host name", default=LOCAL_HOST)
-parser.add_argument("-p", "--port", type=int, help="eosd host port", default=DEFAULT_PORT)
+parser.add_argument("-h", "--host", type=str, help="eosiod host name", default=LOCAL_HOST)
+parser.add_argument("-p", "--port", type=int, help="eosiod host port", default=DEFAULT_PORT)
 parser.add_argument("--dumpErrorDetails",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
