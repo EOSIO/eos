@@ -58,6 +58,8 @@ namespace eosio {
   */
   template<typename NumberType, uint64_t currency = N(eos) >
   struct token {
+      using number_type = NumberType;
+      static_assert(eosio::is_unsigned<NumberType>::value, "NumberType can only be unsigned number");
     /**
     * Type of the currency (e.g. eos) represented as an unsigned 64 bit integer
     * @brief  Type of the currency
@@ -68,20 +70,22 @@ namespace eosio {
     * Default constructor
     * @brief Default constructor
     */
-    token(){}
+    token() : quantity{} {}
 
     /**
     * Constructor for token given quantity of tokens available
     * @brief Constructor for token given quantity of tokens available
     * @param v - quantity of tokens available
     */
-    explicit token( NumberType v ):quantity(v){};
+//    template<typename T, typename = typename eosio::enable_if<eosio::is_unsigned<T>::value && eosio::is_same<T,NumberType>::value>::type>
+    template<typename T, typename = typename eosio::enable_if<eosio::is_unsigned<T>::value && !(sizeof(T)>sizeof(NumberType))>::type>
+    explicit token( T v ):quantity(v){};
 
     /**
     * Quantity of tokens available
     * @brief Quantity of tokens available
     */
-    NumberType quantity = 0;
+    NumberType quantity;
 
     /**
     * Subtracts quantity of token from this object
