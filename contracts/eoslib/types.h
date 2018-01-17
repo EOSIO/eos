@@ -50,16 +50,6 @@ struct public_key {
    uint8_t data[33];
 };
 
-struct asset {
-   share_type   amount;
-   asset_symbol symbol;
-};
-
-struct price {
-   asset base;
-   asset quote;
-};
-
 struct signature {
    uint8_t data[65];
 };
@@ -81,11 +71,6 @@ struct fixed_string32 {
 };
 
 typedef fixed_string32 type_name;
-
-struct bytes {
-   uint32_t len;
-   uint8_t* data;
-};
 
 struct account_permission {
    account_name account;

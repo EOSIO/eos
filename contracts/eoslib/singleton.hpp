@@ -25,6 +25,7 @@ namespace  eosio {
 
          static T get( scope_name scope = Code ) {
             char temp[1024+8];
+            *reinterpret_cast<uint64_t *>(temp) = SingletonName;
             auto read = load_i64( scope, Code, singleton_table_name, temp, sizeof(temp) );
             assert( read > 0, "singleton does not exist" );
             datastream<const char*> ds(temp + sizeof(SingletonName), read);
@@ -36,6 +37,8 @@ namespace  eosio {
 
          static T get_or_create( scope_name scope = Code, const T& def = T() ) {
             char temp[1024+8];
+            *reinterpret_cast<uint64_t *>(temp) = SingletonName;
+
 
             auto read = load_i64( scope, Code, singleton_table_name, temp, sizeof(temp) );
             if( read < 0 ) {
