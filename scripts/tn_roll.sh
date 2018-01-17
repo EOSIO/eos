@@ -58,15 +58,19 @@ if [ \( -z "$prog" \) -o \( -z "$RD" \) ]; then
 fi
 
 SDIR=staging/eos
+if [ ! -e $SDIR/$RD/$prog ]; then
+    echo $SDIR/$RD/$prog does not exist
+    exit 1
+fi
+
 if [ -e $RD/$prog ]; then
-    s1=`md5sum $RD/$prog`
-    s2=`md5sum $SDIR/$prog`
+    s1=`md5sum $RD/$prog | sed "s/ .*$//"`
+    s2=`md5sum $SDIR/$RD/$prog | sed "s/ .*$//"`
     if [ "$s1" == "$s2" ]; then
-        echo $HOSTNAME no update $SDIR/$prog
+        echo $HOSTNAME no update $SDIR/$RD/$prog
         exit 1;
     fi
 fi
-
 
 echo DD = $DD
 
