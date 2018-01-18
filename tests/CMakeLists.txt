@@ -54,3 +54,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.py COPYONLY)
 
 add_test(NAME eosd_run_test.sh COMMAND eosd_run_test.sh --eosd=$<TARGET_FILE:eosd> --host=localhost --port=8888)
+add_test(chain_test chain_test)
+add_test(slow_test slow_test)
+add_test(api_test api_test)
