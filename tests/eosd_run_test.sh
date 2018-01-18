@@ -68,7 +68,7 @@ verifyErrorCode()
 killAll()
 {
   if [ "$SERVER" == "localhost" ]; then
-    $DIR/programs/launcher/launcher -k 9 --eosdBinary $EOSD --genesis $DIR/genesis.json
+    $DIR/programs/launcher/launcher -k 9 --eosd_binary $EOSD --genesis $DIR/genesis.json
   fi
   kill -9 $WALLETD_PROC_ID
 }
@@ -125,7 +125,7 @@ LOG_FILE=eosd_run_test.log
 
 # eosd
 if [ "$SERVER" == "localhost" ]; then
-  $DIR/programs/launcher/launcher --eosdBinary $EOSD  --genesis $DIR/genesis.json
+  $DIR/programs/launcher/launcher --eosd_binary $EOSD  --genesis $DIR/genesis.json
   verifyErrorCode "launcher"
   sleep 60
   count=`grep -c "generated block" tn_data_00/stderr.txt`
