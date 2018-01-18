@@ -242,7 +242,7 @@ uint32_t last_fnc_err = 0;
 
 
 // TODO missing intrinsic account_balance_get
-#if 0
+#if 1
 /*************************************************************************************
  * account_tests test case
  *************************************************************************************/
@@ -250,6 +250,7 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
 	produce_blocks(2);
 	create_account( N(testapi), asset::from_string("1000.0000 EOS") );
 	create_account( N(acc1), asset::from_string("0.0000 EOS") );
+	create_account( N(acc2), asset::from_string("0.0000 EOS") );
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	//transfer( N(inita), N(acc1), "1000.0000 EOS", "test");
@@ -271,9 +272,20 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
+
    transfer( N(inita), N(acc1), "24.0000 EOS", "memo" );
 	produce_blocks(1000);
-	//const auto& balance = get_balance(N(acc1));
+   BOOST_CHECK_EQUAL(get_balance(N(acc1)), 240000);
+
+   transfer( N(inita), N(acc1), "1.0000 EOS", "memo" );
+	produce_blocks(1000);
+   BOOST_CHECK_EQUAL(get_balance(N(acc1)), 250000);
+
+   transfer( N(acc1), N(inita), "5.0000 EOS", "memo" );
+	produce_blocks(20000000);
+   BOOST_CHECK_EQUAL(get_balance(N(acc1)), 200000);
+   BOOST_CHECK_EQUAL(get_balance(N(acc2)), 50000);
+   //BOOST_TEST_MESSAGE("asset " << asset::from_string("24.0000 EOS") << "\n");
 	CALL_TEST_FUNCTION( *this, "test_account", "test_balance_acc1", {});
 } FC_LOG_AND_RETHROW() }
 #endif
@@ -320,6 +332,14 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 	produce_blocks(1);
 
 	CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "assert_false", {}), fc::assert_exception, is_assert_exception);
+   dummy_action dummy13{DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
+
+   CALL_TEST_FUNCTION( *this, "test_action", "read_action_normal", fc::raw::pack(dummy13));
+
+   std::vector<char> raw_bytes((1<<16)-1);
+	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", {});
+
 } FC_LOG_AND_RETHROW() }
 #endif
 
@@ -340,8 +360,8 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	produce_blocks(1);
    
    auto& gpo = control->get_global_properties();   
-   BOOST_TEST_MESSAGE("ACTIVE PROD SIZE " << &gpo << "\n");
-	//CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", {});
+   std::vector<account_name> prods(gpo.active_producers.size());
+	CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", {});
 } FC_LOG_AND_RETHROW() }
 #endif
 
@@ -414,7 +434,7 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
 /*************************************************************************************
  * crypto_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(real_test, tester) { try {
+BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
    produce_blocks(1000);
    create_account(N(testapi), asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
