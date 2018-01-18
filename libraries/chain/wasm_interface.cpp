@@ -1,8 +1,10 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/asset.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <fc/exception/exception.hpp>
 
@@ -39,27 +41,27 @@ using boost::asio::io_service;
       /**
       * Name of the account who's balance this is
       */
-      account_name account;
+      eosio::chain::account_name account;
 
       /**
       * Balance for this account
       */
-      asset eos_balance;
+      eosio::chain::asset eos_balance;
 
       /**
       * Staked balance for this account
       */
-      asset staked_balance;
+      eosio::chain::asset staked_balance;
 
       /**
       * Unstaking balance for this account
       */
-      asset unstaking_balance;
+      eosio::chain::asset unstaking_balance;
 
       /**
       * Time at which last unstaking occurred for this account
       */
-      time last_unstaking_time;
+      eosio::chain::time last_unstaking_time;
    })
 #endif
 
@@ -627,9 +629,9 @@ class context_aware_api {
       {}
 
    protected:
-      uint32_t&          sbrk_bytes;
-      wasm_cache::entry& code;
       apply_context&     context;
+      wasm_cache::entry& code;
+      uint32_t&          sbrk_bytes;
 };
 
 template <uint32_t N>
@@ -904,9 +906,199 @@ class transaction_api : public context_aware_api {
 
 };
 
+class compiler_builtins : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void __ashlti3(__int128& ret, uint64_t high, uint64_t low, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i <<= shift;
+         ret = (unsigned __int128)i;
+      }
+
+      void __ashrti3(__int128& ret, uint64_t high, uint64_t low, uint32_t shift) {
+         constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
+         uint64_t sign_bit = high & (1 << SHIFT_WIDTH); //(high >> SHIFT_WIDTH);
+         fc::uint128_t i(high, low);
+         i >>= shift;
+         fc::uint128_t r(i.high_bits() | sign_bit, i.low_bits());
+         ret = (unsigned __int128)r; 
+      }
+
+      void __lshlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i <<= shift;
+         ret = (unsigned __int128)i;
+      }
+
+      void __lshrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i >>= shift;
+         ret = (unsigned __int128)i;
+      }
+      
+      void __divti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
+         
+         // grab the sign bits;
+         bool sa = (ha >> SHIFT_WIDTH);
+         bool sb = (hb >> SHIFT_WIDTH);
+         
+         fc::uint128_t a(ha, la);
+         fc::uint128_t b(hb, lb);
+
+         FC_ASSERT(b != 0, "divide by zero");    
+
+         // negate if needed
+         a = sa ? (~a + 1) : a;
+         b = sb ? (~b + 1) : b;
+         
+         // get the sign of the result 
+         sa ^= sb; 
+
+         a /= b; 
+
+         // negate back if needed
+         a = sa ? ~a + 1 : a;
+
+         ret = (unsigned __int128)a;
+      } 
+
+      void __multi3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
+         // grab the sign bits;
+         bool sa = (ha >> SHIFT_WIDTH);
+         bool sb = (hb >> SHIFT_WIDTH);
+
+         fc::uint128_t a(ha, la);
+         fc::uint128_t b(hb, lb);
+        
+         // negate if needed
+         a = sa ? (~a + 1) : a;
+         b = sb ? (~b + 1) : b;
+
+         // get the sign of the result
+         sa ^= sb; 
+
+         a *= b; 
+         // negate back if needed
+         a = sa ? ~a + 1 : a;
+
+         ret = (unsigned __int128)a;
+      } 
+};
+
+/*
+class account_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+      bool account_balance_get(array_ptr<const char> balance, uint32_t len) {
+         const uint32_t account_balance_size = sizeof(account_balance);
+         auto mem = Runtime::getDefaultMemory(code.instance);
+         FC_ASSERT(len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size));
+         account_balance& total_balance = memoryRef<account_balance>(mem, balance);
+      }
+};
+*/
+class math_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+      
+
+      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         FC_ASSERT( o != 0, "divide by zero" );
+         
+         s = s/o;
+         *self = (unsigned __int128)s;
+      }
+
+      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         s *= o;
+         *self = (unsigned __int128)s;
+      }
+
+      uint64_t double_add(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  + DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_mult(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  * DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_div(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
+         FC_ASSERT(divisor != 0, "divide by zero");
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint32_t double_eq(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_lt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_gt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint64_t double_to_i64(uint64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<uint64_t>();
+      }
+
+      uint64_t i64_to_double(uint64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         double res = DOUBLE(n).convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+};
+
+REGISTER_INTRINSICS(math_api,
+   (diveq_i128,    void(int, int)            )
+   (multeq_i128,   void(int, int)            )
+   (double_add,    int64_t(int64_t, int64_t) )
+   (double_mult,   int64_t(int64_t, int64_t) )
+   (double_div,    int64_t(int64_t, int64_t) )
+   (double_eq,     int32_t(int64_t, int64_t) )
+   (double_lt,     int32_t(int64_t, int64_t) )
+   (double_gt,     int32_t(int64_t, int64_t) )
+   (double_to_i64, int64_t(int64_t)          )
+   (i64_to_double, int64_t(int64_t)          )
+);
+
+REGISTER_INTRINSICS(compiler_builtins,
+   (__ashlti3,     void(int, int64_t, int64_t, int)  )
+   (__ashrti3,     void(int, int64_t, int64_t, int)  )
+   (__lshlti3,     void(int, int64_t, int64_t, int)  )
+   (__lshrti3,     void(int, int64_t, int64_t, int)  )
+   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+);
+
+
 REGISTER_INTRINSICS(system_api,
-   (assert,      void(int, int))
-   (now,         int())
+   (assert,      void(int, int)  )
+   (now,         int()           )
 );
 
 REGISTER_INTRINSICS(action_api,
@@ -933,6 +1125,12 @@ REGISTER_INTRINSICS(console_api,
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
 );
+
+/*
+REGISTER_INTRINSICS(account_api,
+   (account_balance_get,   int(int, int32_t)   )
+);
+*/
 
 REGISTER_INTRINSICS(transaction_api,
    (send_inline,           void(int, int)  )

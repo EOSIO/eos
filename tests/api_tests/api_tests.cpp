@@ -253,6 +253,8 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	//transfer( N(inita), N(acc1), "1000.0000 EOS", "test");
+   //
+#if 0
 	eosio::chain::signed_transaction trx;
 	trx.write_scope = { N(acc1), N(inita) };
 
@@ -265,15 +267,42 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
 
 	trx.sign(get_private_key(N(inita), "active"), chain_id_type());
 	push_transaction(trx);
+#endif
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
-	
+   transfer( N(inita), N(acc1), "24.0000 EOS", "memo" );
+	produce_blocks(1000);
 	//const auto& balance = get_balance(N(acc1));
-	//CALL_TEST_FUNCTION( *this, "test_account", "test_balance_acc1", {});
+	CALL_TEST_FUNCTION( *this, "test_account", "test_balance_acc1", {});
 } FC_LOG_AND_RETHROW() }
 #endif
 
+#if 1
+/*************************************************************************************
+ * compiler_builtins_tests test case
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
+	produce_blocks(2);
+	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
+   create_account( N(acc1), asset::from_string("1.0000 EOS") );
+   create_account( N(acc2), asset::from_string("1.0000 EOS") );
+   create_account( N(acc3), asset::from_string("1.0000 EOS") );
+   create_account( N(acc4), asset::from_string("1.0000 EOS") );
+	produce_blocks(1000);
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	produce_blocks(1000);
+	set_code( N(testapi), test_api_wast );
+	produce_blocks(1);
+   
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_multi3", {});
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3", {});
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), fc::assert_exception, is_assert_exception);
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshlti3", {});
+} FC_LOG_AND_RETHROW() }
+#endif
+
+#if 1
 /*************************************************************************************
  * action_tests test case
  *************************************************************************************/
@@ -291,26 +320,8 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 	produce_blocks(1);
 
 	CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "assert_false", {}),
-                         fc::assert_exception, is_assert_exception);
-
-   dummy_action dummy13{DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
-   CALL_TEST_FUNCTION( *this, "test_action", "read_action_normal", fc::raw::pack(dummy13));
-
-   //std::vector<char> raw_bytes((1<<16)-1);
-   std::vector<char> raw_bytes(64);
-   //std::vector<char> raw_bytes((1<<16)-1);
-   CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes);
-
-   //raw_bytes.resize((1<<16)+1);
-   //CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes);
-   //std::vector<char> raw_bytes2((1<<30));
-   //raw_bytes.resize((1<<32));
-   //BOOST_TEST_MESSAGE("SIZE " << raw_bytes2.size());
-   //CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes2);
-   //BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_action", "read_action_to_0", raw_bytes), fc::unhandled_exception, is_access_violation);
-   //BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_action", "require_auth", {}), tx_missing_auth, is_tx_missing_auth);
 } FC_LOG_AND_RETHROW() }
+#endif
 
 // TODO missing intrinsic get_active_producers
 #if 0
@@ -353,7 +364,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 #endif
 
 // TODO missing intrinsic __ashlti3
-#if 0
+#if 1
 /*************************************************************************************
  * fixedpoint_tests test case
  *************************************************************************************/
@@ -375,11 +386,11 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
 #endif
 
 // TODO missing intrinsics for doubles
-#if 0
+#if 1
 /*************************************************************************************
  * real_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(real_test, tester) { try {
+BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
    produce_blocks(1000);
    create_account(N(testapi), asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
@@ -387,6 +398,7 @@ BOOST_FIXTURE_TEST_CASE(real_test, tester) { try {
    produce_blocks(1000);
    set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
+
    CALL_TEST_FUNCTION( *this, "test_real", "create_instances", {} );
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_real", "test_addition", {} );
@@ -546,27 +558,26 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 } FC_LOG_AND_RETHROW() }
 #endif
 
+#if 1
 /*************************************************************************************
  * print_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	produce_blocks(2);
-	create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+	create_account(N(testapi), asset::from_string("100000.0000 EOS"));
 	create_account(N(another), asset::from_string("1.0000 EOS"));
 	create_account(N(acc1), asset::from_string("1.0000 EOS"));
 	create_account(N(acc2), asset::from_string("1.0000 EOS"));
 	create_account(N(acc3), asset::from_string("1.0000 EOS"));
 	create_account(N(acc4), asset::from_string("1.0000 EOS"));
-	produce_blocks(1);
+	produce_blocks(1000);
 
 	//Set test code
 	transfer(N(inita), N(testapi), "10.0000 EOS", "memo");
 	set_code(N(testapi), test_api_wast); 
-	produce_blocks(1);
+	produce_blocks(1000);
 	string captured = "";
 
-
-#if 1
 	// test prints
 	CAPTURE_AND_PRE_TEST_PRINT("test_prints");
 	BOOST_CHECK_EQUAL(captured == "abcefg", true);
@@ -592,13 +603,10 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	BOOST_CHECK_EQUAL( captured.substr(39, 13), "abcdefghijkl1");
 	BOOST_CHECK_EQUAL( captured.substr(52, 13), "abcdefghijkl1");
 	BOOST_CHECK_EQUAL( captured.substr(65, 13), "abcdefghijkl1");
-#endif	
 
 } FC_LOG_AND_RETHROW() }
+#endif
 
-
-// missing intriniscs
-#if 1
 /*************************************************************************************
  * math_tests test case
  *************************************************************************************/
@@ -612,13 +620,31 @@ BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
 
-	CALL_TEST_FUNCTION( *this, "test_math", "test_multeq", {});
-	CALL_TEST_FUNCTION( *this, "test_math", "test_diveq", {});
-	CALL_TEST_FUNCTION( *this, "test_math", "test_diveq_by_0", {});
+   std::random_device rd;
+   std::mt19937_64 gen(rd());
+   std::uniform_int_distribution<unsigned long long> dis;
+
+   // test mult_eq with 10 random pairs of 128 bit numbers
+   for (int i=0; i < 10; i++) {
+      u128_msg msg;
+      msg.values[0] = dis(gen); msg.values[0] <<= 64; msg.values[0] |= dis(gen);
+      msg.values[1] = dis(gen); msg.values[1] <<= 64; msg.values[1] |= dis(gen);
+      msg.values[2] = msg.values[0] * msg.values[1];
+      CALL_TEST_FUNCTION( *this, "test_math", "test_multeq", fc::raw::pack(msg));
+   }
+   // test div_eq with 10 random pairs of 128 bit numbers
+   for (int i=0; i < 10; i++) {
+      u128_msg msg;
+      msg.values[0] = dis(gen); msg.values[0] <<= 64; msg.values[0] |= dis(gen);
+      msg.values[1] = dis(gen); msg.values[1] <<= 64; msg.values[1] |= dis(gen);
+      msg.values[2] = msg.values[0] / msg.values[1];
+      CALL_TEST_FUNCTION( *this, "test_math", "test_diveq", fc::raw::pack(msg));
+   }
+   // test diveq for divide by zero
+	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_math", "test_diveq_by_0", {}), fc::assert_exception, is_assert_exception);
 	CALL_TEST_FUNCTION( *this, "test_math", "test_double_api", {});
-	CALL_TEST_FUNCTION( *this, "test_math", "test_double_api_div_0", {});
+	//BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_math", "test_double_api_div_0", {}), fc::assert_exception, is_assert_exception);
 } FC_LOG_AND_RETHROW() }
-#endif
 
 /*************************************************************************************
  * types_tests test case
