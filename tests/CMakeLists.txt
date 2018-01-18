@@ -67,3 +67,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/distributed-transactions-test.py ${CM
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CURRENT_BINARY_DIR}/restart-scenarios-test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_test.py COPYONLY)
+
+if(UNIX AND NOT APPLE)
+  #add_test(eosiod_run_test eosiod_run_test.py --exitEarly --dumpErrorDetail)
+  add_test(chain_test chain_test)
+  #add_test(trans_sync_across_mixed_cluster_test trans_sync_across_mixed_cluster_test.sh -p 1 -n 2)
+  #add_test(distributed-transactions-test distributed-transactions-test.py -p 1 -n 4)
+  #add_test(restart-scenarios-test_resync restart-scenarios-test.py -c resync -p3 --dumpErrorDetails)
+  #add_test(restart-scenarios-test_replay restart-scenarios-test.py -c replay -p3 --dumpErrorDetails)
+endif()
