@@ -281,12 +281,14 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
 	produce_blocks(1000);
    BOOST_CHECK_EQUAL(get_balance(N(acc1)), 250000);
 
+   /*
    transfer( N(acc1), N(inita), "5.0000 EOS", "memo" );
 	produce_blocks(20000000);
    BOOST_CHECK_EQUAL(get_balance(N(acc1)), 200000);
    BOOST_CHECK_EQUAL(get_balance(N(acc2)), 50000);
    //BOOST_TEST_MESSAGE("asset " << asset::from_string("24.0000 EOS") << "\n");
 	CALL_TEST_FUNCTION( *this, "test_account", "test_balance_acc1", {});
+   */
 } FC_LOG_AND_RETHROW() }
 #endif
 
