@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include "eos/chain/block.hpp"
+#include "eosio/chain/block.hpp"
 
 BOOST_AUTO_TEST_SUITE(block_test)
 
