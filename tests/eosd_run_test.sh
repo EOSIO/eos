@@ -68,7 +68,7 @@ verifyErrorCode()
 killAll()
 {
   if [ "$SERVER" == "localhost" ]; then
-    $DIR/programs/launcher/launcher -k 9 --eosdBinary $EOSD
+    $DIR/programs/launcher/launcher -k 9 --eosdBinary $EOSD --genesis $DIR/genesis.json
   fi
   kill -9 $WALLETD_PROC_ID
 }
@@ -125,7 +125,7 @@ LOG_FILE=eosd_run_test.log
 
 # eosd
 if [ "$SERVER" == "localhost" ]; then
-  $DIR/programs/launcher/launcher --eosdBinary $EOSD
+  $DIR/programs/launcher/launcher --eosdBinary $EOSD  --genesis $DIR/genesis.json
   verifyErrorCode "launcher"
   sleep 60
   count=`grep -c "generated block" tn_data_00/stderr.txt`
@@ -390,7 +390,7 @@ if [ $CODE_HASH != 0 ]; then
 fi
 
 # upload a contract
-INFO="$($DIR/programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract currency contracts/currency/currency.wast contracts/currency/currency.abi)"
+INFO="$($DIR/programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract currency $DIR/contracts/currency/currency.wast $DIR/contracts/currency/currency.abi)"
 verifyErrorCode "eosc set contract currency"
 count=`echo $INFO | grep -c "processed"`
 if [ $count == 0 ]; then
@@ -457,7 +457,7 @@ fi
 #
 
 # upload exchange contract
-INFO="$($DIR/programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi)"
+INFO="$($DIR/programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract exchange $DIR/contracts/exchange/exchange.wast $DIR/contracts/exchange/exchange.abi)"
 verifyErrorCode "eosc set contract exchange"
 count=`echo $INFO | grep -c "processed"`
 if [ $count == 0 ]; then
@@ -470,7 +470,7 @@ getTransactionId "$INFO"
 # Verify eosc generates an error, but does not core dump.
 #
 
-INFO="$( { $DIR/programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract simpledb contracts/simpledb/simpledb.wast contracts/simpledb/simpledb.abi ; } 2>&1 )"
+INFO="$( { $DIR/programs/eosc/eosc --host $SERVER --port $PORT --wallet-port 8899 set contract simpledb $DIR/contracts/simpledb/simpledb.wast $DIR/contracts/simpledb/simpledb.abi ; } 2>&1 )"
 rc=$?
 if [ $rc -eq 0 ] || [ $rc -eq 139 ]; then # 139 SIGSEGV
   error "FAILURE - $1 returned error code $rc, should have failed to execute."
