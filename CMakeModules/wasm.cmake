@@ -96,7 +96,6 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
     foreach(folder ${INCLUDE_FOLDERS})
        list(APPEND WASM_COMMAND -I ${folder})
     endforeach()
-    #string(REPLACE ";" " -I " INCLUDE_FOLDERS_STR "${INCLUDE_FOLDERS}")
   
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
