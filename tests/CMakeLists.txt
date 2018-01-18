@@ -52,3 +52,5 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/distributed-transactions-test.py ${CM
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CURRENT_BINARY_DIR}/restart-scenarios-test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.py COPYONLY)
+
+add_test(NAME eosd_run_test COMMAND eosd_run_test.sh --eosd=$<TARGET_FILE:eosd> --host=localhost --port=8888)
