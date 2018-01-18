@@ -1,5 +1,6 @@
 file(GLOB COMMON_SOURCES "common/*.cpp")
 
+find_package(libmongoc-1.0 1.8 QUIET)
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
     message( STATUS "Found gperftools; compiling tests with TCMalloc")
@@ -58,4 +59,8 @@ if(UNIX AND NOT APPLE)
   add_test(chain_test chain_test)
   add_test(slow_test slow_test)
   add_test(api_test api_test)
+  if (libmongoc-1.0_FOUND)
+    # TODO fix path in the test and uncomment
+    # add_test(eosd_run_mongodb_test.sh tests/eosd_run_mongodb_test.sh)
+  endif()
 endif()
