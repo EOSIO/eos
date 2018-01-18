@@ -1116,7 +1116,7 @@ launcher_def::launch (const std::string& eosd_binary, eosd_def &instance, string
     eosdcmd += " --skip-transaction-signatures";
   }
   if (!eosd_extra_args.empty()) {
-    eosdcmd += eosd_extra_args + " ";
+    eosdcmd += " " + eosd_extra_args;
   }
 
   if( add_enable_stale_production ) {
