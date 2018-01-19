@@ -439,7 +439,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
       char *base          = (char*)(getMemoryBaseAddress(mem) + ptr);
       char *p             = base;
       char *top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
-      while(p != top_of_memory)
+      while(p < top_of_memory)
          if(*p++ == '\0')
             return Then(wasm, null_terminated_ptr{base}, rest..., translated...);
       Runtime::causeException(Exception::Cause::accessViolation);
