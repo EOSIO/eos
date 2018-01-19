@@ -2,6 +2,8 @@
 project( EOS )
 cmake_minimum_required( VERSION 2.8.12 )
 
+enable_testing()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 
 INCLUDE( VersionMacros )
