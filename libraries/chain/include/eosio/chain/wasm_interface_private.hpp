@@ -180,7 +180,12 @@ auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_point_sec
 
 auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
    auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-   char* base = &memoryRef<char>(mem, 0);
+   if(!mem)
+      Runtime::causeException(Exception::Cause::accessViolation);
+   char* base = (char*)getMemoryBaseAddress(mem);
+   char* top_of_memory = base + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem);
+   if(ptr < base || ptr >= top_of_memory)
+      Runtime::causeException(Exception::Cause::accessViolation);
    return (int)(ptr - base);
 }
 
@@ -380,7 +385,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
    static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       size_t length = size_t(size);
-      T *base = memoryArrayPtr<T>(mem, ptr, length);
+      if(!mem || ptr+sizeof(T)*length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+         Runtime::causeException(Exception::Cause::accessViolation);
+      T *base = (T*)(getMemoryBaseAddress(mem)+ptr);
       return Then(wasm, array_ptr<T>{base}, length, rest..., translated...);
    };
 
@@ -408,8 +415,11 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
    static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       size_t length = size_t(size);
-      T *base_t = memoryArrayPtr<T>(mem, ptr_t, length);
-      U *base_u = memoryArrayPtr<U>(mem, ptr_u, length);
+      if(!mem || ptr_t+sizeof(T)*length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem)
+              || ptr_u+sizeof(U)*length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+         Runtime::causeException(Exception::Cause::accessViolation);
+      T *base_t = (T*)(getMemoryBaseAddress(mem)+ptr_t);
+      U *base_u = (U*)(getMemoryBaseAddress(mem)+ptr_u);
       return Then(wasm, array_ptr<T>{base_t}, array_ptr<U>{base_u}, length, rest..., translated...);
    };
 
@@ -435,7 +445,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std
    static Ret translate_one(wasm_interface &wasm, I32 ptr, I32 value, I32 size) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       size_t length = size_t(size);
-      char *base = memoryArrayPtr<char>(mem, ptr, length);
+      if(!mem || ptr+sizeof(char)*length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+         Runtime::causeException(Exception::Cause::accessViolation);
+      char *base = (char*)(getMemoryBaseAddress(mem)+ptr);
       return Then(wasm, array_ptr<char>{base}, value, length);
    };
 
@@ -462,7 +474,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
    template<then_type Then>
    static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      T *base = memoryArrayPtr<T>(mem, ptr, 1);
+      if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+         Runtime::causeException(Exception::Cause::accessViolation);
+      T *base = (T*)(getMemoryBaseAddress(mem)+ptr);
       return Then(wasm, base, rest..., translated...);
    };
 
@@ -544,7 +558,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
       // references cannot be created for null pointers
       FC_ASSERT(ptr != 0);
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      T &base = memoryRef<T>(mem, ptr);
+      if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+         Runtime::causeException(Exception::Cause::accessViolation);
+      T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
       return Then(wasm, base, rest..., translated...);
    }
 
