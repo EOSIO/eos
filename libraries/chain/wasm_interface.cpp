@@ -690,7 +690,7 @@ class console_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       void prints(null_terminated_ptr str) {
-         context.console_append((const char*)str);
+         context.console_append<const char*>(str);
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
