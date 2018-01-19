@@ -7,6 +7,8 @@
 #include <eoslib/memory.h>
 #include <eoslib/print.hpp>
 
+#include <unistd.h>
+
 namespace eosio {
 
    using ::memset;

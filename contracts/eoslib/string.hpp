@@ -4,6 +4,7 @@
 #include <eoslib/system.h>
 #include <eoslib/memory.hpp>
 #include <eoslib/print.hpp>
+#include <eoslib/varint.hpp>
 
 namespace eosio {
   /**

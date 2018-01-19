@@ -1,4 +1,5 @@
 add_subdirectory(currency)
+add_subdirectory(stltest)
 #add_subdirectory(bancor)
 #add_subdirectory(eosio.system)
 add_subdirectory(asserter)

@@ -642,6 +642,11 @@ class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      void abort() {
+         edump(("abort() called"));
+         FC_ASSERT( condition, "abort() called");
+      }
+
       void assert(bool condition, const char* str) {
          std::string message( str );
          if( !condition ) edump((message));
@@ -828,6 +833,10 @@ class memory_api : public context_aware_api {
          return (char *)::memcpy(dest, src, length);
       }
 
+      char* memmove( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
+         return (char *)::memmove(dest, src, length);
+      }
+
       int memcmp( array_ptr<const char> dest, array_ptr<const char> src, size_t length) {
          return ::memcmp(dest, src, length);
       }
@@ -902,6 +911,7 @@ class transaction_api : public context_aware_api {
 };
 
 REGISTER_INTRINSICS(system_api,
+   (abort,      void())
    (assert,      void(int, int))
    (now,          int())
 );
@@ -938,6 +948,7 @@ REGISTER_INTRINSICS(transaction_api,
 
 REGISTER_INTRINSICS(memory_api,
    (memcpy,                 int(int, int, int)   )
+   (memmove,                int(int, int, int)   )
    (memcmp,                 int(int, int, int)   )
    (memset,                 int(int, int, int)   )
    (sbrk,                   int(int)             )

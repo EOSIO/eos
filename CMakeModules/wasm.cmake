@@ -90,7 +90,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
     #   Disable the generation of extra code needed to propagate exceptions
 
     set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding
-              -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions
+              -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions
               -c ${infile} -o ${outfile}.bc
     )
     foreach(folder ${INCLUDE_FOLDERS})

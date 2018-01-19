@@ -4,5 +4,4 @@
  */
 #pragma once
 
-#include <string.h>
-#include <eoslib/types.h>
+#define EOF     (-1)
