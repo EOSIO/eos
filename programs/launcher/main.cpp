@@ -372,12 +372,12 @@ struct launcher_def {
   void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
   bool do_ssh (const string &cmd, const string &host_name);
   void prep_remote_config_dir (eosd_def &node, host_def *host);
-  void launch (eosd_def &node, string &gts);
+  void launch (const string &eosd_binary, eosd_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
   void bounce (const string& node_numbers);
   bool bounce_node (uint16_t num);
   void roll (const string& host_names);
-  void start_all (string &gts, launch_modes mode);
+  void start_all (const string &eosd_binary, string &gts, launch_modes mode);
 };
 
 void
@@ -1098,7 +1098,7 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
 }
 
 void
-launcher_def::launch (eosd_def &instance, string &gts) {
+launcher_def::launch (const std::string& eosd_binary, eosd_def &instance, string &gts) {
   bf::path dd = instance.data_dir;
   bf::path reout = dd / "stdout.txt";
   bf::path reerr_sl = dd / "stderr.txt";
@@ -1110,23 +1110,26 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   node_rt_info info;
   info.remote = !host->is_local();
 
-  string eosdcmd = "programs/eosd/eosd ";
+  string eosdcmd(eosd_binary);
+
   if (skip_transaction_signatures) {
-    eosdcmd += "--skip-transaction-signatures ";
+    eosdcmd += " --skip-transaction-signatures";
   }
   if (!eosd_extra_args.empty()) {
-    eosdcmd += eosd_extra_args + " ";
+    eosdcmd += " " + eosd_extra_args;
   }
 
   if( add_enable_stale_production ) {
-    eosdcmd += "--enable-stale-production true ";
+    eosdcmd += " --enable-stale-production true";
     add_enable_stale_production = false;
   }
 
-  eosdcmd += "--data-dir " + instance.data_dir;
+  eosdcmd += " --data-dir " + instance.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
+
+
 
   if (!host->is_local()) {
     string cmdl ("cd ");
@@ -1144,6 +1147,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     format_ssh (cmd, host->host_name, info.kill_cmd);
   }
   else {
+
     cerr << "spawning child, " << eosdcmd << endl;
 
     bp::child c(eosdcmd, bp::std_out > reout, bp::std_err > reerr );
@@ -1275,7 +1279,7 @@ launcher_def::roll (const string& host_names) {
 }
 
 void
-launcher_def::start_all (string &gts, launch_modes mode) {
+launcher_def::start_all (const std::string& eosd_binary, string &gts, launch_modes mode) {
   switch (mode) {
   case LM_NONE:
     return;
@@ -1286,7 +1290,7 @@ launcher_def::start_all (string &gts, launch_modes mode) {
     try {
       add_enable_stale_production = false;
       auto node = network.nodes.find(launch_name);
-      launch(*node->second.instance, gts);
+      launch(eosd_binary, *node->second.instance, gts);
     } catch (fc::exception& fce) {
        cerr << "unable to launch " << launch_name << " fc::exception=" << fce.to_detail_string() << endl;
     } catch (std::exception& stde) {
@@ -1305,7 +1309,8 @@ launcher_def::start_all (string &gts, launch_modes mode) {
           (h.is_local() ? mode == LM_LOCAL : mode == LM_REMOTE)) {
         for (auto &inst : h.instances) {
           try {
-            launch (inst, gts);
+                std::cout << "launching " << gts << std::endl;
+            launch (eosd_binary, inst, gts);
           } catch (fc::exception& fce) {
              cerr << "unable to launch " << inst.name << " fc::exception=" << fce.to_detail_string() << endl;
           } catch (std::exception& stde) {
@@ -1339,6 +1344,7 @@ int main (int argc, char *argv[]) {
   string kill_arg;
   string bounce_nodes;
   string roll_nodes;
+  string eosd_binary;
 
   local_id.initialize();
   top.set_options(opts);
@@ -1349,6 +1355,7 @@ int main (int argc, char *argv[]) {
     ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill to each.")
     ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the tn_bounce.sh script")
     ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the tn_roll.sh script")
+    ("eosd_binary", bpo::value<string>(&eosd_binary)->default_value("programs/eosd/eosd"),"path to eosd binary")
     ("version,v", "print version information")
     ("help,h","print this list");
 
@@ -1404,7 +1411,7 @@ int main (int argc, char *argv[]) {
     }
     else {
       top.generate();
-      top.start_all(gts, mode);
+      top.start_all(eosd_binary, gts, mode);
     }
   } catch (bpo::unknown_option &ex) {
     cerr << ex.what() << endl;
