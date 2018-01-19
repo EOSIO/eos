@@ -5,6 +5,7 @@ import testUtils
 import argparse
 import random
 import re
+import time
 
 ###############################################################
 # eosiod_run_test
@@ -104,6 +105,8 @@ try:
     exchangeAccount.ownerPrivateKey=PRV_KEY2
     exchangeAccount.ownerPublicKey=PUB_KEY2
     
+    time.sleep(5)
+
     Print("Stand up walletd")
     if walletMgr.launch() is False:
         cmdError("eos-walletd")

@@ -61,9 +61,16 @@ endif()
 #
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_mongodb_test.sh ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_mongodb_test.sh COPYONLY)
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run_tests.sh ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trans_sync_across_mixed_cluster_test.sh ${CMAKE_CURRENT_BINARY_DIR}/trans_sync_across_mixed_cluster_test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/distributed-transactions-test.py ${CMAKE_CURRENT_BINARY_DIR}/distributed-transactions-test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CURRENT_BINARY_DIR}/restart-scenarios-test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_test.py COPYONLY)
+
+add_test(NAME eosiod_run_test COMMAND tests/eosiod_run_test.py --exitEarly --dumpErrorDetail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(chain_test chain_test)
+add_test(NAME trans_sync_across_mixed_cluster_test COMMAND tests/trans_sync_across_mixed_cluster_test.sh -p 1 -n 2 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
