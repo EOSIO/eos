@@ -642,7 +642,7 @@ class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void assert(bool condition, const char* str) {
+      void assert(bool condition, null_terminated_ptr str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -689,8 +689,8 @@ class console_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void prints(const char *str) {
-         context.console_append(str);
+      void prints(null_terminated_ptr str) {
+         context.console_append((const char*)str);
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {

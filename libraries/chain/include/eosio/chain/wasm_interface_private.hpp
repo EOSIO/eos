@@ -98,6 +98,26 @@ struct array_ptr {
    T *value;
 };
 
+/**
+ * class to represent an in-wasm-memory char array that must be null terminated
+ */
+struct null_terminated_ptr {
+   typename std::add_lvalue_reference<char>::type operator*() const {
+      return *value;
+   }
+
+   char *operator->() const noexcept {
+      return value;
+   }
+
+   template<typename U>
+   operator U *() const {
+      return static_cast<U *>(value);
+   }
+
+   char *value;
+};
+
 
 /**
  * template that maps native types to WASM VM types
@@ -389,6 +409,40 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
          Runtime::causeException(Exception::Cause::accessViolation);
       T *base = (T*)(getMemoryBaseAddress(mem)+ptr);
       return Then(wasm, array_ptr<T>{base}, length, rest..., translated...);
+   };
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
+
+/**
+ * Specialization for transcribing  a null_terminated_ptr type in the native method signature
+ * This type transcribes 1 wasm parameters: a char pointer which is validated to contain
+ * a null value before the end of the allocated memory.
+ *
+ * @tparam Ret - the return type of the native method
+ * @tparam Inputs - the remaining native parameters to transcribe
+ * @tparam Translated - the list of transcribed wasm parameters
+ */
+template<typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
+   using then_type = Ret(*)(wasm_interface &, null_terminated_ptr, Inputs..., Translated...);
+
+   template<then_type Then>
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
+      auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
+      if(!mem)
+         Runtime::causeException(Exception::Cause::accessViolation);
+      char *base          = (char*)(getMemoryBaseAddress(mem) + ptr);
+      char *p             = base;
+      char *top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
+      while(p != top_of_memory)
+         if(*p++ == '\0')
+            return Then(wasm, null_terminated_ptr{base}, rest..., translated...);
+      Runtime::causeException(Exception::Cause::accessViolation);
    };
 
    template<then_type Then>
