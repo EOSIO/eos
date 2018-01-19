@@ -88,12 +88,18 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
     # -fno-exceptions
     #   Disable the generation of extra code needed to propagate exceptions
+
+    set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding
+              -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions
+              -c ${infile} -o ${outfile}.bc
+    )
+    foreach(folder ${INCLUDE_FOLDERS})
+       list(APPEND WASM_COMMAND -I ${folder})
+    endforeach()
   
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
-      COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding
-              -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS}
-              -c ${infile} -o ${outfile}.bc 
+      COMMAND ${WASM_COMMAND}
       IMPLICIT_DEPENDS CXX ${infile}
       COMMENT "Building LLVM bitcode ${outfile}.bc"
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
