@@ -1,5 +1,5 @@
 include(FindDoxygen)
-
+configure_file("eos.doxygen.in" "${CMAKE_BINARY_DIR}/eos.doxygen")
 if(NOT DOXYGEN_FOUND)
   message(STATUS "Doxygen not found.  Contract documentation will not be generated.")
 else()
