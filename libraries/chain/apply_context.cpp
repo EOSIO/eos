@@ -142,8 +142,12 @@ void apply_context::require_write_lock(const scope_name& scope) {
 }
 
 void apply_context::require_read_lock(const account_name& account, const scope_name& scope) {
-   if (trx_meta.allowed_read_locks) {
-      EOS_ASSERT( locks_contain(**trx_meta.allowed_read_locks, account, scope), block_lock_exception, "read lock \"${a}::${s}\" required but not provided", ("a", account)("s",scope) );
+   if (trx_meta.allowed_read_locks || trx_meta.allowed_write_locks ) {
+      bool locked_for_read = trx_meta.allowed_read_locks && locks_contain(**trx_meta.allowed_read_locks, account, scope);
+      if (!locked_for_read && trx_meta.allowed_write_locks) {
+         locked_for_read = locks_contain(**trx_meta.allowed_write_locks, account, scope);
+      }
+      EOS_ASSERT( locked_for_read , block_lock_exception, "read lock \"${a}::${s}\" required but not provided", ("a", account)("s",scope) );
    }
 
    if (!locks_contain(_read_locks, account, scope)) {

@@ -28,15 +28,32 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
 target_include_directories(eosiod PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
+if(UNIX)
+  if(APPLE)
+    set(whole_archive_flag "-force_load")
+    set(no_whole_archive_flag "")
+  else()
+    set(whole_archive_flag "--whole-archive")
+    set(no_whole_archive_flag "--no-whole-archive")
+  endif()
+else()
+  set(whole_archive_flag "--whole-archive")
+  set(no_whole_archive_flag "--no-whole-archive")
+endif()
+
 target_link_libraries( eosiod
         PRIVATE appbase
-        PRIVATE account_history_api_plugin account_history_plugin
-#        PRIVATE db_plugin
-        PRIVATE chain_api_plugin producer_plugin chain_plugin 
-        PRIVATE  wallet_api_plugin
-        PRIVATE net_plugin net_api_plugin txn_test_gen_plugin
-        PRIVATE http_plugin faucet_testnet_plugin
+        PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag} account_history_plugin
+        PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
+        PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE net_plugin net_api_plugin -Wl,${whole_archive_flag} txn_test_gen_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE http_plugin -Wl,${whole_archive_flag} faucet_testnet_plugin -Wl,${no_whole_archive_flag}
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+
+if(BUILD_MONGO_DB_PLUGIN)
+  target_link_libraries( eosiod
+    PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
+endif()
 
 install( TARGETS
    eosiod

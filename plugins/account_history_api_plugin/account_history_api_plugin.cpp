@@ -12,6 +12,8 @@ namespace eosio {
 
 using namespace eosio;
 
+static appbase::abstract_plugin& _account_history_api_plugin = app().register_plugin<account_history_api_plugin>();
+
 account_history_api_plugin::account_history_api_plugin(){}
 account_history_api_plugin::~account_history_api_plugin(){}
 

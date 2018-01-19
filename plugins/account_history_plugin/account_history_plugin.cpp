@@ -467,7 +467,7 @@ void account_history_plugin::plugin_startup()
    db.add_index<transaction_history_multi_index>();
 
    my->chain_plug->chain().applied_block.connect ([&impl = my](const chain::block_trace& trace) {
-      impl->applied_block(trace.block);
+      impl->applied_block(trace);
    });
 }
 

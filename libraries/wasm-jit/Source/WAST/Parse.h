@@ -104,6 +104,13 @@ namespace WAST
 		operator bool() const { return type != Type::invalid; }
 	};
 
+	// Represents a function type, either as an unresolved name/index, or as an explicit type, or both.
+	struct UnresolvedFunctionType
+	{
+		Reference reference;
+		const IR::FunctionType* explicitType;
+	};
+
 	// State associated with parsing a module.
 	struct ModuleParseState : ParseState
 	{
@@ -118,6 +125,9 @@ namespace WAST
 		NameToIndexMap globalNameToIndexMap;
 
 		IR::DisassemblyNames disassemblyNames;
+
+		// Thunks that are called after parsing all types.
+		std::vector<std::function<void(ModuleParseState&)>> postTypeCallbacks;
 
 		// Thunks that are called after parsing all declarations.
 		std::vector<std::function<void(ModuleParseState&)>> postDeclarationCallbacks;
@@ -141,7 +151,8 @@ namespace WAST
 	IR::ValueType parseValueType(ParseState& state);
 
 	const IR::FunctionType* parseFunctionType(ModuleParseState& state,NameToIndexMap& outLocalNameToIndexMap,std::vector<std::string>& outLocalDisassemblyNames);
-	IR::IndexedFunctionType parseFunctionTypeRef(ModuleParseState& state,NameToIndexMap& outLocalNameToIndexMap,std::vector<std::string>& outLocalDisassemblyNames);
+	UnresolvedFunctionType parseFunctionTypeRefAndOrDecl(ModuleParseState& state,NameToIndexMap& outLocalNameToIndexMap,std::vector<std::string>& outLocalDisassemblyNames);
+	IR::IndexedFunctionType resolveFunctionType(ModuleParseState& state,const UnresolvedFunctionType& unresolvedType);
 	IR::IndexedFunctionType getUniqueFunctionTypeIndex(ModuleParseState& state,const IR::FunctionType* functionType);
 
 	// Literal parsing.

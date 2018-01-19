@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <proxy/proxy.hpp>
-#include <currency/currency.hpp>
+#include <eoslib/native_currency.hpp>
 #include <eoslib/transaction.hpp>
 
 namespace proxy {
@@ -26,10 +26,8 @@ namespace proxy {
          auto id = code_config.next_id++;
          configs::store(code_config, self);
 
-         auto out_act = action<>(code, N(transfer), new_transfer, self, N(active));
-
-         transaction<> out;
-         out.add_action(out_act);
+         transaction out;
+         out.actions.emplace_back(vector<permission_level>{{self, N(active)}}, new_transfer);
          out.send(id, now() + code_config.delay);
       }
    }
@@ -45,7 +43,7 @@ namespace proxy {
    }
 
    template<size_t ...Args>
-   void apply_onerror( const deferred_transaction<Args...>& failed_dtrx ) {
+   void apply_onerror( const deferred_transaction& failed_dtrx ) {
       const auto self = current_receiver();
       config code_config;
       assert(configs::get(code_config, self), "Attempting to use unconfigured proxy");
@@ -53,7 +51,7 @@ namespace proxy {
       auto id = code_config.next_id++;
       configs::store(code_config, self);
 
-      eosio::print("Resending Transaction: ", failed_dtrx._sender_id, " as ", id, "\n");
+      eosio::print("Resending Transaction: ", failed_dtrx.sender_id, " as ", id, "\n");
       failed_dtrx.send(id, now() + code_config.delay);
    }
 }
@@ -67,15 +65,11 @@ extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       if( code == N(currency) ) {
+       if ( code == N(eosio) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, current_action<currency::transfer>());
-          }
-       } else if ( code == N(eosio) ) {
-          if( action == N(transfer) ) {
-             apply_transfer(code, current_action<eosio::transfer>());
+             apply_transfer(code, unpack_action<native_currency::transfer>());
           } else if ( action == N(onerror)) {
-             apply_onerror(deferred_transaction<>::from_current_action());
+             apply_onerror(deferred_transaction::from_current_action());
           }
        } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {

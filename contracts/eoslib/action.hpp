@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eoslib/action.h>
-#include <eoslib/serialize.hpp>
+#include <eoslib/raw.hpp>
 
 namespace eosio {
 
@@ -47,7 +47,7 @@ namespace eosio {
    T unpack_action() {
       char buffer[action_size()];
       read_action( buffer, sizeof(buffer) );
-      return unpack<T>( buffer, sizeof(buffer) );
+      return raw::unpack<T>( buffer, sizeof(buffer) );
    }
 
    using ::require_auth;
@@ -74,7 +74,78 @@ namespace eosio {
       require_recipient( remaining_accounts... );
    }
 
+   struct permission_level {
+      account_name    actor;
+      permission_name permission;
+      template<typename DataStream>
+
+      friend DataStream& operator << ( DataStream& ds, const permission_level& a ){
+         return ds << a.actor << a.permission;
+      }
+
+      template<typename DataStream>
+      friend DataStream& operator >> ( DataStream& ds,  permission_level& a ){
+         return ds >> a.actor >> a.permission;
+
+      }
+   };
+
+   /**
+    * This is the packed representation of an action along with
+    * meta-data about the authorization levels.
+    */
+   struct action {
+      account_name               account;
+      action_name                name;
+      vector<permission_level>   authorization;
+      bytes                      data;
+
+      action() = default;
+
+      /**
+       *  @tparam Action - a type derived from action_meta<Scope,Name>
+       *  @param value - will be serialized via raw::pack into data
+       */
+      template<typename Action>
+      action( vector<permission_level>&& auth, const Action& value ) {
+         account       = Action::get_account();
+         name          = Action::get_name();
+         authorization = move(auth);
+         data          = raw::pack(value);
+      }
+
+      template<typename DataStream>
+      friend DataStream& operator << ( DataStream& ds, const action& a ){
+         ds << a.account << a.name;
+         raw::pack(ds, a.authorization);
+         raw::pack(ds, a.data);
+         return ds;
+      }
+
+      template<typename DataStream>
+      friend DataStream& operator >> ( DataStream& ds,  action& a ){
+         ds >> a.account >> a.name;
+         raw::unpack(ds, a.authorization);
+         raw::unpack(ds, a.data);
+         return ds;
+      }
+
+      void send() const {
+         auto serialize = raw::pack(*this);
+         ::send_inline(serialize.data(), serialize.size());
+      }
+   };
+
+   template<uint64_t Account, uint64_t Name>
+   struct action_meta {
+      static uint64_t get_account() { return Account; }
+      static uint64_t get_name()  { return Name; }
+   };
+
 
  ///@} actioncpp api
 
-} // namespace eos
+} // namespace eosio
+
+EOSLIB_REFLECT( eosio::permission_level, (actor)(permission) )
+EOSLIB_REFLECT( eosio::action, (account)(name)(authorization)(data) )

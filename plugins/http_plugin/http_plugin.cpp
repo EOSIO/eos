@@ -23,6 +23,9 @@
 #include <memory>
 
 namespace eosio {
+
+   static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugin>();
+
    namespace asio = boost::asio;
 
    using std::map;

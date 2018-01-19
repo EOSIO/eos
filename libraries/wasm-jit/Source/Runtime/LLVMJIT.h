@@ -86,10 +86,6 @@ namespace LLVMJIT
 	extern llvm::Type* llvmI64x2Type;
 	extern llvm::Type* llvmF32x4Type;
 	extern llvm::Type* llvmF64x2Type;
-	extern llvm::Type* llvmB8x16Type;
-	extern llvm::Type* llvmB16x8Type;
-	extern llvm::Type* llvmB32x4Type;
-	extern llvm::Type* llvmB64x2Type;
 	#endif
 
 	// Zero constants of each type.

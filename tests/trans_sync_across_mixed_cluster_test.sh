@@ -10,7 +10,7 @@
 ###############################################################
 
 pnodes=1
-topo=star
+topo=mesh
 delay=1
 
 args=`getopt p:n:s:d: $*`
@@ -110,7 +110,7 @@ INITA_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 # cleanup from last run
 cleanup
 
-# stand up eosd cluster
+# stand up eosiod cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
 echo Launcher options: --eosiod \"--plugin eosio::wallet_api_plugin\" $launcherOpts
 programs/launcher/launcher --eosiod "--plugin eosio::wallet_api_plugin" $launcherOpts

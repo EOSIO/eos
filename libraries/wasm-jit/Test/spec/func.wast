@@ -30,11 +30,27 @@
 
   (func (result i32) (unreachable))
 
+  (type $sig-1 (func))
+  (type $sig-2 (func (result i32)))
+  (type $sig-3 (func (param $x i32)))
+  (type $sig-4 (func (param i32 f64 i32) (result i32)))
+
+  (func (export "type-use-1") (type $sig-1))
+  (func (export "type-use-2") (type $sig-2) (i32.const 0))
+  (func (export "type-use-3") (type $sig-3))
+  (func (export "type-use-4") (type $sig-4) (i32.const 0))
+  (func (export "type-use-5") (type $sig-2) (result i32) (i32.const 0))
+  (func (export "type-use-6") (type $sig-3) (param i32))
+  (func (export "type-use-7")
+    (type $sig-4) (param i32) (param f64 i32) (result i32) (i32.const 0)
+  )
+
   (func (type $sig))
+  (func (type $forward))  ;; forward reference
 
   (func $complex
     (param i32 f32) (param $x i64) (param) (param i32)
-    (result i32)
+    (result) (result i32) (result)
     (local f32) (local $y i32) (local i64 i32) (local) (local f64 i32)
     (unreachable) (unreachable)
   )
@@ -44,6 +60,7 @@
     (unreachable) (unreachable)
   )
 
+  (type $forward (func))
 
   ;; Typing of locals
 
@@ -149,59 +166,20 @@
   (func (export "init-local-i64") (result i64) (local i64) (get_local 0))
   (func (export "init-local-f32") (result f32) (local f32) (get_local 0))
   (func (export "init-local-f64") (result f64) (local f64) (get_local 0))
+)
 
-
-  ;; Desugaring of implicit type signature
-  (func $empty-sig-1)  ;; should be assigned type $sig
-  (func $complex-sig-1 (param f64 i64 f64 i64 f64 i64 f32 i32))
-  (func $empty-sig-2)  ;; should be assigned type $sig
-  (func $complex-sig-2 (param f64 i64 f64 i64 f64 i64 f32 i32))
-  (func $complex-sig-3 (param f64 i64 f64 i64 f64 i64 f32 i32))
-
-  (type $empty-sig-duplicate (func))
-  (type $complex-sig-duplicate (func (param f64 i64 f64 i64 f64 i64 f32 i32)))
-  (table anyfunc
-    (elem
-      $complex-sig-3 $empty-sig-2 $complex-sig-1 $complex-sig-3 $empty-sig-1
-    )
-  )
-
-  (func (export "signature-explicit-reused")
-    (call_indirect $sig (i32.const 1))
-    (call_indirect $sig (i32.const 4))
-  )
-
-  (func (export "signature-implicit-reused")
-    ;; The implicit index 16 in this test depends on the function and
-    ;; type definitions, and may need adapting if they change.
-    (call_indirect 16
-      (f64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
-      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
-      (i32.const 0)
-    )
-    (call_indirect 16
-      (f64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
-      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
-      (i32.const 2)
-    )
-    (call_indirect 16
-      (f64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
-      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
-      (i32.const 3)
-    )
-  )
-
-  (func (export "signature-explicit-duplicate")
-    (call_indirect $empty-sig-duplicate (i32.const 1))
-  )
-
-  (func (export "signature-implicit-duplicate")
-    (call_indirect $complex-sig-duplicate
-      (f64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
-      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
-      (i32.const 0)
-    )
-  )
+(assert_return (invoke "type-use-1"))
+(assert_return (invoke "type-use-2") (i32.const 0))
+(assert_return (invoke "type-use-3" (i32.const 1)))
+(assert_return
+  (invoke "type-use-4" (i32.const 1) (f64.const 1) (i32.const 1))
+  (i32.const 0)
+)
+(assert_return (invoke "type-use-5") (i32.const 0))
+(assert_return (invoke "type-use-6" (i32.const 1)))
+(assert_return
+  (invoke "type-use-7" (i32.const 1) (f64.const 1) (i32.const 1))
+  (i32.const 0)
 )
 
 (assert_return (invoke "local-first-i32") (i32.const 0))
@@ -305,10 +283,176 @@
 (assert_return (invoke "init-local-f32") (f32.const 0))
 (assert_return (invoke "init-local-f64") (f64.const 0))
 
+
+;; Expansion of inline function types
+
+(module
+  (func $f (result f64) (f64.const 0))  ;; adds implicit type definition
+  (func $g (param i32))                 ;; reuses explicit type definition
+  (type $t (func (param i32)))
+
+  (func $i32->void (type 0))                ;; (param i32)
+  (func $void->f64 (type 1) (f64.const 0))  ;; (result f64)
+  (func $check
+    (call $i32->void (i32.const 0))
+    (drop (call $void->f64))
+  )
+)
+
+(assert_invalid
+  (module
+    (func $f (result f64) (f64.const 0))  ;; adds implicit type definition
+    (func $g (param i32))                 ;; reuses explicit type definition
+    (func $h (result f64) (f64.const 1))  ;; reuses implicit type definition
+    (type $t (func (param i32)))
+
+    (func (type 2))  ;; does not exist
+  )
+  "unknown type"
+)
+
+
+(module
+  (type $sig (func))
+
+  (func $empty-sig-1)  ;; should be assigned type $sig
+  (func $complex-sig-1 (param f64 i64 f64 i64 f64 i64 f32 i32))
+  (func $empty-sig-2)  ;; should be assigned type $sig
+  (func $complex-sig-2 (param f64 i64 f64 i64 f64 i64 f32 i32))
+  (func $complex-sig-3 (param f64 i64 f64 i64 f64 i64 f32 i32))
+  (func $complex-sig-4 (param i64 i64 f64 i64 f64 i64 f32 i32))
+  (func $complex-sig-5 (param i64 i64 f64 i64 f64 i64 f32 i32))
+
+  (type $empty-sig-duplicate (func))
+  (type $complex-sig-duplicate (func (param i64 i64 f64 i64 f64 i64 f32 i32)))
+  (table anyfunc
+    (elem
+      $complex-sig-3 $empty-sig-2 $complex-sig-1 $complex-sig-3 $empty-sig-1
+      $complex-sig-4 $complex-sig-5
+    )
+  )
+
+  (func (export "signature-explicit-reused")
+    (call_indirect $sig (i32.const 1))
+    (call_indirect $sig (i32.const 4))
+  )
+
+  (func (export "signature-implicit-reused")
+    ;; The implicit index 3 in this test depends on the function and
+    ;; type definitions, and may need adapting if they change.
+    (call_indirect 3
+      (f64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
+      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
+      (i32.const 0)
+    )
+    (call_indirect 3
+      (f64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
+      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
+      (i32.const 2)
+    )
+    (call_indirect 3
+      (f64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
+      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
+      (i32.const 3)
+    )
+  )
+
+  (func (export "signature-explicit-duplicate")
+    (call_indirect $empty-sig-duplicate (i32.const 1))
+  )
+
+  (func (export "signature-implicit-duplicate")
+    (call_indirect $complex-sig-duplicate
+      (i64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
+      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
+      (i32.const 5)
+    )
+    (call_indirect $complex-sig-duplicate
+      (i64.const 0) (i64.const 0) (f64.const 0) (i64.const 0)
+      (f64.const 0) (i64.const 0) (f32.const 0) (i32.const 0)
+      (i32.const 6)
+    )
+  )
+)
+
 (assert_return (invoke "signature-explicit-reused"))
 (assert_return (invoke "signature-implicit-reused"))
 (assert_return (invoke "signature-explicit-duplicate"))
 (assert_return (invoke "signature-implicit-duplicate"))
+
+
+;; Malformed type use
+
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32) (result i32)))"
+    "(func (type $sig) (result i32) (param i32) (i32.const 0))"
+  )
+  "unexpected token"
+)
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32) (result i32)))"
+    "(func (param i32) (type $sig) (result i32) (i32.const 0))"
+  )
+  "unexpected token"
+)
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32) (result i32)))"
+    "(func (param i32) (result i32) (type $sig) (i32.const 0))"
+  )
+  "unexpected token"
+)
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32) (result i32)))"
+    "(func (result i32) (type $sig) (param i32) (i32.const 0))"
+  )
+  "unexpected token"
+)
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32) (result i32)))"
+    "(func (result i32) (param i32) (type $sig) (i32.const 0))"
+  )
+  "unexpected token"
+)
+(assert_malformed
+  (module quote
+    "(func (result i32) (param i32) (i32.const 0))"
+  )
+  "unexpected token"
+)
+
+(assert_malformed
+  (module quote
+    "(type $sig (func))"
+    "(func (type $sig) (result i32) (i32.const 0))"
+  )
+  "inline function type"
+)
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32) (result i32)))"
+    "(func (type $sig) (result i32) (i32.const 0))"
+  )
+  "inline function type"
+)
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32) (result i32)))"
+    "(func (type $sig) (param i32) (i32.const 0))"
+  )
+  "inline function type"
+)
+(assert_malformed
+  (module quote
+    "(type $sig (func (param i32 i32) (result i32)))"
+    "(func (type $sig) (param i32) (result i32) (unreachable))"
+  )
+  "inline function type"
+)
 
 
 ;; Invalid typing of locals

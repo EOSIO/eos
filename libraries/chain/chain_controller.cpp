@@ -52,6 +52,9 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
 {
    _initialize_indexes();
 
+   for (auto& f : cfg.applied_irreversible_block_callbacks)
+      applied_irreversible_block.connect(f);
+
    contracts::chain_initializer starter(cfg.genesis);
    starter.register_types(*this, _db);
 
@@ -1065,15 +1068,34 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
 
          auto acts = starter.prepare_database(*this, _db);
 
-         transaction genesis_setup_transaction;
+         // create a block for our genesis transaction to send to applied_irreversible_block below
+         signed_block block{};
+         block.producer = config::system_account_name;
+         block_trace btrace{block};
+         btrace.region_traces.emplace_back();
+         auto& rtrace = btrace.region_traces.back();
+         rtrace.cycle_traces.emplace_back();
+         auto& ctrace = rtrace.cycle_traces.back();
+         ctrace.shard_traces.emplace_back();
+         auto& strace = ctrace.shard_traces.back();
+
+         signed_transaction genesis_setup_transaction; // not actually signed, signature checking is skipped
          genesis_setup_transaction.actions = move(acts);
+         block.input_transactions.emplace_back(genesis_setup_transaction);
 
          ilog( "applying genesis transaction" );
          with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block | genesis_setup, 
          [&](){ 
             transaction_metadata tmeta( genesis_setup_transaction );
-            __apply_transaction( tmeta );
+            transaction_trace ttrace = __apply_transaction( tmeta );
+            strace.append(ttrace);
          });
+
+         // TODO: Should we write this genesis block instead of faking it on startup?
+         strace.calculate_root();
+         applied_block(btrace);
+         applied_irreversible_block(block);
+
          ilog( "done applying genesis transaction" );
       });
    }

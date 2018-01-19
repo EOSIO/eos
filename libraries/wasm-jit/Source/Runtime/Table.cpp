@@ -18,18 +18,19 @@ namespace Runtime
 		TableInstance* table = new TableInstance(type);
 
 		// In 64-bit, allocate enough address-space to safely access 32-bit table indices without bounds checking, or 16MB (4M elements) if the host is 32-bit.
-		const Uptr tableMaxBytes = HAS_64BIT_ADDRESS_SPACE ? (sizeof(TableInstance::FunctionElement) << 32) : 16*1024*1024;
+		const Uptr tableMaxBytes = HAS_64BIT_ADDRESS_SPACE ? Uptr(U64(sizeof(TableInstance::FunctionElement)) << 32) : 16*1024*1024;
 		
 		// On a 64 bit runtime, align the table base to a 4GB boundary, so the lower 32-bits will all be zero. Maybe it will allow better code generation?
 		// Note that this reserves a full extra 4GB, but only uses (4GB-1 page) for alignment, so there will always be a guard page at the end to
 		// protect against unaligned loads/stores that straddle the end of the address-space.
-		const Uptr alignmentBytes = HAS_64BIT_ADDRESS_SPACE ? 4ull*1024*1024*1024 : (Uptr(1) << Platform::getPageSizeLog2());
+		const Uptr alignmentBytes = HAS_64BIT_ADDRESS_SPACE ? Uptr(4ull*1024*1024*1024) : (Uptr(1) << Platform::getPageSizeLog2());
 		table->baseAddress = (TableInstance::FunctionElement*)allocateVirtualPagesAligned(tableMaxBytes,alignmentBytes,table->reservedBaseAddress,table->reservedNumPlatformPages);
 		table->endOffset = tableMaxBytes;
 		if(!table->baseAddress) { delete table; return nullptr; }
 		
 		// Grow the table to the type's minimum size.
-		if(growTable(table,type.size.min) == -1) { delete table; return nullptr; }
+		assert(type.size.min <= UINTPTR_MAX);
+		if(growTable(table,Uptr(type.size.min)) == -1) { delete table; return nullptr; }
 		
 		// Add the table to the global array.
 		tables.push_back(table);

@@ -7,7 +7,7 @@ import random
 import re
 
 ###############################################################
-# eosd_run_test
+# eosiod_run_test
 # --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
 # --keepLogs <Don't delete tn_data_* folders upon test completion>
 ###############################################################
@@ -34,13 +34,14 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
 parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
-parser.add_argument("-h", "--host", type=str, help="eosd host name", default=LOCAL_HOST)
-parser.add_argument("-p", "--port", type=int, help="eosd host port", default=DEFAULT_PORT)
+parser.add_argument("-h", "--host", type=str, help="eosiod host name", default=LOCAL_HOST)
+parser.add_argument("-p", "--port", type=int, help="eosiod host port", default=DEFAULT_PORT)
 parser.add_argument("--dumpErrorDetails",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
 parser.add_argument("--keepLogs", help="Don't delete tn_data_* folders upon test completion",
                     action='store_true')
+parser.add_argument("--exitEarly", help="Exit prior to known error point.", action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
 
 args = parser.parse_args()
@@ -48,6 +49,7 @@ testOutputFile=args.output
 server=args.host
 port=args.port
 debug=args.v
+exitEarly=args.exitEarly
 localTest=True if server == LOCAL_HOST else False
 testUtils.Utils.Debug=debug
 
@@ -63,6 +65,7 @@ testSuccessful=False
 dumpErrorDetails=args.dumpErrorDetails
 keepLogs=args.keepLogs
 killEosInstances=True
+
 
 try:
     Print("BEGIN")
@@ -231,7 +234,7 @@ try:
         errorExit("Transfer verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
 
     Print("Create new account %s via %s" % (currencyAccount.name, initbAccount.name))
-    transId=node.createAccount(currencyAccount, initbAccount)
+    transId=node.createAccount(currencyAccount, initbAccount, stakedDeposit=5000)
     if transId is None:
         cmdError("eosc create account")
         errorExit("Failed to create account %s" % (currencyAccount.name))
@@ -362,6 +365,11 @@ try:
     if hashNum == 0:
         errorExit("FAILURE - get code currency failed", raw=True)
 
+    if exitEarly:
+        Print("Stoping test at this point pending additional fixes.")
+        testSuccessful=True
+        exit(0)
+
     Print("Verify currency contract has proper initial balance")
     contract="currency"
     table="account"
@@ -390,10 +398,6 @@ try:
     if not node.waitForTransIdOnNode(transId):
         cmdError("eosc get transaction trans_id")
         errorExit("Failed to verify push message transaction id.")
-
-    Print("Stoping test at this point pending additional fixes.")
-    testSuccessful=True
-    exit(0)
     
     Print("read current contract balance")
     contract="currency"

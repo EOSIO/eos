@@ -309,6 +309,8 @@ public:
    // return true if --skip-transaction-signatures passed to eosd
    bool is_skipping_transaction_signatures() const;
 
+   // Only call this in plugin_initialize() to modify chain_controller constructor configuration
+   chain_controller::controller_config& chain_config();
    // Only call this after plugin_startup()!
    chain_controller& chain();
    // Only call this after plugin_startup()!
