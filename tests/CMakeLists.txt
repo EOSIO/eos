@@ -67,11 +67,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_test.py COPYONLY)
 
-if(UNIX AND NOT APPLE)
-  add_test(NAME eosiod_run_test COMMAND tests/eosiod_run_test.py --exitEarly --dumpErrorDetail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  add_test(chain_test chain_test)
-  add_test(NAME trans_sync_across_mixed_cluster_test COMMAND tests/trans_sync_across_mixed_cluster_test.sh -p 1 -n 2 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
+add_test(NAME eosiod_run_test COMMAND tests/eosiod_run_test.py --exitEarly --dumpErrorDetail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(chain_test chain_test)
+add_test(NAME trans_sync_across_mixed_cluster_test COMMAND tests/trans_sync_across_mixed_cluster_test.sh -p 1 -n 2 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
