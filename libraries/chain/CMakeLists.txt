@@ -44,5 +44,3 @@ INSTALL( TARGETS
    ARCHIVE DESTINATION lib
 )
 INSTALL( FILES ${HEADERS} DESTINATION "include/eos/chain" )
-
-add_subdirectory(test)
