@@ -37,7 +37,6 @@ set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 
-#set (ENABLE_INSTALLER 1)
 #set (USE_PCH 1)
 
 if (USE_PCH)
@@ -196,77 +195,7 @@ add_subdirectory( programs )
 add_subdirectory( tests )
 add_subdirectory( tools )
 
-if (ENABLE_INSTALLER)
-
-include(InstallRequiredSystemLibraries)
-
-set(CPACK_OUTPUT_FILE_PREFIX ${CMAKE_BINARY_DIR}/packages)
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
-
-SET(CPACK_PACKAGE_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
-set(CPACK_PACKAGE_NAME "eos")
-set(CPACK_PACKAGE_VENDOR "EOSIO")
-set(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
-set(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
-set(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
-set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
-set(CPACK_PACKAGE_DESCRIPTION "A client for the Eos network")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A client for the Eos network")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "Eos ${CPACK_PACKAGE_VERSION}")
-
-if(WIN32)
- SET(CPACK_GENERATOR "ZIP;NSIS")
- set(CPACK_PACKAGE_NAME "Eos") # override above
- set(CPACK_NSIS_EXECUTABLES_DIRECTORY .)
- set(CPACK_NSIS_PACKAGE_NAME "Eos v${CPACK_PACKAGE_VERSION}")
- set(CPACK_NSIS_DISPLAY_NAME "${CPACK_NSIS_PACKAGE_NAME}")
- set(CPACK_NSIS_DEFINES "  !define MUI_STARTMENUPAGE_DEFAULTFOLDER \\\"Eos\\\"")
- # it seems like windows zip files usually don't have a single directory inside them, unix tgz frequently do
- SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
-
-endif(WIN32)
-
-if(APPLE)
-  set(CPACK_GENERATOR "DragNDrop")
-endif()
-
-if(LINUX)
-  # Linux gets a .tgz
-  SET(CPACK_GENERATOR "TGZ")
-  SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
-endif(LINUX)
-
- include(CPack)
-endif(ENABLE_INSTALLER)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
 
-include(FindDoxygen)
-
-if(NOT DOXYGEN_FOUND)
-  message(STATUS "Doxygen not found.  Contract documentation will not be generated.")
-else()
-  set(DOXY_EOS_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" CACHE INTERNAL "Version string used in PROJECT_NUMBER.")
-  # CMake strips trailing path separators off of variables it knows are paths,
-  # so the trailing '/' Doxygen expects is embedded in the doxyfile.
-  set(DOXY_DOC_DEST_DIR "${CMAKE_BINARY_DIR}/docs" CACHE PATH "Path to the doxygen output")
-  set(DOXY_DOC_INPUT_ROOT_DIR "contracts" CACHE PATH "Path to the doxygen input")
-  if(DOXYGEN_DOT_FOUND)
-    set(DOXY_HAVE_DOT "YES" CACHE STRING "Doxygen to use dot for diagrams.")
-  else(DOXYGEN_DOT_FOUND)
-    set(DOXY_HAVE_DOT "NO" CACHE STRING "Doxygen to use dot for diagrams.")
-  endif(DOXYGEN_DOT_FOUND)
-  configure_file("eos.doxygen.in" "${CMAKE_BINARY_DIR}/eos.doxygen")
-  if(BUILD_DOXYGEN) 
-    message(STATUS "Doxygen found.  Contract documentation will be generated.")
-    # Doxygen has issues making destination directories more than one level deep, so do it for it.
-    add_custom_target(make_doc_dir ALL COMMAND ${CMAKE_COMMAND} -E make_directory "${DOXY_DOC_DEST_DIR}")
-    add_custom_target(contract_documentation ALL
-      COMMAND "${DOXYGEN_EXECUTABLE}" "${CMAKE_BINARY_DIR}/eos.doxygen"
-      DEPENDS make_doc_dir
-      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-      COMMENT "Building doxygen documentation into ${DOXY_DOC_DEST_DIR}..."
-      VERBATIM)
-  endif(BUILD_DOXYGEN)
-endif()
+include(installer)
+include(doxygen)
