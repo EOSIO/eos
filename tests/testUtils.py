@@ -42,6 +42,17 @@ class Utils:
 
     SigKillTag="kill"
     SigTermTag="term"
+
+    amINoon=False
+
+    # I am in the NOON branch
+    @staticmethod
+    def iAmNoon():
+        Utils.amINoon=True
+        Utils.EosClientPath="programs/eosioc/eosioc"
+        Utils.EosWalletPath="programs/eosio-walletd/eosio-walletd"
+        Utils.EosServerName="eosiod"
+        Utils.EosServerPath="programs/eosiod/%s" % (Utils.EosServerName)
     
     @staticmethod
     def getChainStrategies():
@@ -251,7 +262,7 @@ class Node(object):
 
         return None
     
-
+ 
     def doesNodeHaveBlockNum(self, blockNum):
         if self.alive is False:
             return False
@@ -314,7 +325,7 @@ class Node(object):
                 time.sleep(self.mongoSyncTime)
                 
         return None
-    
+
     def getMessageFromDb(self, transId, retry=True, silentErrors=False):
         for i in range(2):
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
@@ -335,6 +346,7 @@ class Node(object):
                 time.sleep(self.mongoSyncTime)
                 
         return None
+
         
     def doesNodeHaveTransId(self, transId):
         trans=self.getTransaction(transId, silentErrors=True)
@@ -345,10 +357,17 @@ class Node(object):
 
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
-    def createAccount(self, account, creatorAccount, waitForTransBlock=False):
-        cmd="%s %s create account %s %s %s %s" % (Utils.EosClientPath, self.endpointArgs,
-            creatorAccount.name, account.name,
-            account.ownerPublicKey, account.activePublicKey)
+    def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
+        cmd=None
+        if Utils.amINoon:
+            cmd="%s %s create account --staked-deposit %d %s %s %s %s" % (
+                Utils.EosClientPath, self.endpointArgs, stakedDeposit, creatorAccount.name, account.name,
+                account.ownerPublicKey, account.activePublicKey)
+        else:
+            cmd="%s %s create account %s %s %s %s" % (Utils.EosClientPath, self.endpointArgs,
+                                                      creatorAccount.name, account.name,
+                                                      account.ownerPublicKey, account.activePublicKey)
+            
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
@@ -386,7 +405,7 @@ class Node(object):
             Utils.Print("ERROR: Exception during get account from db. %s" % (msg))
             return None
 
-    
+
     # Verifies account. Returns "get account" json return object
     def verifyAccount(self, account):
         if not self.enableMongo:
@@ -410,7 +429,7 @@ class Node(object):
                     time.sleep(self.mongoSyncTime)
 
         return None
-
+    
     def waitForBlockNumOnNode(self, blockNum, timeout=60):
         startTime=time.time()
         remainingTime=timeout
@@ -429,7 +448,6 @@ class Node(object):
         while time.time()-startTime < timeout:
             if self.doesNodeHaveTransId(transId):
                 return True
-                
             sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
             remainingTime -= sleepTime
             time.sleep(sleepTime)
@@ -675,7 +693,11 @@ class Node(object):
         return keys
 
     def pushMessage(self, contract, action, data, opts):
-        cmd="%s %s push message %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
+        cmd=None
+        if Utils.amINoon:
+            cmd="%s %s push actions %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
+        else:
+            cmd="%s %s push message %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
         cmdArr=cmd.split()
         if data is not None:
             cmdArr.append(data)
@@ -707,15 +729,16 @@ class Node(object):
             return None
         return trans
 
-    def getInfo(self):
+    def getInfo(self, silentErrors=False):
         cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get info. %s" % (msg))
+            if not silentErrors:
+                msg=ex.output.decode("utf-8")
+                Utils.Print("ERROR: Exception during get info. %s" % (msg))
             return None
 
     def getBlockFromDb(self, idx):
@@ -729,9 +752,9 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during get db block. %s" % (msg))
             return None
-            
+
     def checkPulse(self):
-        info=self.getInfo()
+        info=self.getInfo(True)
         if info is not None:
             self.alive=True
             return True
@@ -751,6 +774,7 @@ class Node(object):
                 blockNum=block["block_num"]
                 return blockNum
         return None
+    
 ###########################################################################################
 
 Wallet=namedtuple("Wallet", "name password host port")
@@ -759,15 +783,15 @@ class WalletMgr(object):
     __walletDataDir="test_wallet_0"
 
     # walletd [True|False] Will wallet me in a standalone process
-    def __init__(self, walletd, eosdPort=8888, eosdHost="localhost", port=8899, host="localhost"):
+    def __init__(self, walletd, eosiodPort=8888, eosiodHost="localhost", port=8899, host="localhost"):
         self.walletd=walletd
-        self.eosdPort=eosdPort
-        self.eosdHost=eosdHost
+        self.eosiodPort=eosiodPort
+        self.eosiodHost=eosiodHost
         self.port=port
         self.host=host
         self.wallets={}
         self.__walletPid=None
-        self.endpointArgs="--host %s --port %d" % (self.eosdHost, self.eosdPort)
+        self.endpointArgs="--host %s --port %d" % (self.eosiodHost, self.eosiodPort)
         if self.walletd:
             self.endpointArgs += " --wallet-host %s --wallet-port %d" % (self.host, self.port)
 
@@ -908,7 +932,7 @@ class WalletMgr(object):
         if self.__walletPid is not None:
             Utils.Print("Contents of %s:" % (WalletMgr.__walletLogFile))
             Utils.Print("=================================================================")
-            with open(WalletMgr.__walletLogFile) as f:
+            with open(WalletMgr.__walletLogFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
     
     def killall(self):
@@ -974,23 +998,28 @@ class Cluster(object):
     # launch local nodes and set self.nodes
     def launch(self, pnodes=1, total_nodes=1, topo="mesh", delay=1):
         if not self.localCluster:
-            Utils.Print("WARNING: Cluster not local, not launching eosd.")
+            Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
             return True
         
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        # cmd="%s -p %s -n %s -s %s -d %s" % (
-        #     Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
-        cmd="%s" % (
-            Utils.EosLauncherPath)
+        cmd="%s -p %s -n %s -s %s -d %s" % (
+            Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
         cmdArr=cmd.split()
         if not self.walletd or self.enableMongo:
-            cmdArr.append("--eosd")
+            if Utils.amINoon:
+                cmdArr.append("--eosiod")
+            else:
+                cmdArr.append("--eosd")
             if not self.walletd:
                 cmdArr.append("--plugin eosio::wallet_api_plugin")
             if self.enableMongo:
-                cmdArr.append("--plugin eosio::db_plugin --mongodb-uri %s" % self.mongoUri)
+                if Utils.amINoon:
+                    cmdArr.append("--plugin eosio::mongo_db_plugin --mongodb-uri %s" % self.mongoUri)
+                else:
+                    cmdArr.append("--plugin eosio::db_plugin --mongodb-uri %s" % self.mongoUri)
+
         Utils.Print("cmd: ", cmdArr)
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch.")
@@ -999,8 +1028,8 @@ class Cluster(object):
         nodes=self.discoverLocalNodes(total_nodes)
 
         if total_nodes != len(nodes):
-            Utils.Print("ERROR: Unable to validate eosd instances, expected: %d, actual: %d" %
-                          (total_nodes, len(nodes)))
+            Utils.Print("ERROR: Unable to validate %s instances, expected: %d, actual: %d" %
+                          (Utils.EosServerName, total_nodes, len(nodes)))
             return False
 
         self.nodes=nodes
@@ -1215,7 +1244,8 @@ class Cluster(object):
     def validateSpreadFunds(self, expectedTotal):
         for node in self.nodes:
             if node.alive:
-                Utils.Debug and Utils.Print("Validate funds on eosd server port %d." % (node.port))
+                Utils.Debug and Utils.Print("Validate funds on %s server port %d." %
+                                            (Utils.EosServerName, node.port))
                 if node.validateSpreadFundsOnNode(Cluster.initaAccount, self.accounts, expectedTotal) is False:
                     Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
                     return False
@@ -1241,13 +1271,13 @@ class Cluster(object):
         return True
 
     # create account, verify account and return transaction id
-    def createAccountAndVerify(self, account, creator):
+    def createAccountAndVerify(self, account, creator, stakedDeposit=1000):
         if len(self.nodes) == 0:
             Utils.Print("ERROR: No nodes initialized.")
             return None
         node=self.nodes[0]
 
-        transId=node.createAccount(account, creator)
+        transId=node.createAccount(account, creator, stakedDeposit)
 
         if transId is not None and node.verifyAccount(account) is not None:
             return transId
@@ -1267,7 +1297,7 @@ class Cluster(object):
                 pattern="[\n]?(\d+) (.* --data-dir tn_data_%02d)\n" % (i)
                 m=re.search(pattern, psOut, re.MULTILINE)
                 if m is None:
-                    Utils.Print("ERROR: Failed to find eosd pid. Pattern %s" % (pattern))
+                    Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
                     break
                 instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), alive=True, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
                 instance.setWalletEndpointArgs(self.walletEndpointArgs)
@@ -1279,7 +1309,7 @@ class Cluster(object):
         
         return nodes
 
-    # Check state of running eosd process and update EosInstanceInfos
+    # Check state of running eosiod process and update EosInstanceInfos
     #def updateEosInstanceInfos(eosInstanceInfos):
     def updateNodesStatus(self):
         for node in self.nodes:
@@ -1290,7 +1320,7 @@ class Cluster(object):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
-        Utils.Print("Kill %d Eosd instances with signal %s." % (killCount, killSignal))
+        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.EosServerName, killSignal))
 
         killedCount=0
         for node in reversed(self.nodes):
@@ -1369,16 +1399,17 @@ class Cluster(object):
             ret,outs,errs=Node.stdinAndCheckOutput(cmd.split(), subcommand)
             if ret is not 0:
                 Utils.Print("ERROR: Failed to drop database: %s" % (Node.byteArrToStr(errs)) )
+
             
     # Create accounts and validates that the last transaction is received on root node
-    def createAccounts(self, creator, waitForTransBlock=True):
+    def createAccounts(self, creator, waitForTransBlock=True, stakedDeposit=1000):
         if self.accounts is None:
             return True
 
         transId=None
         for account in self.accounts:
             Utils.Debug and Utils.Print("Create account %s." % (account.name))
-            trans=self.createAccountAndVerify(account, creator)
+            trans=self.createAccountAndVerify(account, creator, stakedDeposit)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s." % (account.name))
                 return False
