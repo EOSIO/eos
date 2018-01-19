@@ -51,5 +51,9 @@ INSTALL( TARGETS
 )
 INSTALL( FILES ${HEADERS} DESTINATION "include/eosio/chain" )
 
+add_subdirectory(test)
+
 #add_executable( test test.cpp )
 #target_link_libraries( test eosio_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
+
+
