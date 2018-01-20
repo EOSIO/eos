@@ -5,7 +5,6 @@ import testUtils
 import argparse
 import random
 import re
-import time
 
 ###############################################################
 # eosiod_run_test
@@ -35,26 +34,32 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
 parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
-parser.add_argument("-h", "--host", type=str, help="eosiod host name", default=LOCAL_HOST)
-parser.add_argument("-p", "--port", type=int, help="eosiod host port", default=DEFAULT_PORT)
-parser.add_argument("--dumpErrorDetails",
+parser.add_argument("-h", "--host", type=str, help="%s host name" % (testUtils.Utils.EosServerName),
+                    default=LOCAL_HOST)
+parser.add_argument("-p", "--port", type=int, help="%s host port" % testUtils.Utils.EosServerName,
+                    default=DEFAULT_PORT)
+parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
+parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
-parser.add_argument("--keepLogs", help="Don't delete tn_data_* folders upon test completion",
+parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon test completion",
                     action='store_true')
-parser.add_argument("--exitEarly", help="Exit prior to known error point.", action='store_true')
+parser.add_argument("--exit-early", help="Exit prior to known error point.", action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
+parser.add_argument("--noon", help="This is the Noon branch.", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
 server=args.host
 port=args.port
 debug=args.v
-exitEarly=args.exitEarly
+exitEarly=args.exit_early
+enableMongo=args.mongodb
+amINoon=args.noon
 localTest=True if server == LOCAL_HOST else False
 testUtils.Utils.Debug=debug
 
-cluster=testUtils.Cluster(walletd=True)
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo)
 walletMgr=testUtils.WalletMgr(True)
 cluster.killall()
 cluster.cleanup()
@@ -63,10 +68,13 @@ walletMgr.cleanup()
 
 random.seed(1) # Use a fixed seed for repeatability.
 testSuccessful=False
-dumpErrorDetails=args.dumpErrorDetails
-keepLogs=args.keepLogs
+dumpErrorDetails=args.dump_error_details
+keepLogs=args.keep_logs
 killEosInstances=True
 
+if amINoon:
+    testUtils.Utils.iAmNoon()
+    testUtils.Utils.setMongoSyncTime(50)
 
 try:
     Print("BEGIN")
@@ -105,8 +113,6 @@ try:
     exchangeAccount.ownerPrivateKey=PRV_KEY2
     exchangeAccount.ownerPublicKey=PUB_KEY2
     
-    time.sleep(5)
-
     Print("Stand up walletd")
     if walletMgr.launch() is False:
         cmdError("eos-walletd")
@@ -323,15 +329,36 @@ try:
     node.waitForTransIdOnNode(transId)
 
     Print("Get transaction details %s" % (transId))
-    transaction=node.getTransaction(transId)
+    transaction=None
+    if not enableMongo:
+        transaction=node.getTransaction(transId)
+    else:
+        if amINoon:
+            transaction=node.getActionFromDb(transId)
+        else:
+            transaction=node.getMessageFromDb(transId)
     if transaction is None:
         cmdError("eosc get transaction trans_id")
         errorExit("Failed to retrieve transaction details %s" % (transId))
 
-    typeVal=  transaction["transaction"]["actions"][1]["name"]
-    amountVal=transaction["transaction"]["actions"][1]["data"]["amount"]
+    typeVal=None
+    amountVal=None
+    if amINoon:
+        if not enableMongo:
+            typeVal=  transaction["transaction"]["actions"][1]["name"]
+            amountVal=transaction["transaction"]["actions"][1]["data"]["amount"]
+        else:
+            typeVal=  transaction["name"]
+            amountVal=transaction["data"]["amount"]
+    else:
+        if not enableMongo:
+            typeVal=  transaction["transaction"]["messages"][0]["type"]
+            amountVal=transaction["transaction"]["messages"][0]["data"]["amount"]
+        else:
+            typeVal=  transaction["type"]
+            amountVal=transaction["data"]["amount"]
+
     if typeVal!= "transfer" or amountVal != 975311:
-    #if transaction.tType != "transfer" or transaction.amount != 975311:
         errorExit("FAILURE - get transaction trans_id failed: %s" % (transId), raw=True)
 
     Print("Get transactions for account %s" % (testeraAccount.name))
@@ -339,9 +366,11 @@ try:
     if actualTransactions is None:
         cmdError("eosc get transactions testera")
         errorExit("Failed to get transactions by account %s" % (testeraAccount.name))
-    if len(actualTransactions) == 0:
+    if transId not in actualTransactions:
         errorExit("FAILURE - get transactions testera failed", raw=True)
 
+    Print("Currency Contract Tests")
+    Print("verify no contract in place")
     Print("Get code hash for account %s" % (currencyAccount.name))
     codeHash=node.getAccountCodeHash(currencyAccount.name)
     if codeHash is None:
@@ -359,16 +388,29 @@ try:
         cmdError("eosc set contract currency")
         errorExit("Failed to publish contract.")
 
-    Print("Get code hash for account %s" % (currencyAccount.name))
-    codeHash=node.getAccountCodeHash(currencyAccount.name)
-    if codeHash is None:
-        cmdError("eosc get code currency")
-        errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
-    hashNum=int(codeHash, 16)
-    if hashNum == 0:
-        errorExit("FAILURE - get code currency failed", raw=True)
+    if not enableMongo:
+        Print("Get code hash for account %s" % (currencyAccount.name))
+        codeHash=node.getAccountCodeHash(currencyAccount.name)
+        if codeHash is None:
+            cmdError("eosc get code currency")
+            errorExit("Failed to get code hash for account %s" % (currencyAccount.name))
+        hashNum=int(codeHash, 16)
+        if hashNum == 0:
+            errorExit("FAILURE - get code currency failed", raw=True)
+    else:
+        Print("verify abi is set")
+        account=node.getEosAccountFromDb(currencyAccount.name)
+        abiName=account["abi"]["structs"][0]["name"]
+        abiActionName=None
+        if not amINoon:
+            abiActionName=account["abi"]["actions"][0]["action_name"]
+        else:
+            abiActionName=account["abi"]["actions"][0]["name"]
+        abiType=account["abi"]["actions"][0]["type"]
+        if abiName != "transfer" or abiActionName != "transfer" or abiType != "transfer":
+            errorExit("FAILURE - get table currency account failed", raw=True)
 
-    if exitEarly:
+    if amINoon and exitEarly:
         Print("Stoping test at this point pending additional fixes.")
         testSuccessful=True
         exit(0)
@@ -505,13 +547,28 @@ try:
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(blockNum)
+        block=node.getBlock(blockNum, retry=False)
         if block is None:
             cmdError("eosc get block")
-            errorExit("Failed to get block")
+            errorExit("mongo get block by num %d" % blockNum)
 
+        if enableMongo:
+            blockId=block["block_id"]
+            block2=node.getBlockById(blockId, retry=False)
+            if block2 is None:
+                errorExit("mongo get block by id %s" % blockId)
+
+            # TBD: getTransByBlockId() needs to handle multiple returned transactions
+            # trans=node.getTransByBlockId(blockId, retry=False)
+            # if trans is not None:
+            #     transId=testUtils.Node.getTransId(trans)
+            #     trans2=node.getMessageFromDb(transId)
+            #     if trans2 is None:
+            #         errorExit("mongo get messages by transaction id %s" % (transId))
+
+            
     Print("Request invalid block numbered %d" % (currentBlockNum+100))
-    block=node.getBlock(currentBlockNum+100, silent=True)
+    block=node.getBlock(currentBlockNum+100, silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
     else:
