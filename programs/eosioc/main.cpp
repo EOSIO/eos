@@ -97,6 +97,8 @@ Options:
 #include "localize.hpp"
 #include "config.hpp"
 
+#include "libeosioclient/eosioclient.hpp"
+
 using namespace std;
 using namespace eosio;
 using namespace eosio::chain;
@@ -439,6 +441,8 @@ struct set_action_permission_subcommand {
 };
 
 int main( int argc, char** argv ) {
+   eosio::client::Eosioclient eosioclient;
+
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
       binPath = relative(binPath, current_path()); 
@@ -523,8 +527,8 @@ int main( int argc, char** argv ) {
    get->require_subcommand();
 
    // get info
-   get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] {
-      std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+   get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([&eosioclient] {
+      std::cout << fc::json::to_pretty_string(eosioclient.get_info()) << std::endl;
    });
 
    // get block
