@@ -4,6 +4,9 @@
 #include "eosio/chain_plugin/chain_plugin.hpp"
 #include "functions.hpp"
 
+namespace eosio {
+namespace client {
+
 class Eosioclient
 {
 public:
@@ -26,5 +29,8 @@ private:
     std::string host = "localhost";
     uint32_t port = 8888;
 };
+
+} // namespace client
+} // namespace eosio
 
 #endif // EOSIOCLIENT_HPP
