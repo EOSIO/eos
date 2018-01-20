@@ -74,6 +74,7 @@ killEosInstances=True
 
 if amINoon:
     testUtils.Utils.iAmNoon()
+    testUtils.Utils.setMongoSyncTime(50)
 
 try:
     Print("BEGIN")
@@ -332,7 +333,10 @@ try:
     if not enableMongo:
         transaction=node.getTransaction(transId)
     else:
-        transaction=node.getMessageFromDb(transId, retry=False)
+        if amINoon:
+            transaction=node.getActionFromDb(transId)
+        else:
+            transaction=node.getMessageFromDb(transId)
     if transaction is None:
         cmdError("eosc get transaction trans_id")
         errorExit("Failed to retrieve transaction details %s" % (transId))
@@ -397,7 +401,11 @@ try:
         Print("verify abi is set")
         account=node.getEosAccountFromDb(currencyAccount.name)
         abiName=account["abi"]["structs"][0]["name"]
-        abiActionName=account["abi"]["actions"][0]["action_name"]
+        abiActionName=None
+        if not amINoon:
+            abiActionName=account["abi"]["actions"][0]["action_name"]
+        else:
+            abiActionName=account["abi"]["actions"][0]["name"]
         abiType=account["abi"]["actions"][0]["type"]
         if abiName != "transfer" or abiActionName != "transfer" or abiType != "transfer":
             errorExit("FAILURE - get table currency account failed", raw=True)

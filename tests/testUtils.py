@@ -43,9 +43,12 @@ class Utils:
     SigKillTag="kill"
     SigTermTag="term"
 
+    # mongoSyncTime: eosiod mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
+    #  a wait period before the 2nd DB check (if first check fails)
+    mongoSyncTime=25
     amINoon=False
 
-    # I am in the NOON branch
+    # Configure for the NOON branch
     @staticmethod
     def iAmNoon():
         Utils.amINoon=True
@@ -53,6 +56,10 @@ class Utils:
         Utils.EosWalletPath="programs/eosio-walletd/eosio-walletd"
         Utils.EosServerName="eosiod"
         Utils.EosServerPath="programs/eosiod/%s" % (Utils.EosServerName)
+
+    @staticmethod
+    def setMongoSyncTime(syncTime):
+        Utils.mongoSyncTime=syncTime
     
     @staticmethod
     def getChainStrategies():
@@ -101,16 +108,14 @@ class Account(object):
 ###########################################################################################
 class Node(object):
 
-    # mongoSyncTime: eosiod mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
-    #  a wait period before the 2nd DB check (if first check fails)
-    def __init__(self, host, port, pid=None, cmd=None, alive=None, mongoSyncTime=25, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, host, port, pid=None, cmd=None, alive=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
         self.host=host
         self.port=port
         self.pid=pid
         self.cmd=cmd
         self.alive=alive
         self.enableMongo=enableMongo
-        self.mongoSyncTime=None if mongoSyncTime < 1 else mongoSyncTime
+        self.mongoSyncTime=None if Utils.mongoSyncTime < 1 else Utils.mongoSyncTime
         self.mongoHost=mongoHost
         self.mongoPort=mongoPort
         self.mongoDb=mongoDb
@@ -326,10 +331,33 @@ class Node(object):
                 
         return None
 
+    
+    
+    def getActionFromDb(self, transId, retry=True, silentErrors=False):
+        for i in range(2):
+            cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
+            subcommand='db.Actions.findOne( { "transaction_id": "%s" } )' % (transId)
+            Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+            try:
+                trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
+                if trans is not None:
+                    return trans
+            except subprocess.CalledProcessError as ex:
+                if not silentErrors:
+                    msg=ex.output.decode("utf-8")
+                    Utils.Print("ERROR: Exception during get db node get message. %s" % (msg))
+                return None
+            if not retry:
+                break
+            if self.mongoSyncTime is not None:
+                time.sleep(self.mongoSyncTime)
+                
+        return None
+    
     def getMessageFromDb(self, transId, retry=True, silentErrors=False):
         for i in range(2):
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-            subcommand='db.Messages.findOne( { transaction_id: "%s" } )' % (transId)
+            subcommand='db.Messages.findOne( { "transaction_id": "%s" } )' % (transId)
             Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
             try:
                 trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
@@ -951,7 +979,6 @@ class Cluster(object):
     __chainSyncStrategies=Utils.getChainStrategies()
     __WalletName="MyWallet"
     __localHost="localhost"
-    #__portStart=8888
     __lastTrans=None
 
     # init accounts
@@ -983,9 +1010,8 @@ class Cluster(object):
         self.mongoUri=""
         if self.enableMongo:
             self.mongoUri="mongodb://%s:%d/%s" % (mongoHost, mongoPort, mongoDb)
-            #self.mongoEndpointArgs += "mongodb://%s:%d/%s" % (mongoHost, mongoPort, mongoDb)
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
-        self.endpointArgs=""
+        #self.endpointArgs=""
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
