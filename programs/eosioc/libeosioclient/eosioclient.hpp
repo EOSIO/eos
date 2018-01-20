@@ -2,11 +2,7 @@
 #define EOSIOCLIENT_HPP
 
 #include "eosio/chain_plugin/chain_plugin.hpp"
-
-namespace {
-const std::string chain_func_base = "/v1/chain";
-const std::string get_info_func = chain_func_base + "/get_info";
-}
+#include "functions.hpp"
 
 class Eosioclient
 {
