@@ -52,13 +52,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.py COPYONLY)
 
-add_test(NAME eosd_run_test.sh COMMAND eosd_run_test.sh --eosd=$<TARGET_FILE:eosd> --host=localhost --port=8888)
 if(UNIX AND NOT APPLE)
   add_test(chain_test chain_test)
   add_test(slow_test slow_test)
   add_test(api_test api_test)
   if (libmongoc-1.0_FOUND)
-    # TODO fix path in the test and uncomment
-    # add_test(eosd_run_mongodb_test.sh tests/eosd_run_mongodb_test.sh)
+    # Placeholder for mongodb tests
   endif()
 endif()
