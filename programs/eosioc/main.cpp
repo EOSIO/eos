@@ -97,7 +97,7 @@ Options:
 #include "localize.hpp"
 #include "config.hpp"
 
-#include "libeosioclient/eosioclient.hpp"
+#include "eosioclient.hpp"
 
 using namespace std;
 using namespace eosio;
