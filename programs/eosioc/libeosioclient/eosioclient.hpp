@@ -10,7 +10,7 @@ namespace client {
 class Eosioclient
 {
 public:
-    eosio::chain_apis::read_only::get_info_results get_info() const;
+    fc::variant get_info() const;
     fc::variant get_code(std::string account_name) const;
 
     std::string host = "localhost"; /// @todo make private

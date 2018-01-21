@@ -528,7 +528,7 @@ int main( int argc, char** argv ) {
    get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([&eosioclient] {
        eosioclient.host = host;
        eosioclient.port = port;
-      std::cout << fc::json::to_pretty_string(eosioclient.get_info()) << std::endl;
+      std::cout << fc::json::to_pretty_string(eosioclient.get_info().as<eosio::chain_apis::read_only::get_info_results>()) << std::endl;
    });
 
    // get block
