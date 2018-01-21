@@ -20,15 +20,6 @@ private:
     fc::variant call( const std::string& server, uint16_t port,
                       const std::string& path,
                       const fc::variant& postdata = fc::variant() ) const;
-
-    template<typename T>
-    fc::variant call( const std::string& server, uint16_t port,
-                      const std::string& path,
-                      const T& v ) { return call( server, port, path, fc::variant(v) ); }
-
-    template<typename T>
-    fc::variant call( const std::string& path,
-                      const T& v ) { return call( host, port, path, fc::variant(v) ); }
 };
 
 } // namespace client
