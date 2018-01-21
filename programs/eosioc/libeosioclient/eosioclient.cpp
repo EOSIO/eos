@@ -17,7 +17,7 @@ fc::variant Eosioclient::get_info() const
     return call(host, port, get_info_func);
 }
 
-fc::variant Eosioclient::get_code(std::string account_name) const
+fc::variant Eosioclient::get_code(const std::string &account_name) const
 {
     return call(host, port, get_code_func, fc::mutable_variant_object("account_name", account_name));
 }
