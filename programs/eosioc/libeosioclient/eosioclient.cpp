@@ -14,25 +14,25 @@ namespace client {
 
 fc::variant Eosioclient::get_info() const
 {
-    return call(host, port, get_info_func);
+    return call(get_info_func);
 }
 
 fc::variant Eosioclient::get_code(const std::string &account_name) const
 {
-    return call(host, port, get_code_func, fc::mutable_variant_object("account_name", account_name));
+    return call(get_code_func, fc::mutable_variant_object("account_name", account_name));
 }
 
 fc::variant Eosioclient::get_table(const std::string& scope, const std::string& code, const std::string& table) const
 {
     bool binary = false;
-    return call(host, port, get_table_func, fc::mutable_variant_object("json", !binary)
+    return call(get_table_func, fc::mutable_variant_object("json", !binary)
                 ("scope",scope)
                 ("code",code)
                 ("table",table)
                 );
 }
 
-fc::variant Eosioclient::call(const std::string &server, uint16_t port, const std::string &path, const fc::variant &postdata) const
+fc::variant Eosioclient::call(const std::string &path, const fc::variant &postdata) const
 {
     try {
         std::string postjson;
@@ -43,7 +43,7 @@ fc::variant Eosioclient::call(const std::string &server, uint16_t port, const st
 
         // Get a list of endpoints corresponding to the server name.
         tcp::resolver resolver(io_service);
-        tcp::resolver::query query(server, std::to_string(port) );
+        tcp::resolver::query query(host, std::to_string(port) );
         tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
         tcp::resolver::iterator end;
 
@@ -66,7 +66,7 @@ fc::variant Eosioclient::call(const std::string &server, uint16_t port, const st
             boost::asio::streambuf request;
             std::ostream request_stream(&request);
             request_stream << "POST " << path << " HTTP/1.0\r\n";
-            request_stream << "Host: " << server << "\r\n";
+            request_stream << "Host: " << host << "\r\n";
             request_stream << "content-length: " << postjson.size() << "\r\n";
             request_stream << "Accept: */*\r\n";
             request_stream << "Connection: close\r\n\r\n";
@@ -126,8 +126,7 @@ fc::variant Eosioclient::call(const std::string &server, uint16_t port, const st
         }
 
         FC_ASSERT( !"unable to connect" );
-    } FC_CAPTURE_AND_RETHROW( (server)(port)(path)(postdata) )
-
+    } FC_CAPTURE_AND_RETHROW( (host)(port)(path)(postdata) )
 }
 
 } // namespace client
