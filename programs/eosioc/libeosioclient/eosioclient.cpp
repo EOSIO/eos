@@ -9,12 +9,12 @@ using boost::asio::ip::tcp;
 namespace eosio {
 namespace client {
 
-chain_apis::read_only::get_info_results Eosioclient::get_info()
+chain_apis::read_only::get_info_results Eosioclient::get_info() const
 {
     return call(host, port, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-fc::variant Eosioclient::call(const std::string &server, uint16_t port, const std::string &path, const fc::variant &postdata)
+fc::variant Eosioclient::call(const std::string &server, uint16_t port, const std::string &path, const fc::variant &postdata) const
 {
     try {
         std::string postjson;

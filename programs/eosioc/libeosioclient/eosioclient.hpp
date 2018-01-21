@@ -10,7 +10,7 @@ namespace client {
 class Eosioclient
 {
 public:
-    eosio::chain_apis::read_only::get_info_results get_info();
+    eosio::chain_apis::read_only::get_info_results get_info() const;
 
     std::string host = "localhost"; /// @todo make private
     uint32_t port = 8888; /// @todo make private
@@ -18,7 +18,7 @@ public:
 private:
     fc::variant call( const std::string& server, uint16_t port,
                       const std::string& path,
-                      const fc::variant& postdata = fc::variant() );
+                      const fc::variant& postdata = fc::variant() ) const;
 
     template<typename T>
     fc::variant call( const std::string& server, uint16_t port,
