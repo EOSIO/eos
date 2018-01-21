@@ -9,9 +9,9 @@ using boost::asio::ip::tcp;
 namespace eosio {
 namespace client {
 
-chain_apis::read_only::get_info_results Eosioclient::get_info() const
+fc::variant Eosioclient::get_info() const
 {
-    return call(host, port, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
+    return call(host, port, get_info_func);
 }
 
 fc::variant Eosioclient::get_code(std::string account_name) const
