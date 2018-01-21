@@ -659,4 +659,19 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
 
+//Make sure current_memory/grow_memory is not allowed
+BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(current_memory)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(current_memory), "10.0000 EOS", "memo" );
+   produce_block();
+
+   BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), fc::unhandled_exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(current_memory), grow_memory_wast), fc::unhandled_exception);
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
