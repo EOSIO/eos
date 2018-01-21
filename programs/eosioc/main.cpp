@@ -122,8 +122,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
   )
 
 string program = "eosc";
-string host = "localhost";
-uint32_t port = 8888;
+eosio::client::Eosioclient eosioclient;
 
 // restricting use of wallet to localhost
 string wallet_host = "localhost";
@@ -254,10 +253,10 @@ fc::variant call( const std::string& server, uint16_t port,
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return call( host, port, path, fc::variant(v) ); }
+                  const T& v ) { return call( eosioclient.host, eosioclient.port, path, fc::variant(v) ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-  return call(host, port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
+  return call(eosioclient.host, eosioclient.port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 void sign_transaction(signed_transaction& trx) {
@@ -266,7 +265,7 @@ void sign_transaction(signed_transaction& trx) {
    auto get_arg = fc::mutable_variant_object
          ("transaction", trx)
          ("available_keys", public_keys);
-   const auto& required_keys = call(host, port, get_required_keys, get_arg);
+   const auto& required_keys = call(eosioclient.host, eosioclient.port, get_required_keys, get_arg);
    // TODO determine chain id
    fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id_type{})};
    const auto& signed_trx = call(wallet_host, wallet_port, wallet_sign_trx, sign_args);
@@ -439,8 +438,6 @@ struct set_action_permission_subcommand {
 };
 
 int main( int argc, char** argv ) {
-   eosio::client::Eosioclient eosioclient;
-
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
       binPath = relative(binPath, current_path()); 
@@ -452,8 +449,8 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to Eos Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
-   app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
+   app.add_option( "-H,--host", eosioclient.host, localized("the host where eosd is running"), true );
+   app.add_option( "-p,--port", eosioclient.port, localized("the port where eosd is running"), true );
    app.add_option( "--wallet-host", wallet_host, localized("the host where eos-walletd is running"), true );
    app.add_option( "--wallet-port", wallet_port, localized("the port where eos-walletd is running"), true );
 
@@ -525,9 +522,7 @@ int main( int argc, char** argv ) {
    get->require_subcommand();
 
    // get info
-   get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([&eosioclient] {
-       eosioclient.host = host;
-       eosioclient.port = port;
+   get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] {
       std::cout << fc::json::to_pretty_string(eosioclient.get_info().as<eosio::chain_apis::read_only::get_info_results>()) << std::endl;
    });
 
@@ -558,8 +553,6 @@ int main( int argc, char** argv ) {
    getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->set_callback([&] {
-       eosioclient.host = host;
-       eosioclient.port = port;
       auto result = eosioclient.get_code(accountName);
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
@@ -597,8 +590,6 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
 
    getTable->set_callback([&] {
-       eosioclient.host = host;
-       eosioclient.port = port;
       auto result = eosioclient.get_table(scope, code, table);
 
       std::cout << fc::json::to_pretty_string(result)
@@ -826,27 +817,27 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
-      const auto& v = call(host, port, net_connect, new_host);
+      const auto& v = call(eosioclient.host, eosioclient.port, net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
-      const auto& v = call(host, port, net_disconnect, new_host);
+      const auto& v = call(eosioclient.host, eosioclient.port, net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"), false);
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->set_callback([&] {
-      const auto& v = call(host, port, net_status, new_host);
+      const auto& v = call(eosioclient.host, eosioclient.port, net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
    connections->set_callback([&] {
-      const auto& v = call(host, port, net_connections, new_host);
+      const auto& v = call(eosioclient.host, eosioclient.port, net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -1157,8 +1148,8 @@ int main( int argc, char** argv ) {
    } catch (const fc::exception& e) {
       auto errorString = e.to_detail_string();
       if (errorString.find("Connection refused") != string::npos) {
-         if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port)) << std::endl;
+         if (errorString.find(fc::json::to_string(eosioclient.port)) != string::npos) {
+            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", eosioclient.host)("port", eosioclient.port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
             std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
