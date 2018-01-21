@@ -17,9 +17,7 @@ public:
     uint32_t port = 8888; /// @todo make private
 
 private:
-    fc::variant call( const std::string& server, uint16_t port,
-                      const std::string& path,
-                      const fc::variant& postdata = fc::variant() ) const;
+    fc::variant call(const std::string& path, const fc::variant& postdata = fc::variant() ) const;
 };
 
 } // namespace client
