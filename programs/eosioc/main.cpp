@@ -256,7 +256,7 @@ fc::variant call( const std::string& path,
                   const T& v ) { return call( eosioclient.host, eosioclient.port, path, fc::variant(v) ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-  return call(eosioclient.host, eosioclient.port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
+  return eosioclient.get_info().as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 void sign_transaction(signed_transaction& trx) {
