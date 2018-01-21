@@ -22,6 +22,16 @@ fc::variant Eosioclient::get_code(std::string account_name) const
     return call(host, port, get_code_func, fc::mutable_variant_object("account_name", account_name));
 }
 
+fc::variant Eosioclient::get_table(const std::string& scope, const std::string& code, const std::string& table) const
+{
+    bool binary = false;
+    return call(host, port, get_table_func, fc::mutable_variant_object("json", !binary)
+                ("scope",scope)
+                ("code",code)
+                ("table",table)
+                );
+}
+
 fc::variant Eosioclient::call(const std::string &server, uint16_t port, const std::string &path, const fc::variant &postdata) const
 {
     try {
