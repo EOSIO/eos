@@ -1,8 +1,11 @@
 #include "eosioclient.hpp"
 
-#include <fc/io/json.hpp>
+#include <boost/asio.hpp>
 
 #include "functions.hpp"
+#include "fc/variant_object.hpp"
+#include "fc/exception/exception.hpp"
+#include "fc/io/json.hpp"
 
 using boost::asio::ip::tcp;
 

@@ -1,8 +1,7 @@
 #ifndef EOSIOCLIENT_HPP
 #define EOSIOCLIENT_HPP
 
-#include "eosio/chain_plugin/chain_plugin.hpp"
-#include "functions.hpp"
+#include "fc/variant.hpp"
 
 namespace eosio {
 namespace client {
