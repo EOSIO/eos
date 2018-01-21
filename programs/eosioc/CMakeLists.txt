@@ -1,4 +1,4 @@
-add_subdirectory(libeosioclient)
+add_subdirectory(eosioclient)
 
 add_executable( eosioc main.cpp httpc.cpp help_text.cpp localize.hpp config.hpp CLI11.hpp)
 if( UNIX AND NOT APPLE )
