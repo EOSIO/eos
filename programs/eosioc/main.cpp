@@ -599,11 +599,9 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
 
    getTable->set_callback([&] {
-      auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
-                         ("scope",scope)
-                         ("code",code)
-                         ("table",table)
-                         );
+       eosioclient.host = host;
+       eosioclient.port = port;
+      auto result = eosioclient.get_table(scope, code, table);
 
       std::cout << fc::json::to_pretty_string(result)
                 << std::endl;
