@@ -644,7 +644,7 @@ class system_api : public context_aware_api {
 
       void abort() {
          edump(("abort() called"));
-         FC_ASSERT( condition, "abort() called");
+         FC_ASSERT( false, "abort() called");
       }
 
       void assert(bool condition, const char* str) {

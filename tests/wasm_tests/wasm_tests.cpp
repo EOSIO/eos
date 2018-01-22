@@ -13,6 +13,9 @@
 #include <proxy/proxy.wast.hpp>
 #include <proxy/proxy.abi.hpp>
 
+#include <stltest/stltest.wast.hpp>
+#include <stltest/stltest.abi.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -658,5 +661,44 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    const auto& receipt = get_transaction_receipt(trx.id());
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
+    produce_blocks(2000);
+
+    create_accounts( {N(stltest), N(alice), N(bob)}, asset::from_string("1000.0000 MYCUR") );
+    transfer( N(inita), N(), "10.0000 MYCUR", "memo" );
+    produce_block();
+
+    set_code(N(stltest), stltest_wast);
+    set_abi(N(stltest), stltest_abi);
+    produce_blocks(1);
+
+    const auto& accnt  = control->get_database().get<account_object,by_name>( N(stltest) );
+    abi_def abi;
+    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+    abi_serializer abi_ser(abi);
+
+    //send message
+    {
+        signed_transaction trx;
+        action msg_act;
+        msg_act.account = N(stltest);
+        msg_act.name = N(message);
+        msg_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+        msg_act.data = abi_ser.variant_to_binary("message", mutable_variant_object()
+                                             ("from", "bob")
+                                             ("to", "alice")
+                                             ("message","Hi Alice!")
+                                             );
+        trx.actions.push_back(std::move(msg_act));
+
+        set_tapos(trx);
+        trx.sign(get_private_key(N(bob), "active"), chain_id_type());
+        control->push_transaction(trx);
+        produce_block();
+
+        BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+    }
+} FC_LOG_AND_RETHROW() /// stltest
 
 BOOST_AUTO_TEST_SUITE_END()

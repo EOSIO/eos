@@ -1,1 +1,1 @@
-add_wast_target(test_api "${CMAKE_SOURCE_DIR}/contracts" ${CMAKE_CURRENT_BINARY_DIR})
+add_wast_target(test_api "${STANDARD_INCLUDE_FOLDERS}" ${CMAKE_CURRENT_BINARY_DIR})

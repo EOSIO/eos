@@ -1,3 +1,5 @@
+set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts/stl ${CMAKE_SOURCE_DIR}/contracts/include)
+
 add_subdirectory(currency)
 add_subdirectory(stltest)
 #add_subdirectory(bancor)
