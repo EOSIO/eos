@@ -1306,7 +1306,7 @@ void chain_controller::update_last_irreversible_block()
       if( new_producer_schedule ) {
          _db.modify( gpo, [&]( auto& props ){
               boost::range::remove_erase_if(props.pending_active_producers,
-                                            [&](typename decltype(props.pending_active_producers)::value_type const& v) -> bool {
+                                            [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
                                                return v.first < new_last_irreversible_block_num;
                                             });
               props.active_producers = *new_producer_schedule;
