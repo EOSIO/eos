@@ -38,6 +38,8 @@ using boost::asio::ip::host_name;
 using bpo::options_description;
 using bpo::variables_map;
 
+const string block_dir = "blocks";
+const string shared_mem_dir = "shared_mem";
 
 struct local_identity {
   vector <fc::ip::address> addrs;
@@ -376,6 +378,8 @@ struct launcher_def {
   void kill (launch_modes mode, string sig_opt);
   void bounce (const string& node_numbers);
   bool bounce_node (uint16_t num);
+  void down (const string& node_numbers);
+  bool down_node (uint16_t num);
   void roll (const string& host_names);
   void start_all (string &gts, launch_modes mode);
 };
@@ -757,13 +761,13 @@ launcher_def::deploy_config_files (tn_node_def &node) {
     bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
     if (bf::exists (dd)) {
       if (force_overwrite) {
-        int64_t count =  bf::remove_all (dd / "blocks", ec);
+        int64_t count =  bf::remove_all (dd / block_dir, ec);
         if (ec.value() != 0) {
           cerr << "count = " << count << " could not remove old directory: " << dd
                << " " << strerror(ec.value()) << endl;
           exit (-1);
         }
-        count = bf::remove_all (dd / "shared_mem", ec);
+        count = bf::remove_all (dd / shared_mem_dir, ec);
         if (ec.value() != 0) {
           cerr << "count = " << count << " could not remove old directory: " << dd
                << " " << strerror(ec.value()) << endl;
@@ -848,7 +852,7 @@ launcher_def::write_config_file (tn_node_def &node) {
   }
 
   cfg << "genesis-json = " << host->genesis << "\n"
-      << "block-log-dir = blocks\n"
+      << "block-log-dir = " << block_dir << "\n"
       << "readonly = 0\n"
       << "send-whole-blocks = true\n"
       << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n"
@@ -1072,7 +1076,8 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
   cmd = "cd " + add;
   if (do_ssh(cmd,host->host_name)) {
     if(force_overwrite) {
-      cmd = "rm -rf " + add + "/block*";
+      cmd = "rm -rf " + add + "/" + block_dir + " ;"
+          + "rm -rf " + add + "/" + shared_mem_dir;
       if (!do_ssh (cmd, host->host_name)) {
         cerr << "Unable to remove old data directories on host "
              << host->host_name << endl;
@@ -1255,6 +1260,51 @@ launcher_def::bounce_node (uint16_t num) {
 }
 
 void
+launcher_def::down (const string& node_numbers) {
+   vector<string> nodes;
+   boost::split(nodes, node_numbers, boost::is_any_of(","));
+   for (string node_number: nodes) {
+      uint16_t node = -1;
+      try {
+         node = boost::lexical_cast<uint16_t,string>(node_number);
+      }
+      catch(boost::bad_lexical_cast &)
+      {
+         cerr << "Bad node number found in node number list for down: " << node_number << endl;
+         exit(-1);
+      }
+      if (!down_node(node)) {
+         cerr << "Node number not found: " << node << endl;
+      }
+   }
+}
+
+bool
+launcher_def::down_node (uint16_t num) {
+   string dex = num < 10 ? "0":"";
+   dex += boost::lexical_cast<string,uint16_t>(num);
+   string node_name = network.name + dex;
+   for (auto host: bindings) {
+      for (auto node: host.instances) {
+         if (node_name == node.name) {
+            string cmd = "cd " + host.eos_root_dir + "; "
+                       + "export EOSIO_HOME=" + host.eos_root_dir + "; "
+                       + "export EOSIO_TN_NODE=" + dex + "; "
+                       + "export EOSIO_TN_RESTART_DATA_DIR=" + node.data_dir + "; "
+                       + "./scripts/tn_down.sh";
+            cout << "Bouncing " << node_name << endl;
+            if (!do_ssh(cmd, host.host_name)) {
+               cerr << "Unable to down " << node_name << endl;
+               exit (-1);
+            }
+            return true;
+         }
+      }
+   }
+   return false;
+}
+
+void
 launcher_def::roll (const string& host_names) {
    vector<string> hosts;
    boost::split(hosts, host_names, boost::is_any_of(","));
@@ -1335,6 +1385,7 @@ int main (int argc, char *argv[]) {
   launch_modes mode;
   string kill_arg;
   string bounce_nodes;
+  string down_nodes;
   string roll_nodes;
 
   local_id.initialize();
@@ -1343,7 +1394,8 @@ int main (int argc, char *argv[]) {
   opts.add_options()
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issue a kill to each.")
+    ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issues a kill to each.")
+    ("down", bpo::value<string>(&down_nodes),"comma-separated list of node numbers that will be taken down using the tn_down.sh script")
     ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the tn_bounce.sh script")
     ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the tn_roll.sh script")
     ("version,v", "print version information")
@@ -1395,6 +1447,9 @@ int main (int argc, char *argv[]) {
     }
     else if (!bounce_nodes.empty()) {
        top.bounce(bounce_nodes);
+    }
+    else if (!down_nodes.empty()) {
+       top.down(down_nodes);
     }
     else if (!roll_nodes.empty()) {
        top.roll(roll_nodes);
