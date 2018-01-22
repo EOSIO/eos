@@ -147,7 +147,7 @@ try:
 finally:
     if not testSuccessful and dumpErrorDetails:
         cluster.dumpErrorDetails()
-        wallet.dumpErrorDetails()
+        walletMgr.dumpErrorDetails()
         Utils.Print("== Errors see above ==")
 
     if killEosInstances:

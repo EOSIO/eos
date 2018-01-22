@@ -20,10 +20,13 @@ import json
 class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
-    EosClientPath="programs/eosc/eosc"
-    EosWalletPath="programs/eos-walletd/eos-walletd"
-    EosServerName="eosd"
-    EosServerPath="programs/eosd/%s" % (EosServerName)
+
+    EosServerName="eosiod"
+    EosClientPath="programs/eosioc/eosioc"
+    EosWalletPath="programs/eosio-walletd/eosio-walletd"
+    EosServerName="eosiod"
+    EosServerPath="programs/eosiod/%s" % (EosServerName)
+
     EosLauncherPath="programs/launcher/launcher"
     MongoPath="mongo"
     
@@ -46,16 +49,16 @@ class Utils:
     # mongoSyncTime: eosiod mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
     #  a wait period before the 2nd DB check (if first check fails)
     mongoSyncTime=25
-    amINoon=False
+    amINoon=True
 
     # Configure for the NOON branch
     @staticmethod
-    def iAmNoon():
-        Utils.amINoon=True
-        Utils.EosClientPath="programs/eosioc/eosioc"
-        Utils.EosWalletPath="programs/eosio-walletd/eosio-walletd"
-        Utils.EosServerName="eosiod"
-        Utils.EosServerPath="programs/eosiod/%s" % (Utils.EosServerName)
+    def iAmNotNoon():
+        Utils.amINoon=False
+        Utils.EosServerName="eosd"
+        Utils.EosClientPath="programs/eosc/eosc"
+        Utils.EosWalletPath="programs/eos-walletd/eos-walletd"
+        Utils.EosServerPath="programs/eosd/%s" % (Utils.EosServerName)
 
     @staticmethod
     def setMongoSyncTime(syncTime):

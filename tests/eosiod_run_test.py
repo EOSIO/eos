@@ -78,9 +78,10 @@ ClientName="eosc"
 if amINoon:
     WalletdName="eosio-walletd"
     ClientName="eosioc"
-    testUtils.Utils.iAmNoon()
     # noon branch requires longer mongo sync time.
     testUtils.Utils.setMongoSyncTime(50)
+else:
+    testUtils.Utils.iAmNotNoon()
 
 try:
     Print("BEGIN")
