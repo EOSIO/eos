@@ -2305,7 +2305,7 @@ namespace eosio {
     // If we couldn't sign, don't send a token.
     if(hello.sig == ecc::compact_signature())
       hello.token = sha256();
-    hello.p2p_address = my_impl->p2p_address;
+    hello.p2p_address = my_impl->p2p_address + " - " + hello.node_id.str().substr(0,7);
 #if defined( __APPLE__ )
     hello.os = "osx";
 #elif defined( __linux__ )
