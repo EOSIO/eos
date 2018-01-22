@@ -77,10 +77,10 @@ script:
   - mkdir build && cd build
   - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release $EOS_CMAKE_OPTIONS ..
   - ninja -j4
-  - tests/eosd_run_test.py --host=localhost --port=8888 --dump-error-details
+  - tests/eosd_run_test.py --not-noon --host=localhost --port=8888 --dump-error-details
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/p2p_tests/sync/test.sh'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/p2p_tests/sync/test.sh -p 2 -d 10'
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/run_tests.sh'
-  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosd_run_test.py --mongodb --dump-error-details'
+  - '[ "$TRAVIS_OS_NAME" == "osx" ] || tests/eosd_run_test.py --not-noon --mongodb --dump-error-details'
   - ctest --output-on-failure
   - cpack
