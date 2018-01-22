@@ -335,16 +335,14 @@ Anyone can send any message to any contract at any time, but the contracts may r
 The content of the message is `'{"from":"currency","to":"inita","quantity":50}'`. In this case we are asking the currency contract to transfer funds from itself to someone else. This requires the permission of the currency contract.
 
 ```bash
-./eosioc push actions currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
+./eosioc push action currency transfer '{"from":"currency","to":"inita","amount":50}' --permission currency@active
 ```
 
 Below is a generalization that shows the `currency` account is only referenced once, to specify which contract to deliver the `transfer` message to.
 
 ```bash
-./eosioc push actions currency transfer '{"from":"${usera}","to":"${userb}","amount":50}' --scope ${usera},${userb} --permission ${usera}@active
+./eosioc push action currency transfer '{"from":"${usera}","to":"${userb}","amount":50}' --permission ${usera}@active
 ```
-
-We specify the `--scope ...` argument to give the currency contract read/write permission to those users so it can modify their balances.  In a future release scope will be determined automatically.
 
 As confirmation of a successfully submitted transaction, you will receive JSON output that includes a `transaction_id` field.
 
