@@ -1,5 +1,7 @@
 #pragma once
 #include <eosio/chain/chain_controller.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 
 namespace eosio { namespace testing {
 
@@ -56,8 +58,8 @@ namespace eosio { namespace testing {
 
          share_type                    get_balance( const account_name& account ) const;
 
-         share_type                    get_currency_balance( account_name contract,
-                                                             uint64_t symbol, 
+         asset                         get_currency_balance( const account_name& contract,
+                                                             const asset_symbol& symbol,
                                                              const account_name& account ) const;
 
       private:
@@ -65,6 +67,22 @@ namespace eosio { namespace testing {
          chain_controller::controller_config           cfg;
 
          map<transaction_id_type, transaction_receipt> chain_transactions;
+   };
+
+   /**
+    * Utility predicate to check whether an FC_ASSERT message ends with a given string
+    */
+   struct assert_message_is {
+      assert_message_is(string expected)
+         :expected(expected)
+      {}
+
+      bool operator()( const fc::assert_exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         return boost::algorithm::ends_with(message, expected);
+      }
+
+      string expected;
    };
 
 } } /// eosio::testing

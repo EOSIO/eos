@@ -139,7 +139,6 @@ namespace eosio {
           static void inline_transfer( account_name from, account_name to, token_type quantity, 
                                        string memo = string() )
           {
-             print( "inline transfer!\n" );
              action act( permission_level(code,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
              act.send();
           }
