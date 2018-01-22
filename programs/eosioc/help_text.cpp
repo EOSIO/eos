@@ -49,7 +49,7 @@ Please check the account names and try again!)text");
 const char* missing_abi_help_text = _(R"text(The ABI for action "${2}" on code account "${1}" is unknown.
 The payload cannot be automatically serialized.
 
-You can push an arbitrary transaction using the 'push transaction' subcommand)text");
+You can push an arbitrary transaction using the 'push actions' subcommand)text");
 
 const char* unknown_wallet_help_text = _("Unable to find a wallet named \"${1}\", are you sure you typed the name correctly?");
 
