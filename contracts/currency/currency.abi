@@ -1,23 +1,25 @@
 {
-  "types": [{
-      "new_type_name": "account_name",
-      "type": "name"
-    }
-  ],
+  "types": [],
   "structs": [{
+      "name": "currency_tokens",
+      "base": "",
+      "fields": {
+        "quantity": "uint64"
+      }
+    },{
       "name": "transfer",
       "base": "",
       "fields": {
         "from": "account_name",
         "to": "account_name",
-        "quantity": "uint64"
+        "quantity": "currency_tokens"
       }
     },{
       "name": "account",
       "base": "",
       "fields": {
-        "key": "name",
-        "balance": "uint64"
+        "key": "uint64",
+        "balance": "currency_tokens"
       }
     }
   ],
@@ -28,10 +30,14 @@
   ],
   "tables": [{
       "table_name": "account",
-      "type": "account",
       "index_type": "i64",
-      "key_names" : ["key"],
-      "key_types" : ["name"]
+      "key_names": [
+        "key"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "account"
     }
   ]
 }
