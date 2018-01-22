@@ -726,7 +726,7 @@ class Node(object):
     def pushMessage(self, contract, action, data, opts):
         cmd=None
         if Utils.amINoon:
-            cmd="%s %s push actions %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
+            cmd="%s %s push action %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
         else:
             cmd="%s %s push message %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
         cmdArr=cmd.split()
