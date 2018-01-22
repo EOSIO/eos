@@ -1086,7 +1086,7 @@ int main( int argc, char** argv ) {
    auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
    push->require_subcommand();
 
-   // push actions
+   // push action
    string contract;
    string action;
    string data;
@@ -1112,12 +1112,7 @@ int main( int argc, char** argv ) {
       auto accountPermissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      eosio::chain::action act;
-      act.account = contract;
-      act.name = action;
-      act.authorization = accountPermissions;
-      act.data = result.get_object()["binargs"].as<bytes>();
-      trx.actions.push_back(act);
+      trx.actions.emplace_back(accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
          trx.actions.emplace_back( generate_nonce() );
