@@ -514,19 +514,20 @@ class Node(object):
             return None
         return trans
 
-    def getInfo(self):
+    def getInfo(self, silent=False):
         cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get info. %s" % (msg))
+            if not silent:
+                msg=ex.output.decode("utf-8")
+                Utils.Print("ERROR: Exception during get info. %s" % (msg))
             return None
 
     def checkPulse(self):
-        info=self.getInfo()
+        info=self.getInfo(True)
         if info is not None:
             self.alive=True
             return True
@@ -547,15 +548,15 @@ class WalletMgr(object):
     __walletDataDir="test_wallet_0"
 
     # walletd [True|False] Will wallet me in a standalone process
-    def __init__(self, walletd, eosdPort=8888, eosdHost="localhost", port=8899, host="localhost"):
+    def __init__(self, walletd, eosiodPort=8888, eosiodHost="localhost", port=8899, host="localhost"):
         self.walletd=walletd
-        self.eosdPort=eosdPort
-        self.eosdHost=eosdHost
+        self.eosiodPort=eosiodPort
+        self.eosiodHost=eosiodHost
         self.port=port
         self.host=host
         self.wallets={}
         self.__walletPid=None
-        self.endpointArgs="--host %s --port %d" % (self.eosdHost, self.eosdPort)
+        self.endpointArgs="--host %s --port %d" % (self.eosiodHost, self.eosiodPort)
         if self.walletd:
             self.endpointArgs += " --wallet-host %s --wallet-port %d" % (self.host, self.port)
 
@@ -754,7 +755,7 @@ class Cluster(object):
     # launch local nodes and set self.nodes
     def launch(self, pnodes=1, total_nodes=1, topo="mesh", delay=1):
         if not self.localCluster:
-            Utils.Print("WARNING: Cluster not local, not launching eosd.")
+            Utils.Print("WARNING: Cluster not local, not launching eosiod.")
             return True
         
         if len(self.nodes) > 0:
@@ -774,7 +775,7 @@ class Cluster(object):
         nodes=self.discoverLocalNodes(total_nodes)
 
         if total_nodes != len(nodes):
-            Utils.Print("ERROR: Unable to validate eosd instances, expected: %d, actual: %d" %
+            Utils.Print("ERROR: Unable to validate eosiod instances, expected: %d, actual: %d" %
                           (total_nodes, len(nodes)))
             return False
 
@@ -990,7 +991,7 @@ class Cluster(object):
     def validateSpreadFunds(self, expectedTotal):
         for node in self.nodes:
             if node.alive:
-                Utils.Debug and Utils.Print("Validate funds on eosd server port %d." % (node.port))
+                Utils.Debug and Utils.Print("Validate funds on eosiod server port %d." % (node.port))
                 if node.validateSpreadFundsOnNode(Cluster.initaAccount, self.accounts, expectedTotal) is False:
                     Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
                     return False
@@ -1016,13 +1017,13 @@ class Cluster(object):
         return True
 
     # create account, verify account and return transaction id
-    def createAccountAndVerify(self, account, creator):
+    def createAccountAndVerify(self, account, creator, stakedDeposit=1000):
         if len(self.nodes) == 0:
             Utils.Print("ERROR: No nodes initialized.")
             return None
         node=self.nodes[0]
 
-        transId=node.createAccount(account, creator)
+        transId=node.createAccount(account, creator, stakedDeposit)
 
         if transId is not None and node.verifyAccount(account) is not None:
             return transId
@@ -1042,7 +1043,7 @@ class Cluster(object):
                 pattern="[\n]?(\d+) (.* --data-dir tn_data_%02d)\n" % (i)
                 m=re.search(pattern, psOut, re.MULTILINE)
                 if m is None:
-                    Utils.Print("ERROR: Failed to find eosd pid. Pattern %s" % (pattern))
+                    Utils.Print("ERROR: Failed to find eosiod pid. Pattern %s" % (pattern))
                     break
                 instance=Node(self.host, self.port + i, int(m.group(1)), m.group(2), True)
                 instance.setWalletEndpointArgs(self.walletEndpointArgs)
@@ -1054,7 +1055,7 @@ class Cluster(object):
         
         return nodes
 
-    # Check state of running eosd process and update EosInstanceInfos
+    # Check state of running eosiod process and update EosInstanceInfos
     #def updateEosInstanceInfos(eosInstanceInfos):
     def updateNodesStatus(self):
         for node in self.nodes:
@@ -1065,7 +1066,7 @@ class Cluster(object):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
-        Utils.Print("Kill %d Eosd instances with signal %s." % (killCount, killSignal))
+        Utils.Print("Kill %d Eosiod instances with signal %s." % (killCount, killSignal))
 
         killedCount=0
         for node in reversed(self.nodes):
@@ -1138,14 +1139,14 @@ class Cluster(object):
             shutil.rmtree(f)
             
     # Create accounts and validates that the last transaction is received on root node
-    def createAccounts(self, creator, waitForTransBlock=True):
+    def createAccounts(self, creator, waitForTransBlock=True, stakedDeposit=1000):
         if self.accounts is None:
             return True
 
         transId=None
         for account in self.accounts:
             Utils.Debug and Utils.Print("Create account %s." % (account.name))
-            trans=self.createAccountAndVerify(account, creator)
+            trans=self.createAccountAndVerify(account, creator, stakedDeposit)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s." % (account.name))
                 return False

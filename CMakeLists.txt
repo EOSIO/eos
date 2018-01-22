@@ -2,6 +2,8 @@
 project( EOS )
 cmake_minimum_required( VERSION 2.8.12 )
 
+enable_testing()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 
 INCLUDE( VersionMacros )
@@ -193,6 +195,7 @@ endif()
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
+add_subdirectory( scripts )
 add_subdirectory( tests )
 add_subdirectory( tools )
 
