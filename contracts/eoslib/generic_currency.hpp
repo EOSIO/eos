@@ -1,5 +1,6 @@
 #pragma once
 #include <eoslib/singleton.hpp>
+#include <eoslib/table.hpp>
 #include <eoslib/token.hpp>
 #include <eoslib/asset.hpp>
 #include <eoslib/dispatcher.hpp>
@@ -31,6 +32,9 @@ namespace eosio {
           };
 
           struct transfer : action_meta<code,N(transfer)> {
+             transfer(){}
+             transfer( account_name f, account_name t, token_type q ):from(f),to(t),quantity(q){}
+
              account_name from;
              account_name to;
              asset        quantity;
@@ -50,6 +54,10 @@ namespace eosio {
           };
 
           struct transfer_memo : public transfer {
+             transfer_memo(){}
+             transfer_memo( account_name f, account_name t, token_type q, string m )
+             :transfer( f, t, q ), memo( move(m) ){}
+
              string       memo;
 
              template<typename DataStream>
@@ -65,28 +73,30 @@ namespace eosio {
           };
 
           struct account {
+             uint64_t   symbol = token_type::symbol;
              token_type balance;
 
              template<typename DataStream>
              friend DataStream& operator << ( DataStream& ds, const account& t ){
-                return ds << t.balance;
+                return ds << t.symbol << t.balance;
              }
              template<typename DataStream>
              friend DataStream& operator >> ( DataStream& ds, account& t ){
-                return ds >> t.balance;
+                return ds >> t.symbol >> t.balance;
              }
           };
 
           struct currency_stats {
+             uint64_t   symbol = token_type::symbol;
              token_type supply;
 
              template<typename DataStream>
              friend DataStream& operator << ( DataStream& ds, const currency_stats& t ){
-                return ds << t.supply;
+                return ds << t.symbol << t.supply;
              }
              template<typename DataStream>
              friend DataStream& operator >> ( DataStream& ds, currency_stats& t ){
-                return ds >> t.supply;
+                return ds >> t.symbol >> t.supply;
              }
           };
 
@@ -94,22 +104,21 @@ namespace eosio {
            *  Each user stores their balance in the singleton table under the
            *  scope of their account name.
            */
-          typedef singleton<code, accounts_table_name, account>      accounts;
-          typedef singleton<code, stats_table_name, currency_stats>  stats;
+          typedef table64<code, accounts_table_name, account>      accounts;
+          typedef table64<code, stats_table_name, currency_stats>  stats;
 
           static token_type get_balance( account_name owner ) {
-
-             return accounts::get_or_create( owner ).balance;
+             return accounts::get_or_create( token_type::symbol, owner ).balance;
           }
 
           static void set_balance( account_name owner, token_type balance ) {
-             accounts::set( account{balance}, owner );
+             accounts::set( account{token_type::symbol,balance}, owner );
           }
 
           static void on( const issue& act ) {
              require_auth( code );
 
-             auto s = stats::get_or_create();
+             auto s = stats::get_or_create(token_type::symbol);
              s.supply += act.quantity;
              stats::set(s);
 
@@ -130,11 +139,8 @@ namespace eosio {
           static void inline_transfer( account_name from, account_name to, token_type quantity, 
                                        string memo = string() )
           {
-             /*
-             transfer_memo t{ from, to, quantity, move(memo) }
-
-             action act{ t, .... }
-             */
+             action act( permission_level(code,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
+             act.send();
           }
 
 

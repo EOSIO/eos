@@ -75,6 +75,9 @@ namespace eosio {
    }
 
    struct permission_level {
+      permission_level( account_name a, permission_name p ):actor(a),permission(p){}
+      permission_level(){}
+
       account_name    actor;
       permission_name permission;
       template<typename DataStream>
@@ -111,6 +114,19 @@ namespace eosio {
          account       = Action::get_account();
          name          = Action::get_name();
          authorization = move(auth);
+         data          = raw::pack(value);
+      }
+
+
+      /**
+       *  @tparam Action - a type derived from action_meta<Scope,Name>
+       *  @param value - will be serialized via raw::pack into data
+       */
+      template<typename Action>
+      action( const permission_level& auth, const Action& value )
+      :authorization(1,auth) {
+         account       = Action::get_account();
+         name          = Action::get_name();
          data          = raw::pack(value);
       }
 
