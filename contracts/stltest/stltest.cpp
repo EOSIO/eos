@@ -52,28 +52,30 @@ namespace stltest {
         };
 
         static void on(const message& msg) {
-            std::array<uint32_t, 10> arr;
-            arr[0] = 0;
-            std::vector<uint32_t> v;
-            v.push_back(0);
-            std::stack<char> stack;
-            stack.push('J');
-            std::queue<unsigned int> q;
-            q.push(0);
-            std::deque<float> dq;
-            dq.push_front(0.0f);
-            std::list<uint32_t> l;
-            l.push_back(0);
-            std::string s;
-            s.append(1, 'a');
-            std::map<int, double> m;
-            m.emplace(0, 1.0);
-            std::set<long> st;
-            st.insert(0);
-            std::unordered_map<int, string> hm;
-            //hm[0] = "abc";
-            std::unordered_set<int> hs;
-            //hs.insert(0);
+           print("STL test start.");
+           std::array<uint32_t, 10> arr;
+           arr[0] = 0;
+           std::vector<uint32_t> v;
+           v.push_back(0);
+           std::stack<char> stack;
+           stack.push('J');
+           std::queue<unsigned int> q;
+           q.push(0);
+           std::deque<float> dq;
+           dq.push_front(0.0f);
+           std::list<uint32_t> l;
+           l.push_back(0);
+           std::string s;
+           s.append(1, 'a');
+           std::map<int, double> m;
+           m.emplace(0, 1.0);
+           std::set<long> st;
+           st.insert(0);
+           std::unordered_map<int, string> hm;
+           //hm[0] = "abc";
+           std::unordered_set<int> hs;
+           //hs.insert(0);
+           print("STL test done.");
         }
 
         static void apply( account_name c, action_name act) {
