@@ -613,6 +613,14 @@ namespace WASM
          {
             Opcode opcode;
             serialize(bodyStream,opcode);
+
+            ////disallow memory operations
+            #define VISIT_OPCODE(_,name,...) \
+               if(opcode == Opcode::name) \
+                  throw FatalSerializationException("memory instructions not allowed");
+            ENUM_MEMORY_OPERATORS(VISIT_OPCODE)
+            #undef VISIT_OPCODE
+
             switch(opcode)
             {
             #define VISIT_OPCODE(_,name,nameString,Imm,...) \
@@ -628,11 +636,14 @@ namespace WASM
                }
             ENUM_NONFLOAT_OPERATORS(VISIT_OPCODE)
             #undef VISIT_OPCODE
+
+            /////disallow float operations
             #define VISIT_OPCODE(_,name,nameString,...) \
                case Opcode::name: \
                   throw FatalSerializationException("float instructions not allowed");
             ENUM_FLOAT_NONCONTROL_NONPARAMETRIC_OPERATORS(VISIT_OPCODE)
             #undef VISIT_OPCODE
+
             default: throw FatalSerializationException("unknown opcode");
             };
          };
