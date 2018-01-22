@@ -1090,7 +1090,7 @@ int main( int argc, char** argv ) {
    string contract;
    string action;
    string data;
-   auto actionsSubcommand = push->add_subcommand("actions", localized("Push a transaction with a single actions"));
+   auto actionsSubcommand = push->add_subcommand("action", localized("Push a transaction with a single action"));
    actionsSubcommand->fallthrough(false);
    actionsSubcommand->add_option("contract", contract,
                                  localized("The account providing the contract to execute"), true)->required();
@@ -1112,10 +1112,12 @@ int main( int argc, char** argv ) {
       auto accountPermissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      /* TODO: restore this function
-      transaction_emplace_serialized_actions(trx, contract, action, accountPermissions,
-                                                      result.get_object()["binargs"].as<bytes>());
-      */
+      eosio::chain::action act;
+      act.account = contract;
+      act.name = action;
+      act.authorization = accountPermissions;
+      act.data = result.get_object()["binargs"].as<bytes>();
+      trx.actions.push_back(act);
 
       if (tx_force_unique) {
          trx.actions.emplace_back( generate_nonce() );
