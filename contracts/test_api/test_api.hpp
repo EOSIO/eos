@@ -32,13 +32,13 @@ struct dummy_action {
   int  c; //4
 };
 
-struct u128_msg {
+struct u128_action {
   unsigned __int128  values[3]; //16*3
 };
 #pragma pack(pop)
 
 static_assert( sizeof(dummy_action) == 13 , "unexpected packing" );
-static_assert( sizeof(u128_msg) == 16*3 , "unexpected packing" );
+static_assert( sizeof(u128_action) == 16*3 , "unexpected packing" );
 
 struct test_types {
   static unsigned int types_size();
@@ -54,29 +54,29 @@ struct test_print {
   static void test_printn();
 };
 
-#define DUMMY_MESSAGE_DEFAULT_A 0x45
-#define DUMMY_MESSAGE_DEFAULT_B 0xab11cd1244556677
-#define DUMMY_MESSAGE_DEFAULT_C 0x7451ae12
+#define DUMMY_ACTION_DEFAULT_A 0x45
+#define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
+#define DUMMY_ACTION_DEFAULT_C 0x7451ae12
 
 struct test_action {
 
   static void read_action_normal();
   static void read_action_to_0();
   static void read_action_to_64k();
-  static unsigned int require_notice();
-  static unsigned int require_auth();
+  static void require_notice();
+  static void require_auth();
   static void assert_false();
   static void assert_true();
-  static unsigned int now();
+  static void now();
 
 };
 
 struct test_math {
-  static unsigned int test_multeq();
-  static unsigned int test_diveq();
-  static unsigned int test_diveq_by_0();
-  static unsigned int test_double_api();
-  static unsigned int test_double_api_div_0();
+  static void test_multeq();
+  static void test_diveq();
+  static void test_diveq_by_0();
+  static void test_double_api();
+  static void test_double_api_div_0();
 };
 
 struct test_db {
@@ -146,26 +146,26 @@ struct test_chain {
 };
 
 struct test_string {
-  static unsigned int construct_with_size();
-  static unsigned int construct_with_data();
-  static unsigned int construct_with_data_copied();
-  static unsigned int construct_with_data_partially();
-  static unsigned int copy_constructor();
-  static unsigned int assignment_operator();
-  static unsigned int index_operator();
-  static unsigned int index_out_of_bound();
-  static unsigned int substring();
-  static unsigned int substring_out_of_bound();
-  static unsigned int concatenation_null_terminated();
-  static unsigned int concatenation_non_null_terminated();
-  static unsigned int assign();
-  static unsigned int comparison_operator();
-  static unsigned int print_null_terminated();
-  static unsigned int print_non_null_terminated();
-  static unsigned int print_unicode();
-  static unsigned int valid_utf8();
-  static unsigned int invalid_utf8();
-  static unsigned int string_literal();
+  static void construct_with_size();
+  static void construct_with_data();
+  static void construct_with_data_copied();
+  static void construct_with_data_partially();
+  static void copy_constructor();
+  static void assignment_operator();
+  static void index_operator();
+  static void index_out_of_bound();
+  static void substring();
+  static void substring_out_of_bound();
+  static void concatenation_null_terminated();
+  static void concatenation_non_null_terminated();
+  static void assign();
+  static void comparison_operator();
+  static void print_null_terminated();
+  static void print_non_null_terminated();
+  static void print_unicode();
+  static void valid_utf8();
+  static void invalid_utf8();
+  static void string_literal();
 };
 
 struct test_fixedpoint {
@@ -183,8 +183,18 @@ struct test_real {
    static unsigned int test_division();
 };
 
+struct test_compiler_builtins {
+   static void test_multi3();
+   static void test_divti3();
+   static void test_divti3_by_0();
+   static void test_lshlti3();
+   static void test_lshrti3();
+   static void test_ashlti3();
+   static void test_ashrti3();
+};
+
 struct test_account {
-   static unsigned int test_balance_acc1();
+   static void test_balance_acc1();
 };
 
 struct test_extended_memory {

@@ -42,6 +42,7 @@ extern "C" {
   void __ashlti3(__int128& res, uint64_t lo, uint64_t hi, uint32_t shift);
   void __ashrti3(__int128& res, uint64_t lo, uint64_t hi, uint32_t shift);
 
+  void __break_point();
 
 #if 0
   /**

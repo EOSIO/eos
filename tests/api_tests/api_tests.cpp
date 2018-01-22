@@ -30,8 +30,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 
-//#include "../common/database_fixture.hpp"
-
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>
@@ -40,14 +38,14 @@
 #include <Runtime/Runtime.h>
 
 #include <test_api/test_api.wast.hpp>
+#include <test_api_mem/test_api_mem.wast.hpp>
 #include <test_api/test_api.hpp>
 
 
 #include <eosio/chain/staked_balance_objects.hpp>
-//#include <eosio/chain/balance_object.hpp>
 
 FC_REFLECT( dummy_action, (a)(b)(c) );
-FC_REFLECT( u128_msg, (values) );
+FC_REFLECT( u128_action, (values) );
 
 using namespace eosio;
 using namespace eosio::testing;
@@ -74,8 +72,8 @@ struct assert_message_is {
 		: expected(expected) {}
 	
 	bool operator()( const fc::assert_exception& ex) {
-		auto msg = ex.get_log().at(0).get_message();
-		return boost::algorithm::ends_with(msg, expected);
+		auto act = ex.get_log().at(0).get_message();
+		return boost::algorithm::ends_with(act, expected);
 	}
 
 	string expected;
@@ -93,11 +91,15 @@ string U64Str(uint64_t i)
 	return ss.str();
 }
 
+string U128Str(unsigned __int128 i)
+{
+   return fc::variant(fc::uint128_t(i)).get_string();
+}
+
 
 // run the `METHOD` and capture it's output then check some common parts that all the test_print methods have
 #define CAPTURE_AND_PRE_TEST_PRINT(METHOD) \
 	{ \
-		auto U64Str = [](uint64_t v) -> std::string { std::stringstream ss; ss << v; return ss.str(); }; \
 		BOOST_TEST_MESSAGE( "Running test_print::" << METHOD ); \
 		CAPTURE( cerr, CALL_TEST_FUNCTION( *this, "test_print", METHOD, {} ) ); \
 		BOOST_CHECK_EQUAL( capture.size(), 7 ); \
@@ -106,73 +108,39 @@ string U64Str(uint64_t i)
 
 BOOST_AUTO_TEST_SUITE(api_tests)
 
-
-/*
-vector<uint8_t> assemble_wast( const std::string& wast ) {
-   //   std::cout << "\n" << wast << "\n";
-   IR::Module module;
-   std::vector<WAST::Error> parseErrors;
-   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
-   if(parseErrors.size())
-   {
-      // Print any parse errors;
-      std::cerr << "Error parsing WebAssembly text file:" << std::endl;
-      for(auto& error : parseErrors)
-      {
-         std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
-         std::cerr << error.locus.sourceLine << std::endl;
-         std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
-      }
-      FC_ASSERT( !"error parsing wast" );
-   }
-
-   try
-   {
-      // Serialize the WebAssembly module.
-      Serialization::ArrayOutputStream stream;
-      WASM::serialize(stream,module);
-      return stream.getBytes();
-   }
-   catch(Serialization::FatalSerializationException exception)
-   {
-      std::cerr << "Error serializing WebAssembly binary file:" << std::endl;
-      std::cerr << exception.message << std::endl;
-      throw;
-   }
-}
-*/
-}
-
 template <typename T>
-uint32_t CallFunction(tester& test, T tm, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
-	static int expiration = 1;
+void CallFunction(tester& test, T tm, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
 	{
 		signed_transaction trx;
 		trx.write_scope = scope;
-      
-      //vector<char>& dest = *(vector<char> *)(&
-      action act(vector<permission_level>{{scope[0], config::active_name}}, tm);
+
+      auto pl = vector<permission_level>{{scope[0], config::active_name}};
+      if (scope.size() > 1)
+         for (int i=1; i < scope.size(); i++)
+            pl.push_back({scope[i], config::active_name});
+
+      //action act(vector<permission_level>{{scope[0], config::active_name}}, tm);
+      action act(pl, tm);
       vector<char>& dest = *(vector<char> *)(&act.data);
       std::copy(data.begin(), data.end(), std::back_inserter(dest));
       trx.actions.push_back(act);
-		//trx.actions.emplace_back(vector<permission_level>{{scope[0], config::active_name}},
-	//									 tm);
+
 		test.set_tapos(trx);
 		trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
 		auto res = test.control->push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
-		//BOOST_TEST_MESSAGE("ACTION TRACE SIZE : " << res.action_traces.size());
-//		BOOST_TEST_MESSAGE("ACTION TRACE RECEIVER : " << res.action_traces.at(0).receiver.to_string());
-//		BOOST_TEST_MESSAGE("ACTION TRACE SCOPE : " << res.action_traces.at(0).act.scope.to_string());
-//		BOOST_TEST_MESSAGE("ACTION TRACE NAME : " << res.action_traces.at(0).act.name.to_string());
-//		BOOST_TEST_MESSAGE("ACTION TRACE AUTH SIZE : " << res.action_traces.at(0).act.authorization.size());
-//		BOOST_TEST_MESSAGE("ACTION TRACE ACTOR : " << res.action_traces.at(0).act.authorization.at(0).actor.to_string());
-//		BOOST_TEST_MESSAGE("ACTION TRACE PERMISSION : " << res.action_traces.at(0).act.authorization.at(0).permission.to_string());
+      /*
+		BOOST_TEST_MESSAGE("ACTION TRACE SIZE : " << res.action_traces.size());
+		BOOST_TEST_MESSAGE("ACTION TRACE RECEIVER : " << res.action_traces.at(0).receiver.to_string());
+		BOOST_TEST_MESSAGE("ACTION TRACE SCOPE : " << res.action_traces.at(0).act.scope.to_string());
+		BOOST_TEST_MESSAGE("ACTION TRACE NAME : " << res.action_traces.at(0).act.name.to_string());
+		BOOST_TEST_MESSAGE("ACTION TRACE AUTH SIZE : " << res.action_traces.at(0).act.authorization.size());
+		BOOST_TEST_MESSAGE("ACTION TRACE ACTOR : " << res.action_traces.at(0).act.authorization.at(0).actor.to_string());
+		BOOST_TEST_MESSAGE("ACTION TRACE PERMISSION : " << res.action_traces.at(0).act.authorization.at(0).permission.to_string());
+      */
 		test.produce_block();
 	}
-	return 3;
 }
-
 
 #define CALL_TEST_FUNCTION(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
 #define CALL_TEST_FUNCTION_SCOPE(TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
@@ -188,6 +156,11 @@ bool is_access_violation(fc::unhandled_exception const & e) {
     }
    return false;
 }
+
+bool is_access_violation(const Runtime::Exception& e) {
+   return true;
+}
+
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
@@ -224,10 +197,11 @@ uint32_t last_fnc_err = 0;
       capture.clear(); \
       bio::stream_buffer<MySink> sb; sb.open(MySink()); \
       std::streambuf *oldbuf = std::STREAM.rdbuf(&sb); \
-      last_fnc_err = EXEC; \
+      EXEC; \
       std::STREAM.rdbuf(oldbuf); \
    }
 
+/*
 #define TEST_PRINT_METHOD( METHOD , OUT) \
 	{ \
 		auto U64Str = [](uint64_t v) -> std::string { std::stringstream s; s << v; return s.str(); }; \
@@ -239,10 +213,9 @@ uint32_t last_fnc_err = 0;
 		BOOST_CHECK_EQUAL( capture[3].substr(1,6), U64Str(556644) ); \
 		BOOST_CHECK_EQUAL( capture[3].substr(7, capture[3].size()), U64Str(-1) ); \
 	}
-
+*/
 
 // TODO missing intrinsic account_balance_get
-#if 1
 /*************************************************************************************
  * account_tests test case
  *************************************************************************************/
@@ -254,8 +227,7 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	//transfer( N(inita), N(acc1), "1000.0000 EOS", "test");
-   //
-#if 1
+#if 0
 	eosio::chain::signed_transaction trx;
 	trx.write_scope = { N(acc1), N(inita) };
 
@@ -284,9 +256,68 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
    transfer( N(inita), N(acc1), "5000.0000 EOS", "memo" );
    BOOST_CHECK_EQUAL(get_balance(N(acc1)), 50250000);
 } FC_LOG_AND_RETHROW() }
-#endif
 
-#if 1
+
+/*************************************************************************************
+ * action_tests test case
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
+	produce_blocks(2);
+	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
+   create_account( N(acc1), asset::from_string("100000.0000 EOS") );
+   create_account( N(acc2), asset::from_string("100000.0000 EOS") );
+   create_account( N(acc3), asset::from_string("100000.0000 EOS") );
+   create_account( N(acc4), asset::from_string("100000.0000 EOS") );
+	produce_blocks(1000);
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	produce_blocks(1000);
+	set_code( N(testapi), test_api_wast );
+	set_code( N(acc1), test_api_wast );
+	set_code( N(acc2), test_api_wast );
+	produce_blocks(1);
+
+	CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "assert_false", {}), fc::assert_exception, is_assert_exception);
+
+   dummy_action dummy13{DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
+   CALL_TEST_FUNCTION( *this, "test_action", "read_action_normal", fc::raw::pack(dummy13));
+
+   std::vector<char> raw_bytes((1<<16));
+	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes );
+   std::vector<char> raw_bytes2((1<<16)+1);
+   /*
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes2), 
+      fc::exception, is_access_violation);
+   */
+   raw_bytes.resize(1);
+	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes );
+
+   raw_bytes.resize(2);
+   /*
+	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ),
+         Runtime::Exception, is_access_violation);
+   */
+
+   //CALL_TEST_FUNCTION( *this, "test_action", "require_notice", raw_bytes );
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", {}), tx_missing_auth, is_tx_missing_auth);
+
+   auto a3only = std::vector<permission_level>{{N(acc3), config::active_name}};
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a3only)), tx_missing_auth, is_tx_missing_auth);
+
+   auto a4only = std::vector<permission_level>{{N(acc4), config::active_name}};
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a4only)), tx_missing_auth, is_tx_missing_auth);
+
+   auto a3a4 = std::vector<permission_level>{{N(acc3), config::active_name}, {N(acc4), config::active_name}};
+   auto a3a4_scope = std::vector<account_name>{N(acc3), N(acc4)};
+   //CALL_TEST_FUNCTION_SCOPE( *this, "test_action", "require_auth", fc::raw::pack(a3a4), a3a4_scope);
+
+   uint32_t now = control->head_block_time().sec_since_epoch();
+   CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now));
+   produce_block();
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now)), fc::assert_exception, is_assert_exception);
+} FC_LOG_AND_RETHROW() }
+
+
 /*************************************************************************************
  * compiler_builtins_tests test case
  *************************************************************************************/
@@ -308,39 +339,9 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), fc::assert_exception, is_assert_exception);
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshlti3", {});
 } FC_LOG_AND_RETHROW() }
-#endif
 
-#if 1
-/*************************************************************************************
- * action_tests test case
- *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
-	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
-   create_account( N(acc1), asset::from_string("1.0000 EOS") );
-   create_account( N(acc2), asset::from_string("1.0000 EOS") );
-   create_account( N(acc3), asset::from_string("1.0000 EOS") );
-   create_account( N(acc4), asset::from_string("1.0000 EOS") );
-	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
-	produce_blocks(1000);
-	set_code( N(testapi), test_api_wast );
-	produce_blocks(1);
 
-	CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "assert_false", {}), fc::assert_exception, is_assert_exception);
-   dummy_action dummy13{DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
 
-   CALL_TEST_FUNCTION( *this, "test_action", "read_action_normal", fc::raw::pack(dummy13));
-
-   std::vector<char> raw_bytes((1<<16)-1);
-	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", {});
-
-} FC_LOG_AND_RETHROW() }
-#endif
-
-// TODO missing intrinsic get_active_producers
-#if 0
 /*************************************************************************************
  * chain_tests test case
  *************************************************************************************/
@@ -357,9 +358,12 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
    
    auto& gpo = control->get_global_properties();   
    std::vector<account_name> prods(gpo.active_producers.producers.size());
-	//CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", {});
+   for ( int i=0; i < gpo.active_producers.producers.size(); i++ )
+      prods[i] = gpo.active_producers.producers[i].producer_name;
+
+	CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods));
 } FC_LOG_AND_RETHROW() }
-#endif
+
 
 // (Bucky) TODO got to fix macros in test_db.cpp
 #if 0
@@ -372,15 +376,14 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), test_api_wast );
+	set_code( N(testapi), test_api_mem_wast );
 	produce_blocks(1);
 
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_general", {});
 } FC_LOG_AND_RETHROW() }
 #endif
 
-// TODO missing intrinsic __ashlti3
-#if 1
+
 /*************************************************************************************
  * fixedpoint_tests test case
  *************************************************************************************/
@@ -399,10 +402,8 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_multiplication", {});
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_division", {});
 } FC_LOG_AND_RETHROW() }
-#endif
 
-// TODO missing intrinsics for doubles
-#if 1
+
 /*************************************************************************************
  * real_tests test cases
  *************************************************************************************/
@@ -423,10 +424,8 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_real", "test_division", {} );
 } FC_LOG_AND_RETHROW() }
-#endif
 
-// TODO missing intrinsics assert_sha256
-#if 0
+
 /*************************************************************************************
  * crypto_tests test cases
  *************************************************************************************/
@@ -440,17 +439,18 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
    produce_blocks(1000);
+   // TODO should this throw an exception
+   //BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} ), fc::assert_exception, is_assert_exception);
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} );
    produce_blocks(1000);
-   CALL_TEST_FUNCTION( *this, "test_crypto", "asert_sha256_false", {} );
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "asert_sha256_false", {} ), fc::assert_exception, is_assert_exception);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_crypto", "asert_sha256_true", {} );
    produce_blocks(1000);
-   CALL_TEST_FUNCTION( *this, "test_crypto", "asert_no_data", {} );
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "asert_no_data", {} ), fc::assert_exception, is_assert_exception);
 } FC_LOG_AND_RETHROW() }
-#endif 
 
-#if 1
+
 /*************************************************************************************
  * memory_tests test cases
  *************************************************************************************/
@@ -460,7 +460,7 @@ BOOST_FIXTURE_TEST_CASE(memory_test, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), test_api_wast);
+   set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_allocs", {} );
    produce_blocks(1000);
@@ -478,9 +478,8 @@ BOOST_FIXTURE_TEST_CASE(memory_test, tester) { try {
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcmp", {} );
 } FC_LOG_AND_RETHROW() }
-#endif
 
-#if 1
+
 /*************************************************************************************
  * extended_memory_tests test cases
  *************************************************************************************/
@@ -490,7 +489,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_initial_memory, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), test_api_wast);
+   set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_initial_buffer", {} );
 } FC_LOG_AND_RETHROW() }
@@ -501,7 +500,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory, tester) { try {
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), test_api_wast);
+   set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory", {} );
 } FC_LOG_AND_RETHROW() }
@@ -512,7 +511,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, tester) { try
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), test_api_wast);
+   set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_exceeded", {} ),
                          page_memory_error, is_page_memory_error);
@@ -524,15 +523,13 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
-   set_code(N(testapi), test_api_wast);
+   set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_negative_bytes", {} ),
                          page_memory_error, is_page_memory_error);
 } FC_LOG_AND_RETHROW() }
-#endif
 
 
-#if 1
 /*************************************************************************************
  * string_tests test case
  *************************************************************************************/
@@ -544,10 +541,9 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
-	set_code( N(testapi), test_api_wast );
+	set_code( N(testapi), test_api_mem_wast );
 	produce_blocks(1000);
 
-	//transfer( N(testapi), N(testextmem), "1.0000 EOS", "memo" );
 	CALL_TEST_FUNCTION( *this, "test_string", "construct_with_size", {});
 	CALL_TEST_FUNCTION( *this, "test_string", "construct_with_data", {});
 	CALL_TEST_FUNCTION( *this, "test_string", "construct_with_data_partially", {});
@@ -557,7 +553,6 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_string", "index_operator", {});
 	BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_string", "index_out_of_bound", {}), fc::assert_exception, is_assert_exception );
 	CALL_TEST_FUNCTION( *this, "test_string", "substring", {});
-#if 0
 	CALL_TEST_FUNCTION( *this, "test_string", "concatenation_null_terminated", {});
 	BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_string", "substring_out_of_bound", {}), fc::assert_exception, is_assert_exception );
 	CALL_TEST_FUNCTION( *this, "test_string", "concatenation_non_null_terminated", {});
@@ -567,14 +562,12 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_string", "print_non_null_terminated", {});
 	CALL_TEST_FUNCTION( *this, "test_string", "print_unicode", {});
 	CALL_TEST_FUNCTION( *this, "test_string", "string_literal", {});
-//TODO missing assert_is_utf8
 	CALL_TEST_FUNCTION( *this, "test_string", "valid_utf8", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "invalid_utf8", {});
-#endif
+	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_string", "invalid_utf8", {}), fc::assert_exception, is_assert_exception );
+   
 } FC_LOG_AND_RETHROW() }
-#endif
 
-#if 1
+
 /*************************************************************************************
  * print_tests test case
  *************************************************************************************/
@@ -606,8 +599,6 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 
 	//TODO come back to this, no native uint128_t
 	// test printi128
-//	CAPTURE_AND_PRE_TEST_PRINT("test_printi128");
-//	BOOST_CHECK_EQUAL( captured.substr(0, 38), U128Str(-1) );
 
 	// test printn
 	CAPTURE_AND_PRE_TEST_PRINT("test_printn");
@@ -620,8 +611,14 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	BOOST_CHECK_EQUAL( captured.substr(52, 13), "abcdefghijkl1");
 	BOOST_CHECK_EQUAL( captured.substr(65, 13), "abcdefghijkl1");
 
+	// test printi128
+	CAPTURE_AND_PRE_TEST_PRINT("test_printi128");
+	BOOST_CHECK_EQUAL( captured.substr(0, 39), U128Str(-1) );
+	BOOST_CHECK_EQUAL( captured.substr(39, 1), U128Str(0) );
+	BOOST_CHECK_EQUAL( captured.substr(40, 11), U128Str(87654323456) );
+      
 } FC_LOG_AND_RETHROW() }
-#endif
+
 
 /*************************************************************************************
  * math_tests test case
@@ -642,25 +639,26 @@ BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
 
    // test mult_eq with 10 random pairs of 128 bit numbers
    for (int i=0; i < 10; i++) {
-      u128_msg msg;
-      msg.values[0] = dis(gen); msg.values[0] <<= 64; msg.values[0] |= dis(gen);
-      msg.values[1] = dis(gen); msg.values[1] <<= 64; msg.values[1] |= dis(gen);
-      msg.values[2] = msg.values[0] * msg.values[1];
-      CALL_TEST_FUNCTION( *this, "test_math", "test_multeq", fc::raw::pack(msg));
+      u128_action act;
+      act.values[0] = dis(gen); act.values[0] <<= 64; act.values[0] |= dis(gen);
+      act.values[1] = dis(gen); act.values[1] <<= 64; act.values[1] |= dis(gen);
+      act.values[2] = act.values[0] * act.values[1];
+      CALL_TEST_FUNCTION( *this, "test_math", "test_multeq", fc::raw::pack(act));
    }
    // test div_eq with 10 random pairs of 128 bit numbers
    for (int i=0; i < 10; i++) {
-      u128_msg msg;
-      msg.values[0] = dis(gen); msg.values[0] <<= 64; msg.values[0] |= dis(gen);
-      msg.values[1] = dis(gen); msg.values[1] <<= 64; msg.values[1] |= dis(gen);
-      msg.values[2] = msg.values[0] / msg.values[1];
-      CALL_TEST_FUNCTION( *this, "test_math", "test_diveq", fc::raw::pack(msg));
+      u128_action act;
+      act.values[0] = dis(gen); act.values[0] <<= 64; act.values[0] |= dis(gen);
+      act.values[1] = dis(gen); act.values[1] <<= 64; act.values[1] |= dis(gen);
+      act.values[2] = act.values[0] / act.values[1];
+      CALL_TEST_FUNCTION( *this, "test_math", "test_diveq", fc::raw::pack(act));
    }
    // test diveq for divide by zero
 	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_math", "test_diveq_by_0", {}), fc::assert_exception, is_assert_exception);
 	CALL_TEST_FUNCTION( *this, "test_math", "test_double_api", {});
 	//BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_math", "test_double_api_div_0", {}), fc::assert_exception, is_assert_exception);
 } FC_LOG_AND_RETHROW() }
+
 
 /*************************************************************************************
  * types_tests test case
@@ -679,7 +677,7 @@ BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_types", "char_to_symbol", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "string_to_name", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "name_class", {});
-} FC_LOG_AND_RETHROW()
+} FC_LOG_AND_RETHROW() }
 
 
 BOOST_AUTO_TEST_SUITE_END()

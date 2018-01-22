@@ -28,7 +28,7 @@ extern "C" {
     *
     *  Example:
     *  @code
-    *  account_name producers[21];
+    *  product_key producers[21];
     *  get_active_producers(producers, sizeof(account_name)*21);
     *  @endcode
     */

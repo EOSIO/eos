@@ -40,7 +40,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_compiler_builtins, test_lshlti3);
       //WASM_TEST_HANDLER(test_compiler_builtins, test_lshrti3);
 
-
       //test_action
       WASM_TEST_HANDLER(test_action, read_action_normal);
       WASM_TEST_HANDLER(test_action, read_action_to_0);
@@ -65,7 +64,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_math, test_diveq_by_0);
       WASM_TEST_HANDLER(test_math, test_double_api);
       WASM_TEST_HANDLER(test_math, test_double_api_div_0);
-
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_sha256);

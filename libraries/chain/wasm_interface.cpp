@@ -1,12 +1,15 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/crypto/sha256.hpp>
+#include <fc/utf8.hpp>
 
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
@@ -634,18 +637,6 @@ class context_aware_api {
       uint32_t&          sbrk_bytes;
 };
 
-template <uint32_t N>
-struct left_shift_mask
-{
-   static const uint64_t value = (1<<N)+left_shift_mask<N-1>::value;
-};
-
-template<>
-struct left_shift_mask<0>
-{
-   static const uint64_t value = 1;
-};
-
 
 class system_api : public context_aware_api {
    public:
@@ -657,8 +648,25 @@ class system_api : public context_aware_api {
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
       }
 
+       void assert_is_utf8(const char* s, uint32_t len, const char* msg) {
+         assert(fc::is_utf8(std::string(s, len)), msg);
+      }
+ 
       fc::time_point_sec now() {
          return context.controller.head_block_time();
+      } 
+};
+
+class crypto_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+      void assert_sha256(char* data, uint32_t len, fc::sha256& hash) {
+         auto res = fc::sha256::hash(data, len); 
+         FC_ASSERT( res == hash, "hash miss match" );
+      }
+
+      void sha256( char* data, uint32_t len, fc::sha256& hash) {
+         hash = fc::sha256::hash(data, len);
       }
 };
 
@@ -909,7 +917,9 @@ class transaction_api : public context_aware_api {
 class compiler_builtins : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
-
+      void __break_point() {
+         __asm("int3\n");
+      }
       void __ashlti3(__int128& ret, uint64_t high, uint64_t low, uint32_t shift) {
          fc::uint128_t i(high, low);
          i <<= shift;
@@ -981,11 +991,18 @@ class compiler_builtins : public context_aware_api {
          sa ^= sb; 
 
          a *= b; 
+
          // negate back if needed
          a = sa ? ~a + 1 : a;
 
          ret = (unsigned __int128)a;
       } 
+
+      void __modti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+
+      }
+
+      static constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
 };
 
 /*
@@ -1000,6 +1017,21 @@ class account_api : public context_aware_api {
       }
 };
 */
+
+class chain_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void get_active_producers(account_name* data, uint32_t len) {
+         const auto& gpo = context.controller.get_global_properties();
+         for (int i=0; i < gpo.active_producers.producers.size(); i++) {
+            if (i > len)
+               return;
+            data[i] = gpo.active_producers.producers[i].producer_name;
+         }
+      }
+};
+
 class math_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -1086,7 +1118,12 @@ REGISTER_INTRINSICS(math_api,
    (i64_to_double, int64_t(int64_t)          )
 );
 
+REGISTER_INTRINSICS(chain_api,
+   (get_active_producers,     void(int, int32_t)  )
+);
+
 REGISTER_INTRINSICS(compiler_builtins,
+   (__break_point, void()                            )
    (__ashlti3,     void(int, int64_t, int64_t, int)  )
    (__ashrti3,     void(int, int64_t, int64_t, int)  )
    (__lshlti3,     void(int, int64_t, int64_t, int)  )
@@ -1095,11 +1132,17 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t) )
 );
 
-
 REGISTER_INTRINSICS(system_api,
-   (assert,      void(int, int)  )
-   (now,         int()           )
+   (assert,              void(int, int)           )
+   (assert_is_utf8,      void(int, int32_t, int)  )
+   (now,                 int()                    )
 );
+
+/*
+REGISTER_INTRINSICS(account_api,
+   (account_balance_get,   int(int, int32_t)   )
+);
+*/
 
 REGISTER_INTRINSICS(action_api,
    (read_action,            int(int, int)  )
@@ -1126,15 +1169,9 @@ REGISTER_INTRINSICS(console_api,
    (printhex,              void(int, int)  )
 );
 
-/*
-REGISTER_INTRINSICS(account_api,
-   (account_balance_get,   int(int, int32_t)   )
-);
-*/
-
-REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)  )
-   (send_deferred,         void(int, int, int, int)  )
+REGISTER_INTRINSICS(crypto_api,
+   (assert_sha256,       void(int, int32_t, int)  )
+   (sha256,              void(int, int32_t, int)  )
 );
 
 REGISTER_INTRINSICS(memory_api,
@@ -1143,6 +1180,13 @@ REGISTER_INTRINSICS(memory_api,
    (memset,                 int(int, int, int)   )
    (sbrk,                   int(int)             )
 );
+
+REGISTER_INTRINSICS(transaction_api,
+   (send_inline,           void(int, int)  )
+   (send_deferred,         void(int, int, int, int)  )
+);
+
+
 
 
 #define DB_METHOD_SEQ(SUFFIX) \

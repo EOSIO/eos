@@ -1,42 +1,42 @@
 #include <eoslib/eos.hpp>
+#include <eoslib/print.hpp>
 
 #include "test_api.hpp"
 
 using namespace eosio;
 
-unsigned int test_math::test_multeq() {
-  u128_msg msg;
-  auto n = read_action(&msg, sizeof(u128_msg));
-  assert( n == sizeof(u128_msg), "test_multeq n == sizeof(u128_msg)" );
+void test_math::test_multeq() {
+  u128_action act;
+  auto n = read_action(&act, sizeof(u128_action));
+  assert( n == sizeof(u128_action), "test_multeq n == sizeof(u128_action)" );
 
-  uint128_t self  = *(msg.values);
-  uint128_t other = *(msg.values+1);
-
+  uint128_t self  = *(act.values);
+  uint128_t other = *(act.values+1);
   eosio::multeq(self, other);
-  assert( self == msg.values[2], "test_multeq msg.values[0] == msg.values[2]" );
-  return 0;
+  assert( self == act.values[2], "test_multeq act.values[0] == act.values[2]" );
 }
 
-unsigned int test_math::test_diveq() {
-  u128_msg msg;
-  auto n = read_action(&msg, sizeof(u128_msg));
-  assert( n == sizeof(u128_msg), "test_diveq n == sizeof(u128_msg)" );
+void test_math::test_diveq() {
+  u128_action act;
+  auto n = read_action(&act, sizeof(u128_action));
+  assert( n == sizeof(u128_action), "test_diveq n == sizeof(u128_action)" );
 
-  uint128_t self  = *(msg.values);
-  uint128_t other = *(msg.values+1);
+  uint128_t self  = *(act.values);
+  uint128_t other = *(act.values+1);
 
   eosio::diveq(self, other);
-  assert( msg.values[0] == msg.values[2], "test_diveq msg.values[0] == msg.values[2]" );
-  return 0;
+  assert( self == act.values[2], "test_diveq act.values[0] == act.values[2]" );
 }
 
-unsigned int test_math::test_diveq_by_0() {
+void test_math::test_diveq_by_0() {
   unsigned __int128 a = 100;
   unsigned __int128 b = 0;
   eosio::diveq(a, b);
-  return 0;
 }
-unsigned int test_math::test_double_api() {
+  
+
+
+void test_math::test_double_api() {
   
   uint64_t res = double_mult( 
     double_div( i64_to_double(2), i64_to_double(7) ),
@@ -65,17 +65,11 @@ unsigned int test_math::test_double_api() {
   );
 
   assert(res == 1, "double_lt");
-  
-  return 0;
 }
 
-unsigned int test_math::test_double_api_div_0() {
-  
-  double_div( i64_to_double(1), 
+void test_math::test_double_api_div_0() {
+//  double_div( i64_to_double(1), i64_to_double(0));
     double_add( 
       i64_to_double(-5), i64_to_double(5) 
-    )
-  );
-
-  return 0;
+    );
 }
