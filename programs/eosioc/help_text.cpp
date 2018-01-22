@@ -62,7 +62,7 @@ const char* duplicate_key_import_help_text = _("This key is already imported int
 const char* unknown_abi_table_help_text = _(R"text(The ABI for the code on account "${1}" does not specify table "${2}".
 
 Please check the account and table name, and verify that the account has the expected code using:
-  eosc get code ${1})text");
+  eosioc get code ${1})text");
 
 const char* help_regex_error = _("Error locating help text: ${code} ${what}");
 
