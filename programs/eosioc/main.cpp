@@ -1090,7 +1090,7 @@ int main( int argc, char** argv ) {
    string contract;
    string action;
    string data;
-   auto actionsSubcommand = push->add_subcommand("actions", localized("Push a transaction with a single actions"));
+   auto actionsSubcommand = push->add_subcommand("action", localized("Push a transaction with a single action"));
    actionsSubcommand->fallthrough(false);
    actionsSubcommand->add_option("contract", contract,
                                  localized("The account providing the contract to execute"), true)->required();
