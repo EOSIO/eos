@@ -5,6 +5,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/utf8.hpp>
 
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
@@ -638,11 +639,45 @@ class context_aware_api {
       apply_context&     context;
 };
 
+class producer_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+         context.get_active_producers(producers, datalen);
+      }
+};
+
+class crypto_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
+         auto result = fc::sha256::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
+         hash_val = fc::sha256::hash( data, datalen );
+      }
+};
+
+class string_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
+         const bool test = fc::is_utf8(std::string( str, datalen ));
+
+         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
+      }
+};
+
 class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void assert(bool condition, null_terminated_ptr str) {
+      void assert(bool condition, const char* str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -689,8 +724,8 @@ class console_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void prints(null_terminated_ptr str) {
-         context.console_append<const char*>(str);
+      void prints(const char *str) {
+         context.console_append(str);
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
@@ -900,6 +935,19 @@ class transaction_api : public context_aware_api {
       }
 
 };
+
+REGISTER_INTRINSICS(producer_api,
+   (get_active_producers,      void(int, int))
+);
+
+REGISTER_INTRINSICS(crypto_api,
+   (assert_sha256,  void(int, int, int))
+   (sha256,         void(int, int, int))
+);
+
+REGISTER_INTRINSICS(string_api,
+   (assert_is_utf8,  void(int, int, int))
+);
 
 REGISTER_INTRINSICS(system_api,
    (assert,      void(int, int))

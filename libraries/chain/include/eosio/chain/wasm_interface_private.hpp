@@ -78,6 +78,7 @@ struct class_from_wasm<apply_context> {
  * class to represent an in-wasm-memory array
  * it is a hint to the transcriber that the next parameter will
  * be a size and that the pair are validated together
+ * This triggers the template specialization of intrinsic_invoker_impl
  * @tparam T
  */
 template<typename T>
@@ -475,6 +476,43 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
       T *base_t = (T*)(getMemoryBaseAddress(mem)+ptr_t);
       U *base_u = (U*)(getMemoryBaseAddress(mem)+ptr_u);
       return Then(wasm, array_ptr<T>{base_t}, array_ptr<U>{base_u}, length, rest..., translated...);
+   };
+
+   template<then_type Then>
+   static const auto fn() {
+      return next_step::template fn<translate_one<Then>>();
+   }
+};
+
+/**
+ * Specialization for transcribing  a array_ptr type, followed by a size, and  a null_terminated_ptr type in the
+ * native method signature
+ * This type transcribes into 3 wasm parameters: a pointer, length, and a char pointer and checks the validity of
+ * that memory range before dispatching to the native method
+ *
+ * @tparam Ret - the return type of the native method
+ * @tparam Inputs - the remaining native parameters to transcribe
+ * @tparam Translated - the list of transcribed wasm parameters
+ */
+template<typename T, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
+   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, size_t, null_terminated_ptr, Inputs..., Translated...);
+
+   template<then_type Then>
+   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr_t, I32 size, I32 ptr_u) {
+      const auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
+      const size_t length = size_t(size);
+      const char* const top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
+      if(!mem || ptr_t + sizeof(T) * length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+         Runtime::causeException(Exception::Cause::accessViolation);
+      T* base_t = (T*)(getMemoryBaseAddress(mem) + ptr_t);
+      char* base_u        = (char*)(getMemoryBaseAddress(mem) + ptr_u);
+      char* p             = base_u;
+      while(p < top_of_memory)
+         if(*p++ == '\0')
+            return Then(wasm, array_ptr<T>{base_t}, length, null_terminated_ptr{base_u}, rest..., translated...);
+      Runtime::causeException(Exception::Cause::accessViolation);
    };
 
    template<then_type Then>
