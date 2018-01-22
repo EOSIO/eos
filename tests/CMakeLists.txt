@@ -44,8 +44,6 @@ if(WASM_TOOLCHAIN)
   add_dependencies(api_test test_api memory_test extended_memory_test table_abi_test)
 endif()
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.sh COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_mongodb_test.sh ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_mongodb_test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run_tests.sh ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trans_sync_across_mixed_cluster_test.sh ${CMAKE_CURRENT_BINARY_DIR}/trans_sync_across_mixed_cluster_test.sh COPYONLY)
@@ -54,13 +52,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.py COPYONLY)
 
-add_test(NAME eosd_run_test.sh COMMAND eosd_run_test.sh --eosd=$<TARGET_FILE:eosd> --host=localhost --port=8888)
 if(UNIX AND NOT APPLE)
   add_test(chain_test chain_test)
   add_test(slow_test slow_test)
   add_test(api_test api_test)
   if (libmongoc-1.0_FOUND)
-    # TODO fix path in the test and uncomment
-    # add_test(eosd_run_mongodb_test.sh tests/eosd_run_mongodb_test.sh)
+    # Placeholder for mongodb tests
   endif()
 endif()

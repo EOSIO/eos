@@ -65,6 +65,7 @@ testUtils.Utils.Debug=debug
 Print ("producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d, chain sync strategy: %s" % (
     pnodes, topo, delay, chainSyncStrategyStr))
 
+testUtils.Utils.iAmNotNoon()
 cluster=testUtils.Cluster()
 walletMgr=testUtils.WalletMgr(False)
 cluster.killall()
@@ -147,7 +148,7 @@ try:
 finally:
     if not testSuccessful and dumpErrorDetails:
         cluster.dumpErrorDetails()
-        wallet.dumpErrorDetails()
+        walletMgr.dumpErrorDetails()
         Utils.Print("== Errors see above ==")
 
     if killEosInstances:

@@ -30,6 +30,7 @@ testUtils.Utils.Debug=debug
 Print ("producing nodes:", pnodes, ", non-producing nodes: ", total_nodes-pnodes,
        ", topology:", topo, ", delay between nodes launch(seconds):", delay)
 
+testUtils.Utils.iAmNotNoon()
 cluster=testUtils.Cluster()
 walletMgr=testUtils.WalletMgr(False)
 cluster.killall()
