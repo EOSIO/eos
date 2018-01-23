@@ -18,8 +18,10 @@ public:
 
     void sign_transaction(eosio::chain::signed_transaction &trx);
 
-    void set_server(const std::string& host, uint32_t port);
-    void set_wallet(const std::string& host, uint32_t port);
+    void set_server_host(const std::string& host);
+    void set_server_port(uint32_t port);
+    void set_wallet_host(const std::string& host);
+    void set_wallet_port(uint32_t port);
 
     std::string host = "localhost"; /// @todo make private
     uint32_t port = 8888; /// @todo make private
