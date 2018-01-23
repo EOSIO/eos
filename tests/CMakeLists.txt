@@ -27,7 +27,7 @@ set( CMAKE_CXX_STANDARD 14 )
 
 
 
-file(GLOB UNIT_TESTS "chain_tests/*.cpp" "tests/abi_tests.cpp")
+file(GLOB UNIT_TESTS "chain_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp")
 if(WASM_TOOLCHAIN)
     file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
 endif()
