@@ -14,25 +14,48 @@ namespace client {
 
 fc::variant Eosioclient::get_info() const
 {
-    return call(get_info_func);
+    return call_server(get_info_func);
 }
 
 fc::variant Eosioclient::get_code(const std::string &account_name) const
 {
-    return call(get_code_func, fc::mutable_variant_object("account_name", account_name));
+    return call_server(get_code_func, fc::mutable_variant_object("account_name", account_name));
 }
 
 fc::variant Eosioclient::get_table(const std::string& scope, const std::string& code, const std::string& table) const
 {
     bool binary = false;
-    return call(get_table_func, fc::mutable_variant_object("json", !binary)
+    return call_server(get_table_func, fc::mutable_variant_object("json", !binary)
                 ("scope",scope)
                 ("code",code)
                 ("table",table)
                 );
 }
 
-fc::variant Eosioclient::call(const std::string &path, const fc::variant &postdata) const
+void Eosioclient::sign_transaction(eosio::chain::signed_transaction& trx) {
+   // TODO better error checking
+   const auto& public_keys = call_wallet(wallet_public_keys);
+   auto get_arg = fc::mutable_variant_object
+         ("transaction", trx)
+         ("available_keys", public_keys);
+   const auto& required_keys = call_server(get_required_keys, get_arg);
+   // TODO determine chain id
+   fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(eosio::chain::chain_id_type{})};
+   const auto& signed_trx = call_wallet(wallet_sign_trx, sign_args);
+   trx = signed_trx.as<eosio::chain::signed_transaction>();
+}
+
+fc::variant Eosioclient::call_wallet(const std::string &path, const fc::variant &postdata) const
+{
+    return call(wallet_host, wallet_port, path, postdata);
+}
+
+fc::variant Eosioclient::call_server(const std::string &path, const fc::variant &postdata) const
+{
+    return call(host, port, path, postdata);
+}
+
+fc::variant Eosioclient::call(const std::string& host, uint16_t port, const std::string &path, const fc::variant &postdata) const
 {
     try {
         std::string postjson;
