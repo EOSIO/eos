@@ -136,6 +136,8 @@ const string get_block_func = chain_func_base + "/get_block";
 const string get_account_func = chain_func_base + "/get_account";
 const string get_table_func = chain_func_base + "/get_table_rows";
 const string get_code_func = chain_func_base + "/get_code";
+const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
+const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
 const string get_required_keys = chain_func_base + "/get_required_keys";
 
 const string account_history_func_base = "/v1/account_history";
@@ -436,25 +438,6 @@ struct set_action_permission_subcommand {
    }
 };
 
-struct currency_stats {
-   asset supply;
-};
-
-FC_REFLECT(currency_stats, (supply));
-
-static currency_stats parse_currency_stats( fc::variant const& row ) {
-   uint64_t values[2];
-   fc::from_hex(row.as_string(), (char *) values, sizeof(uint64_t) * 2);
-   asset supply = asset(values[1], values[0]);
-   return currency_stats{ supply };
-}
-
-static asset parse_currency_balance( fc::variant const& row ) {
-   uint64_t values[2];
-   fc::from_hex(row.as_string(), (char *) values, sizeof(uint64_t) * 2);
-   return asset(values[1], values[0]);
-}
-
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
@@ -627,31 +610,19 @@ int main( int argc, char** argv ) {
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
    get_balance->set_callback([&] {
-      auto result = call(get_table_func, fc::mutable_variant_object("json", false)
-         ("scope", accountName)
+      auto result = call(get_currency_balance_func, fc::mutable_variant_object("json", false)
+         ("account", accountName)
          ("code", code)
-         ("table", "account")
+         ("symbol", symbol)
       );
 
-      const auto& rows = result["rows"].get_array();
+      const auto& rows = result.get_array();
       if (symbol.empty()) {
-         vector<asset> balances;
-         for (const auto &row: rows) {
-            balances.emplace_back(parse_currency_balance(row));
-         }
-
-
-         std::cout << fc::json::to_pretty_string(balances)
+         std::cout << fc::json::to_pretty_string(rows)
                    << std::endl;
-      } else {
-         for (const auto &row: rows) {
-            auto balance = parse_currency_balance(row);
-            if (balance.symbol_name().compare(symbol) == 0) {
-               std::cout << fc::json::to_pretty_string(balance)
-                         << std::endl;
-               return;
-            }
-         }
+      } else if ( rows.size() > 0 ){
+         std::cout << fc::json::to_pretty_string(rows[0])
+                   << std::endl;
       }
    });
 
@@ -659,32 +630,18 @@ int main( int argc, char** argv ) {
    get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
    get_currency_stats->set_callback([&] {
-      auto result = call(get_table_func, fc::mutable_variant_object("json", false)
-         ("scope", code)
+      auto result = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
          ("code", code)
-         ("table", "stat")
+         ("symbol", symbol)
       );
 
-      const auto& rows = result["rows"].get_array();
       if (symbol.empty()) {
-         fc::mutable_variant_object currencies;
-         for (const auto &row: rows) {
-            auto stats = parse_currency_stats(row);
-            currencies[stats.supply.symbol_name()] = stats;
-         }
-
-
-         std::cout << fc::json::to_pretty_string(currencies)
+         std::cout << fc::json::to_pretty_string(result)
                    << std::endl;
       } else {
-         for (const auto &row: rows) {
-            auto stats = parse_currency_stats(row);
-            if (stats.supply.symbol_name().compare(symbol) == 0) {
-               std::cout << fc::json::to_pretty_string(stats)
-                         << std::endl;
-               return;
-            }
-         }
+         const auto& mapping = result.get_object();
+         std::cout << fc::json::to_pretty_string(mapping[symbol])
+                   << std::endl;
       }
    });
 
