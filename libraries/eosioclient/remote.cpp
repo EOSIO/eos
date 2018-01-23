@@ -1,4 +1,4 @@
-#include "remote.h"
+#include "remote.hpp"
 
 Remote::Remote()
 {
