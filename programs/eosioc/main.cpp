@@ -155,7 +155,6 @@ const string wallet_lock = wallet_func_base + "/lock";
 const string wallet_lock_all = wallet_func_base + "/lock_all";
 const string wallet_unlock = wallet_func_base + "/unlock";
 const string wallet_import_key = wallet_func_base + "/import_key";
-const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
 
 inline std::vector<name> sort_names( const std::vector<name>& names ) {
    auto results = std::vector<name>(names);
@@ -252,26 +251,13 @@ eosio::chain_apis::read_only::get_info_results get_info() {
   return eosioclient.get_info().as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-void sign_transaction(signed_transaction& trx) {
-   // TODO better error checking
-   const auto& public_keys = call(eosioclient.wallet_host, eosioclient.wallet_port, wallet_public_keys);
-   auto get_arg = fc::mutable_variant_object
-         ("transaction", trx)
-         ("available_keys", public_keys);
-   const auto& required_keys = call(eosioclient.host, eosioclient.port, get_required_keys, get_arg);
-   // TODO determine chain id
-   fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id_type{})};
-   const auto& signed_trx = call(eosioclient.wallet_host, eosioclient.wallet_port, wallet_sign_trx, sign_args);
-   trx = signed_trx.as<signed_transaction>();
-}
-
 fc::variant push_transaction( signed_transaction& trx, bool sign ) {
     auto info = get_info();
     trx.expiration = info.head_block_time + tx_expiration;
     trx.set_reference_block(info.head_block_id);
 
     if (sign) {
-       sign_transaction(trx);
+       eosioclient.sign_transaction(trx);
     }
 
     return call( push_txn_func, trx );
@@ -322,7 +308,7 @@ void send_transaction(const std::vector<chain::action>& actions, bool skip_sign 
    trx.expiration = info.head_block_time + tx_expiration;
    trx.set_reference_block(info.head_block_id);
    if (!skip_sign) {
-      sign_transaction(trx);
+      eosioclient.sign_transaction(trx);
    }
 
    std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
@@ -797,7 +783,7 @@ int main( int argc, char** argv ) {
       trx.expiration = info.head_block_time + tx_expiration;
       trx.set_reference_block( info.head_block_id);
       if (!skip_sign) {
-         sign_transaction(trx);
+         eosioclient.sign_transaction(trx);
       }
 
       std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
