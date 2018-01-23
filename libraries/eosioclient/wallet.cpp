@@ -5,62 +5,62 @@
 namespace eosio {
 namespace client {
 
-std::string Wallet::get_wallet_host() const
+std::string Wallet::host() const
 {
     return m_host;
 }
 
-void Wallet::set_wallet_host(const std::string &host)
+void Wallet::set_host(const std::string &host)
 {
     m_host = host;
 }
 
-uint32_t Wallet::get_wallet_port() const
+uint32_t Wallet::port() const
 {
     return m_port;
 }
 
-void Wallet::set_wallet_port(uint32_t port)
+void Wallet::set_port(uint32_t port)
 {
     m_port = port;
 }
 
-fc::variant Wallet::unlock_wallet(const fc::variant &vs) const
+fc::variant Wallet::unlock(const fc::variant &vs) const
 {
     return m_remote.call(m_host, m_port, wallet_unlock, vs);
 }
 
-fc::variant Wallet::import_key_wallet(const fc::variant &vs) const
+fc::variant Wallet::import_key(const fc::variant &vs) const
 {
     return m_remote.call(m_host, m_port, wallet_import_key, vs);
 }
 
-fc::variant Wallet::list_wallet() const
+fc::variant Wallet::list() const
 {
     return m_remote.call(m_host, m_port, wallet_list);
 }
 
-fc::variant Wallet::list_keys_wallet() const
+fc::variant Wallet::list_keys() const
 {
     return m_remote.call(m_host, m_port, wallet_list_keys);
 }
 
-fc::variant Wallet::create_wallet(const std::string& name) const
+fc::variant Wallet::create(const std::string& name) const
 {
     return m_remote.call(m_host, m_port, wallet_create, name);
 }
 
-fc::variant Wallet::open_wallet(const std::string &name) const
+fc::variant Wallet::open(const std::string &name) const
 {
     return m_remote.call(m_host, m_port, wallet_open, name);
 }
 
-fc::variant Wallet::lock_wallet(const std::string &name) const
+fc::variant Wallet::lock(const std::string &name) const
 {
     return m_remote.call(m_host, m_port, wallet_lock, name);
 }
 
-fc::variant Wallet::lock_all_wallet() const
+fc::variant Wallet::lock_all() const
 {
     return m_remote.call(m_host, m_port, wallet_lock_all);
 }
