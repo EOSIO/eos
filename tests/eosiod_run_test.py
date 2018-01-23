@@ -42,11 +42,14 @@ parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='st
 parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
+parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is already running.",
+                    action='store_true')
 parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon test completion",
                     action='store_true')
 parser.add_argument("--exit-early", help="Exit prior to known error point.", action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
+
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -56,21 +59,18 @@ debug=args.v
 exitEarly=args.exit_early
 enableMongo=args.mongodb
 amINoon=not args.not_noon
-localTest=True if server == LOCAL_HOST else False
-testUtils.Utils.Debug=debug
-
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo)
-walletMgr=testUtils.WalletMgr(True)
-cluster.killall()
-cluster.cleanup()
-walletMgr.killall()
-walletMgr.cleanup()
-
-random.seed(1) # Use a fixed seed for repeatability.
-testSuccessful=False
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
+dontLaunch=args.dont_launch
+
+testUtils.Utils.Debug=debug
+localTest=True if server == LOCAL_HOST else False
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo)
+walletMgr=testUtils.WalletMgr(True)
+
+testSuccessful=False
 killEosInstances=True
+killWallet=True
 
 WalletdName="eos-walletd"
 ClientName="eosc"
@@ -89,13 +89,19 @@ try:
     print("SERVER: %s" % (server))
     print("PORT: %d" % (port))
 
-    if localTest:
+    if localTest and not dontLaunch:
+        cluster.killall()
+        cluster.cleanup()
         Print("Stand up cluster")
         if cluster.launch() is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
-        cluster.initializeNodes(self)
+        cluster.initializeNodes()
+        killEosInstances=False
+
+    walletMgr.killall()
+    walletMgr.cleanup()
 
     accounts=testUtils.Cluster.createAccountKeys(3)
     if accounts is None:
@@ -604,13 +610,17 @@ finally:
         Print("== Errors see above ==")
 
     if killEosInstances:
-        Print("Shut down the cluster and wallet.")
+        Print("Shut down the cluster.")
         cluster.killall()
+        if testSuccessful and not keepLogs:
+            Print("Cleanup cluster data.")
+            cluster.cleanup()
+
+    if killWallet:
+        Print("Shut down the wallet.")
         walletMgr.killall()
         if testSuccessful and not keepLogs:
-            Print("Cleanup cluster and wallet data.")
-            cluster.cleanup()
+            Print("Cleanup wallet data.")
             walletMgr.cleanup()
-    pass
-    
+
 exit(0)

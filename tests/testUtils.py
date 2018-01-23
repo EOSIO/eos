@@ -128,7 +128,7 @@ class Node(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def __str__(self):
-        return "Port:%d, Pid:%d, Alive:%s, Cmd:\"%s\"" % (self.port, self.pid, self.alive, self.cmd)
+        return "Port:%d, Pid:%s, Alive:%s, Cmd:\"%s\"" % (self.port, self.pid, self.alive, self.cmd)
 
     @staticmethod
     def runCmdReturnJson(cmd, trace=False):
@@ -1066,8 +1066,11 @@ class Cluster(object):
 
     def initializeNodes(self):
         node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        node.setWalletEndpointArgs(self.walletEndpointArgs)
+        Utils.Debug and Utils.Print("Node:", node)
+
         node.checkPulse()
-        self.node={node}
+        self.nodes=[node]
         return True
     
     # manually set nodes, alternative to explicit launch
