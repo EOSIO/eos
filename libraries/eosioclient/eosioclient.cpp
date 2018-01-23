@@ -42,6 +42,101 @@ fc::variant Eosioclient::push_transaction(const fc::variant &transaction) const
     return call_server(push_txn_func, transaction);
 }
 
+fc::variant Eosioclient::connect(const std::string &host) const
+{
+    return call_server(net_connect, host);
+}
+
+fc::variant Eosioclient::disconnect(const std::string &host) const
+{
+    return call_server(net_disconnect, host);
+}
+
+fc::variant Eosioclient::status(const std::string &host) const
+{
+    return call_server(net_status, host);
+}
+
+fc::variant Eosioclient::connections(const std::string &host) const
+{
+    return call_server(net_connections, host);
+}
+
+fc::variant Eosioclient::unlock_wallet(const fc::variant &vs) const
+{
+    return call_wallet(wallet_unlock, vs);
+}
+
+fc::variant Eosioclient::import_key_wallet(const fc::variant &vs) const
+{
+    return call_wallet(wallet_import_key, vs);
+}
+
+fc::variant Eosioclient::list_wallet() const
+{
+    return call_wallet(wallet_list);
+}
+
+fc::variant Eosioclient::list_keys_wallet() const
+{
+    return call_wallet(wallet_list_keys);
+}
+
+fc::variant Eosioclient::create_wallet(const std::string& name) const
+{
+    return call_wallet(wallet_create, name);
+}
+
+fc::variant Eosioclient::open_wallet(const std::string &name) const
+{
+    return call_wallet(wallet_open, name);
+}
+
+fc::variant Eosioclient::lock_wallet(const std::string &name) const
+{
+    return call_wallet(wallet_lock, name);
+}
+
+fc::variant Eosioclient::lock_all_wallet() const
+{
+    return call_wallet(wallet_lock_all);
+}
+
+fc::variant Eosioclient::get_account_function(const fc::mutable_variant_object& variant) const
+{
+    return call_server(get_account_func, variant);
+}
+
+fc::variant Eosioclient::get_block_function(const fc::mutable_variant_object &variant) const
+{
+    return call_server(get_block_func, variant);
+}
+
+fc::variant Eosioclient::get_key_accounts_function(const fc::mutable_variant_object &variant) const
+{
+    return call_server(get_key_accounts_func, variant);
+}
+
+fc::variant Eosioclient::get_controller_accounts_function(const fc::mutable_variant_object &variant) const
+{
+    return call_server(get_controlled_accounts_func, variant);
+}
+
+fc::variant Eosioclient::get_transaction_function(const fc::mutable_variant_object &variant) const
+{
+    return call_server(get_transaction_func, variant);
+}
+
+fc::variant Eosioclient::push_transactions(const std::vector<chain::signed_transaction> &transactions) const
+{
+    return call_server(push_txns_func, transactions);
+}
+
+fc::variant Eosioclient::json_to_bin_function(const fc::mutable_variant_object &variant) const
+{
+    return call_server(json_to_bin_func, variant);
+}
+
 void Eosioclient::sign_transaction(eosio::chain::signed_transaction& trx) {
    // TODO better error checking
    const auto& public_keys = call_wallet(wallet_public_keys);
@@ -55,9 +150,19 @@ void Eosioclient::sign_transaction(eosio::chain::signed_transaction& trx) {
    trx = signed_trx.as<eosio::chain::signed_transaction>();
 }
 
+std::string Eosioclient::get_server_host() const
+{
+    return m_server_host;
+}
+
 void Eosioclient::set_server_host(const std::string &host)
 {
     m_server_host = host;
+}
+
+uint32_t Eosioclient::get_server_port() const
+{
+    return m_server_port;
 }
 
 void Eosioclient::set_server_port(uint32_t port)
@@ -65,9 +170,19 @@ void Eosioclient::set_server_port(uint32_t port)
     m_server_port = port;
 }
 
+std::string Eosioclient::get_wallet_host() const
+{
+    return m_wallet_host;
+}
+
 void Eosioclient::set_wallet_host(const std::string &host)
 {
     m_wallet_host = host;
+}
+
+uint32_t Eosioclient::get_wallet_port() const
+{
+    return m_wallet_port;
 }
 
 void Eosioclient::set_wallet_port(uint32_t port)
