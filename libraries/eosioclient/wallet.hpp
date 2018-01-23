@@ -12,19 +12,19 @@ namespace client {
 class Wallet
 {
 public:
-    std::string get_wallet_host() const;
-    void set_wallet_host(const std::string& host);
-    uint32_t get_wallet_port() const;
-    void set_wallet_port(uint32_t port);
+    std::string host() const;
+    void set_host(const std::string& host);
+    uint32_t port() const;
+    void set_port(uint32_t port);
 
-    fc::variant unlock_wallet(const fc::variant &vs) const;
-    fc::variant import_key_wallet(const fc::variant &vs) const;
-    fc::variant list_wallet() const;
-    fc::variant list_keys_wallet() const;
-    fc::variant create_wallet(const std::string &name) const;
-    fc::variant open_wallet(const std::string &name) const;
-    fc::variant lock_wallet(const std::string &name) const;
-    fc::variant lock_all_wallet() const;
+    fc::variant create(const std::string &name) const;
+    fc::variant open(const std::string &name) const;
+    fc::variant lock(const std::string &name) const;
+    fc::variant lock_all() const;
+    fc::variant unlock(const fc::variant &vs) const;
+    fc::variant import_key(const fc::variant &vs) const;
+    fc::variant list() const;
+    fc::variant list_keys() const;
     fc::variant public_keys() const;
     fc::variant sign_transaction(const fc::variants& args) const;
 
