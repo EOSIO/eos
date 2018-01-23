@@ -29,18 +29,6 @@ const std::string net_disconnect = net_func_base + "/disconnect";
 const std::string net_status = net_func_base + "/status";
 const std::string net_connections = net_func_base + "/connections";
 
-const std::string wallet_func_base = "/v1/wallet";
-const std::string wallet_create = wallet_func_base + "/create";
-const std::string wallet_open = wallet_func_base + "/open";
-const std::string wallet_list = wallet_func_base + "/list_wallets";
-const std::string wallet_list_keys = wallet_func_base + "/list_keys";
-const std::string wallet_public_keys = wallet_func_base + "/get_public_keys";
-const std::string wallet_lock = wallet_func_base + "/lock";
-const std::string wallet_lock_all = wallet_func_base + "/lock_all";
-const std::string wallet_unlock = wallet_func_base + "/unlock";
-const std::string wallet_import_key = wallet_func_base + "/import_key";
-const std::string wallet_sign_trx = wallet_func_base + "/sign_transaction";
-
 } // namespace client
 } // namespace eosio
 
