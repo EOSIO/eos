@@ -5,6 +5,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <wchar.h>
 
 extern "C" {
  /**
@@ -90,6 +91,7 @@ extern "C" {
 
    char* strstr(const char *haystack, const char *needle);
 
+   size_t strlen(const char *s);
    //char* strcasestr(const char *haystack, const char *needle);
 
    //char* strnstr(const char *haystack, const char *needle, size_t len);

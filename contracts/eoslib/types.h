@@ -5,6 +5,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <wchar.h>
 
 extern "C" {
 
@@ -19,8 +20,6 @@ extern "C" {
 struct uint256 {
    uint64_t words[4];
 };
-
-typedef unsigned int size_t;
 
 typedef uint64_t account_name;
 typedef uint64_t permission_name;

@@ -1,3 +1,8 @@
 file(GLOB ABI_FILES "*.abi")
 configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
-add_wast_target(eosio.system "${CMAKE_SOURCE_DIR}/contracts" ${CMAKE_CURRENT_BINARY_DIR})
+
+add_wast_executable(TARGET eosio.system
+  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
+  LIBRARIES eoslib
+  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
+)

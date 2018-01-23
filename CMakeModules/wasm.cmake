@@ -59,7 +59,7 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
 endif()
 
 macro(compile_wast)
-  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS" ${ARGN})
   set(target ${ARG_TARGET})
 
   # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
@@ -115,40 +115,41 @@ macro(compile_wast)
 
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.bc)
 
-  message("OUTPUT: ${target}.bc")
-
 endmacro(compile_wast)
 
 macro(add_wast_library)
-  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS" ${ARGN})
   set(target ${ARG_TARGET})
   #compile_wast("${ARGS}")
-  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS} LIBRARIES ${ARG_LIBRARIES})
+  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
+
   add_custom_target(${target} ALL DEPENDS ${ARG_TARGET}.bc)
+  set("${ARG_TARGET}_BC_FILENAME" ${CMAKE_CURRENT_SOURCE_DIR}/${ARG_TARGET}.bc CACHE INTERNAL "${target} .bc file")
 
   add_custom_command(OUTPUT ${target}.bc
-    DEPENDS ${outfiles} ${ARG_LIBRARIES}
-    COMMAND ${WASM_LLVM_LINK} -o ${target}.bc ${outfiles} ${ARG_LIBRARIES}
+    DEPENDS ${outfiles}
+    COMMAND ${WASM_LLVM_LINK} -o ${CMAKE_CURRENT_BINARY_DIR}/${target}.bc ${outfiles}
     COMMENT "Linking LLVM bitcode library ${target}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
   )
 
-  message("NEW TARGET: ${target}.bc")
 endmacro(add_wast_library)
 
 macro(add_wast_executable)
-  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "INCLUDE_FOLDERS;LIBRARIES;EXTERNAL_LIBRARIES" ${ARGN})
   set(target ${ARG_TARGET})
   set(DESTINATION_FOLDER ${ARG_DESTINATION_FOLDER})
 
-  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS} LIBRARIES ${ARG_LIBRARIES})
+  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
 
-message("OUTFILES: ${outfiles}")
+  foreach(lib ${ARG_LIBRARIES})
+     list(APPEND LIBRARIES ${${lib}_BC_FILENAME})
+  endforeach()
 
   add_custom_command(OUTPUT ${target}.bc
-    DEPENDS ${outfiles}
-    COMMAND ${WASM_LLVM_LINK} -only-needed -o ${target}.bc ${outfiles} ${ARG_LIBRARIES}
+    DEPENDS ${outfiles} "${ARG_LIBRARIES}" ${LIBRARIES}
+    COMMAND ${WASM_LLVM_LINK} -only-needed -o ${target}.bc ${outfiles} ${LIBRARIES} ${ARG_EXTERNAL_LIBRARIES}
     COMMENT "Linking LLVM bitcode executable ${target}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM

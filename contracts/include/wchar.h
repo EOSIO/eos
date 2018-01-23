@@ -4,6 +4,10 @@
  */
 #pragma once
 
+#include <stdint.h>
+
+typedef unsigned int size_t;
+
 // if we support wstring make sure that this is correct
 typedef wchar_t wint_t;
 #define WEOF wchar_t(-1)

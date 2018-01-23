@@ -666,7 +666,6 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
     produce_blocks(2000);
 
     create_accounts( {N(stltest), N(alice), N(bob)}, asset::from_string("1000.0000 MYCUR") );
-    transfer( N(inita), N(), "10.0000 MYCUR", "memo" );
     produce_block();
 
     set_code(N(stltest), stltest_wast);

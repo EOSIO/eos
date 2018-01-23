@@ -481,7 +481,9 @@ namespace eosio {
       uint32_t _active_heap;
       uint32_t _active_free_heap;
       static const uint32_t _alloc_memory_mask = 1 << 31;
-   } memory_heap;
+   };
+
+   extern memory_manager memory_heap;
 
   /**
    * Allocate a block of memory.
@@ -532,5 +534,6 @@ namespace eosio {
     {
        return memory_heap.free(ptr);
     }
+
    /// @} /// mathcppapi
 }
