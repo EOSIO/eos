@@ -270,12 +270,12 @@ If all went well, you will receive output similar to the following:
 
 ```json
 {
-  "name": "currency",
-  "eos_balance": 0,
-  "staked_balance": 1,
-  "unstaking_balance": 0,
-  "last_unstaking_time": "2106-02-07T06:28:15"
-}
+  "account_name": "currency",
+  "eos_balance": "0.0000 EOS",
+  "staked_balance": "1.0000 EOS",
+  "unstaking_balance": "0.0000 EOS",
+  "last_unstaking_time": "2035-10-29T06:32:22",
+...
 ```
 
 Now import the active private key generated previously in the wallet:
@@ -313,14 +313,20 @@ It will return something like:
 code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 ```
 
+Before using the currency contract, you must issue the currency.
+
+```bash
+./eosioc push action currency issue '{"to":"currency","quantity":"1000.0000 CUR"}' --permission currency@active
+```
+
 Next verify the currency contract has the proper initial balance:
 
 ```bash
 ./eosioc get table currency currency account
 {
   "rows": [{
-     "account": "account",
-     "balance": 1000000000
+     "currency": 1381319428,
+     "balance": 10000000
      }
   ],
   "more": false
@@ -332,19 +338,17 @@ Next verify the currency contract has the proper initial balance:
 
 Anyone can send any message to any contract at any time, but the contracts may reject messages which are not given necessary permission. Messages are not sent "from" anyone, they are sent "with permission of" one or more accounts and permission levels. The following commands show a "transfer" message being sent to the "currency" contract.
 
-The content of the message is `'{"from":"currency","to":"inita","quantity":50}'`. In this case we are asking the currency contract to transfer funds from itself to someone else. This requires the permission of the currency contract.
+The content of the message is `'{"from":"currency","to":"inita","quantity":"20.0000 CUR","memo":"any string"}'`. In this case we are asking the currency contract to transfer funds from itself to someone else. This requires the permission of the currency contract.
 
 ```bash
-./eosioc push actions currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
+./eosioc push action currency transfer '{"from":"currency","to":"inita","quantity":"20.0000 CUR","memo":"my first transfer"}' --permission currency@active
 ```
 
 Below is a generalization that shows the `currency` account is only referenced once, to specify which contract to deliver the `transfer` message to.
 
 ```bash
-./eosioc push actions currency transfer '{"from":"${usera}","to":"${userb}","amount":50}' --scope ${usera},${userb} --permission ${usera}@active
+./eosioc push action currency transfer '{"from":"${usera}","to":"${userb}","quantity":"20.0000 CUR","memo":""}' --permission ${usera}@active
 ```
-
-We specify the `--scope ...` argument to give the currency contract read/write permission to those users so it can modify their balances.  In a future release scope will be determined automatically.
 
 As confirmation of a successfully submitted transaction, you will receive JSON output that includes a `transaction_id` field.
 
@@ -357,8 +361,8 @@ So now check the state of both of the accounts involved in the previous transact
 ./eosioc get table inita currency account
 {
   "rows": [{
-      "account": "account",
-      "balance": 50
+      "currency": 1381319428,
+      "balance": 200000
        }
     ],
   "more": false
@@ -366,15 +370,15 @@ So now check the state of both of the accounts involved in the previous transact
 ./eosioc get table currency currency account
 {
   "rows": [{
-      "account": "account",
-      "balance": 999999950
+      "currency": 1381319428,
+      "balance": 9800000
     }
   ],
   "more": false
 }
 ```
 
-As expected, the receiving account **inita** now has a balance of **50** tokens, and the sending account now has **50** less tokens than its initial supply.
+As expected, the receiving account **inita** now has a balance of **20** tokens, and the sending account now has **20** less tokens than its initial supply.
 
 <a name="localtestnet"></a>
 ## Running multi-node local testnet
