@@ -430,12 +430,59 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
+   std::function<bool(CLI::results_t)> ccc = [&](CLI::results_t res) {
+       if(res.size() != 1)
+           return false;
+
+       std::string variable;
+       if (!CLI::detail::lexical_cast(res[0], variable))
+           return false;
+
+       eosioclient.set_wallet_host(variable);
+       return true;
+   };
    CLI::App app{"Command Line Interface to Eos Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", eosioclient.host, localized("the host where eosd is running"), true );
-   app.add_option( "-p,--port", eosioclient.port, localized("the port where eosd is running"), true );
-   app.add_option( "--wallet-host", eosioclient.wallet_host, localized("the host where eos-walletd is running"), true );
-   app.add_option( "--wallet-port", eosioclient.wallet_port, localized("the port where eos-walletd is running"), true );
+   app.add_option( "-H,--host", [&](CLI::results_t res) {
+       if(res.size() != 1)
+           return false;
+
+       std::string variable;
+       if (!CLI::detail::lexical_cast(res[0], variable))
+           return false;
+
+       eosioclient.set_server_host(variable);
+       return true; }, localized("the host where eosd is running"), true );
+   app.add_option( "-p,--port", [&](CLI::results_t res) {
+       if(res.size() != 1)
+           return false;
+
+       uint32_t variable;
+       if (!CLI::detail::lexical_cast(res[0], variable))
+           return false;
+
+       eosioclient.set_server_port(variable);
+       return true; }, localized("the port where eosd is running"), true );
+   app.add_option( "--wallet-host", [&](CLI::results_t res) {
+       if(res.size() != 1)
+           return false;
+
+       std::string variable;
+       if (!CLI::detail::lexical_cast(res[0], variable))
+           return false;
+
+       eosioclient.set_wallet_host(variable);
+       return true; }, localized("the host where eos-walletd is running"), true );
+   app.add_option( "--wallet-port", [&](CLI::results_t res) {
+       if(res.size() != 1)
+           return false;
+
+       uint32_t variable;
+       if (!CLI::detail::lexical_cast(res[0], variable))
+           return false;
+
+       eosioclient.set_wallet_port(variable);
+       return true; }, localized("the port where eos-walletd is running"), true );
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
