@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/chain_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/chain_plugin/*.hpp")
 add_library( chain_plugin
              chain_plugin.cpp
              ${HEADERS} )
@@ -13,4 +13,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/eos/chain_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/eosio/chain_plugin" )
