@@ -29,8 +29,6 @@ public:
     fc::variant sign_transaction(const fc::variants& args) const;
 
 private:
-    std::string m_host = "localhost";
-    uint32_t m_port = 8888;
     Remote m_remote;
 };
 

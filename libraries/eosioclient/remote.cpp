@@ -11,7 +11,27 @@ using boost::asio::ip::tcp;
 namespace eosio {
 namespace client {
 
-fc::variant Remote::call(const std::string& host, uint16_t port, const std::string &path, const fc::variant &postdata) const
+std::string Remote::host() const
+{
+    return m_host;
+}
+
+void Remote::set_host(const std::string &host)
+{
+    m_host = host;
+}
+
+uint32_t Remote::port() const
+{
+    return m_port;
+}
+
+void Remote::set_port(uint32_t port)
+{
+    m_port = port;
+}
+
+fc::variant Remote::call(const std::string &path, const fc::variant &postdata) const
 {
     try {
         std::string postjson;
@@ -22,7 +42,7 @@ fc::variant Remote::call(const std::string& host, uint16_t port, const std::stri
 
         // Get a list of endpoints corresponding to the server name.
         tcp::resolver resolver(io_service);
-        tcp::resolver::query query(host, std::to_string(port) );
+        tcp::resolver::query query(m_host, std::to_string(m_port) );
         tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
         tcp::resolver::iterator end;
 
@@ -45,7 +65,7 @@ fc::variant Remote::call(const std::string& host, uint16_t port, const std::stri
             boost::asio::streambuf request;
             std::ostream request_stream(&request);
             request_stream << "POST " << path << " HTTP/1.0\r\n";
-            request_stream << "Host: " << host << "\r\n";
+            request_stream << "Host: " << m_host << "\r\n";
             request_stream << "content-length: " << postjson.size() << "\r\n";
             request_stream << "Accept: */*\r\n";
             request_stream << "Connection: close\r\n\r\n";
@@ -105,7 +125,7 @@ fc::variant Remote::call(const std::string& host, uint16_t port, const std::stri
         }
 
         FC_ASSERT( !"unable to connect" );
-    } FC_CAPTURE_AND_RETHROW( (host)(port)(path)(postdata) )
+    } FC_CAPTURE_AND_RETHROW( (m_host)(m_port)(path)(postdata) )
 }
 
 } // namespace client
