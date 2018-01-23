@@ -226,7 +226,13 @@ const contracts::table_id_object& apply_context::find_or_create_table( name scop
 
 void apply_context::get_active_producers(account_name* producers, size_t datalen) {
    const auto& gpo = controller.get_global_properties();
-   memcpy(producers, gpo.active_producers.producers.begin(), std::min(sizeof(account_name)*gpo.active_producers.producers.size(), datalen));
+   int index = 0;
+   for(const auto& producer : gpo.active_producers.producers)
+   {
+      *(producers + index) = producer.producer_name;
+      if (++index >= datalen)
+         break;
+   }
 }
 
 } } /// eosio::chain
