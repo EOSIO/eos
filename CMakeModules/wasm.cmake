@@ -58,12 +58,14 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
   set(WASM_TOOLCHAIN TRUE)
 endif()
 
-macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
+macro(compile_wast)
+  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  set(target ${ARG_TARGET})
 
   # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
   # linking ${target}.bc's rule 
-  set(SOURCE_FILE ${target}.cpp)
-  foreach(srcfile ${SOURCE_FILE})
+  set(SOURCE_FILES ${target}.cpp)
+  foreach(srcfile ${SOURCE_FILES})
     
     get_filename_component(outfile ${srcfile} NAME)
     get_filename_component(infile ${srcfile} ABSOLUTE)
@@ -93,7 +95,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
               -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions
               -c ${infile} -o ${outfile}.bc
     )
-    foreach(folder ${INCLUDE_FOLDERS})
+    foreach(folder ${ARG_INCLUDE_FOLDERS})
        list(APPEND WASM_COMMAND -I ${folder})
     endforeach()
     #string(REPLACE ";" " -I " INCLUDE_FOLDERS_STR "${INCLUDE_FOLDERS}")
@@ -111,18 +113,52 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
 
   endforeach(srcfile)
 
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.bc)
+
+  message("OUTPUT: ${target}.bc")
+
+endmacro(compile_wast)
+
+macro(add_wast_library)
+  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  set(target ${ARG_TARGET})
+  #compile_wast("${ARGS}")
+  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS} LIBRARIES ${ARG_LIBRARIES})
+  add_custom_target(${target} ALL DEPENDS ${ARG_TARGET}.bc)
+
   add_custom_command(OUTPUT ${target}.bc
-    DEPENDS ${outfiles}
-    COMMAND ${WASM_LLVM_LINK} -o ${target}.bc ${outfiles}
-    COMMENT "Linking LLVM bitcode ${target}.bc"
+    DEPENDS ${outfiles} ${ARG_LIBRARIES}
+    COMMAND ${WASM_LLVM_LINK} -o ${target}.bc ${outfiles} ${ARG_LIBRARIES}
+    COMMENT "Linking LLVM bitcode library ${target}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
   )
+
+  message("NEW TARGET: ${target}.bc")
+endmacro(add_wast_library)
+
+macro(add_wast_executable)
+  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  set(target ${ARG_TARGET})
+  set(DESTINATION_FOLDER ${ARG_DESTINATION_FOLDER})
+
+  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS} LIBRARIES ${ARG_LIBRARIES})
+
+message("OUTFILES: ${outfiles}")
+
+  add_custom_command(OUTPUT ${target}.bc
+    DEPENDS ${outfiles}
+    COMMAND ${WASM_LLVM_LINK} -only-needed -o ${target}.bc ${outfiles} ${ARG_LIBRARIES}
+    COMMENT "Linking LLVM bitcode executable ${target}.bc"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    VERBATIM
+  )
+
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.bc)
 
   add_custom_command(OUTPUT ${target}.s
     DEPENDS ${target}.bc
-    COMMAND ${WASM_LLC} -asm-verbose=false -o ${target}.s ${target}.bc
+    COMMAND ${WASM_LLC} -thread-model=single -asm-verbose=false -o ${target}.s ${target}.bc
     COMMENT "Generating textual assembly ${target}.s"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
@@ -132,7 +168,6 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
     COMMAND ${BINARYEN_BIN}/s2wasm -o ${DESTINATION_FOLDER}/${target}.wast -s 4096 ${target}.s
-
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
@@ -162,13 +197,12 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   else()
   endif()
   
-  
   add_custom_target(${target} ALL DEPENDS ${DESTINATION_FOLDER}/${target}.wast.hpp ${extra_target_dependency})
   
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${DESTINATION_FOLDER}/${target}.wast.hpp)
 
-  set_property(TARGET ${target} PROPERTY INCLUDE_DIRECTORIES ${INCLUDE_FOLDERS})
+  set_property(TARGET ${target} PROPERTY INCLUDE_DIRECTORIES ${ARG_INCLUDE_FOLDERS})
 
   set(extra_target_dependency)
 
-endmacro(add_wast_target)
+endmacro(add_wast_executable)
