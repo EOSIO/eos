@@ -439,7 +439,7 @@ int main( int argc, char** argv ) {
        if (!CLI::detail::lexical_cast(res[0], variable))
            return false;
 
-       remote_wallet.set_wallet_host(variable);
+       remote_wallet.set_host(variable);
        return true;
    };
    CLI::App app{"Command Line Interface to Eos Client"};
@@ -472,7 +472,7 @@ int main( int argc, char** argv ) {
        if (!CLI::detail::lexical_cast(res[0], variable))
            return false;
 
-       remote_wallet.set_wallet_host(variable);
+       remote_wallet.set_host(variable);
        return true; }, localized("the host where eos-walletd is running"), true );
    app.add_option( "--wallet-port", [&](CLI::results_t res) {
        if(res.size() != 1)
@@ -482,7 +482,7 @@ int main( int argc, char** argv ) {
        if (!CLI::detail::lexical_cast(res[0], variable))
            return false;
 
-       remote_wallet.set_wallet_port(variable);
+       remote_wallet.set_port(variable);
        return true; }, localized("the port where eos-walletd is running"), true );
 
    bool verbose_errors = false;
@@ -924,7 +924,7 @@ int main( int argc, char** argv ) {
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
    createWallet->set_callback([&wallet_name] {
-      const auto& v = remote_wallet.create_wallet(wallet_name);
+      const auto& v = remote_wallet.create(wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
       std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
@@ -935,7 +935,7 @@ int main( int argc, char** argv ) {
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
-      /*const auto& v = */remote_wallet.open_wallet(wallet_name);
+      /*const auto& v = */remote_wallet.open(wallet_name);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
       std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
@@ -944,7 +944,7 @@ int main( int argc, char** argv ) {
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
-      /*const auto& v = */remote_wallet.lock_wallet(wallet_name);
+      /*const auto& v = */remote_wallet.lock(wallet_name);
       std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
 
@@ -953,7 +953,7 @@ int main( int argc, char** argv ) {
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
    locakAllWallets->set_callback([] {
-      /*const auto& v = */remote_wallet.lock_all_wallet();
+      /*const auto& v = */remote_wallet.lock_all();
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
       std::cout << localized("Locked All Wallets") << std::endl;
    });
@@ -973,7 +973,7 @@ int main( int argc, char** argv ) {
 
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
-      /*const auto& v = */remote_wallet.unlock_wallet(vs);
+      /*const auto& v = */remote_wallet.unlock(vs);
       std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
@@ -988,7 +988,7 @@ int main( int argc, char** argv ) {
       public_key_type pubkey = key.get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
-      const auto& v = remote_wallet.import_key_wallet(vs);
+      const auto& v = remote_wallet.import_key(vs);
       std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
@@ -997,14 +997,14 @@ int main( int argc, char** argv ) {
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {
       std::cout << localized("Wallets:") << std::endl;
-      const auto& v = remote_wallet.list_wallet();
+      const auto& v = remote_wallet.list();
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
    listKeys->set_callback([] {
-      const auto& v = remote_wallet.list_keys_wallet();
+      const auto& v = remote_wallet.list_keys();
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -1220,8 +1220,8 @@ int main( int argc, char** argv ) {
       if (errorString.find("Connection refused") != string::npos) {
          if (errorString.find(fc::json::to_string(eosioclient.get_server_port())) != string::npos) {
             std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", eosioclient.get_server_host())("port", eosioclient.get_server_port())) << std::endl;
-         } else if (errorString.find(fc::json::to_string(remote_wallet.get_wallet_port())) != string::npos) {
-            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", remote_wallet.get_wallet_host())("port", remote_wallet.get_wallet_port())) << std::endl;
+         } else if (errorString.find(fc::json::to_string(remote_wallet.port())) != string::npos) {
+            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", remote_wallet.host())("port", remote_wallet.port())) << std::endl;
          } else {
             std::cerr << localized("Failed to connect") << std::endl;
          }
