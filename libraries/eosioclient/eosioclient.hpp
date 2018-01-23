@@ -2,6 +2,7 @@
 #define EOSIOCLIENT_HPP
 
 #include "fc/variant.hpp"
+#include "eosio/chain/transaction.hpp"
 
 namespace eosio {
 namespace client {
@@ -13,11 +14,17 @@ public:
     fc::variant get_code(const std::string &account_name) const;
     fc::variant get_table(const std::string &scope, const std::string &code, const std::string &table) const;
 
+    void sign_transaction(eosio::chain::signed_transaction &trx);
+
     std::string host = "localhost"; /// @todo make private
     uint32_t port = 8888; /// @todo make private
+    std::string wallet_host = "localhost"; /// @todo make private
+    uint32_t wallet_port = 8888; /// @todo make private
 
 private:
-    fc::variant call(const std::string& path, const fc::variant& postdata = fc::variant() ) const;
+    fc::variant call_wallet(const std::string& path, const fc::variant& postdata = fc::variant() ) const;
+    fc::variant call_server(const std::string& path, const fc::variant& postdata = fc::variant() ) const;
+    fc::variant call(const std::string &host, uint16_t port, const std::string &path, const fc::variant &postdata) const;
 };
 
 } // namespace client
