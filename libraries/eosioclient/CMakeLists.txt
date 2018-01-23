@@ -2,6 +2,8 @@ add_library(eosioclient
     eosioclient.hpp
     eosioclient.cpp
     functions.hpp
+    remote.hpp
+    remote.cpp
     )
 target_link_libraries(eosioclient fc eosio_chain)
 target_include_directories(eosioclient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
