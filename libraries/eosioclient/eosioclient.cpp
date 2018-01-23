@@ -29,7 +29,17 @@ fc::variant Eosioclient::get_table(const std::string& scope, const std::string& 
                 ("scope",scope)
                 ("code",code)
                 ("table",table)
-                );
+                       );
+}
+
+fc::variant Eosioclient::push_transaction(const chain::signed_transaction &transaction) const
+{
+    return call_server(push_txn_func, transaction);
+}
+
+fc::variant Eosioclient::push_transaction(const fc::variant &transaction) const
+{
+    return call_server(push_txn_func, transaction);
 }
 
 void Eosioclient::sign_transaction(eosio::chain::signed_transaction& trx) {
