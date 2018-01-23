@@ -30,38 +30,38 @@ namespace client {
 
 std::string Peer::host() const
 {
-    return m_host;
+    return m_remote.host();
 }
 
 void Peer::set_host(const std::string &host)
 {
-    m_host = host;
+    m_remote.set_host(host);
 }
 
 uint32_t Peer::port() const
 {
-    return m_port;
+    return m_remote.port();
 }
 
 void Peer::set_port(uint32_t port)
 {
-    m_port = port;
+    m_remote.set_port(port);
 }
 
 fc::variant Peer::get_info() const
 {
-    return m_remote.call(m_host, m_port, get_info_func);
+    return m_remote.call(get_info_func);
 }
 
 fc::variant Peer::get_code(const std::string &account_name) const
 {
-    return m_remote.call(m_host, m_port, get_code_func, fc::mutable_variant_object("account_name", account_name));
+    return m_remote.call(get_code_func, fc::mutable_variant_object("account_name", account_name));
 }
 
 fc::variant Peer::get_table(const std::string& scope, const std::string& code, const std::string& table) const
 {
     bool binary = false;
-    return m_remote.call(m_host, m_port, get_table_func, fc::mutable_variant_object("json", !binary)
+    return m_remote.call(get_table_func, fc::mutable_variant_object("json", !binary)
                 ("scope",scope)
                 ("code",code)
                 ("table",table)
@@ -70,77 +70,77 @@ fc::variant Peer::get_table(const std::string& scope, const std::string& code, c
 
 fc::variant Peer::push_transaction(const chain::signed_transaction &transaction) const
 {
-    return m_remote.call(m_host, m_port, push_txn_func, transaction);
+    return m_remote.call(push_txn_func, transaction);
 }
 
 fc::variant Peer::push_transaction(const fc::variant &transaction) const
 {
-    return m_remote.call(m_host, m_port, push_txn_func, transaction);
+    return m_remote.call(push_txn_func, transaction);
 }
 
 fc::variant Peer::connect(const std::string &host) const
 {
-    return m_remote.call(m_host, m_port, net_connect, host);
+    return m_remote.call(net_connect, host);
 }
 
 fc::variant Peer::disconnect(const std::string &host) const
 {
-    return m_remote.call(m_host, m_port, net_disconnect, host);
+    return m_remote.call(net_disconnect, host);
 }
 
 fc::variant Peer::status(const std::string &host) const
 {
-    return m_remote.call(m_host, m_port, net_status, host);
+    return m_remote.call(net_status, host);
 }
 
 fc::variant Peer::connections(const std::string &host) const
 {
-    return m_remote.call(m_host, m_port, net_connections, host);
+    return m_remote.call(net_connections, host);
 }
 
 fc::variant Peer::get_account_function(const fc::mutable_variant_object& variant) const
 {
-    return m_remote.call(m_host, m_port, get_account_func, variant);
+    return m_remote.call(get_account_func, variant);
 }
 
 fc::variant Peer::get_block_function(const fc::mutable_variant_object &variant) const
 {
-    return m_remote.call(m_host, m_port, get_block_func, variant);
+    return m_remote.call(get_block_func, variant);
 }
 
 fc::variant Peer::get_key_accounts_function(const fc::mutable_variant_object &variant) const
 {
-    return m_remote.call(m_host, m_port, get_key_accounts_func, variant);
+    return m_remote.call(get_key_accounts_func, variant);
 }
 
 fc::variant Peer::get_controlled_accounts_function(const fc::mutable_variant_object &variant) const
 {
-    return m_remote.call(m_host, m_port, get_controlled_accounts_func, variant);
+    return m_remote.call(get_controlled_accounts_func, variant);
 }
 
 fc::variant Peer::get_transaction_function(const fc::mutable_variant_object &variant) const
 {
-    return m_remote.call(m_host, m_port, get_transaction_func, variant);
+    return m_remote.call(get_transaction_func, variant);
 }
 
 fc::variant Peer::get_transactions_function(const fc::mutable_variant_object &variant) const
 {
-    return m_remote.call(m_host, m_port, get_transactions_func, variant);
+    return m_remote.call(get_transactions_func, variant);
 }
 
 fc::variant Peer::push_transactions(const std::vector<chain::signed_transaction> &transactions) const
 {
-    return m_remote.call(m_host, m_port, push_txns_func, transactions);
+    return m_remote.call(push_txns_func, transactions);
 }
 
 fc::variant Peer::json_to_bin_function(const fc::mutable_variant_object &variant) const
 {
-    return m_remote.call(m_host, m_port, json_to_bin_func, variant);
+    return m_remote.call(json_to_bin_func, variant);
 }
 
 fc::variant Peer::get_keys_required(const fc::mutable_variant_object &variant) const
 {
-    return m_remote.call(m_host, m_port, get_required_keys, variant);
+    return m_remote.call(get_required_keys, variant);
 }
 
 } // namespace client
