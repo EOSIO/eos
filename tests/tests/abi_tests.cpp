@@ -108,6 +108,8 @@ const char* my_abi = R"=====(
         "int32_arr"         : "int32[]",
         "int64"             : "int64",
         "int64_arr"         : "int64[]",
+        "bool"              : "bool",
+        "bool_arr"          : "bool[]"
         "name"              : "name",
         "name_arr"          : "name[]",
         "field"             : "field",
@@ -1054,6 +1056,8 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
       "int32_arr"         : [132,133],
       "int64"             : 164,
       "int64_arr"         : [164,165],
+      "bool"              : true,
+      "bool_arr"          : [false, true, false],
       "name"              : "xname1",
       "name_arr"          : ["xname2","xname3"],
       "field"             : {"name1":"type1"},
