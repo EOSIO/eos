@@ -23,11 +23,6 @@ public:
     void set_wallet_host(const std::string& host);
     void set_wallet_port(uint32_t port);
 
-    std::string host = "localhost"; /// @todo make private
-    uint32_t port = 8888; /// @todo make private
-    std::string wallet_host = "localhost"; /// @todo make private
-    uint32_t wallet_port = 8888; /// @todo make private
-
 private:
     fc::variant call_wallet(const std::string& path, const fc::variant& postdata = fc::variant()) const;
     fc::variant call_server(const std::string& path, const fc::variant& postdata = fc::variant()) const;
@@ -36,7 +31,12 @@ private:
     fc::variant call_server( const std::string& path, const T& v ) const
     { return call_server(path, fc::variant(v)); }
 
-    fc::variant call(const std::string &host, uint16_t port, const std::string &path, const fc::variant &postdata) const;
+    fc::variant call(const std::string &m_server_host, uint16_t m_server_port, const std::string &path, const fc::variant &postdata) const;
+
+    std::string m_server_host = "localhost";
+    uint32_t m_server_port = 8888;
+    std::string m_wallet_host = "localhost";
+    uint32_t m_wallet_port = 8888;
 };
 
 } // namespace client
