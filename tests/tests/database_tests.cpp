@@ -49,8 +49,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
 
          const uint32_t num_of_blocks_to_prod = 200;
          // Produce 200 blocks and check their IDs should match the above
-         for (uint32_t i = 0; i < num_of_blocks_to_prod; ++i)
-            test.produce_block();
+         test.produce_blocks(num_of_blocks_to_prod);
          for (uint32_t i = 0; i < num_of_blocks_to_prod; ++i) {
             block_ids.emplace_back(test.control->fetch_block_by_number(i + 1)->id());
             BOOST_TEST(block_header::num_from_id(block_ids.back()) == i + 1);
@@ -76,8 +75,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
 
          const uint32_t next_num_of_blocks_to_prod = 100;
          // Produce 100 blocks and check their IDs should match the above
-         for (uint32_t i = 0; i < next_num_of_blocks_to_prod; ++i)
-            test.produce_block();
+         test.produce_blocks(next_num_of_blocks_to_prod);
 
          const auto next_expected_last_irreversible_block_number = calc_exp_last_irr_block_num(
                  num_of_blocks_to_prod + next_num_of_blocks_to_prod);
