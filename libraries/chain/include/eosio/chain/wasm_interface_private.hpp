@@ -77,7 +77,7 @@ struct class_from_wasm<apply_context> {
 /**
  * class to represent an in-wasm-memory array
  * it is a hint to the transcriber that the next parameter will
- * be a size and that the pair are validated together
+ * be a size (data bytes length) and that the pair are validated together
  * This triggers the template specialization of intrinsic_invoker_impl
  * @tparam T
  */
@@ -89,7 +89,7 @@ struct array_ptr {
 
    static T* validated_ptr (wasm_interface& wasm, U32 ptr, size_t length) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      if(!mem || ptr + sizeof(T) * length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+      if(!mem || ptr + length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
 
       return (T*)(getMemoryBaseAddress(mem) + ptr);
@@ -418,7 +418,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
 
 /**
  * Specialization for transcribing  a array_ptr type in the native method signature
- * This type transcribes into 2 wasm parameters: a pointer and length and checks the validity of that memory
+ * This type transcribes into 2 wasm parameters: a pointer and byte length and checks the validity of that memory
  * range before dispatching to the native method
  *
  * @tparam Ret - the return type of the native method
@@ -469,7 +469,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
 
 /**
  * Specialization for transcribing  a pair of array_ptr types in the native method signature that share size
- * This type transcribes into 3 wasm parameters: 2 pointers and length and checks the validity of those memory
+ * This type transcribes into 3 wasm parameters: 2 pointers and byte length and checks the validity of those memory
  * ranges before dispatching to the native method
  *
  * @tparam Ret - the return type of the native method
@@ -533,7 +533,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
 
    template<then_type Then>
    static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
-      T* base = array_ptr<T>::validated_ptr(wasm, ptr, 1);
+      T* base = array_ptr<T>::validated_ptr(wasm, ptr, sizeof(T));
       return Then(wasm, base, rest..., translated...);
    };
 
