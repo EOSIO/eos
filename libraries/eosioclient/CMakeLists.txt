@@ -1,7 +1,6 @@
 add_library(eosioclient
     eosioclient.hpp
     eosioclient.cpp
-    functions.hpp
     remote.hpp
     remote.cpp
     wallet.hpp
