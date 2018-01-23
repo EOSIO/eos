@@ -494,33 +494,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
 };
 
 /**
- * Specialization for transcribing  a array_ptr type, followed by a size, and  a null_terminated_ptr type in the
- * native method signature
- * This type transcribes into 3 wasm parameters: a pointer, length, and a char pointer and checks the validity of
- * that memory range before dispatching to the native method
- *
- * @tparam Ret - the return type of the native method
- * @tparam Inputs - the remaining native parameters to transcribe
- * @tparam Translated - the list of transcribed wasm parameters
- */
-template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
-   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, size_t, null_terminated_ptr, Inputs..., Translated...);
-
-   template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr_t, I32 size, I32 ptr_u) {
-      const auto length = size_t(size);
-      return Then(wasm, array_ptr<T>(wasm, ptr_t, length), length, null_terminated_ptr(wasm, ptr_u), rest..., translated...);
-   };
-
-   template<then_type Then>
-   static const auto fn() {
-      return next_step::template fn<translate_one<Then>>();
-   }
-};
-
-/**
  * Specialization for transcribing memset parameters
  *
  * @tparam Ret - the return type of the native method
