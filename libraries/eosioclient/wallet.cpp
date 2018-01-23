@@ -1,7 +1,5 @@
 #include "wallet.hpp"
 
-#include "functions.hpp"
-
 namespace {
 const std::string wallet_func_base = "/v1/wallet";
 const std::string wallet_create = wallet_func_base + "/create";
