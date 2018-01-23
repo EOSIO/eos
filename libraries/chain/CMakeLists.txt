@@ -1,4 +1,5 @@
-file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
+file(GLOB HEADERS "include/eosio/chain/*.hpp")
+file(GLOB HEADERS_CONSTRACTS "include/eosio/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
@@ -30,6 +31,7 @@ add_library( eosio_chain
 
 
              ${HEADERS}
+             ${HEADERS_CONSTRACTS}
         )
 
 target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
@@ -50,6 +52,7 @@ INSTALL( TARGETS
    ARCHIVE DESTINATION lib
 )
 INSTALL( FILES ${HEADERS} DESTINATION "include/eosio/chain" )
+INSTALL( FILES ${HEADERS_CONSTRACTS} DESTINATION "include/eosio/chain/contracts" )
 
 add_subdirectory(test)
 
