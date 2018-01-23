@@ -68,7 +68,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_test.py COPYONLY)
 
 add_test(NAME eosiod_run_test COMMAND tests/eosiod_run_test.py --exit-early --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME eosiod_run_test-mongodb COMMAND tests/eosiod_run_test.py --mongodb --exit-early --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+if(BUILD_MONGO_DB_PLUGIN)
+  add_test(NAME eosiod_run_test-mongodb COMMAND tests/eosiod_run_test.py --mongodb --exit-early --dump-error-detail  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
 add_test(chain_test chain_test)
 add_test(NAME trans_sync_across_mixed_cluster_test COMMAND tests/trans_sync_across_mixed_cluster_test.sh -p 1 -n 2 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
