@@ -3,13 +3,13 @@
 #include <fc/io/json.hpp>
 #include <string>
 
-#include "eosioclient.hpp"
+#include "wallet.hpp"
 
-BOOST_AUTO_TEST_SUITE(eosioclient_test)
+BOOST_AUTO_TEST_SUITE(wallet_test)
 
 BOOST_AUTO_TEST_CASE(instance)
 {
-    BOOST_CHECK_NO_THROW(eosio::client::Eosioclient());
+    BOOST_CHECK_NO_THROW(eosio::client::Wallet());
 }
 
 //BOOST_AUTO_TEST_CASE(get_info)
