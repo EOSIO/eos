@@ -55,15 +55,23 @@ void Eosioclient::sign_transaction(eosio::chain::signed_transaction& trx) {
    trx = signed_trx.as<eosio::chain::signed_transaction>();
 }
 
-void Eosioclient::set_server(const std::string &host, uint32_t port)
+void Eosioclient::set_server_host(const std::string &host)
 {
     this->host = host;
+}
+
+void Eosioclient::set_server_port(uint32_t port)
+{
     this->port = port;
 }
 
-void Eosioclient::set_wallet(const std::string &host, uint32_t port)
+void Eosioclient::set_wallet_host(const std::string &host)
 {
     wallet_host = host;
+}
+
+void Eosioclient::set_wallet_port(uint32_t port)
+{
     wallet_port = port;
 }
 
