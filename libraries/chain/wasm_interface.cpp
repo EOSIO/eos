@@ -427,201 +427,6 @@ namespace eosio { namespace chain {
       my->call("error", args, code, context);
    }
 
-#if 0
-  DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
-      elog( "assert" );
-      /*
-      const char* m = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
-     std::string message( m );
-     if( !test ) edump((message));
-     FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
-     */
-   }
-
-   DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
-     std::cerr << uint64_t(val);
-   }
-   DEFINE_INTRINSIC_FUNCTION1(env,printd,printd,none,i64,val) {
-     //std::cerr << DOUBLE(*reinterpret_cast<double *>(&val));
-   }
-
-   DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-      /*
-      auto& wasm  = wasm_interface::get();
-      auto  mem   = wasm.memory();
-      auto& value = memoryRef<unsigned __int128>( mem, val );
-      fc::uint128_t v(value>>64, uint64_t(value) );
-      std::cerr << fc::variant(v).get_string();
-      */
-
-   }
-   DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-     std::cerr << name(val).to_string();
-   }
-
-
-
-
-
-   DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
-     auto& wasm  = wasm_interface::get();
-     auto  mem   = wasm.memory();
-
-     const char* str = &memoryRef<const char>( mem, charptr );
-     const auto allocated_memory = wasm.memory_size(); //Runtime::getDefaultMemorySize(state.instance);
-
-     std::cerr << std::string( str, strnlen(str, allocated_memory-charptr) );
-   }
-
-DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
-   FC_ASSERT( destsize > 0 );
-
-   /*
-   wasm_interface& wasm = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-   char* begin = memoryArrayPtr<char>( mem, destptr, uint32_t(destsize) );
-
-   int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
-
-//   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
-   memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
-   */
-   return 0;//minlen;
-}
-
-
-
-DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-  auto& value = memoryRef<unsigned __int128>( mem, val );
-  fc::uint128_t v(value>>64, uint64_t(value) );
-  std::cerr << fc::variant(v).get_string();
-}
-DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-  std::cerr << name(val).to_string();
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,prints_l,prints_l,none,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, len );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  char* buff = memoryArrayPtr<char>(mem, data, datalen);
-  std::cerr << fc::to_hex(buff, datalen);
-}
-
-
-DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
-}
-
-#define DEFINE_RECORD_READ_FUNCTIONS(OBJTYPE, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_INTRINSIC_FUNCTION5(env,load_##FUNCPREFIX##OBJTYPE,load_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(load_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,front_##FUNCPREFIX##OBJTYPE,front_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(front_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,back_##FUNCPREFIX##OBJTYPE,back_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(back_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,next_##FUNCPREFIX##OBJTYPE,next_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(next_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,previous_##FUNCPREFIX##OBJTYPE,previous_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(previous_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,lower_bound_##FUNCPREFIX##OBJTYPE,lower_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(lower_bound_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_##FUNCPREFIX##OBJTYPE,upper_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(upper_bound_record, INDEX, SCOPE); \
-   }
-DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const uint32_t account_balance_size = sizeof(account_balance);
-  FC_ASSERT( len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size) );
-
-  account_balance& total_balance = memoryRef<account_balance>( mem, charptr );
-
-  wasm.current_apply_context->require_scope(total_balance.account);
-
-  auto& db = wasm.current_apply_context->db;
-  auto* balance        = db.find< balance_object,by_owner_name >( total_balance.account );
-  auto* staked_balance = db.find<staked_balance_object,by_owner_name>( total_balance.account );
-
-  if (balance == nullptr || staked_balance == nullptr)
-     return false;
-
-  total_balance.eos_balance          = asset(balance->balance, EOS_SYMBOL);
-  total_balance.staked_balance       = asset(staked_balance->staked_balance);
-  total_balance.unstaking_balance    = asset(staked_balance->unstaking_balance);
-  total_balance.last_unstaking_time  = staked_balance->last_unstaking_time;
-
-  return true;
-}
-
-#define UPDATE_RECORD(UPDATEFUNC, INDEX, DATASIZE) \
-   return 0;
-
-   /*
-   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      return ctx->UPDATEFUNC<INDEX::value_type>( Name(scope), Name(ctx->code.value), Name(table), keys, data, datalen); \
-   }; \
-   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
-   */
-
-#define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX) \
-   DEFINE_INTRINSIC_FUNCTION4(env,store_##OBJTYPE,store_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      UPDATE_RECORD(store_record, INDEX, valuelen); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION4(env,update_##OBJTYPE,update_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      UPDATE_RECORD(update_record, INDEX, valuelen); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION3(env,remove_##OBJTYPE,remove_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr) { \
-      UPDATE_RECORD(remove_record, INDEX, sizeof(typename INDEX::value_type::key_type)*INDEX::value_type::number_of_keys); \
-   }
-
-DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
-DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index);
-
-DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
-   //wasm_interface::get().current_validate_context->require_authorization( Name(account) );
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
-   //wasm_interface::get().current_validate_context->require_authorization( Name(account) );
-}
-DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
-   /*
-   auto dur = wasm_interface::get().current_execution_time();
-   if (dur > CHECKTIME_LIMIT) {
-      wlog("checktime called ${d}", ("d", dur));
-      throw checktime_exceeded();
-   }
-   */
-}
-#endif
-
 #if defined(assert)
    #undef assert
 #endif
@@ -677,7 +482,7 @@ class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void assert(bool condition, const char* str) {
+      void assert(bool condition, null_terminated_ptr str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -724,8 +529,8 @@ class console_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void prints(const char *str) {
-         context.console_append(str);
+      void prints(null_terminated_ptr str) {
+         context.console_append<const char*>(str);
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
