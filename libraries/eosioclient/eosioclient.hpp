@@ -13,6 +13,8 @@ public:
     fc::variant get_info() const;
     fc::variant get_code(const std::string &account_name) const;
     fc::variant get_table(const std::string &scope, const std::string &code, const std::string &table) const;
+    fc::variant push_transaction(const chain::signed_transaction& transaction) const;
+    fc::variant push_transaction(const fc::variant& transaction) const;
 
     void sign_transaction(eosio::chain::signed_transaction &trx);
 
@@ -22,8 +24,13 @@ public:
     uint32_t wallet_port = 8888; /// @todo make private
 
 private:
-    fc::variant call_wallet(const std::string& path, const fc::variant& postdata = fc::variant() ) const;
-    fc::variant call_server(const std::string& path, const fc::variant& postdata = fc::variant() ) const;
+    fc::variant call_wallet(const std::string& path, const fc::variant& postdata = fc::variant()) const;
+    fc::variant call_server(const std::string& path, const fc::variant& postdata = fc::variant()) const;
+
+    template<typename T>
+    fc::variant call_server( const std::string& path, const T& v ) const
+    { return call_server(path, fc::variant(v)); }
+
     fc::variant call(const std::string &host, uint16_t port, const std::string &path, const fc::variant &postdata) const;
 };
 

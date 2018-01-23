@@ -264,7 +264,7 @@ fc::variant push_transaction( signed_transaction& trx, bool sign ) {
        eosioclient.sign_transaction(trx);
     }
 
-    return call( push_txn_func, trx );
+    return eosioclient.push_transaction( trx );
 }
 
 
@@ -315,7 +315,7 @@ void send_transaction(const std::vector<chain::action>& actions, bool skip_sign 
       eosioclient.sign_transaction(trx);
    }
 
-   std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
+   std::cout << fc::json::to_pretty_string( eosioclient.push_transaction( trx )) << std::endl;
 }
 
 struct set_account_permission_subcommand {
@@ -832,7 +832,7 @@ int main( int argc, char** argv ) {
          eosioclient.sign_transaction(trx);
       }
 
-      std::cout << fc::json::to_pretty_string( call( push_txn_func, trx )) << std::endl;
+      std::cout << fc::json::to_pretty_string( eosioclient.push_transaction( trx )) << std::endl;
    });
 
    // Net subcommand 
@@ -1148,7 +1148,7 @@ int main( int argc, char** argv ) {
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trxJson, localized("The JSON of the transaction to push"))->required();
    trxSubcommand->set_callback([&] {
-      auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
+      auto trx_result = eosioclient.push_transaction( fc::json::from_string(trxJson));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
 
@@ -1157,7 +1157,7 @@ int main( int argc, char** argv ) {
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
    trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
    trxsSubcommand->set_callback([&] {
-      auto trxs_result = call(push_txn_func, fc::json::from_string(trxsJson));
+      auto trxs_result = eosioclient.push_transaction( fc::json::from_string(trxsJson));
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
 
