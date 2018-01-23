@@ -5,6 +5,7 @@
 #pragma once
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/symbol.hpp>
 
 /// eos with 8 digits of precision
 #define EOS_SYMBOL  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
@@ -14,49 +15,50 @@
 
 namespace eosio { namespace chain {
 
-using asset_symbol = uint64_t;
+      //using asset_symbol = uint64_t;
 
 struct asset
 {
-   asset(share_type a = 0, asset_symbol id = EOS_SYMBOL)
-      :amount(a),symbol(id){}
+   asset(share_type a = 0, symbol id = EOS_SYMBOL)
+      :amount(a), sym(id){}
 
-   share_type   amount;
-   asset_symbol symbol;
+   share_type amount;
+   symbol     sym;
 
    double to_real()const { return static_cast<double>(amount) / precision(); }
 
    uint8_t     decimals()const;
    string      symbol_name()const;
    int64_t     precision()const;
-   void        set_decimals(uint8_t d);
+//   void        set_decimals(uint8_t d);
+   const symbol& symbol() const { return sym; }
 
    static asset from_string(const string& from);
    string       to_string()const;
 
    asset& operator += (const asset& o)
    {
-      FC_ASSERT(symbol == o.symbol);
+      FC_ASSERT(symbol() == o.symbol());
       amount += o.amount;
       return *this;
    }
 
    asset& operator -= (const asset& o)
    {
-      FC_ASSERT(symbol == o.symbol);
+      FC_ASSERT(symbol() == o.symbol());
       amount -= o.amount;
       return *this;
    }
-   asset operator -()const { return asset(-amount, symbol); }
+   asset operator -()const { return asset(-amount, symbol()); }
 
    friend bool operator == (const asset& a, const asset& b)
    {
-      return std::tie(a.symbol, a.amount) == std::tie(b.symbol, b.amount);
+      return std::tie(a.symbol(), a.amount) == std::tie(b.symbol(), b.amount);
    }
    friend bool operator < (const asset& a, const asset& b)
    {
-      FC_ASSERT(a.symbol == b.symbol);
-      return std::tie(a.amount,a.symbol) < std::tie(b.amount,b.symbol);
+      FC_ASSERT(a.symbol() == b.symbol());
+      return std::tie(a.amount,a.symbol()) < std::tie(b.amount,b.symbol());
    }
    friend bool operator <= (const asset& a, const asset& b) { return (a == b) || (a < b); }
    friend bool operator != (const asset& a, const asset& b) { return !(a == b); }
@@ -64,13 +66,13 @@ struct asset
    friend bool operator >= (const asset& a, const asset& b) { return !(a < b);  }
 
    friend asset operator - (const asset& a, const asset& b) {
-      FC_ASSERT(a.symbol == b.symbol);
-      return asset(a.amount - b.amount, a.symbol);
+      FC_ASSERT(a.symbol() == b.symbol());
+      return asset(a.amount - b.amount, a.symbol());
    }
 
    friend asset operator + (const asset& a, const asset& b) {
-      FC_ASSERT(a.symbol == b.symbol);
-      return asset(a.amount + b.amount, a.symbol);
+      FC_ASSERT(a.symbol() == b.symbol());
+      return asset(a.amount + b.amount, a.symbol());
    }
 
    friend std::ostream& operator << (std::ostream& out, const asset& a) { return out << a.to_string(); }
@@ -82,14 +84,14 @@ struct price
    asset base;
    asset quote;
 
-   price(const asset& base = asset(), const asset quote = asset())
+   price(const asset& base = asset(), const asset& quote = asset())
       :base(base),quote(quote){}
 
-   static price max(asset_symbol base, asset_symbol quote);
-   static price min(asset_symbol base, asset_symbol quote);
+   static price max(const symbol& base, const symbol& quote);
+   static price min(const symbol& base, const symbol& quote);
 
-   price max()const { return price::max(base.symbol, quote.symbol); }
-   price min()const { return price::min(base.symbol, quote.symbol); }
+   price max()const { return price::max(base.symbol(), quote.symbol()); }
+   price min()const { return price::min(base.symbol(), quote.symbol()); }
 
    double to_real()const { return base.to_real() / quote.to_real(); }
 
@@ -119,5 +121,5 @@ inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
 }
 }
 
-FC_REFLECT(eosio::chain::asset, (amount)(symbol))
+FC_REFLECT(eosio::chain::asset, (amount)(sym))
 FC_REFLECT(eosio::chain::price, (base)(quote))

@@ -52,6 +52,9 @@ namespace eosio { namespace chain { namespace contracts {
       //public_key.hpp
       built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
 
+      //symbol.hpp
+      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+
       //asset.hpp
       built_in_types.emplace("asset",                     pack_unpack<asset>());
       built_in_types.emplace("price",                     pack_unpack<price>());

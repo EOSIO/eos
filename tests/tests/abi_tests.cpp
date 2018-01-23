@@ -2067,7 +2067,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(53405u == newaccount.recovery.accounts[1].weight);
 
    BOOST_TEST(-900000000000 == newaccount.deposit.amount);
-   BOOST_TEST(EOS_SYMBOL == newaccount.deposit.symbol);
+   BOOST_TEST(symbol(EOS_SYMBOL) == newaccount.deposit.symbol());
 
    auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
    auto newaccount2 = var2.as<contracts::newaccount>();
@@ -2123,7 +2123,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(newaccount.recovery.accounts[1].weight == newaccount2.recovery.accounts[1].weight);
 
    BOOST_TEST(newaccount.deposit.amount == newaccount2.deposit.amount);
-   BOOST_TEST(newaccount.deposit.symbol == newaccount2.deposit.symbol);
+   BOOST_TEST(newaccount.deposit.symbol() == newaccount2.deposit.symbol());
 
 } FC_LOG_AND_RETHROW() }
 
