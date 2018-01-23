@@ -482,7 +482,7 @@ int main( int argc, char** argv ) {
    string ownerKey;
    string activeKey;
    bool skip_sign = false;
-   uint64_t staked_deposit=1000;
+   uint64_t staked_deposit=10000;
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
