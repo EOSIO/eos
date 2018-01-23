@@ -38,8 +38,6 @@ public:
     fc::variant get_keys_required(const fc::mutable_variant_object& variant) const;
 
 private:
-    std::string m_host = "localhost";
-    uint32_t m_port = 8888;
     Remote m_remote;
 };
 
