@@ -448,8 +448,9 @@ class producer_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
-         context.get_active_producers(producers, datalen);
+      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+         auto actual_num_prod = context.get_active_producers(producers, datalen / sizeof(chain::account_name));
+         return actual_num_prod * sizeof(chain::account_name);
       }
 };
 
@@ -742,7 +743,7 @@ class transaction_api : public context_aware_api {
 };
 
 REGISTER_INTRINSICS(producer_api,
-   (get_active_producers,      void(int, int))
+   (get_active_producers,      int(int, int))
 );
 
 REGISTER_INTRINSICS(crypto_api,

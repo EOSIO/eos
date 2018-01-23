@@ -224,15 +224,16 @@ const contracts::table_id_object& apply_context::find_or_create_table( name scop
    });
 }
 
-void apply_context::get_active_producers(account_name* producers, size_t datalen) {
+size_t apply_context::get_active_producers(account_name* producers, size_t len) {
    const auto& gpo = controller.get_global_properties();
    int index = 0;
    for(const auto& producer : gpo.active_producers.producers)
    {
       *(producers + index) = producer.producer_name;
-      if (++index >= datalen)
+      if (++index >= len)
          break;
    }
+   return index;
 }
 
 } } /// eosio::chain
