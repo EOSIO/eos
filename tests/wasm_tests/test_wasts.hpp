@@ -80,3 +80,39 @@ static const char mutable_global_wast[] = R"=====(
  (global $g0 (mut i32) (i32.const 2))
 )
 )=====";
+
+static const char current_memory_wast[] = R"=====(
+(module
+ (table 0 anyfunc)
+ (memory $0 1)
+ (export "memory" (memory $0))
+ (export "init" (func $init))
+ (export "apply" (func $apply))
+ (func $init
+   (drop
+     (current_memory)
+   )
+ )
+ (func $apply (param $0 i64) (param $1 i64)
+ )
+)
+)=====";
+
+static const char grow_memory_wast[] = R"=====(
+(module
+ (table 0 anyfunc)
+ (memory $0 1)
+ (export "memory" (memory $0))
+ (export "init" (func $init))
+ (export "apply" (func $apply))
+ (func $init
+   (drop
+     (grow_memory
+       (i32.const 20)
+     )
+   )
+ )
+ (func $apply (param $0 i64) (param $1 i64)
+ )
+)
+)=====";

@@ -13,6 +13,12 @@ namespace eosio {
       public:
          vector(){}
 
+         vector( size_t s, const T& value ) {
+            reserve( s );
+            for( uint32_t i = 0; i < s; ++i )
+               emplace_back( value );
+         }
+
          vector( const vector& copy ) {
             reserve( copy.size() );
             for( uint32_t i = 0; i < copy.size(); ++i ) {

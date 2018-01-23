@@ -24,7 +24,7 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"key", "type":"name"},
+        {"name":"currency", "type":"uint64"},
         {"name":"balance", "type":"uint64"}
       ]
     }
@@ -41,8 +41,8 @@
       "name": "account",
       "type": "account",
       "index_type": "i64",
-      "key_names" : ["key"],
-      "key_types" : ["name"]
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
     }
   ]
 }

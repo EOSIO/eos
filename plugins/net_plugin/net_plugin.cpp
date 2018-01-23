@@ -288,7 +288,7 @@ namespace eosio {
   constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds(1);
   constexpr auto     def_sync_fetch_span = 100;
-  constexpr auto     def_max_just_send = 1500 * 3; // "mtu" * 3
+  constexpr auto     def_max_just_send = 1500 * 8; // "mtu" * 8
   constexpr auto     def_send_whole_blocks = true;
 
   constexpr auto     message_header_size = 4;
