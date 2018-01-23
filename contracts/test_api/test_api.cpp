@@ -38,7 +38,9 @@ extern "C" {
       WASM_TEST_HANDLER(test_compiler_builtins, test_divti3);
       WASM_TEST_HANDLER(test_compiler_builtins, test_divti3_by_0);
       WASM_TEST_HANDLER(test_compiler_builtins, test_lshlti3);
-      //WASM_TEST_HANDLER(test_compiler_builtins, test_lshrti3);
+      WASM_TEST_HANDLER(test_compiler_builtins, test_lshrti3);
+      WASM_TEST_HANDLER(test_compiler_builtins, test_ashlti3);
+      WASM_TEST_HANDLER(test_compiler_builtins, test_ashrti3);
 
       //test_action
       WASM_TEST_HANDLER(test_action, read_action_normal);

@@ -119,7 +119,6 @@ void CallFunction(tester& test, T tm, const vector<char>& data, const vector<acc
          for (int i=1; i < scope.size(); i++)
             pl.push_back({scope[i], config::active_name});
 
-      //action act(vector<permission_level>{{scope[0], config::active_name}}, tm);
       action act(pl, tm);
       vector<char>& dest = *(vector<char> *)(&act.data);
       std::copy(data.begin(), data.end(), std::back_inserter(dest));
@@ -149,8 +148,8 @@ bool is_access_violation(fc::unhandled_exception const & e) {
    try {
       std::rethrow_exception(e.get_inner_exception());
     }
-    catch (const Runtime::Exception& e) {
-      return e.cause == Runtime::Exception::Cause::accessViolation;
+    catch (const eosio::chain::wasm_execution_error& e) {
+       return true;
     } catch (...) {
 
     }
@@ -164,6 +163,11 @@ bool is_access_violation(const Runtime::Exception& e) {
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
+bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
+bool is_tx_missing_sigs(tx_missing_sigs const & e) { return true;}
+bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
+bool is_tx_resource_exhausted(const tx_resource_exhausted& e) { return true; }
+
 /*
 bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
 bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
@@ -284,21 +288,40 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 
    std::vector<char> raw_bytes((1<<16));
 	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes );
+
    std::vector<char> raw_bytes2((1<<16)+1);
-   /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes2), 
-      fc::exception, is_access_violation);
-   */
+      eosio::chain::wasm_execution_error, is_wasm_execution_error);
+
    raw_bytes.resize(1);
 	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes );
 
    raw_bytes.resize(2);
-   /*
 	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ),
-         Runtime::Exception, is_access_violation);
-   */
+         eosio::chain::wasm_execution_error, is_wasm_execution_error);
 
-   //CALL_TEST_FUNCTION( *this, "test_action", "require_notice", raw_bytes );
+   CALL_TEST_FUNCTION( *this, "test_action", "require_notice", raw_bytes );
+   
+   auto scope = std::vector<account_name>{N(testapi)};
+   auto test_require_notice = [](auto& test, std::vector<char>& data, std::vector<account_name>& scope){
+      signed_transaction trx;
+		trx.write_scope = scope; 
+      auto tm = test_api_action<TEST_METHOD("test_action", "require_notice")>{};
+
+      action act(std::vector<permission_level>{{N(testapi), config::active_name}}, tm);
+      vector<char>& dest = *(vector<char> *)(&act.data);
+      std::copy(data.begin(), data.end(), std::back_inserter(dest));
+      trx.actions.push_back(act);
+
+		test.set_tapos(trx);
+		trx.sign(test.get_private_key(N(inita), "active"), chain_id_type());
+		auto res = test.control->push_transaction(trx);
+		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+   };
+
+   BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), tx_missing_sigs, is_tx_missing_sigs);
+
+
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", {}), tx_missing_auth, is_tx_missing_auth);
 
    auto a3only = std::vector<permission_level>{{N(acc3), config::active_name}};
@@ -309,7 +332,28 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 
    auto a3a4 = std::vector<permission_level>{{N(acc3), config::active_name}, {N(acc4), config::active_name}};
    auto a3a4_scope = std::vector<account_name>{N(acc3), N(acc4)};
-   //CALL_TEST_FUNCTION_SCOPE( *this, "test_action", "require_auth", fc::raw::pack(a3a4), a3a4_scope);
+   {
+      signed_transaction trx;
+		trx.write_scope = a3a4_scope;
+      auto tm = test_api_action<TEST_METHOD("test_action", "require_auth")>{};
+      auto pl = a3a4;
+      if (a3a4_scope.size() > 1)
+         for (int i=1; i < a3a4_scope.size(); i++)
+            pl.push_back({a3a4_scope[i], config::active_name});
+
+      //action act(vector<permission_level>{{scope[0], config::active_name}}, tm);
+      action act(pl, tm);
+      auto dat = fc::raw::pack(a3a4);
+      vector<char>& dest = *(vector<char> *)(&act.data);
+      std::copy(dat.begin(), dat.end(), std::back_inserter(dest));
+      trx.actions.push_back(act);
+
+		set_tapos(trx);
+		trx.sign(get_private_key(N(acc3), "active"), chain_id_type());
+		trx.sign(get_private_key(N(acc4), "active"), chain_id_type());
+		auto res = control->push_transaction(trx);
+		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+   }
 
    uint32_t now = control->head_block_time().sec_since_epoch();
    CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now));
@@ -338,8 +382,36 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3", {});
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), fc::assert_exception, is_assert_exception);
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshlti3", {});
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshrti3", {});
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashlti3", {});
+   //CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashrti3", {});
 } FC_LOG_AND_RETHROW() }
 
+
+/*************************************************************************************
+ * transaction_tests test case
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
+	produce_blocks(2);
+	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
+   create_account( N(acc1), asset::from_string("1.0000 EOS") );
+   create_account( N(acc2), asset::from_string("1.0000 EOS") );
+   create_account( N(acc3), asset::from_string("1.0000 EOS") );
+   create_account( N(acc4), asset::from_string("1.0000 EOS") );
+	produce_blocks(1000);
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	produce_blocks(1000);
+	set_code( N(testapi), test_api_wast );
+	produce_blocks(1);
+   
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_action", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_max", {});
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception, is_assert_exception);
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), fc::assert_exception, is_assert_exception);
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {});
+
+} FC_LOG_AND_RETHROW() }
 
 
 /*************************************************************************************

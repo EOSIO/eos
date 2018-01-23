@@ -920,13 +920,13 @@ class compiler_builtins : public context_aware_api {
       void __break_point() {
          __asm("int3\n");
       }
-      void __ashlti3(__int128& ret, uint64_t high, uint64_t low, uint32_t shift) {
+      void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
          fc::uint128_t i(high, low);
          i <<= shift;
          ret = (unsigned __int128)i;
       }
 
-      void __ashrti3(__int128& ret, uint64_t high, uint64_t low, uint32_t shift) {
+      void __ashrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
          constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
          uint64_t sign_bit = high & (1 << SHIFT_WIDTH); //(high >> SHIFT_WIDTH);
          fc::uint128_t i(high, low);

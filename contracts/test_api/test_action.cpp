@@ -4,6 +4,7 @@
  */
 
 #include <eoslib/eos.hpp>
+#include <eoslib/print.hpp>
 #include "test_api.hpp"
 #include <eoslib/compiler_builtins.h>
 
@@ -43,6 +44,8 @@ void test_action::read_action_to_64k() {
 }
 
 void test_action::require_notice() {
+   printn(current_receiver());
+   return;
    if( current_receiver() == N(testapi) ) {
       eosio::require_recipient( N(acc1) );
       eosio::require_recipient( N(acc2) );
@@ -65,11 +68,7 @@ void test_action::assert_false() {
 }
 
 void test_action::assert_true() {
-   __break_point();
-   uint32_t tmp = 0;
-   tmp += 3;
-   tmp *= 10;
-   printi(tmp);
+  // __break_point();
    assert(true, "test_action::assert_true");
 }
 
