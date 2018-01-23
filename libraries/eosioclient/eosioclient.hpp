@@ -10,24 +10,7 @@ namespace client {
 class Eosioclient
 {
 public:
-    fc::variant get_info() const;
-    fc::variant get_code(const std::string &account_name) const;
-    fc::variant get_table(const std::string &scope, const std::string &code, const std::string &table) const;
-    fc::variant push_transaction(const chain::signed_transaction& transaction) const;
-    fc::variant push_transaction(const fc::variant& transaction) const;
-    fc::variant connect(const std::string& host) const;
-    fc::variant disconnect(const std::string& host) const;
-    fc::variant status(const std::string& host) const;
-    fc::variant connections(const std::string& host) const;
-    fc::variant get_account_function(const fc::mutable_variant_object& variant) const;
-    fc::variant get_block_function(const fc::mutable_variant_object& variant) const;
-    fc::variant get_key_accounts_function(const fc::mutable_variant_object& variant) const;
-    fc::variant get_controlled_accounts_function(const fc::mutable_variant_object& variant) const;
-    fc::variant get_transaction_function(const fc::mutable_variant_object& variant) const;
-    fc::variant get_transactions_function(const fc::mutable_variant_object& variant) const;
-    fc::variant push_transactions(const std::vector<chain::signed_transaction>& transactions) const;
-    fc::variant json_to_bin_function(const fc::mutable_variant_object& variant) const;
-    fc::variant get_keys_required(const fc::mutable_variant_object& variant) const;
+
 
     void sign_transaction(eosio::chain::signed_transaction &trx);
 
