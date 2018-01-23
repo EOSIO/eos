@@ -4,6 +4,8 @@ add_library(eosioclient
     functions.hpp
     remote.hpp
     remote.cpp
+    wallet.hpp
+    wallet.cpp
     )
 target_link_libraries(eosioclient fc eosio_chain)
 target_include_directories(eosioclient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

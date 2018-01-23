@@ -62,45 +62,6 @@ fc::variant Eosioclient::connections(const std::string &host) const
     return call_server(net_connections, host);
 }
 
-fc::variant Eosioclient::unlock_wallet(const fc::variant &vs) const
-{
-    return call_wallet(wallet_unlock, vs);
-}
-
-fc::variant Eosioclient::import_key_wallet(const fc::variant &vs) const
-{
-    return call_wallet(wallet_import_key, vs);
-}
-
-fc::variant Eosioclient::list_wallet() const
-{
-    return call_wallet(wallet_list);
-}
-
-fc::variant Eosioclient::list_keys_wallet() const
-{
-    return call_wallet(wallet_list_keys);
-}
-
-fc::variant Eosioclient::create_wallet(const std::string& name) const
-{
-    return call_wallet(wallet_create, name);
-}
-
-fc::variant Eosioclient::open_wallet(const std::string &name) const
-{
-    return call_wallet(wallet_open, name);
-}
-
-fc::variant Eosioclient::lock_wallet(const std::string &name) const
-{
-    return call_wallet(wallet_lock, name);
-}
-
-fc::variant Eosioclient::lock_all_wallet() const
-{
-    return call_wallet(wallet_lock_all);
-}
 
 fc::variant Eosioclient::get_account_function(const fc::mutable_variant_object& variant) const
 {
@@ -142,17 +103,9 @@ fc::variant Eosioclient::json_to_bin_function(const fc::mutable_variant_object &
     return call_server(json_to_bin_func, variant);
 }
 
-void Eosioclient::sign_transaction(eosio::chain::signed_transaction& trx) {
-   // TODO better error checking
-   const auto& public_keys = call_wallet(wallet_public_keys);
-   auto get_arg = fc::mutable_variant_object
-         ("transaction", trx)
-         ("available_keys", public_keys);
-   const auto& required_keys = call_server(get_required_keys, get_arg);
-   // TODO determine chain id
-   fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(eosio::chain::chain_id_type{})};
-   const auto& signed_trx = call_wallet(wallet_sign_trx, sign_args);
-   trx = signed_trx.as<eosio::chain::signed_transaction>();
+fc::variant Eosioclient::get_keys_required(const fc::mutable_variant_object &variant) const
+{
+    return call_server(get_required_keys, variant);
 }
 
 std::string Eosioclient::get_server_host() const
@@ -173,31 +126,6 @@ uint32_t Eosioclient::get_server_port() const
 void Eosioclient::set_server_port(uint32_t port)
 {
     m_server_port = port;
-}
-
-std::string Eosioclient::get_wallet_host() const
-{
-    return m_wallet_host;
-}
-
-void Eosioclient::set_wallet_host(const std::string &host)
-{
-    m_wallet_host = host;
-}
-
-uint32_t Eosioclient::get_wallet_port() const
-{
-    return m_wallet_port;
-}
-
-void Eosioclient::set_wallet_port(uint32_t port)
-{
-    m_wallet_port = port;
-}
-
-fc::variant Eosioclient::call_wallet(const std::string &path, const fc::variant &postdata) const
-{
-    return call(m_wallet_host, m_wallet_port, path, postdata);
 }
 
 fc::variant Eosioclient::call_server(const std::string &path, const fc::variant &postdata) const
