@@ -117,7 +117,7 @@ fc::variant Eosioclient::get_key_accounts_function(const fc::mutable_variant_obj
     return call_server(get_key_accounts_func, variant);
 }
 
-fc::variant Eosioclient::get_controller_accounts_function(const fc::mutable_variant_object &variant) const
+fc::variant Eosioclient::get_controlled_accounts_function(const fc::mutable_variant_object &variant) const
 {
     return call_server(get_controlled_accounts_func, variant);
 }
@@ -125,6 +125,11 @@ fc::variant Eosioclient::get_controller_accounts_function(const fc::mutable_vari
 fc::variant Eosioclient::get_transaction_function(const fc::mutable_variant_object &variant) const
 {
     return call_server(get_transaction_func, variant);
+}
+
+fc::variant Eosioclient::get_transactions_function(const fc::mutable_variant_object &variant) const
+{
+    return call_server(get_transactions_func, variant);
 }
 
 fc::variant Eosioclient::push_transactions(const std::vector<chain::signed_transaction> &transactions) const
