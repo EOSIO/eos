@@ -181,8 +181,8 @@ namespace bancor {
 
          static void apply( eosio::account_name c, action_name a ) {
             if( !eosio::dispatch< converter_contract, 
-                           typename converter_currency::transfer_memo,
                            typename converter_currency::issue,
+                           typename converter_currency::transfer_memo,
                            typename first_currency::transfer_memo,
                            typename second_currency::transfer_memo>(c, a) ) {
                assert( false, "received unexpected action" );

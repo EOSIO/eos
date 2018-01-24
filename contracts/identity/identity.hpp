@@ -184,7 +184,7 @@ namespace identity {
          }
 
          static void on( const create& c ) {
-            require_auth( c );
+            require_auth( c.creator );
             assert( !idents_table::exists( c.identity ), "identity already exists" );
             idents_table::set( identrow{ .identity = c.identity,
                                          .creator  = c.creator } );
