@@ -559,8 +559,7 @@ int main( int argc, char** argv ) {
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->set_callback([&blockArg] {
-      auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
-      std::cout << fc::json::to_pretty_string(remote_peer.get_block_function(arg)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_block_function(blockArg)) << std::endl;
    });
 
    // get account
