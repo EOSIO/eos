@@ -331,6 +331,42 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
 }
 
+vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
+   vector<asset> results;
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.account, p.code, N(account), [&](const contracts::key_value_object& obj){
+      share_type balance;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, balance);
+      auto cursor = asset(balance, obj.primary_key);
+
+      if (p.symbol || cursor.symbol_name().compare(*p.symbol) == 0) {
+         results.emplace_back(balance, obj.primary_key);
+      }
+
+      // return false if we are looking for one and found it, true otherwise
+      return p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
+   });
+
+   return results;
+}
+
+fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
+   fc::mutable_variant_object results;
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.code, N(stat), [&](const contracts::key_value_object& obj){
+      share_type balance;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, balance);
+      auto cursor = asset(balance, obj.primary_key);
+
+      read_only::get_currency_stats_result result;
+      result.supply = cursor;
+      results[cursor.symbol_name()] = result;
+      return true;
+   });
+
+   return results;
+}
+
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
    try {
       if (auto block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>()))

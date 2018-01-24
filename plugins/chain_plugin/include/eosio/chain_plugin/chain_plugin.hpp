@@ -181,6 +181,25 @@ public:
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
 
+   struct get_currency_balance_params {
+      name             code;
+      name             account;
+      optional<string> symbol;
+   };
+
+   vector<asset> get_currency_balance( const get_currency_balance_params& params )const;
+
+   struct get_currency_stats_params {
+      name             code;
+      optional<string> symbol;
+   };
+
+   struct get_currency_stats_result {
+      asset        supply;
+   };
+
+   fc::variant get_currency_stats( const get_currency_stats_params& params )const;
+
    void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data)const {
       data.resize( sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
@@ -208,6 +227,25 @@ public:
       memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
       memcpy( data.data()+2*sizeof(uint64_t), &obj.tertiary_key, sizeof(uint64_t) );
       memcpy( data.data()+3*sizeof(uint64_t), obj.value.data(), obj.value.size() );
+   }
+
+   template<typename IndexType, typename Scope, typename Function>
+   void walk_table(const name& scope, const name& code, const name& table, Function f) const
+   {
+      const auto& d = db.get_database();
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<IndexType, Scope>();
+         decltype(t_id->id) next_tid(t_id->id._id + 1);
+         auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
+         auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+
+         for (auto itr = lower; itr != upper; ++itr) {
+            if (!f(*itr)) {
+               break;
+            }
+         }
+      }
    }
  
    template <typename IndexType, typename Scope>
@@ -340,6 +378,10 @@ FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transactio
   
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+
+FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
+FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
+FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply));
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
