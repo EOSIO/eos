@@ -359,7 +359,7 @@ struct set_account_permission_subcommand {
             name parent;
             if (parentStr.size() == 0 && permissionStr != "owner") {
                // see if we can auto-determine the proper parent
-               const auto account_result = remote_peer.get_account_function(accountStr);
+               const auto account_result = remote_peer.get_account(accountStr);
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
                auto permissionPredicate = [this](const auto& perm) {
                   return perm.is_object() &&
@@ -559,7 +559,7 @@ int main( int argc, char** argv ) {
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->set_callback([&blockArg] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_block_function(blockArg)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_block(blockArg)) << std::endl;
    });
 
    // get account
@@ -567,7 +567,7 @@ int main( int argc, char** argv ) {
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_account_function(accountName)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_account(accountName)) << std::endl;
    });
 
    // get code
@@ -670,7 +670,7 @@ int main( int argc, char** argv ) {
    auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
    getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
    getAccounts->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_key_accounts_function(publicKey)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_key_accounts(publicKey)) << std::endl;
    });
 
 
@@ -679,7 +679,7 @@ int main( int argc, char** argv ) {
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);
    getServants->add_option("account", controllingAccount, localized("The name of the controlling account"))->required();
    getServants->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_controlled_accounts_function(controllingAccount)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_controlled_accounts(controllingAccount)) << std::endl;
    });
 
    // get transaction
@@ -687,7 +687,7 @@ int main( int argc, char** argv ) {
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
    getTransaction->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_transaction_function(transactionId)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_transaction(transactionId)) << std::endl;
    });
 
    // get transactions
@@ -698,14 +698,8 @@ int main( int argc, char** argv ) {
    getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
    getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
    getTransactions->set_callback([&] {
-      auto arg = (skip_seq.empty())
-                  ? fc::mutable_variant_object( "account_name", account_name)
-                  : (num_seq.empty())
-                     ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
-                     : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
-      auto result = remote_peer.get_transactions_function(arg); ///< \todo why called twice ???
-      std::cout << fc::json::to_pretty_string(remote_peer.get_transactions_function(arg)) << std::endl;
-
+      auto result = remote_peer.get_transactions(account_name, skip_seq, num_seq); ///< \todo why called twice ???
+      std::cout << fc::json::to_pretty_string(result) << std::endl;
 
       const auto& trxs = result.get_object()["transactions"].get_array();
       for( const auto& t : trxs ) {
@@ -1009,7 +1003,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(benchmark_setup);
 
    benchmark_setup->set_callback([&]{
-      auto response_servants = remote_peer.get_controlled_accounts_function(c_account);
+      auto response_servants = remote_peer.get_controlled_accounts(c_account);
       fc::variant_object response_var;
       fc::from_variant(response_servants, response_var);
       std::vector<std::string> controlled_accounts_vec;

@@ -64,10 +64,10 @@ fc::variant Peer::get_table(const std::string& scope, const std::string& code, c
 {
     bool binary = false;
     return m_remote.call(get_table_func, fc::mutable_variant_object("json", !binary)
-                ("scope",scope)
-                ("code",code)
-                ("table",table)
-                       );
+                         ("scope",scope)
+                         ("code",code)
+                         ("table",table)
+                         );
 }
 
 fc::variant Peer::push_transaction(const chain::signed_transaction &transaction) const
@@ -100,39 +100,44 @@ fc::variant Peer::connections(const std::string &host) const
     return m_remote.call(net_connections, host);
 }
 
-fc::variant Peer::get_account_function(const std::string &name) const
+fc::variant Peer::get_account(const std::string &name) const
 {
     auto arg = fc::mutable_variant_object("account_name", name);
     return m_remote.call(get_account_func, arg);
 }
 
-fc::variant Peer::get_block_function(const std::string &id_or_num) const
+fc::variant Peer::get_block(const std::string &id_or_num) const
 {
     auto arg = fc::mutable_variant_object("block_num_or_id", id_or_num);
     return m_remote.call(get_block_func, arg);
 }
 
-fc::variant Peer::get_key_accounts_function(const std::string &public_key) const
+fc::variant Peer::get_key_accounts(const std::string &public_key) const
 {
     auto arg = fc::mutable_variant_object( "public_key", public_key);
     return m_remote.call(get_key_accounts_func, arg);
 }
 
-fc::variant Peer::get_controlled_accounts_function(const std::string &account) const
+fc::variant Peer::get_controlled_accounts(const std::string &account) const
 {
     auto arg = fc::mutable_variant_object( "controlling_account", account);
     return m_remote.call(get_controlled_accounts_func, arg);
 }
 
-fc::variant Peer::get_transaction_function(const std::string &id) const
+fc::variant Peer::get_transaction(const std::string &id) const
 {
     auto arg = fc::mutable_variant_object( "transaction_id", id);
     return m_remote.call(get_transaction_func, arg);
 }
 
-fc::variant Peer::get_transactions_function(const fc::mutable_variant_object &variant) const
+fc::variant Peer::get_transactions(const std::string &account_name, const std::string &skip_seq, const std::string &num_seq) const
 {
-    return m_remote.call(get_transactions_func, variant);
+    auto arg = (skip_seq.empty())
+            ? fc::mutable_variant_object( "account_name", account_name)
+            : (num_seq.empty())
+              ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
+              : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
+    return m_remote.call(get_transactions_func, arg);
 }
 
 fc::variant Peer::push_transactions(const std::vector<chain::signed_transaction> &transactions) const
