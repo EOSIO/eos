@@ -185,7 +185,7 @@ namespace {
         if (msg.account == chain::config::system_account_name) {
            abis.set_abi(mongo_db_plugin_impl::eos_abi);
         } else {
-           auto from_account = find_account(accounts, msg.name);
+           auto from_account = find_account(accounts, msg.account);
            auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
            abis.set_abi(abi);
         }
