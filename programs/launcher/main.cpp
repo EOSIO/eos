@@ -376,10 +376,9 @@ struct launcher_def {
   void prep_remote_config_dir (eosd_def &node, host_def *host);
   void launch (eosd_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
+  vector<pair<host_def, eosd_def>> get_nodes(const string& node_number_list);
   void bounce (const string& node_numbers);
-  bool bounce_node (uint16_t num);
   void down (const string& node_numbers);
-  bool down_node (uint16_t num);
   void roll (const string& host_names);
   void start_all (string &gts, launch_modes mode);
 };
@@ -1215,93 +1214,79 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   }
 }
 
-void
-launcher_def::bounce (const string& node_numbers) {
+vector<pair<host_def, eosd_def>>
+launcher_def::get_nodes(const string& node_number_list) {
+   vector<pair<host_def, eosd_def>> node_list;
    vector<string> nodes;
-   boost::split(nodes, node_numbers, boost::is_any_of(","));
+   boost::split(nodes, node_number_list, boost::is_any_of(","));
    for (string node_number: nodes) {
       uint16_t node = -1;
       try {
          node = boost::lexical_cast<uint16_t,string>(node_number);
       }
-      catch(boost::bad_lexical_cast &)
-      {
-         cerr << "Bad node number found in node number list for bounce: " << node_number << endl;
+      catch(boost::bad_lexical_cast &) {
+         // This exception will be handled below
+      }
+      if (node < 0) {
+         cerr << "Bad node number found in node number list: " << node_number << endl;
          exit(-1);
       }
-      if (!bounce_node(node)) {
-         cerr << "Node number not found: " << node << endl;
-      }
-   }
-}
-
-bool
-launcher_def::bounce_node (uint16_t num) {
-   string dex = num < 10 ? "0":"";
-   dex += boost::lexical_cast<string,uint16_t>(num);
-   string node_name = network.name + dex;
-   for (auto host: bindings) {
-      for (auto node: host.instances) {
-         if (node_name == node.name) {
-            string cmd = "cd " + host.eos_root_dir + "; "
-                       + "export EOSIO_HOME=" + host.eos_root_dir + "; "
-                       + "export EOSIO_TN_NODE=" + dex + "; "
-                       + "./scripts/tn_bounce.sh";
-            cout << "Bouncing " << node_name << endl;
-            if (!do_ssh(cmd, host.host_name)) {
-               cerr << "Unable to bounce " << node_name << endl;
-               exit (-1);
+      string dex = node < 10 ? "0":"";
+      dex += boost::lexical_cast<string,uint16_t>(node);
+      string node_name = network.name + dex;
+      for (auto host: bindings) {
+         for (auto node: host.instances) {
+            if (node_name == node.name) {
+               node_list.push_back(make_pair(host, node));
+               goto continue_next_node;
             }
-            return true;
          }
       }
+      cerr << "Unable to find node " << node_name << endl;
+      exit (-1);
+
+      continue_next_node: ;
    }
-   return false;
+   return node_list;
+}
+
+void
+launcher_def::bounce (const string& node_numbers) {
+   auto node_list = get_nodes(node_numbers);
+   for (auto node_pair: node_list) {
+      const host_def& host = node_pair.first;
+      const eosd_def& node = node_pair.second;
+      string node_num = node.name.substr( node.name.length() - 2 );
+      string cmd = "cd " + host.eos_root_dir + "; "
+                 + "export EOSIO_HOME=" + host.eos_root_dir + string("; ")
+                 + "export EOSIO_TN_NODE=" + node_num + "; "
+                 + "./scripts/tn_bounce.sh";
+      cout << "Bouncing " << node.name << endl;
+      if (!do_ssh(cmd, host.host_name)) {
+         cerr << "Unable to bounce " << node.name << endl;
+         exit (-1);
+      }
+   }
 }
 
 void
 launcher_def::down (const string& node_numbers) {
-   vector<string> nodes;
-   boost::split(nodes, node_numbers, boost::is_any_of(","));
-   for (string node_number: nodes) {
-      uint16_t node = -1;
-      try {
-         node = boost::lexical_cast<uint16_t,string>(node_number);
-      }
-      catch(boost::bad_lexical_cast &)
-      {
-         cerr << "Bad node number found in node number list for down: " << node_number << endl;
-         exit(-1);
-      }
-      if (!down_node(node)) {
-         cerr << "Node number not found: " << node << endl;
-      }
-   }
-}
-
-bool
-launcher_def::down_node (uint16_t num) {
-   string dex = num < 10 ? "0":"";
-   dex += boost::lexical_cast<string,uint16_t>(num);
-   string node_name = network.name + dex;
-   for (auto host: bindings) {
-      for (auto node: host.instances) {
-         if (node_name == node.name) {
-            string cmd = "cd " + host.eos_root_dir + "; "
-                       + "export EOSIO_HOME=" + host.eos_root_dir + "; "
-                       + "export EOSIO_TN_NODE=" + dex + "; "
-                       + "export EOSIO_TN_RESTART_DATA_DIR=" + node.data_dir + "; "
-                       + "./scripts/tn_down.sh";
-            cout << "Bouncing " << node_name << endl;
-            if (!do_ssh(cmd, host.host_name)) {
-               cerr << "Unable to down " << node_name << endl;
-               exit (-1);
-            }
-            return true;
-         }
+   auto node_list = get_nodes(node_numbers);
+   for (auto node_pair: node_list) {
+      const host_def& host = node_pair.first;
+      const eosd_def& node = node_pair.second;
+      string node_num = node.name.substr( node.name.length() - 2 );
+      string cmd = "cd " + host.eos_root_dir + "; "
+                 + "export EOSIO_HOME=" + host.eos_root_dir + "; "
+                 + "export EOSIO_TN_NODE=" + node_num + "; "
+                 + "export EOSIO_TN_RESTART_DATA_DIR=" + node.data_dir + "; "
+                 + "./scripts/tn_down.sh";
+      cout << "Bouncing " << node.name << endl;
+      if (!do_ssh(cmd, host.host_name)) {
+         cerr << "Unable to down " << node.name << endl;
+         exit (-1);
       }
    }
-   return false;
 }
 
 void
