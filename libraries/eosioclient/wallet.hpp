@@ -10,14 +10,9 @@
 namespace eosio {
 namespace client {
 
-class Wallet
+class Wallet : public Remote
 {
 public:
-    std::string host() const;
-    void set_host(const std::string& host);
-    uint32_t port() const;
-    void set_port(uint32_t port);
-
     fc::variant create(const std::string &name) const;
     fc::variant open(const std::string &name) const;
     fc::variant lock(const std::string &name) const;
@@ -30,9 +25,6 @@ public:
     fc::variant sign_transaction(const chain::signed_transaction& transaction,
                                  const fc::variant& required_keys,
                                  const eosio::chain::chain_id_type& id) const;
-
-private:
-    Remote m_remote;
 };
 
 } // namespace client
