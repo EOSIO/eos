@@ -98,9 +98,10 @@ fc::variant Peer::connections(const std::string &host) const
     return m_remote.call(net_connections, host);
 }
 
-fc::variant Peer::get_account_function(const fc::mutable_variant_object& variant) const
+fc::variant Peer::get_account_function(const std::string &name) const
 {
-    return m_remote.call(get_account_func, variant);
+    auto arg = fc::mutable_variant_object("account_name", name);
+    return m_remote.call(get_account_func, arg);
 }
 
 fc::variant Peer::get_block_function(const fc::mutable_variant_object &variant) const
