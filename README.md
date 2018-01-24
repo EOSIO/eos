@@ -10,6 +10,8 @@ This code is currently alpha-quality and under rapid development. That said,
 there is plenty early experimenters can do including running a private multi-node test network and
 developing applications (smart contracts).
 
+The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for building either option.
+
 # Resources
 1. [EOS.IO Website](https://eos.io)
 2. [Documentation](https://eosio.github.io/eos/)
