@@ -30,7 +30,7 @@ public:
     fc::variant get_account_function(const std::string& name) const;
     fc::variant get_block_function(const std::string &id_or_num) const;
     fc::variant get_key_accounts_function(const std::string &public_key) const;
-    fc::variant get_controlled_accounts_function(const fc::mutable_variant_object& variant) const;
+    fc::variant get_controlled_accounts_function(const std::string &account) const;
     fc::variant get_transaction_function(const fc::mutable_variant_object& variant) const;
     fc::variant get_transactions_function(const fc::mutable_variant_object& variant) const;
     fc::variant push_transactions(const std::vector<chain::signed_transaction>& transactions) const;

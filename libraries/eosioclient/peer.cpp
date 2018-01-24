@@ -116,9 +116,10 @@ fc::variant Peer::get_key_accounts_function(const std::string &public_key) const
     return m_remote.call(get_key_accounts_func, arg);
 }
 
-fc::variant Peer::get_controlled_accounts_function(const fc::mutable_variant_object &variant) const
+fc::variant Peer::get_controlled_accounts_function(const std::string &account) const
 {
-    return m_remote.call(get_controlled_accounts_func, variant);
+    auto arg = fc::mutable_variant_object( "controlling_account", account);
+    return m_remote.call(get_controlled_accounts_func, arg);
 }
 
 fc::variant Peer::get_transaction_function(const fc::mutable_variant_object &variant) const

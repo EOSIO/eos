@@ -1011,8 +1011,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(benchmark_setup);
 
    benchmark_setup->set_callback([&]{
-      auto controlling_account_arg = fc::mutable_variant_object( "controlling_account", c_account);
-      auto response_servants = remote_peer.get_controlled_accounts_function(controlling_account_arg);
+      auto response_servants = remote_peer.get_controlled_accounts_function(c_account);
       fc::variant_object response_var;
       fc::from_variant(response_servants, response_var);
       std::vector<std::string> controlled_accounts_vec;
