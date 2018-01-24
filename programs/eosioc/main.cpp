@@ -486,10 +486,18 @@ int main( int argc, char** argv ) {
                               localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
    createProducer->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(createProducer);
-   createProducer->set_callback([&account_name, &ownerKey, &permissions, &skip_sign]{ eosioclient.create_producer(account_name,
-                                                                                                                  ownerKey,
-                                                                                                                  permissions,
-                                                                                                                  skip_sign);});
+   createProducer->set_callback([&account_name, &ownerKey, &permissions, &skip_sign] {
+      if (permissions.empty()) {
+         permissions.push_back(account_name + "@active");
+      }
+      auto account_permissions = get_account_permissions(permissions);
+
+      signed_transaction trx;
+      trx.actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
+
+      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
+   });
+
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
    get->require_subcommand();
