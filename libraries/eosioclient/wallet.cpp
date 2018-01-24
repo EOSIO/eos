@@ -82,9 +82,12 @@ fc::variant Wallet::public_keys() const
     return m_remote.call(wallet_public_keys);
 }
 
-fc::variant Wallet::sign_transaction(const fc::variants &args) const
+fc::variant Wallet::sign_transaction(const chain::signed_transaction &transaction,
+                                     const fc::variant &required_keys,
+                                     const chain::chain_id_type &id) const
 {
-    return m_remote.call(wallet_sign_trx, args);
+    fc::variants sign_args = {fc::variant(transaction), required_keys["required_keys"], fc::variant(id)};
+    return m_remote.call(wallet_sign_trx, sign_args);
 }
 
 } // namespace client

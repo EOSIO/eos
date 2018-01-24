@@ -35,7 +35,7 @@ public:
     fc::variant get_transactions_function(const fc::mutable_variant_object& variant) const;
     fc::variant push_transactions(const std::vector<chain::signed_transaction>& transactions) const;
     fc::variant json_to_bin_function(const fc::mutable_variant_object& variant) const;
-    fc::variant get_keys_required(const fc::mutable_variant_object& variant) const;
+    fc::variant get_keys_required(const chain::signed_transaction& transaction, const fc::variant& public_keys) const;
 
 private:
     Remote m_remote;

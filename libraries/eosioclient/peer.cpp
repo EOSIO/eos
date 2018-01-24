@@ -138,9 +138,10 @@ fc::variant Peer::json_to_bin_function(const fc::mutable_variant_object &variant
     return m_remote.call(json_to_bin_func, variant);
 }
 
-fc::variant Peer::get_keys_required(const fc::mutable_variant_object &variant) const
+fc::variant Peer::get_keys_required(const chain::signed_transaction &transaction, const fc::variant &public_keys) const
 {
-    return m_remote.call(get_required_keys, variant);
+    auto get_arg = fc::mutable_variant_object("transaction", transaction)("available_keys", public_keys);
+    return m_remote.call(get_required_keys, get_arg);
 }
 
 } // namespace client

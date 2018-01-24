@@ -174,13 +174,9 @@ inline std::vector<name> sort_names( const std::vector<name>& names ) {
 void sign_transaction(eosio::chain::signed_transaction& trx) {
    // TODO better error checking
    const auto& public_keys = remote_wallet.public_keys();
-   auto get_arg = fc::mutable_variant_object
-         ("transaction", trx)
-         ("available_keys", public_keys);
-   const auto& required_keys = remote_peer.get_keys_required(get_arg);
+   const auto& required_keys = remote_peer.get_keys_required(trx, public_keys);
    // TODO determine chain id
-   fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(eosio::chain::chain_id_type{})};
-   const auto& signed_trx = remote_wallet.sign_transaction(sign_args);
+   const auto& signed_trx = remote_wallet.sign_transaction(trx, required_keys, eosio::chain::chain_id_type{});
    trx = signed_trx.as<eosio::chain::signed_transaction>();
 }
 
