@@ -1217,35 +1217,47 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
 vector<pair<host_def, eosd_def>>
 launcher_def::get_nodes(const string& node_number_list) {
    vector<pair<host_def, eosd_def>> node_list;
-   vector<string> nodes;
-   boost::split(nodes, node_number_list, boost::is_any_of(","));
-   for (string node_number: nodes) {
-      uint16_t node = -1;
-      try {
-         node = boost::lexical_cast<uint16_t,string>(node_number);
-      }
-      catch(boost::bad_lexical_cast &) {
-         // This exception will be handled below
-      }
-      if (node < 0) {
-         cerr << "Bad node number found in node number list: " << node_number << endl;
-         exit(-1);
-      }
-      string dex = node < 10 ? "0":"";
-      dex += boost::lexical_cast<string,uint16_t>(node);
-      string node_name = network.name + dex;
+   string nnl = node_number_list;
+   std::transform(nnl.begin(), nnl.end(), nnl.begin(), ::tolower);
+   if (nnl == "all") {
       for (auto host: bindings) {
          for (auto node: host.instances) {
-            if (node_name == node.name) {
-               node_list.push_back(make_pair(host, node));
-               goto continue_next_node;
-            }
+            cout << "host=" << host.host_name << ", node=" << node.name << endl;
+            node_list.push_back(make_pair(host, node));
          }
       }
-      cerr << "Unable to find node " << node_name << endl;
-      exit (-1);
+   }
+   else {
+      vector<string> nodes;
+      boost::split(nodes, node_number_list, boost::is_any_of(","));
+      for (string node_number: nodes) {
+         uint16_t node = -1;
+         try {
+            node = boost::lexical_cast<uint16_t,string>(node_number);
+         }
+         catch(boost::bad_lexical_cast &) {
+            // This exception will be handled below
+         }
+         if (node < 0) {
+            cerr << "Bad node number found in node number list: " << node_number << endl;
+            exit(-1);
+         }
+         string dex = node < 10 ? "0":"";
+         dex += boost::lexical_cast<string,uint16_t>(node);
+         string node_name = network.name + dex;
+         for (auto host: bindings) {
+            for (auto node: host.instances) {
+               if (node_name == node.name) {
+                  node_list.push_back(make_pair(host, node));
+                  goto continue_next_node;
+               }
+            }
+         }
+         cerr << "Unable to find node " << node_name << endl;
+         exit (-1);
 
-      continue_next_node: ;
+         continue_next_node: ;
+      }
    }
    return node_list;
 }
