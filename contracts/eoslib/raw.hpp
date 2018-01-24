@@ -28,9 +28,9 @@ namespace eosio {
    *  @param v value to be serialized
    */
    template<typename Stream, typename T>
-   void pack( Stream& s, const T & v )
+   void pack( Stream& s, T && v )
    {
-      s << v;
+      s << forward<T>(v);
    }
 
   /**
@@ -156,7 +156,7 @@ namespace eosio {
    */
    template<typename Stream>  void pack( Stream& s, const string& v )  {
       auto size = v.get_size();
-      eosio::raw::pack( s, unsigned_int(size));
+      eosio::raw::pack( s, move(unsigned_int(size)));
       if( size ) s.write( v.get_data(), size );
    }
 

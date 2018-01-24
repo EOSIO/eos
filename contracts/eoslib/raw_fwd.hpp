@@ -7,7 +7,7 @@
 
 namespace eosio { namespace raw {    
    template<typename Stream, typename Arg0, typename... Args>  void pack( Stream& s, Arg0&& a0, Args&&... args );
-   template<typename Stream, typename T>  void pack( Stream& s, const T& v );
+   template<typename Stream, typename T>  void pack( Stream& s, T&& v );
    template<typename Stream, typename T>  void unpack( Stream& s, T& v );
    template<typename Stream>  void pack( Stream& s, signed_int v );
    template<typename Stream>  void pack( Stream& s, unsigned_int v );
