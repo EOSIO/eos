@@ -126,6 +126,7 @@ string program = "eosc";
 eosio::client::Peer remote_peer;
 eosio::client::Wallet remote_wallet;
 
+
 const string chain_func_base = "/v1/chain";
 const string push_txn_func = chain_func_base + "/push_transaction";
 const string push_txns_func = chain_func_base + "/push_transactions";
