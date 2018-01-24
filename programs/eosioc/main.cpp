@@ -284,56 +284,13 @@ struct set_account_permission_subcommand {
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
 
-      permissions->set_callback([this] {
-         name account = name(accountStr);
-         name permission = name(permissionStr);
-         bool is_delete = boost::iequals(authorityJsonOrFile, "null");
-
-         if (is_delete) {
-            send_transaction({create_deleteauth(account, permission, name(permissionAuth))}, skip_sign);
-         } else {
-            authority auth;
-            if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
-               auth = authority(public_key_type(authorityJsonOrFile));
-            } else {
-               fc::variant parsedAuthority;
-               if (boost::istarts_with(authorityJsonOrFile, "{")) {
-                  parsedAuthority = fc::json::from_string(authorityJsonOrFile);
-               } else {
-                  parsedAuthority = fc::json::from_file(authorityJsonOrFile);
-               }
-
-               auth = parsedAuthority.as<authority>();
-            }
-
-            name parent;
-            if (parentStr.size() == 0 && permissionStr != "owner") {
-               // see if we can auto-determine the proper parent
-               const auto account_result = remote_peer.get_account_function(fc::mutable_variant_object("account_name", accountStr));
-               const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
-               auto permissionPredicate = [this](const auto& perm) {
-                  return perm.is_object() &&
-                        perm.get_object().contains("permission") &&
-                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr);
-               };
-
-               auto itr = boost::find_if(existing_permissions, permissionPredicate);
-               if (itr != existing_permissions.end()) {
-                  parent = name((*itr).get_object()["parent"].get_string());
-               } else {
-                  // if this is a new permission and there is no parent we default to "active"
-                  parent = name("active");
-
-               }
-            } else {
-               parent = name(parentStr);
-            }
-
-            send_transaction({create_updateauth(account, permission, parent, auth, name(permissionAuth))}, skip_sign);
-         }
-      });
+      permissions->set_callback([this] { eosioclient.set_account_permission(accountStr,
+                                                                    permissionStr,
+                                                                    authorityJsonOrFile,
+                                                                    parentStr,
+                                                                    permissionAuth,
+                                                                    skip_sign); });
    }
-
 };
 
 struct set_action_permission_subcommand {
@@ -352,19 +309,11 @@ struct set_action_permission_subcommand {
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
 
-      permissions->set_callback([this] {
-         name account = name(accountStr);
-         name code = name(codeStr);
-         name type = name(typeStr);
-         bool is_delete = boost::iequals(requirementStr, "null");
-
-         if (is_delete) {
-            send_transaction({create_unlinkauth(account, code, type)}, skip_sign);
-         } else {
-            name requirement = name(requirementStr);
-            send_transaction({create_linkauth(account, code, type, requirement)}, skip_sign);
-         }
-      });
+      permissions->set_callback([this] { eosioclient.set_action_permission(accountStr,
+                                                                           codeStr,
+                                                                           typeStr,
+                                                                           requirementStr,
+                                                                           skip_sign); });
    }
 };
 
