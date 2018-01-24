@@ -22,8 +22,8 @@ public:
     fc::variant open(const std::string &name) const;
     fc::variant lock(const std::string &name) const;
     fc::variant lock_all() const;
-    fc::variant unlock(const fc::variant &vs) const;
-    fc::variant import_key(const fc::variant &vs) const;
+    fc::variant unlock(const std::string &name, const std::string& passwd) const;
+    fc::variant import_key(const std::string &name, const std::string &passwd) const;
     fc::variant list() const;
     fc::variant list_keys() const;
     fc::variant public_keys() const;
