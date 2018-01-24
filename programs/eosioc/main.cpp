@@ -291,17 +291,6 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   std::function<bool(CLI::results_t)> ccc = [&](CLI::results_t res) {
-       if(res.size() != 1)
-           return false;
-
-       std::string variable;
-       if (!CLI::detail::lexical_cast(res[0], variable))
-           return false;
-
-       remote_wallet.set_host(variable);
-       return true;
-   };
    CLI::App app{"Command Line Interface to Eos Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", [&](CLI::results_t res) {
