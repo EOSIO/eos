@@ -94,14 +94,8 @@ namespace eosio { namespace chain {
     */
    struct wasm_cache_impl {
       wasm_cache_impl()
-      :_ios()
-      ,_work(_ios)
       {
          Runtime::init();
-
-         _utility_thread = std::thread([](io_service* ios){
-            ios->run();
-         }, &_ios);
       }
 
       /**
@@ -112,9 +106,6 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         _work.reset();
-         _ios.stop();
-         _utility_thread.join();
          freeUnreferencedObjects({});
       }
 
@@ -156,8 +147,8 @@ namespace eosio { namespace chain {
        * @return - varies depending on the signature of the lambda
        */
       template<typename F>
-      auto with_lock(F f) {
-         std::lock_guard<std::mutex> lock(_cache_lock);
+      auto with_lock(std::mutex &l, F f) {
+         std::lock_guard<std::mutex> lock(l);
          return f();
       };
 
@@ -168,7 +159,7 @@ namespace eosio { namespace chain {
        * @return
        */
       optional_info_ref fetch_info(const digest_type& code_id) {
-         return with_lock([&,this](){
+         return with_lock(_cache_lock, [&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end()) {
                return optional_info_ref(iter->second);
@@ -184,7 +175,7 @@ namespace eosio { namespace chain {
        * @return - reference to the entry when one is available
        */
       optional_entry_ref try_fetch_entry(const digest_type& code_id) {
-         return with_lock([&,this](){
+         return with_lock(_cache_lock, [&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end() && iter->second.available_instances > 0) {
                auto &ptr = iter->second.instances.at(--(iter->second.available_instances));
@@ -212,7 +203,7 @@ namespace eosio { namespace chain {
 
          // compilation is not thread safe, so we dispatch it to a io_service running on a single thread to
          // queue up and synchronize compilations
-         _ios.post([&,this](){
+         with_lock(_compile_lock, [&,this](){
             // check to see if someone returned what we need before making a new one
             auto pending_result = try_fetch_entry(code_id);
             std::exception_ptr pending_error;
@@ -253,7 +244,7 @@ namespace eosio { namespace chain {
 
                if (pending_error == nullptr) {
                   // grab the lock and put this in the cache as unavailble
-                  with_lock([&,this]() {
+                  with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
                      auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
 
@@ -263,25 +254,14 @@ namespace eosio { namespace chain {
                }
             }
 
-            // publish result under lock
-            with_lock([&](){
-               if (pending_error != nullptr) {
-                  error = pending_error;
-               } else {
-                  result = pending_result;
-               }
-            });
+           if (pending_error != nullptr) {
+              error = pending_error;
+           } else {
+              result = pending_result;
+           }
 
-            condition.notify_all();
          });
 
-         // wait for the other thread to compile a copy for us
-         {
-            std::unique_lock<std::mutex> lock(_cache_lock);
-            condition.wait(lock, [&]{
-               return error != nullptr || result.valid();
-            });
-         }
 
          try {
             if (error != nullptr) {
@@ -301,43 +281,39 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-         _ios.post([&,code_id,this](){
-            // sanitize by reseting the memory that may now be dirty
-            auto& info = (*fetch_info(code_id)).get();
-            if(getDefaultMemory(entry.instance)) {
-               char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
-               memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-               memcpy( memstart, info.mem_image.data(), info.mem_end);
-            }
-            resetGlobalInstances(entry.instance);
+        // sanitize by reseting the memory that may now be dirty
+        auto& info = (*fetch_info(code_id)).get();
+        if(getDefaultMemory(entry.instance)) {
+           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
+           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
+           memcpy( memstart, info.mem_image.data(), info.mem_end);
+        }
+        resetGlobalInstances(entry.instance);
 
-            // under a lock, put this entry back in the available instances side of the instances vector
-            with_lock([&,this](){
-               // walk the vector and find this entry
-               auto iter = info.instances.begin();
-               while (iter->get() != &entry) {
-                  ++iter;
-               }
+        // under a lock, put this entry back in the available instances side of the instances vector
+        with_lock(_cache_lock, [&,this](){
+           // walk the vector and find this entry
+           auto iter = info.instances.begin();
+           while (iter->get() != &entry) {
+              ++iter;
+           }
 
-               FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
 
-               auto first_unavailable = (info.instances.begin() + info.available_instances);
-               if (iter != first_unavailable) {
-                  std::swap(iter, first_unavailable);
-               }
-               info.available_instances++;
-            });
-         });
+           auto first_unavailable = (info.instances.begin() + info.available_instances);
+           if (iter != first_unavailable) {
+              std::swap(iter, first_unavailable);
+           }
+           info.available_instances++;
+        });
       }
 
       // mapping of digest to an entry for the code
       map<digest_type, code_info> _cache;
       std::mutex _cache_lock;
 
-      // compilation and cleanup thread
-      std::thread _utility_thread;
-      io_service _ios;
-      optional<io_service::work> _work;
+      // compilation lock
+      std::mutex _compile_lock;
    };
 
    wasm_cache::wasm_cache()
