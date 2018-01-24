@@ -123,6 +123,8 @@ namespace LLVMJIT
 		virtual bool needsToReserveAllocationSpace() override { return true; }
 		virtual void reserveAllocationSpace(uintptr_t numCodeBytes,U32 codeAlignment,uintptr_t numReadOnlyBytes,U32 readOnlyAlignment,uintptr_t numReadWriteBytes,U32 readWriteAlignment) override
 		{
+			if(numReadWriteBytes)
+				 Runtime::causeException(Exception::Cause::outOfMemory);
 			// Calculate the number of pages to be used by each section.
 			codeSection.numPages = shrAndRoundUp(numCodeBytes,Platform::getPageSizeLog2());
 			readOnlySection.numPages = shrAndRoundUp(numReadOnlyBytes,Platform::getPageSizeLog2());
