@@ -128,7 +128,8 @@ class Node(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def __str__(self):
-        return "Port:%d, Pid:%s, Alive:%s, Cmd:\"%s\"" % (self.port, self.pid, self.alive, self.cmd)
+        #return "Host: %s, Port:%d, Pid:%s, Alive:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.alive, self.cmd)
+        return "Host: %s, Port:%d" % (self.host, self.port)
 
     @staticmethod
     def runCmdReturnJson(cmd, trace=False):
@@ -991,7 +992,7 @@ class Cluster(object):
     initbAccount.ownerPrivateKey="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
 
     # walletd [True|False] Is walletd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=initaAccount.ownerPrivateKey, initbPrvtKey=initbAccount.ownerPrivateKey):
         self.accounts={}
         self.nodes={}
         self.localCluster=localCluster
@@ -1014,7 +1015,8 @@ class Cluster(object):
         if self.enableMongo:
             self.mongoUri="mongodb://%s:%d/%s" % (mongoHost, mongoPort, mongoDb)
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
-        #self.endpointArgs=""
+        Cluster.initaAccount.ownerPrivateKey=initaPrvtKey
+        Cluster.initbAccount.ownerPrivateKey=initbPrvtKey
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
@@ -1064,6 +1066,7 @@ class Cluster(object):
         self.nodes=nodes
         return True
 
+    # Initialize the default nodes (at present just the root node)
     def initializeNodes(self):
         node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         node.setWalletEndpointArgs(self.walletEndpointArgs)
@@ -1071,6 +1074,39 @@ class Cluster(object):
 
         node.checkPulse()
         self.nodes=[node]
+        return True
+
+    # Initialize nodes from the Json nodes string
+    def initializeNodesFromJson(self, nodesJsonStr):
+        nodesObj= json.loads(nodesJsonStr)
+        if nodesObj is None:
+            Utils.Print("ERROR: Invalid Json string.")
+            return False
+
+        if "keys" in nodesObj:
+            keysMap=nodesObj["keys"]
+
+            if "initaPrivateKey" in keysMap:
+                initaPrivateKey=keysMap["initaPrivateKey"]
+                Cluster.initaAccount.ownerPrivateKey=initaPrivateKey
+
+            if "initbPrivateKey" in keysMap:
+                initbPrivateKey=keysMap["initbPrivateKey"]
+                Cluster.initbAccount.ownerPrivateKey=initbPrivateKey
+
+        nArr=nodesObj["nodes"]
+        nodes=[]
+        for n in nArr:
+            port=n["port"]
+            host=n["host"]
+            node=Node(host, port)
+            node.setWalletEndpointArgs(self.walletEndpointArgs)
+            Utils.Debug and Utils.Print("Node:", node)
+
+            node.checkPulse()
+            nodes.append(node)
+
+        self.nodes=nodes
         return True
     
     # manually set nodes, alternative to explicit launch
@@ -1201,6 +1237,9 @@ class Cluster(object):
 
     def getNode(self, id=0):
         return self.nodes[0]
+
+    def getNodes(self):
+        return self.nodes
     
     # Spread funds across accounts with transactions spread through cluster nodes.
     #  Validate transactions are synchronized on root node

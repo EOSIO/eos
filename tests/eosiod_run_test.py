@@ -38,6 +38,10 @@ parser.add_argument("-h", "--host", type=str, help="%s host name" % (testUtils.U
                     default=LOCAL_HOST)
 parser.add_argument("-p", "--port", type=int, help="%s host port" % testUtils.Utils.EosServerName,
                     default=DEFAULT_PORT)
+parser.add_argument("--inita_prvt_key", type=str, help="Inita private key.",
+                    default=testUtils.Cluster.initaAccount.ownerPrivateKey)
+parser.add_argument("--initb_prvt_key", type=str, help="Initb private key.",
+                    default=testUtils.Cluster.initbAccount.ownerPrivateKey)
 parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
@@ -59,13 +63,15 @@ debug=args.v
 exitEarly=args.exit_early
 enableMongo=args.mongodb
 amINoon=not args.not_noon
+initaPrvtKey=args.inita_prvt_key
+initbPrvtKey=args.initb_prvt_key
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo)
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey)
 walletMgr=testUtils.WalletMgr(True)
 
 testSuccessful=False
