@@ -8,7 +8,7 @@ add_library(eosioclient
     eosioclient.hpp
     eosioclient.cpp
     )
-target_link_libraries(eosioclient fc eosio_chain)
+target_link_libraries(eosioclient fc eosio_chain chain_plugin)
 target_include_directories(eosioclient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(test)

@@ -99,6 +99,7 @@ Options:
 
 #include "peer.hpp"
 #include "wallet.hpp"
+#include "eosioclient.hpp"
 
 using namespace std;
 using namespace eosio;
@@ -123,8 +124,9 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
   )
 
 string program = "eosc";
-eosio::client::Peer remote_peer;
-eosio::client::Wallet remote_wallet;
+eosio::client::Peer remote_peer; ///< \todo remove
+eosio::client::Wallet remote_wallet; ///< \todo remove
+eosio::client::Eosioclient eosioclient(remote_peer, remote_wallet);
 
 inline std::vector<name> sort_names( const std::vector<name>& names ) {
    auto results = std::vector<name>(names);
@@ -226,21 +228,6 @@ fc::variant push_transaction( signed_transaction& trx, bool sign ) {
     }
 
     return remote_peer.push_transaction( trx );
-}
-
-
-void create_account(name creator, name newaccount, public_key_type owner, public_key_type active, bool sign, uint64_t staked_deposit) {
-      auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
-      auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
-      auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-
-      uint64_t deposit = staked_deposit;
-
-      signed_transaction trx;
-      trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
-                                contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
-
-      std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
 
 chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth, const name& permissionAuth) {
@@ -483,9 +470,12 @@ int main( int argc, char** argv ) {
    createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    createAccount->add_option("--staked-deposit", staked_deposit, localized("the staked deposit transfered to the new account"));
    add_standard_transaction_options(createAccount);
-   createAccount->set_callback([&] {
-                   create_account(creator, account_name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign, staked_deposit);
-   });
+   createAccount->set_callback([&] { eosioclient.create_account(creator,
+                                                                account_name,
+                                                                public_key_type(ownerKey),
+                                                                public_key_type(activeKey),
+                                                                !skip_sign,
+                                                                staked_deposit); });
 
    // create producer
    vector<string> permissions;
@@ -496,18 +486,10 @@ int main( int argc, char** argv ) {
                               localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
    createProducer->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(createProducer);
-   createProducer->set_callback([&account_name, &ownerKey, &permissions, &skip_sign] {
-      if (permissions.empty()) {
-         permissions.push_back(account_name + "@active");
-      }
-      auto account_permissions = get_account_permissions(permissions);
-
-      signed_transaction trx;
-      trx.actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
-
-      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
-   });
-
+   createProducer->set_callback([&account_name, &ownerKey, &permissions, &skip_sign]{ eosioclient.create_producer(account_name,
+                                                                                                                  ownerKey,
+                                                                                                                  permissions,
+                                                                                                                  skip_sign);});
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
    get->require_subcommand();
