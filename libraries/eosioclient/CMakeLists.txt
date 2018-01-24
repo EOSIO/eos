@@ -5,6 +5,8 @@ add_library(eosioclient
     wallet.cpp
     peer.hpp
     peer.cpp
+    eosioclient.hpp
+    eosioclient.cpp
     )
 target_link_libraries(eosioclient fc eosio_chain)
 target_include_directories(eosioclient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
