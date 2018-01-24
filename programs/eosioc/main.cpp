@@ -230,42 +230,6 @@ fc::variant push_transaction( signed_transaction& trx, bool sign ) {
     return remote_peer.push_transaction( trx );
 }
 
-chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth, const name& permissionAuth) {
-   return action { vector<chain::permission_level>{{account,permissionAuth}},
-                   contracts::updateauth{account, permission, parent, auth}};
-}
-
-chain::action create_deleteauth(const name& account, const name& permission, const name& permissionAuth) {
-   return action { vector<chain::permission_level>{{account,permissionAuth}},
-                   contracts::deleteauth{account, permission}};
-}
-
-chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
-   return action { vector<chain::permission_level>{{account,"active"}},
-                   contracts::linkauth{account, code, type, requirement}};
-}
-
-chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
-   return action { vector<chain::permission_level>{{account,"active"}},
-                   contracts::unlinkauth{account, code, type}};
-}
-
-void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false) {
-   signed_transaction trx;
-   for (const auto& m: actions) {
-      trx.actions.emplace_back( m );
-   }
-
-   auto info = get_info();
-   trx.expiration = info.head_block_time + tx_expiration;
-   trx.set_reference_block(info.head_block_id);
-   if (!skip_sign) {
-      sign_transaction(trx);
-   }
-
-   std::cout << fc::json::to_pretty_string( remote_peer.push_transaction( trx )) << std::endl;
-}
-
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
