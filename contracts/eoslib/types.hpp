@@ -89,19 +89,4 @@ namespace  eosio {
    template<typename T> struct remove_reference<const T&> { typedef T type; };
    ///@}
 
-    /**
-     * @ingroup types
-     * needed for universal references since we build with --nostdlib and thus std::forward<T> is not available
-     *  with forward<Args...>(args...) we always guarantee correctness of the calling code
-    */
-    template<typename T, typename U>
-    constexpr decltype(auto) forward(U && u) noexcept
-    {
-       return static_cast<T &&>(u);
-    }
-
-    template< class T >
-    constexpr typename remove_reference<T>::type&& move( T&& t ) noexcept {
-       return static_cast<typename remove_reference<decltype(t)>::type&&>(t);
-    }
 } // namespace eos

@@ -7,6 +7,8 @@
 #include <eoslib/varint.hpp>
 #include <eoslib/datastream.hpp>
 #include <eoslib/memory.hpp>
+#include <eoslib/type_traits.hpp>
+
 
 namespace eosio {
     namespace raw {    
