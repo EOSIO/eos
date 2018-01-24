@@ -679,8 +679,7 @@ int main( int argc, char** argv ) {
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);
    getServants->add_option("account", controllingAccount, localized("The name of the controlling account"))->required();
    getServants->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "controlling_account", controllingAccount);
-      std::cout << fc::json::to_pretty_string(remote_peer.get_controlled_accounts_function(arg)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_controlled_accounts_function(controllingAccount)) << std::endl;
    });
 
    // get transaction
@@ -688,8 +687,7 @@ int main( int argc, char** argv ) {
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
    getTransaction->set_callback([&] {
-      auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
-      std::cout << fc::json::to_pretty_string(remote_peer.get_transaction_function(arg)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_transaction_function(transactionId)) << std::endl;
    });
 
    // get transactions
@@ -705,7 +703,7 @@ int main( int argc, char** argv ) {
                   : (num_seq.empty())
                      ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
                      : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
-      auto result = remote_peer.get_transactions_function(arg);
+      auto result = remote_peer.get_transactions_function(arg); ///< \todo why called twice ???
       std::cout << fc::json::to_pretty_string(remote_peer.get_transactions_function(arg)) << std::endl;
 
 

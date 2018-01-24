@@ -122,9 +122,10 @@ fc::variant Peer::get_controlled_accounts_function(const std::string &account) c
     return m_remote.call(get_controlled_accounts_func, arg);
 }
 
-fc::variant Peer::get_transaction_function(const fc::mutable_variant_object &variant) const
+fc::variant Peer::get_transaction_function(const std::string &id) const
 {
-    return m_remote.call(get_transaction_func, variant);
+    auto arg = fc::mutable_variant_object( "transaction_id", id);
+    return m_remote.call(get_transaction_func, arg);
 }
 
 fc::variant Peer::get_transactions_function(const fc::mutable_variant_object &variant) const
