@@ -16,6 +16,17 @@ namespace eosio { namespace chain {
 
 using asset_symbol = uint64_t;
 
+
+/*
+struct asset_symbol {
+   uint8_t     decimals()const;
+   string      symbol_name()const;
+   int64_t     precision()const;
+   void        set_decimals(uint8_t d);
+   uint64_t    value = 0;
+};
+*/
+
 struct asset
 {
    asset(share_type a = 0, asset_symbol id = EOS_SYMBOL)

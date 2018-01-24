@@ -1,5 +1,6 @@
 #pragma once
 #include <eoslib/print.hpp>
+#include <eoslib/action.hpp>
 
 namespace eosio {
    template<typename Contract, typename FirstAction>

@@ -5,8 +5,6 @@
 
 #include <bancor/bancor.hpp>
 
-namespace bancor {
-
 extern "C" {
 
     /// The apply method implements the dispatch of events to this contract

@@ -12,6 +12,25 @@
 
 
 namespace eosio {
+
+  template<typename BaseToken, typename QuoteToken>
+  struct price_ratio {
+     BaseToken   base;
+     QuoteToken  quote;
+
+     friend BaseToken operator * ( price_ratio r, const QuoteToken& q ) {
+        uint128_t temp_base( r.base.quantity );
+        temp_base *= q.quantity;
+        temp_base /= r.quote.quantity;
+        assert( (temp_base >> 64) == 0, "integer overflow" );
+        return BaseToken( uint64_t(temp_base) );
+     }
+
+     friend QuoteToken operator / ( price_ratio r, const BaseToken& b ) {
+        return QuoteToken(0);
+     }
+  };
+
   /**
   *  @defgroup tokens Token API
   *  @brief Defines the ABI for interfacing with standard-compatible token messages and database tables.
@@ -42,6 +61,17 @@ namespace eosio {
 
     token( const asset& a ):quantity(a.amount) {
        assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );
+    }
+
+    friend token operator*( const token& t, int64_t v ) {
+       token temp(t);
+       temp.value *= v;
+       return temp;
+    }
+
+    template<typename T>
+    friend price_ratio<token, T> operator / ( const token& a, const T& b ) {
+      return price_ratio<token, T>{ a, b };
     }
 
     /**
@@ -184,11 +214,6 @@ namespace eosio {
   /// @}
 
 
-  template<typename BaseToken, typename QuoteToken>
-  struct price_ratio {
-     BaseToken   base;
-     QuoteToken  quote;
-  };
 
   
 

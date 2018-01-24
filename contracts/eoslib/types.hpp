@@ -104,4 +104,6 @@ namespace  eosio {
    struct true_type  { enum _value { value = 1 }; };
    struct false_type { enum _value { value = 0 }; };
 
-} // namespace eos
+   using ::account_name;
+
+} // namespace eosio
