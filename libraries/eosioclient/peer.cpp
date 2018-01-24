@@ -1,5 +1,7 @@
 #include "peer.hpp"
 
+#include "fc/io/json.hpp"
+
 namespace {
 const std::string chain_func_base = "/v1/chain";
 const std::string get_info_func = chain_func_base + "/get_info";
@@ -73,7 +75,7 @@ fc::variant Peer::push_transaction(const chain::signed_transaction &transaction)
     return m_remote.call(push_txn_func, transaction);
 }
 
-fc::variant Peer::push_transaction(const fc::variant &transaction) const
+fc::variant Peer::push_JSON_transaction(const fc::variant &transaction) const
 {
     return m_remote.call(push_txn_func, transaction);
 }
@@ -138,9 +140,10 @@ fc::variant Peer::push_transactions(const std::vector<chain::signed_transaction>
     return m_remote.call(push_txns_func, transactions);
 }
 
-fc::variant Peer::json_to_bin_function(const fc::mutable_variant_object &variant) const
+fc::variant Peer::json_to_bin_function(const std::string &contract, const std::string &action, const std::string &data) const
 {
-    return m_remote.call(json_to_bin_func, variant);
+    auto arg = fc::mutable_variant_object("code", contract)("action", action)("args", fc::json::from_string(data));
+    return m_remote.call(json_to_bin_func, arg);
 }
 
 fc::variant Peer::get_keys_required(const chain::signed_transaction &transaction, const fc::variant &public_keys) const
