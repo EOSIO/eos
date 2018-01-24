@@ -763,7 +763,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
                << " " << strerror(ec.value()) << endl;
           exit (-1);
         }
-        count = bf::remove_all (dd / "blockchain", ec);
+        count = bf::remove_all (dd / "shared_mem", ec);
         if (ec.value() != 0) {
           cerr << "count = " << count << " could not remove old directory: " << dd
                << " " << strerror(ec.value()) << endl;
@@ -851,8 +851,6 @@ launcher_def::write_config_file (tn_node_def &node) {
       << "block-log-dir = blocks\n"
       << "readonly = 0\n"
       << "send-whole-blocks = true\n"
-      << "shared-file-dir = blockchain\n"
-      << "shared-file-size = " << instance.file_size << "\n"
       << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n"
       << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n"
       << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
