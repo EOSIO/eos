@@ -1,7 +1,6 @@
 var searchData=
 [
-  ['memory_5fmanager',['memory_manager',['../classeosio_1_1memory__manager.html',1,'eosio']]],
-  ['message',['message',['../classeosio_1_1message.html',1,'eosio']]],
-  ['move',['move',['../structtic__tac__toe_1_1move.html',1,'tic_tac_toe']]],
-  ['movement',['movement',['../structtic__tac__toe_1_1movement.html',1,'tic_tac_toe']]]
+  ['offer_5fbet',['offer_bet',['../structdice_1_1offer__bet.html',1,'dice']]],
+  ['offer_5fprimary_5fkey',['offer_primary_key',['../structdice_1_1offer__primary__key.html',1,'dice']]],
+  ['order_5fid',['order_id',['../structexchange_1_1order__id.html',1,'exchange']]]
 ];

@@ -1,11 +1,8 @@
 var searchData=
 [
-  ['offer',['offer',['../structdice_1_1offer.html',1,'dice']]],
   ['offer_5fbet',['offer_bet',['../structdice_1_1offer__bet.html',1,'dice']]],
   ['offer_5fprimary_5fkey',['offer_primary_key',['../structdice_1_1offer__primary__key.html',1,'dice']]],
   ['offers',['offers',['../namespacedice.html#a34385e2eead0de37a8d80374ce2532cd',1,'dice']]],
-  ['open_5foffers',['open_offers',['../structdice_1_1account.html#aff85abfa26f5d464fb84983ec6f62cfa',1,'dice::account']]],
-  ['open_5forders',['open_orders',['../structexchange_1_1account.html#a765957760889dff2be565626fefc14a2',1,'exchange::account']]],
   ['operator_20bool',['operator bool',['../structeosio_1_1token.html#ac2e778f7b516fb2240a05ee73bd81b79',1,'eosio::token']]],
   ['operator_20int32_5ft',['operator int32_t',['../structsigned__int.html#afe5db7c1297bb56cc454fe413959c07c',1,'signed_int']]],
   ['operator_20t',['operator T',['../structunsigned__int.html#a5627f0b22068d1761f2e416e7ae64a3c',1,'unsigned_int']]],
@@ -30,5 +27,5 @@ var searchData=
   ['operator_3e_3e',['operator&gt;&gt;',['../namespaceeosio.html#ab917f541b9a3f18929c11aadff5ca695',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, uint256 &amp;d)'],['../namespaceeosio.html#a2ddea0ec64119a3c06c08ab18f07312b',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, uint128_t &amp;d)'],['../namespaceeosio.html#a0ab4de6927af4262abaa8d88b7611e8e',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, int128_t &amp;d)'],['../namespaceeosio.html#a27b0dcee0db4b6a7fae7abd88f9f530b',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, int32_t &amp;d)'],['../namespaceeosio.html#a567774ecb3112c06339e77cd577b0491',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, uint32_t &amp;d)'],['../namespaceeosio.html#ade0d039b91a8bd365d20dd49d35806ab',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, int64_t &amp;d)'],['../namespaceeosio.html#afee2cf83746d8a254fa534114188246e',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, uint64_t &amp;d)'],['../namespaceeosio.html#a8b5e651a7f09efba3834c7c372d80d47',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, int16_t &amp;d)'],['../namespaceeosio.html#a3a5d070afc2de777601104f39e91faeb',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, uint16_t &amp;d)'],['../namespaceeosio.html#aee2bba4019b9f88adac89311a8a25501',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, int8_t &amp;d)'],['../namespaceeosio.html#a5487eb6a2a3c7b31c4ea2cc3c67106ca',1,'eosio::operator&gt;&gt;(datastream&lt; Stream &gt; &amp;ds, uint8_t &amp;d)']]],
   ['operator_5b_5d',['operator[]',['../classeosio_1_1string.html#a835d2c31ac35dbec36ab6d219ea87c8a',1,'eosio::string']]],
   ['order_5fid',['order_id',['../structexchange_1_1order__id.html',1,'exchange']]],
-  ['owner',['owner',['../structdice_1_1offer__primary__key.html#ad060fb372bea546f038f1a14b11b9d82',1,'dice::offer_primary_key::owner()'],['../structdice_1_1account.html#a1c70512308ee179de15f38753650fdfe',1,'dice::account::owner()'],['../structexchange_1_1account.html#abec031d9e79fa34604f78181bfc65888',1,'exchange::account::owner()'],['../structproxy_1_1set__owner.html#a22b1abfee4f3a3a585619445edd054e0',1,'proxy::set_owner::owner()'],['../structproxy_1_1config.html#a23e1f5c9482d7508502f321b9539a2c3',1,'proxy::config::owner()'],['../group__storageapi.html#gae575e042fe703690579af727398fe0b5',1,'TOKEN_NAME::link::owner()']]]
+  ['owner',['owner',['../structdice_1_1offer__primary__key.html#ad060fb372bea546f038f1a14b11b9d82',1,'dice::offer_primary_key']]]
 ];

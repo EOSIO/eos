@@ -143,7 +143,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 
       char* value = memoryArrayPtr<char>( wasm.current_memory, valueptr, valuelen );
       KeyType*  keys = reinterpret_cast<KeyType*>(value);
-      
+
       valuelen -= keylen;
       value    += keylen;
 
@@ -270,7 +270,7 @@ DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
 
 DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index, 8);
 DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
-      
+
 DEFINE_RECORD_UPDATE_FUNCTIONS(i128i128, key128x128_value_index, 32);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, primary_,   key128x128_value_index, by_scope_primary);
 DEFINE_RECORD_READ_FUNCTIONS(i128i128, secondary_, key128x128_value_index, by_scope_secondary);
@@ -537,7 +537,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,sbrk,sbrk,i32,i32,num_bytes) {
 /**
  * transaction C API implementation
  * @{
- */ 
+ */
 
 DEFINE_INTRINSIC_FUNCTION0(env,transaction_create,transaction_create,i32) {
    auto& ptrx = wasm_interface::get().current_apply_context->create_pending_transaction();
@@ -592,7 +592,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,transaction_drop,transaction_drop,none,i32,handle
 DEFINE_INTRINSIC_FUNCTION4(env,message_create,message_create,i32,i64,code,i64,type,i32,data,i32,length) {
    auto& wasm  = wasm_interface::get();
    auto  mem   = wasm.current_memory;
-   
+
    EOS_ASSERT( length >= 0, tx_unknown_argument,
       "Pushing a message with a negative length" );
 
@@ -638,7 +638,7 @@ DEFINE_INTRINSIC_FUNCTION1(env,message_drop,message_drop,none,i32,handle) {
 
 /**
  * @} transaction C API implementation
- */ 
+ */
 
 
 
@@ -985,7 +985,7 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
           const auto llvm_time = fc::time_point::now();
 
           current_memory = Runtime::getDefaultMemory(state.instance);
-            
+
           char* memstart = &memoryRef<char>( current_memory, 0 );
          // state.init_memory.resize(1<<16); /// TODO: actually get memory size
           const auto allocated_memory = Runtime::getDefaultMemorySize(state.instance);
@@ -1019,8 +1019,8 @@ DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,c
                 state.table_key_types.emplace(std::make_pair(table.table_name, key_type));
              }
           }
-          ilog("wasm_interface::load times llvm:${llvm} ms, init:${init} ms, abi:${abi} ms",
-               ("llvm",(llvm_time-start).count()/1000)("init",(init_time-llvm_time).count()/1000)("abi",(fc::time_point::now()-init_time).count()/1000));
+          ilog("wasm_interface::load name = ${n} times llvm:${llvm} ms, init:${init} ms, abi:${abi} ms",
+               ("n",name)("llvm",(llvm_time-start).count()/1000)("init",(init_time-llvm_time).count()/1000)("abi",(fc::time_point::now()-init_time).count()/1000));
         }
         catch(Serialization::FatalSerializationException exception)
         {
