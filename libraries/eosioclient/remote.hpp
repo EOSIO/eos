@@ -14,6 +14,7 @@ public:
     uint32_t port() const;
     void set_port(uint32_t port);
 
+protected:
     fc::variant call(const std::string &path, const fc::variant &postdata = fc::variant()) const;
 
     template<typename T>

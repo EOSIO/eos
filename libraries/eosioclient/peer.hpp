@@ -10,14 +10,9 @@
 namespace eosio {
 namespace client {
 
-class Peer
+class Peer : public Remote
 {
 public:
-    std::string host() const;
-    void set_host(const std::string& host);
-    uint32_t port() const;
-    void set_port(uint32_t port);
-
     fc::variant connect(const std::string& host) const;
     fc::variant disconnect(const std::string& host) const;
     fc::variant status(const std::string& host) const;
@@ -35,17 +30,14 @@ public:
                                   const fc::variant& public_keys) const;
     fc::variant get_transaction(const std::string &id) const;
     fc::variant get_transactions(const std::string &account_name,
-                                          const std::string &skip_seq,
-                                          const std::string &num_seq) const;
+                                 const std::string &skip_seq,
+                                 const std::string &num_seq) const;
     fc::variant push_transaction(const chain::signed_transaction& transaction) const;
     fc::variant push_transactions(const std::vector<chain::signed_transaction>& transactions) const;
     fc::variant push_JSON_transaction(const fc::variant& transaction) const;
     fc::variant json_to_bin_function(const std::string &contract,
                                      const std::string &action,
                                      const std::string &data) const;
-
-private:
-    Remote m_remote;
 };
 
 } // namespace client
