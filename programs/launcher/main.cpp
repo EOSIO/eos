@@ -1238,7 +1238,7 @@ launcher_def::get_nodes(const string& node_number_list) {
          catch(boost::bad_lexical_cast &) {
             // This exception will be handled below
          }
-         if (node < 0) {
+         if (node < 0 || node > 99) {
             cerr << "Bad node number found in node number list: " << node_number << endl;
             exit(-1);
          }
@@ -1253,7 +1253,7 @@ launcher_def::get_nodes(const string& node_number_list) {
                }
             }
          }
-         cerr << "Unable to find node " << node_name << endl;
+         cerr << "Unable to find node " << node_number << endl;
          exit (-1);
 
          continue_next_node: ;
