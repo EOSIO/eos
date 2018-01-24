@@ -677,33 +677,12 @@ int main( int argc, char** argv ) {
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
    transfer->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(transfer);
-   transfer->set_callback([&] {
-      signed_transaction trx;
-
-      if (tx_force_unique) {
-         if (memo.size() == 0) {
-            // use the memo to add a nonce
-            memo = fc::to_string(generate_nonce_value());
-         } else {
-            // add a nonce actions
-            trx.actions.emplace_back( generate_nonce() );
-         }
-      }
-
-      trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}},
-                                contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-
-
-      auto info = get_info();
-      trx.expiration = info.head_block_time + tx_expiration;
-      trx.set_reference_block( info.head_block_id);
-      if (!skip_sign) {
-         sign_transaction(trx);
-      }
-
-      std::cout << fc::json::to_pretty_string( remote_peer.push_transaction( trx )) << std::endl;
-   });
-
+   transfer->set_callback([&] { eosioclient.transfer(sender,
+                                                     recipient,
+                                                     amount,
+                                                     memo,
+                                                     skip_sign,
+                                                     tx_force_unique); });
    // Net subcommand
    string new_host;
    auto net = app.add_subcommand( "net", localized("Interact with local p2p network connections"), false );

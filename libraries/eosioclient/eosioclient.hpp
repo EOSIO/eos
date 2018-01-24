@@ -38,6 +38,13 @@ public:
                                const std::string &typeStr,
                                const std::string &requirementStr,
                                bool skip_sign);
+
+    void transfer(const std::string &sender,
+                  const std::string &recipient,
+                  uint64_t amount,
+                  std::string memo,
+                  bool skip_sign,
+                  bool tx_force_unique);
 private:
     fc::variant push_transaction(eosio::chain::signed_transaction &trx, bool sign);
     void send_transaction(const std::vector<chain::action> &actions, bool skip_sign = false);
@@ -48,11 +55,11 @@ private:
     chain::action create_updateauth(const chain::name &account, const chain::name &permission, const chain::name &parent, const chain::authority &auth, const chain::name &permissionAuth);
     chain::action create_unlinkauth(const chain::name &account, const chain::name &code, const chain::name &type);
     chain::action create_linkauth(const chain::name &account, const chain::name &code, const chain::name &type, const chain::name &requirement);
+    uint64_t generate_nonce_value();
+    chain::action generate_nonce();
 
     Wallet& m_wallet;
     Peer& m_peer;
-
-
 };
 
 } // namespace client

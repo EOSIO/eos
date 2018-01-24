@@ -188,6 +188,40 @@ void Eosioclient::set_action_permission(const std::string& accountStr,
     }
 }
 
+void Eosioclient::transfer(const std::string& sender,
+                           const std::string& recipient,
+                           uint64_t amount,
+                           std::string memo,
+                           bool skip_sign,
+                           bool tx_force_unique)
+{
+    chain::signed_transaction trx;
+
+    if (tx_force_unique) {
+        if (memo.size() == 0) {
+            // use the memo to add a nonce
+            memo = fc::to_string(generate_nonce_value());
+        } else {
+            // add a nonce actions
+            trx.actions.emplace_back( generate_nonce() );
+        }
+    }
+
+    trx.actions.emplace_back( std::vector<chain::permission_level>{{sender,"active"}},
+                              chain::contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
+
+
+    auto info = get_info();
+    trx.expiration = info.head_block_time + tx_expiration;
+    trx.set_reference_block( info.head_block_id);
+    if (!skip_sign) {
+        sign_transaction(trx);
+    }
+
+    std::cout << fc::json::to_pretty_string( m_peer.push_transaction( trx )) << std::endl;
+}
+
+
 chain::action Eosioclient::create_deleteauth(const chain::name& account,
                                              const chain::name& permission,
                                              const chain::name& permissionAuth)
@@ -221,6 +255,14 @@ chain::action Eosioclient::create_unlinkauth(const chain::name& account,
 {
     return chain::action { std::vector<chain::permission_level>{{account,"active"}},
         chain::contracts::unlinkauth{account, code, type}};
+}
+
+uint64_t Eosioclient::generate_nonce_value() {
+   return fc::time_point::now().time_since_epoch().count();
+}
+
+chain::action Eosioclient::generate_nonce() {
+   return chain::action( {}, chain::contracts::nonce{.value = generate_nonce_value()} );
 }
 
 } // namespace client
