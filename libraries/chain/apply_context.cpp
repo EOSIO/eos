@@ -224,4 +224,13 @@ const contracts::table_id_object& apply_context::find_or_create_table( name scop
    });
 }
 
+vector<account_name> apply_context::get_active_producers() const {
+   const auto& gpo = controller.get_global_properties();
+   vector<account_name> accounts;
+   for(const auto& producer : gpo.active_producers.producers)
+      accounts.push_back(producer.producer_name);
+
+   return accounts;
+}
+
 } } /// eosio::chain
