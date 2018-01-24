@@ -35,6 +35,47 @@ void test_math::test_diveq_by_0() {
 }
   
 
+void test_math::test_i64_to_double()
+{
+   uint64_t i[4];
+   read_action(&i, sizeof(i));
+
+   uint64_t d = i64_to_double(2);
+   assert(i[0] == d, "test_i64_to_double i[0] == d");
+
+   d = i64_to_double(-2);
+   assert(i[1] == d, "test_i64_to_double i[1] == d");
+
+   d = i64_to_double(100000);
+   assert(i[2] == d, "test_i64_to_double i[2] == d");
+
+   d = i64_to_double(-100000);
+   assert(i[3] == d, "test_i64_to_double i[3] == d");
+
+   d = i64_to_double(0);
+   assert(0 == d, "test_i64_to_double 0 == d");
+}
+
+void test_math::test_double_to_i64()
+{
+   uint64_t d[4];
+   read_action(&d, sizeof(d));
+   
+   int64_t i = double_to_i64(d[0]);
+   assert(2 == i, "test_double_to_i64 2 == i");
+
+   i = double_to_i64(d[1]);
+   assert(-2 == i, "test_double_to_i64 -2 == i");
+
+   i = double_to_i64(d[2]);
+   assert(100000 == i, "test_double_to_i64 100000 == i");
+
+   i = double_to_i64(d[3]);
+   assert(-100000 == i, "test_double_to_i64 -100000 == i");
+
+   i = double_to_i64(0);
+   assert(0 == i, "test_double_to_i64 0 == i");
+}
 
 void test_math::test_double_api() {
   
@@ -68,8 +109,10 @@ void test_math::test_double_api() {
 }
 
 void test_math::test_double_api_div_0() {
-//  double_div( i64_to_double(1), i64_to_double(0));
-    double_add( 
+    double_div( i64_to_double(1),
+          double_add( 
       i64_to_double(-5), i64_to_double(5) 
-    );
+    ));
+
+   assert(false, "should've thrown an error");
 }

@@ -63,8 +63,8 @@ if [ $ARCH == "darwin" ]; then
     DEPS="git automake libtool boost openssl llvm@4 gmp wget cmake gettext"
     brew update
     brew install --force $DEPS
-    brew unlink $DEPS && brew link --force $DEPS
-    # LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm
+#    brew unlink $DEPS && brew link --force $DEPS
+    LLVM_DIR=/usr/local/Cellar/llvm\@4/4.0.1/lib/cmake
 
     # install secp256k1-zkp (Cryptonomex branch)
     cd ${TEMP_DIR}
@@ -88,6 +88,7 @@ if [ $ARCH == "darwin" ]; then
     sudo rm -rf ${TEMP_DIR}/binaryen
     BINARYEN_BIN=/usr/local/binaryen/bin/
 
+   
     # Build LLVM and clang for WASM:
     cd ${TEMP_DIR}
     mkdir wasm-compiler
@@ -102,5 +103,6 @@ if [ $ARCH == "darwin" ]; then
     sudo make -j4 install
     sudo rm -rf ${TEMP_DIR}/wasm-compiler
     WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
+
 
 fi

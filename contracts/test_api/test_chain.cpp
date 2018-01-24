@@ -14,7 +14,7 @@ struct producers {
 };
 #pragma pack(pop)
 
-unsigned int test_chain::test_activeprods() {
+void test_chain::test_activeprods() {
   producers act_prods;
   read_action(&act_prods, sizeof(producers));
 
@@ -26,6 +26,4 @@ unsigned int test_chain::test_activeprods() {
   for( int i = 0; i < 21 ; ++i ) {
     assert(api_prods.producers[i] == act_prods.producers[i], "Active producer");
   }
-  
-  return 0;
 }

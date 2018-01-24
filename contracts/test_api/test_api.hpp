@@ -41,10 +41,10 @@ static_assert( sizeof(dummy_action) == 13 , "unexpected packing" );
 static_assert( sizeof(u128_action) == 16*3 , "unexpected packing" );
 
 struct test_types {
-  static unsigned int types_size();
-  static unsigned int char_to_symbol();
-  static unsigned int string_to_name();
-  static unsigned int name_class();
+  static void types_size();
+  static void char_to_symbol();
+  static void string_to_name();
+  static void name_class();
 };
 
 struct test_print {
@@ -77,54 +77,56 @@ struct test_math {
   static void test_diveq_by_0();
   static void test_double_api();
   static void test_double_api_div_0();
+  static void test_i64_to_double();
+  static void test_double_to_i64();
 };
 
 struct test_db {
-   static unsigned int key_i64_general();
-   static unsigned int key_i64_remove_all();
-   static unsigned int key_i64_small_load();
-   static unsigned int key_i64_small_store();
-   static unsigned int key_i64_store_scope();
-   static unsigned int key_i64_remove_scope();
-   static unsigned int key_i64_not_found();
-   static unsigned int key_i64_front_back();
+   static void key_i64_general();
+   static void key_i64_remove_all();
+   static void key_i64_small_load();
+   static void key_i64_small_store();
+   static void key_i64_store_scope();
+   static void key_i64_remove_scope();
+   static void key_i64_not_found();
+   static void key_i64_front_back();
 
-   static unsigned int key_i128i128_general();
-   static unsigned int key_i64i64i64_general();
-   static unsigned int key_str_general();
-   static unsigned int key_str_table();
+   static void key_i128i128_general();
+   static void key_i64i64i64_general();
+   static void key_str_general();
+   static void key_str_table();
 
-   static unsigned int key_str_setup_limit();
-   static unsigned int key_str_min_exceed_limit();
-   static unsigned int key_str_under_limit();
-   static unsigned int key_str_available_space_exceed_limit();
-   static unsigned int key_str_another_under_limit();
+   static void key_str_setup_limit();
+   static void key_str_min_exceed_limit();
+   static void key_str_under_limit();
+   static void key_str_available_space_exceed_limit();
+   static void key_str_another_under_limit();
 
-   static unsigned int key_i64_setup_limit();
-   static unsigned int key_i64_min_exceed_limit();
-   static unsigned int key_i64_under_limit();
-   static unsigned int key_i64_available_space_exceed_limit();
-   static unsigned int key_i64_another_under_limit();
+   static void key_i64_setup_limit();
+   static void key_i64_min_exceed_limit();
+   static void key_i64_under_limit();
+   static void key_i64_available_space_exceed_limit();
+   static void key_i64_another_under_limit();
 
-   static unsigned int key_i128i128_setup_limit();
-   static unsigned int key_i128i128_min_exceed_limit();
-   static unsigned int key_i128i128_under_limit();
-   static unsigned int key_i128i128_available_space_exceed_limit();
-   static unsigned int key_i128i128_another_under_limit();
+   static void key_i128i128_setup_limit();
+   static void key_i128i128_min_exceed_limit();
+   static void key_i128i128_under_limit();
+   static void key_i128i128_available_space_exceed_limit();
+   static void key_i128i128_another_under_limit();
 
-   static unsigned int key_i64i64i64_setup_limit();
-   static unsigned int key_i64i64i64_min_exceed_limit();
-   static unsigned int key_i64i64i64_under_limit();
-   static unsigned int key_i64i64i64_available_space_exceed_limit();
-   static unsigned int key_i64i64i64_another_under_limit();
+   static void key_i64i64i64_setup_limit();
+   static void key_i64i64i64_min_exceed_limit();
+   static void key_i64i64i64_under_limit();
+   static void key_i64i64i64_available_space_exceed_limit();
+   static void key_i64i64i64_another_under_limit();
 };
 
 struct test_crypto {
-   static unsigned int test_sha256();
-   static unsigned int sha256_no_data();
-   static unsigned int asert_sha256_false();
-   static unsigned int asert_sha256_true();
-   static unsigned int asert_no_data();
+   static void test_sha256();
+   static void sha256_no_data();
+   static void sha256_null();
+   static void assert_sha256_false();
+   static void assert_sha256_true();
 };
 
 struct test_transaction {
@@ -142,7 +144,7 @@ struct test_transaction {
 };
 
 struct test_chain {
-  static unsigned int test_activeprods();
+  static void test_activeprods();
 };
 
 struct test_string {
@@ -169,18 +171,20 @@ struct test_string {
 };
 
 struct test_fixedpoint {
-   static unsigned int create_instances();
-   static unsigned int test_addition();
-   static unsigned int test_subtraction();
-   static unsigned int test_multiplication();
-   static unsigned int test_division();
+   static void create_instances();
+   static void test_addition();
+   static void test_subtraction();
+   static void test_multiplication();
+   static void test_division();
+   static void test_division_by_0();
 };
 
 struct test_real {
-   static unsigned int create_instances();
-   static unsigned int test_addition();
-   static unsigned int test_multiplication();
-   static unsigned int test_division();
+   static void create_instances();
+   static void test_addition();
+   static void test_multiplication();
+   static void test_division();
+   static void test_division_by_0();
 };
 
 struct test_compiler_builtins {

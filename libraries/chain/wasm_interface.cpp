@@ -751,7 +751,12 @@ class db_api : public context_aware_api {
 
          const char* record_data =  ((const char*)data) + sizeof(KeyArrayType);
          size_t record_len = data_len - sizeof(KeyArrayType);
-         return (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
+         size_t ret = (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
+         std::cout << "size " << ret << "\n";
+         std::cout << "key size " << sizeof(KeyArrayType) << "\n";
+         std::cout << "data size " << data_len << "\n";
+         std::cout << "record size " << record_len << "\n";
+         return ret;
       }
 
    public:
@@ -767,10 +772,51 @@ class db_api : public context_aware_api {
       int update(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
          return call(&apply_context::update_record<ObjectType>, scope, table, data, data_len);
       }
-
+      
       int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
          const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
          return context.remove_record<ObjectType>(t_id, keys);
+      }
+};
+
+template<>
+class db_api<keystr_value_object> : public context_aware_api {
+   using KeyType = std::string;
+   static constexpr int KeyCount = 1;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, const KeyType*, const char*, size_t);
+
+   private:
+      int call(ContextMethodType method, const scope_name& scope, const name& table, 
+            array_ptr<const char> key, size_t key_len, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+         //FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
+         const KeyType keys((const char*)key, key_len); // = std::string(reinterpret_cast<const KeyType *>((const char *)data);
+
+         const char* record_data =  ((const char*)data); // + sizeof(KeyArrayType);
+         size_t record_len = data_len; // - sizeof(KeyArrayType);
+         return (context.*(method))(t_id, &keys, record_data, record_len); // + sizeof(KeyArrayType);
+      }
+
+   public:
+      using context_aware_api::context_aware_api;
+
+      int store_str(const scope_name& scope, const name& table, 
+            array_ptr<const char> &key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
+         auto res = call(&apply_context::store_record<keystr_value_object>, scope, table, key, key_len, data, data_len);
+         return res;
+
+      }
+
+      int update_str(const scope_name& scope, const name& table, 
+            array_ptr<const char> &key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
+         return call(&apply_context::update_record<keystr_value_object>, scope, table, key, key_len, data, data_len);
+      }
+      
+      int remove_str(const scope_name& scope, const name& table, array_ptr<const char> &key, uint32_t key_len) {
+         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+         const KeyArrayType k = {std::string(key, key_len)};
+         return context.remove_record<keystr_value_object>(t_id, k);
       }
 };
 
@@ -795,7 +841,7 @@ class db_index_api : public context_aware_api {
       char* record_data =  ((char*)data) + sizeof(KeyArrayType);
       size_t record_len = data_len - sizeof(KeyArrayType);
 
-      return (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
+      return (context.*(method))(t_id, keys, record_data, record_len); // + sizeof(KeyArrayType);
    }
 
    public:
@@ -829,6 +875,65 @@ class db_index_api : public context_aware_api {
 
       int upper_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
          return call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+      }
+
+};
+
+template<>
+class db_index_api<keystr_value_index, by_scope_primary> : public context_aware_api {
+   using KeyType = std::string;
+   static constexpr int KeyCount = 1;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, KeyType*, char*, size_t);
+
+
+   int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, 
+         array_ptr<char> &key, uint32_t key_len, array_ptr<char> data, size_t data_len) {
+      auto maybe_t_id = context.find_table(scope, context.receiver, table);
+      if (maybe_t_id == nullptr) {
+         return 0;
+      }
+
+      const auto& t_id = *maybe_t_id;
+      //FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
+      KeyType keys((const char*)key, key_len); // = reinterpret_cast<KeyType *>((char *)data);
+
+      char* record_data =  ((char*)data); // + sizeof(KeyArrayType);
+      size_t record_len = data_len; // - sizeof(KeyArrayType);
+
+      return (context.*(method))(t_id, &keys, record_data, record_len); // + sizeof(KeyArrayType);
+   }
+
+   public:
+      using context_aware_api::context_aware_api;
+
+      int load_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::load_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+         return res;
+      }
+
+      int front_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::front_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int back_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::back_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int next_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::next_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int previous_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::previous_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int lower_bound_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::lower_bound_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int upper_bound_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::upper_bound_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
       }
 
 };
@@ -1095,10 +1200,10 @@ class math_api : public context_aware_api {
 
       uint64_t double_to_i64(uint64_t n) {
          using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<uint64_t>();
+         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
       }
 
-      uint64_t i64_to_double(uint64_t n) {
+      uint64_t i64_to_double(int64_t n) {
          using DOUBLE = boost::multiprecision::cpp_bin_float_50;
          double res = DOUBLE(n).convert_to<double>();
          return *reinterpret_cast<uint64_t *>(&res);
@@ -1216,12 +1321,27 @@ using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key
 using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
 
 REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
-REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
+//REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
 REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
 REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
 
+REGISTER_INTRINSICS(db_api_keystr_value_object,
+   (store_str,                int32_t(int64_t, int64_t, int, int, int, int)  )
+   (update_str,               int32_t(int64_t, int64_t, int, int, int, int)  )
+   (remove_str,               int32_t(int64_t, int64_t, int, int)  ));
+
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
-REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
+//REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
+#if 1
+REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
+   (load_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (front_str,           int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (back_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (next_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (previous_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (lower_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (upper_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  ));
+#endif
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_INDEX_METHOD_SEQ(primary_i64i64i64));

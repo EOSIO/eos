@@ -69,7 +69,7 @@ extern "C" {
 
 }
 
-unsigned int test_crypto::test_sha256() {
+void test_crypto::test_sha256() {
 
   checksum tmp;
 
@@ -84,21 +84,23 @@ unsigned int test_crypto::test_sha256() {
 
   sha256( (char *)test5, my_strlen(test5), &tmp );
   assert( my_memcmp((void *)test5_ok, &tmp, sizeof(checksum)), "sha256 test5" );
-
-  return 0;
 }
 
-unsigned int test_crypto::sha256_no_data() {
+void test_crypto::sha256_null() {
+   checksum tmp;
+   sha256(nullptr, 100, &tmp);
+   assert(false, "should've thrown an error");
+}
+
+void test_crypto::sha256_no_data() {
 
   checksum tmp;
 
   sha256( (char *)test2, my_strlen(test2), &tmp );
   assert( my_memcmp((void *)test2_ok, &tmp, sizeof(checksum)), "sha256 test2" );
-
-  return 0;
 }
 
-unsigned int test_crypto::asert_sha256_false() {
+void test_crypto::assert_sha256_false() {
   
   checksum tmp;
 
@@ -106,11 +108,10 @@ unsigned int test_crypto::asert_sha256_false() {
   tmp.hash[0] ^= (uint64_t)(-1);
   assert_sha256( (char *)test1, my_strlen(test1), &tmp);
    
-  assert(false, "sha256 failed");
-  return WASM_TEST_FAIL;
+  assert(false, "should have failed");
 }
 
-unsigned int test_crypto::asert_sha256_true() {
+void test_crypto::assert_sha256_true() {
   
   checksum tmp;
 
@@ -125,14 +126,4 @@ unsigned int test_crypto::asert_sha256_true() {
 
   sha256( (char *)test5, my_strlen(test5), &tmp );
   assert_sha256( (char *)test5, my_strlen(test5), &tmp);
-
-  return 0;
-}
-
-unsigned int test_crypto::asert_no_data() {
-  
-  checksum *tmp = (checksum*)test2_ok;
-  assert_sha256( (char *)test2, my_strlen(test2), tmp);
-  assert(false, "Has no data");
-  return WASM_TEST_FAIL;
 }

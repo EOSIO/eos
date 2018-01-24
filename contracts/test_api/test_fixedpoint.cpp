@@ -3,7 +3,7 @@
 
 #include "test_api.hpp"
 using namespace eosio;
-unsigned int test_fixedpoint::create_instances()
+void test_fixedpoint::create_instances()
 {
     {
         // Various ways to create fixed_point128
@@ -31,12 +31,9 @@ unsigned int test_fixedpoint::create_instances()
         assert(b == a, "fixed_point32 instances comparison with same number of decimals");
         assert(c == a, "fixed_point32 instances with different number of decimals");
     }
-
-
-  return 0;
 }
 
-unsigned int test_fixedpoint::test_addition()
+void test_fixedpoint::test_addition()
 {
     {
         // Various ways to create fixed_point32
@@ -54,11 +51,9 @@ unsigned int test_fixedpoint::test_addition()
         fixed_point64<0> d = 200;
         assert(c == d, "fixed_point64 instances addition with zero decmimals");
     }
-
-    return 0;
 };
 
-unsigned int test_fixedpoint::test_subtraction()
+void test_fixedpoint::test_subtraction()
 {
     {
         // Various ways to create fixed_point64
@@ -76,11 +71,9 @@ unsigned int test_fixedpoint::test_subtraction()
         fixed_point32<0> d = 0;
         assert(c == d, "fixed_point32 instances subtraction with zero decmimals");
     }
-
-    return 0;
 };
 
-unsigned int test_fixedpoint::test_multiplication()
+void test_fixedpoint::test_multiplication()
 {
     {
         // Various ways to create fixed_point64
@@ -99,11 +92,9 @@ unsigned int test_fixedpoint::test_multiplication()
         fixed_point64<0> d(200*100);
         assert(c == d, "fixed_point32 instances multiplication result in fixed_point64");
     }
-    return 0;
-
 }
 
-unsigned int test_fixedpoint::test_division()
+void test_fixedpoint::test_division()
 {
     {
         uint64_t lhs = 10000000;
@@ -130,8 +121,20 @@ unsigned int test_fixedpoint::test_division()
         assert(c == e, "fixed_point64 instances division result from operator and function and compare in fixed_point128");
 
     }
-    return 0;
-
 }
 
+void test_fixedpoint::test_division_by_0()
+{
+    {
+        uint64_t lhs = 10000000;
+        uint64_t rhs = 0;
 
+        fixed_point64<0> a(lhs);
+        fixed_point64<0> b(rhs);
+
+        fixed_point128<5> e = fixed_divide<5>(lhs, rhs);
+        assert(false, "should've thrown an error");
+
+    }
+
+ }

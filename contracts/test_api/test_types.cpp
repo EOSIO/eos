@@ -6,7 +6,7 @@
 
 #include "test_api.hpp"
 
-unsigned int test_types::types_size() {
+void test_types::types_size() {
    
    assert( sizeof(int64_t) == 8, "int64_t size != 8");
    assert( sizeof(uint64_t) ==  8, "uint64_t size != 8");
@@ -21,11 +21,9 @@ unsigned int test_types::types_size() {
    assert( sizeof(table_name) ==  8, "table_name size !=  8");
    assert( sizeof(time) ==  4, "time size !=  4");
    assert( sizeof(uint256) == 32, "uint256 != 32" );
-
-   return 0;
 }
 
-unsigned int test_types::char_to_symbol() {
+void test_types::char_to_symbol() {
    
    assert( eosio::char_to_symbol('1') ==  1, "eosio::char_to_symbol('1') !=  1");
    assert( eosio::char_to_symbol('2') ==  2, "eosio::char_to_symbol('2') !=  2");
@@ -63,11 +61,9 @@ unsigned int test_types::char_to_symbol() {
       if((i >= 'a' && i <= 'z') || (i >= '1' || i <= '5')) continue;
       assert( eosio::char_to_symbol(i) == 0, "eosio::char_to_symbol() != 0");
    }
-
-   return 0;  
 }
 
-unsigned int test_types::string_to_name() {
+void test_types::string_to_name() {
 
    assert( eosio::string_to_name("a") == N(a) , "eosio::string_to_name(a)" );
    assert( eosio::string_to_name("ba") == N(ba) , "eosio::string_to_name(ba)" );
@@ -88,11 +84,9 @@ unsigned int test_types::string_to_name() {
    assert( eosio::string_to_name("azAA34") == N(azBB34) , "eosio::string_to_name N(azBB34)" );
    assert( eosio::string_to_name("AZaz12Bc34") == N(AZaz12Bc34) , "eosio::string_to_name AZaz12Bc34" );
    assert( eosio::string_to_name("AAAAAAAAAAAAAAA") == eosio::string_to_name("BBBBBBBBBBBBBDDDDDFFFGG") , "eosio::string_to_name BBBBBBBBBBBBBDDDDDFFFGG" );
-   
-   return 0;
 }
 
-unsigned int test_types::name_class() {
+void test_types::name_class() {
 
    assert( eosio::name(eosio::string_to_name("azAA34")).value == N(azAA34), "eosio::name != N(azAA34)" );
    assert( eosio::name(eosio::string_to_name("AABBCC")).value == 0, "eosio::name != N(0)" );
@@ -103,6 +97,4 @@ unsigned int test_types::name_class() {
 
    uint64_t tmp = eosio::name(eosio::string_to_name("11bbcccdd"));
    assert(N(11bbcccdd) == tmp, "N(11bbcccdd) == tmp");
-
-   return 0; 
 }

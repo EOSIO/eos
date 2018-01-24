@@ -310,7 +310,7 @@ int32_t remove_i64( account_name scope, table_name table, void* data );
   *  @param valuelen - maximum length of the record value to read 
   *  @return the number of bytes read or -1 if key was not found
   */
- int32_t front_str( account_name scope, account_name code, table_name table, char* value, uint32_t valuelen );
+ int32_t front_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
 
  /**
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
@@ -322,7 +322,7 @@ int32_t remove_i64( account_name scope, table_name table, void* data );
   *  @param valuelen - maximum length of the record value to read 
   *  @return the number of bytes read or -1 if key was not found
   */
- int32_t back_str( account_name scope, account_name code, table_name table, char* value, uint32_t valuelen );
+ int32_t back_str( account_name scope, account_name code, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
 
  /**
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list

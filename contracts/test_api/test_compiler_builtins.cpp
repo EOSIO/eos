@@ -99,7 +99,7 @@ void test_compiler_builtins::test_divti3_by_0() {
    __int128 res = 0;
 
    __divti3(res, 100, 0, 0, 0);
-   assert(false, "Should have thrown divide by zero");
+   assert(false, "Should have asserted");
 }
 
 void test_compiler_builtins::test_lshlti3() {

@@ -41,6 +41,6 @@ extern "C" {
     *
     */
 
-   bool account_balance_get( void* balance, uint32_t len );
+   bool get_account_balance( void* balance, uint32_t len );
    ///@ } accountcapi
 }

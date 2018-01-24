@@ -705,12 +705,12 @@ struct table_impl_obj<char*> {
         return update_str( scope, table_n, key, keylen, data, datalen );
     }
 
-    static int32_t front( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
-        return front_str( scope, code, table_n, data, len );
+    static int32_t front( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t len ) {
+        return front_str( scope, code, table_n, key, keylen, data, len );
     }
 
-    static int32_t back( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
-        return back_str( scope, code, table_n, data, len );
+    static int32_t back( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t len ) {
+        return back_str( scope, code, table_n, key, keylen, data, len );
     }
 
     static int32_t load( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
@@ -794,8 +794,8 @@ struct var_table {
      * @param len - length of data to be updated
      * @return the number of bytes read or -1 if key was not found
      */
-    int32_t front( char* record, uint32_t len ) {
-        return impl::front( scope, code, table_n, record, len );
+    int32_t front( primary key, uint32_t keylen, char* record, uint32_t len ) {
+        return impl::front( scope, code, table_n, key, keylen, record, len );
     }
 
      /**
@@ -807,8 +807,8 @@ struct var_table {
      * @param len - length of data to be updated
      * @return the number of bytes read or -1 if key was not found
      */
-    int32_t back( char* record, uint32_t len ) {
-        return impl::back( scope, code, table_n, record, len );
+    int32_t back( primary key, uint32_t keylen, char* record, uint32_t len ) {
+        return impl::back( scope, code, table_n, key, keylen, record, len );
     }
 
     /**

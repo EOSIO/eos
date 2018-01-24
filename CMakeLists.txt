@@ -30,6 +30,10 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     endif()
 endif()
 
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+   add_definitions(-D_DEBUG)
+endif()
+
 list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules" )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")

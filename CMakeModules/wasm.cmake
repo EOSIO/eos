@@ -91,7 +91,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
-      COMMAND ${WASM_CLANG} -emit-llvm -O0 --std=c++14 --target=wasm32 -ffreestanding
+      COMMAND ${WASM_CLANG}  -emit-llvm -O0 --std=c++14 --target=wasm32 -ffreestanding
               -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${INCLUDE_FOLDERS}
               -c ${infile} -o ${outfile}.bc 
       IMPLICIT_DEPENDS CXX ${infile}

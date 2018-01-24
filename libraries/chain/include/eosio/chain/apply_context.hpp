@@ -45,6 +45,7 @@ class apply_context {
       template <typename IndexType, typename Scope>
       int32_t load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
 
+
       template <typename IndexType, typename Scope>
       int32_t front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
 
@@ -442,9 +443,24 @@ using apply_handler = std::function<void(apply_context&)>;
       }
       return 0;
    }
+   
+   template <typename T>
+   struct is_char_t {
+      static const bool value = false;
+   };
+   
+   template <>
+   struct is_char_t<char> {
+      static const bool value = true;
+   };
 
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
+   template <typename T>
+   struct is_char_ptr {
+      static const bool value = std::is_pointer<T>::value && is_char_t<T>::value;
+   };
+
+   template <typename IndexType, typename Scope> 
+   int32_t apply_context::load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen) {
       require_read_scope( t_id.scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
@@ -468,7 +484,7 @@ using apply_handler = std::function<void(apply_context&)>;
       }
    }
 
-   template <typename IndexType, typename Scope>
+   template <typename IndexType, typename Scope> 
    int32_t apply_context::front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_scope( t_id.scope );
 

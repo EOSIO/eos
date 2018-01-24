@@ -27,20 +27,6 @@ void test_transaction::send_action_empty() {
 }
 
 /**
- * cause failure due to too many pending inline messages
- */
-void test_transaction::send_action_max() {
-   dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   for (int i = 0; i < 20; i++) {
-      action<> act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), payload);
-      char act_buff[sizeof(act)];
-      act.pack(act_buff, sizeof(act_buff));
-//      send_inline(act_buff, sizeof(act_buff));
-   }
-   //assert(false, "send_message_max() should've thrown an error");
-}
-
-/**
  * cause failure due to a large action payload
  */
 void test_transaction::send_action_large() {
@@ -65,63 +51,43 @@ void test_transaction::send_action_recurse() {
  * cause failure due to inline TX failure
  */
 void test_transaction::send_action_inline_fail() {
-   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "asser_false"), nullptr);
+   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "assert_false"), nullptr);
    char act_buff[sizeof(act)];
    act.pack(act_buff, sizeof(act_buff));
    send_inline(act_buff, sizeof(act_buff));
 }
 
-#if 0
-unsigned int test_transaction::send_transaction() {
+void test_transaction::send_transaction() {
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   action act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), payload);
-   //auto act = action_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), &payload, sizeof(dummy_action));
+   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), payload);
    
-
-   //auto trx = transaction();
    auto trx = transaction<256, 2, 4>();
-   transaction_require_scope(trx, N(testapi));
-   trx.add_action(trx, msg);
-   transaction_send(trx);
-   return 0;
+   trx.add_read_scope(N(testapi));
+   trx.add_action(act);
+   trx.send(0);
 }
 
-unsigned int test_transaction::send_transaction_empty() {
-   auto trx = transaction_create();
-   transaction_require_scope(trx, N(testapi));
-   transaction_send(trx);
+void test_transaction::send_transaction_empty() {
+   auto trx = transaction<256, 2, 4>();
+   trx.add_read_scope(N(testapi));
+   trx.send(0);
 
    assert(false, "send_transaction_empty() should've thrown an error");
-   return WASM_TEST_FAIL;
-}
-
-/**
- * cause failure due to too many pending deferred transactions
- */
-unsigned int test_transaction::send_transaction_max() {
-   for (int i = 0; i < 10; i++) {
-      transaction_create();
-   }
-
-   assert(false, "send_transaction_max() should've thrown an error");
-   return WASM_TEST_FAIL;
 }
 
 /**
  * cause failure due to a large transaction size
  */
-unsigned int test_transaction::send_transaction_large() {
-   auto trx = transaction_create();
-   transaction_require_scope(trx, N(testapi));
+void test_transaction::send_transaction_large() {
+   auto trx = transaction<256, 2, 4>();
+   trx.add_read_scope(N(testapi));
    for (int i = 0; i < 32; i ++) {
-      char large_message[4 * 1024];
-      auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), large_message, sizeof(large_message));
-      transaction_add_message(trx, msg);
+      char large_message[1024];
+      action<> act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), large_message);
+      trx.add_action(act);
    }
 
-   transaction_send(trx);
+   trx.send(0);
 
    assert(false, "send_transaction_large() should've thrown an error");
-   return WASM_TEST_FAIL;
 }
-#endif
