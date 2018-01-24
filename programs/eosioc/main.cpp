@@ -1158,12 +1158,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
-      auto arg= fc::mutable_variant_object
-                ("code", contract)
-                ("action", action)
-                ("args", fc::json::from_string(data));
-      auto result = remote_peer.json_to_bin_function(arg);
-
+      auto result = remote_peer.json_to_bin_function(contract, action, data);
       auto accountPermissions = get_account_permissions(permissions);
 
       signed_transaction trx;
@@ -1181,7 +1176,7 @@ int main( int argc, char** argv ) {
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trxJson, localized("The JSON of the transaction to push"))->required();
    trxSubcommand->set_callback([&] {
-      auto trx_result = remote_peer.push_transaction( fc::json::from_string(trxJson));
+      auto trx_result = remote_peer.push_JSON_transaction( fc::json::from_string(trxJson));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
 
@@ -1190,7 +1185,7 @@ int main( int argc, char** argv ) {
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
    trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
    trxsSubcommand->set_callback([&] {
-      auto trxs_result = remote_peer.push_transaction( fc::json::from_string(trxsJson));
+      auto trxs_result = remote_peer.push_JSON_transaction( fc::json::from_string(trxsJson));
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
 
