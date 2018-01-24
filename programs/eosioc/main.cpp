@@ -967,10 +967,7 @@ int main( int argc, char** argv ) {
          std::getline( std::cin, wallet_pw, '\n' );
          fc::set_console_echo(true);
       }
-
-
-      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
-      /*const auto& v = */remote_wallet.unlock(vs);
+      /*const auto& v = */remote_wallet.unlock(wallet_name, wallet_pw);
       std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
@@ -983,9 +980,7 @@ int main( int argc, char** argv ) {
    importWallet->set_callback([&wallet_name, &wallet_key] {
       private_key_type key( wallet_key );
       public_key_type pubkey = key.get_public_key();
-
-      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
-      const auto& v = remote_wallet.import_key(vs);
+      const auto& v = remote_wallet.import_key(wallet_name, wallet_key);
       std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });

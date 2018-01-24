@@ -37,13 +37,15 @@ void Wallet::set_port(uint32_t port)
     m_remote.set_port(port);
 }
 
-fc::variant Wallet::unlock(const fc::variant &vs) const
+fc::variant Wallet::unlock(const std::string &name, const std::string &passwd) const
 {
+    fc::variants vs = {fc::variant(name), fc::variant(passwd)};
     return m_remote.call(wallet_unlock, vs);
 }
 
-fc::variant Wallet::import_key(const fc::variant &vs) const
+fc::variant Wallet::import_key(const std::string &name, const std::string &passwd) const
 {
+    fc::variants vs = {fc::variant(name), fc::variant(passwd)};
     return m_remote.call(wallet_import_key, vs);
 }
 
