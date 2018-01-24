@@ -359,7 +359,7 @@ struct set_account_permission_subcommand {
             name parent;
             if (parentStr.size() == 0 && permissionStr != "owner") {
                // see if we can auto-determine the proper parent
-               const auto account_result = remote_peer.get_account_function(fc::mutable_variant_object("account_name", accountStr));
+               const auto account_result = remote_peer.get_account_function(accountStr);
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
                auto permissionPredicate = [this](const auto& perm) {
                   return perm.is_object() &&
@@ -568,9 +568,7 @@ int main( int argc, char** argv ) {
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
    getAccount->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_account_function(
-                                                   fc::mutable_variant_object("account_name", accountName)))
-                << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_account_function(accountName)) << std::endl;
    });
 
    // get code

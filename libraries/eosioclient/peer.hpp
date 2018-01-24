@@ -27,7 +27,7 @@ public:
     fc::variant disconnect(const std::string& host) const;
     fc::variant status(const std::string& host) const;
     fc::variant connections(const std::string& host) const;
-    fc::variant get_account_function(const fc::mutable_variant_object& variant) const;
+    fc::variant get_account_function(const std::string& name) const;
     fc::variant get_block_function(const fc::mutable_variant_object& variant) const;
     fc::variant get_key_accounts_function(const fc::mutable_variant_object& variant) const;
     fc::variant get_controlled_accounts_function(const fc::mutable_variant_object& variant) const;
