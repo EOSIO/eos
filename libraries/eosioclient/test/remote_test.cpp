@@ -40,15 +40,6 @@ BOOST_AUTO_TEST_CASE(set_port)
     BOOST_CHECK_EQUAL(port, remote.port());
 }
 
-BOOST_AUTO_TEST_CASE(call)
-{
-    eosio::client::Remote remote;
-    remote.set_host("localhost");
-    remote.set_port(1111);
-    remote.call("ciao", "");
-    //BOOST_CHECK_EQUAL(port, remote.port());
-}
-
 BOOST_AUTO_TEST_SUITE_END()
 
 

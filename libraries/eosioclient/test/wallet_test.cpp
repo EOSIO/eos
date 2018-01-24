@@ -40,6 +40,16 @@ BOOST_AUTO_TEST_CASE(set_port)
     BOOST_CHECK_EQUAL(port, wallet.port());
 }
 
+BOOST_AUTO_TEST_CASE(host)
+{
+    eosio::client::Wallet wallet;
+    wallet.set_port(8888);
+    wallet.set_host("localhost");
+    wallet.host();
+    //BOOST_CHECK_EQUAL(port, wallet.port());
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()
 
 
