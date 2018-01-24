@@ -4,6 +4,7 @@
 #include <string>
 
 #include "fc/variant.hpp"
+#include "eosio/chain/transaction.hpp"
 #include "remote.hpp"
 
 namespace eosio {
@@ -26,7 +27,9 @@ public:
     fc::variant list() const;
     fc::variant list_keys() const;
     fc::variant public_keys() const;
-    fc::variant sign_transaction(const fc::variants& args) const;
+    fc::variant sign_transaction(const chain::signed_transaction& transaction,
+                                 const fc::variant& required_keys,
+                                 const eosio::chain::chain_id_type& id) const;
 
 private:
     Remote m_remote;
