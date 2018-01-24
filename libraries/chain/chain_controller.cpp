@@ -29,6 +29,7 @@
 #include <fc/crypto/digest.hpp>
 
 #include <boost/range/algorithm/copy.hpp>
+#include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/range/algorithm_ext/is_sorted.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -1304,12 +1305,10 @@ void chain_controller::update_last_irreversible_block()
       }
       if( new_producer_schedule ) {
          _db.modify( gpo, [&]( auto& props ){
-             /// TODO: use upper / lower bound to remove range
-              while( gpo.pending_active_producers.size() ) {
-                 if( gpo.pending_active_producers.front().first < new_last_irreversible_block_num ) {
-                   props.pending_active_producers.erase(props.pending_active_producers.begin());
-                 }
-              }
+              boost::range::remove_erase_if(props.pending_active_producers,
+                                            [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
+                                               return v.first < new_last_irreversible_block_num;
+                                            });
               props.active_producers = *new_producer_schedule;
          });
       }
