@@ -44,11 +44,16 @@ testUtils.Utils.Debug=debug
 testSuccessful=False
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster()
-walletMgr=testUtils.WalletMgr(False)
+cluster=testUtils.Cluster(walletd=True)
+walletMgr=testUtils.WalletMgr(True)
 
 try:
     cluster.setWalletMgr(walletMgr)
+
+    Print("Stand up walletd")
+    if walletMgr.launch() is False:
+        cmdError("%s" % (WalletdName))
+        errorExit("Failed to stand up eos walletd.")
 
     if nodesFile is not None:
         jsonStr=None
