@@ -670,8 +670,7 @@ int main( int argc, char** argv ) {
    auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
    getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
    getAccounts->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "public_key", publicKey);
-      std::cout << fc::json::to_pretty_string(remote_peer.get_key_accounts_function(arg)) << std::endl;
+      std::cout << fc::json::to_pretty_string(remote_peer.get_key_accounts_function(publicKey)) << std::endl;
    });
 
 
