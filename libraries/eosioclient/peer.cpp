@@ -12,6 +12,8 @@ const std::string get_block_func = chain_func_base + "/get_block";
 const std::string get_account_func = chain_func_base + "/get_account";
 const std::string get_table_func = chain_func_base + "/get_table_rows";
 const std::string get_code_func = chain_func_base + "/get_code";
+const std::string get_currency_balance_func = chain_func_base + "/get_currency_balance";
+const std::string get_currency_stats_func = chain_func_base + "/get_currency_stats";
 const std::string get_required_keys = chain_func_base + "/get_required_keys";
 
 const std::string account_history_func_base = "/v1/account_history";
@@ -118,6 +120,23 @@ fc::variant Peer::get_transactions(const std::string &account_name, const std::s
               ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
               : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
     return call(get_transactions_func, arg);
+}
+
+fc::variant Peer::get_currency_balance(const std::string &account, const std::string &code, const std::string &symbol) const
+{
+    auto arg = fc::mutable_variant_object("json", false)
+            ("account", account)
+            ("code", code)
+            ("symbol", symbol);
+    return call(get_currency_balance_func, arg);
+}
+
+fc::variant Peer::get_currency_stats(const std::string &code, const std::string &symbol) const
+{
+    auto arg = fc::mutable_variant_object("json", false)
+            ("code", code)
+            ("symbol", symbol);
+    return call(get_currency_stats_func, arg);
 }
 
 fc::variant Peer::push_transactions(const std::vector<chain::signed_transaction> &transactions) const

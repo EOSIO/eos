@@ -619,11 +619,7 @@ int main( int argc, char** argv ) {
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
    get_balance->set_callback([&] {
-      auto result = call(get_currency_balance_func, fc::mutable_variant_object("json", false)
-         ("account", accountName)
-         ("code", code)
-         ("symbol", symbol)
-      );
+      auto result = remote_peer.get_currency_balance(account_name, code, symbol);
 
       const auto& rows = result.get_array();
       if (symbol.empty()) {
@@ -639,10 +635,7 @@ int main( int argc, char** argv ) {
    get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
    get_currency_stats->set_callback([&] {
-      auto result = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
-         ("code", code)
-         ("symbol", symbol)
-      );
+      auto result = remote_peer.get_currency_stats(code, symbol);
 
       if (symbol.empty()) {
          std::cout << fc::json::to_pretty_string(result)

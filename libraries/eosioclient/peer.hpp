@@ -32,6 +32,11 @@ public:
     fc::variant get_transactions(const std::string &account_name,
                                  const std::string &skip_seq,
                                  const std::string &num_seq) const;
+    fc::variant get_currency_balance(const std::string &account,
+                                     const std::string &code,
+                                     const std::string &symbol) const;
+    fc::variant get_currency_stats(const std::string &code,
+                                   const std::string &symbol) const;
     fc::variant push_transaction(const chain::signed_transaction& transaction) const;
     fc::variant push_transactions(const std::vector<chain::signed_transaction>& transactions) const;
     fc::variant push_JSON_transaction(const fc::variant& transaction) const;
