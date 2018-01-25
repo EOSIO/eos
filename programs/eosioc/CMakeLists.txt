@@ -1,4 +1,4 @@
-add_executable( eosioc main.cpp httpc.cpp help_text.cpp localize.hpp config.hpp CLI11.hpp)
+add_executable( eosioc-bin main.cpp httpc.cpp help_text.cpp localize.hpp config.hpp CLI11.hpp)
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
@@ -27,16 +27,17 @@ endif()
 find_package(Intl REQUIRED)
 
 set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
-set(LOCALEDOMAIN eosioc)
+set(LOCALEDOMAIN eosioc-bin)
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-target_include_directories(eosioc PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(eosioc-bin PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries( eosioc
+target_link_libraries( eosioc-bin
                        PRIVATE appbase chain_api_plugin producer_plugin chain_plugin http_plugin eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} libeosioc)
+set_target_properties(eosioc-bin PROPERTIES OUTPUT_NAME eosioc)
 
 install( TARGETS
-   eosioc
+   eosioc-bin
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib
