@@ -1,4 +1,4 @@
-#include "remote.hpp"
+#include <eosio/libeosioc/remote.hpp>
 
 #include <boost/asio.hpp>
 

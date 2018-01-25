@@ -1,7 +1,7 @@
-#include "peer.hpp"
+#include <eosio/libeosioc/peer.hpp>
 
 #include "fc/io/json.hpp"
-#include "endpoints.hpp"
+#include <eosio/libeosioc/endpoints.hpp>
 
 namespace eosio {
 namespace client {
@@ -118,7 +118,7 @@ fc::variant Peer::push_transactions(const std::vector<chain::signed_transaction>
     return call(push_txns_endpoint, transactions);
 }
 
-fc::variant Peer::json_to_bin_function(const std::string &contract, const std::string &action, const std::string &data) const
+fc::variant Peer::json_to_bin(const std::string &contract, const std::string &action, const std::string &data) const
 {
     auto arg = fc::mutable_variant_object("code", contract)("action", action)("args", fc::json::from_string(data));
     return call(json_to_bin_endpoint, arg);

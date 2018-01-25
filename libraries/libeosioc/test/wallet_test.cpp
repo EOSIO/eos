@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include "wallet.hpp"
+#include <eosio/libeosioc/wallet.hpp>
 
 using namespace eosio::client;
 

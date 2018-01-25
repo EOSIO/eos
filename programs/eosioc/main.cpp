@@ -89,16 +89,14 @@ Options:
 #include <WAST/WAST.h>
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
-
 #include <fc/io/fstream.hpp>
+#include <eosio/libeosioc/peer.hpp>
+#include <eosio/libeosioc/wallet.hpp>
 
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
 #include "config.hpp"
-
-#include "peer.hpp"
-#include "wallet.hpp"
 
 using namespace std;
 using namespace eosio;
@@ -1097,7 +1095,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
-      auto result = remote_peer.json_to_bin_function(contract, action, data);
+      auto result = remote_peer.json_to_bin(contract, action, data);
       auto accountPermissions = get_account_permissions(permissions);
 
       signed_transaction trx;
