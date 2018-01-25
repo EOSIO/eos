@@ -647,7 +647,7 @@ class system_api : public context_aware_api {
          FC_ASSERT( false, "abort() called");
       }
 
-      void assert(bool condition, const char* str) {
+      void eos_assert(bool condition, const char* str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -912,7 +912,7 @@ class transaction_api : public context_aware_api {
 
 REGISTER_INTRINSICS(system_api,
    (abort,      void())
-   (assert,      void(int, int))
+   (eos_assert,      void(int, int))
    (now,          int())
 );
 
