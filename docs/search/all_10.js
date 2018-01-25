@@ -1,29 +1,7 @@
 var searchData=
 [
-  ['read_5fmessage',['read_message',['../structtest__message.html#a5d3c589f48cd404de244a0432e03aaff',1,'test_message']]],
-  ['read_5fmessage_5fto_5f0',['read_message_to_0',['../structtest__message.html#a8515116563b23ffc35099471a2f659e5',1,'test_message']]],
-  ['read_5fmessage_5fto_5f64k',['read_message_to_64k',['../structtest__message.html#a028a4cf8384fd5b451a034f897bc05ed',1,'test_message']]],
-  ['readlinkfrombuffer',['readLinkFromBuffer',['../namespace_t_o_k_e_n___n_a_m_e.html#a3a6d0e565b9520209778d47d368f446e',1,'TOKEN_NAME']]],
-  ['readme_2emd',['README.md',['../_r_e_a_d_m_e_8md.html',1,'']]],
-  ['readmessage',['readMessage',['../group__messagecapi.html#ga95a7d555722669cdeb72d6d6d1236893',1,'message.h']]],
-  ['realloc',['realloc',['../classeos_1_1memory__manager.html#a8499edb5f09d8455c15c667c36abaac6',1,'eosio::memory_manager::realloc()'],['../group__memorycppapi.html#ga81777726cb6a3986119679b0ad2383c8',1,'eosio::realloc()']]],
-  ['remove',['remove',['../structtable__impl__obj_3_01char_01_5_01_4.html#a3a5b780f1de3f65ea03f9516cbf968d9',1,'table_impl_obj&lt; char * &gt;::remove()'],['../struct_var_table.html#a937e6bb4faf7b580be7ffa677d8405f3',1,'VarTable::remove()'],['../structtable__impl_3_01sizeof_07uint128__t_08_00_01sizeof_07uint128__t_08_4.html#a4732a2ba7940c66e119c580bf848706a',1,'table_impl&lt; sizeof(uint128_t), sizeof(uint128_t)&gt;::remove()'],['../structtable__impl_3_01sizeof_07uint64__t_08_00_010_01_4.html#a61eb1a5af18d040f4fbe25a073d9813a',1,'table_impl&lt; sizeof(uint64_t), 0 &gt;::remove()'],['../struct_table_1_1_primary_index.html#aba7ece128f93aebac142318bf62a81a8',1,'Table::PrimaryIndex::remove()'],['../struct_table_1_1_secondary_index.html#a5b45ffa299bf76615d2df5a7e03aeb00',1,'Table::SecondaryIndex::remove()'],['../struct_table.html#a5bf44e6ccd8eb3cb1cae84b50afccc95',1,'Table::remove()'],['../struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4_1_1_primary_index.html#a88d1097b8bcd991a7bd8a0519719ea5c',1,'Table&lt; scope, code, table, Record, PrimaryType, void &gt;::PrimaryIndex::remove()'],['../struct_table_3_01scope_00_01code_00_01table_00_01_record_00_01_primary_type_00_01void_01_4.html#a0f4509d1612728dca40ae1d5bc5bef9c',1,'Table&lt; scope, code, table, Record, PrimaryType, void &gt;::remove()']]],
-  ['remove_5fi128i128',['remove_i128i128',['../group__dbi128i128.html#gac37d24bc77e149aba9a7e546ec6cb639',1,'db.h']]],
-  ['remove_5fi64',['remove_i64',['../group__dbi64.html#ga5d65c93eda8fbf3f588f06d09050d129',1,'db.h']]],
-  ['remove_5fi64i64i64',['remove_i64i64i64',['../group__dbi64i64i64.html#gab37322d7745c2d5c87c924e57b3f51e0',1,'db.h']]],
-  ['remove_5freference',['remove_reference',['../structeos_1_1remove__reference.html',1,'eos']]],
-  ['remove_5freference_3c_20const_20t_20_26_20_3e',['remove_reference&lt; const T &amp; &gt;',['../structeos_1_1remove__reference_3_01const_01_t_01_6_01_4.html',1,'eos']]],
-  ['remove_5freference_3c_20t_20_26_20_3e',['remove_reference&lt; T &amp; &gt;',['../structeos_1_1remove__reference_3_01_t_01_6_01_4.html',1,'eos']]],
-  ['remove_5fstr',['remove_str',['../group__dbstr.html#ga016d3e468faade9e3e7ba21f23d1d384',1,'db.h']]],
-  ['reply_5fto_5fauthor',['reply_to_author',['../struct_post_action.html#abf9cfe14896ee4c46f96946150d1d000',1,'PostAction']]],
-  ['reply_5fto_5fid',['reply_to_id',['../struct_post_action.html#a44dd78c6c6386998dd58b8613c972755',1,'PostAction']]],
-  ['require_5fauth',['require_auth',['../structtest__message.html#a16fbe2fff9c7966e24985a73ce12cbbe',1,'test_message']]],
-  ['require_5fnotice',['require_notice',['../structtest__message.html#a3c6b5b304941dcc908b34d21cba4cf1a',1,'test_message']]],
-  ['requireauth',['requireAuth',['../group__messagecapi.html#gaed0ef9b019ed08c7cc0241c5b4169f13',1,'message.h']]],
-  ['requirenotice',['requireNotice',['../group__messagecapi.html#gaeb32e8229c58b2b2b045080dc1d4b850',1,'requireNotice():&#160;message.h'],['../group__messagecppapi.html#ga547d525494d3cd50fecc7ce919df5b43',1,'eosio::requireNotice()']]],
-  ['restart',['Restart',['../structtic__tac__toe_1_1_restart.html',1,'tic_tac_toe']]],
-  ['reveal',['reveal',['../structdice_1_1_player.html#a1fcc6b53309688f54e038ea5f8f58939',1,'dice::Player']]],
-  ['reveal',['Reveal',['../structdice_1_1_reveal.html',1,'dice']]],
-  ['row',['row',['../structtic__tac__toe_1_1_movement.html#a1ef3e54df0d86a523ecd7d2a5acad528',1,'tic_tac_toe::Movement']]],
-  ['rpc_2edox',['rpc.dox',['../rpc_8dox.html',1,'']]]
+  ['quantity',['quantity',['../structeosiosystem_1_1transfer.html#a656a8eba1fff581c019882edb9347a91',1,'eosiosystem::transfer::quantity()'],['../structeosiosystem_1_1stakevote.html#a62971b30cb73f7865b37162ed4264e47',1,'eosiosystem::stakevote::quantity()'],['../structeosio_1_1generic__currency_1_1issue.html#ab63969c82900ca3cab6909262f83828e',1,'eosio::generic_currency::issue::quantity()'],['../structeosio_1_1generic__currency_1_1transfer.html#a3cfaf544c7e318e4a9d6bf1a5c18d44c',1,'eosio::generic_currency::transfer::quantity()'],['../structeosio_1_1native__currency_1_1transfer.html#a3ac6da9f2c14813e6a02d39064caac7e',1,'eosio::native_currency::transfer::quantity()'],['../structeosio_1_1token.html#a41378f3d965a9e6a3b2c9be37c132b2f',1,'eosio::token::quantity()'],['../structexchange_1_1bid.html#a4c1368e393fb3ac999ca3b22c0224eff',1,'exchange::bid::quantity()'],['../structexchange_1_1ask.html#a4008c5e71dc9b48e0e0198af75e45e1c',1,'exchange::ask::quantity()'],['../structinfinite_1_1transfer.html#a2b72eb47bcc8f3221dd5a622c0169e63',1,'infinite::transfer::quantity()'],['../group__storageapi.html#gaa19dbd7b8beace25c91d274519166a37',1,'TOKEN_NAME::transfer::quantity()']]],
+  ['quotaused',['quotaused',['../group__storageapi.html#gaa97baa09a2c424509ff42822ec0c50b6',1,'TOKEN_NAME::account']]],
+  ['quote',['quote',['../structeosio_1_1price__ratio.html#ab7327aaf88b15c5f1c6adb7c4de680d4',1,'eosio::price_ratio']]],
+  ['quote_5ftoken_5ftype',['quote_token_type',['../structeosio_1_1price.html#aef7d0e4f45187d59ebc40b0d91a1d358',1,'eosio::price']]]
 ];
