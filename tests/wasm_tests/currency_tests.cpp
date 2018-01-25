@@ -172,4 +172,67 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
 } FC_LOG_AND_RETHROW() /// test_currency
 
+BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
+
+   {
+      symbol dollar(2, "DLLR");
+      BOOST_REQUIRE_EQUAL(SY(2, DLLR), dollar.value());
+      BOOST_REQUIRE_EQUAL(2, dollar.decimals());
+      BOOST_REQUIRE_EQUAL(100, dollar.precision());
+      BOOST_REQUIRE_EQUAL("DLLR", dollar.name());
+      BOOST_REQUIRE_EQUAL(true, dollar.valid());
+   }
+
+   {
+      symbol eos(4, "EOS");
+      BOOST_REQUIRE_EQUAL(EOS_SYMBOL, eos.value());
+      BOOST_REQUIRE_EQUAL("4,EOS", eos.to_string());
+      BOOST_REQUIRE_EQUAL("EOS", eos.name());
+      BOOST_REQUIRE_EQUAL(4, eos.decimals());
+   }
+
+   // default is "4,EOS"
+   {
+      symbol def;
+      BOOST_REQUIRE_EQUAL(4, def.decimals());
+      BOOST_REQUIRE_EQUAL("EOS", def.name());
+   }
+   // from string
+   {
+      symbol y = symbol::from_string("3,YEN");
+      BOOST_REQUIRE_EQUAL(3, y.decimals());
+      BOOST_REQUIRE_EQUAL("YEN", y.name());
+   }
+
+   // from empty string - default
+   {
+      symbol empty = symbol::from_string("");
+      BOOST_REQUIRE_EQUAL(4, empty.decimals());
+      BOOST_REQUIRE_EQUAL("EOS", empty.name());
+   }
+
+   // precision part missing - default is 4
+   {
+      symbol incomplete = symbol::from_string("RND");
+      BOOST_REQUIRE_EQUAL(4, incomplete.decimals());
+      BOOST_REQUIRE_EQUAL("RND", incomplete.name());
+   }
+
+   // precision part missing - default is 4
+   {
+      symbol incomplete = symbol::from_string(",EURO");
+      BOOST_REQUIRE_EQUAL(4, incomplete.decimals());
+      BOOST_REQUIRE_EQUAL("EURO", incomplete.name());
+   }
+
+   // invalid - contains lower case characters
+   {
+      symbol malformed = symbol::from_string("6,EoS");
+      BOOST_REQUIRE_EQUAL(false, malformed.valid());
+      BOOST_REQUIRE_EQUAL("EoS", malformed.name());
+      BOOST_REQUIRE_EQUAL(6, malformed.decimals());
+   }
+
+} FC_LOG_AND_RETHROW() /// test_symbol
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -62,6 +62,7 @@ namespace eosio { namespace chain {
    using                               std::move;
    using                               std::forward;
    using                               std::to_string;
+   using                               std::all_of;
 
    using                               fc::path;
    using                               fc::smart_ref;

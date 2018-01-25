@@ -11,10 +11,6 @@ namespace eosio { namespace chain {
 typedef boost::multiprecision::int128_t  int128_t;
 
 uint8_t asset::decimals()const {
-   /*
-   auto a = (const char*)&symbol;
-   return a[0];
-   */
    return sym.decimals();
 }
 
@@ -30,25 +26,10 @@ void asset::set_decimals(uint8_t d){
 #endif
 
 string asset::symbol_name()const {
-   /*
-   auto a = (const char*)&symbol;
-   assert( a[7] == 0 );
-   return &a[1];
-   */
    return sym.name();
 }
 
 int64_t asset::precision()const {
-   /*
-   static int64_t table[] = {
-      1, 10, 100, 1000, 10000,
-      100000, 1000000, 10000000, 100000000ll,
-      1000000000ll, 10000000000ll,
-      100000000000ll, 1000000000000ll,
-      10000000000000ll, 100000000000000ll
-   };
-   return table[ decimals() ];
-   */
    return sym.precision();
 }
 
@@ -97,42 +78,39 @@ asset asset::from_string(const string& from)
    }
    FC_CAPTURE_LOG_AND_RETHROW( (from) )
    */
- 
-   string s = fc::trim( from );
-   auto space_pos = s.find( " " );
-   auto dot_pos = s.find( "." );
-
-   asset result;
-   
-   auto intpart = s.substr( 0, dot_pos );
-   result.amount = fc::to_int64(intpart);
-   string symbol_part;
-   if (dot_pos != string::npos && space_pos != string::npos)
-      {
-         symbol_part = eosio::chain::to_string(space_pos - dot_pos - 1);
-         symbol_part += ',';
-         symbol_part += s.substr(space_pos + 1);
-      }
-   result.sym = symbol::from_string(symbol_part);
-   if( dot_pos != string::npos )
-      {
-         auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
- //        result.set_decimals( fractpart.size() - 1 );
-
-         result.amount *= int64_t(result.precision());
-         result.amount += int64_t(fc::to_int64(fractpart));
-         result.amount -= int64_t(result.precision());
-      }
-
-   return result;
+   try { 
+      string s = fc::trim( from );
+      auto space_pos = s.find( " " );
+      auto dot_pos = s.find( "." );
+      
+      asset result;
+      
+      auto intpart = s.substr( 0, dot_pos );
+      result.amount = fc::to_int64(intpart);
+      string symbol_part;
+      if (dot_pos != string::npos && space_pos != string::npos)
+         {
+            symbol_part = eosio::chain::to_string(space_pos - dot_pos - 1);
+            symbol_part += ',';
+            symbol_part += s.substr(space_pos + 1);
+         }
+      result.sym = symbol::from_string(symbol_part);
+      if( dot_pos != string::npos )
+         {
+            auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
+            
+            result.amount *= int64_t(result.precision());
+            result.amount += int64_t(fc::to_int64(fractpart));
+            result.amount -= int64_t(result.precision());
+         }
+      
+      return result;
+   }
+   FC_CAPTURE_LOG_AND_RETHROW( (from) )
 }
 
 bool operator == ( const price& a, const price& b )
 {
-#if 0
-   if( eosio::chain::tie( a.base.symbol().value(), a.quote.symbol().value() ) != eosio::chain::tie( b.base.symbol().value(), b.quote.symbol().value() ) )
-      return false;
-#endif
    if (a.base.symbol() != b.base.symbol() || a.quote.symbol() != b.quote.symbol())
       return false;
    const auto amult = uint128_t( b.quote.amount ) * uint128_t(a.base.amount);
