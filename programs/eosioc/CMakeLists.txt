@@ -1,9 +1,6 @@
-add_executable( eosioc-bin main.cpp httpc.cpp help_text.cpp localize.hpp config.hpp CLI11.hpp)
-if( UNIX AND NOT APPLE )
-  set(rt_library rt )
-endif()
+find_package(Intl REQUIRED)
+find_package(Gperftools QUIET)
 
-find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
     message( STATUS "Found gperftools; compiling with TCMalloc")
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
@@ -24,21 +21,27 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
   endif()
 endif()
 
-find_package(Intl REQUIRED)
-
 set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
-set(LOCALEDOMAIN eosioc-bin)
+set(LOCALEDOMAIN eosioc)
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
+add_executable(eosioc-bin main.cpp httpc.cpp help_text.cpp localize.hpp config.hpp CLI11.hpp)
 target_include_directories(eosioc-bin PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
-
-target_link_libraries( eosioc-bin
-                       PRIVATE appbase chain_api_plugin producer_plugin chain_plugin http_plugin eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} eosioc)
+target_link_libraries(eosioc-bin PRIVATE
+    appbase
+    chain_api_plugin
+    producer_plugin
+    chain_plugin
+    http_plugin
+    eosio_chain
+    fc
+    eosioc
+    ${CMAKE_DL_LIBS}
+    ${PLATFORM_SPECIFIC_LIBS}
+    ${Intl_LIBRARIES})
 set_target_properties(eosioc-bin PROPERTIES OUTPUT_NAME eosioc)
 
-install( TARGETS
-   eosioc-bin
-
+install(TARGETS eosioc-bin
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
