@@ -230,20 +230,104 @@ void abi_generator::guess_key_names(table_def& table, const struct_def s) {
   vector<field_def> fields;
   get_all_fields(s, fields);
 
-  if( table.index_type == "i64i64i64" && is_i64i64i64_index(fields) ) {
-    table.key_names  = vector<field_name>{fields[0].name, fields[1].name, fields[2].name};
-    table.key_types  = vector<type_name>{fields[0].type, fields[1].type, fields[2].type};
-  } else if( table.index_type == "i128i128" && is_i128i128_index(fields) ) {
-    table.key_names  = vector<field_name>{fields[0].name, fields[1].name};
-    table.key_types  = vector<type_name>{fields[0].type, fields[1].type};
-  } else if( table.index_type == "i64" && is_i64_index(fields) ) {
-    table.key_names  = vector<field_name>{fields[0].name};
-    table.key_types  = vector<type_name>{fields[0].type};
+  if( table.index_type == "i64i64i64" || table.index_type == "i128i128" 
+    || table.index_type == "i64") {
+    
+    table.key_names.clear();
+    table.key_types.clear();
+
+    unsigned int key_size = 0;
+    bool valid_key = false;
+    for(auto& f : fields) {
+      table.key_names.emplace_back(f.name);
+      table.key_types.emplace_back(f.type);
+      key_size += type_size[f.type]/8;
+
+      if((table.index_type == "i64i64i64" && key_size >= sizeof(uint64_t)*3) ||
+         (table.index_type == "i64" && key_size >= sizeof(uint64_t)) ||
+         (table.index_type == "i128i128" && key_size >= sizeof(__int128)*2)) {
+        valid_key = true;
+        break;
+      }
+    }
+
+    ABI_ASSERT(valid_key, "Unable to determine key fields");
+
   } else if( table.index_type == "str" && is_str_index(fields) ) {
     table.key_names  = vector<field_name>{fields[0].name};
     table.key_types  = vector<type_name>{fields[0].type};
   } else {
     ABI_ASSERT(false, "Unable to guess key names");
+  }
+}
+
+void abi_generator::simplify_single_field_structs() {
+
+  std::set<type_name> types_to_check;
+
+  for(auto& s : output->structs) {
+    for(auto& f : s.fields) {
+      
+      auto rftype = resolve_type(f.type);
+      auto sit = std::find_if(output->structs.begin(), output->structs.end(), [&](const struct_def& s) {
+        return s.name == rftype;
+      });
+
+      if(sit == output->structs.end() || sit->fields.size() > 1 || sit->base != "") continue;
+
+      auto new_type_name = sit->fields[0].type;
+      
+      auto tit = output->tables.begin();
+      auto is_type = [&](const table_def& table){ return resolve_type(table.type) == s.name; };
+      while ((tit = std::find_if(tit, output->tables.end(), is_type)) != output->tables.end()) {
+        for(int i=0; i<tit->key_names.size(); ++i) {
+          if( f.name == tit->key_names[i] ) {
+            tit->key_types[i] = new_type_name;
+          }
+        }
+        tit++;
+      }
+
+      f.type = new_type_name;
+      types_to_check.insert(resolve_type(sit->name));
+    }
+  }
+
+  for(auto to_check : types_to_check) {
+
+    auto sit = std::find_if(output->structs.begin(), output->structs.end(), [&](const struct_def& s){
+      return resolve_type(s.base) == to_check;
+    });
+    if( sit != output->structs.end() ) continue;
+    
+    auto ait = std::find_if(output->actions.begin(), output->actions.end(), [&](const action_def& action){
+      return resolve_type(action.type) == to_check;
+    });
+    if( ait != output->actions.end() ) continue;
+
+    auto tit = std::find_if(output->tables.begin(), output->tables.end(), [&](const table_def& table){
+      if( resolve_type(table.type) == to_check ) return true;
+      auto tk = std::find(table.key_types.begin(), table.key_types.end(), to_check);
+      if( tk != table.key_types.end() ) return true;
+      return false;
+    });
+    if( tit != output->tables.end() ) continue;
+
+    auto to_remove = to_check; 
+
+    sit = std::find_if(output->structs.begin(), output->structs.end(), [&](const struct_def& s) {
+      return s.name == to_remove;
+    });
+    FC_ASSERT(sit != output->structs.end());
+    output->structs.erase(sit);
+
+    auto it = output->types.begin();
+    auto is_type = [&](const type_def& td){ return td.type == to_remove; };
+    while((it = std::find_if(it, output->types.end(), is_type)) != output->types.end()) {
+      to_remove = it->new_type_name;
+      output->types.erase(it);
+      it = output->types.begin();
+    }
   }
 }
 
@@ -429,7 +513,6 @@ string abi_generator::add_struct(const clang::QualType& qual_type) {
     
     if( qt->getAs<clang::RecordType>() ) {
       add_struct(qt);
-      //TODO: simplify if OPT_SINGLE_FIELD_STRUCT is enabled
     }
     
     struct_field.name = field->getNameAsString();

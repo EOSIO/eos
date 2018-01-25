@@ -39,9 +39,18 @@ namespace eosio { namespace testing {
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "" );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo = "" );
 
+         const contracts::table_id_object* find_table( name scope, name code, name table ) {
+            return control->get_database().find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+         }
+
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {
             return control->get_database().get<ObjectType,IndexBy>( forward<Args>(args)... );
+         }
+
+         template<typename IndexType, typename Scope>
+         const auto& get_index() {
+            return control->get_database().get_index<IndexType,Scope>();
          }
 
          public_key_type   get_public_key( name keyname, string role = "owner" ) const;

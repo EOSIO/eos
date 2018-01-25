@@ -245,7 +245,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
          template<typename ObjectType>
          static auto& get(ObjectType& o) {
-            return o.primary_key;
+            return o.secondary_key;
          }
       };
 
@@ -258,7 +258,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
          template<typename ObjectType>
          static auto& get( ObjectType& o) {
-            return o.primary_key;
+            return o.tertiary_key;
          }
       };
 

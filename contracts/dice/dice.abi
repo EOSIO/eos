@@ -1,0 +1,185 @@
+{
+  "types": [],
+  "structs": [{
+      "name": "offer_bet",
+      "base": "",
+      "fields": [{
+          "name": "amount",
+          "type": "uint64"
+        },{
+          "name": "player",
+          "type": "account_name"
+        },{
+          "name": "commitment",
+          "type": "checksum"
+        }
+      ]
+    },{
+      "name": "cancel_offer",
+      "base": "",
+      "fields": [{
+          "name": "commitment",
+          "type": "checksum"
+        }
+      ]
+    },{
+      "name": "reveal",
+      "base": "",
+      "fields": [{
+          "name": "commitment",
+          "type": "checksum"
+        },{
+          "name": "source",
+          "type": "checksum"
+        }
+      ]
+    },{
+      "name": "claim_expired",
+      "base": "",
+      "fields": [{
+          "name": "gameid",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "offer_primary_key",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "account_name"
+        },{
+          "name": "bet",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "offer",
+      "base": "",
+      "fields": [{
+          "name": "primary",
+          "type": "offer_primary_key"
+        },{
+          "name": "commitment",
+          "type": "checksum"
+        },{
+          "name": "gameid",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "player",
+      "base": "",
+      "fields": [{
+          "name": "commitment",
+          "type": "checksum"
+        },{
+          "name": "reveal",
+          "type": "checksum"
+        }
+      ]
+    },{
+      "name": "game",
+      "base": "",
+      "fields": [{
+          "name": "gameid",
+          "type": "uint64"
+        },{
+          "name": "bet",
+          "type": "uint64"
+        },{
+          "name": "deadline",
+          "type": "time"
+        },{
+          "name": "player1",
+          "type": "player"
+        },{
+          "name": "player2",
+          "type": "player"
+        }
+      ]
+    },{
+      "name": "global_dice",
+      "base": "",
+      "fields": [{
+          "name": "nextgameid",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "account",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "account_name"
+        },{
+          "name": "eos_balance",
+          "type": "uint64"
+        },{
+          "name": "open_offers",
+          "type": "uint32"
+        },{
+          "name": "open_games",
+          "type": "uint32"
+        }
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "offerbet",
+      "type": "offer_bet"
+    },{
+      "name": "canceloffer",
+      "type": "cancel_offer"
+    },{
+      "name": "reveal",
+      "type": "reveal"
+    },{
+      "name": "claimexpired",
+      "type": "claim_expired"
+    }
+  ],
+  "tables": [{
+      "name": "offer",
+      "index_type": "i128i128",
+      "key_names": [
+        "primary",
+        "commitment"
+      ],
+      "key_types": [
+        "offer_primary_key",
+        "checksum"
+      ],
+      "type": "offer"
+    },{
+      "name": "game",
+      "index_type": "i64",
+      "key_names": [
+        "gameid"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "game"
+    },{
+      "name": "global",
+      "index_type": "i64",
+      "key_names": [
+        "nextgameid"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "global_dice"
+    },{
+      "name": "account",
+      "index_type": "i64",
+      "key_names": [
+        "owner"
+      ],
+      "key_types": [
+        "account_name"
+      ],
+      "type": "account"
+    }
+  ]
+}
