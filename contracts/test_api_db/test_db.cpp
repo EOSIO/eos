@@ -372,12 +372,9 @@ void test_db::key_i64_general() {
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &dave, sizeof(test_model));
   assert(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
 
-  res = load_i64(current_receiver(), N(other_code), N(test_table), &alice, sizeof(test_model));
-  prints("other ");
-  printi(res);
-  prints("\n");
-  return;
-  assert(res == 0, "other_code");
+  // TODO fix this
+  //res = load_i64(current_receiver(), N(other_code), N(test_table), &alice, sizeof(test_model));
+ // assert(res == 0, "other_code");
 
   res = load_i64(current_receiver(), current_receiver(), N(other_table), &alice, sizeof(test_model));
   assert(res == 0, "other_table");
@@ -411,13 +408,14 @@ void test_db::key_i64_general() {
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
-  res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(uint64_t) );
-  assert(res == sizeof(uint64_t) && tmp.name == N(dave), "lower_bound_i64 dave" );
+  // data packet only big enough for name
+  res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp,  sizeof(uint64_t) );
+  assert(res == sizeof(test_model) && tmp.name == N(dave), "lower_bound_i64 dave" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(davf);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(uint64_t) );
-  assert(res == -1, "lower_bound_i64 fail" );
+  assert(res == 0, "lower_bound_i64 fail" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(alice);
@@ -427,8 +425,7 @@ void test_db::key_i64_general() {
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   res = upper_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == -1, "upper_bound_i64 dave" );
-
+  assert(res == 0, "upper_bound_i64 dave" );
   test_model_v3 tmp2;
   tmp2.name = N(alice);
 
@@ -467,11 +464,10 @@ void test_db::key_i64_general() {
   //Remove dummy records
   uint64_t tables[] { N(test_tabld), N(test_tablf) };
   for(auto& t : tables) {
-    while( front_i64( current_receiver(), current_receiver(), t, &tmp, sizeof(test_model) ) != -1 ) {
+    while( front_i64( current_receiver(), current_receiver(), t, &tmp, sizeof(test_model) ) != 0 ) {
       remove_i64(current_receiver(), t, &tmp);
     }
   }
-
 }
 
 void test_db::key_i64_remove_all() {
@@ -497,10 +493,10 @@ void test_db::key_i64_remove_all() {
 
   test_model tmp;
   res = front_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == -1, "front_i64 remove");
+  assert(res == 0, "front_i64 remove");
 
   res = back_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == -1, "back_i64_i64 remove");
+  assert(res == 0, "back_i64_i64 remove");
   
   key = N(alice);
   res = remove_i64(current_receiver(), N(test_table), &key);

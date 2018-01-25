@@ -474,7 +474,6 @@ using apply_handler = std::function<void(apply_context&)>;
           !impl::record_scope_compare<IndexType, Scope>::compare(*itr, keys)) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-      std::cout << "WHY!" << "\n";
       if (valuelen) {
          auto copylen = std::min<size_t>(itr->value.size(), valuelen);
          if (copylen) {
@@ -622,8 +621,8 @@ using apply_handler = std::function<void(apply_context&)>;
 
    template <typename IndexType, typename Scope>
    int32_t apply_context::lower_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
+      std::cout << "made it to lower\n";
       require_read_scope( t_id.scope );
-
       const auto& idx = db.get_index<IndexType, Scope>();
       auto tuple = impl::lower_bound_tuple<IndexType, Scope>::get(t_id, keys);
       auto itr = idx.lower_bound(tuple);
@@ -635,11 +634,14 @@ using apply_handler = std::function<void(apply_context&)>;
 
       if (valuelen) {
          auto copylen = std::min<size_t>(itr->value.size(), valuelen);
+         std::cout << "copylen " << copylen << "\n";
+         std::cout << "valuelen " << valuelen << "\n";
          if (copylen) {
             itr->value.copy(value, copylen);
          }
          return copylen;
       } else {
+         std::cout << "valuelen2 " << valuelen << "\n";
          return itr->value.size();
       }
    }

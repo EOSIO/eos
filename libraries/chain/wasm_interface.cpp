@@ -843,8 +843,7 @@ class db_index_api : public context_aware_api {
 
       int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
          auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
-         std::cout << "res " << res << "\n";
-         return (res == 0) ? 0 : res + sizeof(KeyArrayType);
+         return (res > 0) ? res + sizeof(KeyArrayType) : 0;
       }
 
       int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {

@@ -17,8 +17,8 @@ extern "C" {
 
       //test db
       WASM_TEST_HANDLER(test_db, key_i64_general);
-#if 0
       WASM_TEST_HANDLER(test_db, key_i64_remove_all);
+#if 0
       WASM_TEST_HANDLER(test_db, key_i64_small_load);
       WASM_TEST_HANDLER(test_db, key_i64_small_store);
       WASM_TEST_HANDLER(test_db, key_i64_store_scope);
