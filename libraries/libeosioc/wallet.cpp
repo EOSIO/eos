@@ -1,6 +1,6 @@
 #include "wallet.hpp"
 
-#include "functions.hpp"
+#include "endpoints.hpp"
 
 namespace eosio {
 namespace client {

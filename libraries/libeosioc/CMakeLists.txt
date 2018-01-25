@@ -1,5 +1,5 @@
 add_library(eosioc
-    functions.hpp
+    endpoints.hpp
     remote.hpp
     remote.cpp
     wallet.hpp
@@ -13,4 +13,4 @@ target_include_directories(eosioc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(test)
 
 install(TARGETS eosioc DESTINATION lib)
-install(FILES functions.hpp peer.hpp  wallet.hpp remote.hpp DESTINATION "include/eosio/eosioclient")
+install(FILES endpoints.hpp peer.hpp  wallet.hpp remote.hpp DESTINATION "include/eosio/eosioclient")

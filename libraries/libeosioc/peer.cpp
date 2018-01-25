@@ -1,7 +1,7 @@
 #include "peer.hpp"
 
 #include "fc/io/json.hpp"
-#include "functions.hpp"
+#include "endpoints.hpp"
 
 namespace eosio {
 namespace client {
