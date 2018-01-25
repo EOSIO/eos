@@ -376,6 +376,7 @@ struct launcher_def {
   void prep_remote_config_dir (eosd_def &node, host_def *host);
   void launch (eosd_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
+  pair<host_def, eosd_def> find_node(uint16_t node_num);
   vector<pair<host_def, eosd_def>> get_nodes(const string& node_number_list);
   void bounce (const string& node_numbers);
   void down (const string& node_numbers);
@@ -1214,12 +1215,26 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   }
 }
 
+pair<host_def, eosd_def>
+launcher_def::find_node(uint16_t node_num) {
+   string dex = node_num < 10 ? "0":"";
+   dex += boost::lexical_cast<string,uint16_t>(node_num);
+   string node_name = network.name + dex;
+   for (const auto& host: bindings) {
+      for (const auto& node: host.instances) {
+         if (node_name == node.name) {
+            return make_pair(host, node);
+         }
+      }
+   }
+   cerr << "Unable to find node " << node_num << endl;
+   exit (-1);
+}
+
 vector<pair<host_def, eosd_def>>
 launcher_def::get_nodes(const string& node_number_list) {
    vector<pair<host_def, eosd_def>> node_list;
-   string nnl = node_number_list;
-   std::transform(nnl.begin(), nnl.end(), nnl.begin(), ::tolower);
-   if (nnl == "all") {
+   if (fc::to_lower(node_number_list) == "all") {
       for (auto host: bindings) {
          for (auto node: host.instances) {
             cout << "host=" << host.host_name << ", node=" << node.name << endl;
@@ -1242,21 +1257,7 @@ launcher_def::get_nodes(const string& node_number_list) {
             cerr << "Bad node number found in node number list: " << node_number << endl;
             exit(-1);
          }
-         string dex = node < 10 ? "0":"";
-         dex += boost::lexical_cast<string,uint16_t>(node);
-         string node_name = network.name + dex;
-         for (auto host: bindings) {
-            for (auto node: host.instances) {
-               if (node_name == node.name) {
-                  node_list.push_back(make_pair(host, node));
-                  goto continue_next_node;
-               }
-            }
-         }
-         cerr << "Unable to find node " << node_number << endl;
-         exit (-1);
-
-         continue_next_node: ;
+         node_list.push_back(find_node(node));
       }
    }
    return node_list;
@@ -1293,7 +1294,7 @@ launcher_def::down (const string& node_numbers) {
                  + "export EOSIO_TN_NODE=" + node_num + "; "
                  + "export EOSIO_TN_RESTART_DATA_DIR=" + node.data_dir + "; "
                  + "./scripts/tn_down.sh";
-      cout << "Bouncing " << node.name << endl;
+      cout << "Taking down " << node.name << endl;
       if (!do_ssh(cmd, host.host_name)) {
          cerr << "Unable to down " << node.name << endl;
          exit (-1);
