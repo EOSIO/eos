@@ -10,12 +10,13 @@
 namespace eosio {
    namespace chain {
       
-      static constexpr uint64_t string_to_symbol_c( uint8_t precision, const char* str ) {
+      static constexpr uint64_t string_to_symbol_c(uint8_t precision, const char* str) {
          uint32_t len = 0;
-         while( str[len] ) ++len;
+         while (str[len]) ++len;
          
          uint64_t result = 0;
-         for( uint32_t i = 0; i < len; ++i ) {
+         // No validation is done at compile time
+         for (uint32_t i = 0; i < len; ++i) {
             result |= (uint64_t(str[i]) << (8*(1+i)));
          }
 
@@ -25,18 +26,19 @@ namespace eosio {
       
 #define SY(P,X) ::eosio::chain::string_to_symbol_c(P,#X)
 
-      static uint64_t string_to_symbol( uint8_t precision, const char* str ) {
-         uint32_t len = 0;
-         while( str[len] ) ++len;
-         
-         uint64_t result = 0;
-         for( uint32_t i = 0; i < len; ++i ) {
-            //            assert(str[i] >= 'A' && str[i] <= 'Z');
-            result |= (uint64_t(str[i]) << (8*(i+1)));
-         }
-         
-         result |= uint64_t(precision);
-         return result;
+      static uint64_t string_to_symbol(uint8_t precision, const char* str) {
+         try {
+            uint32_t len = 0;
+            while(str[len]) ++len;
+            uint64_t result = 0;
+            for (uint32_t i = 0; i < len; ++i) {
+               // All characters must be upper case alaphabets
+               FC_ASSERT (str[i] >= 'A' && str[i] <= 'Z', "invalid character in symbol name");
+               result |= (uint64_t(str[i]) << (8*(i+1)));
+            }
+            result |= uint64_t(precision);
+            return result;
+         } FC_CAPTURE_LOG_AND_RETHROW((str))
       }
 
       class symbol {
@@ -61,7 +63,7 @@ namespace eosio {
                   uint8_t p = fc::to_int64(prec_part);
                   string name_part = s.substr(comma_pos + 1);
                   return string_to_symbol(p, name_part.c_str());
-               } FC_CAPTURE_LOG_AND_RETHROW((from)) 
+               } FC_CAPTURE_LOG_AND_RETHROW((from))
             }
             uint64_t value() const { return m_value; }
             operator uint64_t() const { return m_value; }
@@ -70,6 +72,11 @@ namespace eosio {
                const auto& s = name();
                return all_of(s.begin(), s.end(), [](char c)->bool { return (c >= 'A' && c <= 'Z'); });
             }
+            static bool valid_name(const string& name)
+            {
+               return all_of(name.begin(), name.end(), [](char c)->bool { return (c >= 'A' && c <= 'Z'); });
+            }
+
             uint8_t decimals() const { return m_value & 0xFF; }
             uint64_t precision() const
             {
@@ -116,7 +123,7 @@ namespace eosio {
          private:
             uint64_t m_value;
             friend struct fc::reflector<symbol>;
-      };
+      }; // class symbol
 
       inline bool operator== (const symbol& lhs, const symbol& rhs)
       {

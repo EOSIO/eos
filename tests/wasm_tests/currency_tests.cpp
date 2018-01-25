@@ -225,12 +225,17 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
       BOOST_REQUIRE_EQUAL("EURO", incomplete.name());
    }
 
-   // invalid - contains lower case characters
+   // invalid - contains lower case characters, no validation
    {
-      symbol malformed = symbol::from_string("6,EoS");
+      symbol malformed(SY(6,EoS));
       BOOST_REQUIRE_EQUAL(false, malformed.valid());
       BOOST_REQUIRE_EQUAL("EoS", malformed.name());
       BOOST_REQUIRE_EQUAL(6, malformed.decimals());
+   }
+
+   // invalid - contains lower case characters, exception thrown 
+   {
+      BOOST_CHECK_EXCEPTION(symbol(5,"EoS"), fc::assert_exception, assert_message_is("invalid character in symbol name"));
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol
