@@ -17,4 +17,4 @@ target_include_directories(eosioc INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMA
 add_subdirectory(test)
 
 install(TARGETS eosioc DESTINATION lib)
-install(FILES ${HEADERS} DESTINATION "include/eosio/eosioclient")
+install(FILES ${HEADERS} DESTINATION "include/eosio/libeosioc/")
