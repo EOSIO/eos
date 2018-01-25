@@ -718,6 +718,31 @@ class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      size_t current_transaction( array_ptr<char> data, size_t data_len ) {
+         if( !context.trx_meta.packed_trx.size() ) {
+            auto size = fc::raw::pack_size( context.trx_meta.trx );
+            if( size > data_len ) 
+                return size;
+            datastream<char*> ds( data, data_len );
+            fc::raw::pack( ds, context.trx_meta.trx );
+         } 
+         auto size = context.trx_meta.packed_trx.size();
+         if( data_len >= size );
+            memcpy( data, context.trx_meta.packed_trx.data(), size );
+         return size;
+      }
+
+      int expiration() {
+        return context.trx_meta.trx.expiration.sec_since_epoch();
+      }
+
+      int tapos_block_num() {
+        return context.trx_meta.trx.ref_block_num;
+      }
+      int tapos_prefix() {
+        return context.trx_meta.trx.ref_block_prefix;
+      }
+
       void send_inline( array_ptr<char> data, size_t data_len ) {
          // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
          FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
@@ -788,6 +813,9 @@ REGISTER_INTRINSICS(console_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
+   (expiration,            int()  )
+   (tapos_prefix,          int()  )
+   (tapos_block_num,       int()  )
    (send_inline,           void(int, int)  )
    (send_deferred,         void(int, int, int, int)  )
 );
