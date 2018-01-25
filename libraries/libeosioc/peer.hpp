@@ -44,7 +44,7 @@ struct Peer : public Remote
     fc::variant push_transaction(const chain::signed_transaction& transaction) const;
     fc::variant push_transactions(const std::vector<chain::signed_transaction>& transactions) const;
     fc::variant push_JSON_transaction(const fc::variant& transaction) const;
-    fc::variant json_to_bin_function(const std::string &contract,
+    fc::variant json_to_bin(const std::string &contract,
                                      const std::string &action,
                                      const std::string &data) const;
 };
