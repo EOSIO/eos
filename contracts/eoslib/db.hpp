@@ -248,8 +248,8 @@ struct table {
        *
        *  @return true if successful read.
        */
-      static bool lower_bound( const PrimaryType& p, Record& r ) {
-         return impl::lower_bound_primary( scope, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+      static bool lower_bound( const PrimaryType& p, Record& r, uint64_t s = scope ) {
+         return impl::lower_bound_primary( s, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -259,8 +259,8 @@ struct table {
        *
        *  @return true if successful read.
        */
-      static bool upper_bound( const PrimaryType& p, Record& r ) {
-         return impl::upper_bound_primary( scope, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+      static bool upper_bound( const PrimaryType& p, Record& r, uint64_t s = scope ) {
+         return impl::upper_bound_primary( s, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
       }
 
       /**
@@ -545,44 +545,48 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
    struct primary_index {
        /**
        *  @param r - reference to a record to store the front.
+       *  @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the front of the table.
        */
-      static bool front( Record& r ) {
-         return impl::front_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool front( Record& r, uint64_t s = scope ) {
+         return impl::front_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
        *  @param r - reference to a record to store the back.
+       *  @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the back of the table.
        */
-      static bool back( Record& r ) {
-         return impl::back_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool back( Record& r, uint64_t s = scope ) {
+         return impl::back_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
        *  @param r - reference to store the next record. Must be initialized with a key.
+       *  @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the next record.
        */
-      static bool next( Record& r ) {
-         return impl::next_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool next( Record& r, uint64_t s = scope ) {
+         return impl::next_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
        *  @param r - reference to store previous record. Must be initialized with a key.
+       *  @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the previous record.
        */
-      static bool previous( Record& r ) {
-         return impl::previous_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool previous( Record& r, uint64_t s = scope ) {
+         return impl::previous_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
        *  @param p - reference to the primary key to retrieve the record.
        *  @param r - reference to hold the result of the query.
-        * @param s - scope; defaults to scope of the class.
+       *  @param s - scope; defaults to scope of the class.
        *  @return true if successfully retrieved the record.
        */
       static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
@@ -593,29 +597,32 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
        /**
        *  @param p - reference to the primary key to retrieve the lower bound.
        *  @param r - reference to hold the result of the query.
+       *  @param s - scope; defaults to scope of the class.
        *  @return true if successfully retrieved the record.
        */
-      static bool lower_bound( const PrimaryType& p, Record& r ) {
+      static bool lower_bound( const PrimaryType& p, Record& r, uint64_t s = scope ) {
          *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::lower_bound_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::lower_bound_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
        *  @param p - reference to the primary key to retrieve the upper bound.
        *  @param r - reference to hold the result of the query.
+       *  @param s - scope; defaults to scope of the class.
        *  @return true if successfully retrieved the record.
        */
-       static bool upper_bound( const PrimaryType& p, Record& r ) {
+       static bool upper_bound( const PrimaryType& p, Record& r, uint64_t s = scope ) {
          *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::upper_bound_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::upper_bound_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
        *  @param r - reference to record to be removed.
+       *  @param s - scope; defaults to scope of the class.
        *  @return true if successfully removed.
        */
-       static bool remove( const Record& r ) {
-         return impl::remove( scope, table_n, &r ) != 0;
+       static bool remove( const Record& r, uint64_t s = scope ) {
+         return impl::remove( s, table_n, &r ) != 0;
       }
    };
 
@@ -624,17 +631,19 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
     * @brief Fetches the front of the table
     * @details Fetches the front of the table
     * @param  r - reference to hold the value
+    * @param  s - scope; defaults to scope of the class.
     * @return true if successfully retrieved the front
     */
-    static bool front( Record& r ) { return primary_index::front(r); }
+    static bool front( Record& r, uint64_t s = scope ) { return primary_index::front(r, s); }
 
     /**
     * @brief Fetches the back of the table
     * @details Fetches the back of the table
     * @param  r - reference to hold the value
+    * @param  s - scope; defaults to scope of the class.
     * @return true if successfully retrieved the back
     */
-    static bool back( Record& r )  { return primary_index::back(r);  }
+    static bool back( Record& r, uint64_t s = scope )  { return primary_index::back(r, s);  }
 
     /**
      * @brief Retrieves the record for the specified primary key
