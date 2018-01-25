@@ -1,3 +1,8 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #ifndef FUNCTIONS_HPP
 #define FUNCTIONS_HPP
 

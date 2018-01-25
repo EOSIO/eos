@@ -1,3 +1,8 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #ifndef REMOTE_H
 #define REMOTE_H
 
