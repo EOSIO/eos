@@ -9,8 +9,7 @@
 #include "remote.hpp"
 
 #include <string>
-
-#include "eosio/chain/transaction.hpp"
+#include <eosio/chain/transaction.hpp>
 
 namespace eosio {
 namespace client {

@@ -1,5 +1,4 @@
 #include <boost/test/unit_test.hpp>
-
 #include <eosio/libeosioc/peer.hpp>
 
 using namespace eosio::client;
