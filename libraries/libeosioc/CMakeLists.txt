@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES(include)
+include_directories(include)
 
 set(HEADERS
     include/eosio/libeosioc/endpoints.hpp
@@ -10,8 +10,7 @@ add_library(eosioc
     ${HEADERS}
     remote.cpp
     wallet.cpp
-    peer.cpp
-    )
+    peer.cpp)
 target_link_libraries(eosioc fc eosio_chain)
 target_include_directories(eosioc INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
