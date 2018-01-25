@@ -1,11 +1,11 @@
 #ifndef PEER_H
 #define PEER_H
 
+#include "remote.hpp"
+
 #include <string>
 
-#include "fc/variant.hpp"
 #include "eosio/chain/transaction.hpp"
-#include "remote.hpp"
 
 namespace eosio {
 namespace client {
