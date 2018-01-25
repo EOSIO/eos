@@ -413,13 +413,9 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      if (context.act.account == config::system_account_name && context.act.name == N(setcode)) {
-         my->call("init", {}, code, context);
-      } else {
-         vector<Value> args = {Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
-         my->call("apply", args, code, context);
-      }
+      vector<Value> args = {Value(uint64_t(context.act.account)),
+                            Value(uint64_t(context.act.name))};
+      my->call("apply", args, code, context);
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {

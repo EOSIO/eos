@@ -10,9 +10,6 @@
 #include <eoslib/raw.hpp>
 
 extern "C" {
-   void init()  {
-
-   }
    
    void apply( uint64_t code, uint64_t action ) {
       if( code == N(simpledb) ) {
