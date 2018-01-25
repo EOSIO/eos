@@ -13,8 +13,8 @@ namespace client {
 class Peer : public Remote
 {
 public:
-    fc::variant connect(const std::string& host) const;
-    fc::variant disconnect(const std::string& host) const;
+    fc::variant connect_to(const std::string& host) const;
+    fc::variant disconnect_from(const std::string& host) const;
     fc::variant status(const std::string& host) const;
     fc::variant connections(const std::string& host) const;
     fc::variant get_info() const;
