@@ -9,6 +9,16 @@
 
 #include <unistd.h>
 
+extern "C" {
+
+void* malloc(size_t size);
+
+void* realloc(void* ptr, size_t size);
+
+void free(void* ptr);
+
+}
+
 namespace eosio {
 
    using ::memset;
@@ -24,9 +34,9 @@ namespace eosio {
 
    class memory_manager  // NOTE: Should never allocate another instance of memory_manager
    {
-   friend void* malloc(uint32_t size);
-   friend void* realloc(void* ptr, uint32_t size);
-   friend void free(void* ptr);
+   friend void* ::malloc(size_t size);
+   friend void* ::realloc(void* ptr, size_t size);
+   friend void ::free(void* ptr);
    public:
       memory_manager()
       // NOTE: it appears that WASM has an issue with initialization lists if the object is globally allocated,
@@ -248,7 +258,7 @@ namespace eosio {
 
          char* malloc_from_freed(uint32_t size)
          {
-            assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
+            eos_assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
 
             char* current = _heap + _size_marker;
             while (current != nullptr)
@@ -484,56 +494,4 @@ namespace eosio {
    };
 
    extern memory_manager memory_heap;
-
-  /**
-   * Allocate a block of memory.
-   * @brief Allocate a block of memory.
-   * @param size  Size of memory block
-   *
-   * Example:
-   * @code
-   * uint64_t* int_buffer = malloc(500 * sizeof(uint64_t));
-   * @endcode
-   */
-   inline void* malloc(uint32_t size)
-   {
-      return memory_heap.malloc(size);
-   }
-
-   /**
-    * Allocate a block of memory.
-    * @brief Allocate a block of memory.
-    * @param size  Size of memory block
-    *
-    * Example:
-    * @code
-    * uint64_t* int_buffer = malloc(500 * sizeof(uint64_t));
-    * ...
-    * uint64_t* bigger_int_buffer = realloc(int_buffer, 600 * sizeof(uint64_t));
-    * @endcode
-    */
-
-   inline void* realloc(void* ptr, uint32_t size)
-   {
-      return memory_heap.realloc(ptr, size);
-   }
-
-   /**
-    * Free a block of memory.
-    * @brief Free a block of memory.
-    * @param ptr  Pointer to memory block to free.
-    *
-    * Example:
-    * @code
-    * uint64_t* int_buffer = malloc(500 * sizeof(uint64_t));
-    * ...
-    * free(int_buffer);
-    * @endcode
-    */
-    inline void free(void* ptr)
-    {
-       return memory_heap.free(ptr);
-    }
-
-   /// @} /// mathcppapi
 }
