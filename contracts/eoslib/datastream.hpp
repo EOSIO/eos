@@ -30,7 +30,7 @@ class datastream {
       *  @param s the number of bytes to read
       */
       inline bool read( char* d, size_t s ) {
-        assert( size_t(_end - _pos) >= (size_t)s, "read" );
+        eos_assert( size_t(_end - _pos) >= (size_t)s, "read" );
         memcpy( d, _pos, s );
         _pos += s;
         return true;
@@ -43,7 +43,7 @@ class datastream {
       *  @param s The number of bytes to write
       */
       inline bool write( const char* d, size_t s ) {
-        assert( _end - _pos >= (int32_t)s, "write" );
+        eos_assert( _end - _pos >= (int32_t)s, "write" );
         memcpy( _pos, d, s );
         _pos += s;
         return true;
@@ -55,7 +55,7 @@ class datastream {
       *  @param c byte to write
       */
       inline bool put(char c) { 
-        assert( _pos < _end, "put" );
+        eos_assert( _pos < _end, "put" );
         *_pos = c; 
         ++_pos; 
         return true;
@@ -69,7 +69,7 @@ class datastream {
       inline bool get( unsigned char& c ) { return get( *(char*)&c ); }
       inline bool get( char& c ) 
       {
-        assert( _pos < _end, "get" );
+        eos_assert( _pos < _end, "get" );
         c = *_pos;
         ++_pos; 
         return true;

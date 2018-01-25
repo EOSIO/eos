@@ -215,7 +215,7 @@ namespace eosio {
    template<typename Stream> 
    void unpack( Stream& s, fixed_string32& v)  {
       unsigned_int size; eosio::raw::unpack( s, size );
-      assert(size.value <= 32, "unpack fixed_string32");
+      eos_assert(size.value <= 32, "unpack fixed_string32");
       s.read( (char *)v.str, size );
       v.len = size;
    }
@@ -241,7 +241,7 @@ namespace eosio {
    template<typename Stream> 
    void unpack( Stream& s, fixed_string16& v)  {
       unsigned_int size; eosio::raw::unpack( s, size );
-      assert(size.value <= 16, "unpack fixed_string16");
+      eos_assert(size.value <= 16, "unpack fixed_string16");
       s.read( (char *)v.str, size );
       v.len = size;
    }
@@ -286,7 +286,7 @@ namespace eosio {
       unsigned_int packed_count;
       eosio::raw::unpack( s, packed_count );
       count = packed_count.value;
-      assert(count <= max_count, "array too large to read");
+      eos_assert(count <= max_count, "array too large to read");
 
       for (size_t idx = 0; idx < count; idx++) {
          eosio::raw::unpack( s, varr[idx] );
@@ -306,7 +306,7 @@ namespace eosio {
       unsigned_int packed_len;
       eosio::raw::unpack( s, packed_len );
       len = packed_len.value;
-      assert(len <= max_len, "raw string too large to read");
+      eos_assert(len <= max_len, "raw string too large to read");
       if( len )
          s.read( str, len );
    }
@@ -321,7 +321,7 @@ namespace eosio {
    {
       uint8_t b;
       eosio::raw::unpack( s, b );
-      assert( (b & ~1) == 0, "unpack bool" );
+      eos_assert( (b & ~1) == 0, "unpack bool" );
       v=(b!=0);
    }
   

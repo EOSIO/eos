@@ -61,8 +61,8 @@ extern "C" {
     * account_name code = current_receiver();
     * print(Name(code)); // Output: eos
     *
-    * assert(Name(current_receiver()) === "eos", "This action expects to be received by eos"); // Do nothing
-    * assert(Name(current_receiver()) === "inita", "This action expects to be received by inita"); // Throws exception and roll back transfer transaction
+    * eos_assert(Name(current_receiver()) === "eos", "This action expects to be received by eos"); // Do nothing
+    * eos_assert(Name(current_receiver()) === "inita", "This action expects to be received by inita"); // Throws exception and roll back transfer transaction
     *
     * print(now()); // Output: timestamp of last accepted block
     *

@@ -44,7 +44,7 @@ namespace eosio {
              template<typename DataStream>
              friend DataStream& operator >> ( DataStream& ds, transfer& t ){
                 ds >> t.from >> t.to >> t.quantity;
-                assert( t.quantity.symbol== token_type::symbol, "unexpected asset type" );
+                eos_assert( t.quantity.symbol== token_type::symbol, "unexpected asset type" );
                 return ds;
              }
           };
@@ -223,7 +223,7 @@ class relay_contract {
             save_and_send( trans.from, state, output, args.min_return );
          } 
          else {
-            assert( false, "invalid to currency" );
+            eos_assert( false, "invalid to currency" );
          }
       }
 
@@ -259,7 +259,7 @@ class relay_contract {
       template<typename CurrencyType>
       static void start_convert( const CurrencyType::transfer& trans ) {
          auto args = unpack<relay_args>( trans.memo );
-         assert( args.to_currency_type != trans.quantity.token_type(), "cannot convert to self" );
+         eos_assert( args.to_currency_type != trans.quantity.token_type(), "cannot convert to self" );
 
          auto state = read_relay_state();
          on_convert( trans, args, state );
@@ -289,14 +289,14 @@ class relay_contract {
          if( trans.to == RelayAccount ) {
             start_convert( trans );
          } else {
-            assert( trans.from == RelayAccount, 
+            eos_assert( trans.from == RelayAccount, 
                     "received unexpected notification of transfer" );
          }
       }
 
       static void apply( account_name code, action_name action ) {
          if( !dispatch<Currency, transfer_memo, issue>( code, action ) )
-            assert( false, "received unexpected action" );
+            eos_assert( false, "received unexpected action" );
       }
 };
 

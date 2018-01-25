@@ -39,7 +39,7 @@ namespace eosio {
    T current_action() {
       T value;
       auto read = read_action( &value, sizeof(value) );
-      assert( read >= sizeof(value), "action shorter than expected" );
+      eos_assert( read >= sizeof(value), "action shorter than expected" );
       return value;
    }
 

@@ -102,7 +102,7 @@ namespace eosio {
         }
 
         explicit operator uint64_t()const {
-           assert( !(value >> 64), "cast to 64 bit loss of precision" );
+           eos_assert( !(value >> 64), "cast to 64 bit loss of precision" );
            return uint64_t(value);
         }
 
