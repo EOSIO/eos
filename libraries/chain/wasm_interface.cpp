@@ -638,6 +638,20 @@ class context_aware_api {
       apply_context&     context;
 };
 
+class chain_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void get_active_producers(account_name* data, uint32_t len) {
+         const auto& gpo = context.controller.get_global_properties();
+         for (int i=0; i < gpo.active_producers.producers.size(); i++) {
+            if (i > len)
+               return;
+            data[i] = gpo.active_producers.producers[i].producer_name;
+         }
+      }
+};
+
 class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -943,6 +957,9 @@ REGISTER_INTRINSICS(memory_api,
    (sbrk,                   int(int)             )
 );
 
+REGISTER_INTRINSICS(chain_api,
+   (get_active_producers,     void(int, int32_t)  )
+);
 
 #define DB_METHOD_SEQ(SUFFIX) \
    (store,        int32_t(int64_t, int64_t, int, int),            "store_"#SUFFIX )\

@@ -11,6 +11,8 @@ namespace eosio {
    template<typename T>
    class vector {
       public:
+         typedef uint32_t size_type;
+
          vector(){}
 
          vector( size_t s, const T& value ) {
@@ -135,6 +137,10 @@ namespace eosio {
                _data = new_data;
                _capacity = new_capacity;
             }
+         }
+
+         void clear() {
+            resize(0);
          }
 
       private:

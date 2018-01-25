@@ -1,9 +1,14 @@
+#pragma once
+
+#include <eoslib/chain.h>
+#include <eoslib/dispatcher.hpp>
+#include <eoslib/table.hpp>
 #include <eoslib/vector.hpp>
 
 namespace identity {
-
    using eosio::vector;
-
+   using eosio::string;
+   using eosio::action_meta;
 
    /**
     *  This contract maintains a graph database of certified statements about an
@@ -47,6 +52,7 @@ namespace identity {
       public:
          
          static const uint64_t code = DeployToAccount;
+         typedef uint64_t identity_name;
          typedef uint64_t property_name;
          typedef uint64_t property_type_name;
 
@@ -56,8 +62,7 @@ namespace identity {
             unique     = N(unique),
             firstname  = N(firstname),
             lastname   = N(lastname),
-            midname    = N(midname),
-            unique     = N(unique)
+            midname    = N(midname)
          };
 
 
@@ -84,16 +89,33 @@ namespace identity {
          {
             account_name creator;
             uint64_t     identity = 0; ///< first 32 bits determinsitically derived from creator and tapos
+
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const create& c ){
+               return ds << c.creator << c.identity;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, create& c ){
+               return ds >> c.creator >> c.identity;
+            }
          };
 
 
          struct certvalue {
             property_name property; ///< name of property, base32 encoded i64
-            type_name     type; ///< defines type serialized in data
+            string     type; ///< defines type serialized in data
             vector<char>  data; ///< 
             string        memo; ///< meta data documenting basis of certification
             uint8_t       confidence = 1; ///< used to define liability for lies, 
                                           /// 0 to delete
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const certvalue& c ){
+               return ds << c.property << c.type << c.data << c.memo << c.confidence;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, certvalue& c ){
+               return ds >> c.property >> c.type >> c.data >> c.memo >> c.confidence;
+            }
          };
 
          struct certprop : public action_meta< code, N(certprop) > 
@@ -102,6 +124,15 @@ namespace identity {
             account_name        certifier; 
             identity_name       identity;
             vector<certvalue>   values;
+
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const certprop& c ){
+               return ds << c.bill_storage_to << c.certifier << c.identity << c.values;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, certprop& c ){
+               return ds >> c.bill_storage_to >> c.certifier >> c.identity >> c.values;
+            }
          };
 
          struct settrust : public action_meta< code, N(settrust) > 
@@ -109,6 +140,15 @@ namespace identity {
             account_name trustor; ///< the account authorizing the trust
             account_name trusting; ///< the account receiving the trust
             uint8_t      trust = 0; /// 0 to remove, -1 to mark untrusted, 1 to mark trusted
+
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const settrust& c ){
+               return ds << c.trustor << c.trusting << c.trust;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, settrust& c ){
+               return ds >> c.trustor >> c.trusting >> c.trust;
+            }
          };
 
          /**
@@ -119,23 +159,50 @@ namespace identity {
             uint64_t            trusted;
             account_name        certifier;
             uint64_t            confidence = 0;
-            type_name           type;
+            string              type;
             vector<char>        data;
+
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const certrow& r ){
+               return ds << r.property << r.trusted << r.certifier << r.confidence << r.type << r.data;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, certrow& r ){
+               return ds >> r.property >> r.trusted >> r.certifier >> r.confidence >> r.type >> r.data;
+            }
          };
 
          struct identrow {
             uint64_t     identity; 
             account_name creator;
+
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const identrow& r ){
+               return ds << r.identity << r.creator;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, identrow& r ){
+               return ds >> r.identity >> r.creator;
+            }
          };
 
          struct trustrow {
             account_name account;
             uint8_t      trusted;
+
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const trustrow& r ){
+               return ds << r.account << r.trusted;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, trustrow& r ){
+               return ds >> r.account >> r.trusted;
+            }
          };
 
          typedef table_i64i64i64<code, N(certs), certrow>  certs_table;
-         typedef table_i64<code, N(ident), identrow>       idents_table;
-         typedef table_i64<code, N(trust), trustrow>       trust_table;
+         typedef table64<code, N(ident), identrow>         idents_table;
+         typedef table64<code, N(trust), trustrow>         trust_table;
 
          static account_name get_owner_for_identity( identity_name ident ) {
              // for each trusted owner certification 
@@ -170,16 +237,16 @@ namespace identity {
 
          static void on( const settrust& t ) {
             require_auth( t.trustor );
-            require_notice( t.trusting );
+            require_recipient( t.trusting );
 
             if( t.trust != 0 ) {
-               trustrow  row{ .account = t.trusting;
-                              .trusted = t.trust; }
+               trustrow  row{ .account = t.trusting,
+                              .trusted = t.trust };
                trust_table::set( row, t.trustor );
             } else {
-               trustrow  row{ .account = t.trusting;
-                              .trusted = t.trust; }
-               trust_table::remove( row, t.trustor );
+               trustrow  row{ .account = t.trusting,
+                              .trusted = t.trust };
+               trust_table::remove( row.account, t.trustor );
             }
          }
 
@@ -193,7 +260,7 @@ namespace identity {
          static void on( const certprop& cert ) {
             require_auth( cert.certifier );
             if( cert.bill_storage_to != cert.certifier )
-               require_auth( bill_storage_to );
+               require_auth( cert.bill_storage_to );
 
             assert( !idents_table::exists( cert.identity ), "identity does not exist" );
 

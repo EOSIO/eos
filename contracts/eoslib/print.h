@@ -4,6 +4,8 @@
  */
 #pragma once
 
+#include "types.h"
+
 extern "C" {
    /**
     *  @defgroup consoleapi Console API

@@ -1,4 +1,9 @@
 #pragma once
+#include <eoslib/datastream.hpp>
+#include <eoslib/db.hpp>
+#include <eoslib/raw.hpp>
+#include <eoslib/system.h>
+#include <eoslib/types.hpp>
 
 namespace eosio {
 
@@ -53,6 +58,10 @@ namespace eosio {
             ds << value;
             
             store_i64( scope, TableName, buf, ds.tellp() );
+         }
+
+         static void remove(uint64_t key, scope_name scope = DefaultScope) {
+            remove_i64(scope, TableName, &key);
          }
    };
 

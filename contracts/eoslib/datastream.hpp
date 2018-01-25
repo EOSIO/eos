@@ -5,6 +5,7 @@
 #pragma once
 #include <eoslib/system.h>
 #include <eoslib/memory.h>
+#include <eoslib/vector.hpp>
 
 namespace eosio {
 /**
@@ -378,6 +379,39 @@ template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
+}
+
+/**
+ *  Serialize a vector into a stream
+ *  @brief Serialize a vector
+ *  @param ds stream to write
+ *  @param d value to serialize
+ */
+template<typename Stream, typename T>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const eosio::vector<T>& v) {
+   ds << size_t(v.size());
+   for (auto& x : v) {
+      ds << x;
+   }
+  return ds;
+}
+
+/**
+ *  Deserialize a vector from a stream
+ *  @brief Deserialize a vector
+ *  @param ds stream to read
+ *  @param d destination for deserialized value
+ */
+template<typename Stream, typename T>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, eosio::vector<T>& v) {
+   v.clear();
+   size_t n;
+   ds >> n;
+   v.resize(n); //works only for default-constructible T
+   for (size_t i = 0; i < n; ++i) {
+      ds >> v[i];
+   }
+   return ds;
 }
 
 }
