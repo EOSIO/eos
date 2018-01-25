@@ -1,4 +1,4 @@
-set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts/stl ${CMAKE_SOURCE_DIR}/contracts/include)
+set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts/stl ${CMAKE_SOURCE_DIR}/contracts/musl/include)
 
 add_subdirectory(eoslib)
 
