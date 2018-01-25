@@ -9,7 +9,7 @@ namespace client {
 class Remote
 {
 public:
-    virtual ~Remote(){}
+    virtual ~Remote() = default;
 
     std::string host() const;
     void set_host(const std::string& host);
@@ -17,6 +17,8 @@ public:
     void set_port(uint32_t port);
 
 protected:
+    Remote() = default;
+
     fc::variant call(const std::string &path, const fc::variant &postdata = fc::variant()) const;
 
     template<typename T>

@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 14)
 add_executable(eosioclient_test
     test.cpp
     wallet_test.cpp
-    remote_test.cpp
     peer_test.cpp
     )
 target_include_directories(eosioclient_test PRIVATE ${Boost_INCLUDE_DIRS})
