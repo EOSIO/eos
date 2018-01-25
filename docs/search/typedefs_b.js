@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['secondary',['Secondary',['../struct_table.html#ac9482de8700db8cd12531397a43066a3',1,'Table']]],
-  ['storagetokens',['StorageTokens',['../group__storageapi.html#gabbe71e05a36e97f4844809600c08f432',1,'TOKEN_NAME']]]
+  ['quote_5ftoken_5ftype',['quote_token_type',['../structeosio_1_1price.html#aef7d0e4f45187d59ebc40b0d91a1d358',1,'eosio::price']]]
 ];
