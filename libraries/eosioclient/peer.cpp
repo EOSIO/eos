@@ -36,12 +36,12 @@ fc::variant Peer::push_JSON_transaction(const fc::variant &transaction) const
     return call(push_txn_func, transaction);
 }
 
-fc::variant Peer::connect(const std::string &host) const
+fc::variant Peer::connect_to(const std::string &host) const
 {
     return call(net_connect, host);
 }
 
-fc::variant Peer::disconnect(const std::string &host) const
+fc::variant Peer::disconnect_from(const std::string &host) const
 {
     return call(net_disconnect, host);
 }
