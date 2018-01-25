@@ -503,7 +503,9 @@ for p2p requests, and includes the wallet plugins.
 <a name="doxygen"></a>
 ## Doxygen documentation
 
-You can find more detailed API documentation in Doxygen reference: https://eosio.github.io/eos/
+You can find more detailed API documentation in the Doxygen reference.
+For the `master` branch: https://eosio.github.io/eos/
+For the public testnet branch: http://htmlpreview.github.io/?https://github.com/EOSIO/eos/blob/dawn-2.x/docs/index.html
 
 <a name="docker"></a>
 ## Running EOS in Docker
