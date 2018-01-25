@@ -1,4 +1,4 @@
-add_library(libeosioc
+add_library(eosioc
     functions.hpp
     remote.hpp
     remote.cpp
@@ -7,10 +7,10 @@ add_library(libeosioc
     peer.hpp
     peer.cpp
     )
-target_link_libraries(libeosioc fc eosio_chain)
-target_include_directories(libeosioc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(eosioc fc eosio_chain)
+target_include_directories(eosioc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(test)
 
-install(TARGETS libeosioc DESTINATION lib)
+install(TARGETS eosioc DESTINATION lib)
 install(FILES functions.hpp peer.hpp  wallet.hpp remote.hpp DESTINATION "include/eosio/eosioclient")

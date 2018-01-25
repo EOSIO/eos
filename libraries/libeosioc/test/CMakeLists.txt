@@ -7,6 +7,6 @@ add_executable(libeosioc_test
     )
 target_include_directories(libeosioc_test PRIVATE ${Boost_INCLUDE_DIRS})
 target_compile_definitions(libeosioc_test PRIVATE "BOOST_TEST_DYN_LINK=1")
-target_link_libraries(libeosioc_test ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} libeosioc)
+target_link_libraries(libeosioc_test ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} eosioc)
 
 add_test(libeosioc_test libeosioc_test)
