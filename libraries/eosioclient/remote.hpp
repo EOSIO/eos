@@ -9,6 +9,8 @@ namespace client {
 class Remote
 {
 public:
+    virtual ~Remote(){}
+
     std::string host() const;
     void set_host(const std::string& host);
     uint32_t port() const;
