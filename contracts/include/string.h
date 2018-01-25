@@ -1,99 +1,104 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
-#pragma once
+#ifndef	_STRING_H
+#define	_STRING_H
 
-#include <stdint.h>
-#include <wchar.h>
-
+#ifdef __cplusplus
 extern "C" {
- /**
-  * Copy a block of memory from source to destination.
-  * Source and destination blocks may not overlap.
-  * @brief Copy a block of memory from source to destination.
-  * @param destination  Pointer to the destination to copy to.
-  * @param source       Pointer to the source for copy from.
-  * @param num          Number of bytes to copy.
-  *
-  * @return the destination pointer
-  *
-  * Example:
-  * @code
-  * char dest[6] = { 0 };
-  * char source[6] = { 'H', 'e', 'l', 'l', 'o', '\0' };
-  * memcpy(dest, source, 6 * sizeof(char));
-  * prints(dest); // Output: Hello
-  * @endcode
-  */
-  void* memcpy( void* destination, const void* source, uint32_t num );
+#endif
 
- /**
-  * Copy a block of memory from source to destination.
-  * Source and destination blocks may overlap.
-  * @brief Copy a block of memory from source to destination.
-  * @param destination  Pointer to the destination to copy to.
-  * @param source       Pointer to the source for copy from.
-  * @param num          Number of bytes to copy.
-  *
-  * @return the destination pointer
-  *
-  * Example:
-  * @code
-  * char dest[6] = { 0 };
-  * char source[6] = { 'H', 'e', 'l', 'l', 'o', '\0' };
-  * memcpy(dest, source, 6 * sizeof(char));
-  * prints(dest); // Output: Hello
-  * @endcode
-  */
-  void* memmove( void* destination, const void* source, uint32_t num );
+#include <features.h>
 
-  /**
-   * Compare block of memory from source to destination.
-   * @brief Copy a block of memory from source to destination.
-   * @param ptr1       Pointer to first data to compare
-   * @param ptr2       Pointer to second data to compare
-   * @param num        Number of bytes to compare.
-   *
-   * @return the destination pointer
-   *
-   */
-   int32_t memcmp( void* ptr1, const void* ptr2, uint32_t num );
+#ifdef __cplusplus
+#define NULL 0L
+#else
+#define NULL ((void*)0)
+#endif
 
+#define __NEED_size_t
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+ || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+#define __NEED_locale_t
+#endif
 
-  /**
-   * Fill block of memory.
-   * @brief Fill a block of memory with the provided value.
-   * @param ptr    Pointer to memory to fill.
-   * @param value  Value to set (it is passed as an int but converted to unsigned char).
-   * @param num    Number of bytes to be set to the value.
-   *
-   * @return the destination pointer
-   *
-   * Example:
-   * @code
-   * char ptr[6] = { 'H', 'e', 'l', 'l', 'o', '\0' };
-   * memset(ptr, 'y', 6 * sizeof(char));
-   * prints(ptr); // Output: yyyyyy
-   * @endcode
-   */
-   void* memset( void* ptr, uint32_t value, uint32_t num );
+#include <bits/alltypes.h>
 
-   //Not implemented yet:
+void *memcpy (void *__restrict, const void *__restrict, size_t);
+void *memmove (void *, const void *, size_t);
+void *memset (void *, int, size_t);
+int memcmp (const void *, const void *, size_t);
+void *memchr (const void *, int, size_t);
 
-   char* strchr(const char *s, int c);
+char *strcpy (char *__restrict, const char *__restrict);
+char *strncpy (char *__restrict, const char *__restrict, size_t);
 
-   char* strrchr(const char *s, int c);
+char *strcat (char *__restrict, const char *__restrict);
+char *strncat (char *__restrict, const char *__restrict, size_t);
 
-   char* strpbrk(const char *s, const char *charset);
+int strcmp (const char *, const char *);
+int strncmp (const char *, const char *, size_t);
 
-   void* memchr(const void *s, int c, size_t n);
+int strcoll (const char *, const char *);
+size_t strxfrm (char *__restrict, const char *__restrict, size_t);
 
-   char* strstr(const char *haystack, const char *needle);
+char *strchr (const char *, int);
+char *strrchr (const char *, int);
 
-   size_t strlen(const char *s);
-   //char* strcasestr(const char *haystack, const char *needle);
+size_t strcspn (const char *, const char *);
+size_t strspn (const char *, const char *);
+char *strpbrk (const char *, const char *);
+char *strstr (const char *, const char *);
+char *strtok (char *__restrict, const char *__restrict);
 
-   //char* strnstr(const char *haystack, const char *needle, size_t len);
+size_t strlen (const char *);
+
+char *strerror (int);
+
+#if defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
+#include <strings.h>
+#endif
+
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+ || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+char *strtok_r (char *__restrict, const char *__restrict, char **__restrict);
+int strerror_r (int, char *, size_t);
+char *stpcpy(char *__restrict, const char *__restrict);
+char *stpncpy(char *__restrict, const char *__restrict, size_t);
+size_t strnlen (const char *, size_t);
+char *strdup (const char *);
+char *strndup (const char *, size_t);
+char *strsignal(int);
+char *strerror_l (int, locale_t);
+int strcoll_l (const char *, const char *, locale_t);
+size_t strxfrm_l (char *__restrict, const char *__restrict, size_t, locale_t);
+#endif
+
+#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+void *memccpy (void *__restrict, const void *__restrict, int, size_t);
+#endif
+
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+char *strsep(char **, const char *);
+size_t strlcat (char *, const char *, size_t);
+size_t strlcpy (char *, const char *, size_t);
+#endif
+
+#ifdef _GNU_SOURCE
+#define	strdupa(x)	strcpy(alloca(strlen(x)+1),x)
+int strverscmp (const char *, const char *);
+char *strchrnul(const char *, int);
+char *strcasestr(const char *, const char *);
+void *memmem(const void *, size_t, const void *, size_t);
+void *memrchr(const void *, int, size_t);
+void *mempcpy(void *, const void *, size_t);
+#ifndef __cplusplus
+char *basename();
+#endif
+#endif
+
+#ifdef __cplusplus
 }
+#endif
 
+#endif

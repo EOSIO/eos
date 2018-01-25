@@ -4,7 +4,11 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
+#include <stdint.h>
+
+#ifdef __cplusplus
 extern "C" {
+#endif
 
    /**
     * Allocate page(s) of memory to accommodate the
@@ -24,4 +28,6 @@ extern "C" {
     */
    void* sbrk( uint32_t num_bytes );
 
+#ifdef __cplusplus
 }
+#endif
