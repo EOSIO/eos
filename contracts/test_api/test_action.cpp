@@ -11,26 +11,26 @@ void test_action::read_action_normal() {
    char buffer[100];
    uint32_t total = 0;
 
-   assert( current_receiver() == N(testapi),  "current_receiver() == N(testapi)" );
+   eos_assert( current_receiver() == N(testapi),  "current_receiver() == N(testapi)" );
 
-   assert(action_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)");
+   eos_assert(action_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)");
 
    total = read_action(buffer, 30);
-   assert(total == sizeof(dummy_action) , "read_action(30)" );
+   eos_assert(total == sizeof(dummy_action) , "read_action(30)" );
 
    total = read_action(buffer, 100);
-   assert(total == sizeof(dummy_action) , "read_action(100)" );
+   eos_assert(total == sizeof(dummy_action) , "read_action(100)" );
 
    total = read_action(buffer, 5);
-   assert(total == 5 , "read_action(5)" );
+   eos_assert(total == 5 , "read_action(5)" );
 
    total = read_action(buffer, sizeof(dummy_action) );
-   assert(total == sizeof(dummy_action), "read_action(sizeof(dummy_action))" );
+   eos_assert(total == sizeof(dummy_action), "read_action(sizeof(dummy_action))" );
 
    dummy_action *dummy13 = reinterpret_cast<dummy_action *>(buffer);
-   assert(dummy13->a == DUMMY_MESSAGE_DEFAULT_A, "dummy13->a == DUMMY_MESSAGE_DEFAULT_A");
-   assert(dummy13->b == DUMMY_MESSAGE_DEFAULT_B, "dummy13->b == DUMMY_MESSAGE_DEFAULT_B");
-   assert(dummy13->c == DUMMY_MESSAGE_DEFAULT_C, "dummy13->c == DUMMY_MESSAGE_DEFAULT_C");
+   eos_assert(dummy13->a == DUMMY_MESSAGE_DEFAULT_A, "dummy13->a == DUMMY_MESSAGE_DEFAULT_A");
+   eos_assert(dummy13->b == DUMMY_MESSAGE_DEFAULT_B, "dummy13->b == DUMMY_MESSAGE_DEFAULT_B");
+   eos_assert(dummy13->c == DUMMY_MESSAGE_DEFAULT_C, "dummy13->c == DUMMY_MESSAGE_DEFAULT_C");
 
 }
 
@@ -61,11 +61,11 @@ void test_action::read_action_to_64k() {
 //}
 
 void test_action::assert_false() {
-   assert(false, "test_action::assert_false");
+   eos_assert(false, "test_action::assert_false");
 }
 
 void test_action::assert_true() {
-   assert(true, "test_action::assert_true");
+   eos_assert(true, "test_action::assert_true");
 }
 
 //unsigned int test_action::now() {
