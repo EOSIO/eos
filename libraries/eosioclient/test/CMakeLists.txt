@@ -1,7 +1,5 @@
 find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 
-set(CMAKE_CXX_STANDARD 14)
-
 add_executable(eosioclient_test
     test.cpp
     wallet_test.cpp
