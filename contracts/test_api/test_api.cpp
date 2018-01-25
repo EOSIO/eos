@@ -75,11 +75,11 @@ extern "C" {
       WASM_TEST_HANDLER(test_crypto, assert_sha256_true);
 
       //test transaction
-      WASM_TEST_HANDLER(test_transaction, send_message);
-      WASM_TEST_HANDLER(test_transaction, send_message_empty);
-      WASM_TEST_HANDLER(test_transaction, send_message_large);
-      WASM_TEST_HANDLER(test_transaction, send_message_recurse);
-      WASM_TEST_HANDLER(test_transaction, send_message_inline_fail);
+      WASM_TEST_HANDLER(test_transaction, send_action);
+      WASM_TEST_HANDLER(test_transaction, send_action_empty);
+      WASM_TEST_HANDLER(test_transaction, send_action_large);
+      WASM_TEST_HANDLER(test_transaction, send_action_recurse);
+      WASM_TEST_HANDLER(test_transaction, send_action_inline_fail);
       WASM_TEST_HANDLER(test_transaction, send_transaction);
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);

@@ -317,7 +317,6 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
          }
       );
 
-
    CALL_TEST_FUNCTION( *this, "test_action", "require_notice", raw_bytes );
    
    auto scope = std::vector<account_name>{N(testapi)};

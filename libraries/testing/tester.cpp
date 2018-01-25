@@ -174,6 +174,7 @@ namespace eosio { namespace testing {
 
          Module module;
          vector<Error> parse_errors;
+         // TODO const_strlen(wast) blows the stack frame on debug build
          parseModule(wast, fc::const_strlen(wast), module, parse_errors);
          if (!parse_errors.empty()) {
             fc::exception parse_exception(

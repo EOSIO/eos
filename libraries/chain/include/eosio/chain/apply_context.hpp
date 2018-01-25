@@ -7,6 +7,7 @@
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
+#include <iostream>
 
 namespace chainbase { class database; }
 
@@ -396,6 +397,7 @@ using apply_handler = std::function<void(apply_context&)>;
       const auto* obj = db.find<ObjectType, contracts::by_scope_primary>(tuple);
 
       if( obj ) {
+         auto prev_size = obj->value.size();
          mutable_db.modify( *obj, [&]( auto& o ) {
             o.value.assign(value, valuelen);
          });
@@ -469,10 +471,10 @@ using apply_handler = std::function<void(apply_context&)>;
 
       if( itr == idx.end() ||
           itr->t_id != t_id.id ||
-          !impl::record_scope_compare<IndexType, Scope>::compare(*itr, keys)) return -1;
+          !impl::record_scope_compare<IndexType, Scope>::compare(*itr, keys)) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
+      std::cout << "WHY!" << "\n";
       if (valuelen) {
          auto copylen = std::min<size_t>(itr->value.size(), valuelen);
          if (copylen) {
@@ -493,7 +495,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       auto itr = idx.lower_bound( tuple );
       if( itr == idx.end() ||
-         itr->t_id != t_id.id ) return -1;
+         itr->t_id != t_id.id ) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
@@ -517,11 +519,11 @@ using apply_handler = std::function<void(apply_context&)>;
       auto tuple = boost::make_tuple( next_tid );
       auto itr = idx.lower_bound(tuple);
 
-      if( std::distance(idx.begin(), itr) == 0 ) return -1;
+      if( std::distance(idx.begin(), itr) == 0 ) return 0;
 
       --itr;
 
-      if( itr->t_id != t_id.id ) return -1;
+      if( itr->t_id != t_id.id ) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
@@ -546,7 +548,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto pitr = pidx.find(tuple);
 
       if(pitr == pidx.end())
-        return -1;
+        return 0;
 
       const auto& fidx = db.get_index<IndexType>();
       auto itr = fidx.indicies().template project<Scope>(pitr);
@@ -556,14 +558,14 @@ using apply_handler = std::function<void(apply_context&)>;
       if( itr == idx.end() ||
           itr->t_id != t_id.id ||
           !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) {
-        return -1;
+        return 0;
       }
 
       ++itr;
 
       if( itr == idx.end() ||
           itr->t_id != t_id.id ) {
-        return -1;
+        return 0;
       }
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
@@ -589,7 +591,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto pitr = pidx.find(tuple);
 
       if(pitr == pidx.end())
-        return -1;
+        return 0;
 
       const auto& fidx = db.get_index<IndexType>();
       auto itr = fidx.indicies().template project<Scope>(pitr);
@@ -599,11 +601,11 @@ using apply_handler = std::function<void(apply_context&)>;
       if( itr == idx.end() ||
           itr == idx.begin() ||
           itr->t_id != t_id.id ||
-          !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) return -1;
+          !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) return 0;
 
       --itr;
 
-      if( itr->t_id != t_id.id ) return -1;
+      if( itr->t_id != t_id.id ) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
@@ -627,7 +629,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto itr = idx.lower_bound(tuple);
 
       if( itr == idx.end() ||
-          itr->t_id != t_id.id) return -1;
+          itr->t_id != t_id.id) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
@@ -651,7 +653,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto itr = idx.upper_bound(tuple);
 
       if( itr == idx.end() ||
-          itr->t_id != t_id.id ) return -1;
+          itr->t_id != t_id.id ) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 

@@ -751,12 +751,7 @@ class db_api : public context_aware_api {
 
          const char* record_data =  ((const char*)data) + sizeof(KeyArrayType);
          size_t record_len = data_len - sizeof(KeyArrayType);
-         size_t ret = (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
-         std::cout << "size " << ret << "\n";
-         std::cout << "key size " << sizeof(KeyArrayType) << "\n";
-         std::cout << "data size " << data_len << "\n";
-         std::cout << "record size " << record_len << "\n";
-         return ret;
+         return (context.*(method))(t_id, keys, record_data, record_len); 
       }
 
    public:
@@ -764,7 +759,6 @@ class db_api : public context_aware_api {
 
       int store(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
          auto res = call(&apply_context::store_record<ObjectType>, scope, table, data, data_len);
-         //ilog("STORE [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",context.receiver)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
          return res;
 
       }
@@ -795,7 +789,7 @@ class db_api<keystr_value_object> : public context_aware_api {
 
          const char* record_data =  ((const char*)data); // + sizeof(KeyArrayType);
          size_t record_len = data_len; // - sizeof(KeyArrayType);
-         return (context.*(method))(t_id, &keys, record_data, record_len); // + sizeof(KeyArrayType);
+         return (context.*(method))(t_id, &keys, record_data, record_len);
       }
 
    public:
@@ -841,7 +835,7 @@ class db_index_api : public context_aware_api {
       char* record_data =  ((char*)data) + sizeof(KeyArrayType);
       size_t record_len = data_len - sizeof(KeyArrayType);
 
-      return (context.*(method))(t_id, keys, record_data, record_len); // + sizeof(KeyArrayType);
+      return (context.*(method))(t_id, keys, record_data, record_len); 
    }
 
    public:
@@ -849,32 +843,38 @@ class db_index_api : public context_aware_api {
 
       int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
          auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
-         //ilog("LOAD [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",code)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
-         return res;
+         std::cout << "res " << res << "\n";
+         return (res == 0) ? 0 : res + sizeof(KeyArrayType);
       }
 
       int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::front_record<IndexType, Scope>, scope, code, table, data, data_len);
+         auto res = call(&apply_context::front_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return (res > 0) ? res + sizeof(KeyArrayType) : 0;
       }
 
       int back(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
+         auto res = call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return (res > 0) ? res + sizeof(KeyArrayType) : 0;
       }
 
       int next(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
+         auto res = call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return (res > 0) ? res + sizeof(KeyArrayType) : 0;
       }
 
       int previous(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
+         auto res = call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return (res > 0) ? res + sizeof(KeyArrayType) : 0;
       }
 
       int lower_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::lower_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         auto res = call(&apply_context::lower_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return (res > 0) ? res + sizeof(KeyArrayType) : 0;
       }
 
       int upper_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         auto res = call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return (res > 0) ? res + sizeof(KeyArrayType) : 0;
       }
 
 };
