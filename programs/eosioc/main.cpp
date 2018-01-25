@@ -820,14 +820,14 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
-      const auto& v = remote_peer.connect(new_host);
+      const auto& v = remote_peer.connect_to(new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
-      const auto& v = remote_peer.disconnect(new_host);
+      const auto& v = remote_peer.disconnect_from(new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
