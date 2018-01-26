@@ -59,15 +59,20 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
 endif()
 
 macro(compile_wast)
-  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS" ${ARGN})
+  cmake_parse_arguments(ARG "" "TARGET" "SOURCE_FILES;INCLUDE_FOLDERS" ${ARGN})
   set(target ${ARG_TARGET})
 
   # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
-  # linking ${target}.bc's rule 
-  set(SOURCE_FILES ${target}.cpp)
+  # linking ${target}.bc's rule
+  if ("${ARG_SOURCE_FILES}" STREQUAL "")
+    set(SOURCE_FILES ${target}.cpp)
+  else()
+    set(SOURCE_FILES ${ARG_SOURCE_FILES})
+  endif()
   foreach(srcfile ${SOURCE_FILES})
     
     get_filename_component(outfile ${srcfile} NAME)
+    get_filename_component(extension ${srcfile} EXT)
     get_filename_component(infile ${srcfile} ABSOLUTE)
 
     # -ffreestanding
@@ -90,8 +95,13 @@ macro(compile_wast)
 
     # -fno-exceptions
     #   Disable the generation of extra code needed to propagate exceptions
+    if ("${extension}" STREQUAL ".c")
+      set(STDFLAG -D_XOPEN_SOURCE=700)
+    else()
+      set(STDFLAG "--std=c++14")
+    endif()
 
-    set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding
+    set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 ${STDFLAG} --target=wasm32 -ffreestanding
               -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions
               -c ${infile} -o ${outfile}.bc
     )
@@ -118,10 +128,9 @@ macro(compile_wast)
 endmacro(compile_wast)
 
 macro(add_wast_library)
-  cmake_parse_arguments(ARG "" "TARGET" "INCLUDE_FOLDERS" ${ARGN})
+  cmake_parse_arguments(ARG "" "TARGET" "SOURCE_FILES;INCLUDE_FOLDERS" ${ARGN})
   set(target ${ARG_TARGET})
-  #compile_wast("${ARGS}")
-  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
+  compile_wast(TARGET ${ARG_TARGET} SOURCE_FILES ${ARG_SOURCE_FILES} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
 
   add_custom_target(${target} ALL DEPENDS ${ARG_TARGET}.bc)
   set("${ARG_TARGET}_BC_FILENAME" ${CMAKE_CURRENT_SOURCE_DIR}/${ARG_TARGET}.bc CACHE INTERNAL "${target} .bc file")
@@ -137,11 +146,11 @@ macro(add_wast_library)
 endmacro(add_wast_library)
 
 macro(add_wast_executable)
-  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "INCLUDE_FOLDERS;LIBRARIES;EXTERNAL_LIBRARIES" ${ARGN})
+  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;LIBRARIES;EXTERNAL_LIBRARIES" ${ARGN})
   set(target ${ARG_TARGET})
   set(DESTINATION_FOLDER ${ARG_DESTINATION_FOLDER})
 
-  compile_wast(TARGET ${ARG_TARGET} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
+  compile_wast(TARGET ${ARG_TARGET} SOURCE_FILES ${ARG_SOURCE_FILES} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
 
   foreach(lib ${ARG_LIBRARIES})
      list(APPEND LIBRARIES ${${lib}_BC_FILENAME})
