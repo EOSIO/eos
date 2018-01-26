@@ -6,9 +6,19 @@
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/types.hpp>
 #include <string>
+#include <functional>
 
 namespace eosio {
    namespace chain {
+
+      /**
+         class symbol represents a token and contains precision and name.
+         When encoded as a uint64_t, first byte represents the number of decimals, remaining bytes
+         represent token name.
+         Name must only include upper case alphabets.
+         from_string constructs a symbol from an input a string of the form "4,EOS"
+         where the integer represents number of decimals. Number of decimals must be larger than zero.
+       */
       
       static constexpr uint64_t string_to_symbol_c(uint8_t precision, const char* str) {
          uint32_t len = 0;
@@ -43,34 +53,28 @@ namespace eosio {
 
       class symbol {
          public:
-            symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) { }
-            symbol(uint64_t v = SY(4, EOS)): m_value(v) { }
+            explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) { }
+            explicit symbol(uint64_t v = SY(4, EOS)): m_value(v) { }
             static symbol from_string(const string& from)
             {
                try {
                   string s = fc::trim(from);
-                  if (s.empty()) {
-                     return SY(4, EOS);
-                  }
+                  FC_ASSERT(!s.empty(), "creating symbol from empty string");
                   auto comma_pos = s.find(',');
-                  if (comma_pos == string::npos) {
-                     return string_to_symbol(4, s.c_str());
-                  }
-                  if (comma_pos == 0) {
-                     return string_to_symbol(4, s.substr(1).c_str());
-                  }
+                  FC_ASSERT(comma_pos != string::npos, "missing comma in symbol");
                   auto prec_part = s.substr(0, comma_pos);
                   uint8_t p = fc::to_int64(prec_part);
+                  FC_ASSERT(p > 0, "zero decimals in symbol");
                   string name_part = s.substr(comma_pos + 1);
-                  return string_to_symbol(p, name_part.c_str());
+                  return symbol(string_to_symbol(p, name_part.c_str()));
                } FC_CAPTURE_LOG_AND_RETHROW((from))
             }
             uint64_t value() const { return m_value; }
-            operator uint64_t() const { return m_value; }
             bool valid() const
-            { 
+            {
+               if (decimals() == 0) return false;
                const auto& s = name();
-               return all_of(s.begin(), s.end(), [](char c)->bool { return (c >= 'A' && c <= 'Z'); });
+               return valid_name(s);
             }
             static bool valid_name(const string& name)
             {
@@ -113,7 +117,6 @@ namespace eosio {
             }
 
             string to_string() const { return string(*this); }
-
             template <typename DataStream>
             friend DataStream& operator<< (DataStream& ds, const symbol& s)
             {
@@ -128,6 +131,10 @@ namespace eosio {
       inline bool operator== (const symbol& lhs, const symbol& rhs)
       {
          return lhs.value() == rhs.value();
+      }
+      inline bool operator!= (const symbol& lhs, const symbol& rhs)
+      {
+         return lhs.value() != rhs.value();
       }
       inline bool operator< (const symbol& lhs, const symbol& rhs)
       {

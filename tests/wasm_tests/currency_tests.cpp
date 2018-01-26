@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
 
    {
       symbol eos(4, "EOS");
-      BOOST_REQUIRE_EQUAL(EOS_SYMBOL, eos.value());
+      BOOST_REQUIRE_EQUAL(EOS_SYMBOL_VALUE, eos.value());
       BOOST_REQUIRE_EQUAL("4,EOS", eos.to_string());
       BOOST_REQUIRE_EQUAL("EOS", eos.name());
       BOOST_REQUIRE_EQUAL(4, eos.decimals());
@@ -204,25 +204,24 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
       BOOST_REQUIRE_EQUAL("YEN", y.name());
    }
 
-   // from empty string - default
+   // from empty string
    {
-      symbol empty = symbol::from_string("");
-      BOOST_REQUIRE_EQUAL(4, empty.decimals());
-      BOOST_REQUIRE_EQUAL("EOS", empty.name());
+      BOOST_CHECK_EXCEPTION(symbol empty = symbol::from_string(""),
+                            fc::assert_exception, assert_message_is("creating symbol from empty string"));
    }
 
-   // precision part missing - default is 4
+   
+   // precision part missing
    {
-      symbol incomplete = symbol::from_string("RND");
-      BOOST_REQUIRE_EQUAL(4, incomplete.decimals());
-      BOOST_REQUIRE_EQUAL("RND", incomplete.name());
+      BOOST_CHECK_EXCEPTION(symbol incomplete = symbol::from_string("RND"),
+                            fc::assert_exception, assert_message_is("missing comma in symbol"));
    }
 
-   // precision part missing - default is 4
+
+   // precision part missing
    {
-      symbol incomplete = symbol::from_string(",EURO");
-      BOOST_REQUIRE_EQUAL(4, incomplete.decimals());
-      BOOST_REQUIRE_EQUAL("EURO", incomplete.name());
+      BOOST_CHECK_EXCEPTION(symbol incomplete = symbol::from_string("0,EURO"),
+                            fc::assert_exception, assert_message_is("zero decimals in symbol"));
    }
 
    // invalid - contains lower case characters, no validation
@@ -235,7 +234,14 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
 
    // invalid - contains lower case characters, exception thrown 
    {
-      BOOST_CHECK_EXCEPTION(symbol(5,"EoS"), fc::assert_exception, assert_message_is("invalid character in symbol name"));
+      BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
+                            fc::assert_exception, assert_message_is("invalid character in symbol name"));
+   }
+
+   // invalid - missing decimal point
+   {
+      BOOST_CHECK_EXCEPTION(asset a = asset::from_string("10 CUR"),
+                            fc::assert_exception, assert_message_is("dot missing in asset from string"));
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol

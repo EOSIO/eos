@@ -8,18 +8,27 @@
 #include <eosio/chain/symbol.hpp>
 
 /// eos with 8 digits of precision
-#define EOS_SYMBOL  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
+#define EOS_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
+static const eosio::chain::symbol EOS_SYMBOL(EOS_SYMBOL_VALUE);
 
 /// Defined to be largest power of 10 that fits in 53 bits of precision
 #define EOS_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
 
 namespace eosio { namespace chain {
 
-      //using asset_symbol = uint64_t;
+/**
+
+asset includes amount and currency symbol
+
+asset::from_string takes a string of the form "10.0000 CUR" and constructs an asset 
+with amount = 10 and symbol(4,"CUR")
+
+*/
+
 
 struct asset
 {
-   asset(share_type a = 0, symbol id = EOS_SYMBOL)
+   explicit asset(share_type a = 0, symbol id = EOS_SYMBOL)
       :amount(a), sym(id){}
 
    share_type amount;
@@ -30,7 +39,6 @@ struct asset
    uint8_t     decimals()const;
    string      symbol_name()const;
    int64_t     precision()const;
-//   void        set_decimals(uint8_t d);
    const symbol& symbol() const { return sym; }
 
    static asset from_string(const string& from);
