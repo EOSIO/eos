@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/action.h>
-#include <eoslib/chain.h>
+#include <eosiolib/action.h>
+#include <eosiolib/chain.h>
 
 #include "test_api.hpp"
 

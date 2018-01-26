@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eoslib/eos.hpp>
+#include <eosiolib/eos.hpp>
 
 namespace asserter {
    struct PACKED(assertdef) {

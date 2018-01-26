@@ -35,7 +35,7 @@
  *  contract.  Users can only deposit or withdraw to their own currency account.
  */
 #include <exchange/exchange.hpp> /// defines transfer struct
-#include <eoslib/print.hpp>
+#include <eosiolib/print.hpp>
 
 using namespace exchange;
 using namespace eosio;

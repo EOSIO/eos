@@ -1,8 +1,8 @@
-#include <eoslib/types.hpp>
-#include <eoslib/action.hpp>
-#include <eoslib/db.h>
-#include <eoslib/db.hpp>
-#include <eoslib/memory.hpp>
+#include <eosiolib/types.hpp>
+#include <eosiolib/action.hpp>
+#include <eosiolib/db.h>
+#include <eosiolib/db.hpp>
+#include <eosiolib/memory.hpp>
 #include "test_api.hpp"
 
 int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};

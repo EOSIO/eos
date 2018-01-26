@@ -1,6 +1,6 @@
-#include <eoslib/types.hpp>
-#include <eoslib/action.hpp>
-#include <eoslib/math.hpp>
+#include <eosiolib/types.hpp>
+#include <eosiolib/action.hpp>
+#include <eosiolib/math.hpp>
 
 #include "test_api.hpp"
 

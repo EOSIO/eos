@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/template_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/template_plugin/*.hpp")
 add_library( template_plugin
              template_plugin.cpp
              ${HEADERS} )
@@ -13,4 +13,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/eos/template_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/eosio/template_plugin" )
