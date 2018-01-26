@@ -5,9 +5,9 @@
 #include "simpledb.hpp"
 #include "simpledb.gen.hpp"
 
-#include <eoslib/db.hpp>
-#include <eoslib/types.hpp>
-#include <eoslib/raw.hpp>
+#include <eosiolib/db.hpp>
+#include <eosiolib/types.hpp>
+#include <eosiolib/raw.hpp>
 
 extern "C" {
    void init()  {

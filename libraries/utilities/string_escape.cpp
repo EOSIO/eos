@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eos/utilities/string_escape.hpp>
+#include <eosio/utilities/string_escape.hpp>
 #include <sstream>
 
 namespace eosio { namespace utilities {

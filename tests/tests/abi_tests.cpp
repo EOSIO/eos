@@ -388,10 +388,10 @@ BOOST_AUTO_TEST_CASE(generator)
 
   auto generate_abi = [this](const char* source, const char* abi, bool opt_sfs=false) -> bool {
 
-    const char* eoslib_path = std::getenv("EOSLIB");
-    FC_ASSERT(eoslib_path != NULL);
+    const char* eosiolib_path = std::getenv("EOSLIB");
+    FC_ASSERT(eosiolib_path != NULL);
 
-    std::string include_param = std::string("-I") + eoslib_path;
+    std::string include_param = std::string("-I") + eosiolib_path;
 
     abi_def output;
     bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
@@ -413,7 +413,7 @@ BOOST_AUTO_TEST_CASE(generator)
   };
 
    const char* unknown_type = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
    //@abi action
    struct transfer {
       uint64_t param1;
@@ -424,8 +424,8 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* all_types = R"=====(
-    #include <eoslib/types.hpp>
-    #include <eoslib/string.hpp>
+    #include <eosiolib/types.hpp>
+    #include <eosiolib/string.hpp>
 
     typedef int field;
     typedef int struct_def;
@@ -639,7 +639,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
 
    const char* double_base = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    struct A {
       uint64_t param3;
@@ -657,7 +657,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* double_action = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    struct A {
       uint64_t param3;
@@ -712,8 +712,8 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(double_action, double_action_abi) == true );
 
    const char* all_indexes = R"=====(
-   #include <eoslib/types.hpp>
-   #include <eoslib/string.hpp>
+   #include <eosiolib/types.hpp>
+   #include <eosiolib/string.hpp>
 
    using namespace eosio;
 
@@ -859,7 +859,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(all_indexes, all_indexes_abi) == true );
 
    const char* unable_to_determine_index = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table
    struct PACKED(table1) {
@@ -875,7 +875,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
   // typedef fixed_string16 FieldName;
    const char* long_field_name = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table
    struct PACKED(table1) {
@@ -887,7 +887,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* long_type_name = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    struct this_is_a_very_very_very_very_long_type_name {
       uint64_t field;
@@ -904,7 +904,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_type_different_namespace = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    namespace A {
      //@abi table
@@ -925,7 +925,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* bad_index_type = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table i64
    struct table1 {
@@ -939,7 +939,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* full_table_decl = R"=====(
-   #include <eoslib/types.hpp>
+   #include <eosiolib/types.hpp>
 
    //@abi table i64
    class table1 {
@@ -987,8 +987,8 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(full_table_decl, full_table_decl_abi) == true );
 
    const char* str_table_decl = R"=====(
-   #include <eoslib/types.hpp>
-   #include <eoslib/string.hpp>
+   #include <eosiolib/types.hpp>
+   #include <eosiolib/string.hpp>
 
    //@abi table
    class table1 {
@@ -1033,7 +1033,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(str_table_decl, str_table_decl_abi) == true );
 
    const char* union_table = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table
    union table1 {
@@ -1046,7 +1046,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_action_different_type = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi action action1
    struct table1 {
@@ -1063,7 +1063,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* template_base = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    template<typename T>
    class base {
@@ -1117,7 +1117,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(template_base, template_base_abi) == true );
 
    const char* action_and_table = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
   /* @abi table
    * @abi action
@@ -1162,7 +1162,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(action_and_table, action_and_table_abi) == true );
 
    const char* simple_typedef = R"=====(
-   #include <eoslib/types.hpp>
+   #include <eosiolib/types.hpp>
 
    using namespace eosio;
 
@@ -1219,7 +1219,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(simple_typedef, simple_typedef_abi) == true );
 
    const char* field_typedef = R"=====(
-   #include <eoslib/types.hpp>
+   #include <eosiolib/types.hpp>
 
    using namespace eosio;
 

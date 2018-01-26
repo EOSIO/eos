@@ -4,14 +4,14 @@
  */
 #include <eosio/chain/types.hpp>
 
-#include <eos/net_plugin/net_plugin.hpp>
-#include <eos/net_plugin/protocol.hpp>
-#include <eos/net_plugin/message_buffer.hpp>
+#include <eosio/net_plugin/net_plugin.hpp>
+#include <eosio/net_plugin/protocol.hpp>
+#include <eosio/net_plugin/message_buffer.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/contracts/types.hpp>
 
 #include <fc/network/ip.hpp>

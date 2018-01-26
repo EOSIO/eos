@@ -2,14 +2,14 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
-#include <eoslib/token.hpp>
-#include <eoslib/db.hpp>
-#include <eoslib/reflect.hpp>
+#include <eosiolib/eos.hpp>
+#include <eosiolib/token.hpp>
+#include <eosiolib/db.hpp>
+#include <eosiolib/reflect.hpp>
 
-#include <eoslib/generic_currency.hpp>
-#include <eoslib/datastream.hpp>
-#include <eoslib/serialize.hpp>
+#include <eosiolib/generic_currency.hpp>
+#include <eosiolib/datastream.hpp>
+#include <eosiolib/serialize.hpp>
 
 namespace eosiosystem {
 

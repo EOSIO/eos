@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
-#include <eoslib/string.hpp>
+#include <eosiolib/eos.hpp>
+#include <eosiolib/string.hpp>
 
 /* @abi action insert1
  * @abi table

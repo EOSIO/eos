@@ -6,7 +6,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eos/net_plugin/net_plugin.hpp>
+#include <eosio/net_plugin/net_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
