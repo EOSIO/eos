@@ -8,7 +8,7 @@
 #include <eoslib/print.hpp>
 #include <eoslib/string.hpp>
 #include <eoslib/types.hpp>
-#include <eoslib/raw.hpp>
+#include <eoslib/serialize.hpp>
 
 namespace eosio {
 
@@ -30,7 +30,7 @@ namespace eosio {
       {}
 
       void send(uint32_t sender_id, time delay_until = 0) const {
-         auto serialize = raw::pack(*this);
+         auto serialize = pack(*this);
          send_deferred(sender_id, delay_until, serialize.data(), serialize.size());
       }
 
@@ -41,20 +41,7 @@ namespace eosio {
 
       vector<action>  actions;
 
-      template<typename DataStream>
-      friend DataStream& operator << ( DataStream& ds, const transaction& t ){
-         ds << t.expiration << t.region << t.ref_block_num << t.ref_block_id;
-         raw::pack(ds, t.actions);
-         return ds;
-      }
-
-      template<typename DataStream>
-      friend DataStream& operator >> ( DataStream& ds,  transaction& t ){
-         ds >> t.expiration >> t.region >> t.ref_block_num >> t.ref_block_id;
-         raw::unpack(ds, t.actions);
-         return ds;
-      }
-
+      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_id)(actions) );
    };
 
    class deferred_transaction : public transaction {
@@ -67,22 +54,10 @@ namespace eosio {
             return unpack_action<deferred_transaction>();
          }
 
-         template<typename DataStream>
-         friend DataStream& operator >> ( DataStream& ds,  deferred_transaction& t ){
-            return ds >> *static_cast<transaction *>(&t) >> t.sender_id >> t.sender >> t.delay_until;
-         }
-
-      private:
-         deferred_transaction()
-         {}
-
-         friend deferred_transaction eosio::raw::unpack<deferred_transaction>( const char*, uint32_t );
-
+         EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(delay_until) )
    };
 
  ///@} transactioncpp api
 
 } // namespace eos
 
-EOSLIB_REFLECT( eosio::transaction, (expiration)(region)(ref_block_num)(ref_block_id) )
-EOSLIB_REFLECT_DERIVED( eosio::deferred_transaction, (eosio::transaction), (sender_id)(sender)(delay_until))

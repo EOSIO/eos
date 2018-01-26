@@ -5,6 +5,9 @@
 #pragma once
 #include <eoslib/system.h>
 #include <eoslib/memory.h>
+#include <eoslib/vector.hpp>
+#include <eoslib/varint.hpp>
+
 
 namespace eosio {
 /**
@@ -380,4 +383,50 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
   return ds;
 }
 
+template<typename DataStream, typename T>
+DataStream& operator << ( DataStream& ds, const vector<T>& v ) {
+   ds << unsigned_int( v.size() );
+   for( const auto& i : v )
+      ds << i;
+   return ds;
 }
+
+template<typename DataStream, typename T>
+DataStream& operator >> ( DataStream& ds, vector<T>& v ) {
+   unsigned_int s;
+   ds >> s;
+   v.resize(s.value);
+   for( auto& i : v )
+      ds >> i;
+   return ds;
+}
+
+template<typename T>
+T unpack( const char* buffer, size_t len ) {
+   T result;
+   datastream<const char*> ds(buffer,len);
+   ds >> result;
+   return result;
+}
+
+template<typename T>
+size_t pack_size( const T& value ) {
+  datastream<size_t> ps; 
+  ps << value;
+  return ps.tellp();
+}
+
+template<typename T>
+bytes pack( const T& value ) {
+  bytes result;
+  result.resize(pack_size(value));
+
+  datastream<char*> ds( result.data(), result.size() );
+  ds << value;
+  return result;
+}
+
+}
+
+
+

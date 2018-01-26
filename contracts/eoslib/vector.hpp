@@ -137,10 +137,13 @@ namespace eosio {
             }
          }
 
+
       private:
          T*       _data     = nullptr;
          uint32_t _size     = 0;
          uint32_t _capacity = 0;
    }; /// class vector
+
+   typedef eosio::vector<char> bytes;
 
 }  /// namespace eosio

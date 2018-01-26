@@ -45,7 +45,7 @@ namespace eosio {
          }
 
          static void set( const T& value = T(), scope_name scope = DefaultScope ) {
-            auto size = raw::pack_size( value );
+            auto size = pack_size( value );
             char buf[size];
             assert( size <= 1024, "singleton too big to store" );
 
