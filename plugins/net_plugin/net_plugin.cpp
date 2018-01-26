@@ -555,7 +555,6 @@ namespace eosio {
         sync_receiving(),
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
-        send_buffer(send_buf_size),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -580,7 +579,6 @@ namespace eosio {
         sync_receiving(),
         sync_requested(),
         socket( s ),
-        send_buffer(send_buf_size),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -1472,8 +1470,38 @@ namespace eosio {
       }
    }
 
+   bool net_plugin_impl::is_valid( const handshake_message &msg) {
+      // Do some basic validation of an incoming handshake_message, so things
+      // that really aren't handshake messages can be quickly discarded without
+      // affecting state.
+      bool valid = true;
+      if (msg.last_irreversible_block_num > msg.head_num) {
+         wlog("Handshake message validation: last irreversible block (${i}) is greater than head block (${h})",
+              ("i", msg.last_irreversible_block_num)("h", msg.head_num));
+         valid = false;
+      }
+      if (msg.p2p_address == "") {
+         wlog("Handshake message validation: p2p_address is null string");
+         valid = false;
+      }
+      if (msg.os == "") {
+         wlog("Handshake message validation: os field is null string");
+         valid = false;
+      }
+      if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
+         wlog("Handshake message validation: token field invalid");
+         valid = false;
+      }
+      return valid;
+   }
+
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
       ilog("got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+      if (!is_valid(msg)) {
+         elog( "Invalid handshake message received from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+         c->enqueue( go_away_message( fatal_other ));
+         return;
+      }
       chain_controller& cc = chain_plug->chain();
       uint32_t lib_num = cc.last_irreversible_block_num( );
       uint32_t peer_lib = msg.last_irreversible_block_num;
