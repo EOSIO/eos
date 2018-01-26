@@ -28,8 +28,6 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
-#include <iostream>
-
 
 using namespace IR;
 using namespace Runtime;

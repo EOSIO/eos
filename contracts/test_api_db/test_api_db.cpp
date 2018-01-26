@@ -18,15 +18,14 @@ extern "C" {
       //test db
       WASM_TEST_HANDLER(test_db, key_i64_general);
       WASM_TEST_HANDLER(test_db, key_i64_remove_all);
-#if 0
       WASM_TEST_HANDLER(test_db, key_i64_small_load);
       WASM_TEST_HANDLER(test_db, key_i64_small_store);
       WASM_TEST_HANDLER(test_db, key_i64_store_scope);
       WASM_TEST_HANDLER(test_db, key_i64_remove_scope);
       WASM_TEST_HANDLER(test_db, key_i64_not_found);
       WASM_TEST_HANDLER(test_db, key_i64_front_back);
-      WASM_TEST_HANDLER(test_db, key_i64i64i64_general);
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
+#if 0
       WASM_TEST_HANDLER(test_db, key_str_general);
       WASM_TEST_HANDLER(test_db, key_str_table);
       WASM_TEST_HANDLER(test_db, key_str_setup_limit);
@@ -49,6 +48,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64i64i64_under_limit);
       WASM_TEST_HANDLER(test_db, key_i64i64i64_available_space_exceed_limit);
       WASM_TEST_HANDLER(test_db, key_i64i64i64_another_under_limit);
+      WASM_TEST_HANDLER(test_db, key_i64i64i64_general);
 #endif
 
       //unhandled test call
