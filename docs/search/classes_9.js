@@ -1,4 +1,6 @@
 var searchData=
 [
-  ['link',['link',['../struct_t_o_k_e_n___n_a_m_e_1_1link.html',1,'TOKEN_NAME']]]
+  ['memory_5fmanager',['memory_manager',['../classeosio_1_1memory__manager.html',1,'eosio']]],
+  ['move',['move',['../structtic__tac__toe_1_1move.html',1,'tic_tac_toe']]],
+  ['movement',['movement',['../structtic__tac__toe_1_1movement.html',1,'tic_tac_toe']]]
 ];

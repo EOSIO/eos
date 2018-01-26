@@ -7,10 +7,8 @@ var searchData=
   ['preprocessor_2ehpp',['preprocessor.hpp',['../preprocessor_8hpp.html',1,'']]],
   ['print_2eh',['print.h',['../print_8h.html',1,'']]],
   ['print_2ehpp',['print.hpp',['../print_8hpp.html',1,'']]],
-  ['proxy_2eabi_2ehpp',['proxy.abi.hpp',['../proxy_8abi_8hpp.html',1,'']]],
   ['proxy_2ecpp',['proxy.cpp',['../proxy_8cpp.html',1,'']]],
   ['proxy_2ehpp',['proxy.hpp',['../proxy_8hpp.html',1,'']]],
-  ['proxy_2ewast_2ehpp',['proxy.wast.hpp',['../proxy_8wast_8hpp.html',1,'']]],
   ['punctuation_2ehpp',['punctuation.hpp',['../punctuation_8hpp.html',1,'']]],
   ['push_5fback_2ehpp',['push_back.hpp',['../array_2push__back_8hpp.html',1,'(Global Namespace)'],['../seq_2push__back_8hpp.html',1,'(Global Namespace)'],['../tuple_2push__back_8hpp.html',1,'(Global Namespace)']]],
   ['push_5ffront_2ehpp',['push_front.hpp',['../array_2push__front_8hpp.html',1,'(Global Namespace)'],['../seq_2push__front_8hpp.html',1,'(Global Namespace)'],['../tuple_2push__front_8hpp.html',1,'(Global Namespace)']]]

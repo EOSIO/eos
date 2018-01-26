@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['last_5funstaking_5ftime',['last_unstaking_time',['../structeosio_1_1account_1_1account__balance.html#ab7fa42155c36e102dc7d5eb1345fbac7',1,'eosio::account::account_balance']]],
   ['last_5fvote',['last_vote',['../structaccount.html#a1b6f555894deefad1820a810dfb5a969',1,'account']]],
   ['last_5fvote_5fweight',['last_vote_weight',['../structeosiosystem_1_1account.html#a4df68a217bfe8c3d1d7ce9c641c4e4e8',1,'eosiosystem::account']]],
   ['len',['len',['../structfixed__string16.html#a8eec9f81e469ac9108eac24ce0bd2c4c',1,'fixed_string16::len()'],['../structfixed__string32.html#a96c1e739f58582562c539d733d6f18b0',1,'fixed_string32::len()'],['../structproducers.html#a68755b19eab5e9f1c229ae898b199c10',1,'producers::len()']]],
@@ -9,7 +8,6 @@ var searchData=
   ['library_2ehpp',['library.hpp',['../library_8hpp.html',1,'']]],
   ['limits_2ehpp',['limits.hpp',['../config_2limits_8hpp.html',1,'(Global Namespace)'],['../limits_8hpp.html',1,'(Global Namespace)']]],
   ['line_2ehpp',['line.hpp',['../line_8hpp.html',1,'']]],
-  ['link',['link',['../struct_t_o_k_e_n___n_a_m_e_1_1link.html',1,'TOKEN_NAME']]],
   ['list_2ehpp',['list.hpp',['../list_8hpp.html',1,'']]],
   ['load',['load',['../structeosio_1_1table__impl__obj_3_01char_01_5_01_4.html#afc0387bc0070d3ef7f7905e0c2b1f2a4',1,'eosio::table_impl_obj&lt; char * &gt;::load()'],['../structeosio_1_1var__table.html#a5efe5f0bd91ad24402963544b4ca6342',1,'eosio::var_table::load()'],['../test__db_8cpp.html#acdaafe56657d5eca906aa12cf84cff6b',1,'LOAD():&#160;test_db.cpp']]],
   ['load_5fer',['LOAD_ER',['../test__db_8cpp.html#a73788f3e69686e90c964e29ddd72c53b',1,'test_db.cpp']]],

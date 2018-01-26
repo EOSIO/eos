@@ -77,9 +77,6 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtic__tac__toe_1_1create.html">create</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Action to create new game.  <a href="structtic__tac__toe_1_1create.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtic__tac__toe_1_1game.html">game</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data structure to hold game information.  <a href="structtic__tac__toe_1_1game.html#details">More...</a><br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtic__tac__toe_1_1move.html">move</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Action to make movement.  <a href="structtic__tac__toe_1_1move.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -92,7 +89,7 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a3455767150132ad7ccdfe8c0e5a71989"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989">Games</a> = <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(games), <a class="el" href="structtic__tac__toe_1_1game.html">game</a>, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
+<tr class="memitem:a3455767150132ad7ccdfe8c0e5a71989"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989">Games</a> = <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(games), game, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
 <tr class="memdesc:a3455767150132ad7ccdfe8c0e5a71989"><td class="mdescLeft">&#160;</td><td class="mdescRight">table to store list of games  <a href="#a3455767150132ad7ccdfe8c0e5a71989">More...</a><br /></td></tr>
 <tr class="separator:a3455767150132ad7ccdfe8c0e5a71989"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -101,10 +98,10 @@ Functions</h2></td></tr>
 <tr class="memitem:a6f32b76cb96a584daeacd2fd81de47d2"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a6f32b76cb96a584daeacd2fd81de47d2">is_empty_cell</a> (const <a class="el" href="group__types.html#gaba7bc1797add20fe3efdf37ced1182c5">uint8_t</a> &amp;cell)</td></tr>
 <tr class="memdesc:a6f32b76cb96a584daeacd2fd81de47d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check if cell is empty.  <a href="#a6f32b76cb96a584daeacd2fd81de47d2">More...</a><br /></td></tr>
 <tr class="separator:a6f32b76cb96a584daeacd2fd81de47d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abb2ba327b8a040528d6b773f72712b28"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#abb2ba327b8a040528d6b773f72712b28">is_valid_movement</a> (const <a class="el" href="structtic__tac__toe_1_1movement.html">movement</a> &amp;mvt, const <a class="el" href="structtic__tac__toe_1_1game.html">game</a> &amp;game_for_movement)</td></tr>
+<tr class="memitem:abb2ba327b8a040528d6b773f72712b28"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#abb2ba327b8a040528d6b773f72712b28">is_valid_movement</a> (const <a class="el" href="structtic__tac__toe_1_1movement.html">movement</a> &amp;mvt, const game &amp;game_for_movement)</td></tr>
 <tr class="memdesc:abb2ba327b8a040528d6b773f72712b28"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check for valid movement  Movement is considered valid if it is inside the board and done on empty cell.  <a href="#abb2ba327b8a040528d6b773f72712b28">More...</a><br /></td></tr>
 <tr class="separator:abb2ba327b8a040528d6b773f72712b28"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a87364eb508987ae99315cb550318a2cd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a87364eb508987ae99315cb550318a2cd">get_winner</a> (const <a class="el" href="structtic__tac__toe_1_1game.html">game</a> &amp;current_game)</td></tr>
+<tr class="memitem:a87364eb508987ae99315cb550318a2cd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a87364eb508987ae99315cb550318a2cd">get_winner</a> (const game &amp;current_game)</td></tr>
 <tr class="memdesc:a87364eb508987ae99315cb550318a2cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get winner of the game  Winner of the game is the first player who made three consecutive aligned movement.  <a href="#a87364eb508987ae99315cb550318a2cd">More...</a><br /></td></tr>
 <tr class="separator:a87364eb508987ae99315cb550318a2cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2a1cf506a98d2d47fa5beecf5f4fc5df"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a2a1cf506a98d2d47fa5beecf5f4fc5df">apply_create</a> (const <a class="el" href="structtic__tac__toe_1_1create.html">create</a> &amp;c)</td></tr>
@@ -119,6 +116,9 @@ Functions</h2></td></tr>
 <tr class="memitem:a7e150e574fbbc4aa01f6d904777fff09"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a7e150e574fbbc4aa01f6d904777fff09">apply_move</a> (const <a class="el" href="structtic__tac__toe_1_1move.html">move</a> &amp;m)</td></tr>
 <tr class="memdesc:a7e150e574fbbc4aa01f6d904777fff09"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply move action.  <a href="#a7e150e574fbbc4aa01f6d904777fff09">More...</a><br /></td></tr>
 <tr class="separator:a7e150e574fbbc4aa01f6d904777fff09"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af55e2c47d79222b468915e5b41487f6a"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#af55e2c47d79222b468915e5b41487f6a">PACKED</a> (game)</td></tr>
+<tr class="memdesc:af55e2c47d79222b468915e5b41487f6a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data structure to hold game information.  <a href="#af55e2c47d79222b468915e5b41487f6a">More...</a><br /></td></tr>
+<tr class="separator:af55e2c47d79222b468915e5b41487f6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Typedef Documentation</h2>
 <a id="a3455767150132ad7ccdfe8c0e5a71989"></a>
@@ -128,7 +128,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">using <a class="el" href="namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989">tic_tac_toe::Games</a> = typedef <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt;<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(games),<a class="el" href="structtic__tac__toe_1_1game.html">game</a>,<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&gt;</td>
+          <td class="memname">using <a class="el" href="namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989">tic_tac_toe::Games</a> = typedef <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt;<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(tic.tac.toe),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(games),game,<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&gt;</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -241,7 +241,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> tic_tac_toe::get_winner </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="structtic__tac__toe_1_1game.html">game</a> &amp;&#160;</td>
+          <td class="paramtype">const game &amp;&#160;</td>
           <td class="paramname"><em>current_game</em></td><td>)</td>
           <td></td>
         </tr>
@@ -297,7 +297,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structtic__tac__toe_1_1game.html">game</a> &amp;&#160;</td>
+          <td class="paramtype">const game &amp;&#160;</td>
           <td class="paramname"><em>game_for_movement</em>&#160;</td>
         </tr>
         <tr>
@@ -315,6 +315,24 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>true if movement is valid </dd></dl>
+
+</div>
+</div>
+<a id="af55e2c47d79222b468915e5b41487f6a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af55e2c47d79222b468915e5b41487f6a">&#9670;&nbsp;</a></span>PACKED()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">struct tic_tac_toe::PACKED </td>
+          <td>(</td>
+          <td class="paramtype">game&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>

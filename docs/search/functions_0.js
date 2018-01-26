@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['account',['account',['../structdice_1_1account.html#a6cf8226422ed2b164524e87a0ced94ed',1,'dice::account::account()'],['../structeosiosystem_1_1account.html#ad9c3e1b96d92d5a5256b0f576bcbbf05',1,'eosiosystem::account::account()'],['../structexchange_1_1account.html#a2bdad696d66826e43c79ca120bc548c4',1,'exchange::account::account()'],['../structinfinite_1_1account.html#abd9362b588e409e7a8f7e0050cb45eab',1,'infinite::account::account()'],['../group__storageapi.html#ga178ce3b03e0fcd2ee52df57dbf14302d',1,'TOKEN_NAME::account::account()']]],
+  ['account',['account',['../structeosiosystem_1_1account.html#ad9c3e1b96d92d5a5256b0f576bcbbf05',1,'eosiosystem::account::account()'],['../structinfinite_1_1account.html#abd9362b588e409e7a8f7e0050cb45eab',1,'infinite::account::account()']]],
   ['account_5fbalance_5fget',['account_balance_get',['../group__accountcapi.html#gabc0d83c30cea31ccd9c5155f5292eab7',1,'account.h']]],
   ['action',['action',['../structeosio_1_1action.html#aebc29a38547efa71db8ec20cc56d69a4',1,'eosio::action::action()=default'],['../structeosio_1_1action.html#ac4fa6584567d8c5a24c9eb3254c6ad80',1,'eosio::action::action(vector&lt; permission_level &gt; &amp;&amp;auth, const Action &amp;value)'],['../structeosio_1_1action.html#a38ac83086a7f7250e65453aaa29e2b45',1,'eosio::action::action(const permission_level &amp;auth, const Action &amp;value)']]],
   ['action_5fsize',['action_size',['../group__actioncapi.html#gadd0552a97de236e0c7af3ef2dd909c2a',1,'action.h']]],

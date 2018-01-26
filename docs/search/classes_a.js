@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['memory_5fmanager',['memory_manager',['../classeosio_1_1memory__manager.html',1,'eosio']]],
-  ['move',['move',['../structtic__tac__toe_1_1move.html',1,'tic_tac_toe']]],
-  ['movement',['movement',['../structtic__tac__toe_1_1movement.html',1,'tic_tac_toe']]]
+  ['name',['name',['../structeosio_1_1name.html',1,'eosio']]],
+  ['native_5fcurrency',['native_currency',['../structeosio_1_1native__currency.html',1,'eosio']]]
 ];
