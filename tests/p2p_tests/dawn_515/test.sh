@@ -1,10 +1,7 @@
 #!/bin/bash
 
 ###############################################################
-# -p <producing nodes count>
-# -n <total nodes>
-# -s <topology>
-# -d <delay between nodes startup>
+# Extracts staging directory and launchs cluster.
 ###############################################################
 
 pnodes=1
@@ -12,8 +9,9 @@ total_nodes=3
 topo=star
 delay=1
 
+rm -rf staging
 rm -rf tn_data_*
-sed '/^#!/,/^__DATA__$/D' "$0" | uudecode -p -m | tar -zxf -
+sed '/^#!/,/^__DATA__$/D' "$0" | uudecode -o - | tar -zxf -
 programs/launcher/launcher -p $pnodes -n $total_nodes --nogen -d $delay
 
 sleep 1
@@ -26,6 +24,8 @@ else
 fi
 
 programs/launcher/launcher -k 15
+rm -rf staging
+rm -rf tn_data_*
 exit $res
 
 __DATA__
